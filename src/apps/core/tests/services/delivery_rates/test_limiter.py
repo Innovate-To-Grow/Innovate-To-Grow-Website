@@ -100,7 +100,9 @@ class BulkLaneTests(LimiterTestCase):
                 self.admit(lane=rates.Lane.BULK)
 
         self.assertEqual(caught.exception.until, START + timedelta(seconds=5))
-        self.assertEqual(state_of().bulk_gate_until, caught.exception.until)
+        # The worker's hint: a campaign request can be admitted again one bulk interval before that slot.
+        self.assertEqual(caught.exception.resume_at, START + timedelta(seconds=2.5))
+        self.assertEqual(state_of().bulk_gate_until, caught.exception.resume_at)
 
     def test_a_worker_defers_a_campaign_during_a_cooldown_it_could_wait_out(self):
         rates.record(self.admit(), rates.throttle(retry_after=20))

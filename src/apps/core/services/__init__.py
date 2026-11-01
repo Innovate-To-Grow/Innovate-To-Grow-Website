@@ -18,14 +18,16 @@ Subsystem               What it is                                            Im
                         + the SES / SMS limit reads (``quotas``)
 ``background_jobs/``    Durable outbox: queue, worker, retry, rate limit.      ``authn``, ``cms``, ``event``, ``mail``
                         Apps register job kinds from ``AppConfig.ready()``
-                        with ``register_job_kind`` (dotted handler paths).
+                        with ``register_job_kind`` (dotted handler paths;
+                        delivery kinds also name their family and lane).
 ``credential_store/``   Versioned private-key store, read by pinned version:   ``core`` only (system check, Graph key)
                         Secrets Manager (prod), 0600 files (dev), memory
                         (tests). The database keeps only ARN + version id.
-``delivery_rates/``     Delivery-rate control for every channel (Graph, SES,   ``core`` only for now (email, SMS and inbox
-                        SMTP, Gmail IMAP and API, SMS): Smart and manual      senders adopt it next)
+``delivery_rates/``     Delivery-rate control for every channel (Graph, SES,   ``authn``, ``event``, ``mail`` (job-kind
+                        SMTP, Gmail IMAP and API, SMS): Smart and manual      lanes); the senders adopt it next
                         rate, pacing, budgets, breakers, AWS limit reads.
-                        ``rules/`` is pure; ``runtime/`` uses the state rows.
+                        ``rules/`` is pure; ``runtime/`` uses the state rows;
+                        ``families`` gates the worker's claims.
 ``db_tools/``           ``safe_orm``: the read-only ORM sandbox (field /       ``cli_admin``, ``system_intelligence``
                         filter allowlists, ``MAX_ROWS``)
 ``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery;       ``authn``, ``event``, ``mail``

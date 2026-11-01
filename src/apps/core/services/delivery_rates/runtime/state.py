@@ -2,13 +2,16 @@
 transactions."""
 
 import logging
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.core import mail
 from django.db import IntegrityError, connections, transaction
+from django.db.models import Q
 
 from apps.core.models import DeliveryRateState
 
+from ..rules.defaults import section
 from . import context
 
 logger = logging.getLogger(__name__)
@@ -76,3 +79,13 @@ def locked_state(channel: str, identity: str, cooldown_group: str) -> DeliveryRa
 def relock(state_id) -> DeliveryRateState | None:
     """Lock an existing row again (for feedback); None when it was purged meanwhile."""
     return DeliveryRateState.objects.select_for_update().filter(pk=state_id).first()
+
+
+def purge_idle(now: datetime) -> int:
+    """Delete the state of identities unused for ``usage.idle_state_seconds`` whose breaker is closed and whose
+    cooldown is over (their usage buckets go with them); return how many."""
+    cutoff = now - timedelta(seconds=section("usage")["idle_state_seconds"])
+    idle = DeliveryRateState.objects.filter(updated_at__lt=cutoff, breaker_state=DeliveryRateState.BreakerState.CLOSED)
+    idle = idle.filter(Q(cooldown_until__isnull=True) | Q(cooldown_until__lte=now))
+    _total, per_model = idle.delete()
+    return per_model.get(DeliveryRateState._meta.label, 0)

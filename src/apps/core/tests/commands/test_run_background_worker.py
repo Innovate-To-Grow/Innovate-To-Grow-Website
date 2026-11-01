@@ -12,9 +12,11 @@ from django.utils import timezone
 from apps.authn.models import LoginFailureWindow, SendVerificationChallenge
 from apps.core.management.commands import run_background_worker
 from apps.core.models import BackgroundJob
-from apps.core.services.background_jobs import enqueue_job
+from apps.core.services.background_jobs import JobOutcome, enqueue_job
+from apps.core.services.delivery_rates.maintenance import MaintenanceResult
 
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
+NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)
 
 
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
@@ -34,6 +36,7 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
             patch.object(run_background_worker, "cleanup_expired_records", return_value=NOTHING_CLEANED),
             patch.object(run_background_worker, "clear_expired_sessions", return_value=0),
             patch.object(run_background_worker, "purge_expired_failure_windows", return_value=0),
+            patch.object(run_background_worker, "run_delivery_rate_maintenance", return_value=NOTHING_MAINTAINED),
             patch.object(run_background_worker, "active_certificate_expiry", return_value=None),
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
         ):
@@ -107,12 +110,8 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
         publish.assert_not_called()
 
     @patch.object(run_background_worker, "publish_worker_metrics")
-    @patch.object(
-        run_background_worker,
-        "worker_metrics",
-        return_value={"heartbeat": 1},
-    )
-    @patch.object(run_background_worker, "process_claimed_job")
+    @patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1})
+    @patch.object(run_background_worker, "run_claimed_job")
     @patch.object(
         run_background_worker,
         "claim_jobs",
@@ -130,7 +129,7 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
         _metrics,
         _publish,
     ):
-        process.side_effect = [RuntimeError("mirror unavailable"), True]
+        process.side_effect = [RuntimeError("mirror unavailable"), JobOutcome.SUCCEEDED]
 
         self._run_once(batch_size=2)
 
@@ -141,12 +140,8 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
         self.assertEqual(_claim.call_args_list, [call(batch_size=1), call(batch_size=1)])
 
     @patch.object(run_background_worker, "publish_worker_metrics")
-    @patch.object(
-        run_background_worker,
-        "worker_metrics",
-        return_value={"heartbeat": 1},
-    )
-    @patch.object(run_background_worker, "process_claimed_job")
+    @patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1})
+    @patch.object(run_background_worker, "run_claimed_job")
     @patch.object(
         run_background_worker,
         "claim_jobs",
@@ -167,11 +162,7 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
         self.assertEqual(claim.call_args_list, [call(batch_size=1), call(batch_size=1)])
 
     @patch.object(run_background_worker, "publish_worker_metrics")
-    @patch.object(
-        run_background_worker,
-        "worker_metrics",
-        return_value={"heartbeat": 1},
-    )
+    @patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1})
     @patch.object(run_background_worker, "claim_jobs")
     @patch.object(
         run_background_worker,
@@ -276,13 +267,14 @@ class RunBackgroundWorkerShutdownTests(TestCase):
 LOGGER_NAME = "apps.core.management.commands.run_background_worker"
 
 
-# The six maintenance services, in task order, with what each returns when there is nothing to do.
+# The seven maintenance services, in task order, with what each returns when there is nothing to do.
 MAINTENANCE_SERVICES = {
     "purge_retired_auth_keypairs": 0,
     "purge_expired_public_assistant_budgets": 0,
     "cleanup_expired_records": NOTHING_CLEANED,
     "clear_expired_sessions": 0,
     "purge_expired_failure_windows": 0,
+    "run_delivery_rate_maintenance": NOTHING_MAINTAINED,
     "active_certificate_expiry": None,
 }
 
@@ -298,7 +290,7 @@ def patch_maintenance(**side_effects):
     return patchers
 
 
-# The three batched services are called with the stop check; the two single-statement purges take no argument.
+# The three batched services are called with the stop check; the others take no argument.
 BATCHED_SERVICES = ("cleanup_expired_records", "clear_expired_sessions", "purge_expired_failure_windows")
 
 
@@ -332,6 +324,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             cleanup_expired_records=record("send verification", NOTHING_CLEANED),
             clear_expired_sessions=record("sessions", 0),
             purge_expired_failure_windows=record("login failure windows", 0),
+            run_delivery_rate_maintenance=record("delivery rates", NOTHING_MAINTAINED),
             active_certificate_expiry=record("graph certificate", None),
         )
 
@@ -343,6 +336,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "send verification",
                 "sessions",
                 "login failure windows",
+                "delivery rates",
                 "graph certificate",
             ],
         )
@@ -354,6 +348,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Send verification cleanup",
                 "Expired session cleanup",
                 "Login failure window purge",
+                "Delivery-rate maintenance",
                 "Microsoft Graph certificate expiry check",
             ],
         )
@@ -473,6 +468,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             cleanup_expired_records=RuntimeError("c"),
             clear_expired_sessions=RuntimeError("d"),
             purge_expired_failure_windows=RuntimeError("e"),
+            run_delivery_rate_maintenance=RuntimeError("g"),
             active_certificate_expiry=RuntimeError("f"),
         ):
             patcher.start()

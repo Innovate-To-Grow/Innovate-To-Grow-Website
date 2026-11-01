@@ -61,9 +61,16 @@ SECTION_KEYS = {
     ),
     "waits": ("inline_seconds", "read_seconds", "worker_seconds", "dedicated_seconds", "inline_request_budget_seconds"),
     "lanes": ("bulk_share", "transactional_reserve"),
-    "usage": ("bucket_seconds", "retention_seconds"),
+    "usage": ("bucket_seconds", "retention_seconds", "idle_state_seconds"),
     "discovery": ("timeout_seconds", "min_refresh_after_throttle_seconds"),
-    "jobs": ("retry_base_seconds", "retry_max_seconds", "default_max_attempts", "stale_claim_seconds"),
+    "jobs": (
+        "retry_base_seconds",
+        "retry_max_seconds",
+        "default_max_attempts",
+        "stale_claim_seconds",
+        "defer_jitter_seconds",
+        "gate_cache_seconds",
+    ),
 }
 
 
@@ -254,6 +261,8 @@ def _check_runtime(config):
         _fail(("usage", "bucket_seconds"), "must be a whole number of seconds that divides one hour")
     if usage["retention_seconds"] < DAY_SECONDS + bucket:
         _fail(("usage", "retention_seconds"), "must cover 24 hours plus one bucket")
+    if usage["idle_state_seconds"] < usage["retention_seconds"]:
+        _fail(("usage", "idle_state_seconds"), "must not be below retention_seconds")
     if config["lanes"]["transactional_reserve"] is None:
         _fail(("lanes", "transactional_reserve"), "must be set")
 

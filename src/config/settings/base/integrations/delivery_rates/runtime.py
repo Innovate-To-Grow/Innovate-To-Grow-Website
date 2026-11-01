@@ -52,6 +52,9 @@ USAGE = {
     "bucket_seconds": 300,
     # ...for this long (must cover the rolling 24 h window plus one bucket).
     "retention_seconds": 172_800,
+    # The state of an identity unused this long (a mailbox, host or number no longer in use) is deleted, unless a
+    # breaker or cooldown is still active (must be at least retention_seconds, so no counted usage is lost).
+    "idle_state_seconds": 2_592_000,
 }
 
 DISCOVERY = {
@@ -69,4 +72,8 @@ JOBS = {
     "default_max_attempts": 5,
     # A claimed job not finished within this long is recovered (run_background_worker --stale-minutes 10).
     "stale_claim_seconds": 600,
+    # A job deferred by its delivery lane is due again at its slot plus up to this much, so deferred jobs spread out.
+    "defer_jitter_seconds": 1,
+    # The worker reads each delivery lane's gate (is the lane paced, cooling down or stopped?) at most this often.
+    "gate_cache_seconds": 1,
 }

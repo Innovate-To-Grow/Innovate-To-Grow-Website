@@ -17,8 +17,12 @@ or uses ``controlled(...)`` for the same. ``RateDeferred`` means "certainly not 
 - ``rules``: the pure rules. ``rules.policy.effective_rate`` is the only home of the precedence rule.
 - ``runtime``: admission, feedback, budgets, breakers and discovery on the state rows.
 - ``snapshot`` / ``status_text``: the status lines; ``receivers``: config saves half-open breakers.
+- ``families``: the active channel of each family (email, SMS), the worker's lane gates and inline batch sizes;
+  ``maintenance``: the worker's periodic limit reads and purges.
 """
 
+from .families import Target, active_target, inline_batch_limit, lane_gated, register_family
+from .maintenance import run_maintenance
 from .rules.channels import (
     Family,
     Lane,
@@ -71,7 +75,9 @@ __all__ = [
     "Reason",
     "Scope",
     "SignalKind",
+    "Target",
     "WaitMode",
+    "active_target",
     "admit",
     "blocked",
     "channel_info",
@@ -81,6 +87,8 @@ __all__ = [
     "cooldown_group",
     "external_recipients",
     "imap_identity",
+    "inline_batch_limit",
+    "lane_gated",
     "mailbox_identity",
     "none",
     "ok",
@@ -89,9 +97,11 @@ __all__ = [
     "quota",
     "record",
     "refresh_discovery",
+    "register_family",
     "release",
     "reset_smart",
     "resume",
+    "run_maintenance",
     "ses_identity",
     "sms_identity",
     "sms_parts",

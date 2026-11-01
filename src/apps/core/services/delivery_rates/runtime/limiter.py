@@ -88,9 +88,10 @@ def _attempt(channel, identity, group, lane, costs, deadline) -> Admission | Rat
 
 
 def _defer(state, lane, until, reason, now, resume_at=None) -> RateDeferred:
-    # Hints for the worker: this lane sends nothing before ``until``.
+    # Hints for the worker (``families.lane_gated``): campaigns can next be admitted at ``resume_at`` (one bulk
+    # interval before their slot), and nothing is sent before ``until``.
     if lane == Lane.BULK:
-        state.bulk_gate_until = until
+        state.bulk_gate_until = resume_at or until
     else:
         state.all_gate_until = until
     return RateDeferred(until, reason, now=now, resume_at=resume_at)

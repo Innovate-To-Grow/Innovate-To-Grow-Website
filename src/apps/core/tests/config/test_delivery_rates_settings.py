@@ -74,8 +74,11 @@ class DeliveryRatesDefaultsTests(SimpleTestCase):
         self.assertLess(rates["waits"]["worker_seconds"], rates["jobs"]["stale_claim_seconds"])
         self.assertLess(rates["waits"]["inline_seconds"], rates["waits"]["inline_request_budget_seconds"])
         self.assertEqual(rates["lanes"], {"bulk_share": 0.8, "transactional_reserve": 0.10})
-        self.assertEqual(rates["usage"], {"bucket_seconds": 300, "retention_seconds": 172_800})
+        self.assertEqual(
+            rates["usage"], {"bucket_seconds": 300, "retention_seconds": 172_800, "idle_state_seconds": 2_592_000}
+        )
         self.assertEqual(rates["jobs"]["stale_claim_seconds"], 600)
+        self.assertEqual((rates["jobs"]["defer_jitter_seconds"], rates["jobs"]["gate_cache_seconds"]), (1, 1))
 
     def test_the_bounds_match_the_policy_columns(self):
         manual = DeliveryRatePolicy._meta.get_field("manual_rate")
@@ -237,6 +240,8 @@ class DeliveryRatesValidationTests(SimpleTestCase):
         self.assert_refused({"usage": {"bucket_seconds": 7}}, "bucket_seconds must be a whole number of seconds")
         self.assert_refused({"usage": {"bucket_seconds": 300.5}}, "bucket_seconds must be a whole number of seconds")
         self.assert_refused({"usage": {"retention_seconds": 86_400}}, "retention_seconds must cover 24 hours")
+        self.assert_refused({"usage": {"idle_state_seconds": 86_400}}, "idle_state_seconds must not be below")
+        self.assert_refused({"jobs": {"gate_cache_seconds": 0}}, "gate_cache_seconds must be a number of seconds")
 
     def test_text_settings(self):
         for bad in ("UCMERCED.edu", "not a domain", "x@ucmerced.edu", 7):

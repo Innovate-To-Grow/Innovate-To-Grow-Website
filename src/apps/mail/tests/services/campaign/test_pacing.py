@@ -205,7 +205,8 @@ class QueuedCampaignSpacingTests(TestCase):
 
         claimed = claim_jobs(batch_size=10)
 
-        self.assertEqual([job.kind for job in claimed], ["mail.email_recipient", "event.ticket_email"])
+        # A ticket (transactional, priority 10) is claimed even before the campaign recipient already due.
+        self.assertEqual([job.kind for job in claimed], ["event.ticket_email", "mail.email_recipient"])
 
     def test_ses_campaign_jobs_are_all_due_at_once(self):
         EmailServiceConfig.objects.create(name="Mail", is_active=True, provider="ses", from_email="a@example.com")

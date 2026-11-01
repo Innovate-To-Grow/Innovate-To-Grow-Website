@@ -1,4 +1,4 @@
-"""Durable PostgreSQL outbox: queue, claim, retry, rate-limit and worker metrics.
+"""Durable PostgreSQL outbox: queue, claim (by priority, skipping gated delivery lanes), retry and worker metrics.
 
 Domain apps register their job kinds with ``register_job_kind`` in ``AppConfig.ready()``;
 provider-calling handlers share the helpers in ``delivery``.
@@ -18,15 +18,20 @@ from .rate_limit import (
 from .recovery import recover_stale_jobs
 from .registry import register_job_kind, registered_job_kinds
 from .worker import (
+    DeferredJobError,
     JobClaimLost,
+    JobOutcome,
     PermanentJobError,
     TransientJobError,
     UncertainJobError,
     claim_jobs,
     process_claimed_job,
+    run_claimed_job,
 )
 
 __all__ = [
+    "DeferredJobError",
+    "JobOutcome",
     "TransientJobError",
     "PermanentJobError",
     "UncertainJobError",
@@ -42,6 +47,7 @@ __all__ = [
     "registered_job_kinds",
     "reserve_delivery_slot",
     "retry_job",
+    "run_claimed_job",
     "worker_metrics",
     "wait_for_delivery_slot",
 ]
