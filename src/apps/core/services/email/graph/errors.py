@@ -6,10 +6,11 @@ Messages are generic and carry only an allow-listed error code, never a response
 import json
 import re
 
+from django.conf import settings
+
 from ..exceptions import PermanentEmailDeliveryError, TransientEmailDeliveryError, UncertainEmailDeliveryError
 from .transport import HttpResponse
 
-MAX_RETRY_AFTER_SECONDS = 3600
 _RETRY_AFTER_RE = re.compile(r"[0-9]{1,9}")
 _CODE_RE = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{1,63}")
 _REQUEST_ID_RE = re.compile(r"[0-9A-Za-z-]{8,64}")
@@ -19,11 +20,12 @@ _RETRYABLE_STATUSES = {408, 429, 503}
 
 
 def retry_after_seconds(headers: dict[str, str]) -> float | None:
-    """The ``Retry-After`` delay in whole seconds (capped), or None when absent or not a plain number."""
+    """The ``Retry-After`` delay in whole seconds (capped at ``GRAPH_MAX_RETRY_AFTER_SECONDS``), or None when absent
+    or not a plain number."""
     raw = headers.get("retry-after", "").strip()
     if not _RETRY_AFTER_RE.fullmatch(raw):
         return None
-    return float(min(int(raw), MAX_RETRY_AFTER_SECONDS))
+    return float(min(int(raw), settings.GRAPH_MAX_RETRY_AFTER_SECONDS))
 
 
 def request_id(headers: dict[str, str]) -> str:

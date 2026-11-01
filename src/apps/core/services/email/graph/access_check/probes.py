@@ -66,7 +66,9 @@ class Prober:
     def messages(self, mailbox: str, *, expect_allowed: bool) -> tuple[ProbeResult, str]:
         """The newest Inbox message (``bodyPreview`` needs Mail.Read, not just Mail.ReadBasic) and its id, or ""."""
         path = f"{user_path(mailbox)}/mailFolders/inbox/messages?{NEWEST_MESSAGE}"
-        result, response = self._get_response(MESSAGES, mailbox, path, expect_allowed, transport.MAX_RESPONSE_BYTES)
+        result, response = self._get_response(
+            MESSAGES, mailbox, path, expect_allowed, settings.GRAPH_MAX_RESPONSE_BYTES
+        )
         return result, (newest_id(response) if result.passed and expect_allowed else "")
 
     def extra_read(self, mailbox: str) -> ProbeResult:
@@ -112,7 +114,7 @@ class Prober:
         return _with_note(result, join_notes(result.note, granted, sent))
 
     def _get(self, check, mailbox, path, expect_allowed) -> ProbeResult:
-        return self._get_response(check, mailbox, path, expect_allowed, transport.MAX_RESPONSE_BYTES)[0]
+        return self._get_response(check, mailbox, path, expect_allowed, settings.GRAPH_MAX_RESPONSE_BYTES)[0]
 
     def _get_response(self, check, mailbox, path, expect_allowed, max_bytes):
         expected = ALLOWED if expect_allowed else DENIED

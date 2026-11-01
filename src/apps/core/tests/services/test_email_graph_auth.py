@@ -5,6 +5,7 @@ import json
 from unittest.mock import patch
 from urllib.parse import parse_qs
 
+from django.conf import settings
 from django.test import SimpleTestCase
 
 from apps.core.services.email import EmailDeliveryError, PermanentEmailDeliveryError, TransientEmailDeliveryError
@@ -92,7 +93,7 @@ class GraphTokenRequestTests(TokenTestCase):
 
     def test_timeout_defaults_to_the_module_setting_and_can_be_overridden(self):
         self.get_token()
-        self.assertEqual(self.fake.requests[0].timeout, auth.REQUEST_TIMEOUT)
+        self.assertEqual(self.fake.requests[0].timeout, settings.GRAPH_REQUEST_TIMEOUT_SECONDS)
 
         self.script()
         self.get_token(timeout=7)
@@ -385,7 +386,7 @@ class GraphTokenHardeningTests(TokenTestCase):
         with patch.object(auth, "time", clock):
             self.script(token=HttpResponse(200, {}, body))
             self.get_token()
-            clock.now += auth.MAX_LIFETIME_SECONDS - auth.EXPIRY_MARGIN_SECONDS - 1
+            clock.now += settings.GRAPH_TOKEN_MAX_LIFETIME_SECONDS - settings.GRAPH_TOKEN_EXPIRY_MARGIN_SECONDS - 1
 
             self.get_token()
             self.assertEqual(len(self.fake.token_requests), 1)

@@ -6,6 +6,7 @@ header other than a validated code may reach an exception, because those message
 
 import json
 
+from django.conf import settings
 from django.test import SimpleTestCase
 
 from apps.core.services.aws.provider_outcomes import (
@@ -19,7 +20,6 @@ from apps.core.services.email import (
     UncertainEmailDeliveryError,
 )
 from apps.core.services.email.graph.errors import (
-    MAX_RETRY_AFTER_SECONDS,
     graph_error_code,
     identity_error_code,
     request_id,
@@ -52,7 +52,7 @@ class RetryAfterSecondsTests(SimpleTestCase):
                 self.assertIsInstance(result, float)
 
     def test_long_delays_are_capped_at_one_hour(self):
-        self.assertEqual(MAX_RETRY_AFTER_SECONDS, 3600)
+        self.assertEqual(settings.GRAPH_MAX_RETRY_AFTER_SECONDS, 3600)
         for raw in ("3601", "99999", "999999"):
             with self.subTest(raw=raw):
                 self.assertEqual(retry_after_seconds({"retry-after": raw}), 3600.0)
@@ -60,7 +60,11 @@ class RetryAfterSecondsTests(SimpleTestCase):
     def test_long_numbers_are_capped_instead_of_ignored(self):
         for raw in ("1000000", "999999999"):
             with self.subTest(raw=raw):
-                self.assertEqual(retry_after_seconds({"retry-after": raw}), float(MAX_RETRY_AFTER_SECONDS))
+                self.assertEqual(
+                    retry_after_seconds({"retry-after": raw}), float(settings.GRAPH_MAX_RETRY_AFTER_SECONDS)
+                )
+        with self.settings(GRAPH_MAX_RETRY_AFTER_SECONDS=60):
+            self.assertEqual(retry_after_seconds({"retry-after": "61"}), 60.0)
 
     def test_numbers_beyond_nine_digits_are_ignored(self):
         self.assertIsNone(retry_after_seconds({"retry-after": "1" * 10}))

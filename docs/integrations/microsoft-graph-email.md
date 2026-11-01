@@ -564,13 +564,15 @@ Email** prove the credentials.
 - **Request flow.** The backend requests an access token from
   `https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token` (client-credentials grant, scope
   `https://graph.microsoft.com/.default`) with a client assertion: a JWT signed with the private key
-  (`PS256`, header `x5t#S256` = the certificate's SHA-256 thumbprint, valid for 5 minutes, a fresh `jti`
-  each time), never the key itself. It then sends
+  (`PS256`, header `x5t#S256` = the certificate's SHA-256 thumbprint, valid for
+  `GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS`, default 5 minutes, a fresh `jti` each time), never the key
+  itself. It then sends
   `POST https://graph.microsoft.com/v1.0/users/{mailbox}/sendMail` with `Content-Type: text/plain` and
   the base64 MIME as the body, or with `Content-Type: application/json` for credential mail. Only those
   two hosts are used, over TLS 1.2 or later, without following redirects or using proxy environment
-  variables, with a 30-second timeout per request. The backend and worker containers need outbound HTTPS
-  to both.
+  variables, with a `GRAPH_REQUEST_TIMEOUT_SECONDS` (default 30) timeout per request and at most
+  `GRAPH_MAX_RESPONSE_BYTES` (64 KiB) of each answer read. The backend and worker containers need outbound
+  HTTPS to both.
 - **Only five kinds of request.** The transport (`transport.py`, `ALLOWED_REQUESTS`) refuses, before
   opening a connection, every request except the token request, `POST …/users/{mailbox}/sendMail`,
   `GET …/mailFolders/{inbox|sentitems}/messages`, `GET …/mailFolders/inbox` (the access-check probe) and
@@ -713,9 +715,11 @@ configured.
 - **Caching.** Lists are served from the site cache for 5 minutes and opened messages for 30 minutes, as with
   IMAP; **Refresh** reloads the list. The cache keys name the folder and message but not the mailbox, so
   after changing the scope or the sender mailbox press **Refresh**: an opened message of the old mailbox can
-  still be served for up to 30 minutes. A message larger than 25 MB is not shown; open it in Outlook.
+  still be served for up to 30 minutes. A message larger than `GRAPH_INBOX_MESSAGE_MAX_BYTES` (25 MiB) is not
+  shown; open it in Outlook. A list reads at most `GRAPH_INBOX_LIST_MAX_BYTES` (2 MiB) and
+  `GRAPH_INBOX_MAX_LIST_LIMIT` (100) messages.
 - **Failures.** A list that cannot be loaded shows "Inbox is not available…" (or "Inbox could not be
-  loaded. Check server logs."); a message that cannot be opened, including one over 25 MB, shows "Message
+  loaded. Check server logs."); a message that cannot be opened, including one over the size limit, shows "Message
   could not be loaded. Check server logs." A refused read writes the WARNING
   `Microsoft Graph mailbox read was refused: status=<status> code=<code> request_id=<id>` plus the view's
   own WARNING (`Inbox fragment could not be loaded: …` or `Inbox message uid=… could not be loaded: …`);
@@ -873,7 +877,8 @@ Notification Delivery page shows the rate as `24 emails/min`.
   are not retried when Graph throttles them. All of these share the mailbox allowance with campaigns, so
   keep **Messages per Minute** below 30.
 - **`Retry-After`.** When Graph or the identity platform answers `429`/`503` with a `Retry-After` value,
-  the background worker schedules that email's next attempt no sooner than that (capped at one hour, and
+  the background worker schedules that email's next attempt no sooner than that (capped at
+  `GRAPH_MAX_RETRY_AFTER_SECONDS`, default one hour, and
   never sooner than its normal backoff). Other queued emails are not held back and keep their paced slots,
   so a long throttle can cost several of them a retry too. Without the worker, a throttled recipient is
   recorded as `failed`.

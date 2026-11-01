@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from urllib.parse import quote, urlencode
 
 from cryptography.exceptions import UnsupportedAlgorithm
+from django.conf import settings
 from django.views.decorators.debug import sensitive_variables
 
 from apps.core.services.credential_store import CredentialStoreError
@@ -28,9 +29,6 @@ from .errors import token_endpoint_error
 
 AUTHORITY_HOST = transport.AUTHORITY_HOST
 RESOURCE_SCOPE = "https://graph.microsoft.com/.default"
-REQUEST_TIMEOUT = 30
-EXPIRY_MARGIN_SECONDS = 300
-MAX_LIFETIME_SECONDS = 86400
 # JWT / base64url alphabet: anything else could not be sent as a header value and must never be echoed in errors.
 _ACCESS_TOKEN_RE = re.compile(r"[A-Za-z0-9._~+/=-]{1,16384}")
 
@@ -72,22 +70,29 @@ def forget_access_token(credential: GraphCredential) -> None:
         _cache.pop(credential.cache_key(), None)
 
 
-def get_access_token(credential: GraphCredential, *, timeout: float = REQUEST_TIMEOUT) -> str:
+def get_access_token(credential: GraphCredential, *, timeout: float | None = None) -> str:
     """Return a valid Graph access token, requesting one from the Microsoft identity platform when needed.
 
-    Every failure here happens before any mail is submitted, so it is always safely classified (never Uncertain).
+    *timeout* defaults to ``GRAPH_REQUEST_TIMEOUT_SECONDS``. Every failure here happens before any mail is
+    submitted, so it is always safely classified (never Uncertain).
     """
     key = credential.cache_key()
     with _cache_lock:
         cached = _cache.get(key)
     if cached is not None and cached[1] > time.monotonic():
         return cached[0]
-    access_token, lifetime = _request_access_token(credential, timeout)
-    ttl = lifetime - EXPIRY_MARGIN_SECONDS if lifetime > 2 * EXPIRY_MARGIN_SECONDS else lifetime // 2
+    access_token, lifetime = _request_access_token(credential, request_timeout(timeout))
+    margin = settings.GRAPH_TOKEN_EXPIRY_MARGIN_SECONDS
+    ttl = lifetime - margin if lifetime > 2 * margin else lifetime // 2
     if ttl > 0:
         with _cache_lock:
             _cache[key] = (access_token, time.monotonic() + ttl)
     return access_token
+
+
+def request_timeout(timeout: float | None = None) -> float:
+    """*timeout*, or ``GRAPH_REQUEST_TIMEOUT_SECONDS`` when it is None: the timeout of sends and mailbox reads."""
+    return settings.GRAPH_REQUEST_TIMEOUT_SECONDS if timeout is None else timeout
 
 
 def post_token_request(tenant_id: str, client_id: str, assertion: str, *, timeout: float) -> transport.HttpResponse:
@@ -109,7 +114,7 @@ def parse_access_token(body: bytes) -> tuple[str, int]:
     try:
         data = json.loads(body)
         access_token = data["access_token"]
-        lifetime = max(0, min(int(data.get("expires_in", 0)), MAX_LIFETIME_SECONDS))
+        lifetime = max(0, min(int(data.get("expires_in", 0)), settings.GRAPH_TOKEN_MAX_LIFETIME_SECONDS))
     except (ValueError, KeyError, TypeError, AttributeError, OverflowError, RecursionError):
         access_token, lifetime = "", 0
     if not isinstance(access_token, str) or not _ACCESS_TOKEN_RE.fullmatch(access_token):

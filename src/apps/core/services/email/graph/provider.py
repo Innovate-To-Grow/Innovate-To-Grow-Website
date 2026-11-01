@@ -50,7 +50,7 @@ class GraphProvider:
         mailbox: str,
         from_email: str,
         from_name: str = "",
-        timeout: float = auth.REQUEST_TIMEOUT,
+        timeout: float | None = None,
     ):
         # Tenant and mailbox become URL path segments, so rows created outside the validated admin are re-checked.
         valid = (
@@ -62,7 +62,8 @@ class GraphProvider:
         if not valid:
             raise PermanentEmailDeliveryError("Microsoft Graph configuration is invalid.")
         self.credential = credential
-        self.mailbox, self.from_email, self.from_name, self.timeout = mailbox, from_email, from_name, timeout
+        self.mailbox, self.from_email, self.from_name = mailbox, from_email, from_name
+        self.timeout = auth.request_timeout(timeout)
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         message_id, payload, content_type = self._encode(message)

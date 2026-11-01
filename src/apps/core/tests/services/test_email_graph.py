@@ -14,6 +14,7 @@ import json
 from typing import NamedTuple
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import SimpleTestCase
 
 from apps.core.services.email import EmailAttachment, EmailMessage, GraphProvider, PermanentEmailDeliveryError
@@ -339,7 +340,9 @@ class GraphProviderSendTests(GraphFixtureMixin, SimpleTestCase):
 
     def test_timeout_reaches_both_the_token_and_the_send_request(self):
         self.send()
-        self.assertEqual([request.timeout for request in self.fake.requests], [auth.REQUEST_TIMEOUT] * 2)
+        self.assertEqual(
+            [request.timeout for request in self.fake.requests], [settings.GRAPH_REQUEST_TIMEOUT_SECONDS] * 2
+        )
 
         self.script()
         self.send(timeout=7)

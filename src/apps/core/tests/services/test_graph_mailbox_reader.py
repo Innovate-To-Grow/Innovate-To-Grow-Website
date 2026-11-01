@@ -7,15 +7,14 @@ test opens a socket.
 import json
 from unittest.mock import patch
 
+from django.conf import settings
 from django.test import TestCase
 
 from apps.core.models import MicrosoftGraphMailboxScope
-from apps.core.services.email.graph import auth, transport
+from apps.core.services.email.graph import transport
 from apps.core.services.email.graph.access import GraphScopeError
 from apps.core.services.email.graph.mailbox import (
     LIST_FIELDS,
-    LIST_MAX_BYTES,
-    MIME_MAX_BYTES,
     GraphMailboxReader,
     GraphMessageNotFound,
     GraphReadError,
@@ -121,7 +120,10 @@ class GraphReaderListTests(GraphReaderFixtureMixin, TestCase):
             f"?$top=30&$select={LIST_FIELDS}&$orderby=receivedDateTime%20desc",
         )
         self.assertEqual(call["headers"], {"Authorization": f"Bearer {ACCESS_TOKEN}", "Accept": "application/json"})
-        self.assertEqual((call["max_bytes"], call["timeout"]), (LIST_MAX_BYTES, auth.REQUEST_TIMEOUT))
+        self.assertEqual(
+            (call["max_bytes"], call["timeout"]),
+            (settings.GRAPH_INBOX_LIST_MAX_BYTES, settings.GRAPH_REQUEST_TIMEOUT_SECONDS),
+        )
 
     def test_folder_names_map_to_well_known_folders(self):
         reader = self.reader()
@@ -143,6 +145,10 @@ class GraphReaderListTests(GraphReaderFixtureMixin, TestCase):
                 self.get.calls.clear()
                 reader.list_messages("INBOX", limit)
                 self.assertIn(f"?$top={top}&", self.get.calls[0]["path"])
+        with self.settings(GRAPH_INBOX_MAX_LIST_LIMIT=10):
+            self.get.calls.clear()
+            reader.list_messages("INBOX", 50)
+            self.assertIn("?$top=10&", self.get.calls[0]["path"])
 
     def test_messages_with_invalid_ids_are_dropped(self):
         good = {"id": MESSAGE_ID}
@@ -179,7 +185,7 @@ class GraphReaderMimeTests(GraphReaderFixtureMixin, TestCase):
 
         (call,) = self.get.calls
         self.assertEqual(call["path"], f"/v1.0/users/{MAILBOX}/messages/{MESSAGE_ID}/$value")
-        self.assertEqual(call["max_bytes"], MIME_MAX_BYTES)
+        self.assertEqual(call["max_bytes"], settings.GRAPH_INBOX_MESSAGE_MAX_BYTES)
 
     def test_invalid_ids_are_refused_without_any_request(self):
         for message_id in ("", None, "../x", "a/b", "a b", "id?x=1", "a%2F", "x" * 513):

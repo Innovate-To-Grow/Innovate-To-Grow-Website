@@ -32,6 +32,13 @@ class TokenRolesTests(SimpleTestCase):
             with self.subTest(label):
                 self.assertIsNone(token_roles(token))
 
+    def test_the_most_roles_read_is_a_setting(self):
+        token = jwt({"roles": ["Mail.Read", "Mail.Send"]})
+
+        with override_settings(GRAPH_ACCESS_CHECK_MAX_ROLES=1):
+            self.assertIsNone(token_roles(token))
+        self.assertEqual(token_roles(token), ("Mail.Read", "Mail.Send"))
+
     @override_settings(GRAPH_APPROVED_APPLICATION_ROLES=("Mail.Send", "Mail.Read", "Mail.Send"))
     def test_the_approval_comes_from_settings(self):
         self.assertEqual(approved_roles(), APPROVED)

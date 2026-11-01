@@ -11,9 +11,10 @@ import ssl
 from dataclasses import dataclass
 from http.client import HTTPException, HTTPSConnection, IncompleteRead
 
+from django.conf import settings
+
 from ..exceptions import PermanentEmailDeliveryError
 
-MAX_RESPONSE_BYTES = 64 * 1024
 USER_AGENT = "i2g-graph-client/1"
 AUTHORITY_HOST = "login.microsoftonline.com"
 GRAPH_HOST = "graph.microsoft.com"
@@ -72,7 +73,7 @@ def post(host: str, path: str, body: bytes, headers: dict[str, str], *, timeout:
     unvalidated location and ambient proxy settings are ignored. Connecting first separates failures that provably
     sent nothing (``ConnectFailed``) from those after which the outcome is unknown (``ResponseLost``).
     """
-    return _request("POST", host, path, body, headers, timeout=timeout, max_bytes=MAX_RESPONSE_BYTES)
+    return _request("POST", host, path, body, headers, timeout=timeout, max_bytes=settings.GRAPH_MAX_RESPONSE_BYTES)
 
 
 def get(host: str, path: str, headers: dict[str, str], *, timeout: float, max_bytes: int) -> HttpResponse:

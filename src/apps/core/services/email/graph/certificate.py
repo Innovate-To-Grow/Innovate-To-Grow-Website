@@ -16,9 +16,8 @@ import jwt
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from django.conf import settings
 
-# Microsoft: keep the assertion short-lived, "5-10 minutes after nbf at most".
-ASSERTION_LIFETIME_SECONDS = 300
 TOKEN_ENDPOINT = "https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token"  # nosec B105 — URL template, not a credential
 
 
@@ -79,7 +78,7 @@ def build_client_assertion(*, tenant_id: str, client_id: str, private_key: rsa.R
         "jti": str(uuid.uuid4()),
         "nbf": now,
         "iat": now,
-        "exp": now + ASSERTION_LIFETIME_SECONDS,
+        "exp": now + settings.GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS,
     }
     headers = {"typ": "JWT", "x5t#S256": x5t_s256}
     return jwt.encode(claims, private_key, algorithm="PS256", headers=headers)

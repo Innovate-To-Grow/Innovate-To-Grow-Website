@@ -123,3 +123,22 @@ class CredentialStoreCheckTests(SimpleTestCase):
         # No clock skew allowance at all is a valid choice.
         with override_settings(GRAPH_CERTIFICATE_CLOCK_SKEW_SECONDS=0):
             self.assertEqual(error_ids(), [])
+
+    def test_graph_request_limits_are_positive_settings_with_documented_defaults(self):
+        defaults = {
+            "GRAPH_REQUEST_TIMEOUT_SECONDS": 30,
+            "GRAPH_MAX_RESPONSE_BYTES": 64 * 1024,
+            "GRAPH_INBOX_LIST_MAX_BYTES": 2 * 1024 * 1024,
+            "GRAPH_INBOX_MESSAGE_MAX_BYTES": 25 * 1024 * 1024,
+            "GRAPH_INBOX_MAX_LIST_LIMIT": 100,
+            "GRAPH_MAX_RETRY_AFTER_SECONDS": 3600,
+            "GRAPH_TOKEN_EXPIRY_MARGIN_SECONDS": 300,
+            "GRAPH_TOKEN_MAX_LIFETIME_SECONDS": 86400,
+            "GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS": 300,
+            "GRAPH_ACCESS_CHECK_MAX_ROLES": 64,
+        }
+        self.assertEqual({name: getattr(settings, name) for name in defaults}, defaults)
+        for name in defaults:
+            for value in (0, -1, None):
+                with self.subTest(name=name, value=value), override_settings(**{name: value}):
+                    self.assertEqual(error_ids(), ["core.E005"])

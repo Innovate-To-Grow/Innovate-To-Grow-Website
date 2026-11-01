@@ -16,8 +16,6 @@ from apps.core.utils.security import is_graph_permission
 
 from .report import FAIL, INCONCLUSIVE, PASS, ROLES, WARN, ProbeResult
 
-# A claim with more roles, or with any value that is not a permission name, counts as unreadable (and is not echoed).
-MAX_ROLES = 64
 NO_ROLES = (
     "the token claims no application roles; RBAC for Applications grants never appear there, so only the mailbox "
     "probes show what Microsoft allows"
@@ -39,7 +37,9 @@ def token_roles(token: str) -> tuple[str, ...] | None:
     except (ValueError, binascii.Error, RecursionError):
         return None
     roles = payload.get("roles", []) if isinstance(payload, dict) else None
-    if not isinstance(roles, list) or len(roles) > MAX_ROLES:
+    # More roles than GRAPH_ACCESS_CHECK_MAX_ROLES, or any value that is not a permission name, is unreadable (and
+    # is not echoed).
+    if not isinstance(roles, list) or len(roles) > settings.GRAPH_ACCESS_CHECK_MAX_ROLES:
         return None
     if not all(is_graph_permission(role) for role in roles):
         return None

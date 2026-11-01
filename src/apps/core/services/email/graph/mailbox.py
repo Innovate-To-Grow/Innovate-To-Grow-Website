@@ -9,6 +9,8 @@ import logging
 import re
 from urllib.parse import quote
 
+from django.conf import settings
+
 from ..exceptions import EmailDeliveryError
 from . import auth, transport
 from .access import READ, credential_for, require_mailbox
@@ -17,9 +19,6 @@ from .provider import GRAPH_HOST
 
 logger = logging.getLogger(__name__)
 
-LIST_MAX_BYTES = 2 * 1024 * 1024
-MIME_MAX_BYTES = 25 * 1024 * 1024
-MAX_LIST_LIMIT = 100
 # Well-known folder names (Microsoft Graph "mailFolder resource type").
 FOLDERS = {"INBOX": "inbox", "SENT": "sentitems"}
 LIST_FIELDS = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead"
@@ -43,17 +42,18 @@ def is_message_id(value) -> bool:
 class GraphMailboxReader:
     """Reads one mailbox that the active config's scope grants read permission on."""
 
-    def __init__(self, config, mailbox: str, *, timeout: float = auth.REQUEST_TIMEOUT):
+    def __init__(self, config, mailbox: str, *, timeout: float | None = None):
         self.mailbox = require_mailbox(config, mailbox, READ)
         self.credential = credential_for(config)
-        self.timeout = timeout
+        self.timeout = auth.request_timeout(timeout)
 
     def list_messages(self, folder: str, limit: int) -> list[dict]:
         """The newest *limit* messages of a well-known folder, as Graph ``message`` objects (``LIST_FIELDS`` only)."""
         folder_name = FOLDERS.get(str(folder).upper(), FOLDERS["INBOX"])
-        top = max(1, min(int(limit), MAX_LIST_LIMIT))
+        top = max(1, min(int(limit), settings.GRAPH_INBOX_MAX_LIST_LIMIT))
         query = f"$top={top}&$select={LIST_FIELDS}&$orderby=receivedDateTime%20desc"
-        response = self._get(f"{self._user_path()}/mailFolders/{folder_name}/messages?{query}", LIST_MAX_BYTES)
+        path = f"{self._user_path()}/mailFolders/{folder_name}/messages?{query}"
+        response = self._get(path, settings.GRAPH_INBOX_LIST_MAX_BYTES)
         try:
             messages = json.loads(response.body)["value"]
         except (ValueError, KeyError, TypeError, RecursionError):
@@ -66,7 +66,9 @@ class GraphMailboxReader:
         """The message exactly as received (RFC 5322 MIME), including Authentication-Results and threading headers."""
         if not is_message_id(message_id):
             raise GraphMessageNotFound("Message not found.")
-        response = self._get(f"{self._user_path()}/messages/{message_id}/$value", MIME_MAX_BYTES)
+        response = self._get(
+            f"{self._user_path()}/messages/{message_id}/$value", settings.GRAPH_INBOX_MESSAGE_MAX_BYTES
+        )
         if response.truncated:
             raise GraphReadError("The message is too large to display here; open it in Outlook.")
         return response.body

@@ -5,10 +5,10 @@ import socket
 import ssl
 from unittest.mock import MagicMock, patch
 
+from django.conf import settings
 from django.test import SimpleTestCase
 
 from apps.core.services.email.graph.transport import (
-    MAX_RESPONSE_BYTES,
     USER_AGENT,
     ConnectFailed,
     HttpResponse,
@@ -80,18 +80,30 @@ class GraphTransportPostTests(SimpleTestCase):
 
     @patch(CONNECTION)
     def test_reads_at_most_the_response_limit(self, connection_class):
-        payload = b"x" * (MAX_RESPONSE_BYTES * 2)
+        limit = settings.GRAPH_MAX_RESPONSE_BYTES
+        payload = b"x" * (limit * 2)
         connection = make_connection()
         connection.getresponse.return_value.read.side_effect = lambda amount=None: payload[:amount]
         connection_class.return_value = connection
 
         response = do_post()
 
-        self.assertEqual(len(response.body), MAX_RESPONSE_BYTES)
+        self.assertEqual(len(response.body), limit)
         self.assertTrue(response.truncated)
         # One byte past the limit tells a complete body from a cut-off one.
-        connection.getresponse.return_value.read.assert_called_once_with(MAX_RESPONSE_BYTES + 1)
-        self.assertLessEqual(MAX_RESPONSE_BYTES, 1024 * 1024, "the limit must keep memory use small")
+        connection.getresponse.return_value.read.assert_called_once_with(limit + 1)
+        self.assertLessEqual(limit, 1024 * 1024, "the default limit must keep memory use small")
+
+    @patch(CONNECTION)
+    def test_the_response_limit_is_the_setting(self, connection_class):
+        connection = make_connection(body=b"x" * 100)
+        connection.getresponse.return_value.read.side_effect = lambda amount=None: (b"x" * 100)[:amount]
+        connection_class.return_value = connection
+
+        with self.settings(GRAPH_MAX_RESPONSE_BYTES=10):
+            response = do_post()
+
+        self.assertEqual((len(response.body), response.truncated), (10, True))
 
     @patch(CONNECTION)
     def test_connect_failures_are_reported_without_sending_anything(self, connection_class):

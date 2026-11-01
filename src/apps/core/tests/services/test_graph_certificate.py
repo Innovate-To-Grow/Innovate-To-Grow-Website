@@ -10,10 +10,10 @@ from unittest.mock import patch
 import jwt
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
+from django.conf import settings
 from django.test import SimpleTestCase
 
 from apps.core.services.email.graph.certificate import (
-    ASSERTION_LIFETIME_SECONDS,
     build_client_assertion,
     describe_certificate,
     public_key_sha256,
@@ -115,8 +115,13 @@ class BuildClientAssertionTests(SimpleTestCase):
         claims = self.decode(token, options={"verify_exp": False, "verify_nbf": False, "verify_iat": False})
         self.assertEqual(claims["nbf"], 1_800_000_000)
         self.assertEqual(claims["iat"], 1_800_000_000)
-        self.assertEqual(claims["exp"], 1_800_000_000 + ASSERTION_LIFETIME_SECONDS)
-        self.assertEqual(ASSERTION_LIFETIME_SECONDS, 300)
+        self.assertEqual(claims["exp"], 1_800_000_000 + settings.GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS)
+        self.assertEqual(settings.GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS, 300)
+        with self.settings(GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS=120):
+            with patch("apps.core.services.email.graph.certificate.time.time", return_value=1_800_000_000):
+                shorter = self.build()
+        claims = self.decode(shorter, options={"verify_exp": False, "verify_nbf": False, "verify_iat": False})
+        self.assertEqual(claims["exp"], 1_800_000_000 + 120)
 
     def test_current_assertion_is_valid_now(self):
         claims = self.decode(self.build())
