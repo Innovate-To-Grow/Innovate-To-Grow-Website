@@ -6,4 +6,5 @@ Third-party package configuration.
   editor/ – CKEditor 5 toolbar and plugin settings.
   credential_store/ – Private-key store backend (Secrets Manager / local file / memory) and secret names.
   microsoft_graph/ – Microsoft Graph certificate limits (key size, input size, clock skew, Entra test timeout).
+  delivery_rates/ – Per-channel delivery-rate seeds and ceilings, the Smart rate controller, waits and signals.
 """

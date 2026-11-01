@@ -103,6 +103,14 @@ These Django settings (not environment variables) bound the certificate, the acc
 
 Every number above must be positive (`core.E005`), except the clock skew, which may be `0`.
 
+### Delivery rates
+
+| Variable | Purpose | Required in prod |
+|----------|---------|-----------------|
+| `DELIVERY_RATES_OVERRIDES` | JSON object deep-merged into the `DELIVERY_RATES` setting, e.g. `{"channels": {"sms_send": {"provider_limit": 20}}}` after an AWS quota increase | No (empty keeps the defaults) |
+
+`DELIVERY_RATES` (`config/settings/base/integrations/delivery_rates/`) holds every delivery channel's seeds: Microsoft Graph send and read, Amazon SES, SMTP, Gmail IMAP, the Gmail API and AWS SMS. Each one has a Smart rate switch (on by default), a manual rate and the provider's documented limits, each with its source. It also holds the Smart rate controller, the send waits, the campaign lane share and transactional reserve, the usage buckets, provider discovery, background-job retries and the provider error patterns. Each channel's `DeliveryRatePolicy` row is seeded from it. A documented limit there is also a ceiling: mail staff can lower it on the policy, never raise it, so a provider that grants more is reflected here. An override can only replace settings that exist. The merged result is validated when settings load, and an unknown key, a fraction outside (0, 1], a count below 1, a worker wait not below the 600 s stale-claim recovery, or an inline wait not below the inline request budget raises `ImproperlyConfigured`, which stops every process before it starts.
+
 ### Cache
 
 | Variable | Purpose | Required in prod |

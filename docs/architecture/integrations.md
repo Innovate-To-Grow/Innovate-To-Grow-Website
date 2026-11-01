@@ -32,6 +32,8 @@ A single IAM credential pair in AWS Secrets Manager powers SES, SMS (End User Me
 | `default_region` | Shared AWS region for SES, SMS, and Bedrock |
 | `sms_from_number` | SMS origination number for OTP SMS (optional override; auto-detected from End User Messaging when blank) |
 
+**Required infra change for Smart rate (delivery-rate discovery).** Smart rate reads the account's sending limits with this same credential. It needs `ses:GetAccount`, which gives the SES rate and 24-hour quota and whether sending is paused. It also needs `sms-voice:DescribePhoneNumbers` (already required, below), `sms-voice:DescribeSenderIds` and `sms-voice:DescribeSpendLimits`, which give the number's message parts per second and the monthly spend limit. The credential's IAM policy lives outside this repository: `aws/cicd/identity-stack.json` grants the ECS task role only the Secrets Manager and Amplify actions, so grant these four read-only actions to the IAM user behind `credentials_secret_arn`. Until `ses:GetAccount` is granted, Smart rate bounds SES by the provider limit that migration `core.0036` seeded from the active email config's campaign send rate, or by the 1 recipient/sec sandbox fallback when that rate was 0.
+
 ## Email delivery (AWS SES, SMTP, or Microsoft Graph)
 
 The application has one globally active email provider at a time. Administrators

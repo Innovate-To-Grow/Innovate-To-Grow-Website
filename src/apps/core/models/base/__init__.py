@@ -1,4 +1,5 @@
 from .control import ProjectControlModel
+from .delivery_rates import DeliveryRatePolicy
 from .service_credentials import (
     AWSCredentialConfig,
     EmailServiceConfig,
@@ -16,6 +17,7 @@ from .web import SiteMaintenanceControl
 
 __all__ = [
     "AWSCredentialConfig",
+    "DeliveryRatePolicy",
     "EmailServiceConfig",
     "GmailAccessAccount",
     "GoogleCredentialConfig",

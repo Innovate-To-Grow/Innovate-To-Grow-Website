@@ -25,7 +25,10 @@ class GraphMigrationGraphTests(SimpleTestCase):
     def test_the_graph_migrations_follow_main_and_leave_one_core_leaf(self):
         loader = MigrationLoader(None, ignore_no_migrations=True)
 
-        self.assertEqual([node for node in loader.graph.leaf_nodes() if node[0] == "core"], [CERTIFICATES])
+        core_leaves = [node for node in loader.graph.leaf_nodes() if node[0] == "core"]
+        self.assertEqual(len(core_leaves), 1)
+        # Later core migrations (0036 delivery-rate control, ...) build on 0035.
+        self.assertIn(CERTIFICATES, loader.graph.forwards_plan(core_leaves[0]))
         self.assertEqual({parent.key for parent in loader.graph.node_map[PROVIDER].parents}, {MAIN_0033})
         # 0035 also depends on the user model (the access check's ``run_by``), as earlier core migrations do.
         certificate_parents = {parent.key for parent in loader.graph.node_map[CERTIFICATES].parents}

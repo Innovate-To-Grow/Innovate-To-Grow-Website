@@ -18,6 +18,12 @@ DENIED_MODEL_LABELS = {
     "auth.group",
     "auth.permission",
     "core.awscredentialconfig",
+    # Delivery-rate policy, live pacing state and usage: changing them would let a caller raise a rate or reopen a
+    # provider breaker outside Mail → Delivery Rates. None of their names matches DENIED_MODEL_NAME_PARTS.
+    "core.deliveryratelimit",
+    "core.deliveryratepolicy",
+    "core.deliveryratestate",
+    "core.deliveryusagebucket",
     "core.emailserviceconfig",
     "core.gmailaccessaccount",
     "core.googlecredentialconfig",

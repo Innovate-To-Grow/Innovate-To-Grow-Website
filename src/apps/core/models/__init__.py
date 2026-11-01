@@ -2,6 +2,7 @@
 
 from .base import (
     AWSCredentialConfig,
+    DeliveryRatePolicy,
     EmailServiceConfig,
     GmailAccessAccount,
     GoogleCredentialConfig,
@@ -17,7 +18,7 @@ from .base import (
 )
 from .managers import ProjectControlManager, ProjectControlQuerySet
 from .mixins import ActiveModel, AuthoredModel, OrderedModel
-from .records import BackgroundJob, DeliveryRateLimit, LegacyAccessGrant
+from .records import BackgroundJob, DeliveryRateLimit, DeliveryRateState, DeliveryUsageBucket, LegacyAccessGrant
 
 __all__ = [
     "AWSCredentialConfig",
@@ -25,6 +26,9 @@ __all__ = [
     "AuthoredModel",
     "BackgroundJob",
     "DeliveryRateLimit",
+    "DeliveryRatePolicy",
+    "DeliveryRateState",
+    "DeliveryUsageBucket",
     "EmailServiceConfig",
     "GmailAccessAccount",
     "GoogleCredentialConfig",
