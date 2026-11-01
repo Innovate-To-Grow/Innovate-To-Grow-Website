@@ -65,7 +65,7 @@ sender name and email address, and save the active configuration.
   Leave the password blank when editing to retain the saved password. STARTTLS
   and SSL both verify the server certificate; enable only one of them.
 - **Microsoft Graph** shows the active Graph configuration read-only: tenant
-  ID, client ID, sender mailbox, messages per minute, the installed
+  ID, client ID, sender mailbox, the installed
   certificate's SHA-1 thumbprint and expiry, and the **mailbox scope** (the
   mailboxes Graph may use and each one's permission level: send, read, or
   both). This page only selects Graph; the configuration, its scope and its
@@ -88,7 +88,7 @@ sender name and email address, and save the active configuration.
   Amazon Bedrock for a second opinion (see
   [Admin inbox](../integrations/microsoft-graph-email.md#admin-inbox)).
   Graph mail counts against the
-  mailbox's Exchange Online limits (about 30 messages per minute) and reports
+  mailbox's Exchange Online limits (its rate is on **Mail → Delivery Rates**) and reports
   no delivery events. Campaigns, replies and notices are copied to its Sent
   Items folder; verification codes, admin invitations, tickets and campaign
   messages that contain the recipient's `{{ login_link }}` are not, because
@@ -226,6 +226,33 @@ explained in the
 [error reference](../integrations/microsoft-graph-email.md#error-reference). The
 Delivery Dashboard under **Delivery Operations** charts SES CloudWatch metrics
 only and shows a notice while another provider is active.
+
+### Delivery rates
+
+**Mail → Delivery Operations → Delivery Rates** (`/admin/mail/settings/rates/`, staff with the Mail app) sets how
+fast the site sends and reads, with one card per channel: the four email providers (the one selected under
+Notification Delivery first, the others under **Not in use** but still editable), AWS SMS, and inbox reading
+(Microsoft Graph, Gmail IMAP). One **Save delivery rates** saves every card. Each card has:
+
+- **Live status**, refreshed every 15 seconds: the rate in use and why ("Now: 12.6 recipients/sec · Smart · 90% of
+  the 14 recipients/sec limit (reported by AWS 3 min ago)"), or "Paused until …" / "Stopped: …" while the provider
+  has asked to wait or refused; the provider limit and where it comes from; and each rolling 24-hour (Graph: also
+  hourly) limit with what has been used and where campaigns stop.
+- **Smart rate** (on by default): adjusts the rate to actual conditions. It uses the limit the provider reports
+  (SES, AWS SMS) or documents, slows down when the provider throttles, then speeds up step by step, never above
+  the provider limit. While it is on it takes priority over the manual rate.
+- **Manual rate**, in the channel's unit: the fixed rate used while Smart rate is off. It is read-only while Smart
+  rate is on but always kept, and it cannot be above the provider limit.
+- **Advanced: provider limits**: the provider rate limit, SMS message parts per second, the daily (and for Graph,
+  hourly) limits, the budget headroom and the share campaigns leave for login codes and tickets. A blank field
+  shows what applies instead. A documented limit can be lowered here but not raised above its `DELIVERY_RATES`
+  value (raise it with `DELIVERY_RATES_OVERRIDES` when the provider grants more, see
+  [Environments](../deployment/environments.md#delivery-rates)). SES and AWS SMS also list what AWS last reported, with
+  **Check provider limits now**. **Reset Smart rate** starts Smart rate afresh; **Resume sending** (shown while a
+  pause or stop holds the channel) clears it.
+
+Every save and button writes an admin history line such as `sms_send: Smart rate on→off; manual 1→0.5`.
+Notification Delivery, the Delivery Dashboard and the campaign send confirmation show the same status line.
 
 ### Login link tokens
 

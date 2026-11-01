@@ -19,9 +19,10 @@ from apps.core.models import (
     SMTPProviderConfig,
 )
 from apps.core.utils.access import user_can_access_app
-from apps.mail.services.campaign.pacing import email_send_rate_line
+from apps.mail.services.campaign.pacing import email_send_rate_line, sms_send_rate_line
 
 from .forms import AwsDeliveryForm, EmailDeliveryForm, SMTPDeliveryForm
+from .rate_cards import EMAIL_CHANNELS
 
 
 def get_mail_settings_urls():
@@ -224,6 +225,8 @@ def _notification_delivery_context(request, email_config, aws_config, smtp_confi
         else _mask_key(aws_config.access_key_id),
         "secret_key_status": "Configured" if aws_config.is_configured else "Not configured",
         "resolved_sms_number": aws_config.resolved_sms_from_number(),
+        # After the number is resolved: an auto-detected number is known to the limiter once it is cached.
+        "sms_send_rate": sms_send_rate_line(),
         "sms_number_is_override": bool(aws_config.sms_from_number),
         "sms_template_display": aws_config.sms_message_template or "Default OTP message",
         "email_provider": email_provider,
@@ -232,6 +235,8 @@ def _notification_delivery_context(request, email_config, aws_config, smtp_confi
         "sms_provider_color": sms_provider_color,
         "test_email_url": reverse("admin:mail_settings_test_email"),
         "test_sms_url": reverse("admin:mail_settings_test_sms"),
+        "delivery_rates_url": reverse("admin:mail_delivery_rates"),
+        "email_rate_channel": EMAIL_CHANNELS.get(email_config.provider, ""),
     }
 
 

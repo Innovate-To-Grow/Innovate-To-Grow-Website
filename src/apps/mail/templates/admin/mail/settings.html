@@ -111,8 +111,9 @@
             </div>
             <div>
                 <dt class="text-xs font-medium uppercase text-base-400">Send Rate</dt>
-                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark" data-send-rate="email">
                     {{ email_send_rate }}
+                    <a href="{{ delivery_rates_url }}{% if email_rate_channel %}#rate-card-{{ email_rate_channel }}{% endif %}" class="ml-1 text-xs font-normal text-primary-600 hover:underline dark:text-primary-400">Delivery Rates</a>
                 </dd>
             </div>
         </dl>
@@ -128,6 +129,13 @@
                 <dd class="mt-1 flex items-center gap-2 text-sm font-medium text-font-default-light dark:text-font-default-dark">
                     {{ resolved_sms_number|default:"None found on AWS account" }}
                     <a href="?refresh=1" class="text-xs font-normal text-primary-600 hover:underline dark:text-primary-400">Re-detect</a>
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Send Rate</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark" data-send-rate="sms">
+                    {{ sms_send_rate }}
+                    <a href="{{ delivery_rates_url }}#rate-card-sms_send" class="ml-1 text-xs font-normal text-primary-600 hover:underline dark:text-primary-400">Delivery Rates</a>
                 </dd>
             </div>
             <div>

@@ -43,10 +43,11 @@ selection. There is no per-message routing or automatic failover.
 
 | Concern | Implementation |
 |---------|---------------|
-| Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — active sender identity, selected provider, and campaign send rate |
+| Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — active sender identity and selected provider |
+| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates.py`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates.py`, staff with the Mail app); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
-| Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph.py`) — Entra tenant ID, client ID, optional sender mailbox, and messages per minute; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
+| Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph.py`) — Entra tenant ID, client ID and optional sender mailbox; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
 | Gmail API credentials | Active `GmailApiProviderConfig` (`src/apps/core/models/base/service_credentials/gmail_api.py`) — the pinned version of the service-account key in the credential store (AWS Secrets Manager in production), its public facts, and the account allow-list (`GmailApiSubject`). Domain-wide delegation for gmail.send only; superusers only |
 | Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`, the Gmail API in `gmail/`, the bounded HTTPS client both use in `transport.py`) |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |

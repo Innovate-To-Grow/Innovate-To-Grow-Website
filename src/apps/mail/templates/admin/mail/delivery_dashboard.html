@@ -22,6 +22,10 @@
         <p class="i2g-delivery-muted mt-1 text-sm" data-delivery-window-copy>
           Last 6 months AWS CloudWatch SES metrics, with failed recipient addresses from the AWS SES suppression list.
         </p>
+        <p class="i2g-delivery-muted mt-1 text-sm">
+          Send rate: <span data-delivery-send-rate>{{ dashboard.aws.send_rate }}</span>
+          <a href="{% url 'admin:mail_delivery_rates' %}" class="ml-1 text-primary-600 hover:underline dark:text-primary-400">Delivery Rates</a>
+        </p>
       </div>
       <div class="i2g-delivery-hero-actions">
         <div class="i2g-delivery-window-select" data-delivery-select-control>
@@ -429,9 +433,15 @@
     setStat('bounce_complaint', Number(summary.bounces || 0) + Number(summary.complaints || 0));
     setStatText('failure_rate', (summary.failure_rate || 0) + '%');
     renderBanner(lastData.aws || {});
+    renderSendRate(lastData.aws || {});
     renderDaily(lastData.daily || []);
     renderStatus(lastData.status_breakdown || []);
     renderProblemRecipients(lastData.problem_recipients || []);
+  }
+
+  function renderSendRate(aws) {
+    const el = root.querySelector('[data-delivery-send-rate]');
+    if (el && aws.send_rate) el.textContent = aws.send_rate;
   }
 
   function renderBanner(aws) {

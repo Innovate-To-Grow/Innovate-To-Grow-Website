@@ -303,7 +303,7 @@ These integrations read credentials from Django admin at runtime (Site Settings,
 | `AWSCredentialConfig` | Secrets Manager ARN + region + SMS origination number + OTP template |
 | `EmailServiceConfig` | Sender identity, campaign rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph); there is no fallback between providers |
 | `SMTPProviderConfig` | SMTP host, port, TLS/SSL, optional username and password |
-| `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, optional sender mailbox, messages per minute, mailbox scope, access-check deny mailbox, InfoSec exception reference |
+| `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, optional sender mailbox, mailbox scope, access-check deny mailbox, InfoSec exception reference |
 | `MicrosoftGraphCertificate` | Installed Graph certificates (current, previous for rollback, removed): public data, thumbprints, validity, and the pinned credential-store version of the private key |
 | `MicrosoftGraphAccessCheck` | Recorded Graph access checks (probe results, token roles, verdict): the evidence the production go-live gate reads |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |

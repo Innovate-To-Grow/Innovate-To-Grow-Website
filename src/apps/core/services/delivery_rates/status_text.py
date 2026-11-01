@@ -30,6 +30,18 @@ REASONS = {
     "connections": "refused another simultaneous connection",
     "persistent_throttle": "kept throttling",
     "cooldown": "asked to wait",
+    "pushback": "pushed back",
+    "concurrent_requests": "refused too many requests at once",
+    "sign_in_attempts": "refused more sign-in attempts for now",
+    "token_endpoint": "sign-in service was busy or unreachable",
+    "credential_store": "key could not be read from the credential store",
+    "daily_limit": "reports the daily sending limit is reached",
+    "daily_quota": "reports the 24-hour sending quota is used up",
+    "daily_sending_limit": "reports the account's daily sending limit is reached",
+    "project_quota": "reports the Google Cloud project's daily quota is used up",
+    "submission_quota": "reports the mailbox's submission quota is used up",
+    "mailbox_full": "reports the sender mailbox is full",
+    "configuration_set_paused": "reports sending is paused for the configuration set",
 }
 _COUNTS = {"external": "external recipients", "internal": "internal recipients", "messages": "messages"}
 

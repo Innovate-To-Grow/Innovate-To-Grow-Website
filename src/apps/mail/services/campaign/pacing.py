@@ -53,9 +53,18 @@ def delivery_pacing_notice(config, recipient_count: int) -> dict | None:
     }
 
 
-def email_send_rate_line() -> str:
-    """The active email channel's live status line ("Now: … · Smart · …"), for the delivery overview pages."""
-    target = active_target(Family.EMAIL)
+def _send_rate_line(family: Family) -> str:
+    target = active_target(family)
     if target is None:
         return "Not configured"
     return _identity_status(target)[1].headline
+
+
+def email_send_rate_line() -> str:
+    """The active email channel's live status line ("Now: … · Smart · …"), for the delivery overview pages."""
+    return _send_rate_line(Family.EMAIL)
+
+
+def sms_send_rate_line() -> str:
+    """The SMS channel's live status line for the number in use, for Notification Delivery's SMS card."""
+    return _send_rate_line(Family.SMS)

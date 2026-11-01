@@ -5,7 +5,7 @@
     This page only selects it: the key and the account allow-list are managed on the Gmail API configuration's own page, by superusers.
     The From email must be on the allow-list, and email switches to the Gmail API only after a passed access check for the installed key.
     Gmail keeps a copy of everything it sends in the account's Sent folder, so that folder is shown to superusers only.
-    How fast it sends and its daily limits are set under Mail &rarr; Delivery Rates.
+    How fast it sends and its daily limits are set under <a href="{% url 'admin:mail_delivery_rates' %}#rate-card-gmail_api_send" class="text-primary-600 hover:underline dark:text-primary-400">Mail &rarr; Delivery Rates</a>.
 </p>
 {% if gmail_saved %}
     <p class="mb-2 text-sm">Config: <span class="font-medium">{{ gmail_config.name }}</span>{% if not gmail_config.is_active %} (inactive){% endif %}</p>

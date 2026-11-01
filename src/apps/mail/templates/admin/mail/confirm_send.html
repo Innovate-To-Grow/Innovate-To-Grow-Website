@@ -32,7 +32,7 @@
                     This campaign is sent at about {{ delivery_notice.rate }}{% if delivery_notice.duration %}, so expect about {{ delivery_notice.duration }}{% endif %}; login codes and tickets keep the rest of the rate.
                     {% if delivery_notice.daily_limit %}The provider allows {{ delivery_notice.daily_limit }} recipients per rolling 24 hours, shared with every other email the site sends, and campaigns stop at {{ delivery_notice.campaign_daily_limit }}.{% endif %}
                 </p>
-                <p>{{ delivery_notice.now }}</p>
+                <p>{{ delivery_notice.now }} <a href="{% url 'admin:mail_delivery_rates' %}" class="underline">Delivery Rates</a></p>
                 {% if delivery_notice.over_daily_limit %}
                 <p class="font-semibold text-red-700 dark:text-red-400">
                     This campaign has more recipients than campaigns may send in 24 hours, so the rest wait until the allowance frees up{% if not delivery_notice.retries_enabled %} (they are paused, and "Resume paused recipients" sends them later){% endif %}. Split it into smaller sends if it must go out sooner.

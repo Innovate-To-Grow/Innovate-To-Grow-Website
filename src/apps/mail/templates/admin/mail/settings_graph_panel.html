@@ -4,7 +4,7 @@
     Sends (and, with read permission, reads the admin inbox) through Outlook / Exchange Online with an Entra app.
     This page only selects it: the configuration, its mailbox scope and its certificate are managed on the Microsoft Graph configuration's own admin page.
     The sender mailbox and the From email must both be in the mailbox scope with send permission.
-    Exchange Online allows about 30 messages per minute per mailbox.
+    How fast it sends and reads is set under <a href="{% url 'admin:mail_delivery_rates' %}#rate-card-graph_send" class="text-primary-600 hover:underline dark:text-primary-400">Delivery Rates</a>.
 </p>
 {% if graph_saved %}
     <dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-sm md:grid-cols-3">
