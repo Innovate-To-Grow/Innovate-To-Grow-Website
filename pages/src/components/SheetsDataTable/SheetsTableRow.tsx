@@ -7,7 +7,6 @@ interface SheetsTableRowProps {
   item: IdentifiedRow;
   index: number;
   columns: Array<{key: SortField; label: string}>;
-  sortField: SortField;
   isExpanded: boolean;
   onToggle: () => void;
 }
@@ -26,7 +25,7 @@ const DetailCell = ({row, detailId, colSpan}: {row: SheetRow; detailId: string; 
 );
 
 /** A project row, with an expandable details row (abstract and team members) when it has any. */
-export const SheetsTableRow = ({item, index, columns, sortField, isExpanded, onToggle}: SheetsTableRowProps) => {
+export const SheetsTableRow = ({item, index, columns, isExpanded, onToggle}: SheetsTableRowProps) => {
   const {detailId, row} = item;
   const hasDetails = Boolean(row.Abstract || row['Student Names']);
   return (
@@ -42,7 +41,7 @@ export const SheetsTableRow = ({item, index, columns, sortField, isExpanded, onT
           .join(' ')}
       >
         {columns.map((column) => (
-          <td key={column.key} className={`sdt-td${column.key === sortField ? ' is-sorted-col' : ''}`}>
+          <td key={column.key} className="sdt-td">
             {row[column.key]}
           </td>
         ))}

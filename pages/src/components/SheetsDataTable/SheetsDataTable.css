@@ -1,7 +1,8 @@
 @layer itg.components {
 /* Project data table on event archive pages. The table, input and pagination look come from the global
-   class contract (.itg-table, .itg-input, .itg-pagination); this file lays them out and adds the reference's
-   DataTables details (sort arrows, sorted-column shading, navy square detail buttons). */
+   class contract (.itg-table, .itg-input, .itg-pagination); this file lays them out and draws the table's own
+   parts as the projects table does (gridTable.css): sort arrows with no sorted-column shading, the striped and
+   open rows, and the square outline Details button. */
 
 .sdt-container {
   margin: 2rem 0;
@@ -38,75 +39,94 @@
   white-space: nowrap;
 }
 
-/* Sortable headers: DataTables' grey double arrow at the right edge; the sorted column shows its one arrow. */
-.sdt-table thead th.sdt-th:not(.sdt-th-expand) {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9zM5 10l4.5 6.5 4.5-6.5z' fill='%23dcdcdc'/%3E%3C/svg%3E");
-  background-position: right center;
-  background-repeat: no-repeat;
-}
-
-.sdt-table thead th.sdt-sorted-asc {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9z' fill='%237a80dd'/%3E%3C/svg%3E");
-}
-
-.sdt-table thead th.sdt-sorted-desc {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 10l4.5 6.5 4.5-6.5z' fill='%237a80dd'/%3E%3C/svg%3E");
-}
-
-/* Row shading as DataTables does it: stripes count the project rows only, the sorted column is shaded
-   ("sorting_1"), an open row is the reference's "shown" row (bold #162d4f on #f6f6f6, sorted column #eaeaea,
-   a 1px #ccc rule under it) with its details on white below. */
-.sdt-table tbody > tr.sdt-row > td {
-  background: transparent;
-}
-
-.sdt-table tbody > tr.sdt-row.is-odd > td {
-  background: #f9f9f9;
-}
-
-.sdt-table tbody > tr.sdt-row > td.is-sorted-col {
-  background: #fafafa;
-}
-
-.sdt-table tbody > tr.sdt-row.is-odd > td.is-sorted-col {
-  background: #f1f1f1;
-}
-
-.sdt-table tbody > tr.sdt-row.is-expanded > td {
-  border-bottom: 1px solid #cccccc;
-  background: #f6f6f6;
-  color: #162d4f;
-  font-weight: 700;
-}
-
-.sdt-table tbody > tr.sdt-row.is-expanded > td.is-sorted-col {
-  background: #eaeaea;
-}
-
-.sdt-table tbody > tr.sdt-detail-row > td {
-  background: var(--itg-color-white);
-}
-
-.sdt-sort-button,
-.sdt-expand-button {
-  appearance: none;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-/* The whole header cell is the sort button (24px text + 10px padding above and below = a 44px target). */
+/* The whole header cell is the sort button (24px text + 10px padding above and below = a 44px target). Its
+   DataTables arrows sit at the right edge of the cell, drawn as masks so they take the theme's colours: a grey
+   double arrow on a column that can be sorted (at least 3:1 on white, where the reference's #dcdcdc was 1.4:1)
+   and one navy arrow on the sorted column. Hovering the cell underlines the label. */
 .sdt-sort-button {
+  appearance: none;
+  position: relative;
   display: block;
   box-sizing: content-box;
   width: 100%;
   margin: -10px -18px;
   padding: 10px 18px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
   font-weight: inherit;
   text-align: left;
+  cursor: pointer;
+}
+
+.sdt-sort-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 19px;
+  height: 19px;
+  margin-top: -9.5px;
+  background-color: var(--itg-color-text-secondary);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9zM5 10l4.5 6.5 4.5-6.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9zM5 10l4.5 6.5 4.5-6.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.sdt-th.sdt-sorted-asc .sdt-sort-button::after,
+.sdt-th.sdt-sorted-desc .sdt-sort-button::after {
+  background-color: var(--itg-color-primary);
+}
+
+.sdt-th.sdt-sorted-asc .sdt-sort-button::after {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9z'/%3E%3C/svg%3E");
+}
+
+.sdt-th.sdt-sorted-desc .sdt-sort-button::after {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 10l4.5 6.5 4.5-6.5z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 10l4.5 6.5 4.5-6.5z'/%3E%3C/svg%3E");
+}
+
+.sdt-sort-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.sdt-sort-button:hover::after {
+  background-color: var(--itg-color-primary-hover);
+}
+
+/* The button reaches the top (and, in the first column, the left) edge of the table's scroll box, which cut off
+   the outside focus ring there: draw it just inside the cell instead. */
+.sdt-sort-button:focus-visible {
+  outline-offset: -3px;
+}
+
+/* Row shading: the stripes (--itg-color-row-stripe) count the project rows only, so an open row's details do not
+   shift them. An open row takes the open-row fill (--itg-color-bg-light, as .itg-table's is-expanded rows do) with
+   a --itg-color-border rule under it, a navy rule down its left edge and its details on white below. The sorted
+   column is not shaded: its header's navy arrow and aria-sort mark it. The open row is not set in bold, so it
+   does not wrap one line more and jump under the pointer as it opens. */
+.sdt-table tbody > tr.sdt-row > td {
+  background: transparent;
+}
+
+.sdt-table tbody > tr.sdt-row.is-odd > td {
+  background: var(--itg-color-row-stripe);
+}
+
+.sdt-table tbody > tr.sdt-row.is-expanded > td {
+  border-bottom: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-light);
+}
+
+.sdt-table tbody > tr.sdt-row.is-expanded > td:first-child {
+  box-shadow: inset 3px 0 0 var(--itg-color-primary);
+}
+
+.sdt-table tbody > tr.sdt-detail-row > td {
+  background: var(--itg-color-white);
 }
 
 .sdt-th-expand {
@@ -117,31 +137,46 @@
   text-align: center;
 }
 
-/* The reference's details_open.png / details_close.png: a 35px #162d4f square with a 2px bevel and a light
-   hollow arrow (up while open). */
+/* Details: a 40px square outline button in primary (44px on touch screens, below), like the projects table's and
+   the site's other flat buttons; it fills navy on keyboard focus and under a hovering pointer. Its arrow points
+   down to open and turns up once the row is open. */
 .sdt-expand-button {
+  appearance: none;
   box-sizing: border-box;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 35px;
-  height: 35px;
-  background: #162d4f;
-  box-shadow: inset 2px 2px 0 #48566c, inset -2px -2px 0 #041329;
-  color: #e3e5ea;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: var(--itg-radius-button);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font: inherit;
   vertical-align: middle;
-  transition: background-color var(--itg-transition-fast) ease-in-out;
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
 }
 
-.sdt-expand-button:hover,
 .sdt-expand-button:focus-visible {
-  background: var(--itg-color-primary-hover);
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+/* A touch screen keeps :hover on the button last tapped, so a tapped Details stayed navy, open or closed, and only
+   its arrow told the two apart: only a pointer that can hover fills it. */
+@media (hover: hover) {
+  .sdt-expand-button:hover {
+    background: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
 }
 
 .sdt-expand-icon {
   display: block;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   margin-left: -1px;
   background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -160,7 +195,7 @@
 
 /* "No data available in table" / "No matching records found", as DataTables writes them. */
 .sdt-table tbody > tr.sdt-empty-row > td {
-  background: #f9f9f9;
+  background: var(--itg-color-row-stripe);
   text-align: center;
 }
 
@@ -188,6 +223,22 @@
   /* Previous / Page x of y / Next. */
   .sdt-pagination {
     justify-content: space-between;
+  }
+}
+
+/* Forced colours (Windows Contrast themes) repaint backgrounds. The Details button keeps its 2px edge (forced to
+   the theme's colour), but its arrow, like the sort arrows, is a mask filled with background-color, so the arrows
+   vanished: fill them with the theme's own text colours. */
+@media (forced-colors: active) {
+  .sdt-expand-icon {
+    forced-color-adjust: none;
+    background-color: ButtonText;
+  }
+
+  /* Above the sorted column's navy arrow in specificity, so that one is drawn in CanvasText too. */
+  .sdt-table th.sdt-th .sdt-sort-button::after {
+    forced-color-adjust: none;
+    background-color: CanvasText;
   }
 }
 }
