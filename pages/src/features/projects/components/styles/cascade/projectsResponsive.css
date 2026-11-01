@@ -73,10 +73,6 @@
     display: inline;
   }
 
-  .project-grid-pager-step {
-    min-height: 2.75rem;
-  }
-
   /* Search tables: full-width Save, a two-column grid of the other actions. */
   .past-projects-action-bar-header {
     display: block;

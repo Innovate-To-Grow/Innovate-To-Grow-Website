@@ -1,10 +1,16 @@
 @layer itg.components {
-/* Moved verbatim from the CMS "global" stylesheet. */
-
 /* ==========================================================================
-   Pagination: the reference's DataTables pager
+   Pagination: the site's one pager (projects lists, News, the event archive
+   tables and CMS content)
    <nav class="itg-pagination" aria-label="Pages">
-     <a class="itg-pagination-link" aria-current="page">1</a> …
+     <button class="itg-pagination-link">Previous</button>
+     <button class="itg-pagination-link" aria-current="page">1</button> …
+   </nav>
+   Every page and step is a 40px outline button (44px on touch screens,
+   phones.css), square like the site's other buttons; the current page is the
+   only one filled primary, and a step that cannot be taken uses the disabled
+   colours. Right-aligned 12px under its table; a page that centres it or
+   spaces it out (News) only sets the layout.
    ========================================================================== */
 
 .itg-pagination {
@@ -12,8 +18,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 2px;
-  margin-top: 4px;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
   padding: 0;
   font-size: var(--itg-font-size-body);
 }
@@ -23,30 +29,36 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5em;
-  padding: 0.5em 1em;
-  border: 1px solid transparent;
-  border-radius: 2px;
-  background: none;
-  color: #333333;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: var(--itg-radius-button);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
   font: inherit;
   line-height: 24px;
   text-decoration: none;
   cursor: pointer;
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
 }
 
-.itg-pagination-link:hover {
-  border-color: #111111;
-  background: #585858;
-  color: var(--itg-color-white);
-  text-decoration: none;
+/* Hover fills a page as the outline buttons do, but only for a pointer that can hover: a touch screen keeps :hover on
+   the button last tapped, which then looked like a second current page. Keyboard focus keeps the outline look and
+   shows the global 2px ring, so tabbing along the numbers never fills one. */
+@media (hover: hover) {
+  .itg-pagination-link:hover {
+    border-color: var(--itg-color-primary);
+    background: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
 }
 
 .itg-pagination-link[aria-current='page'],
 .itg-pagination-link[aria-current='page']:hover {
-  border-color: #979797;
-  background: linear-gradient(to bottom, #ffffff 0%, #dcdcdc 100%);
-  color: #333333;
+  border-color: var(--itg-color-primary);
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
   cursor: default;
 }
 
@@ -54,15 +66,16 @@
 .itg-pagination-link[aria-disabled='true'],
 .itg-pagination-link:disabled:hover,
 .itg-pagination-link[aria-disabled='true']:hover {
-  border-color: transparent;
-  background: none;
-  color: #666666;
-  cursor: default;
+  border-color: var(--itg-color-disabled-border);
+  background: var(--itg-color-disabled-bg);
+  color: var(--itg-color-disabled-text);
+  cursor: not-allowed;
 }
 
-/* Forced colours (Windows Contrast themes) drop the gradient and turn every
-   link's transparent border into a visible one, so the current page looked
-   like the others: mark it in the theme's selection colours. */
+/* Forced colours (Windows Contrast themes) repaint the fills, so the current page would look like the others: mark
+   it in the theme's selection colours. The 2px edges stay, in the theme's button text colour; a step that cannot
+   be taken uses the theme's disabled colour, as a disabled .itg-btn does (an aria-disabled link would read as a
+   live one). */
 @media (forced-colors: active) {
   .itg-pagination-link[aria-current='page'],
   .itg-pagination-link[aria-current='page']:hover {
@@ -71,14 +84,23 @@
     background: Highlight;
     color: HighlightText;
   }
+
+  .itg-pagination-link:disabled,
+  .itg-pagination-link[aria-disabled='true'],
+  .itg-pagination-link:disabled:hover,
+  .itg-pagination-link[aria-disabled='true']:hover {
+    border-color: GrayText;
+    color: GrayText;
+  }
 }
 
 .itg-pagination-gap {
-  padding: 0 1em;
+  padding: 0 0.25rem;
+  color: var(--itg-color-text-secondary);
 }
 
 .itg-pagination-info {
-  color: #333333;
+  color: var(--itg-color-text);
   font-size: var(--itg-font-size-body);
   line-height: 24px;
 }
