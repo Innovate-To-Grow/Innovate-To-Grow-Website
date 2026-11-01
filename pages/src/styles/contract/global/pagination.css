@@ -95,10 +95,13 @@
 }
 
 /* Paper has no pages to step through, and print drops background graphics by default, which turned the filled
-   current page into the faintest button of the row. Every pager stays off the paper, as the projects lists' always
-   did. */
+   current page into the faintest button of the row: the buttons and the gaps between the numbers stay off the
+   paper. "Page x of y" (.itg-pagination-info) still prints, so a printed page says it holds one page of the rows
+   (News shows its line on paper as on phones: NewsPage.css). The projects lists leave the whole pager off: their
+   status line says which rows they show (projectsResponsive.css). */
 @media print {
-  .itg-pagination {
+  .itg-pagination-link,
+  .itg-pagination-gap {
     display: none;
   }
 }

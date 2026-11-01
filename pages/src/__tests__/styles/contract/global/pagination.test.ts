@@ -144,12 +144,46 @@ describe('the site pager', () => {
     });
   });
 
-  it('stays off the paper', () => {
-    const printed: string[] = [];
-    postcss.parse(readFileSync(join(SRC_DIR, PAGER_CSS), 'utf8')).walkAtRules('media', (atRule) => {
-      if (atRule.params !== 'print') return;
-      atRule.walkRules((rule) => rule.walkDecls('display', (decl) => void printed.push(`${rule.selector} ${decl.value}`)));
+  it('prints only its "Page x of y", so a printed page says it holds one page of the rows', () => {
+    // [selector, display] for every display rule in a media query that applies to print.
+    const printDisplay = (path: string) => {
+      const found: [string, string][] = [];
+      postcss.parse(readFileSync(join(SRC_DIR, path), 'utf8')).walkAtRules('media', (atRule) => {
+        if (!atRule.params.split(',').some((query) => query.trim() === 'print')) return;
+        atRule.walkRules((rule) =>
+          rule.walkDecls('display', (decl) => rule.selectors.forEach((selector) => found.push([selector, decl.value]))),
+        );
+      });
+      return found;
+    };
+    // The buttons and the gaps between the numbers leave the paper; the page line stays.
+    expect(printDisplay(PAGER_CSS)).toEqual([
+      ['.itg-pagination-link', 'none'],
+      ['.itg-pagination-gap', 'none'],
+    ]);
+    // No page takes the pager or its page line off the paper, except the projects lists (below).
+    const keptOnPaper = new Set(['itg-pagination', 'itg-pagination-info', 'news-pagination', 'news-pagination-info', 'sdt-pagination', 'sdt-page-info']);
+    const hidden = CSS_FILES.flatMap((file) =>
+      printDisplay(sourcePath(file))
+        .filter(([selector, value]) => value === 'none' && subjectClasses(selector).some((name) => keptOnPaper.has(name)))
+        .map(([selector]) => `${sourcePath(file)} ${selector}`),
+    );
+    expect(hidden).toEqual([]);
+
+    // News shows its page line, visually hidden on wide screens, on paper as it does on phones, in place of the numbers.
+    const shownFor: string[] = [];
+    postcss.parse(readFileSync(join(SRC_DIR, 'routes/NewsPage/NewsPage.css'), 'utf8')).walkRules('.news-pagination-info', (rule) => {
+      if (rule.some((node) => node.type === 'decl' && node.prop === 'position' && node.value === 'static')) {
+        shownFor.push((rule.parent as AtRule).params);
+      }
     });
-    expect(printed).toEqual(['.itg-pagination none']);
+    expect(shownFor).toEqual(['(max-width: 768px), print']);
+    expect(printDisplay('routes/NewsPage/NewsPage.css')).toContainEqual(['.news-pagination-pages', 'none']);
+
+    // The projects lists' status line says which rows they show ("showing 1–10"), so their pager leaves the paper whole.
+    expect(printDisplay('features/projects/components/styles/cascade/projectsResponsive.css')).toContainEqual([
+      '.project-grid-pagination',
+      'none',
+    ]);
   });
 });

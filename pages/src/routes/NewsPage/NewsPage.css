@@ -137,7 +137,11 @@
     justify-content: space-between;
     gap: 8px;
   }
+}
 
+/* "Page x of y" takes the numbers' place on phones and on paper, where the pager's buttons stay off the page
+   (pagination.css), so a printed page of the list still says which page it is. */
+@media (max-width: 768px), print {
   .news-pagination-pages {
     display: none;
   }
@@ -152,6 +156,13 @@
     white-space: normal;
     font-size: var(--itg-font-size-body);
     text-align: center;
+  }
+}
+
+/* On paper the line stands alone under the list, centred as the pager is on wide screens. */
+@media print {
+  .news-pagination.itg-pagination {
+    justify-content: center;
   }
 }
 

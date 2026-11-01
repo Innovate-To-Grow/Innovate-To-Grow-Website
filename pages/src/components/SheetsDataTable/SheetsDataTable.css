@@ -235,9 +235,10 @@
 }
 
 /* Print, as the projects table prints (projectsResponsive.css): the rows as a document, with no search, sort
-   arrows or Details buttons (the pager leaves itself off: pagination.css; the count line says which rows they
-   are). The table leaves its scroll box, which cut it off at the paper's right edge, so every column prints and
-   Chromium repeats the headings on each page; each row is kept with the start of its open details. */
+   arrows or Details buttons. The pager prints only its "Page x of y" under the rows (pagination.css), since the
+   count line counts every matching row, not the ones on this page. The table leaves its scroll box, which cut it
+   off at the paper's right edge, so every column prints and Chromium repeats the headings on each page; each row
+   is kept with the start of its open details. */
 @media print {
   .sdt-search,
   .sdt-sort-button::after {

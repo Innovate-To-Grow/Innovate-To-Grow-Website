@@ -331,12 +331,13 @@
 
 /* ---- Print ------------------------------------------------------------------------ */
 
-/* A printed list is the rows on the screen as a document: no search, sort, paging or row buttons (the count line
-   says which rows they are), each row kept with the start of its details, and the column headings repeated on
-   every page. The pager needs no rule here: the site pager leaves itself off the paper (pagination.css). */
+/* A printed list is the rows on the screen as a document: no search, sort, paging or row buttons, each row kept
+   with the start of its details, and the column headings repeated on every page. The count line says which rows
+   they are, so the whole pager leaves the paper here; other pagers print their "Page x of y" (pagination.css). */
 @media print {
   .project-grid-controls,
   .project-grid-results-controls,
+  .project-grid-pagination,
   .project-grid-toolbar,
   .project-grid-load-error .itg-btn,
   .project-grid-no-results .itg-empty-state-actions,
