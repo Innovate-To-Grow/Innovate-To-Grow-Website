@@ -192,7 +192,12 @@ const CurrentProjectsGrid = ({
       filterControls={<CurrentProjectsFilters filters={filters} changeFilter={changeFilter} selectIds={selectIds} />}
       toolbar={
         filters.filterChips.length ? (
-          <ActiveFilterChips filters={filters} changeFilter={changeFilter} selectIds={selectIds} />
+          <ActiveFilterChips
+            filters={filters}
+            changeFilter={changeFilter}
+            selectIds={selectIds}
+            noResults={table.filteredRows.length === 0}
+          />
         ) : undefined
       }
       activeFilters={filters.activeLabels}

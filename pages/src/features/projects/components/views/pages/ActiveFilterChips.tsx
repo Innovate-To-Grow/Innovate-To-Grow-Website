@@ -9,15 +9,18 @@ interface ActiveFilterChipsProps {
   changeFilter: (setter: (value: string) => void) => (value: string) => void;
   /** The ids of the Class and Industry selects, which take focus when the chip of their filter goes. */
   selectIds: Record<FilterKey, string>;
+  /** No row matches: the grid's no-results state shows, with its own button that clears the filters. */
+  noResults?: boolean;
 }
 
 /**
  * The Class and Industry filters in use, as chips that remove them, then "Clear Filters" once both are set (with one
- * chip it would do exactly what the chip does). The search text is not a chip: its field shows it. Each button leaves
- * with the filter it clears, so focus moves first, before the filters change: to the chip that stays, or else to the
+ * chip it would do exactly what the chip does). While no row matches, the no-results state below offers the clear
+ * instead, so the page never shows two. The search text is not a chip: its field shows it. Each button leaves with
+ * the filter it clears, so focus moves first, before the filters change: to the chip that stays, or else to the
  * select of the filter just removed.
  */
-export const ActiveFilterChips = ({filters, changeFilter, selectIds}: ActiveFilterChipsProps) => {
+export const ActiveFilterChips = ({filters, changeFilter, selectIds, noResults = false}: ActiveFilterChipsProps) => {
   const chipButtons = useRef(new Map<FilterKey, HTMLButtonElement>());
   const setterFor = (key: FilterKey) => (key === 'class' ? filters.setClassCode : filters.setIndustry);
 
@@ -58,7 +61,7 @@ export const ActiveFilterChips = ({filters, changeFilter, selectIds}: ActiveFilt
           </span>
         </button>
       ))}
-      {filters.filterChips.length > 1 ? (
+      {filters.filterChips.length > 1 && !noResults ? (
         <button type="button" className="itg-btn itg-btn-text project-grid-clear-filters" onClick={clearAll}>
           Clear Filters
         </button>

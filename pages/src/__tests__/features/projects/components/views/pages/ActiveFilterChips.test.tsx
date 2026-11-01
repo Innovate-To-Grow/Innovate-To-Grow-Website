@@ -22,7 +22,7 @@ const ROWS: ProjectGridRow[] = Array.from({length: 30}, (_, index) => ({
   is_presenting: 'Yes',
 }));
 
-const renderAt = (entry: string) => {
+const renderAt = (entry: string, rows: ProjectGridRow[] = ROWS) => {
   const router = createMemoryRouter(
     [
       {
@@ -31,7 +31,7 @@ const renderAt = (entry: string) => {
           <CurrentProjectsView
             title="Current Projects"
             lede="Lede."
-            rows={ROWS}
+            rows={rows}
             loading={false}
             error={null}
             classLabels={{CAP: 'Engineering Capstone'}}
@@ -121,5 +121,43 @@ describe('ActiveFilterChips', () => {
     expect(screen.getByLabelText('Industry')).toHaveValue('');
     expect(countLine()).toHaveTextContent('30 projects · showing 1–5');
     await waitFor(() => expect(router.state.location.search).toBe('?per=5'));
+  });
+
+  describe('when the two filters match no project', () => {
+    // One more CSE team, in an industry no CAP team is in.
+    const rows = [...ROWS, {...ROWS[29], id: '00000030-0000-4000-8000-000000000000', industry: 'Water'}];
+
+    it('leaves Clear Filters to the no-results state, keeping both chips', () => {
+      const {container} = renderAt('/current-projects?class=CAP&industry=Water', rows);
+
+      const clear = screen.getAllByRole('button', {name: 'Clear Filters'});
+      expect(clear).toHaveLength(1);
+      expect(container.querySelector('.project-grid-no-results')).toContainElement(clear[0]);
+      expect(within(chips()).getAllByRole('button')).toHaveLength(2);
+
+      fireEvent.click(clear[0]);
+
+      expect(screen.getByLabelText('Class')).toHaveValue('');
+      expect(screen.getByLabelText('Industry')).toHaveValue('');
+      expect(screen.queryByRole('group', {name: 'Active filters'})).toBeNull();
+    });
+
+    it('offers only the no-results clear when a search is set as well', () => {
+      renderAt('/current-projects?value=Project&class=CAP&industry=Water', rows);
+
+      expect(screen.queryByRole('button', {name: 'Clear Filters'})).toBeNull();
+      expect(screen.getByRole('button', {name: 'Clear Search and Filters'})).toBeInTheDocument();
+      expect(within(chips()).getAllByRole('button')).toHaveLength(2);
+    });
+
+    it('offers Clear Filters among the chips again once a filter change brings rows back', () => {
+      const {container} = renderAt('/current-projects?class=CAP&industry=Water', rows);
+
+      fireEvent.change(screen.getByLabelText('Industry'), {target: {value: 'Energy'}});
+
+      expect(container.querySelector('.project-grid-no-results')).toBeNull();
+      expect(within(chips()).getByRole('button', {name: 'Clear Filters'})).toBeInTheDocument();
+      expect(screen.getAllByRole('button', {name: 'Clear Filters'})).toHaveLength(1);
+    });
   });
 });
