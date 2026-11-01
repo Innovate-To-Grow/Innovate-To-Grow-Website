@@ -17,6 +17,11 @@ class PastProjectShareRateThrottle(_DynamicProjectUserRateThrottle):
     scope = "past_project_share"
 
 
+class PastProjectShareUpdateRateThrottle(_DynamicProjectUserRateThrottle):
+    # Changing or deleting a share (each edit of a shared list is one PATCH), per owner.
+    scope = "past_project_share_update"
+
+
 class PastProjectAISearchRateThrottle(_DynamicProjectUserRateThrottle):
     # AI search requires authentication, so throttle per-user.
     scope = "past_project_ai_search"

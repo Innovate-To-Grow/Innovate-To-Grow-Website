@@ -1,7 +1,8 @@
 import '@/features/events/scheduleShared.css';
 import './SchedulePage.css';
-import {useEffect, useMemo} from 'react';
+import {useEffect, useMemo, type ReactNode} from 'react';
 import {useSearchParams} from 'react-router';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {
   ProjectGridTable,
   PROJECT_GRID_COLUMNS,
@@ -21,11 +22,12 @@ interface SchedulePageProps {
   scheduleId?: string | null;
 }
 
-const ScheduleMessage = ({children, isError = false}: {children: string; isError?: boolean}) => (
+/** The page while its schedule loads (a status line) or after it fails (an alert). */
+const ScheduleMessage = ({children, isError = false}: {children: ReactNode; isError?: boolean}) => (
   <div className="schedule-page">
     <h1 className="itg-page-title schedule-page-title">Event Schedule</h1>
     <p
-      className={`schedule-page-state${isError ? ' schedule-page-state-error' : ''}`}
+      className={`schedule-page-state ${isError ? 'schedule-page-state-error' : 'schedule-page-state-loading'}`}
       role={isError ? 'alert' : 'status'}
     >
       {children}
@@ -132,7 +134,11 @@ export const SchedulePage = ({scheduleId}: SchedulePageProps = {}) => {
   };
 
   if (loading) {
-    return <ScheduleMessage>Loading schedule...</ScheduleMessage>;
+    return (
+      <ScheduleMessage>
+        <LoadingIndicator label="Loading schedule…" />
+      </ScheduleMessage>
+    );
   }
   if (error || !data) {
     return <ScheduleMessage isError>{error || 'Event schedule is unavailable.'}</ScheduleMessage>;

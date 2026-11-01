@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {prepareNoteForSave} from '../list/curationNote';
+import {noteLengthProblem, prepareNoteForSave} from '../list/curationNote';
+import {getShareErrorMessage} from '../../shared/utils/shareHelpers';
 
 interface UseSharedListEditorOptions {
   /** Every saved row, as the shared page stores them. */
@@ -43,8 +44,9 @@ function useShareSave(onUpdateShare: UseSharedListEditorOptions['onUpdateShare']
       await onUpdateShare(nextRows, nextName, nextNote);
       onStatus(successMessage);
       return true;
-    } catch {
-      onStatus('Unable to update this shared page. Please try again.');
+    } catch (error) {
+      // The API's reason when it gives one (a validation error, a sign-in that expired): retrying would not help.
+      onStatus(getShareErrorMessage(error, 'Unable to update this curation. Please try again.'));
       return false;
     } finally {
       setIsSaving(false);
@@ -106,7 +108,13 @@ export function useSharedListEditor({rows, allRows, title, note, onUpdateShare, 
       setIsEditingNote(false);
       return;
     }
-    if (await save(allRows, title, prepareNoteForSave(noteDraft), 'Note updated.')) {
+    const preparedNote = prepareNoteForSave(noteDraft);
+    const noteProblem = noteLengthProblem(preparedNote);
+    if (noteProblem) {
+      onStatus(noteProblem);
+      return;
+    }
+    if (await save(allRows, title, preparedNote, 'Note updated.')) {
       setIsEditingNote(false);
     }
   };
@@ -118,7 +126,7 @@ export function useSharedListEditor({rows, allRows, title, note, onUpdateShare, 
     }
     const nextRows = allRows.filter((_, index) => index !== rowIndex);
     if (!nextRows.length) {
-      onStatus('A shared page needs at least one project.');
+      onStatus('A curation needs at least one project.');
       return;
     }
     if (await save(nextRows, title, savedNote, 'Project removed.')) {

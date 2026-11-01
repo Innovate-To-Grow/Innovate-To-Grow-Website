@@ -66,6 +66,27 @@ class PastProjectsAPIViewTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
 
+    def test_rejects_invalid_page_and_page_size(self):
+        Semester.objects.create(year=2025, season=1, is_published=True)
+
+        for params in ({"page": "abc"}, {"page": 0}, {"page_size": "abc"}, {"page_size": 0}, {"page_size": 1000}):
+            with self.subTest(params=params):
+                response = self.client.get("/projects/past/", params)
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(next(iter(params)), response.data)
+
+    def test_projects_within_a_semester_sort_by_team_number(self):
+        semester = Semester.objects.create(year=2019, season=1, is_published=True)
+        for team_number in ("10", "2", "1"):
+            Project.objects.create(
+                semester=semester, class_code="CSE", team_number=team_number, project_title=team_number
+            )
+
+        response = self.client.get("/projects/past/")
+
+        titles = [project["project_title"] for project in response.data["results"][0]["projects"]]
+        self.assertEqual(titles, ["1", "2", "10"])
+
 
 class ProjectDetailAPIViewTest(TestCase):
     # noinspection PyPep8Naming
@@ -118,6 +139,7 @@ class ProjectDetailAPIViewTest(TestCase):
         response = self.client.get(f"/projects/{uuid.uuid4()}/")
 
         self.assertEqual(response.status_code, 404)
+        self.assertNotIn("Cache-Control", response)
 
     def test_no_auth_required(self):
         sem = Semester.objects.create(year=2025, season=1, is_published=True)
@@ -126,6 +148,22 @@ class ProjectDetailAPIViewTest(TestCase):
         response = self.client.get(f"/projects/{project.id}/")
 
         self.assertEqual(response.status_code, 200)
+
+    def test_sends_the_public_cache_policy_and_answers_conditional_gets(self):
+        sem = Semester.objects.create(year=2025, season=1, is_published=True)
+        project = Project.objects.create(semester=sem, project_title="Cached")
+
+        first = self.client.get(f"/projects/{project.id}/")
+
+        self.assertEqual(first["Cache-Control"], "public, max-age=60, stale-while-revalidate=300")
+        unchanged = self.client.get(f"/projects/{project.id}/", HTTP_IF_NONE_MATCH=first["ETag"])
+        self.assertEqual(unchanged.status_code, 304)
+        self.assertEqual(unchanged.content, b"")
+        project.project_title = "Cached, retitled"
+        project.save(update_fields=["project_title", "updated_at"])
+        changed = self.client.get(f"/projects/{project.id}/", HTTP_IF_NONE_MATCH=first["ETag"])
+        self.assertEqual(changed.status_code, 200)
+        self.assertNotEqual(changed["ETag"], first["ETag"])
 
     def test_excludes_projects_from_unpublished_semesters(self):
         sem = Semester.objects.create(year=2025, season=1, is_published=False)
