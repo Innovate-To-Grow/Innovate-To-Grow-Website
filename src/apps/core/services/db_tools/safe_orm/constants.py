@@ -26,6 +26,9 @@ DENIED_MODEL_LABELS = {
     "core.deliveryusagebucket",
     "core.emailserviceconfig",
     "core.gmailaccessaccount",
+    # The Gmail API service account and its impersonation allow-list (the subject list matches no name part).
+    "core.gmailapiproviderconfig",
+    "core.gmailapisubject",
     "core.googlecredentialconfig",
     "core.microsoftgraphaccesscheck",
     "core.microsoftgraphcertificate",

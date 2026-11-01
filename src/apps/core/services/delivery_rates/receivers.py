@@ -33,6 +33,8 @@ CONFIG_CHANNELS: dict[str, tuple[str, ...]] = {
     "core.MicrosoftGraphCertificate": _GRAPH,
     "core.MicrosoftGraphMailboxScope": _GRAPH,
     "core.GmailAccessAccount": (DeliveryChannel.GMAIL_IMAP,),
+    "core.GmailApiProviderConfig": (DeliveryChannel.GMAIL_API_SEND,),
+    "core.GmailApiSubject": (DeliveryChannel.GMAIL_API_SEND,),
 }
 
 

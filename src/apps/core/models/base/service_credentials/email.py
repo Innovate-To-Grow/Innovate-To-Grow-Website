@@ -3,8 +3,18 @@ from django.core.validators import validate_email
 from django.db import models, transaction
 
 from ..control import ProjectControlModel
+from .gmail_api import GmailApiProviderConfig, normalize_subject
 from .microsoft_graph import MicrosoftGraphProviderConfig
 from .microsoft_graph_access_check import takeover_problem
+
+GMAIL_ACTIVATION_REQUIRED = (
+    "An active Gmail API configuration whose subject allow-list includes the From address, with a passed access "
+    "check for the installed key, is required before activation."
+)
+GMAIL_NOT_READY = (
+    "An active Gmail API configuration with an installed key and the From address on its subject allow-list is "
+    "required."
+)
 
 
 class EmailServiceConfig(models.Model):
@@ -21,6 +31,7 @@ class EmailServiceConfig(models.Model):
         SES = "ses", "AWS SES"
         SMTP = "smtp", "SMTP"
         GRAPH = "graph", "Microsoft Graph"
+        GMAIL = "gmail", "Gmail API (Google Workspace)"
 
     name = models.CharField(
         max_length=128,
@@ -100,6 +111,8 @@ class EmailServiceConfig(models.Model):
             raise ValidationError({"provider": "An active SMTP configuration is required before activation."})
         elif self.provider == self.Provider.GRAPH:
             self._validate_graph_activation()
+        elif self.provider == self.Provider.GMAIL:
+            self._validate_gmail_activation()
 
     def _validate_graph_activation(self):
         graph = MicrosoftGraphProviderConfig.load()
@@ -126,6 +139,28 @@ class EmailServiceConfig(models.Model):
             return False
         stored = type(self).objects.filter(pk=self.pk).values_list("is_active", "provider").first()
         return stored == (True, self.Provider.GRAPH)
+
+    def _validate_gmail_activation(self):
+        """Switching email to the Gmail API, or changing its From address there, needs a passed access check that
+        verified the From address with the installed key. Other saves while email already sends through it as this
+        From address only need it to be able to send, so rotating the key never blocks unrelated edits."""
+        gmail = GmailApiProviderConfig.load()
+        if self._already_sending_through_gmail_as(self.from_email):
+            if not gmail.sending_ready(self.from_email):
+                raise ValidationError({"provider": GMAIL_NOT_READY})
+            return
+        if gmail.activation_problem(self.from_email):
+            raise ValidationError({"provider": GMAIL_ACTIVATION_REQUIRED})
+
+    def _already_sending_through_gmail_as(self, from_email: str) -> bool:
+        if not self.pk:
+            return False
+        stored = type(self).objects.filter(pk=self.pk).values_list("is_active", "provider", "from_email").first()
+        return bool(
+            stored
+            and stored[:2] == (True, self.Provider.GMAIL)
+            and normalize_subject(stored[2]) == normalize_subject(from_email)
+        )
 
     def save(self, *args, **kwargs):
         if self.is_active:
@@ -181,6 +216,8 @@ class EmailServiceConfig(models.Model):
         if self.provider == self.Provider.GRAPH:
             graph = MicrosoftGraphProviderConfig.load()
             return f"Microsoft Graph ({graph.mailbox or self.from_email})"
+        if self.provider == self.Provider.GMAIL:
+            return f"Gmail API ({self.from_email})"
         from apps.core.models import AWSCredentialConfig
 
         return f"AWS SES ({AWSCredentialConfig.load().region or 'us-west-2'})"
@@ -200,6 +237,9 @@ class EmailServiceConfig(models.Model):
             return SMTPProviderConfig.load().is_configured
         if self.provider == self.Provider.GRAPH:
             return MicrosoftGraphProviderConfig.load().sending_ready(self.from_email)
+        if self.provider == self.Provider.GMAIL:
+            # Readiness only: editing the allow-list or rotating the key never stops mail that can be sent.
+            return GmailApiProviderConfig.load().sending_ready(self.from_email)
         return False
 
 
