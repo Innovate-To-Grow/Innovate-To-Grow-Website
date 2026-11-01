@@ -62,7 +62,7 @@ function pumpRequests() {
     const controller = new AbortController();
     entry.controller = controller;
     // The timeout frees the slot of a request that stalls; otherwise a few of them would hold every slot and leave
-    // the rows opened after them "Loading project details..." for good.
+    // the rows opened after them "Loading project details…" for good.
     void fetchProjectDetail(entry.id, controller.signal, PROJECT_REQUEST_TIMEOUT_MS)
       .then((detail) => {
         // Saving these rows reuses the details instead of requesting them again.

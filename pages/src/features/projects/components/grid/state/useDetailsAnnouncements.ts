@@ -9,7 +9,7 @@ interface DetailsToggles {
 /**
  * Who tells a screen reader about opened details. A row opened by its own button reports its loading (and a
  * failure) itself. Rows opened all at once (View All Details, or a list that starts with every row open) stay
- * quiet, or a whole page of "Loading project details..." would be read out one by one; the grid says once that
+ * quiet, or a whole page of "Loading project details…" would be read out one by one; the grid says once that
  * every row is open.
  */
 export function useDetailsAnnouncements({allDetailsExpanded, onToggleExpanded, onToggleAllDetails}: DetailsToggles) {
