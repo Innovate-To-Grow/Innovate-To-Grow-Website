@@ -3,13 +3,16 @@ from apps.system_intelligence.services.query_tools import get_tool_definitions
 
 from ..exceptions import BedrockError
 from ._aws import get_client
+from .parameters import inference_config
 
 
 def build_kwargs(chat_config, model_id):
     """Build common kwargs shared by converse and converse_stream."""
     kwargs = {
         "modelId": model_id,
-        "inferenceConfig": {"maxTokens": chat_config.max_tokens, "temperature": chat_config.temperature},
+        "inferenceConfig": inference_config(
+            model_id=model_id, max_tokens=chat_config.max_tokens, temperature=chat_config.temperature
+        ),
     }
     if chat_config.system_prompt:
         kwargs["system"] = [{"text": chat_config.system_prompt}]

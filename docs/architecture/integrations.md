@@ -24,11 +24,11 @@ See [Google Sheets Integration](../integrations/google-sheets/index.md) for full
 
 ## AWS shared credentials
 
-A single IAM access key and AWS region power SES, SMS (End User Messaging), and Bedrock. They are stored in `AWSCredentialConfig` (`src/apps/core/models/base/service_credentials/aws.py`) and resolved by `src/apps/core/services/aws/credentials.py`.
+A single IAM credential pair in AWS Secrets Manager powers SES, SMS (End User Messaging), and Bedrock. `AWSCredentialConfig` stores its `credentials_secret_arn`, region, and service metadata. The shared resolver in `src/apps/core/services/aws/credentials.py` reads the secret with the ECS task identity; production rejects database plaintext fallback. See the [production migration procedure](../deployment/production.md#application-aws-credentials-and-background-jobs).
 
 | Field | Used by |
 |-------|--------|
-| `access_key_id` / `secret_access_key` | SES, SMS, Bedrock |
+| `credentials_secret_arn` | Reference to the secret JSON containing `access_key_id` / `secret_access_key` for SES, SMS, and Bedrock |
 | `default_region` | Shared AWS region for SES, SMS, and Bedrock |
 | `sms_from_number` | SMS origination number for OTP SMS (optional override; auto-detected from End User Messaging when blank) |
 
@@ -42,7 +42,7 @@ There is no per-message routing or automatic failover.
 | Concern | Implementation |
 |---------|---------------|
 | Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email.py`) — active sender identity and campaign send rate |
-| AWS credentials | Shared `AWSCredentialConfig` IAM key + `default_region` |
+| AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
 | Provider layer | `src/apps/core/services/email/` |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |
@@ -72,7 +72,7 @@ Used for phone number verification during event registration and contact managem
 
 | Concern | Implementation |
 |---------|---------------|
-| SMS settings | Shared `AWSCredentialConfig` IAM key + `default_region` + optional `sms_from_number` override + OTP template |
+| SMS settings | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` + optional `sms_from_number` override + OTP template |
 | Origination resolution | `src/apps/core/services/aws/sms.py` (`describe_phone_numbers`, cached) |
 | Send verification | `src/apps/authn/services/sms/` (`sns_verify.py` is the public entry point; `checks.py` holds the code checks, `errors.py` the error types) |
 | Event phone verify | `src/apps/event/views/registration/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
@@ -92,8 +92,10 @@ manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
 |---------|---------------|
 | AI behavior | `SystemIntelligenceConfig` (`src/apps/system_intelligence/models/config.py`) |
 | Public spend limits | Per-visitor/member and global token budgets in PostgreSQL, set on the same config; see [Assistant and AI search limits](../integrations/assistant-limits.md) |
-| AWS credentials | Shared `AWSCredentialConfig` IAM key + `default_region` |
+| AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | Runtime | `src/apps/system_intelligence/services/bedrock/` |
+
+Known Claude models with fixed sampling (including Fable 5) omit `temperature` in both Converse and agent calls. Older models retain the configured value. The admin connectivity test also omits optional sampling settings and reads text after any reasoning blocks. See [Anthropic sampling limits](https://platform.claude.com/docs/en/about-claude/models/extended-thinking-models).
 
 ## AWS S3 / Cloudflare R2
 

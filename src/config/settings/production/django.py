@@ -43,3 +43,6 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {"django": {"handlers": ["console"], "level": "INFO", "propagate": False}},
 }
+
+# Application service credentials must never fall back to database plaintext.
+AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER = True
