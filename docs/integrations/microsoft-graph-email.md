@@ -263,7 +263,10 @@ form itself has no certificate, key or secret input.
 
 **Tenant ID** and **Client ID** are read-only while a certificate is installed: a certificate is tested for
 one tenant and app. To move to another app, set up a standby configuration for it, install its certificate
-there and then activate it, or remove the certificates first.
+there, run the access check there (**Run access check** works on an inactive configuration), and then
+activate it. While Notification Delivery sends through Graph, activating a configuration needs what
+switching email to Graph needs (see [Go-live gate](#go-live-gate)), and the active configuration's tenant
+and app cannot change at all: select another provider first.
 
 ### 2. Install the certificate
 
@@ -332,12 +335,14 @@ the certificate.
   the sender mailbox and the From address send is required before activation."
 - Choosing AWS SES or SMTP later hides the Graph panel and keeps the saved Graph settings. The AWS panel on
   the same page is always saved and is still used for SMS.
-- An active configuration cannot be deleted. Deleting an inactive one deletes its scope rows, certificate
-  rows and recorded access checks (the key versions stay in the store, unpinned).
+- An active configuration cannot be deleted. An inactive one with recorded access checks cannot be deleted
+  either, so the evidence is kept. Deleting an inactive one without them deletes its scope rows and
+  certificate rows (the key versions stay in the store, unpinned).
 - While Notification Delivery sends through Graph, the configuration page refuses a save that would stop
   email: deactivating the sending configuration, activating a standby that cannot send, or a mailbox scope
-  or sender mailbox that no longer lets the sender and the **From Email** send. Select another provider
-  first.
+  or sender mailbox that no longer lets the sender and the **From Email** send. It also refuses activating
+  a standby that email could not switch to (see [Go-live gate](#go-live-gate)) and any change of the
+  active configuration's tenant or app. Select another provider first.
 - A successful test reports `Test email sent to <address> via Microsoft Graph (config: <name>).` That
   means Graph accepted the message (HTTP 202), not that it was delivered. A failure reports
   `Failed to send test email: <message>`; the messages are explained in the
@@ -484,9 +489,17 @@ exception reference at the time of the switch, so clearing the reference, or nar
 `GRAPH_APPROVED_APPLICATION_ROLES`, withdraws the evidence. Refused saves say why under **Provider**
 (`Email cannot switch to Microsoft Graph yet: …`).
 
-The gate guards the switch only. Editing a configuration that already sends through Graph is not blocked,
-and neither is installing or rolling back a certificate on it, because the check needs the new certificate
-installed first; the panel then shows the evidence as missing until the check is run again.
+The same rule applies whenever email that is already on Graph would move to another Entra app or
+certificate: activating another configuration on its page is refused under **Active** (`… can become the
+active one only when email could switch to it: …`) unless that configuration's own latest access check is
+evidence, and the active configuration's tenant and app cannot change while email is on Graph. In every
+environment, gate on or off, the configuration email switches to must hold a current certificate that Entra
+issued a token with: one installed on an inactive configuration before OIT registered it says "not trusted"
+until an access check (or a re-install) gets a token with it.
+
+Editing a configuration that already sends through Graph is not blocked otherwise, and neither is installing
+or rolling back a certificate on it, because the check needs the new certificate installed first; the panel
+then shows the evidence as missing until the check is run again.
 
 ## Rotate the certificate
 

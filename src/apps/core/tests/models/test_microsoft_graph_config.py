@@ -87,7 +87,9 @@ class GraphConfigStrTest(SimpleTestCase):
         self.assertEqual(str(MicrosoftGraphProviderConfig(name="Blank")), "Blank: not configured")
 
 
-class GraphConfigCleanTest(SimpleTestCase):
+class GraphConfigCleanTest(TestCase):
+    # clean() of an active config asks whether email is sent through Graph, so these tests need the database.
+
     def errors(self, **overrides):
         """Field errors clean() raises for an otherwise valid config, or {} when it passes."""
         try:
@@ -97,7 +99,7 @@ class GraphConfigCleanTest(SimpleTestCase):
         return {}
 
     def field_errors(self, **overrides):
-        """Field errors from full_clean(), restricted to field validators and clean() (no database)."""
+        """Field errors from full_clean(), restricted to field validators and clean() (no unique checks)."""
         try:
             config = MicrosoftGraphProviderConfig(**graph_fields(**overrides))
             config.full_clean(validate_unique=False, validate_constraints=False)

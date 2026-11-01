@@ -80,8 +80,9 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
         self.assertNotIn("MicrosoftGraphProviderConfig has", out)
 
     def test_no_installed_certificate_fails_when_graph_is_the_provider(self):
-        self.email()
+        # Saved in this order because a config without a certificate cannot take over while email is on Graph.
         self.graph(certificate=False)
+        self.email()
 
         out = self.run_command()
 

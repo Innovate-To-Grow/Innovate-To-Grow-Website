@@ -1,5 +1,5 @@
-"""The Graph config page cannot stop email that Microsoft Graph sends; scope rows are case-insensitive and editable
-by Core staff."""
+"""The Graph config page cannot stop email that Microsoft Graph sends, nor move it to a config or Entra app that email
+could not switch to; scope rows are case-insensitive and editable by Core staff."""
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -7,7 +7,10 @@ from django.urls import reverse
 
 from apps.core.admin.service_credentials.microsoft_graph_scope import WOULD_STOP_EMAIL
 from apps.core.models import EmailServiceConfig, MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
-from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, create_graph_config
+from apps.core.models.base.service_credentials.microsoft_graph import TAKEOVER_REFUSED
+from apps.core.services.email.graph.credential.recovery import remove_certificates
+from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, create_graph_config, install_test_certificate
+from apps.core.tests.models.test_graph_go_live_gate import DENY, evidence
 from apps.event.tests.helpers import make_admin, make_superuser
 
 Permission = MicrosoftGraphMailboxScope.Permission
@@ -73,6 +76,14 @@ class GuardFixture(TestCase):
         self.assertContains(response, STOPS)
         self.assertTrue(EmailServiceConfig.load().delivery_configured)
 
+    def assert_takeover_refused(self, standby, problem):
+        response = self.post(standby, change_data(standby, is_active="on"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, TAKEOVER_REFUSED.format(problem="")[:60])
+        self.assertContains(response, problem)
+        self.assertEqual(MicrosoftGraphProviderConfig.load(), self.config)
+
 
 class SendingConfigGuardTests(GuardFixture):
     def test_the_sending_config_cannot_be_deactivated(self):
@@ -106,11 +117,19 @@ class SendingConfigGuardTests(GuardFixture):
         self.assertTrue(EmailServiceConfig.load().delivery_configured)
 
     def test_a_standby_that_cannot_send_cannot_take_over(self):
-        standby = create_graph_config(name="Standby", certificate=False, scope=(MAILBOX,))
+        without_certificate = create_graph_config(name="No certificate", certificate=False, scope=(MAILBOX,))
+        out_of_scope = create_graph_config(name="Out of scope", mailbox=MAILBOX, scope=("other@contoso.com",))
 
-        self.assert_refused(self.post(standby, change_data(standby, is_active="on")))
+        self.assert_takeover_refused(without_certificate, "has no current certificate")
+        self.assert_refused(self.post(out_of_scope, change_data(out_of_scope, is_active="on")))
         self.config.refresh_from_db()
         self.assertTrue(self.config.is_active)
+
+    def test_a_standby_whose_certificate_entra_has_not_trusted_cannot_take_over(self):
+        standby = create_graph_config(name="Standby", mailbox=MAILBOX, scope=(MAILBOX,), certificate=False)
+        install_test_certificate(standby, entra_check="not_trusted")
+
+        self.assert_takeover_refused(standby, "Microsoft Entra has not issued a token with its current certificate")
 
     def test_a_standby_that_can_send_may_take_over(self):
         standby = create_graph_config(name="Standby", mailbox=MAILBOX, scope=(MAILBOX,))
@@ -140,7 +159,8 @@ class SendingConfigGuardTests(GuardFixture):
 
         response = self.client.post(reverse("admin:core_microsoftgraphproviderconfig_add"), data)
 
-        self.assert_refused(response)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "has no current certificate")
         self.assertEqual(MicrosoftGraphProviderConfig.objects.count(), 1)
 
     def test_a_standby_can_still_be_edited_and_deleted(self):
@@ -150,6 +170,47 @@ class SendingConfigGuardTests(GuardFixture):
         delete_url = reverse("admin:core_microsoftgraphproviderconfig_delete", args=[standby.pk])
         self.assertEqual(self.client.post(delete_url, {"post": "yes"}).status_code, 302)
         self.assertTrue(EmailServiceConfig.load().delivery_configured)
+
+
+OTHER_APP = "99999999-8888-7777-6666-555555555555"
+
+
+@override_settings(GRAPH_REQUIRE_ACCESS_EVIDENCE=True)
+class TakeoverGateTests(GuardFixture):
+    """With the go-live gate on, a standby (here for another Entra app) takes over only with evidence of its own."""
+
+    def setUp(self):
+        super().setUp()
+        self.standby = create_graph_config(
+            name="Standby", mailbox=MAILBOX, scope=(MAILBOX,), client_id=OTHER_APP, access_check_deny_mailbox=DENY
+        )
+
+    def test_core_staff_and_superusers_cannot_activate_a_standby_without_evidence(self):
+        evidence(self.config)  # the sending config's evidence says nothing about the standby's app
+        for user in (make_admin(apps=["core"], email="core@example.com"), make_superuser(email="root@example.com")):
+            with self.subTest(user=user.email):
+                self.client.force_login(user)
+                self.assert_takeover_refused(self.standby, "no access check is recorded for the current certificate")
+        self.assertTrue(EmailServiceConfig.load().delivery_configured)
+
+    def test_a_standby_with_its_own_passing_check_may_take_over(self):
+        evidence(self.standby)
+        self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
+
+        response = self.post(self.standby, change_data(self.standby, is_active="on"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(MicrosoftGraphProviderConfig.load(), self.standby)
+
+    def test_after_removing_its_certificates_the_sending_config_cannot_move_to_another_app(self):
+        remove_certificates(self.config, reason="Moving to another app")
+
+        response = self.post(self.config, change_data(self.config, client_id=OTHER_APP, tenant_id=TENANT_ID))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "its Entra application cannot change")
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.client_id, CLIENT_ID)
 
 
 class GuardOffTests(GuardFixture):

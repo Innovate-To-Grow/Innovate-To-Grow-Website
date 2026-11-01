@@ -6,6 +6,11 @@ unable to send: deactivating the sending config, activating a standby that canno
 sender mailbox that no longer lets the sender and the From address send. The check runs in the inline formset's
 ``clean()``, after the config form has applied its values, so it sees the config and the scope as they would be
 saved and nothing is written when it fails.
+
+Which config and Entra app email may move to is the model's rule, not this guard's: while email is on Graph,
+``MicrosoftGraphProviderConfig.clean`` refuses activating a config that email could not switch to (no certificate
+Entra issued a token with or, where the go-live gate is on, no passing access check) and changing the active one's
+tenant or app.
 """
 
 from django import forms

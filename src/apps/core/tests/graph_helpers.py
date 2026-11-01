@@ -25,13 +25,21 @@ CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 
 def create_graph_config(*, scope=(), permission=SEND_AND_READ, certificate=True, **values):
-    """Save a Graph config, install a current certificate (unless ``certificate=False``) and grant *scope*."""
+    """Save a Graph config, install a current certificate (unless ``certificate=False``) and grant *scope*.
+
+    An active config with a certificate is saved inactive and activated once the certificate is installed, as an
+    admin would, so it also passes the takeover rule when email already uses Graph.
+    """
     values.setdefault("tenant_id", TENANT_ID)
     values.setdefault("client_id", CLIENT_ID)
-    config = MicrosoftGraphProviderConfig.objects.create(**values)
+    activate = bool(values.get("is_active") and certificate)
+    config = MicrosoftGraphProviderConfig.objects.create(**values | ({"is_active": False} if activate else {}))
     if certificate:
         install_test_certificate(config)
     grant(config, *scope, permission=permission)
+    if activate:
+        config.is_active = True
+        config.save()
     return config
 
 

@@ -1,11 +1,10 @@
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import models, transaction
 
 from ..control import ProjectControlModel
 from .microsoft_graph import GRAPH_INLINE_BATCH_LIMIT, MicrosoftGraphProviderConfig
-from .microsoft_graph_access_check import go_live_problem
+from .microsoft_graph_access_check import takeover_problem
 
 
 class EmailServiceConfig(models.Model):
@@ -111,14 +110,18 @@ class EmailServiceConfig(models.Model):
                     "mailbox and the From address send is required before activation."
                 }
             )
-        if not settings.GRAPH_REQUIRE_ACCESS_EVIDENCE or self._already_sending_through_graph():
+        if self._already_sending_through_graph():
             return
-        problem = go_live_problem(graph)
+        problem = takeover_problem(graph)
         if problem:
             raise ValidationError({"provider": f"Email cannot switch to Microsoft Graph yet: {problem}"})
 
     def _already_sending_through_graph(self) -> bool:
-        """The go-live gate guards the switch to Graph; editing a config that already sends through it is not one."""
+        """The go-live checks guard the switch to Graph; editing a config that already sends through it is not one.
+
+        Moving email that is already on Graph to another Graph config or Entra app is checked on that config instead
+        (``MicrosoftGraphProviderConfig.clean``).
+        """
         if not self.pk:
             return False
         stored = type(self).objects.filter(pk=self.pk).values_list("is_active", "provider").first()

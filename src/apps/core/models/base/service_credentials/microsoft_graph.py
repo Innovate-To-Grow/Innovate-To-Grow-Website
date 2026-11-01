@@ -6,6 +6,7 @@ from django.utils import timezone
 from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_guid, is_plain_address
 
 from ..control import ProjectControlModel
+from .microsoft_graph_access_check import takeover_problem
 from .microsoft_graph_certificate import MicrosoftGraphCertificate
 
 # Exchange Online limits for one sender mailbox (Microsoft Learn: "Exchange Online limits").
@@ -17,6 +18,15 @@ GRAPH_INLINE_BATCH_LIMIT = 20
 # Characters that would change a Graph URL (percent-encoding keeps them out of the path, but a deny mailbox that
 # needs them is never what an operator meant).
 _URL_CHARACTERS = frozenset("/?#%\\")
+TAKEOVER_REFUSED = (
+    "Mail → Notification Delivery sends email through Microsoft Graph, so this configuration can become the active "
+    "one only when email could switch to it: {problem}"
+)
+SENDING_APP_CHANGE = (
+    "Mail → Notification Delivery sends email through Microsoft Graph with this configuration, so its Entra "
+    "application cannot change. Switch Notification Delivery to another provider first; switching back to Microsoft "
+    "Graph then runs the go-live checks for the new application."
+)
 
 
 def normalize_mailbox(value: str) -> str:
@@ -135,6 +145,8 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
                 "Remove the installed certificates before changing the Entra application, then install the "
                 "certificate registered for the new application.",
             )
+        for field, message in self._sending_change_errors().items():
+            errors.setdefault(field, message)
         if errors:
             raise ValidationError(errors)
 
@@ -151,6 +163,26 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
         if not self.certificates.filter(state__in=MicrosoftGraphCertificate.LIVE_STATES).exists():
             return ""
         return "tenant_id" if stored[0] != self.tenant_id else "client_id"
+
+    def _sending_change_errors(self) -> dict:
+        """While email is sent through Microsoft Graph, moving it to another Entra app or certificate is a go-live.
+
+        Activating another config, or giving the active one another tenant or app, would send email with an app and
+        certificate the go-live checks have not seen, so it needs what switching email to Graph needs
+        (``takeover_problem``). Rotating the certificate of the active config is not covered: that check needs the
+        new certificate installed first.
+        """
+        if not self.is_active or not _email_sends_through_graph():
+            return {}
+        stored = None
+        if not self._state.adding:
+            stored = type(self).objects.filter(pk=self.pk).values_list("is_active", "tenant_id", "client_id").first()
+        if stored is not None and stored[0]:
+            if stored[1:] == (self.tenant_id, self.client_id):
+                return {}
+            return {"tenant_id" if stored[1] != self.tenant_id else "client_id": SENDING_APP_CHANGE}
+        problem = takeover_problem(self)
+        return {"is_active": TAKEOVER_REFUSED.format(problem=problem)} if problem else {}
 
     def validate_constraints(self, exclude=None):
         # save() replaces the active row atomically. Do not reject that switch
@@ -251,6 +283,12 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
         return self.allows(sender, "send", scopes=scopes) and (
             sender == normalize_mailbox(from_email) or self.allows(from_email, "send", scopes=scopes)
         )
+
+
+def _email_sends_through_graph() -> bool:
+    from .email import EmailServiceConfig  # email.py imports this module
+
+    return EmailServiceConfig.objects.filter(is_active=True, provider=EmailServiceConfig.Provider.GRAPH).exists()
 
 
 class MicrosoftGraphMailboxScope(ProjectControlModel):

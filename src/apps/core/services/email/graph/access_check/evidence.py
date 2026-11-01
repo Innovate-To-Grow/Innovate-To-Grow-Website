@@ -8,7 +8,7 @@ import logging
 
 from django.contrib.admin.models import CHANGE, LogEntry
 
-from apps.core.models import MicrosoftGraphAccessCheck
+from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphCertificate
 from apps.core.models.base.service_credentials.microsoft_graph import normalize_mailbox
 
 from .report import AccessCheckReport
@@ -42,6 +42,16 @@ def record(report: AccessCheckReport, config, *, source: str, run_by=None) -> Mi
         permission_exception_reference=report.exception_reference,
         verdict=report.verdict,
     )
+    if report.token_issued:
+        # A certificate installed before OIT registered it says "not trusted"; the token just issued proves otherwise.
+        MicrosoftGraphCertificate.objects.filter(pk=report.certificate_id).exclude(
+            entra_check=MicrosoftGraphCertificate.EntraCheck.OK
+        ).update(
+            entra_check=MicrosoftGraphCertificate.EntraCheck.OK,
+            entra_check_code="",
+            entra_checked_at=report.checked_at,
+            updated_at=report.checked_at,
+        )
     logger.info(
         "graph_access_check verdict=%s restriction=%s complete=%s roles_within=%s sha1=%s config=%s source=%s",
         check.verdict,

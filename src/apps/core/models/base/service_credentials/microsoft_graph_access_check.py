@@ -5,6 +5,7 @@ from django.db import models
 from django.utils import timezone
 
 from ..control import ProjectControlModel
+from .microsoft_graph_certificate import MicrosoftGraphCertificate
 
 RUN_THE_CHECK = (
     "Run the access check (superuser: Run access check on the Microsoft Graph configuration's page, or "
@@ -30,8 +31,9 @@ class MicrosoftGraphAccessCheck(ProjectControlModel):
         COMMAND = "command", "manage.py verify_graph_access"
         ADMIN = "admin", "Django admin"
 
+    # Evidence is kept: a config with recorded access checks cannot be deleted.
     config = models.ForeignKey(
-        "core.MicrosoftGraphProviderConfig", on_delete=models.CASCADE, related_name="access_checks"
+        "core.MicrosoftGraphProviderConfig", on_delete=models.PROTECT, related_name="access_checks"
     )
     certificate = models.ForeignKey(
         "core.MicrosoftGraphCertificate",
@@ -103,3 +105,22 @@ def go_live_problem(config, *, now=None) -> str:
             "reference of InfoSec's written review."
         )
     return ""
+
+
+def takeover_problem(config) -> str:
+    """Why email may not start being sent with *config* yet, or "": what switching to Microsoft Graph requires.
+
+    Its current certificate must be usable and Entra must have issued a token with it (an inactive config may hold a
+    certificate Entra did not trust yet when it was installed); where ``GRAPH_REQUIRE_ACCESS_EVIDENCE`` is on,
+    ``go_live_problem`` must find nothing either. ``EmailServiceConfig`` applies it when email switches to Graph,
+    ``MicrosoftGraphProviderConfig`` when email already on Graph would move to another config or Entra app.
+    """
+    certificate = config.current_certificate
+    if certificate is None or not certificate.usable_for(config):
+        return "it has no current certificate that is valid now and tested for its tenant and app. Install one first."
+    if certificate.entra_check != MicrosoftGraphCertificate.EntraCheck.OK:
+        return (
+            "Microsoft Entra has not issued a token with its current certificate yet "
+            f"({certificate.get_entra_check_display().lower()}). {RUN_THE_CHECK}"
+        )
+    return go_live_problem(config) if settings.GRAPH_REQUIRE_ACCESS_EVIDENCE else ""

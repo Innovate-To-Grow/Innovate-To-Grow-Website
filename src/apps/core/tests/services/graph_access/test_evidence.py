@@ -5,6 +5,7 @@ import logging
 
 from django.contrib.admin.models import LogEntry
 from django.core import serializers
+from django.db.models import ProtectedError
 from django.test import TestCase
 
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphCertificate
@@ -15,6 +16,7 @@ from apps.core.services.email.graph.access_check.runner import (
     NO_DENY_MAILBOX,
     NOT_READY,
 )
+from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import grant, private_key_lines
 from apps.core.tests.services.graph_access.helpers import (
     DENY,
@@ -89,6 +91,39 @@ class RecordAccessCheckTests(ProbeFixtureMixin, TestCase):
             for secret in secrets:
                 self.assertNotIn(secret, surface)
         self.assertTrue(any("graph_access_check verdict=compliant" in line for line in logs.output))
+
+    def test_a_token_issued_with_a_certificate_installed_as_not_trusted_marks_it_trusted(self):
+        certificate = self.config.current_certificate
+        MicrosoftGraphCertificate.objects.filter(pk=certificate.pk).update(
+            entra_check="not_trusted", entra_check_code="AADSTS700027"
+        )
+
+        report, _check = self.record()
+
+        certificate.refresh_from_db()
+        self.assertEqual((certificate.entra_check, certificate.entra_check_code), ("ok", ""))
+        self.assertEqual(certificate.entra_checked_at, report.checked_at)
+
+    def test_a_refused_token_leaves_the_entra_check_alone(self):
+        certificate = self.config.current_certificate
+        MicrosoftGraphCertificate.objects.filter(pk=certificate.pk).update(entra_check="not_trusted")
+        self.probe.token = HttpResponse(401, {}, json.dumps({"error": "invalid_client"}).encode())
+
+        _report, check = self.record()
+
+        certificate.refresh_from_db()
+        self.assertEqual(certificate.entra_check, "not_trusted")
+        self.assertNotEqual(check.verdict, Verdict.COMPLIANT)
+
+    def test_a_config_with_recorded_checks_cannot_be_deleted(self):
+        self.record()
+        self.config.is_active = False
+        self.config.save()
+
+        with self.assertRaises(ProtectedError):
+            self.config.delete()
+
+        self.assertEqual(MicrosoftGraphAccessCheck.objects.filter(config=self.config).count(), 1)
 
     def test_a_removed_certificate_keeps_its_evidence_rows(self):
         _report, check = self.record()

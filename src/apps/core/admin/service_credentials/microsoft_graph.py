@@ -64,7 +64,9 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
                 "fields": APPLICATION_FIELDS,
                 "description": (
                     "Read-only while a certificate is installed: a certificate is tested for one tenant and app. "
-                    "To use another app, set up a standby config for it, or remove the certificates first."
+                    "To use another app, set up a standby config for it, install its certificate and run the access "
+                    "check there, then activate it; while email is sent through Microsoft Graph, activating a config "
+                    "needs what switching email to Graph needs."
                 ),
             },
         ),
