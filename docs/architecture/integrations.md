@@ -133,6 +133,17 @@ number's hourly cap or the daily SMS budget. `PhoneVerificationThrottled` (429) 
 campaign recipient held back runs again at its slot; the in-process sender retries a throttled recipient after the
 cooldown and pauses the rest on a long hold ("Resume paused recipients" on the SMS campaign admin).
 
+### Gmail IMAP (admin inbox, Import from Gmail)
+
+Each uncached Gmail read is one IMAP login session on the `gmail_imap` delivery channel for
+`<imap host>:<username>` (`src/apps/mail/services/gmail_import/session.py`), connected with
+`channels.gmail_imap.timeout_seconds`. Google publishes no IMAP rate, so the channel only reacts to Gmail's
+answers (`DELIVERY_RATES["signals"]["imap"]`): "Too many simultaneous connections" pauses reads, a bandwidth
+suspension (`[OVERQUOTA]`) stops them for `bandwidth_breaker_seconds` with no connection attempted, `[UNAVAILABLE]`
+and a login marked `[THROTTLED]` slow them down, and refused credentials stop them until the Gmail account is saved.
+While reads are held back the inbox list shows the last list read with a banner, and Import from Gmail says when to
+try again. A cached list or message never takes a slot.
+
 ## Amazon Bedrock (System Intelligence)
 
 | Concern | Implementation |

@@ -5,6 +5,7 @@ from .connection import (
     INBOX_FOLDER_CHOICES,
     INBOX_LIMIT_CHOICES,
     SENT_FOLDER,
+    InboxBusy,
     InboxError,
     _open_inbox,
 )
@@ -17,6 +18,7 @@ __all__ = [
     "INBOX_FOLDER_CHOICES",
     "INBOX_LIMIT_CHOICES",
     "SENT_FOLDER",
+    "InboxBusy",
     "InboxError",
     "_open_inbox",
     "fetch_inbox_message",

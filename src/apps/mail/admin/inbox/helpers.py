@@ -5,6 +5,12 @@ from html import escape
 from . import services as inbox_api
 
 
+def message_load_error(exc) -> str:
+    """What staff see when a message cannot be shown: when to try again while reads are held back, else the generic
+    message (other errors may name hosts or accounts)."""
+    return str(exc) if isinstance(exc, inbox_api.InboxBusy) else inbox_api.INBOX_MESSAGE_ERROR_MESSAGE
+
+
 def parse_limit(request) -> int:
     """Parse and validate the requested inbox limit."""
     try:

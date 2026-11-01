@@ -439,7 +439,8 @@ class GmailImportServiceTest(TestCase):
             with _open_mailbox(mailbox="shared@ucmerced.edu") as client:
                 self.assertIs(client, login_client)
 
-        mock_mailbox.assert_called_once_with("imap.gmail.com")
+        # Each session connects with the gmail_imap channel's timeout (DELIVERY_RATES).
+        mock_mailbox.assert_called_once_with("imap.gmail.com", timeout=30)
         mailbox_client.login.assert_called_once_with("shared@ucmerced.edu", "app-password", initial_folder=None)
         login_client.folder.set.assert_any_call(DEFAULT_GMAIL_FOLDER)
         login_client.folder.set.assert_any_call("Sent Mail")

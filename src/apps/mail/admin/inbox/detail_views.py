@@ -10,7 +10,7 @@ from apps.core.utils.access import user_can_access_app
 from apps.core.utils.json_helpers import safe_json
 
 from . import services as inbox_api
-from .helpers import message_body_html, parse_folder, sent_mail_denied
+from .helpers import message_body_html, message_load_error, parse_folder, sent_mail_denied
 
 
 def inbox_detail_view(request, uid):
@@ -28,7 +28,7 @@ def inbox_detail_view(request, uid):
         msg = inbox_api.fetch_inbox_message(uid, folder=folder)
     except inbox_api.InboxError as exc:
         inbox_api.logger.warning("Inbox message uid=%s could not be loaded: %s", uid, exc)
-        messages.error(request, inbox_api.INBOX_MESSAGE_ERROR_MESSAGE)
+        messages.error(request, message_load_error(exc))
         return HttpResponseRedirect(list_url)
     except Exception:
         inbox_api.logger.exception("Unexpected error fetching message uid=%s.", uid)
@@ -67,7 +67,7 @@ def inbox_detail_fragment_view(request, uid):
         return TemplateResponse(
             request,
             "admin/mail/inbox/_fragment_error.html",
-            {"error_message": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE},
+            {"error_message": message_load_error(exc)},
         )
     except Exception:
         inbox_api.logger.exception("Unexpected error fetching message uid=%s.", uid)

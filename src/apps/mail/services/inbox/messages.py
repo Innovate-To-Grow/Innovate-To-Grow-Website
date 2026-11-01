@@ -14,6 +14,9 @@ from .connection import (
     INBOX_LIST_CACHE_TTL,
     INBOX_MSG_CACHE_PREFIX,
     INBOX_MSG_CACHE_TTL,
+    INBOX_STALE_LIST_CACHE_PREFIX,
+    INBOX_STALE_LIST_CACHE_TTL,
+    InboxBusy,
     InboxError,
 )
 from .formatting import build_snippet, extract_from, extract_to, format_date
@@ -28,18 +31,30 @@ def list_inbox_messages(
     folder: str = INBOX_FOLDER,
     force_refresh: bool = False,
 ) -> list[dict[str, Any]]:
+    """The newest messages of ``folder``, from the cache when fresh (a cache hit never reads the mailbox).
+
+    While reads are held back, ``InboxBusy`` carries the last list read (``stale``) for the view to show.
+    """
     reader = _graph_reader()
-    cache_key = f"{INBOX_LIST_CACHE_KEY}:{_backend(reader)}{folder}:{limit}"
+    suffix = f"{_backend(reader)}{folder}:{limit}"
+    cache_key = f"{INBOX_LIST_CACHE_KEY}:{suffix}"
     if not force_refresh:
         cached = cache.get(cache_key)
         if cached is not None:
             return cached
+    try:
+        results = _read_list(reader, mailbox, folder, limit)
+    except InboxBusy as exc:
+        exc.stale = cache.get(f"{INBOX_STALE_LIST_CACHE_PREFIX}{suffix}")
+        raise
+    cache.set(cache_key, results, INBOX_LIST_CACHE_TTL)
+    cache.set(f"{INBOX_STALE_LIST_CACHE_PREFIX}{suffix}", results, INBOX_STALE_LIST_CACHE_TTL)
+    return results
 
+
+def _read_list(reader, mailbox: str | None, folder: str, limit: int) -> list[dict[str, Any]]:
     if reader is not None:
-        results = graph_backend.list_messages(reader, folder=folder, limit=limit)
-        cache.set(cache_key, results, INBOX_LIST_CACHE_TTL)
-        return results
-
+        return graph_backend.list_messages(reader, folder=folder, limit=limit)
     try:
         import apps.mail.services.inbox as inbox_api
 
@@ -50,10 +65,7 @@ def list_inbox_messages(
     except Exception as exc:
         logger.exception("Failed to list inbox messages.")
         raise InboxError("Failed to load inbox messages.") from exc
-
-    results = [message_summary(message) for message in messages]
-    cache.set(cache_key, results, INBOX_LIST_CACHE_TTL)
-    return results
+    return [message_summary(message) for message in messages]
 
 
 def fetch_inbox_message(uid: str, mailbox: str | None = None, *, folder: str = INBOX_FOLDER) -> dict[str, Any]:
