@@ -72,7 +72,8 @@ is recorded instead. With read permission on the sending mailbox, the admin inbo
 app may do, compares it with the approved roles and mailbox scope, and records a
 `MicrosoftGraphAccessCheck` row. In production (`GRAPH_REQUIRE_ACCESS_EVIDENCE`)
 email can switch to Graph only with a recent passing check for the current
-certificate. See [Microsoft Graph email](../integrations/microsoft-graph-email.md) for
+certificate, and email already on Graph can move to another Graph configuration or
+Entra app only on the same terms (`takeover_problem`). See [Microsoft Graph email](../integrations/microsoft-graph-email.md) for
 the Microsoft-side setup, key storage, validation, limits, and error reference.
 
 Delivery fails closed unless the selected provider and sender are structurally

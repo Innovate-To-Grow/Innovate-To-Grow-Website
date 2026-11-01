@@ -98,7 +98,7 @@ These Django settings (not environment variables) bound the certificate, the acc
 | `GRAPH_APPROVED_APPLICATION_ROLES` | `("Mail.Send", "Mail.Read")` | same | Application permissions InfoSec approved; any other role in the token fails the access check (`core.E006` checks the list) |
 | `GRAPH_ACCESS_CHECK_TIMEOUT_SECONDS`, `GRAPH_ACCESS_CHECK_MIME_MAX_BYTES` | `10`, `4096` | same | Timeout of each access-check request, and how much raw MIME the `value` probe reads |
 | `GRAPH_ACCESS_CHECK_MAX_ROLES` | `64` | same | A token claiming more roles than this counts as unreadable, so the run is not a complete validation |
-| `GRAPH_REQUIRE_ACCESS_EVIDENCE` | `False` | `True` | Go-live gate: email can switch to Graph only with a recorded, passing access check for the current certificate (`core.E007` checks it is a boolean) |
+| `GRAPH_REQUIRE_ACCESS_EVIDENCE` | `False` | `True` | Go-live gate: email can switch to Graph, or move to another Graph configuration once on it, only with a recorded, passing access check for that configuration's current certificate (`core.E007` checks it is a boolean) |
 | `GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS` | `30` | same | Oldest access check the gate accepts |
 
 Every number above must be positive (`core.E005`), except the clock skew, which may be `0`.
