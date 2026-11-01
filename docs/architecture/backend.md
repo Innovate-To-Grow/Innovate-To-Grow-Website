@@ -6,7 +6,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 
 | App | Purpose | Key models |
 |-----|---------|------------|
-| `core` | Base models, reusable DRF building blocks, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `TimeStampedModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `SMTPProviderConfig`, `MicrosoftGraphProviderConfig`, `GoogleCredentialConfig`, `AWSCredentialConfig`, `BackgroundJob`, `DeliveryRateLimit` |
+| `core` | Base models, reusable DRF building blocks, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `TimeStampedModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `SMTPProviderConfig`, `MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`, `MicrosoftGraphAccessCheck`, `GoogleCredentialConfig`, `AWSCredentialConfig`, `BackgroundJob`, `DeliveryRateLimit` |
 | `authn` | Authentication, member management, contacts, admin invitations | `Member`, `ContactEmail`, `ContactPhone`, `EmailAuthChallenge`, `PhoneVerificationChallenge`, `RSAKeypair`, `AdminInvitation` |
 | `cms` | CMS pages and blocks, news, analytics, menus, footer, site settings | `CMSPage`, `CMSBlock`, `CMSAsset`, `NewsArticle`, `NewsFeedSource`, `PageView`, `Menu`, `FooterContent`, `SiteSettings` |
 | `event` | Event registration, ticketing, schedule, check-in | `Event`, `EventRegistration`, `Ticket`, `Question`, `CheckIn`, `CheckInRecord`, `CurrentProjectSchedule`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` |
@@ -170,6 +170,7 @@ The following configuration selectors enforce their single-active invariant in b
 | `seed_service_configs` | `core/management/commands/seed_service_configs.py` | Creates skeleton EmailServiceConfig row and optional AWSCredentialConfig from local env |
 | `migrate_aws_credentials` | `core/management/commands/migrate_aws_credentials.py` | Copies and verifies application AWS keys in Secrets Manager; `--clear-legacy` retires database plaintext after rollout |
 | `verify_service_configs` | `core/management/commands/verify_service_configs.py` | Verifies active service configs exist before removing env vars |
+| `verify_graph_access` | `core/management/commands/verify_graph_access.py` | Asks Microsoft what the Graph app may do (token roles, allowed and denied mailbox probes), records a `MicrosoftGraphAccessCheck` row and exits non-zero unless it matches the approval; the evidence the production go-live gate needs |
 | `migrate_locked` | `authn/management/commands/migrate_locked.py` | Runs migrations on PostgreSQL while holding the repository advisory lock |
 | `run_background_worker` | `core/management/commands/run_background_worker.py` | Claims and processes durable background jobs (`--once` processes one batch) and runs the hourly maintenance list (`MAINTENANCE_TASKS`: retired RSA keys, public-assistant budgets, send-verification cleanup, expired sessions, login failure windows, Microsoft Graph certificate expiry warning; `--maintenance-seconds`, minimum 300) |
 | `cleanup_send_verification` | `authn/management/commands/cleanup_send_verification.py` | On-demand run of the send-verification retention cleanup (`--batch-size`, default 1000); the worker already runs it hourly |

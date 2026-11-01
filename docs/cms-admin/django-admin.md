@@ -10,6 +10,8 @@ The admin uses the [Unfold](https://github.com/unfoldadmin/django-unfold) theme 
 
 All admin classes **must** inherit from `apps.core.admin.BaseModelAdmin` or `ReadOnlyModelAdmin`, not Django's stock `ModelAdmin`. This ensures consistent theming and behavior.
 
+`BaseModelAdmin.lookup_allowed` also refuses changelist query-string lookups on secret-looking field names (`SENSITIVE_FIELD_RE`, for example `?password__startswith=a` or `?private_key__regex=…`) with `400`, so the result count can never be used to guess a stored secret one character at a time.
+
 ```python
 from apps.core.admin import BaseModelAdmin
 

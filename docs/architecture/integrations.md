@@ -56,11 +56,22 @@ A message that carries a credential (`EmailMessage(keep_sent_copy=False)`: verif
 codes, admin invitations, tickets) is sent in Graph's JSON format with
 `saveToSentItems: false` instead, so no copy stays in the mailbox's Sent Items.
 Tokens are cached in process memory only, never in the database or the shared cache.
-The Graph transport refuses every request except the token request, `sendMail` and
-three read-only GETs before connecting. Graph answers `202 Accepted` with no message
-ID, so the MIME `Message-ID` is recorded instead. See
-[Microsoft Graph email](../integrations/microsoft-graph-email.md) for the Entra setup,
-mailbox scoping, limits, and error reference.
+The private key is never in the database: a superuser installs the certificate on the
+Graph configuration's admin page, the key goes to the credential store
+(`apps.core.services.credential_store`; in production the Secrets Manager secret
+`itg/backend/microsoft-graph/certificate-key`, which the task role may write), and the
+`MicrosoftGraphCertificate` row pins its version. The Graph transport refuses every
+request except the token request, `sendMail` and three read-only GETs before
+connecting. Graph answers `202 Accepted` with no message ID, so the MIME `Message-ID`
+is recorded instead. With read permission on the sending mailbox, the admin inbox
+(**Mail → Inbox**) reads that mailbox through Graph instead of Gmail IMAP.
+
+`verify_graph_access` (or **Run access check** in the admin) asks Microsoft what the
+app may do, compares it with the approved roles and mailbox scope, and records a
+`MicrosoftGraphAccessCheck` row. In production (`GRAPH_REQUIRE_ACCESS_EVIDENCE`)
+email can switch to Graph only with a recent passing check for the current
+certificate. See [Microsoft Graph email](../integrations/microsoft-graph-email.md) for
+the Microsoft-side setup, key storage, validation, limits, and error reference.
 
 Delivery fails closed unless the selected provider and sender are structurally
 configured. A failed or uncertain request is never retried through the other
@@ -79,7 +90,10 @@ continue to match by their saved provider message ID.
 SMTP and Microsoft Graph record successful submission acceptance only (for Graph,
 an HTTP 202); they do not claim delivered, bounced, or complained status without a
 future feedback integration. Graph's later non-delivery reports arrive in the
-sender mailbox, which the application does not read.
+sender mailbox; the admin inbox can show them, but nothing parses them. The SES
+account-level suppression list applies only to SES sends, and the application keeps
+no suppression list of its own, so under SMTP or Graph previously bounced or
+complaining addresses are mailed again.
 
 ## AWS End User Messaging (SMS)
 

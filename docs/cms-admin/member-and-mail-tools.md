@@ -82,7 +82,12 @@ sender name and email address, and save the active configuration.
   With read permission, **Mail → Inbox** reads that mailbox through Graph
   instead of the Gmail import account; its **Sent** folder (and any message
   from the site's own address) is then shown to superusers only, and Sent
-  mail is never sent to the AI scam review. Graph mail counts against the
+  mail is never sent to the AI scam review. Opening an Inbox message whose
+  rule score is in the medium band still sends its sender, subject,
+  authentication results and the first 4,000 characters of its body to
+  Amazon Bedrock for a second opinion (see
+  [Admin inbox](../integrations/microsoft-graph-email.md#admin-inbox)).
+  Graph mail counts against the
   mailbox's Exchange Online limits (about 30 messages per minute) and reports
   no delivery events. Campaigns, replies and notices are copied to its Sent
   Items folder; verification codes, admin invitations and tickets are not,
