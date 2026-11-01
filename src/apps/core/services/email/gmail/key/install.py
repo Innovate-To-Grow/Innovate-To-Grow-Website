@@ -26,7 +26,9 @@ from django.utils import timezone
 from django.views.decorators.debug import sensitive_variables
 
 from apps.core.models import EmailServiceConfig, GmailApiProviderConfig, GmailApiSubject
+from apps.core.models.base.delivery_rates import DeliveryChannel
 from apps.core.services.credential_store import CredentialStoreError, get_store
+from apps.core.services.delivery_rates import receivers
 
 from ...exceptions import EmailDeliveryError, TransientEmailDeliveryError
 from .. import auth
@@ -161,6 +163,9 @@ def _pin(config, parsed: ParsedKey, stored, test: TokenTest, actor) -> None:
         message = f"Gmail API key installed: key id {parsed.key_id}, service account {parsed.client_email}."
         record(actor, locked, f"{message} {test.describe()}", action="installed", key_id=parsed.key_id)
         transaction.on_commit(partial(_relabel, stored.version_id))
+        # The pin is written with update(), which sends no post_save: half-open a refused-credentials breaker here,
+        # as a config save would, so the next send tries the new key at once.
+        transaction.on_commit(partial(receivers.half_open_after_commit, (DeliveryChannel.GMAIL_API_SEND,)), robust=True)
     config.refresh_from_db()
 
 

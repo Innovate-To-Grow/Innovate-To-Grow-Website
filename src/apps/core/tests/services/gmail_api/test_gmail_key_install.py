@@ -1,13 +1,15 @@
 """The service-account key: checking the file in memory, the token test matrix, the store-then-pin order, and the
 emergency removal."""
 
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.admin.models import LogEntry
 from django.db import DatabaseError
 from django.test import TestCase
+from django.utils import timezone
 
-from apps.core.models import EmailServiceConfig, GmailApiProviderConfig
+from apps.core.models import DeliveryRateState, EmailServiceConfig, GmailApiProviderConfig
 from apps.core.services.credential_store import CredentialStoreError, get_store
 from apps.core.services.email.gmail.key import install, parsing, removal, stored_key
 from apps.core.services.email.gmail.key.install import KeyChangeError
@@ -202,6 +204,21 @@ class InstallMatrixTests(TestCase):
         self.assertEqual((self.config.key_secret_ref, self.config.key_version_id), old)
         key = stored_key.read_key(arn=old[0], version_id=old[1], client_email=SERVICE_ACCOUNT, key_id=KEY_ID)
         self.assertEqual(key.key_size, 2048)
+
+    def test_a_new_key_lets_the_next_send_probe_a_refused_credentials_breaker(self):
+        far = timezone.now() + timedelta(days=1)
+        state = DeliveryRateState.objects.create(
+            channel="gmail_api_send",
+            identity=SUBJECT,
+            cooldown_group=f"gmail_api:{SUBJECT}",
+            breaker_state=DeliveryRateState.BreakerState.OPEN,
+            breaker_reason="auth",
+            breaker_retry_at=far,
+        )
+        with self.captureOnCommitCallbacks(execute=True):
+            self.install(token_response())
+        state.refresh_from_db()
+        self.assertLess(state.breaker_retry_at, far)
 
     def test_installing_the_same_key_twice_reuses_its_stored_version(self):
         self.install(token_response())
