@@ -522,16 +522,6 @@ describe('useProjectGridTable', () => {
         await waitFor(() => expect(result.current.search).toBe('reset'));
     });
 
-    it('seeds expandable rows open when expandAllByDefault is set', async () => {
-        const rows = makeItems(makeRows());
-        const {result} = renderHook(() =>
-            useProjectGridTable({rows, defaultSortField: 'semester_label', expandAllByDefault: true}),
-        );
-
-        await waitFor(() => expect(result.current.expandedKeys.size).toBe(3));
-        expect(result.current.allDetailsExpanded).toBe(true);
-    });
-
     it('builds fingerprints for the current rows', () => {
         const rows = makeItems(makeRows());
         const {result} = renderHook(() =>

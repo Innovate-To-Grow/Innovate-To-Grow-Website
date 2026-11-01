@@ -33,8 +33,6 @@ interface UseProjectGridTableOptions {
   /** The page to start on (0-based), e.g. restored from the URL. */
   initialPage?: number;
   initialSearch?: string;
-  /** Seed every expandable row open on mount (used by the shared, read-only view). */
-  expandAllByDefault?: boolean;
   /** Extra filter applied with the search (e.g. the Class and Industry selects). Keep its identity stable. */
   filterRow?: (row: ProjectGridItem) => boolean;
   /** Class names by code ("CAP" -> "Engineering Capstone"), so a search finds a team by its class name. */
@@ -124,8 +122,8 @@ function useStartOverOnServerRows(
   return {...answer, addedRowsKey: startedOver.addedRowsKey};
 }
 
-/** Expanded rows: the keys of rows with details, whether all are open, and opening them all on mount if asked. */
-function useExpandedRows(rows: ProjectGridItem[], expandAllByDefault: boolean) {
+/** Expanded rows (every row starts collapsed): the keys of rows with details, and whether all of them are open. */
+function useExpandedRows(rows: ProjectGridItem[]) {
   const [expandedKeys, expanded] = useRowKeySet();
   const expandableKeys = useMemo(
     () => rows.filter((row) => hasProjectGridDetails(row)).map((row) => row.__key),
@@ -133,17 +131,6 @@ function useExpandedRows(rows: ProjectGridItem[], expandAllByDefault: boolean) {
   );
   const allDetailsExpanded =
     expandableKeys.length > 0 && expandableKeys.every((rowKey) => expandedKeys.has(rowKey));
-
-  useEffect(() => {
-    if (!expandAllByDefault) {
-      return;
-    }
-    // Seed every expandable row open. Adding an already-present key is a no-op, so a
-    // user can still collapse rows afterward without this re-expanding them. The
-    // functional updater merges into prior expand state derived from rows/props, so it
-    // cannot be replaced by a render-time derivation without dropping user toggles.
-    expanded.add(expandableKeys);
-  }, [expandAllByDefault, expandableKeys, expanded]);
 
   const toggleAllDetails = () => {
     expanded.replace(allDetailsExpanded ? [] : expandableKeys);
@@ -179,7 +166,6 @@ export function useProjectGridTable({
   initialSortDirection = defaultSortDirection,
   initialPage = 0,
   initialSearch = '',
-  expandAllByDefault = false,
   filterRow,
   classLabels = NO_CLASS_LABELS,
   searchRemote,
@@ -197,7 +183,7 @@ export function useProjectGridTable({
   const paging = useGridPagination(sortedRows, {initialPageSize, pageSizeChoices, initialPage, resetKey: search});
   const {setPage} = paging;
   const serverSearch = useStartOverOnServerRows(search, serverAnswer, setPage);
-  const {expandedKeys, expanded, allDetailsExpanded, toggleAllDetails} = useExpandedRows(rows, expandAllByDefault);
+  const {expandedKeys, expanded, allDetailsExpanded, toggleAllDetails} = useExpandedRows(rows);
   const [selectedKeys, selected] = useRowKeySet();
 
   // Rows the user has explicitly checked (independent of the current search
