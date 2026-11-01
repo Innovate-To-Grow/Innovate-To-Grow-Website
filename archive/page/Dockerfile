@@ -12,7 +12,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /build
 
 COPY requirements.txt .
-RUN pip install "pip==26.1" \
+RUN pip install "pip==26.2.0" \
  && pip install --prefix=/install -r requirements.txt
 
 
@@ -30,6 +30,10 @@ WORKDIR /app
 
 # Installed Python packages from the builder stage.
 COPY --from=builder /install /usr/local
+
+# Refresh packaging tools inherited from the base, including vendored libraries.
+RUN pip install "setuptools==84.1.0" "wheel==0.46.3" \
+ && pip uninstall --yes pip
 
 # Application code: app.py, templates/, static/. The .dockerignore keeps
 # .venv, .env, and tests out of the image.

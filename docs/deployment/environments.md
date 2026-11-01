@@ -22,7 +22,7 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `DJANGO_SECRET_KEY` | Django secret key. It also signs the newsletter unsubscribe links, valid for 365 days: changing it breaks every link already sent (no `SECRET_KEY_FALLBACKS` is configured) | Yes |
 | `DJANGO_SETTINGS_MODULE` | Settings module path | Yes |
-| `ALLOWED_HOSTS` | Comma-separated hostnames | Yes |
+| `DJANGO_ALLOWED_HOSTS` | Comma-separated hostnames | Yes |
 | `DEBUG` | Debug mode (never `True` in prod) | No (defaults to `False`) |
 
 ### Database
@@ -44,8 +44,8 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
 | `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
-| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` GitHub Environment variable, default `1`) |
-| `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | No (defaults to false) |
+| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
+| `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | Enabled in production through `itg/backend/deploy-config`; code defaults to false |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
 
 ### AWS / Storage
@@ -54,13 +54,12 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 |----------|---------|-----------------|
 | `AWS_STORAGE_BUCKET_NAME` | S3 bucket for static/media files | Yes |
 | `AWS_S3_REGION_NAME` | S3 region | Yes |
-| `AWS_ACCESS_KEY_ID` | S3 access key | Yes |
-| `AWS_SECRET_ACCESS_KEY` | S3 secret key | Yes |
+| ECS task role | Temporary S3 credentials provided by AWS | Yes; no static access key needed |
 | `AWS_S3_ENDPOINT_URL` | Custom S3 endpoint (for R2 compatibility) | No |
 
 ### AWS services (SES, SNS, Bedrock)
 
-A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/service_credentials/aws.py) drives SES, SNS, and Bedrock. It also stores the shared AWS region, SNS origination number, and SMS OTP template. SES sender identity lives in [`EmailServiceConfig`](../../src/apps/core/models/base/service_credentials/email.py).
+A Secrets Manager object referenced by [`AWSCredentialConfig`](../../src/apps/core/models/base/service_credentials/aws.py) supplies the shared IAM key for SES, SNS, Bedrock, and usage metrics. Production resolves the object using the ECS task role and refuses database plaintext fallback. The database stores only the secret ARN and service metadata. It also stores the shared AWS region, SNS origination number, and SMS OTP template. SES sender identity lives in [`EmailServiceConfig`](../../src/apps/core/models/base/service_credentials/email.py).
 
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
@@ -78,11 +77,11 @@ A single IAM key in [`AWSCredentialConfig`](../../src/apps/core/models/base/serv
 
 #### Production cache today
 
-Verified from the GitHub deploy configuration: production has **no Redis**.
-`REDIS_URL_SECRET_ARN` is set neither as a repository nor as an environment
-variable or secret, so `deploy-backend.yml` drops the `REDIS_URL` secret when it
-renders `aws/task-definition.json` (the repository variable `REDIS_URL` holds
-only the placeholder `__EMPTY__` and is not read by the deploy), and
+Verified from the deployment configuration: production has **no Redis**.
+`REDIS_URL_SECRET_ARN` is absent from `itg/backend/deploy-config`, so
+`deploy-backend.yml` drops the `REDIS_URL` secret when it renders the task
+definition. The migrated `REDIS_URL=__EMPTY__` placeholder is retained only
+as historical configuration and is not injected into the container. Consequently,
 `config/settings/production/cache.py` selects Django's `FileBasedCache`
 under the container's temp directory (`MAX_ENTRIES` 2,000, kept small on purpose: see below). That cache is
 **per container**: the Uvicorn workers in one `itg-backend` container
@@ -209,13 +208,13 @@ IP-independent bound on request count, `POST /analytics/pageview/` and
 | `AMPLIFY_APP_ID` | Amplify app whose edge rules receive active CMS route redirects | Required for edge 301 sync |
 | `AMPLIFY_CONFIG_REVISION` | Monotonic backend deployment generation (`<run_id>.<run_attempt>`) used to order Amplify configurations | Injected automatically by deployment |
 
-Route-redirect synchronization uses the ECS task role through boto3's ambient credentials. Scope that role to `amplify:GetApp` and `amplify:UpdateApp` for the environment's specific Amplify app ARN; do not reuse the database-managed SES/SNS credentials for this operation. The backend worker is the only repository-managed writer of the full Amplify custom-rule list; it reconciles the sitemap, API, optional admin/static/media proxies, CMS 301s, and final SPA fallback while preserving unrelated rules. The frontend deploy workflow publishes assets only and must not call `UpdateApp`. Without the app ID, IAM permission, or an enabled background worker, the existing CMS SPA fallback remains available and the admin reports edge synchronization as pending or failed.
+Route-redirect synchronization uses the ECS task role through boto3's ambient credentials. Scope that role to `amplify:GetApp` and `amplify:UpdateApp` for the environment's specific Amplify app ARN; do not reuse the Secrets Manager-backed SES/SNS credentials for this operation. The backend worker is the only repository-managed writer of the full Amplify custom-rule list; it reconciles the sitemap, API, optional admin/static/media proxies, CMS 301s, and final SPA fallback while preserving unrelated rules. The frontend deploy workflow publishes assets only and must not call `UpdateApp`. Without the app ID, IAM permission, or an enabled background worker, the existing CMS SPA fallback remains available and the admin reports edge synchronization as pending or failed.
 
 The backend deployment defaults `AMPLIFY_BACKEND_PROXY_URL` to
 `https://api.i2g.ucmerced.edu` and admin-path proxying to false. Set these values
-in the `AWS ECS - Prod` GitHub Environment if overriding them.
+in the `itg/backend/deploy-config` Secrets Manager object if overriding them.
 `AMPLIFY_CONFIG_REVISION` is stamped by the workflow from GitHub's numeric run
-ID and attempt; do not define or override it in a GitHub Environment. If
+ID and attempt; do not define or override it in deployment configuration. If
 `BACKGROUND_JOB_METRICS_NAMESPACE` is enabled, also grant the task role
 `cloudwatch:PutMetricData`; leaving it empty avoids that permission and does not
 affect job processing.
@@ -232,8 +231,8 @@ The deploy workflows target the production backend, frontend, and archive.
 | `AWS ECS - Archive Prod` | Archived event-pages ECS service |
 
 Keep required reviewers on `Manual Deployment Approval`. The three target
-environments provide target-specific variables, secrets, URLs, and deployment
-history, but must not also require reviewers after the unified gate has been
+environments provide identity boundaries, URLs, and deployment history; settings
+live in AWS Secrets Manager. They must not also require reviewers after the unified gate has been
 verified; otherwise GitHub requests a second approval.
 
 ### Google Sheets
@@ -246,7 +245,7 @@ These integrations read credentials from Django admin → Site Settings at runti
 
 | Model | Purpose |
 |-------|---------|
-| `AWSCredentialConfig` | Shared AWS IAM key + region + SMS origination number + OTP template |
+| `AWSCredentialConfig` | Secrets Manager ARN + region + SMS origination number + OTP template |
 | `EmailServiceConfig` | Sender identity, campaign rate, SMTP fallback |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
 
