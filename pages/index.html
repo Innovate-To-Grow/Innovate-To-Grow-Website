@@ -17,9 +17,10 @@
 
     <!-- Critical CSS: paints an init-loader spinner the moment HTML parses, so
          first paint is never blank. The spinner uses #root:empty::before and
-         auto-disappears the instant React mounts content into #root. Kept in
-         sync with _INIT_LOADER_CSS in src/cms/views/views.py (server no longer
-         emits this block). -->
+         auto-disappears the instant React mounts content into #root. It draws
+         the ring of the shared LoadingIndicator (src/components/LoadingIndicator:
+         24px, a 3px border-colour ring with a primary top, 0.8s a turn), which
+         the lazy-route fallback and the pages' loading lines show next. -->
     <style>
       /* Cascade layer order (src/styles/layers.css); this statement comes first so it fixes the order. */
       @layer itg.defaults, itg.tokens, itg.base, itg.components, itg.overrides, itg.page;
@@ -35,20 +36,29 @@
         #root:empty::before {
           content: "";
           display: block;
-          width: 44px;
-          height: 44px;
+          box-sizing: border-box;
+          width: 24px;
+          height: 24px;
           margin: 96px auto;
-          border: 3px solid rgba(15, 45, 82, 0.15);
+          border: 3px solid var(--itg-color-border, #dddddd);
           border-top-color: var(--itg-color-primary, #0f2d52);
           border-radius: 50%;
           animation:
-            itg-init-loader-spin 0.9s linear infinite,
+            itg-init-loader-spin 0.8s linear infinite,
             itg-init-loader-fade-in 0.25s ease-out;
         }
         @media (prefers-reduced-motion: reduce) {
           #root:empty::before {
             animation: itg-init-loader-fade-in 0.25s ease-out;
             opacity: 0.7;
+          }
+        }
+        /* Forced colours would paint the whole ring one colour: GrayText with a CanvasText top, as LoadingIndicator. */
+        @media (forced-colors: active) {
+          #root:empty::before {
+            forced-color-adjust: none;
+            border-color: GrayText;
+            border-top-color: CanvasText;
           }
         }
       }

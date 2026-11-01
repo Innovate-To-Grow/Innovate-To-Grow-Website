@@ -1,5 +1,6 @@
 import React, {Suspense, type ReactElement} from 'react';
 import {createBrowserRouter, Navigate, type DataRouter, type RouteObject} from 'react-router';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Layout} from '@/features/layout';
 import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';
@@ -12,23 +13,13 @@ import {EMBED_APP_ROUTES} from './embedAppRoutes';
 import {NavigationPending, type LatestLocationSource} from './NavigationPending';
 import {RouteErrorPage} from './RouteErrorPage';
 
-// Matches the inline spinner in pages/index.html (#root:empty::before) so
-// lazy-route fallbacks and the initial-load spinner share one visual language.
+// While a lazy route's chunk loads: the site's one loading look (the 24px spinner and its label), centred like the
+// layout's own Suspense fallback (Container.tsx), so it matches the page's loading line that follows it. The boot
+// spinner in pages/index.html (#root:empty::before) draws the same ring before the bundle runs.
 const routeFallback = (
-    <div
-        aria-label="Loading"
-        role="status"
-        style={{
-            display: 'block',
-            width: 44,
-            height: 44,
-            margin: '96px auto',
-            border: '3px solid rgba(15, 45, 82, 0.15)',
-            borderTopColor: 'var(--itg-color-primary, #0f2d52)',
-            borderRadius: '50%',
-            animation: 'itg-init-loader-spin 0.9s linear infinite',
-        }}
-    />
+    <div className="page-loader" role="status">
+        <LoadingIndicator label="Loading…"/>
+    </div>
 );
 
 const lazyRoute = (element: ReactElement): ReactElement => (

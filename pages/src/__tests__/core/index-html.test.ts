@@ -52,6 +52,38 @@ describe('index.html page shell', () => {
     expect(getComputedStyle(document.getElementById('footer-root')!).display).toBe('none');
   });
 
+  it('draws the boot spinner as the ring of the shared loading indicator', () => {
+    // The first paint, the lazy-route fallback and the pages' loading lines show one spinner, so a cold load never
+    // swaps a big ring for a small one. The boot rule runs before any token sheet, so it adds fallbacks.
+    const declarations = (css: string, selector: string): Record<string, string> => {
+      const body = css.slice(css.indexOf(`${selector} {`)).match(/\{([^}]*)\}/)?.[1] ?? '';
+      return Object.fromEntries(
+        body
+          .split(';')
+          .map((declaration) => {
+            const colon = declaration.indexOf(':');
+            return [declaration.slice(0, colon).trim(), declaration.slice(colon + 1).trim().replace(/\s+/g, ' ')];
+          })
+          .filter(([property, value]) => property && value),
+      );
+    };
+    const withoutFallbacks = (value: string) => value.replace(/var\((--[\w-]+), [^)]+\)/g, 'var($1)');
+    const inline = Array.from(shell.head.querySelectorAll('style'), (node) => node.textContent).join('\n');
+    const indicatorCss = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), '../../components/LoadingIndicator/LoadingIndicator.css'),
+      'utf8',
+    );
+    const boot = declarations(inline, '#root:empty::before');
+    const spinner = declarations(indicatorCss, '.loading-indicator-spinner');
+
+    for (const property of ['box-sizing', 'width', 'height', 'border', 'border-top-color', 'border-radius']) {
+      expect(withoutFallbacks(boot[property] ?? ''), property).toBe(spinner[property]);
+    }
+    const turn = (animation: string) => animation.match(/-spin (\S+) linear infinite/)?.[1];
+    expect(turn(boot.animation)).toBe(turn(spinner.animation));
+    expect(turn(spinner.animation)).toBe('0.8s');
+  });
+
   it('leaves the header and footer roots alone on normal routes', () => {
     mountShell({isolated: false});
     expect(getComputedStyle(document.getElementById('menu-root')!).display).not.toBe('none');
