@@ -587,7 +587,8 @@ class AdminInvitationAdminTests(_AdminTestBase):
     def test_save_model_new_sends_invitation(self, mock_send):
         request = _request(self.rf, self.admin_user, method="post")
         inv = AdminInvitation(email="New@Example.com", role=AdminInvitation.Role.ADMIN)
-        self.model_admin.save_model(request, inv, form=None, change=False)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.model_admin.save_model(request, inv, form=None, change=False)
         inv.refresh_from_db()
         self.assertEqual(inv.email, "new@example.com")
         self.assertTrue(inv.token)
@@ -601,7 +602,8 @@ class AdminInvitationAdminTests(_AdminTestBase):
     def test_save_model_new_email_failure_warns(self, mock_send):
         request = _request(self.rf, self.admin_user, method="post")
         inv = AdminInvitation(email="fail@example.com", role=AdminInvitation.Role.ADMIN)
-        self.model_admin.save_model(request, inv, form=None, change=False)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.model_admin.save_model(request, inv, form=None, change=False)
         self.assertTrue(any("could not be sent" in m for m in self._messages(request)))
 
     def test_save_model_change_does_not_resend(self):

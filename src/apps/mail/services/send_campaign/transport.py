@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -12,6 +13,7 @@ from apps.core.services.aws.provider_outcomes import (
     PROVIDER_OUTCOME_TRANSIENT,
     PROVIDER_OUTCOME_UNCERTAIN,
 )
+from apps.core.services.delivery_rates import Lane, RateDeferred
 from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
 
 SES_OUTCOME_SUCCESS = PROVIDER_OUTCOME_SUCCESS
@@ -30,6 +32,8 @@ class SesSendResult:
     outcome: str = ""
     # Seconds the provider asked us to wait before retrying (a transient outcome only).
     retry_after: float | None = None
+    # Set when the delivery-rate limiter held the message back (certainly not sent): when to try again.
+    deferred_until: datetime | None = None
 
     def __post_init__(self):
         if not self.outcome:
@@ -81,7 +85,8 @@ def _send_via_ses(
     delivery_attempt=0,
     keep_sent_copy=True,
 ) -> SesSendResult:
-    """Send one campaign message. ``keep_sent_copy=False`` marks one that carries the recipient's login link.
+    """Send one campaign message on the bulk delivery lane. ``keep_sent_copy=False`` marks one that carries the
+    recipient's login link.
 
     Microsoft Graph then files no copy in the sender mailbox's Sent Items, which needs its JSON form, and that form
     cannot carry ``List-Unsubscribe``: such a message keeps only the footer's unsubscribe link.
@@ -107,6 +112,7 @@ def _send_via_ses(
             retry_config=NO_PROVIDER_RETRIES,
             configuration_set=configuration_set,
             before_provider_call=before_provider_call,
+            lane=Lane.BULK,
         )
         return SesSendResult(message_id=result.message_id, provider=result.provider, outcome=result.outcome)
     except EmailDeliveryError as exc:
@@ -115,6 +121,7 @@ def _send_via_ses(
             provider=getattr(ses_client, "provider", ""),
             outcome=exc.outcome,
             retry_after=getattr(exc, "retry_after", None),
+            deferred_until=exc.until if isinstance(exc, RateDeferred) else None,
         )
 
 

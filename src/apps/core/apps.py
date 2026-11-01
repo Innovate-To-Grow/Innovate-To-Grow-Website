@@ -13,9 +13,12 @@ class CoreConfig(AppConfig):
 
         from . import checks  # noqa: F401  # registers the system checks
         from .admin.legacy_view import get_legacy_view_admin_urls
+        from .services.delivery_rates import Family, register_family
         from .services.delivery_rates import receivers as delivery_rate_receivers
 
         delivery_rate_receivers.connect()
+        # The worker's claim-time gates and the inline batch sizes find the active email channel through this.
+        register_family(Family.EMAIL, "apps.core.services.email.registry.active_rate_target")
 
         if getattr(admin.AdminSite, "_core_legacy_view_urls_patched", False):
             return

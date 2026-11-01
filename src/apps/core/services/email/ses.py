@@ -3,11 +3,19 @@
 import boto3
 from botocore.config import Config
 
+from apps.core.models.base.delivery_rates import DeliveryChannel
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 from apps.core.services.aws.provider_outcomes import classify_aws_send_failure
+from apps.core.services.delivery_rates import ses_identity
+from apps.core.services.delivery_rates.adapters.ses import ses_signal
 
 from .contracts import DeliveryResult, EmailMessage
-from .exceptions import PermanentEmailDeliveryError, TransientEmailDeliveryError, UncertainEmailDeliveryError
+from .exceptions import (
+    PermanentEmailDeliveryError,
+    TransientEmailDeliveryError,
+    UncertainEmailDeliveryError,
+    with_signal,
+)
 from .mime import build_mime_message
 
 _ERROR_TYPES = {
@@ -21,6 +29,7 @@ class SESProvider:
     """Deliver raw MIME messages through SES using explicit DB credentials."""
 
     name = "ses"
+    rate_channel = DeliveryChannel.SES_SEND
 
     def __init__(
         self,
@@ -34,6 +43,18 @@ class SESProvider:
         self.from_name = from_name
         self.configuration_set = configuration_set
         self.retry_config = retry_config
+
+    def rate_identity(self) -> str:
+        """SES quotas are per account and Region: the active AWS credential row and its Region."""
+        from apps.core.models import AWSCredentialConfig
+
+        aws = AWSCredentialConfig.load()
+        return ses_identity(aws.pk, aws.region)
+
+    def rate_costs(self, message: EmailMessage) -> dict:
+        # SES counts every recipient, against its sending rate and its 24-hour quota alike.
+        recipients = max(1, len(message.envelope_recipients))
+        return {"pace_cost": recipients, "budget_cost": recipients, "message_cost": 1}
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         mime = build_mime_message(message, from_email=self.from_email, from_name=self.from_name)
@@ -66,7 +87,7 @@ class SESProvider:
             response = client.send_raw_email(**kwargs)
         except Exception as exc:
             outcome, detail = classify_aws_send_failure(exc, provider="AWS SES")
-            raise _ERROR_TYPES[outcome](detail) from exc
+            raise with_signal(_ERROR_TYPES[outcome](detail), ses_signal(exc)) from exc
 
         message_id = response.get("MessageId")
         if not message_id:

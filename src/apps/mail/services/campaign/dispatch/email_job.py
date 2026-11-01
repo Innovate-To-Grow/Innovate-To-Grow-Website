@@ -1,4 +1,5 @@
-"""Outbox handler that sends one email campaign recipient through SES."""
+"""Outbox handler that sends one email campaign recipient through the active provider, on the bulk delivery lane
+(the email facade paces it; a deferral reruns the job at its slot without using up an attempt)."""
 
 from django.db import transaction
 from django.utils import timezone
@@ -9,8 +10,6 @@ from apps.core.services.background_jobs import (
     PermanentJobError,
     TransientJobError,
     UncertainJobError,
-    configured_ses_rate,
-    wait_for_delivery_slot,
 )
 from apps.mail.models import RecipientLog
 from apps.mail.services.campaign.personalize import personalize
@@ -70,7 +69,6 @@ def send_email_recipient_job(job) -> None:
         if provider_config is None:
             raise RuntimeError("Email delivery is not configured.")
         subject, wrapped_html, unsubscribe_url, keep_sent_copy = _render_recipient_email(log)
-        wait_for_delivery_slot(config.provider, configured_ses_rate(config))
 
         def begin_provider_call():
             if not job.begin_provider_call():

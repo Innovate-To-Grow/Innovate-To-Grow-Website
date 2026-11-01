@@ -36,6 +36,7 @@ from .rules.channels import (
     smtp_identity,
 )
 from .rules.signals import (
+    CONFIG_REASONS,
     RateSignal,
     Reason,
     Scope,
@@ -62,6 +63,7 @@ from .runtime.state import AdmissionInTransaction
 from .snapshot import ChannelStatus, IdentityStatus, channel_status, snapshot
 
 __all__ = [
+    "CONFIG_REASONS",
     "Admission",
     "AdmissionInTransaction",
     "ChannelStatus",

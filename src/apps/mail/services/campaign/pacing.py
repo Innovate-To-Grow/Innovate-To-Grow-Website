@@ -19,20 +19,6 @@ def format_duration(seconds: float) -> str:
     return " ".join(parts)
 
 
-def campaign_job_spacing(config=None) -> float:
-    """Seconds between the recipient jobs of one queued email campaign.
-
-    The worker claims jobs strictly by ``available_at``, and Microsoft Graph's per-minute ceiling makes a campaign
-    take far longer than other queued work. Making each recipient due at its paced slot lets ticket emails, security
-    notices and other job kinds queued meanwhile run between them. SES and SMTP keep every recipient due at once.
-    """
-    config = config or EmailServiceConfig.load()
-    if config.provider != EmailServiceConfig.Provider.GRAPH:
-        return 0.0
-    rate = config.effective_send_rate
-    return 1 / rate if rate > 0 else 0.0
-
-
 def delivery_pacing_notice(config, recipient_count: int) -> dict | None:
     """A notice for the send-confirmation page, or None when the provider adds no limits worth showing.
 

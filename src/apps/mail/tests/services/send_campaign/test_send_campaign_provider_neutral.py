@@ -13,7 +13,13 @@ from uuid import uuid4
 
 from django.test import SimpleTestCase, TestCase, override_settings
 
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
+from apps.core.models import (
+    AWSCredentialConfig,
+    DeliveryRateState,
+    EmailServiceConfig,
+    MicrosoftGraphProviderConfig,
+    SMTPProviderConfig,
+)
 from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES
 from apps.core.services.email import (
     DeliveryResult,
@@ -235,10 +241,12 @@ class SendViaGraphEndToEndTests(TestCase):
             (500, {}, SES_OUTCOME_UNCERTAIN),
             (403, {}, SES_OUTCOME_PERMANENT),
             (400, {}, SES_OUTCOME_PERMANENT),
-            (507, {}, SES_OUTCOME_PERMANENT),
+            # A full sender mailbox stops Graph sending until space is freed: retried later, not failed for good.
+            (507, {}, SES_OUTCOME_TRANSIENT),
         )
         for status, headers, outcome in cases:
             with self.subTest(status=status):
+                DeliveryRateState.objects.all().delete()  # each answer on its own, not inside the last one's cooldown
                 self.transport.send_response = HttpResponse(status, headers, DENIED_BODY.encode())
 
                 with self.assertLogs(GRAPH_LOGGER, level="WARNING") as logs:
@@ -361,16 +369,23 @@ class GraphCampaignRunTests(TestCase):
             self.assertEqual(mime["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click")
         self.assertEqual(len({log.provider_message_id for log in logs.values()}), 3)
 
-    def test_graph_rejection_fails_every_recipient_with_a_generic_message(self):
+    def test_graph_rejection_stops_the_campaign_and_pauses_the_rest_until_resumed(self):
+        # Microsoft refusing to let the app send as the mailbox stops Graph sending (a breaker). The runner waits
+        # out its first timed probe (as long as waits.dedicated_seconds allows), which is refused too; the breaker
+        # then stays open for longer, so the last recipient is paused instead of failing.
         transport = FakeGraphTransport(HttpResponse(403, {}, DENIED_BODY.encode()))
 
         with self.assertLogs(GRAPH_LOGGER, level="WARNING") as captured, patch(POST, transport):
             send_campaign(self.campaign, self.sender)
 
         self.campaign.refresh_from_db()
-        self.assertEqual((self.campaign.status, self.campaign.failed_count), ("failed", 3))
-        for log in self.logs_by_recipient().values():
-            self.assertEqual((log.provider, log.status, log.provider_message_id), ("graph", "failed", ""))
+        self.assertEqual((self.campaign.status, self.campaign.failed_count), ("partial", 2))
+        self.assertEqual(len(transport.sent), 2)
+        logs = list(self.logs_by_recipient().values())
+        failed = [log for log in logs if log.status == "failed"]
+        self.assertEqual([log.status for log in logs if log not in failed], ["paused"])
+        for log in failed:
+            self.assertEqual((log.provider, log.provider_message_id), ("graph", ""))
             self.assertEqual(log.error_message, "Microsoft Graph rejected the request (ErrorSendAsDenied).")
         for leaked in LEAKS:
             self.assertNotIn(leaked, "\n".join(captured.output))

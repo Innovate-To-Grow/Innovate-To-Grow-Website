@@ -91,6 +91,12 @@ def challenge_error_response(exc: Exception) -> Response:
     if isinstance(exc, AuthChallengeThrottled):
         return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     if isinstance(exc, AuthChallengeDeliveryError):
+        if getattr(exc, "retry_after", None) is not None:
+            # Held back by the delivery rate: say when to try again (str(exc) is a fixed message plus the seconds).
+            payload = {"detail": str(exc), "retry_after": exc.retry_after}
+            return Response(
+                payload, status=status.HTTP_503_SERVICE_UNAVAILABLE, headers={"Retry-After": str(exc.retry_after)}
+            )
         return Response({"detail": "Failed to send verification email."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     if isinstance(exc, PhoneVerificationThrottled):
         return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)

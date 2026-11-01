@@ -1,86 +1,31 @@
-"""Delivery pacing in the core queue: the effective rate feeding the shared limiter, and Retry-After hints."""
+"""Delivery outcomes in the core queue: Retry-After hints, limiter deferrals and the retry schedule."""
 
 from datetime import timedelta
-from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
-from apps.core.models import BackgroundJob, EmailServiceConfig
+from apps.core.models import BackgroundJob
 from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
 from apps.core.services.background_jobs import (
+    DeferredJobError,
     PermanentJobError,
     TransientJobError,
     UncertainJobError,
     claim_jobs,
-    configured_ses_rate,
     enqueue_job,
     process_claimed_job,
 )
-from apps.core.services.background_jobs.delivery import provider_job_error, wait_for_email_slot
+from apps.core.services.background_jobs.delivery import provider_job_error
 from apps.core.services.background_jobs.worker import _retry_delay
+from apps.core.services.delivery_rates import RateDeferred
 from apps.core.services.email import (
     PermanentEmailDeliveryError,
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
-from apps.core.tests.graph_helpers import create_graph_config
-
-# Graph senders used in this module; the mailbox scope rules have their own tests.
-GRAPH_TEST_SCOPE = ()
-
-TENANT_ID = "1a2b3c4d-5e6f-4a1b-8c2d-3e4f5a6b7c8d"
-CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-
-
-class ConfiguredRateTest(TestCase):
-    def email(self, provider, **overrides):
-        values = {"name": "Mail", "is_active": True, "provider": provider, "from_email": "a@example.com"}
-        return EmailServiceConfig.objects.create(**values | overrides)
-
-    def test_a_graph_config_is_paced_at_its_ceiling(self):
-        create_graph_config(
-            scope=GRAPH_TEST_SCOPE,
-            name="Graph",
-            is_active=True,
-            tenant_id=TENANT_ID,
-            client_id=CLIENT_ID,
-        )
-
-        self.assertAlmostEqual(configured_ses_rate(self.email("graph", max_send_rate=10)), 0.4)
-
-    def test_a_graph_config_is_never_unlimited(self):
-        self.assertGreater(configured_ses_rate(self.email("graph", max_send_rate=0)), 0)
-
-    def test_ses_keeps_the_operators_cap(self):
-        self.assertEqual(configured_ses_rate(self.email("ses", max_send_rate=10)), 10.0)
-        self.assertEqual(configured_ses_rate(EmailServiceConfig(max_send_rate=0)), 0.0)
-
-    def test_other_objects_fall_back_to_max_send_rate_exactly_as_before(self):
-        self.assertEqual(configured_ses_rate(SimpleNamespace(max_send_rate=5)), 5.0)
-        self.assertEqual(configured_ses_rate(MagicMock(max_send_rate=7)), 7.0)
-
-    def test_unusable_values_mean_unlimited(self):
-        for label, config in (
-            ("missing attribute", SimpleNamespace()),
-            ("not a number", SimpleNamespace(max_send_rate="fast")),
-            ("infinite", SimpleNamespace(max_send_rate=float("inf"))),
-            ("negative", SimpleNamespace(max_send_rate=-3)),
-            ("none", SimpleNamespace(max_send_rate=None)),
-        ):
-            with self.subTest(label):
-                self.assertEqual(configured_ses_rate(config), 0.0)
-
-    def test_the_shared_slot_waits_use_the_effective_rate(self):
-        config = self.email("graph", max_send_rate=10)
-        with patch("apps.core.services.background_jobs.rate_limit.wait_for_delivery_slot") as wait:
-            wait_for_email_slot()
-
-        wait.assert_called_once()
-        provider, rate = wait.call_args.args
-        self.assertEqual(provider, config.provider)
-        self.assertAlmostEqual(rate, 24 / 60)
+from apps.core.services.email.exceptions import EmailRateDeferred
 
 
 class DeliveryErrorRetryAfterTest(SimpleTestCase):
@@ -108,6 +53,21 @@ class DeliveryErrorRetryAfterTest(SimpleTestCase):
         del error.retry_after
 
         self.assertIsNone(provider_job_error(error).retry_after)
+
+    def test_a_limiter_deferral_becomes_a_deferred_job_even_when_wrapped(self):
+        now = timezone.now()
+        deferred = EmailRateDeferred(RateDeferred(now + timedelta(seconds=42), "pace", now=now))
+        try:
+            raise ProviderDeliveryError(str(deferred), outcome=deferred.outcome) from deferred
+        except ProviderDeliveryError as wrapped:
+            for error in (deferred, wrapped):
+                with self.subTest(type(error).__name__):
+                    job_error = provider_job_error(error)
+
+                    self.assertIsInstance(job_error, DeferredJobError)
+                    self.assertEqual(job_error.until, deferred.until)
+        self.assertEqual(deferred.retry_after, 42)
+        self.assertEqual(str(deferred), "Email delivery is busy right now; try again in about 42 seconds.")
 
     def test_permanent_and_uncertain_outcomes_are_unchanged(self):
         self.assertIsInstance(provider_job_error(PermanentEmailDeliveryError("no")), PermanentJobError)

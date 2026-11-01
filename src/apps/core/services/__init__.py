@@ -16,7 +16,8 @@ Subsystem               What it is                                            Im
 ======================  ====================================================  ==================================================
 ``aws/``                Shared AWS credential resolution + SNS SMS send        ``authn``, ``event``, ``mail``
                         + the SES / SMS limit reads (``quotas``)
-``background_jobs/``    Durable outbox: queue, worker, retry, rate limit.      ``authn``, ``cms``, ``event``, ``mail``
+``background_jobs/``    Durable outbox: queue, worker (claims by priority,     ``authn``, ``cms``, ``event``, ``mail``
+                        skipping gated delivery lanes), retry.
                         Apps register job kinds from ``AppConfig.ready()``
                         with ``register_job_kind`` (dotted handler paths;
                         delivery kinds also name their family and lane).
@@ -24,10 +25,11 @@ Subsystem               What it is                                            Im
                         Secrets Manager (prod), 0600 files (dev), memory
                         (tests). The database keeps only ARN + version id.
 ``delivery_rates/``     Delivery-rate control for every channel (Graph, SES,   ``authn``, ``event``, ``mail`` (job-kind
-                        SMTP, Gmail IMAP and API, SMS): Smart and manual      lanes); the senders adopt it next
-                        rate, pacing, budgets, breakers, AWS limit reads.
+                        SMTP, Gmail IMAP and API, SMS): Smart and manual      and campaign lanes); in ``core``, ``email/``
+                        rate, pacing, budgets, breakers, AWS limit reads.     admits every message (SMS, IMAP: next)
                         ``rules/`` is pure; ``runtime/`` uses the state rows;
-                        ``families`` gates the worker's claims.
+                        ``families`` gates the worker's claims; ``adapters/``
+                        turn provider answers into rate signals.
 ``db_tools/``           ``safe_orm``: the read-only ORM sandbox (field /       ``cli_admin``, ``system_intelligence``
                         filter allowlists, ``MAX_ROWS``)
 ``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery;       ``authn``, ``event``, ``mail``

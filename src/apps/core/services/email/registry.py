@@ -2,8 +2,10 @@
 
 from collections.abc import Callable
 
+from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES
+
 from .contracts import EmailProvider
-from .exceptions import PermanentEmailDeliveryError
+from .exceptions import EmailDeliveryError, PermanentEmailDeliveryError
 from .graph import GraphProvider
 from .ses import SESProvider
 from .smtp import SMTPProvider
@@ -39,7 +41,8 @@ def _ses_factory(config: object, **provider_options) -> SESProvider:
         configuration_set=provider_options.get("configuration_set")
         or getattr(config, "configuration_set", None)
         or None,
-        retry_config=provider_options.get("retry_config"),
+        # One attempt per admission: botocore's own retries would send past the limiter (SES throttles answer fast).
+        retry_config=provider_options.get("retry_config") or NO_PROVIDER_RETRIES,
     )
 
 
@@ -81,6 +84,21 @@ def _graph_factory(config: object, **provider_options) -> GraphProvider:
         from_email=config.from_email,
         from_name=config.from_name,
     )
+
+
+def active_rate_target() -> tuple[str, str] | None:
+    """The active email delivery channel and identity (``delivery_rates.families``), or None while email is not set
+    up. Registered for the email family in ``CoreConfig.ready``."""
+    from apps.core.models import EmailServiceConfig
+
+    config = EmailServiceConfig.load()
+    if not config.is_active:
+        return None
+    try:
+        provider = resolve_provider(config)
+    except EmailDeliveryError:
+        return None
+    return provider.rate_channel, provider.rate_identity()
 
 
 register_provider("ses", _ses_factory)

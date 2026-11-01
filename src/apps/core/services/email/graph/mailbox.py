@@ -2,6 +2,9 @@
 
 Only GET requests are made, and the transport refuses any other request before connecting, so opening a message
 here never marks it read in Outlook, and nothing is moved or deleted, even while the app holds ``Mail.ReadWrite``.
+
+Every request is paced on the ``graph_read`` delivery channel, which shares its cooldowns with the mailbox's sends
+(Outlook limits each app and mailbox): a read waits at most ``waits.read_seconds`` for its slot.
 """
 
 import json
@@ -11,10 +14,14 @@ from urllib.parse import quote
 
 from django.conf import settings
 
+from apps.core.models.base.delivery_rates import DeliveryChannel
+from apps.core.services.delivery_rates import RateDeferred, WaitMode, admit, mailbox_identity, record, release, wait_cap
+from apps.core.services.delivery_rates.adapters.graph import graph_signal
+
 from ..exceptions import EmailDeliveryError
 from . import auth, transport
 from .access import READ, credential_for, require_mailbox
-from .errors import graph_error_code, request_id
+from .errors import graph_error_code, innermost_error_code, request_id, retryable
 from .provider import GRAPH_HOST
 
 logger = logging.getLogger(__name__)
@@ -24,7 +31,6 @@ FOLDERS = {"INBOX": "inbox", "SENT": "sentitems"}
 LIST_FIELDS = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead"
 # Graph message IDs are URL-safe base64; anything else is refused before it can become part of a URL.
 _MESSAGE_ID_RE = re.compile(r"[A-Za-z0-9_=-]{1,512}")
-_RETRYABLE_STATUSES = {408, 429, 503}
 
 
 class GraphReadError(Exception):
@@ -33,6 +39,14 @@ class GraphReadError(Exception):
 
 class GraphMessageNotFound(GraphReadError):
     pass
+
+
+class GraphReadBusy(GraphReadError):
+    """The read was held back by the delivery rate (Microsoft asked to wait, or reads are paced); nothing was sent."""
+
+    def __init__(self, retry_after: int):
+        super().__init__(f"Microsoft Graph is busy; try again in about {retry_after} seconds.")
+        self.retry_after = retry_after
 
 
 def is_message_id(value) -> bool:
@@ -78,19 +92,43 @@ class GraphMailboxReader:
 
     def _get(self, path: str, max_bytes: int) -> transport.HttpResponse:
         try:
+            admission = admit(
+                DeliveryChannel.GRAPH_READ, mailbox_identity(self.mailbox), max_wait=wait_cap(WaitMode.READ)
+            )
+        except RateDeferred as exc:
+            raise GraphReadBusy(exc.retry_after) from None
+        try:
+            response = self._request(path, max_bytes)
+        except GraphReadError as exc:
+            # A refused or busy token request is Microsoft's answer; an unreachable Graph is not, so the slot is freed.
+            signal = getattr(exc.__cause__, "rate_signal", None)
+            if signal is None:
+                release(admission)
+            else:
+                record(admission, signal)
+            raise
+        except BaseException:
+            release(admission)
+            raise
+        record(
+            admission, graph_signal(response.status, response.headers, innermost_error_code(response.body), read=True)
+        )
+        if response.status == 200:
+            return response
+        self._raise_for(response)
+
+    def _request(self, path: str, max_bytes: int) -> transport.HttpResponse:
+        try:
             access_token = auth.get_access_token(self.credential, timeout=self.timeout)
         except EmailDeliveryError as exc:
             raise GraphReadError(str(exc)) from exc
         headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
         try:
-            response = transport.get(GRAPH_HOST, path, headers, timeout=self.timeout, max_bytes=max_bytes)
+            return transport.get(GRAPH_HOST, path, headers, timeout=self.timeout, max_bytes=max_bytes)
         except (transport.ConnectFailed, transport.ResponseLost) as exc:
             raise GraphReadError("Microsoft Graph could not be reached.") from exc
         except transport.RequestNotAllowed as exc:
             raise GraphReadError(str(exc)) from exc
-        if response.status == 200:
-            return response
-        self._raise_for(response)
 
     def _raise_for(self, response: transport.HttpResponse):
         code = graph_error_code(response.body)
@@ -107,6 +145,6 @@ class GraphMailboxReader:
             raise GraphMessageNotFound("Message not found.")
         if response.status == 403:
             raise GraphReadError(f"Microsoft Graph denied access to {self.mailbox}{detail}.")
-        if response.status in _RETRYABLE_STATUSES:
+        if retryable(response.status):
             raise GraphReadError("Microsoft Graph is busy; try again in a minute.")
         raise GraphReadError(f"Microsoft Graph returned HTTP {response.status}{detail}.")

@@ -12,7 +12,7 @@ from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign import pacing
 from apps.mail.services.campaign.dispatch import queue_email_campaign
-from apps.mail.services.campaign.pacing import campaign_job_spacing, delivery_pacing_notice, format_duration
+from apps.mail.services.campaign.pacing import delivery_pacing_notice, format_duration
 
 # Graph senders used in this module; the mailbox scope rules have their own tests.
 GRAPH_TEST_SCOPE = ("sender@example.com", "admin@example.com")
@@ -157,22 +157,7 @@ def make_graph_sender(messages_per_minute=24):
     )
 
 
-class CampaignJobSpacingTests(TestCase):
-    def test_graph_spaces_recipient_jobs_at_its_pace(self):
-        self.assertAlmostEqual(campaign_job_spacing(make_graph_sender(messages_per_minute=24)), 2.5)
-
-    def test_ses_and_smtp_queue_every_recipient_at_once(self):
-        for provider in ("ses", "smtp"):
-            with self.subTest(provider):
-                self.assertEqual(campaign_job_spacing(EmailServiceConfig(provider=provider, max_send_rate=1)), 0.0)
-
-    def test_the_active_config_is_used_by_default(self):
-        make_graph_sender(messages_per_minute=30)
-
-        self.assertAlmostEqual(campaign_job_spacing(), 2.0)
-
-
-class QueuedCampaignSpacingTests(TestCase):
+class QueuedCampaignOrderTests(TestCase):
     def setUp(self):
         self.sender = make_superuser()
         self.campaign = EmailCampaign.objects.create(
@@ -186,14 +171,15 @@ class QueuedCampaignSpacingTests(TestCase):
     def campaign_jobs(self):
         return list(BackgroundJob.objects.filter(kind="mail.email_recipient").order_by("available_at", "created_at"))
 
-    def test_graph_recipient_jobs_become_due_one_pace_apart_and_logs_mirror_them(self):
+    def test_graph_recipient_jobs_are_all_due_at_once_and_logs_mirror_them(self):
+        # The limiter paces them as they run; launch no longer spreads them out.
         make_graph_sender(messages_per_minute=24)
 
         queue_email_campaign(self.campaign, sent_by=self.sender)
 
         jobs = self.campaign_jobs()
-        offsets = [(job.available_at - jobs[0].available_at).total_seconds() for job in jobs]
-        self.assertEqual(offsets, [0.0, 2.5, 5.0])
+        self.assertEqual(len({job.available_at for job in jobs}), 1)
+        self.assertEqual({job.priority for job in jobs}, {100})
         for job in jobs:
             log = RecipientLog.objects.get(pk=job.payload["recipient_log_id"])
             self.assertEqual(log.available_at, job.available_at)
@@ -205,8 +191,8 @@ class QueuedCampaignSpacingTests(TestCase):
 
         claimed = claim_jobs(batch_size=10)
 
-        # A ticket (transactional, priority 10) is claimed even before the campaign recipient already due.
-        self.assertEqual([job.kind for job in claimed], ["event.ticket_email", "mail.email_recipient"])
+        # A ticket (transactional, priority 10) is claimed before the campaign's recipients, all due already.
+        self.assertEqual([job.kind for job in claimed], ["event.ticket_email"] + ["mail.email_recipient"] * 3)
 
     def test_ses_campaign_jobs_are_all_due_at_once(self):
         EmailServiceConfig.objects.create(name="Mail", is_active=True, provider="ses", from_email="a@example.com")

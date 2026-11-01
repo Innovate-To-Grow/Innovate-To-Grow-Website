@@ -76,4 +76,7 @@ JOBS = {
     "defer_jitter_seconds": 1,
     # The worker reads each delivery lane's gate (is the lane paced, cooling down or stopped?) at most this often.
     "gate_cache_seconds": 1,
+    # Without the worker, a campaign is sent by an in-process runner: it re-reads the email configuration (picking up
+    # a provider change) and recounts its progress every this many recipients.
+    "runner_refresh_recipients": 10,
 }

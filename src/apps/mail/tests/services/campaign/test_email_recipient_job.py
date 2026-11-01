@@ -1,5 +1,6 @@
 """One email recipient's durable job: provider outcomes, rate limiting and retry classification."""
 
+from datetime import timedelta
 from unittest.mock import Mock, patch
 
 from django.db import OperationalError
@@ -11,8 +12,12 @@ from apps.core.services.background_jobs import (
     claim_jobs,
     process_claimed_job,
 )
+from apps.core.services.delivery_rates import Lane, RateDeferred
+from apps.core.services.email import DeliveryResult
+from apps.core.services.email.exceptions import EmailRateDeferred
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign.dispatch.email_job import _render_recipient_email
+from apps.mail.services.campaign.dispatch.failures import DEFERRED_LOG_MESSAGE
 from apps.mail.services.send_campaign import SesSendResult
 from apps.mail.services.send_campaign.transport import (
     SES_OUTCOME_PERMANENT,
@@ -96,35 +101,49 @@ class EmailRecipientJobTests(DurableCampaignQueueTestCase):
         self.assertEqual(log.provider_message_id, "")
         self.assertEqual(campaign.status, "failed")
 
-    @patch("apps.mail.services.campaign.dispatch.email_job.wait_for_delivery_slot")
     @patch("apps.mail.services.campaign.dispatch.email_job._unsubscribe_url_for", return_value="")
     @patch("apps.mail.services.campaign.dispatch.email_job._recipient_context", return_value={})
     @patch(
-        "apps.mail.services.campaign.dispatch.email_job._send_via_ses",
-        return_value=SesSendResult(message_id="ses-rate"),
+        "apps.mail.services.send_campaign.transport.deliver_email",
+        return_value=DeliveryResult(provider="ses", message_id="ses-rate"),
     )
-    @patch("apps.mail.services.campaign.dispatch.email_job._get_ses_client", return_value=Mock())
+    @patch("apps.mail.services.campaign.dispatch.email_job._get_ses_client")
     @patch("apps.mail.services.campaign.dispatch.email_job.EmailServiceConfig.load")
-    def test_worker_reserves_shared_configured_ses_rate(
-        self,
-        load_config,
-        _get_client,
-        _send,
-        _context,
-        _unsubscribe,
-        wait_for_slot,
-    ):
-        load_config.return_value = Mock(
-            source_address="Sender <sender@example.com>",
-            provider="ses",
-            ses_configuration_set_name="",
-            max_send_rate=7,
-        )
+    def test_the_worker_sends_on_the_bulk_lane(self, load_config, get_client, deliver, _context, _unsubscribe):
+        load_config.return_value = Mock(source_address="Sender <sender@example.com>", ses_configuration_set_name="")
+        get_client.return_value = Mock(provider="ses")
         self._queued_email()
 
         self.assertTrue(process_claimed_job(claim_jobs()[0]))
 
-        wait_for_slot.assert_called_once_with("ses", 7.0)
+        self.assertEqual(deliver.call_args.kwargs["lane"], Lane.BULK)
+
+    @patch("apps.mail.services.campaign.dispatch.email_job._unsubscribe_url_for", return_value="")
+    @patch("apps.mail.services.campaign.dispatch.email_job._recipient_context", return_value={})
+    @patch("apps.mail.services.send_campaign.transport.deliver_email")
+    @patch("apps.mail.services.campaign.dispatch.email_job._get_ses_client")
+    @patch("apps.mail.services.campaign.dispatch.email_job.EmailServiceConfig.load")
+    def test_a_recipient_held_back_by_the_delivery_rate_waits_without_using_an_attempt(
+        self, load_config, get_client, deliver, _context, _unsubscribe
+    ):
+        load_config.return_value = Mock(source_address="Sender <sender@example.com>", ses_configuration_set_name="")
+        get_client.return_value = Mock(provider="ses")
+        now = timezone.now()
+        until = now + timedelta(minutes=10)
+        deliver.side_effect = EmailRateDeferred(RateDeferred(until, "breaker:account_paused", now=now))
+        campaign, log = self._queued_email()
+        job = claim_jobs()[0]
+
+        self.assertFalse(process_claimed_job(job))
+
+        job.refresh_from_db()
+        log.refresh_from_db()
+        campaign.refresh_from_db()
+        self.assertEqual((job.status, job.attempts), (BackgroundJob.Status.RETRY, 0))
+        self.assertGreaterEqual(job.available_at, until)
+        self.assertIsNone(job.provider_call_started_at)
+        self.assertEqual((log.status, log.error_message), ("retry", DEFERRED_LOG_MESSAGE))
+        self.assertEqual(campaign.status, "queued")
 
     @patch(
         "apps.mail.services.campaign.dispatch.email_job._get_ses_client",

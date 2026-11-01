@@ -3,8 +3,10 @@ Admin configuration for AdminInvitation model.
 """
 
 import logging
+from functools import partial
 
 from django.contrib import admin, messages
+from django.db import transaction
 from django.utils import timezone
 from django.utils.html import format_html
 
@@ -109,7 +111,9 @@ class AdminInvitationAdmin(BaseModelAdmin):
             ).update(status=AdminInvitation.Status.CANCELLED, updated_at=timezone.now())
 
             super().save_model(request, obj, form, change)
-            self._send_invitation_message(request, obj, created=True)
+            # The admin saves inside a transaction; the email (paced, and possibly waiting for its slot) goes after
+            # the commit, so no lock is held across the provider call. Its message still reaches the response.
+            transaction.on_commit(partial(self._send_invitation_message, request, obj, created=True), robust=True)
         else:
             super().save_model(request, obj, form, change)
 

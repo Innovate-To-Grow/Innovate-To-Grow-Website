@@ -9,11 +9,21 @@ from apps.core.services.aws.provider_outcomes import (
     PROVIDER_OUTCOME_TRANSIENT,
     classify_aws_send_failure,
 )
-from apps.core.services.background_jobs import PermanentJobError, TransientJobError, UncertainJobError
+from apps.core.services.background_jobs import (
+    DeferredJobError,
+    PermanentJobError,
+    TransientJobError,
+    UncertainJobError,
+)
 from apps.mail.services.send_campaign.transport import SES_OUTCOME_PERMANENT, SES_OUTCOME_TRANSIENT
+
+DEFERRED_LOG_MESSAGE = "Waiting for the delivery rate; scheduled to send later."
 
 
 def _job_error_for_ses_result(result):
+    if getattr(result, "deferred_until", None) is not None:
+        # The delivery-rate limiter held it back before any provider call: run again at the slot.
+        return DeferredJobError(result.error, until=result.deferred_until)
     if result.outcome == SES_OUTCOME_TRANSIENT:
         return TransientJobError(
             result.error or "SES temporarily rejected the request.",
@@ -60,6 +70,8 @@ def _classify_sms_job_error(exc):
 
 def _delivery_failure_values(exc) -> tuple[str, str, object]:
     now = timezone.now()
+    if isinstance(exc, DeferredJobError):
+        return "retry", DEFERRED_LOG_MESSAGE, None
     if isinstance(exc, TransientJobError):
         return "retry", "Temporary delivery failure; retry scheduled.", None
     if isinstance(exc, PermanentJobError):

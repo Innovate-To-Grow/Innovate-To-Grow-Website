@@ -57,9 +57,19 @@ class DeliveryResult:
 
 
 class EmailProvider(Protocol):
-    """Contract implemented by concrete email delivery providers."""
+    """Contract implemented by concrete email delivery providers.
+
+    ``rate_channel``, ``rate_identity()`` and ``rate_costs(message)`` tell the delivery-rate limiter which channel
+    and identity (a mailbox, an SES account and Region, an SMTP login) a message is paced on, and what it costs
+    (``admit`` keyword arguments: ``pace_cost``, ``budget_cost``, ``external_cost``, ``message_cost``).
+    """
 
     name: str
+    rate_channel: str
+
+    def rate_identity(self) -> str: ...
+
+    def rate_costs(self, message: "EmailMessage") -> dict: ...
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         """Submit a message or raise a classified delivery exception.

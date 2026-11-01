@@ -70,6 +70,7 @@ SECTION_KEYS = {
         "stale_claim_seconds",
         "defer_jitter_seconds",
         "gate_cache_seconds",
+        "runner_refresh_recipients",
     ),
 }
 
@@ -177,6 +178,7 @@ _CHECKS = {
     "burst": _check_count,
     "persistent_throttle_count": _check_count,
     "default_max_attempts": _check_count,
+    "runner_refresh_recipients": _check_count,
     "unconfirmed_bulk_daily_limit": _check_count,
     "daily_limit": _check_optional_count,
     "hourly_external_limit": _check_optional_count,
