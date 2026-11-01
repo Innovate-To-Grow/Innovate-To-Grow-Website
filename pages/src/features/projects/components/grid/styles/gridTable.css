@@ -296,7 +296,8 @@ a.project-grid-title-link:focus {
   gap: 0.5rem 1rem;
 }
 
-/* Tags after a title: "New" (just saved) and "Saved" (already in the list). */
+/* Tags after a title: "Current" (a current-catalog row in a list that mixes catalogs), "New" (just saved) and
+   "Added" or "Saved" (already in the list). */
 .project-grid-row-chip {
   white-space: nowrap;
 }
