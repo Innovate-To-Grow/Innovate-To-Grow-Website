@@ -1,6 +1,7 @@
 import boto3
 
 from apps.core.models import AWSCredentialConfig
+from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
 from ..exceptions import BedrockError
 
@@ -16,22 +17,24 @@ def get_aws_config(aws_config=None):
 def get_client(aws_config=None):
     """Build a bedrock-runtime boto3 client from active AWS credentials."""
     aws_config = get_aws_config(aws_config)
+    credentials = _credentials(aws_config)
     return boto3.client(
         "bedrock-runtime",
         region_name=aws_config.region,
-        aws_access_key_id=aws_config.access_key_id,
-        aws_secret_access_key=aws_config.secret_access_key,
+        aws_access_key_id=credentials.access_key_id,
+        aws_secret_access_key=credentials.secret_access_key,
     )
 
 
 def get_management_client(aws_config=None):
     """Build a bedrock management client for model discovery."""
     aws_config = get_aws_config(aws_config)
+    credentials = _credentials(aws_config)
     return boto3.client(
         "bedrock",
         region_name=aws_config.region,
-        aws_access_key_id=aws_config.access_key_id,
-        aws_secret_access_key=aws_config.secret_access_key,
+        aws_access_key_id=credentials.access_key_id,
+        aws_secret_access_key=credentials.secret_access_key,
     )
 
 
@@ -43,9 +46,17 @@ def get_cloudwatch_client(aws_config=None):
     billed per request.
     """
     aws_config = get_aws_config(aws_config)
+    credentials = _credentials(aws_config)
     return boto3.client(
         "cloudwatch",
         region_name=aws_config.region,
-        aws_access_key_id=aws_config.access_key_id,
-        aws_secret_access_key=aws_config.secret_access_key,
+        aws_access_key_id=credentials.access_key_id,
+        aws_secret_access_key=credentials.secret_access_key,
     )
+
+
+def _credentials(config):
+    try:
+        return resolve_aws_credentials("bedrock", config=config)
+    except AwsCredentialsError as exc:
+        raise BedrockError(str(exc)) from None

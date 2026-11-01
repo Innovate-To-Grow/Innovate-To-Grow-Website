@@ -2,6 +2,7 @@ import logging
 import os
 
 from apps.core.models import AWSCredentialConfig
+from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 from apps.system_intelligence.services.bedrock import normalize_bedrock_model_id
 
 from .errors import SystemIntelligenceAgentError
@@ -42,9 +43,13 @@ def bedrock_litellm_credentials(aws_config: AWSCredentialConfig) -> dict[str, st
         raise SystemIntelligenceAgentError(
             "AWS credentials are not configured. Add an active AWS Credential Config first."
         )
+    try:
+        credentials = resolve_aws_credentials("bedrock", config=aws_config)
+    except AwsCredentialsError as exc:
+        raise SystemIntelligenceAgentError(str(exc)) from None
     return {
-        "aws_access_key_id": aws_config.access_key_id,
-        "aws_secret_access_key": aws_config.secret_access_key,
+        "aws_access_key_id": credentials.access_key_id,
+        "aws_secret_access_key": credentials.secret_access_key,
         "aws_region_name": aws_config.region,
     }
 
