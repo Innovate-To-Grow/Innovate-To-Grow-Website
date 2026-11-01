@@ -28,6 +28,8 @@ interface DesktopRowProps {
   savedRowLabel: string;
   isHighlighted: boolean;
   sortField: ProjectGridColumnKey;
+  /** The row's details say they are loading; false when every row was opened at once (useDetailsAnnouncements). */
+  announceDetails: boolean;
 }
 
 type DesktopCellProps = Pick<DesktopRowProps, 'row' | 'linkScope' | 'isHighlighted' | 'isSaved' | 'savedRowLabel'> & {
@@ -88,9 +90,10 @@ const DesktopActionsCell = ({
         aria-controls={detailsId}
         onClick={() => onToggleExpanded(row.__key)}
       >
-        {/* The reference's navy square with a white arrow; the hidden text names the button. */}
+        {/* The reference's navy square with a white arrow. The hidden text names the button after its project, one
+            name whether open or closed: aria-expanded says which. */}
         <span className="project-grid-detail-icon" aria-hidden="true" />
-        <span className="sr-only">{isExpanded ? 'Hide' : 'Details'}</span>
+        <span className="sr-only">{`Details for ${row.project_title}`}</span>
       </button>
     ) : (
       <span className="project-grid-no-details">No details</span>
@@ -128,6 +131,7 @@ export const DesktopRow = ({
   savedRowLabel,
   isHighlighted,
   sortField,
+  announceDetails,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const detailsId = useId();
@@ -190,8 +194,19 @@ export const DesktopRow = ({
         <tr className="project-grid-detail-row is-expanded">
           <td className="project-grid-detail-spacer" colSpan={leadingColumns} />
           <td colSpan={detailColumns}>
-            <div id={detailsId} className="project-grid-detail-content">
-              <ProjectGridRowDetails row={row} scope={linkScope} loadMissingDetails={loadMissingDetails} />
+            {/* A row of its own, away from the title: the group's name says which project these details are of. */}
+            <div
+              id={detailsId}
+              className="project-grid-detail-content"
+              role="group"
+              aria-label={`Details for ${row.project_title}`}
+            >
+              <ProjectGridRowDetails
+                row={row}
+                scope={linkScope}
+                loadMissingDetails={loadMissingDetails}
+                announce={announceDetails}
+              />
             </div>
           </td>
         </tr>

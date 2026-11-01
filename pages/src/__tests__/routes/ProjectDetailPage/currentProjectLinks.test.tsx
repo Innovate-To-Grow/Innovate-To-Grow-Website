@@ -100,7 +100,7 @@ describe('current project links', () => {
     const table = desktopTable();
     const row = within(table).getByRole('link', {name: 'Sustainability Dashboard'}).closest('tr') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', {name: /details/i}));
-    const openPage = within(table).getByRole('link', {name: 'Open the project page'});
+    const openPage = within(table).getByRole('link', {name: 'Open the project page for Sustainability Dashboard'});
     expect(openPage).toHaveAttribute('href', `/projects/${DASHBOARD_PROJECT_ID}`);
     fireEvent.click(openPage);
 

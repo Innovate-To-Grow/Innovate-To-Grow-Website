@@ -85,7 +85,7 @@ export const PastProjectsPage = () => {
 
   return (
     <div className="past-projects-page">
-      <header className="past-projects-header">
+      <header className="past-projects-header" data-embed-section="page-header">
         <h1 className="itg-page-title">Past Projects</h1>
         {/* Its line is there while the archive loads too: arriving later, it pushed the lede and the whole builder
             down (most of the page's layout shift). */}

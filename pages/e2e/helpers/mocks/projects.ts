@@ -22,14 +22,24 @@ export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Pro
     const url = new URL(route.request().url());
     const pageNumber = Number(url.searchParams.get('page') ?? 1);
     const pageSize = Number(url.searchParams.get('page_size') ?? 20);
+    // ?search= matches the fields the API searches, abstracts included, case-insensitively.
+    const search = url.searchParams.get('search')?.toLowerCase();
+    const matching = search
+      ? rows.filter((row) =>
+          [
+            row.project_title, row.team_name, row.team_number, row.organization, row.industry, row.class_code,
+            row.abstract, row.student_names,
+          ].some((value) => value.toLowerCase().includes(search)),
+        )
+      : rows;
     const start = (pageNumber - 1) * pageSize;
-    const results = rows.slice(start, start + pageSize).map((row) => ({
+    const results = matching.slice(start, start + pageSize).map((row) => ({
       id: row.id, semester_label: row.semester_label, class_code: row.class_code,
       team_number: row.team_number, team_name: row.team_name, project_title: row.project_title,
       organization: row.organization, industry: row.industry, track: row.track,
       presentation_order: row.presentation_order,
     }));
-    return route.fulfill(json({count: rows.length, next: null, previous: null, results}));
+    return route.fulfill(json({count: matching.length, next: null, previous: null, results}));
   });
 }
 

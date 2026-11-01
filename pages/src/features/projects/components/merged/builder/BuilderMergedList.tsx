@@ -268,6 +268,7 @@ export const BuilderMergedList = (props: BuilderMergedListProps) => {
       <MergedListGrid
         table={table}
         rows={rows}
+        title={title}
         sharedMode={false}
         highlightedKeys={recentlyAdded?.keys}
         onDeleteRow={actions.handleDeleteRow}

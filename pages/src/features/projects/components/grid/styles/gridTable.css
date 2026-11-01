@@ -16,23 +16,12 @@
   white-space: nowrap;
 }
 
-/* Sortable headers: DataTables' 19px sort_both / sort_asc / sort_desc images redrawn as SVG (#dcdcdc double
-   arrow; the sorted column's one arrow in #7a80dd) at the right edge. The whole header cell is the sort button. */
-.project-grid-table thead th.project-grid-sortable {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9zM5 10l4.5 6.5 4.5-6.5z' fill='%23dcdcdc'/%3E%3C/svg%3E");
-  background-position: right center;
-  background-repeat: no-repeat;
-}
-
-.project-grid-table thead th.is-sorted-asc {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9z' fill='%237a80dd'/%3E%3C/svg%3E");
-}
-
-.project-grid-table thead th.is-sorted-desc {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 10l4.5 6.5 4.5-6.5z' fill='%237a80dd'/%3E%3C/svg%3E");
-}
-
+/* Sortable headers: DataTables' 19px sort_both / sort_asc / sort_desc arrows at the right edge of the cell, drawn
+   as masks so they take the theme's colours: a grey double arrow on a column that can be sorted (dark enough to
+   find, at least 3:1 on white, where the reference's #dcdcdc was 1.4:1) and one navy arrow on the sorted column.
+   The whole header cell is the sort button; hovering it underlines the label. */
 .project-grid-sort-button {
+  position: relative;
   display: block;
   box-sizing: content-box;
   width: 100%;
@@ -47,10 +36,54 @@
   cursor: pointer;
 }
 
+.project-grid-sort-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 19px;
+  height: 19px;
+  margin-top: -9.5px;
+  background-color: var(--itg-color-text-secondary);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9zM5 10l4.5 6.5 4.5-6.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9zM5 10l4.5 6.5 4.5-6.5z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.project-grid-sortable.is-sorted .project-grid-sort-button::after {
+  background-color: var(--itg-color-primary);
+}
+
+.project-grid-sortable.is-sorted-asc .project-grid-sort-button::after {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 9 9.5 2.5 14 9z'/%3E%3C/svg%3E");
+}
+
+.project-grid-sortable.is-sorted-desc .project-grid-sort-button::after {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 10l4.5 6.5 4.5-6.5z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='19' height='19'%3E%3Cpath d='M5 10l4.5 6.5 4.5-6.5z'/%3E%3C/svg%3E");
+}
+
+.project-grid-sort-button:hover {
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+.project-grid-sort-button:hover::after {
+  background-color: var(--itg-color-primary-hover);
+}
+
+/* The button reaches the top (and, in the first column, the left) edge of the table's scroll box, which cut off
+   the outside focus ring there: draw it just inside the cell instead. */
+.project-grid-sort-button:focus-visible {
+  outline-offset: -3px;
+}
+
 /* Row shading, as DataTables does it: the stripes count the project rows only (an open row's details do not
    shift them), the sorted column is shaded ("sorting_1": #f1f1f1 on striped rows, #fafafa on the others), an
-   open row is the reference's "shown" row (bold #162d4f on #f6f6f6, sorted column #eaeaea, a 1px #ccc rule
-   under it) with its details on white below, and a checked row is #fff6db. */
+   open row is the reference's "shown" row (#162d4f on #f6f6f6, sorted column #eaeaea, a 1px #ccc rule under it)
+   with its details on white below, and a checked row is #fff6db. The reference also set the open row in bold;
+   that made long titles wrap one line more, so the row jumped under the pointer as it opened, and with every
+   row open the table was all bold. A navy rule down its left edge marks it instead. */
 .project-grid-table tbody > tr.project-grid-row > td {
   background: transparent;
 }
@@ -71,7 +104,10 @@
   border-bottom: 1px solid #cccccc;
   background: #f6f6f6;
   color: #162d4f;
-  font-weight: 700;
+}
+
+.project-grid-table tbody > tr.project-grid-row.is-expanded > td:first-child {
+  box-shadow: inset 3px 0 0 var(--itg-color-primary);
 }
 
 .project-grid-table tbody > tr.project-grid-row.is-expanded > td.is-sorted-col {
@@ -200,11 +236,6 @@ td.project-grid-col-semester_label {
    underline. A title without a page is plain text. */
 .project-grid-title {
   font-weight: 400;
-}
-
-/* The open row is bold throughout, its title included. */
-.project-grid-row.is-expanded .project-grid-title {
-  font-weight: 700;
 }
 
 a.project-grid-title-link {

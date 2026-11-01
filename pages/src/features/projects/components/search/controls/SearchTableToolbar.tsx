@@ -39,18 +39,15 @@ export const SaveControls = ({
       aria-disabled={save.isSaving || !hasSelection || mergeDisabled || undefined}
       aria-describedby={hasSelection ? undefined : selectionHintId}
     >
-      {save.isSaving ? `${mergingVerb}…` : mergeLabel}
+      {/* Each changing text is its element's only child, so page translation cannot leave a stale copy behind. */}
+      <span>{save.isSaving ? `${mergingVerb}…` : mergeLabel}</span>
       {!save.isSaving && selectedCount ? (
-        <span className="search-table-save-count" aria-hidden="true">
-          {' '}
-          · {selectedCount}
-        </span>
+        <span className="search-table-save-count" aria-hidden="true">{` · ${selectedCount}`}</span>
       ) : null}
     </button>
     {selectedCount ? (
       <span className="search-table-selection-count">
-        {selectedCount} selected
-        {hiddenSelectedCount ? ` (${hiddenSelectedCount} not shown by the current search)` : ''}
+        {`${selectedCount} selected${hiddenSelectedCount ? ` (${hiddenSelectedCount} not shown by the current search)` : ''}`}
       </span>
     ) : null}
   </>

@@ -24,6 +24,7 @@ interface ProjectGridMobileCardsProps {
   isRowSaved?: (row: ProjectGridItem) => boolean;
   savedRowLabel?: string;
   highlightedKeys?: ReadonlySet<string>;
+  announceDetails: boolean;
 }
 
 /** The phone layout: one list row per project instead of the wide table. */
@@ -42,6 +43,7 @@ export const ProjectGridMobileCards = ({
   isRowSaved,
   savedRowLabel = 'Saved',
   highlightedKeys,
+  announceDetails,
 }: ProjectGridMobileCardsProps) => {
   // Archive tables lead each row with its term; the current-projects list is all one term.
   const showTerm = columns.some((column) => column.key === 'semester_label');
@@ -65,6 +67,7 @@ export const ProjectGridMobileCards = ({
           isSaved={Boolean(isRowSaved?.(row))}
           savedRowLabel={savedRowLabel}
           isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
+          announceDetails={announceDetails}
         />
       ))}
     </ol>
@@ -86,6 +89,7 @@ interface MobileCardProps {
   isSaved: boolean;
   savedRowLabel: string;
   isHighlighted: boolean;
+  announceDetails: boolean;
 }
 
 /** Non-empty parts joined with " · ". */
@@ -138,7 +142,10 @@ const MobileCardActions = ({
         aria-controls={detailsId}
         onClick={() => onToggleExpanded(row.__key)}
       >
-        {isExpanded ? 'Hide details' : 'Show details'}
+        {/* The label has its own element, so page translation cannot leave it reading "Show details" when open.
+            The hidden text names the project, as the table's Details button does. */}
+        <span>{isExpanded ? 'Hide details' : 'Show details'}</span>{' '}
+        <span className="sr-only">{`for ${row.project_title}`}</span>
         <span aria-hidden="true">{isExpanded ? ' ▴' : ' ▾'}</span>
       </button>
     ) : null}
@@ -172,6 +179,7 @@ const MobileCard = ({
   isSaved,
   savedRowLabel,
   isHighlighted,
+  announceDetails,
 }: MobileCardProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const detailsId = useId();
@@ -206,7 +214,12 @@ const MobileCard = ({
 
         {isExpanded ? (
           <div id={detailsId} className="project-grid-mobile-card-details">
-            <ProjectGridRowDetails row={row} scope={linkScope} loadMissingDetails={loadMissingDetails} />
+            <ProjectGridRowDetails
+              row={row}
+              scope={linkScope}
+              loadMissingDetails={loadMissingDetails}
+              announce={announceDetails}
+            />
           </div>
         ) : null}
 

@@ -34,6 +34,8 @@ export interface CompactPastProjectRow {
     project_title: string;
     organization: string;
     industry: string;
+    /** Sent by servers that list student names with the archive (older ones leave it out). */
+    student_names?: string;
     track: number | null;
     presentation_order: number | null;
 }
