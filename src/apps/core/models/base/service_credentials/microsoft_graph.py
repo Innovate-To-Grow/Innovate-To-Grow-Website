@@ -1,5 +1,4 @@
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -9,12 +8,6 @@ from ..control import ProjectControlModel
 from .microsoft_graph_access_check import takeover_problem
 from .microsoft_graph_certificate import MicrosoftGraphCertificate
 
-# Exchange Online limits for one sender mailbox (Microsoft Learn: "Exchange Online limits").
-GRAPH_MAX_MESSAGES_PER_MINUTE = 30
-GRAPH_DEFAULT_MESSAGES_PER_MINUTE = 24
-GRAPH_DAILY_RECIPIENT_LIMIT = 10_000
-# Emails one admin request may send inline (outside the paced queue) while Graph is the provider.
-GRAPH_INLINE_BATCH_LIMIT = 20
 # Characters that would change a Graph URL (percent-encoding keeps them out of the path, but a deny mailbox that
 # needs them is never what an operator meant).
 _URL_CHARACTERS = frozenset("/?#%\\")
@@ -73,15 +66,6 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
             "Email address / user principal name (or object ID) of the Exchange Online mailbox that sends mail "
             "and whose inbox the admin reads. Leave blank to use the From email address. It must be listed in "
             "the mailbox scope below."
-        ),
-    )
-    messages_per_minute = models.PositiveSmallIntegerField(
-        default=GRAPH_DEFAULT_MESSAGES_PER_MINUTE,
-        validators=[MinValueValidator(1), MaxValueValidator(GRAPH_MAX_MESSAGES_PER_MINUTE)],
-        verbose_name="Messages per Minute",
-        help_text=(
-            f"Exchange Online allows {GRAPH_MAX_MESSAGES_PER_MINUTE} messages per minute per mailbox. "
-            "Keep this below that limit so login codes and tickets are not throttled during campaigns."
         ),
     )
     access_check_deny_mailbox = models.CharField(

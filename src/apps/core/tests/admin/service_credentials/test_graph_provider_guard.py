@@ -25,7 +25,6 @@ def change_data(config, *, scopes=None, new_scopes=(), **overrides):
         "name": config.name,
         "is_active": "on" if config.is_active else "",
         "mailbox": config.mailbox,
-        "messages_per_minute": str(config.messages_per_minute),
         "_save": "Save",
         "mailbox_scopes-TOTAL_FORMS": str(len(scopes) + len(new_scopes)),
         "mailbox_scopes-INITIAL_FORMS": str(len(scopes)),
@@ -108,7 +107,7 @@ class SendingConfigGuardTests(GuardFixture):
         self.assertEqual(self.config.mailbox, MAILBOX)
 
     def test_changes_that_keep_it_sending_are_saved(self):
-        data = change_data(self.config, new_scopes=[("alias@contoso.com", Permission.SEND)], messages_per_minute="12")
+        data = change_data(self.config, new_scopes=[("alias@contoso.com", Permission.SEND)], name="Renamed")
 
         response = self.post(self.config, data)
 
@@ -147,7 +146,6 @@ class SendingConfigGuardTests(GuardFixture):
             "tenant_id": TENANT_ID,
             "client_id": CLIENT_ID,
             "mailbox": MAILBOX,
-            "messages_per_minute": "24",
             "_save": "Save",
             "mailbox_scopes-TOTAL_FORMS": "1",
             "mailbox_scopes-INITIAL_FORMS": "0",

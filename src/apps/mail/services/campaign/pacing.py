@@ -1,10 +1,11 @@
-"""What the active email provider's limits mean for a campaign, shown before it is sent."""
+"""What the delivery limits mean for a campaign, shown before it is sent."""
 
 from math import ceil
 
-from apps.core.models import EmailServiceConfig
-from apps.core.models.base.service_credentials.microsoft_graph import GRAPH_DAILY_RECIPIENT_LIMIT
 from apps.core.services.background_jobs import jobs_enabled
+from apps.core.services.delivery_rates import Family, active_target, channel_status
+from apps.core.services.delivery_rates.rules.defaults import section
+from apps.core.services.delivery_rates.status_text import number
 
 
 def format_duration(seconds: float) -> str:
@@ -19,21 +20,42 @@ def format_duration(seconds: float) -> str:
     return " ".join(parts)
 
 
-def delivery_pacing_notice(config, recipient_count: int) -> dict | None:
-    """A notice for the send-confirmation page, or None when the provider adds no limits worth showing.
+def _identity_status(target):
+    status = channel_status(target.channel)
+    found = next((item for item in status.identities if item.identity == target.identity), status.identities[0])
+    return status, found
 
-    Only Microsoft Graph has any (about 30 messages per minute and 10,000 recipients per day for the whole
-    mailbox). The page warns; it never blocks the send.
+
+def delivery_pacing_notice(config, recipient_count: int) -> dict | None:
+    """A notice for the send-confirmation page, or None when there is nothing to send or email is not set up.
+
+    A campaign goes on the bulk lane: at most ``lanes.bulk_share`` of the email channel's current rate (Mail →
+    Delivery Rates), and only the campaign share of each rolling 24-hour limit. The page warns; it never blocks the
+    send.
     """
-    if config.provider != EmailServiceConfig.Provider.GRAPH or recipient_count <= 0:
+    target = active_target(Family.EMAIL)
+    if recipient_count <= 0 or target is None:
         return None
-    rate = config.effective_send_rate
+    status, identity = _identity_status(target)
+    bulk_rate = identity.rate.rate * section("lanes")["bulk_share"]
+    per_second = bulk_rate / identity.rate.window
+    daily = next((limit for limit in identity.limits if limit.name == "daily_limit"), None)
     return {
         "provider": config.get_provider_display(),
-        "rate": config.send_rate_display,
-        "duration": format_duration(ceil(recipient_count / rate)) if rate > 0 else "",
-        "daily_limit": GRAPH_DAILY_RECIPIENT_LIMIT,
-        "over_daily_limit": recipient_count > GRAPH_DAILY_RECIPIENT_LIMIT,
-        # Without the background worker a throttled recipient is recorded as failed and never retried.
+        "rate": f"{number(bulk_rate)} {status.unit}",
+        "now": identity.headline,
+        "duration": format_duration(ceil(recipient_count / per_second)) if per_second > 0 else "",
+        "daily_limit": daily.limit if daily else None,
+        "campaign_daily_limit": daily.bulk_usable if daily else None,
+        "over_daily_limit": bool(daily) and recipient_count > daily.bulk_usable,
+        # Without the background worker a campaign is sent by the web server itself and paused by a long hold.
         "retries_enabled": jobs_enabled(),
     }
+
+
+def email_send_rate_line() -> str:
+    """The active email channel's live status line ("Now: … · Smart · …"), for the delivery overview pages."""
+    target = active_target(Family.EMAIL)
+    if target is None:
+        return "Not configured"
+    return _identity_status(target)[1].headline

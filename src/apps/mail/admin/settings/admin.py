@@ -12,6 +12,7 @@ from apps.core.admin.service_credentials.helpers import _normalize_phone_number,
 from apps.core.admin.service_credentials.microsoft_graph_panel import certificate_panel
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
 from apps.core.utils.access import user_can_access_app
+from apps.mail.services.campaign.pacing import email_send_rate_line
 
 from .forms import AwsDeliveryForm, EmailDeliveryForm, SMTPDeliveryForm
 
@@ -109,7 +110,7 @@ def _record_history(request, forms, history) -> None:
 
 _EDIT_FIELD_LISTS = {
     "aws_fields": ("aws_form", ("name", "is_active", "access_key_id", "secret_access_key", "default_region")),
-    "sender_fields": ("email_form", ("name", "is_active", "provider", "from_name", "from_email", "max_send_rate")),
+    "sender_fields": ("email_form", ("name", "is_active", "provider", "from_name", "from_email")),
     "smtp_fields": (
         "smtp_form",
         ("name", "is_active", "host", "port", "username", "password", "use_tls", "use_ssl", "timeout"),
@@ -186,6 +187,7 @@ def _notification_delivery_context(request, email_config, aws_config, smtp_confi
         "graph_config": graph_config,
         **_graph_context(request, graph_config),
         "email_status": "Active" if email_config.is_active else "Inactive",
+        "email_send_rate": email_send_rate_line(),
         "aws_status": "Active" if aws_config.is_active else "Inactive",
         "masked_access_key": "Secrets Manager"
         if aws_config.credentials_secret_arn

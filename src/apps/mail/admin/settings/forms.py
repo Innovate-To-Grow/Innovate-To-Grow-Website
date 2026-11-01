@@ -15,7 +15,6 @@ class EmailDeliveryForm(forms.ModelForm):
             "provider",
             "from_name",
             "from_email",
-            "max_send_rate",
         )
 
     def __init__(self, *args, **kwargs):

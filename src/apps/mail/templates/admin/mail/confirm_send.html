@@ -22,25 +22,26 @@
     </div>
 
     {% if delivery_notice %}
-    <!-- Provider limits -->
+    <!-- Delivery limits -->
     <div class="mb-6 rounded-default border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
         <div class="flex items-start gap-3">
             <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 !text-[22px] mt-0.5">schedule</span>
             <div class="text-xs text-blue-800 dark:text-blue-300 space-y-1">
-                <p class="text-sm font-semibold">{{ delivery_notice.provider }} limits how fast this mailbox can send.</p>
+                <p class="text-sm font-semibold">Campaigns through {{ delivery_notice.provider }} are paced by the delivery limits.</p>
                 <p>
-                    This campaign is sent at {{ delivery_notice.rate }}{% if delivery_notice.duration %}, so expect about {{ delivery_notice.duration }}{% endif %}.
-                    Exchange Online also allows {{ delivery_notice.daily_limit }} recipients per day for the mailbox, shared with every other email the site sends.
+                    This campaign is sent at about {{ delivery_notice.rate }}{% if delivery_notice.duration %}, so expect about {{ delivery_notice.duration }}{% endif %}; login codes and tickets keep the rest of the rate.
+                    {% if delivery_notice.daily_limit %}The provider allows {{ delivery_notice.daily_limit }} recipients per rolling 24 hours, shared with every other email the site sends, and campaigns stop at {{ delivery_notice.campaign_daily_limit }}.{% endif %}
                 </p>
+                <p>{{ delivery_notice.now }}</p>
                 {% if delivery_notice.over_daily_limit %}
                 <p class="font-semibold text-red-700 dark:text-red-400">
-                    This campaign has more recipients than that daily limit, so the remainder will fail until the allowance resets. Split it into smaller sends or use another email provider.
+                    This campaign has more recipients than campaigns may send in 24 hours, so the rest wait until the allowance frees up{% if not delivery_notice.retries_enabled %} (they are paused, and "Resume paused recipients" sends them later){% endif %}. Split it into smaller sends if it must go out sooner.
                 </p>
                 {% endif %}
                 {% if not delivery_notice.retries_enabled %}
                 <p>
                     Background jobs are disabled, so the web server sends this campaign itself{% if delivery_notice.duration %} for about {{ delivery_notice.duration }}{% endif %}.
-                    A deploy or restart in that time stops it and leaves the remaining recipients unsent, and a recipient that Microsoft throttles is marked failed and is not retried.
+                    A deploy or restart in that time stops it and leaves the remaining recipients unsent, and a recipient the provider throttles is marked failed and is not retried.
                     Enable background jobs (BACKGROUND_JOBS_ENABLED) before sending long campaigns.
                 </p>
                 {% endif %}

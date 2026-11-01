@@ -3,7 +3,7 @@ from django.core.validators import validate_email
 from django.db import models, transaction
 
 from ..control import ProjectControlModel
-from .microsoft_graph import GRAPH_INLINE_BATCH_LIMIT, MicrosoftGraphProviderConfig
+from .microsoft_graph import MicrosoftGraphProviderConfig
 from .microsoft_graph_access_check import takeover_problem
 
 
@@ -12,8 +12,8 @@ class EmailServiceConfig(models.Model):
     Email delivery configuration.
 
     AWS SES credentials and region live on ``AWSCredentialConfig``; this model
-    stores email-specific settings like sender address and campaign
-    throughput. Multiple configs can exist but only one may be active at a
+    stores email-specific settings like the sender address (send rates live in
+    ``DeliveryRatePolicy``). Multiple configs can exist but only one may be active at a
     time.
     """
 
@@ -54,13 +54,13 @@ class EmailServiceConfig(models.Model):
         verbose_name="From Name",
     )
 
+    # Replaced by Mail → Delivery Rates (``DeliveryRatePolicy``), which migration 0036 seeded from it. Kept, not
+    # editable, for one release so a task of the previous release still finds the column during a rolling deploy.
     max_send_rate = models.PositiveIntegerField(
         default=10,
+        editable=False,
         verbose_name="Campaign Send Rate (emails/sec)",
-        help_text=(
-            "Max emails per second for bulk campaigns. Keep below your provider's sending limit to leave room for "
-            "transactional mail."
-        ),
+        help_text="No longer used: rates are set under Mail → Delivery Rates.",
     )
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -169,33 +169,6 @@ class EmailServiceConfig(models.Model):
             and self.from_email
             and AWSCredentialConfig.load().ses_configured
         )
-
-    @property
-    def effective_send_rate(self) -> float:
-        """Emails per second this configuration may sustain; 0 means unlimited.
-
-        ``max_send_rate`` is the operator's cap. Microsoft Graph also has a per-minute ceiling of its own, so it is
-        never unlimited: setting the cap to 0 falls back to that ceiling.
-        """
-        configured = float(self.max_send_rate or 0)
-        if self.provider != self.Provider.GRAPH:
-            return configured
-        ceiling = MicrosoftGraphProviderConfig.load().messages_per_minute / 60
-        return min(configured, ceiling) if configured > 0 else ceiling
-
-    @property
-    def send_rate_display(self) -> str:
-        rate = self.effective_send_rate
-        if rate <= 0:
-            return "Unlimited"
-        if rate < 1:
-            return f"{round(rate * 60)} emails/min"
-        return f"{rate:g} emails/sec"
-
-    @property
-    def inline_send_limit(self) -> int | None:
-        """How many emails one admin request may send inline, outside the paced queue; None means no limit."""
-        return GRAPH_INLINE_BATCH_LIMIT if self.provider == self.Provider.GRAPH else None
 
     @property
     def delivery_summary(self):

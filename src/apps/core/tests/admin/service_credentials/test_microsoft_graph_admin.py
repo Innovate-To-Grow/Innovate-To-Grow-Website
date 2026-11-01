@@ -50,7 +50,6 @@ def form_data(**overrides):
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
         "mailbox": MAILBOX,
-        "messages_per_minute": "24",
         # The mailbox scope inline's management form, submitted with no rows.
         "mailbox_scopes-TOTAL_FORMS": "0",
         "mailbox_scopes-INITIAL_FORMS": "0",
@@ -246,11 +245,11 @@ class MicrosoftGraphProviderConfigAdminPagesTest(TestCase):
         self.assertContains(response, 'name="client_id"')
 
     def test_valid_change_is_saved_and_keeps_the_certificate(self):
-        response = self.client.post(self.change_url, self.post_data(name="Renamed", messages_per_minute="12"))
+        response = self.client.post(self.change_url, self.post_data(name="Renamed"))
 
         self.assertEqual(response.status_code, 302)
         self.config.refresh_from_db()
-        self.assertEqual((self.config.name, self.config.messages_per_minute), ("Renamed", 12))
+        self.assertEqual(self.config.name, "Renamed")
         self.assertEqual(self.config.current_certificate, self.certificate)
         self.assertTrue(self.config.is_active)
         entry = LogEntry.objects.get(object_id=str(self.config.pk))

@@ -31,8 +31,8 @@
 
         {% if inline_limit and registration_count > inline_limit %}
         <div class="mb-6 rounded-default border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300">
-            The active email provider allows at most {{ inline_limit }} emails per request, so sending to all {{ registration_count }} registrants from this page will be refused.
-            Select fewer registrations in the list and use the Resend ticket email action, or switch the email provider.
+            At the email channel's current send rate one request can send at most {{ inline_limit }} emails, so sending to all {{ registration_count }} registrants from this page will be refused.
+            Select fewer registrations in the list and use the Resend ticket email action (Mail → Delivery Rates shows the rate).
         </div>
         {% endif %}
 

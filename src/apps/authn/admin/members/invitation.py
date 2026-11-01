@@ -12,6 +12,7 @@ from django.utils.html import format_html
 
 from apps.authn.models import AdminInvitation
 from apps.core.admin import BaseModelAdmin
+from apps.core.services.delivery_rates import Family, inline_batch_limit
 
 logger = logging.getLogger(__name__)
 
@@ -141,6 +142,16 @@ class AdminInvitationAdmin(BaseModelAdmin):
 
     @admin.action(description="Resend selected pending invitations")
     def resend_invitations(self, request, queryset):
+        # The emails wait for their delivery slots inside this request, so it takes only as many as the email
+        # channel's current rate sends in one request's budget.
+        limit = inline_batch_limit(Family.EMAIL)
+        if limit is not None and queryset.count() > limit:
+            messages.error(
+                request,
+                f"{queryset.count()} invitations cannot be resent from one request at the current email send rate "
+                f"(limit {limit}; see Mail → Delivery Rates). Select fewer invitations.",
+            )
+            return
         sent = 0
         skipped = 0
 

@@ -24,10 +24,6 @@
             <dt class="text-xs font-medium uppercase text-base-400">Sender Mailbox</dt>
             <dd class="mt-1 break-all">{{ graph_config.mailbox|default:"The From email" }}</dd>
         </div>
-        <div>
-            <dt class="text-xs font-medium uppercase text-base-400">Messages per Minute</dt>
-            <dd class="mt-1">{{ graph_config.messages_per_minute }}</dd>
-        </div>
     </dl>
 {% else %}
     <p class="text-sm text-base-500 dark:text-base-400">No Microsoft Graph configuration is active.</p>

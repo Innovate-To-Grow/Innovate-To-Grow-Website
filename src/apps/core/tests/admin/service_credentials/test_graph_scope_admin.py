@@ -21,7 +21,6 @@ def form_data(**overrides):
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
         "mailbox": MAILBOX,
-        "messages_per_minute": "24",
     }
     return data | overrides
 
