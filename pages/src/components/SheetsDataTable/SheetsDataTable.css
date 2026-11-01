@@ -18,6 +18,14 @@
   color: var(--itg-color-error);
 }
 
+/* The loading line holds the shared LoadingIndicator (SheetsDataTable.tsx). As a flex row it is the indicator's
+   24px line, as the schedule's loading box above it is (.sg-loading); on a text line the indicator would add the
+   line's descent under it. */
+.sdt-loading {
+  display: flex;
+  align-items: center;
+}
+
 .sdt-controls {
   display: flex;
   flex-wrap: wrap;
