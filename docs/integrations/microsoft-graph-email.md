@@ -883,7 +883,8 @@ delivery-rate policies (Mail → Delivery Rates), seeded from `DELIVERY_RATES` (
   sent, and a login code tells the person to try again in about N seconds.
 - **Without the worker** the web server sends a campaign itself, waiting for each slot (up to 15 minutes).
   A longer hold, such as a daily limit or a Graph stop, pauses the remaining recipients and the campaign
-  ends partial.
+  ends partial; the **Resume paused recipients** action on the Email Campaigns list sends exactly those
+  later (queued for the worker when background jobs are enabled).
 - **Confirmation page.** Before a campaign is sent, the confirmation page shows the campaign rate, the
   expected duration, the daily limit and the campaign share of it, and warns when the campaign has more
   recipients than that share. It does not block the send.
