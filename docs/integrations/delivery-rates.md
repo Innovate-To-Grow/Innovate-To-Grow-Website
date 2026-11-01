@@ -52,8 +52,9 @@ lines, the send estimates and the inline batch limit all call it.
 bound B   = the smallest of: the limit the provider last reported for this identity,
             the documented limit (DELIVERY_RATES), and the operator's "Provider rate limit" (Advanced)
             else the channel's fallback_rate, shown as "limit unknown"
-Smart on  : rate = min(B × headroom × factor(now), ⌊B⌋)    the manual rate is never read
-Smart off : rate = manual rate, capped at min(B, ⌊B⌋) only when B is a known limit (never at the fallback)
+ceiling P = ⌊B⌋ when B ≥ 1 (a window holds whole requests), else B
+Smart on  : rate = min(B × headroom × factor(now), P)      the manual rate is never read
+Smart off : rate = manual rate, capped at P only when B is a known limit (never at the fallback)
 Both      : burst k = min(burst − 1, ⌊B⌋ − rate) in the channel's unit, so no window of one unit
             (a second or a minute) holds more than ⌊B⌋ requests
             cooldowns, breakers and daily budgets apply in both modes

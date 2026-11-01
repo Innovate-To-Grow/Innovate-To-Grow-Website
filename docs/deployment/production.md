@@ -209,22 +209,28 @@ paces every email, SMS and inbox session. Before or with the release:
    Until `ses:GetAccount` is granted, Smart SES runs on the limit migration
    `core.0036` copied from the old campaign send rate. That copy is flagged as
    carried over: the first limit AWS reports for the account replaces it, with
-   no manual step.
-2. **Background worker.** Set `BACKGROUND_JOBS_ENABLED` to `true` (above).
+   no manual step. `sms-voice:DescribePhoneNumbers` being already granted is
+   the repository's assumption, not verified **[CONFIRM LIVE]**.
+2. **SMTP speed.** If email is sent through SMTP, Smart rate bounds it by the
+   60 messages/min fallback (campaigns start at about 22 a minute), far below
+   the old campaign send rate (default 600 a minute), which is carried over
+   only as the SMTP manual rate. Enter the server's real limit as the SMTP
+   **Provider rate limit**, or turn Smart rate off for SMTP, if that matters.
+3. **Background worker.** Set `BACKGROUND_JOBS_ENABLED` to `true` (above).
    Without it there is no deferral, priority or lane gating: campaigns are sent
    by a web process and pause on a long hold, and old usage buckets are never
    purged.
-3. **Deploy outside campaign sends.** Until every task runs the new image, old
+4. **Deploy outside campaign sends.** Until every task runs the new image, old
    tasks pace with the `DeliveryRateLimit` table and new ones with the new
    limiter, independently, so their combined rate can double.
-4. **Migrations.** `core.0036_delivery_rate_control` (policy, state and usage
+5. **Migrations.** `core.0036_delivery_rate_control` (policy, state and usage
    tables, seeded from settings and the active email and Graph configs;
    `BackgroundJob.priority` and its claim index), `core.0037_retire_old_send_rates`
    (hides `MicrosoftGraphProviderConfig.messages_per_minute` and
    `max_send_rate`, keeping both columns), `core.0038_gmail_api_provider` and
    `mail.0020_paused_delivery_status`. None drops or renames a column, so the
    running release (PR #643 alone included) keeps working while they apply.
-5. **Image rollback.** ECS rollback never reverses DDL. An image from before
+6. **Image rollback.** ECS rollback never reverses DDL. An image from before
    this release finds every column it reads; switch email off the Gmail API
    before deploying it (it does not know that provider).
    `max_send_rate`, `messages_per_minute` and `DeliveryRateLimit` stay for one

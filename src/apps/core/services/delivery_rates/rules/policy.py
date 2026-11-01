@@ -5,8 +5,9 @@ implementation: the limiter, the status lines and the send estimates all call it
 
     bound B = min(operator provider_limit, documented ceiling, last-known reported limit)   # those that exist
               else the channel's fallback_rate ("limit unknown")
-    Smart on : rate = min(B × headroom × factor(now), ⌊B⌋)          # the manual rate is never read
-    Smart off: rate = manual rate, capped at min(B, ⌊B⌋) when B is a provider limit (never at the fallback)
+    ceiling P = ⌊B⌋ when B ≥ 1 (a window holds whole requests), else B
+    Smart on : rate = min(B × headroom × factor(now), P)          # the manual rate is never read
+    Smart off: rate = manual rate, capped at P when B is a provider limit (never at the fallback)
     Both     : burst k = min(burst − 1, ⌊B⌋ − rate), so rate·W + k never exceeds ⌊B⌋ in a window W
     SMS      : the same for message parts per second (MPS); Smart scales both, the manual rate only the messages
 
