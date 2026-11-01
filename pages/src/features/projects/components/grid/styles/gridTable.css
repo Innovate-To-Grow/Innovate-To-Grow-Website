@@ -164,8 +164,8 @@
 }
 
 /* Details: a 40px square outline button in primary (44px on touch screens, projectsResponsive.css), like the
-   site's other flat buttons; it fills navy on hover and focus. Its arrow points down to open and turns up once the
-   row is open. */
+   site's other flat buttons; it fills navy on keyboard focus and under a hovering pointer. Its arrow points down to
+   open and turns up once the row is open. */
 .project-grid-detail-icon-button {
   box-sizing: border-box;
   display: inline-flex;
@@ -183,10 +183,18 @@
   transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
 }
 
-.project-grid-detail-icon-button:hover,
 .project-grid-detail-icon-button:focus-visible {
   background: var(--itg-color-primary);
   color: var(--itg-color-white);
+}
+
+/* A touch screen keeps :hover on the button last tapped, so a tapped Details stayed navy, open or closed, and only
+   its arrow told the two apart: only a pointer that can hover fills it. */
+@media (hover: hover) {
+  .project-grid-detail-icon-button:hover {
+    background: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
 }
 
 .project-grid-detail-icon {

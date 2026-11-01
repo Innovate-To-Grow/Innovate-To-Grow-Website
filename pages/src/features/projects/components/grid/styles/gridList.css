@@ -106,10 +106,10 @@
 
 /* ---- Pager ------------------------------------------------------------------- */
 
-/* The pager sits right under the table, right-aligned (.itg-pagination); its numbers are a plain list. Every page
-   and step is a 40px outline button (44px on touch screens), square like the site's other buttons; the current page
-   is filled primary, and a step that cannot be taken uses the disabled colours. The global .itg-pagination keeps
-   its DataTables look for the other pages that use it. */
+/* The pager sits under the table, right-aligned (.itg-pagination); its numbers are a plain list. Every page and step
+   is a 40px outline button (44px on touch screens), square like the site's other buttons; the current page is the
+   only one filled primary, and a step that cannot be taken uses the disabled colours. The global .itg-pagination
+   keeps its DataTables look for the other pages that use it. */
 .itg-pagination.project-grid-pagination,
 .project-grid-pager-pages {
   gap: 0.5rem;
@@ -141,8 +141,24 @@
   transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
 }
 
-.project-grid-pagination .itg-pagination-link:hover,
-.project-grid-pagination .itg-pagination-link:focus-visible,
+/* Hover fills a page as the outline buttons do, but only for a pointer that can hover: a touch screen keeps :hover on
+   the button last tapped, which then looked like a second current page. Elsewhere a hovered button keeps its resting
+   colours, not the global pager's grey hover. Keyboard focus keeps the outline look and shows the global 2px ring,
+   so tabbing along the numbers never fills one. */
+.project-grid-pagination .itg-pagination-link:hover {
+  border-color: var(--itg-color-primary);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+}
+
+@media (hover: hover) {
+  .project-grid-pagination .itg-pagination-link:hover {
+    border-color: var(--itg-color-primary);
+    background: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
+}
+
 .project-grid-pagination .itg-pagination-link[aria-current='page'],
 .project-grid-pagination .itg-pagination-link[aria-current='page']:hover {
   border-color: var(--itg-color-primary);
