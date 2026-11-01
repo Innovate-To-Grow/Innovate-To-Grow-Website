@@ -192,9 +192,14 @@ describe('MergedResultsTable in shared mode', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', {name: /edit name/i}));
+    // Each label is its own element beside the icon, so a translated page never leaves React a detached text node.
+    const editButton = screen.getByRole('button', {name: 'Edit Name'});
+    expect(within(editButton).getByText('Edit Name').tagName).toBe('SPAN');
+    fireEvent.click(editButton);
     fireEvent.change(screen.getByLabelText('Curation name'), {target: {value: 'Updated Name'}});
-    fireEvent.click(screen.getByRole('button', {name: /save name/i}));
+    const saveButton = screen.getByRole('button', {name: 'Save Name'});
+    expect(within(saveButton).getByText('Save Name').tagName).toBe('SPAN');
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
       expect(onUpdateShare).toHaveBeenCalledWith([normalizedBaseRow], 'Updated Name', 'Owner note');

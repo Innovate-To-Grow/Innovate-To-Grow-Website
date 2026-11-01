@@ -64,7 +64,7 @@ export const SharedListHeader = ({
             disabled={editor.isSaving}
           >
             {isEditing ? <SharedSaveIcon /> : <SharedEditIcon />}
-            {isEditing ? 'Save Name' : 'Edit Name'}
+            <span>{isEditing ? 'Save Name' : 'Edit Name'}</span>
           </button>
         ) : null}
       </div>
