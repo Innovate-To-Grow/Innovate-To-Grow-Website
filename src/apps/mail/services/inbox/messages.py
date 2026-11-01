@@ -6,6 +6,8 @@ from django.core.cache import cache
 from django.db.utils import OperationalError, ProgrammingError
 from imap_tools import AND
 
+from apps.mail.services.gmail_import.credential_mail import WITHOUT_CREDENTIAL_MAIL, without_credential_mail
+
 from . import graph_backend
 from .connection import (
     INBOX_FOLDER,
@@ -59,7 +61,10 @@ def _read_list(reader, mailbox: str | None, folder: str, limit: int) -> list[dic
         import apps.mail.services.inbox as inbox_api
 
         with inbox_api._open_inbox(mailbox=mailbox, folder=folder) as client:
-            messages = list(client.fetch(limit=limit, reverse=True, mark_seen=False, bulk=True))
+            # Credential mail is never listed (``credential_mail``): left out of the search and dropped if it
+            # still comes back, before the list is cached.
+            fetched = client.fetch(WITHOUT_CREDENTIAL_MAIL, limit=limit, reverse=True, mark_seen=False, bulk=True)
+            messages = without_credential_mail(fetched)
     except InboxError:
         raise
     except Exception as exc:
@@ -85,12 +90,15 @@ def fetch_inbox_message(uid: str, mailbox: str | None = None, *, folder: str = I
         import apps.mail.services.inbox as inbox_api
 
         with inbox_api._open_inbox(mailbox=mailbox, folder=folder) as client:
-            for message in client.fetch(AND(uid=uid), limit=1, mark_seen=True, bulk=False):
-                result = detailed_message(message)
-                cache.set(cache_key, result, INBOX_MSG_CACHE_TTL)
-                update_list_cache_seen(uid, folder=folder)
-                return result
-            raise InboxError("Message not found.")
+            # Credential mail is never opened or cached (``credential_mail``), as if it were not there.
+            fetched = client.fetch(AND(WITHOUT_CREDENTIAL_MAIL, uid=uid), limit=1, mark_seen=True, bulk=False)
+            message = next(iter(without_credential_mail(fetched)), None)
+            if message is None:
+                raise InboxError("Message not found.")
+            result = detailed_message(message)
+        cache.set(cache_key, result, INBOX_MSG_CACHE_TTL)
+        update_list_cache_seen(uid, folder=folder)
+        return result
     except InboxError:
         raise
     except Exception as exc:

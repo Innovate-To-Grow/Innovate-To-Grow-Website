@@ -18,6 +18,9 @@ from apps.mail.services.gmail_import import (
     list_recent_sent_messages,
     resolve_gmail_mailbox,
 )
+from apps.mail.services.gmail_import.credential_mail import WITHOUT_CREDENTIAL_MAIL
+
+UNTAGGED = str(WITHOUT_CREDENTIAL_MAIL)
 
 
 class _FakeMailbox:
@@ -74,7 +77,8 @@ class GmailImportServiceTest(TestCase):
         self.assertTrue(messages[0]["has_html"])
         self.assertEqual(
             mailbox.fetch_calls[0],
-            {"criteria": "ALL", "limit": 5, "reverse": True, "mark_seen": False, "bulk": True},
+            # Credential mail (tagged X-I2G-Mail-Class: credential) is left out of the search.
+            {"criteria": UNTAGGED, "limit": 5, "reverse": True, "mark_seen": False, "bulk": True},
         )
 
     def test_list_recent_sent_messages_uses_requested_mailbox(self):
@@ -106,7 +110,7 @@ class GmailImportServiceTest(TestCase):
         self.assertEqual(fragment, "<p>Hello <strong>world</strong></p>")
         self.assertEqual(
             mailbox.fetch_calls[0],
-            {"criteria": "(UID 1001)", "limit": 1, "mark_seen": False, "bulk": False},
+            {"criteria": f"({UNTAGGED} UID 1001)", "limit": 1, "mark_seen": False, "bulk": False},
         )
 
     def test_fetch_message_html_fragment_uses_requested_mailbox(self):

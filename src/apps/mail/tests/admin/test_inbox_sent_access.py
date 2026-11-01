@@ -2,7 +2,8 @@
 
 The site's own mail lands in Sent Items (campaigns with login links, inbox replies), so Mail-app staff could read
 other people's sign-in links there. A Graph message id is unique in the whole mailbox, so a message from the site's
-own address counts as Sent mail whichever folder the URL names. The Gmail IMAP inbox is unchanged.
+own address counts as Sent mail whichever folder the URL names. The Gmail IMAP inbox is restricted the same way while
+its account is one the site sends as through the Gmail API (``services/inbox/test_gmail_credential_copies``).
 """
 
 from unittest.mock import patch
@@ -15,7 +16,7 @@ from apps.core.models import EmailServiceConfig
 from apps.event.tests.helpers import make_admin, make_superuser
 
 SERVICES = "apps.mail.admin.inbox.services"
-DENIED = "Sent mail of the Microsoft Graph mailbox is shown to superusers only."
+DENIED = "Sent mail of the sending mailbox is shown to superusers only."
 CODE = "482913"
 
 

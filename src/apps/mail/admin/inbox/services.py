@@ -2,6 +2,7 @@
 
 import logging
 
+from apps.mail.services.gmail_import.credential_mail import sent_copies_kept as gmail_sent_copies_kept
 from apps.mail.services.inbox import (
     INBOX_FOLDER,
     INBOX_FOLDER_CHOICES,
@@ -25,7 +26,7 @@ INBOX_CONFIG_ERROR_MESSAGE = (
 INBOX_UNEXPECTED_ERROR_MESSAGE = "Inbox could not be loaded. Check server logs."
 INBOX_MESSAGE_ERROR_MESSAGE = "Message could not be loaded. Check server logs."
 INBOX_DEFAULT_LIMIT = 30
-SENT_MAIL_DENIED_MESSAGE = "Sent mail of the Microsoft Graph mailbox is shown to superusers only."
+SENT_MAIL_DENIED_MESSAGE = "Sent mail of the sending mailbox is shown to superusers only."
 
 __all__ = [
     "INBOX_CONFIG_ERROR_MESSAGE",
@@ -42,6 +43,7 @@ __all__ = [
     "analyze_email",
     "assess_email",
     "fetch_inbox_message",
+    "gmail_sent_copies_kept",
     "graph_inbox_active",
     "list_inbox_messages",
     "logger",

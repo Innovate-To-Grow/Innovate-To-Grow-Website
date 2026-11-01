@@ -34,10 +34,10 @@ A single IAM credential pair in AWS Secrets Manager powers SES, SMS (End User Me
 
 **Required infra change for Smart rate (delivery-rate discovery).** Smart rate reads the account's sending limits with this same credential. It needs `ses:GetAccount`, which gives the SES rate and 24-hour quota and whether sending is paused. It also needs `sms-voice:DescribePhoneNumbers` (already required, below), `sms-voice:DescribeSenderIds` and `sms-voice:DescribeSpendLimits`, which give the number's message parts per second and the monthly spend limit. The credential's IAM policy lives outside this repository: `aws/cicd/identity-stack.json` grants the ECS task role only the Secrets Manager and Amplify actions, so grant these four read-only actions to the IAM user behind `credentials_secret_arn`. Until `ses:GetAccount` is granted, Smart rate bounds SES by the provider limit that migration `core.0036` seeded from the active email config's campaign send rate, or by the 1 recipient/sec sandbox fallback when that rate was 0.
 
-## Email delivery (AWS SES, SMTP, or Microsoft Graph)
+## Email delivery (AWS SES, SMTP, Microsoft Graph, or the Gmail API)
 
 The application has one globally active email provider at a time. Administrators
-select AWS SES, SMTP, or Microsoft Graph under **Mail → Notification Delivery**;
+select AWS SES, SMTP, Microsoft Graph, or the Gmail API under **Mail → Notification Delivery**;
 authentication, tickets, campaigns, inbox replies, and test messages all use that
 selection. There is no per-message routing or automatic failover.
 
@@ -47,7 +47,8 @@ selection. There is no per-message routing or automatic failover.
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
 | Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph.py`) — Entra tenant ID, client ID, optional sender mailbox, and messages per minute; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
-| Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`) |
+| Gmail API credentials | Active `GmailApiProviderConfig` (`src/apps/core/models/base/service_credentials/gmail_api.py`) — the pinned version of the service-account key in the credential store (AWS Secrets Manager in production), its public facts, and the account allow-list (`GmailApiSubject`). Domain-wide delegation for gmail.send only; superusers only |
+| Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`, the Gmail API in `gmail/`, the bounded HTTPS client both use in `transport.py`) |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
 | Ticket confirmation | `src/apps/event/services/ticket/mail.py` |
@@ -78,6 +79,20 @@ certificate, and email already on Graph can move to another Graph configuration 
 Entra app only on the same terms (`takeover_problem`). See [Microsoft Graph email](../integrations/microsoft-graph-email.md) for
 the Microsoft-side setup, key storage, validation, limits, and error reference.
 
+The Gmail API provider signs an RS256 service-account assertion for the From
+account (which must be on the config's account allow-list, checked before any key
+read or request), exchanges it at `oauth2.googleapis.com/token` for a gmail.send
+token kept in process memory only, and uploads the raw MIME to `messages.send`. Its
+key is installed by a superuser on the config's admin page and kept in the credential
+store (the Secrets Manager secret `itg/backend/gmail-api/service-account-key`, with the
+same narrow task-role grant and resource policy as the Graph key in
+`aws/cicd/identity-stack.json`). `verify_gmail_access` (or **Run access check**)
+records the evidence switching email to it needs. Gmail keeps a Sent copy of
+everything, so mail with a credential carries a protected `X-I2G-Mail-Class:
+credential` header that the admin inbox and the Gmail import filter out, and the
+inbox's Sent folder is superuser-only while the copies are kept. See
+[Gmail API email](../integrations/gmail-api-email.md).
+
 Delivery fails closed unless the selected provider and sender are structurally
 configured. A failed or uncertain request is never retried through the other
 provider. Jobs resolve the active provider when execution begins, so queued work
@@ -92,8 +107,8 @@ SES Configuration Set and SNS delivery-event tracking remain SES-specific.
 Campaigns include recipient and attempt tags so configuration-set events can
 be recorded even before the send response returns. Older untagged messages
 continue to match by their saved provider message ID.
-SMTP and Microsoft Graph record successful submission acceptance only (for Graph,
-an HTTP 202); they do not claim delivered, bounced, or complained status without a
+SMTP, Microsoft Graph and the Gmail API record successful submission acceptance only
+(for Graph, an HTTP 202; for the Gmail API, a 200); they do not claim delivered, bounced, or complained status without a
 future feedback integration. Graph's later non-delivery reports arrive in the
 sender mailbox; the admin inbox can show them, but nothing parses them. The SES
 account-level suppression list applies only to SES sends, and the application keeps
@@ -203,5 +218,6 @@ Loaded via `<script>` tags in `pages/index.html`:
 
 - [Google Sheets Integration](../integrations/google-sheets/index.md) — Detailed sync documentation
 - [Microsoft Graph email](../integrations/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
+- [Gmail API email](../integrations/gmail-api-email.md) — service account, domain-wide delegation, key install and rotation, the access check, Sent copies, and errors for the Gmail API provider
 - [Deployment: Environments](../deployment/environments.md) — Environment variable reference
 - [CMS & Admin: Member & Mail Tools](../cms-admin/member-and-mail-tools.md) — Email campaign operations

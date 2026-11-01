@@ -103,8 +103,9 @@ credential configuration references `itg/backend/aws-credentials/<config-id>`.
 The secret JSON contains `access_key_id` and `secret_access_key`; the database
 retains only its ARN, region, and service metadata. SES, SMS, Bedrock, usage
 metrics, and admin test actions use the same resolver. The ECS task role has
-read-only access to this namespace; the only secret it may write is the
-[Microsoft Graph certificate key](#microsoft-graph-certificate-key), which lives
+read-only access to this namespace; the only secrets it may write are the
+[Microsoft Graph certificate key](#microsoft-graph-certificate-key) and the
+[Gmail API service-account key](#gmail-api-service-account-key), which live
 outside it. Values are cached only in process memory
 for up to 60 seconds before rotation is picked up. Production refuses legacy
 database keys and prevents new plaintext writes. The legacy columns remain
@@ -173,6 +174,22 @@ Rollout order:
 
 Image rollback: code from before the Graph provider does not know the `graph`
 provider value. Switch email to AWS SES before deploying such an image.
+
+### Gmail API service-account key
+
+The Gmail API email provider signs with a Google service-account key that a
+superuser installs in Django admin. It is stored in its own Secrets Manager
+secret, `itg/backend/gmail-api/service-account-key`, with exactly the same
+controls as the Graph key: `GmailApiKeySecret` (created empty, `Retain` on
+deletion and replacement), `ApplicationGmailApiKey` (the task role may read,
+describe, add versions and relabel, and is denied every lifecycle and policy
+action) and `GmailApiKeySecretPolicy` (only `ecsTaskRole` may read the value or
+write versions). The database keeps only the store reference, the pinned
+version and the key's public facts. The key reaches further than the Graph one:
+with domain-wide delegation it can send as any user in the Workspace domain, so
+it needs InfoSec sign-off before go-live. Deploy the identity stack before the
+first install; until the secret exists an install fails and changes nothing.
+Runbook: [Gmail API email](../integrations/gmail-api-email.md).
 Reversing core migration `0034_microsoft_graph_provider` makes that switch
 itself.
 

@@ -55,7 +55,7 @@ The mail app (`src/apps/mail/`) provides email campaign functionality through Dj
 ### Choose the email sender
 
 Open **Mail → Notification Delivery → Edit Notification Delivery**. Under
-**Email Sender**, select **AWS SES**, **SMTP**, or **Microsoft Graph**, set the
+**Email Sender**, select **AWS SES**, **SMTP**, **Microsoft Graph**, or **Gmail API**, set the
 sender name and email address, and save the active configuration.
 
 - **AWS SES** uses the active AWS credentials and region. SMTP and Microsoft
@@ -97,8 +97,21 @@ sender name and email address, and save the active configuration.
   its footer's unsubscribe link stays.
   Setup in Entra and Exchange Online is in
   [Microsoft Graph email](../integrations/microsoft-graph-email.md).
-- AWS settings remain available for SMS even when email uses SMTP or Microsoft
-  Graph. Changing the email provider does not switch the SMS provider.
+- **Gmail API** shows the active Gmail API configuration read-only: its key
+  ID, service account, numeric client ID, project, when the key was installed
+  and the access check last passed, and the **account allow-list** (the Google
+  accounts the site may send as). There are no credential fields here: the key
+  and the list are managed by a superuser on the configuration's own page. The
+  From email must be on the list, and email can switch to the Gmail API (or
+  change its From address there) only after the access check passed for the
+  installed key. Gmail keeps a copy of everything it sends in the account's Sent
+  folder: mail with sign-in codes or login links is tagged and never shown by
+  **Mail → Inbox** or **Import from Gmail**, and the inbox's **Sent** folder is
+  shown to superusers only while the Gmail import account is one the site sends
+  as. Rates and daily limits are on **Mail → Delivery Rates**. Setup:
+  [Gmail API email](../integrations/gmail-api-email.md).
+- AWS settings remain available for SMS even when email uses SMTP, Microsoft
+  Graph or the Gmail API. Changing the email provider does not switch the SMS provider.
 
 This selection applies to verification codes, admin invitations, tickets,
 campaigns, inbox replies, and the **Send Test Email** action. Saving settings
@@ -192,7 +205,7 @@ nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeho
 1. Resolve the audience and materialize one recipient log plus one durable job
    per recipient
 2. Personalize the body for each recipient
-3. Resolve the single globally active provider (AWS SES, SMTP, or Microsoft Graph) and submit through the shared provider-neutral service
+3. Resolve the single globally active provider (AWS SES, SMTP, Microsoft Graph, or the Gmail API) and submit through the shared provider-neutral service
 4. Persist processing, retry, failed, and uncertain-delivery state per
    recipient
 5. Aggregate campaign state/counts from the recipient logs

@@ -79,7 +79,7 @@ These Django settings (not environment variables) bound the certificate, the acc
 | `CREDENTIAL_STORE_BACKEND` | `local_file` (`memory` in tests) | `secretsmanager` | Where private keys are kept: a 0600 file store, process memory, or AWS Secrets Manager |
 | `CREDENTIAL_STORE_REQUIRE_SECRETS_MANAGER` | `False` | `True` | Refuse to start (`core.E002`) with any store other than Secrets Manager |
 | `CREDENTIAL_STORE_LOCAL_DIR` | `src/data/credential-store` | not used | Directory of the local file store (gitignored, excluded from the image); throwaway keys only |
-| `CREDENTIAL_STORE_SECRETS` | `{"microsoft_graph_certificate_key": "itg/backend/microsoft-graph/certificate-key"}` | same | Logical name → secret name; a name inside `itg/backend/aws-credentials/` is refused (`core.E003`) |
+| `CREDENTIAL_STORE_SECRETS` | `{"microsoft_graph_certificate_key": "itg/backend/microsoft-graph/certificate-key", "gmail_api_service_account_key": "itg/backend/gmail-api/service-account-key"}` | same | Logical name → secret name; a name inside `itg/backend/aws-credentials/` is refused (`core.E003`) |
 | `CREDENTIAL_STORE_STAGED_LABEL` | `I2G-STAGED` | same | Staging label of a newly written version; it must not start with `AWS` (`core.E004`) |
 | `CREDENTIAL_STORE_AWS_REGION`, `CREDENTIAL_STORE_AWS_ACCOUNT_ID` | `us-west-2`, `394167325273` | same | Region of the secret, and the account its ARN must belong to |
 | `CREDENTIAL_STORE_CONNECT_TIMEOUT_SECONDS`, `CREDENTIAL_STORE_READ_TIMEOUT_SECONDS`, `CREDENTIAL_STORE_TOTAL_MAX_ATTEMPTS` | `3`, `5`, `3` | same | Secrets Manager timeouts, and attempts including the first |
@@ -102,6 +102,16 @@ These Django settings (not environment variables) bound the certificate, the acc
 | `GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS` | `30` | same | Oldest access check the gate accepts |
 
 Every number above must be positive (`core.E005`), except the clock skew, which may be `0`.
+
+### Gmail API (email)
+
+| Variable | Purpose | Required in prod |
+|----------|---------|-----------------|
+| `GMAIL_API_OVERRIDES` | JSON object of `GMAIL_API` keys to replace, e.g. `{"request_timeout_seconds": 20}` | No (empty keeps the defaults) |
+
+The Gmail API provider's service account, key facts and account allow-list live in `GmailApiProviderConfig` and are managed on its admin page by superusers (`/admin/core/gmailapiproviderconfig/`); Mail → Notification Delivery only selects it. The service-account key is kept in the credential store (`CREDENTIAL_STORE_SECRETS["gmail_api_service_account_key"]`: the Secrets Manager secret `itg/backend/gmail-api/service-account-key` in production, created empty by `aws/cicd/identity-stack.json` and written by the task role), never in the database or the environment, and `seed_service_configs` never seeds it. The backend and worker need outbound HTTPS to `oauth2.googleapis.com` and `gmail.googleapis.com`; proxy variables are ignored.
+
+`GMAIL_API` (`config/settings/base/integrations/gmail_api/`, each value with its source) holds: `request_timeout_seconds` (15), `max_response_bytes` (65536), `max_recipients_per_message` (500, Google's limit), `max_message_bytes` (25,000,000, Google's limit before encoding), `upload_max_bytes` (36,700,160, the upload endpoint's maximum), `assertion_lifetime_seconds` (300; Google allows at most 3600), `token_max_lifetime_seconds` (3600), `token_expiry_margin_seconds` (300), `key_max_input_bytes` (16384), `min_rsa_key_bits` (2048), `key_check_timeout_seconds` (10) and `access_check_timeout_seconds` (10). The recipients and size values seed the config's fields and are their ceilings. Only existing keys can be overridden, with whole numbers; an assertion lifetime above 3600, a token margin not below the token lifetime, or a size above the upload maximum raises `ImproperlyConfigured` when settings load.
 
 ### Delivery rates
 
