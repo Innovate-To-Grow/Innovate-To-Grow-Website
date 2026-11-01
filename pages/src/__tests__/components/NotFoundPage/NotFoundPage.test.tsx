@@ -38,4 +38,18 @@ describe('NotFoundPage', () => {
     expect(screen.getByRole('link', {name: 'Go to the home page'})).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', {name: 'Browse projects'})).toHaveAttribute('href', '/projects');
   });
+
+  it('names the tab and keeps the page out of search indexes while it is shown', () => {
+    const {unmount} = render(
+      <MemoryRouter>
+        <NotFoundPage />
+      </MemoryRouter>,
+    );
+
+    expect(document.title).toBe('Page Not Found | Innovate to Grow');
+    expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex');
+
+    unmount();
+    expect(document.head.querySelector('meta[name="robots"]')).toBeNull();
+  });
 });

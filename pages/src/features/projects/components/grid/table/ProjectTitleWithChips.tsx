@@ -1,6 +1,11 @@
 import type {ReactNode} from 'react';
-import {Link, useInRouterContext} from 'react-router';
-import {getProjectGridRowHref, type ProjectGridLinkScope, type ProjectGridRow} from '../contracts/projectGrid';
+import {Link, useInRouterContext, useLocation} from 'react-router';
+import {
+  getProjectGridRowHref,
+  type ProjectGridLinkScope,
+  type ProjectGridRow,
+  type ProjectPageLinkState,
+} from '../contracts/projectGrid';
 
 interface ProjectPageLinkProps {
   href: string;
@@ -9,24 +14,37 @@ interface ProjectPageLinkProps {
   children: ReactNode;
 }
 
+/** A client-side link that tells the project page which list (and which view of it) it was opened from. */
+const RouterProjectLink = ({href, className, children}: Omit<ProjectPageLinkProps, 'scope'>) => {
+  const {pathname, search} = useLocation();
+  const state: ProjectPageLinkState = {from: `${pathname}${search}`};
+  return (
+    <Link className={className} to={href} state={state}>
+      {children}
+    </Link>
+  );
+};
+
 /**
  * Link to a project page. Past-project links open in a new tab, so a curation in progress on the page is kept;
- * current-project links navigate in place (client-side when a router is present).
+ * current-project links navigate in place (client-side when a router is present), and the project page's back
+ * link returns to the list they came from.
  */
 export const ProjectPageLink = ({href, scope, className, children}: ProjectPageLinkProps) => {
   const inRouter = useInRouterContext();
   if (scope === 'past') {
     return (
       <a className={className} href={href} target="_blank" rel="noopener noreferrer">
-        {children}
-        <span className="sr-only"> (opens in a new tab)</span>
+        {/* The space is its own text node: a hidden span's leading space is dropped from the link's name. */}
+        {children}{' '}
+        <span className="sr-only">(opens in a new tab)</span>
       </a>
     );
   }
   return inRouter ? (
-    <Link className={className} to={href}>
+    <RouterProjectLink className={className} href={href}>
       {children}
-    </Link>
+    </RouterProjectLink>
   ) : (
     <a className={className} href={href}>
       {children}
@@ -44,9 +62,13 @@ interface ProjectTitleWithChipsProps {
   savedRowLabel: string;
 }
 
-// The title keeps its own text node so it can still be found by its exact text when tags follow it.
+// The title keeps its own text node so it can still be found by its exact text when tags follow it. In the lists
+// that mix catalogs (the 'past' scope: All Projects, the draft, shared curations), a row from the current schedule is
+// tagged "Current", the name of the list its link goes to; "This Semester" could be wrong for a row kept from an
+// earlier term. The Current, Presenting and Past Projects lists hold one catalog each, so they never show it.
 export const ProjectTitleWithChips = ({row, scope, isNew, isSaved, savedRowLabel}: ProjectTitleWithChipsProps) => {
   const href = getProjectGridRowHref(row, scope);
+  const isCurrent = scope === 'past' && row.catalog === 'current';
   return (
     <span className="project-grid-title-line">
       {href ? (
@@ -56,6 +78,7 @@ export const ProjectTitleWithChips = ({row, scope, isNew, isSaved, savedRowLabel
       ) : (
         <span className="project-grid-title">{row.project_title}</span>
       )}
+      {isCurrent ? <span className="itg-tag itg-tag-current project-grid-row-chip is-current">Current</span> : null}
       {isNew ? <span className="itg-tag itg-tag-new project-grid-row-chip is-new">New</span> : null}
       {isSaved ? <span className="itg-tag itg-tag-saved project-grid-row-chip is-saved">{savedRowLabel}</span> : null}
     </span>

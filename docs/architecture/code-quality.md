@@ -140,8 +140,11 @@ app. Apps plug in instead:
   service-config checks) are composition roots and may import any app.
 
 **Exceptions** are listed individually in the TOML file as `from` (an fnmatch pattern of the importing
-module), `to` (a module prefix), and a `reason`. There are five today, each a lazily imported admin or
-ticket helper whose target cannot move without changing a Django app label. **Known import cycles** would
+module), `to` (a module prefix), and a `reason`. There are six today. Five are lazily imported admin or
+ticket helpers whose target cannot move without changing a Django app label. The sixth is the projects app's one
+gateway to current-semester projects: `projects.services.current_project_links` reads event `CurrentProject`s through
+`event.services.current_projects` (lazily, inside its lookups) for `/projects/<id>/`, `/projects/all/`, shares and AI
+search, so no other projects module imports `event`. **Known import cycles** would
 be listed with their member modules and a reason; there are none. (The last two, in `mail.admin.campaign`
 and `mail.admin.inbox`, came from views patching services through their own package `__init__`; the
 views now import a leaf `services.py` module instead.) An entry that no longer matches anything fails the
@@ -185,7 +188,7 @@ types, assets  <  lib  <  hooks, components  <  features  <  routes  <  app (+ m
 
 | Where | Finding | Reason |
 |---|---|---|
-| `python_dependencies.toml` | 5 boundary exceptions, no cycles | See the `reason` of each entry. |
+| `python_dependencies.toml` | 6 boundary exceptions, no cycles | See the `reason` of each entry. |
 
 ESLint has no `eslint-disable` exception for a quality rule. The frontend has no directory exception and
 no known cycle.

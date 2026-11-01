@@ -13,14 +13,15 @@
   border-top: 8px solid var(--itg-color-sidebar-rule);
 }
 
-/* Well (filters, search forms): the theme's .well */
+/* Well (filters, search forms): a flat panel, the panel fill inside a 1px
+   divider-colour border, square like every other panel (the theme's .well
+   had its own greys, a 4px corner and an inset shadow) */
 .itg-well {
   box-sizing: border-box;
   padding: 19px;
-  background: #f5f5f5;
-  border: 1px solid #e3e3e3;
-  border-radius: var(--itg-radius-input);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05);
+  background: var(--itg-color-bg-panel);
+  border: 1px solid var(--itg-color-border);
+  border-radius: var(--itg-radius-card);
 }
 
 /* Rule panel: gold 3px top rule (grid tiles, definition lists) */

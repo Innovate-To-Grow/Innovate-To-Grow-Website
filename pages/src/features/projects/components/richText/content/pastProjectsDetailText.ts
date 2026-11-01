@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import {createProjectGridFingerprint, getPastProjectDetailUrl, type ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {createProjectGridFingerprint, getProjectRowDetailUrl, type ProjectGridRow} from '../../grid/contracts/projectGrid';
 
 const RICH_DETAIL_ALLOWED_TAGS = ['br', 'div', 'p', 'b', 'strong', 'i', 'em', 'u', 'mark', 'a'];
 // The per-project marker attribute lets a re-insert append only projects not already present
@@ -75,6 +75,32 @@ export const sanitizePastProjectsDetailHtml = (html: string) =>
     ALLOW_DATA_ATTR: false,
   });
 
+// A curation note is written by a site member, not by Innovate to Grow. Its links to other sites are marked as
+// user content that search engines should not credit, and open without a handle on this page.
+const MEMBER_LINK_REL = 'nofollow ugc noopener';
+
+/** Marks the links to other sites in sanitized note HTML (the sanitizer drops rel) for showing it to visitors. */
+export const markMemberNoteLinks = (sanitizedHtml: string) => {
+  if (typeof document === 'undefined') {
+    return sanitizedHtml;
+  }
+
+  const template = document.createElement('template');
+  template.innerHTML = sanitizedHtml;
+  template.content.querySelectorAll('a[href]').forEach((link) => {
+    let origin = '';
+    try {
+      origin = new URL(link.getAttribute('href') ?? '', window.location.href).origin;
+    } catch {
+      // An href that is not a URL leads nowhere; mark it like any other site's.
+    }
+    if (origin !== window.location.origin) {
+      link.setAttribute('rel', MEMBER_LINK_REL);
+    }
+  });
+  return template.innerHTML;
+};
+
 export const plainTextToPastProjectsDetailHtml = (value: string) =>
   escapeHtml(value).replace(/\r\n|\r|\n/g, '<br>');
 
@@ -83,13 +109,6 @@ export const normalizePastProjectsDetailHtml = (value: string) =>
 
 const fieldLine = (label: string, value: string) =>
   value.trim() ? `<div><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value.trim())}</div>` : '';
-
-const individualProjectHref = (row: ProjectGridRow) => {
-  if (!row.id) {
-    return '';
-  }
-  return getPastProjectDetailUrl(row.id);
-};
 
 // Compact, stable hash (FNV-1a → base36) so the per-project marker stays short instead of embedding
 // the whole fingerprint (which would bloat the note and duplicate the abstract text).
@@ -112,7 +131,8 @@ const projectInsertFieldsHtml = (
   index: number,
   excludedFields: Set<PastProjectNoteInsertField>,
 ) => {
-  const href = individualProjectHref(row);
+  // The project's own page: a current-semester project's, or the archive's ('' without an id).
+  const href = getProjectRowDetailUrl(row);
   const include = (field: PastProjectNoteInsertField, html: string) => (excludedFields.has(field) ? '' : html);
   return [
     include('project_label', `<div><strong>Project ${index + 1}</strong></div>`),

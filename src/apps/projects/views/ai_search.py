@@ -8,9 +8,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.models import AWSCredentialConfig
-from apps.projects.serializers import PastProjectAISearchSerializer, ProjectTableSerializer
+from apps.projects.serializers import PastProjectAISearchResultSerializer, PastProjectAISearchSerializer
 from apps.projects.services.ai_search import (
-    past_project_ai_queryset,
+    ai_search_results,
+    canonical_project_ids,
     prepare_past_project_ai_search,
     run_past_project_ai_search,
 )
@@ -39,10 +40,12 @@ logger = logging.getLogger(__name__)
 _BUDGET_MESSAGE = "AI search has reached its usage limit for now. Please try again later."
 _BUDGET_UNAVAILABLE_MESSAGE = "AI search is temporarily unavailable. Please try again in a moment."
 _ERROR_MESSAGE = "AI search ran into a problem. Please try again in a moment."
-_UNAVAILABLE_MESSAGE = "AI search is not configured yet. Check the AWS Bedrock credentials and model settings."
+# Shown to members; the operator-facing cause goes to the log.
+_UNAVAILABLE_MESSAGE = "AI search isn't available right now. You can still search with a search table."
 
 
 def _unavailable_response(config: SystemIntelligenceConfig, query: str = "") -> Response:
+    logger.warning("Past project AI search is not configured: set the AWS Bedrock credentials and the public model.")
     return Response(
         {
             "available": False,
@@ -57,13 +60,15 @@ def _unavailable_response(config: SystemIntelligenceConfig, query: str = "") -> 
 
 @dataclass
 class _SearchTurn:
-    """One AI-search request: what every audit-log entry for it records."""
+    """One AI-search request: what every audit-log entry for it records, and the scope it searches."""
 
     request: object
     config: SystemIntelligenceConfig
     query: str
     ip_hash: str
     model_id: str
+    # "past" or "all" (apps.projects.services.ai_search_candidates). The audit log does not record it.
+    scope: str
 
     def log(self, status_value, **extra) -> None:
         log_assistant_turn(
@@ -135,12 +140,19 @@ def _run_and_settle(turn: _SearchTurn, *, limit, prepared, reservation):
 def _results_response(turn: _SearchTurn, outcome, latency_ms) -> Response:
     # Only plausible integers are stored and returned: the raw block is provider-controlled.
     usage = sanitized_usage(outcome.get("usage"))
-    project_ids = outcome.get("project_ids") or []
-    projects_by_id = {str(project.id): project for project in past_project_ai_queryset().filter(id__in=project_ids)}
-    ordered_projects = [projects_by_id[project_id] for project_id in project_ids if project_id in projects_by_id]
+    # The ids come from the model too: only UUIDs reach the lookup.
+    project_ids = canonical_project_ids(outcome.get("project_ids") or [])
+    try:
+        # In the model's order, each project once: an archive project, or (scope "all") a current one.
+        results = PastProjectAISearchResultSerializer(ai_search_results(project_ids, scope=turn.scope), many=True).data
+    except Exception:
+        # The tokens are already charged: the turn is still audited.
+        logger.exception("Past project AI search results could not be loaded")
+        turn.log(AssistantMessageLog.STATUS_ERROR, token_usage=usage, latency_ms=latency_ms)
+        return Response({"detail": _ERROR_MESSAGE, "code": "ai_search_error"}, status=status.HTTP_502_BAD_GATEWAY)
     turn.log(
         AssistantMessageLog.STATUS_OK,
-        results=[{"id": str(p.id), "project_title": p.project_title} for p in ordered_projects],
+        results=[{"id": row["id"], "project_title": row["project_title"]} for row in results],
         token_usage=usage,
         latency_ms=latency_ms,
     )
@@ -148,7 +160,7 @@ def _results_response(turn: _SearchTurn, outcome, latency_ms) -> Response:
         {
             "available": True,
             "query": turn.query,
-            "results": ProjectTableSerializer(ordered_projects, many=True).data,
+            "results": results,
             "usage": usage,
         },
         status=status.HTTP_200_OK,
@@ -168,6 +180,7 @@ class PastProjectAISearchAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         query = serializer.validated_data["query"]
         limit = serializer.validated_data["limit"]
+        scope = serializer.validated_data["scope"]
 
         # Token budgets are keyed on the MEMBER, never on the client IP (the
         # whole campus shares one). ip_hash is recorded in the audit log only.
@@ -178,6 +191,7 @@ class PastProjectAISearchAPIView(APIView):
             query=query,
             ip_hash=hash_ip(client_ip(request) or ""),
             model_id=normalize_bedrock_model_id(config.public_model_id) or "",
+            scope=scope,
         )
         if not AWSCredentialConfig.load().is_configured or not turn.model_id:
             turn.log(AssistantMessageLog.STATUS_UNAVAILABLE)
@@ -187,7 +201,7 @@ class PastProjectAISearchAPIView(APIView):
         # anything. No candidates -> no model call and nothing to reserve.
         started = time.monotonic()
         try:
-            prepared = prepare_past_project_ai_search(query=query, limit=limit, config=config)
+            prepared = prepare_past_project_ai_search(query=query, limit=limit, config=config, scope=scope)
         except Exception:
             logger.exception("Past project AI search preparation failed")
             return turn.error_response(started)

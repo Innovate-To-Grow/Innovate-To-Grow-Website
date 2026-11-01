@@ -65,6 +65,10 @@ MIDDLEWARE = [
 # frame sources. Each entry is a dotted path to a zero-argument callable.
 CSP_FRAME_HOST_PROVIDERS = ("apps.cms.services.sanitization.embed_hosts.get_allowed_hosts",)
 
+# Pages other apps add to /sitemap.xml (served by the CMS). Each entry is a dotted path to a zero-argument callable
+# returning (frontend path, last-modified datetime or None) pairs.
+SITEMAP_ENTRY_PROVIDERS = ("apps.projects.services.sitemap.archive_project_sitemap_entries",)
+
 # ---------------------------------------------------------------------------
 # URL / WSGI
 # ---------------------------------------------------------------------------

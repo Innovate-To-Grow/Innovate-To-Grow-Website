@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from apps.core.utils.text import collapse_whitespace, normalize_paragraphs
+
 from .defaults import SECTION_DEFAULTS
 
 
@@ -108,9 +110,11 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
     is_presenting = not is_fall and not is_blank
 
     team_number = get_record_value(normalized, ["Team#", "Team #", "Team Number", "Team"])
-    team_name = get_record_value(normalized, ["TeamName", "Team Name"])
-    project_title = get_record_value(normalized, ["Project Title", "Title"])
-    organization = get_record_value(normalized, ["Organization", "Partner Organization", "Partner"])
+    team_name = collapse_whitespace(get_record_value(normalized, ["TeamName", "Team Name"]))
+    project_title = collapse_whitespace(get_record_value(normalized, ["Project Title", "Title"]))
+    organization = collapse_whitespace(
+        get_record_value(normalized, ["Organization", "Partner Organization", "Partner"])
+    )
     class_code = normalize_section_code(
         get_record_value(normalized, ["Class"]),
         team_number,
@@ -129,9 +133,9 @@ def _slot_row(normalized: dict[str, Any]) -> dict[str, Any] | None:
         "team_name": team_name,
         "project_title": project_title,
         "organization": organization,
-        "industry": get_record_value(normalized, ["Industry"]),
-        "abstract": get_record_value(normalized, ["Abstract", "Project Abstract"]),
-        "student_names": get_record_value(normalized, ["Student Names", "Students"]),
+        "industry": collapse_whitespace(get_record_value(normalized, ["Industry"])),
+        "abstract": normalize_paragraphs(get_record_value(normalized, ["Abstract", "Project Abstract"])),
+        "student_names": collapse_whitespace(get_record_value(normalized, ["Student Names", "Students"])),
         "name_title": get_record_value(
             normalized,
             ["NameTitle", "Name Title", "Name: - Title:", "Contact Name Title"],

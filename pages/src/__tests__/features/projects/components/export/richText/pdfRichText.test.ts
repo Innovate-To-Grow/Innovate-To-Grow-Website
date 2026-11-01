@@ -21,7 +21,7 @@ function fakePdf() {
 describe('wrapRunsToLines', () => {
   it('wraps tokens that exceed maxWidth onto a new line', () => {
     const pdf = fakePdf() as unknown as Pdf;
-    const lines = wrapRunsToLines(pdf, [{text: 'a b c'}], 3, 10);
+    const lines = wrapRunsToLines(pdf, [{text: 'a b c'}], 3, 10, 'helvetica');
 
     expect(lines).toHaveLength(2);
     expect(lines[0].tokens.map((token) => token.text).join('')).toBe('a b ');
@@ -30,7 +30,7 @@ describe('wrapRunsToLines', () => {
 
   it('never starts a wrapped line with leading whitespace', () => {
     const pdf = fakePdf() as unknown as Pdf;
-    const lines = wrapRunsToLines(pdf, [{text: '  x'}], 100, 10);
+    const lines = wrapRunsToLines(pdf, [{text: '  x'}], 100, 10, 'helvetica');
 
     expect(lines).toHaveLength(1);
     expect(lines[0].tokens.map((token) => token.text).join('')).toBe('x');
@@ -38,27 +38,27 @@ describe('wrapRunsToLines', () => {
 
   it('treats explicit newlines as line breaks', () => {
     const pdf = fakePdf() as unknown as Pdf;
-    const lines = wrapRunsToLines(pdf, [{text: 'a\nb'}], 100, 10);
+    const lines = wrapRunsToLines(pdf, [{text: 'a\nb'}], 100, 10, 'helvetica');
 
     expect(lines.map((line) => line.tokens.map((token) => token.text).join(''))).toEqual(['a', 'b']);
   });
 
   it('returns a single empty line for empty runs', () => {
     const pdf = fakePdf() as unknown as Pdf;
-    expect(wrapRunsToLines(pdf, [], 100, 10)).toEqual([{tokens: []}]);
+    expect(wrapRunsToLines(pdf, [], 100, 10, 'helvetica')).toEqual([{tokens: []}]);
   });
 });
 
 describe('drawRunLine', () => {
-  it('draws each token with its font style and text color', () => {
+  it('draws each token in the given family with its font style and text color', () => {
     const pdf = fakePdf() as unknown as Pdf;
     const line = {
       tokens: [{text: 'hi', bold: true, italic: false, underline: false, highlight: false, isSpace: false, width: 2}],
     };
 
-    drawRunLine(pdf, line, 0, 10, 9);
+    drawRunLine(pdf, line, 0, 10, 9, 'OpenSans');
 
-    expect(pdf.setFont).toHaveBeenCalledWith('helvetica', 'bold');
+    expect(pdf.setFont).toHaveBeenCalledWith('OpenSans', 'bold');
     expect(pdf.setTextColor).toHaveBeenCalled();
     expect(pdf.text).toHaveBeenCalledWith('hi', 0, 10);
   });
@@ -69,7 +69,7 @@ describe('drawRunLine', () => {
       tokens: [{text: 'x', bold: false, italic: false, underline: true, highlight: true, isSpace: false, width: 1}],
     };
 
-    drawRunLine(pdf, line, 5, 10, 9);
+    drawRunLine(pdf, line, 5, 10, 9, 'helvetica');
 
     expect(pdf.setFillColor).toHaveBeenCalled();
     expect(pdf.rect).toHaveBeenCalled();
@@ -83,7 +83,7 @@ describe('drawRunLine', () => {
       tokens: [{text: ' ', bold: false, italic: false, underline: true, highlight: true, isSpace: true, width: 1}],
     };
 
-    drawRunLine(pdf, line, 0, 10, 9);
+    drawRunLine(pdf, line, 0, 10, 9, 'helvetica');
 
     expect(pdf.rect).not.toHaveBeenCalled();
     expect(pdf.line).not.toHaveBeenCalled();
