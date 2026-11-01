@@ -26,6 +26,13 @@
   min-width: 0;
 }
 
+/* After a client-side route change the shell moves focus to the page's h1
+   (useRouteChangeFocus) so screen readers announce it; the heading is not a
+   control, so it gets no focus ring. */
+.app-layout-main h1[tabindex='-1']:focus {
+  outline: none;
+}
+
 /* ---------- Loading fallback ---------- */
 .page-loader {
   display: flex;

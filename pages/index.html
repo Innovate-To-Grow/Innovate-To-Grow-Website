@@ -4,7 +4,16 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/assets/images/i2glogo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
-    <title>Innovate To Grow | School of Engineering</title>
+    <title>Innovate to Grow | School of Engineering</title>
+    <!-- Site-wide description and link-preview tags. Link unfurlers (Slack, Teams, social sites) do not
+         run scripts, so a shared link shows these; for search engines the app keeps the description,
+         canonical URL, robots and og:title / og:url in step with each route (src/hooks/documentHead.ts). -->
+    <meta name="description" content="Innovate to Grow is UC Merced School of Engineering's experiential learning program: student teams design systems that solve real-world problems for partner organizations." />
+    <meta property="og:site_name" content="Innovate to Grow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Innovate to Grow | UC Merced School of Engineering" />
+    <meta property="og:description" content="Innovate to Grow is UC Merced School of Engineering's experiential learning program: student teams design systems that solve real-world problems for partner organizations." />
+    <meta name="twitter:card" content="summary" />
 
     <!-- Critical CSS: paints an init-loader spinner the moment HTML parses, so
          first paint is never blank. The spinner uses #root:empty::before and

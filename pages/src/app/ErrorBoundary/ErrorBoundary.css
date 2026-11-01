@@ -10,6 +10,12 @@
   padding: 16px var(--itg-page-gutter, 24px) 32px;
 }
 
+/* The message's heading takes focus when it replaces a page; it is not a
+   control, so no focus ring. */
+.app-error-boundary h1[tabindex='-1']:focus {
+  outline: none;
+}
+
 @media (max-width: 992px) {
   .app-error-boundary {
     padding-right: var(--itg-page-gutter-mobile, 20px);

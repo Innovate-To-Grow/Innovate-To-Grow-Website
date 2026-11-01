@@ -1,7 +1,7 @@
 import {act, cleanup, fireEvent, render, screen} from '@testing-library/react';
 import type {ReactNode} from 'react';
-import {Link, MemoryRouter, Route, Routes} from 'react-router';
-import {afterEach, describe, expect, it, vi} from 'vitest';
+import {Link, MemoryRouter, Navigate, Route, Routes} from 'react-router';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import type {Menu, MenuItem} from '@/features/layout/api';
 import {Container} from '@/features/layout/components/Container/Container';
@@ -13,6 +13,11 @@ const usePageTracking = vi.hoisted(() => vi.fn());
 vi.mock('@/hooks/usePageTracking', () => ({
   usePageTracking,
 }));
+
+beforeEach(() => {
+  // jsdom has no scrolling; the shell scrolls a page reached by a link to the top.
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
+});
 
 afterEach(() => {
   cleanup();
@@ -100,5 +105,48 @@ describe('Container', () => {
     } finally {
       window.removeEventListener(ROUTE_CHANGE_EVENT, listener);
     }
+  });
+
+  // The focus and scroll rules themselves: __tests__/features/layout/hooks/.
+  describe('after a client-side route change', () => {
+    const ListPage = () => (
+      <>
+        <h1>Current Projects</h1>
+        <Link to="/projects/abc">Solar drone</Link>
+      </>
+    );
+
+    const renderRoutes = (initialPath: string) =>
+      render(
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Routes>
+            <Route element={<Container />}>
+              <Route path="/current-projects" element={<ListPage />} />
+              <Route path="/projects-teams" element={<Navigate to="/current-projects" replace />} />
+              <Route path="/projects/:id" element={<h1>Solar drone</h1>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>,
+      );
+
+    it("moves focus to the new page's heading and starts it at the top", () => {
+      const scrollTo = vi.mocked(window.scrollTo);
+      renderRoutes('/current-projects');
+      expect(document.body).toHaveFocus();
+
+      act(() => {
+        fireEvent.click(screen.getByRole('link', {name: 'Solar drone'}));
+      });
+
+      expect(screen.getByRole('heading', {level: 1, name: 'Solar drone'})).toHaveFocus();
+      expect(scrollTo).toHaveBeenCalledWith(0, 0);
+    });
+
+    it('leaves focus alone when the loaded page redirects (a cold load of /projects-teams)', () => {
+      renderRoutes('/projects-teams');
+
+      expect(screen.getByRole('heading', {level: 1, name: 'Current Projects'})).not.toHaveFocus();
+      expect(document.body).toHaveFocus();
+    });
   });
 });
