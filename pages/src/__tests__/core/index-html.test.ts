@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-import postcss, {type AtRule} from 'postcss';
+import postcss, {type AtRule, type Container} from 'postcss';
 import {afterEach, describe, expect, it} from 'vitest';
 
 /** A file under pages/src, read from this test's place in it. */
@@ -15,6 +15,7 @@ const shell = new DOMParser().parseFromString(indexHtml, 'text/html');
 const inline = Array.from(shell.head.querySelectorAll('style'), (node) => node.textContent).join('\n');
 const indicatorCss = readSource('components/LoadingIndicator/LoadingIndicator.css');
 const containerCss = readSource('features/layout/components/Container/Container.css');
+const tokensCss = readSource('assets/tokens.css');
 
 /** The declarations of the first rule written exactly `selector {`. */
 const declarations = (css: string, selector: string): Record<string, string> => {
@@ -131,6 +132,37 @@ describe('index.html page shell', () => {
         }
       }
     }
+  });
+
+  it("falls back to each token's default in assets/tokens.css, so the boot ring paints the colours the page will", () => {
+    // The defaults: the custom properties of tokens.css's top-level :root, outside any media query.
+    const defaults = new Map<string, string>();
+    postcss.parse(tokensCss).walkRules(':root', (rule) => {
+      for (let parent = rule.parent as Container | undefined; parent; parent = parent.parent as Container | undefined) {
+        if (parent.type === 'atrule' && (parent as AtRule).name !== 'layer') return;
+      }
+      rule.walkDecls(/^--itg-/, (decl) => void defaults.set(decl.prop, decl.value));
+    });
+    // Case- and shorthand-insensitive: #DDD, #ddd and #dddddd are one colour.
+    const normalise = (value: string) =>
+      value
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .replace(/^#([0-9a-f])([0-9a-f])([0-9a-f])([0-9a-f])?$/, (_, r, g, b, a = '') => `#${r}${r}${g}${g}${b}${b}${a}${a}`);
+
+    const fallbacks: string[] = [];
+    postcss.parse(inline).walkRules((rule) => {
+      if (!rule.selectors.some((selector) => ['#root:empty::before', '#root:empty::after'].includes(selector))) return;
+      rule.walkDecls((decl) => {
+        for (const [, token, fallback] of decl.value.matchAll(/var\((--[\w-]+),\s*([^)]+)\)/g)) {
+          fallbacks.push(token);
+          expect(defaults.has(token), `${token} is a token in tokens.css`).toBe(true);
+          expect(normalise(fallback), `${rule.selector} ${decl.prop}: ${token}`).toBe(normalise(defaults.get(token) ?? ''));
+        }
+      });
+    });
+    expect(fallbacks.length, 'the boot ring and label use tokens').toBeGreaterThan(0);
   });
 
   it('keeps the scrollbar gutter free while the boot ring shows, so the ring does not move sideways', () => {
