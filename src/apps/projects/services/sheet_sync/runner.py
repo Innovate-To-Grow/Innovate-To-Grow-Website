@@ -5,6 +5,7 @@ from typing import Any
 from django.db import transaction
 from django.utils import timezone
 
+from apps.core.utils.text import collapse_whitespace, normalize_paragraphs
 from apps.projects.models import PastProjectsSheetConfig, PastProjectSyncLog, Project
 from apps.projects.services.sheet_sync.hooks import resolve_project_row
 from apps.projects.signals import _clear_project_caches
@@ -31,6 +32,11 @@ COLUMN_MAP = {
 _VALID_SEASONS = {1, 2}
 _STABLE_KEY_FIELDS = ("semester", "class_code", "team_number")
 _MUTABLE_PROJECT_FIELDS = tuple(field for field in COLUMN_MAP.values() if field not in _STABLE_KEY_FIELDS)
+# Sheet cells carry double spaces, NBSPs and tabs. Displayed text is tidied; the abstract keeps its paragraphs.
+# Class and Team# are only trimmed: they are the sync key, and changing them would re-create the project.
+_TEXT_NORMALIZERS = {
+    field: normalize_paragraphs if field == "abstract" else collapse_whitespace for field in _MUTABLE_PROJECT_FIELDS
+}
 
 
 def _project_sync_key(fields_or_project) -> tuple:
@@ -76,6 +82,8 @@ def _importable_row(raw: dict[str, Any]) -> dict[str, Any] | None:
     # by the exact header text, so a strict lookup would silently miss them.
     row = {str(key).strip(): value for key, value in raw.items()}
     mapped = {field: str(row.get(header, "")).strip() for header, field in COLUMN_MAP.items()}
+    for field, normalize in _TEXT_NORMALIZERS.items():
+        mapped[field] = normalize(mapped[field])
     mapped["Year-Semester"] = str(row.get("Year-Semester", "")).strip()
     resolved = resolve_project_row(mapped, sheet_link=None)
     if resolved is None or resolved["semester"].season not in _VALID_SEASONS or not resolved.get("project_title"):

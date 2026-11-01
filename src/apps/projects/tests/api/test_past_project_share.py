@@ -116,29 +116,22 @@ class PastProjectShareCreateTests(PastProjectShareTestCase):
                 "name": "Scripted",
                 "rows": [sample_row()],
                 "note": "scripted",
-                "details_text": "scripted details",
             }
         )
         self.assertTrue(serializer.is_valid(), serializer.errors)
         instance = serializer.save()
         self.assertIsNone(instance.created_by)
         self.assertEqual(instance.note, "scripted")
-        self.assertEqual(instance.details_text, "scripted details")
 
     def test_authenticated_create_persists_note_and_created_by(self):
         response = self.client.post(
             "/projects/past-shares/",
-            sample_payload(
-                note="Projects to review with the team.",
-                details_text="Past Projects Detail\nProject Title: Shared Project",
-            ),
+            sample_payload(note="Projects to review with the team."),
             format="json",
         )
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.data["note"], "Projects to review with the team.")
-        self.assertEqual(response.data["details_text"], "Past Projects Detail\nProject Title: Shared Project")
         share = PastProjectShare.objects.get(pk=response.data["id"])
         self.assertEqual(share.note, "Projects to review with the team.")
-        self.assertEqual(share.details_text, "Past Projects Detail\nProject Title: Shared Project")
         self.assertEqual(share.created_by, self.member)

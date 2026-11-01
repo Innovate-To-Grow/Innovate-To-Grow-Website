@@ -53,7 +53,10 @@ export const DeleteAccountSection = ({
           {deleteError ? <StatusAlert tone="error" message={deleteError} /> : null}
 
           <div className="account-danger-header">
-            <p className="account-danger-help">This permanently deletes your account and connected data.</p>
+            <p className="account-danger-help">
+              This permanently deletes your account and connected data, including the project curations you shared.
+              Their links stop working.
+            </p>
             {!deleteCodeRequested && !deleteVerificationToken ? (
               <button
                 type="button"

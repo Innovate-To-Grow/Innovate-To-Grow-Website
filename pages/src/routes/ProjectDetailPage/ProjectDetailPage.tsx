@@ -19,6 +19,8 @@ interface ProjectLoadFailedProps {
 /** A project that does not exist (or a link that is wrong), or one that could not be loaded right now. */
 const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => {
   const notFound = error !== 'failed';
+  // Neither state belongs in search results; the mark goes with this message (a retry that loads the project).
+  usePageTitle(null, {noindex: true});
   return (
     <ProjectsMessagePage
       className="project-detail projects-error"
@@ -158,7 +160,12 @@ export const ProjectDetailPage = () => {
   // /projects/:id is linked from Current Projects and Presenting Teams by this semester's schedule ids, and by
   // older links to archive projects: it looks in the current schedule first. Past-project pages read the archive.
   const {result, loading, error, retry} = useProjectDetail(id, !isPastProjectDetail);
-  usePageTitle(result?.project.project_title || (isPastProjectDetail ? 'Past Projects' : 'Current Projects'));
+  // No title while the project loads: the tab keeps the last page's title, which is what tells the page view sent
+  // to Siteimprove (usePageTracking) to wait for this page's own. A section name here would read as this page's
+  // title to it whenever the visitor came from another section.
+  usePageTitle(
+    loading ? null : result?.project.project_title || (isPastProjectDetail ? 'Past Projects' : 'Current Projects'),
+  );
 
   useEffect(() => {
     window.scrollTo(0, 0);

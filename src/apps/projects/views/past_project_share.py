@@ -12,13 +12,30 @@ from ..serializers import (
     PastProjectShareSerializer,
     StalePastProjectShareSnapshot,
 )
-from ..throttles import PastProjectShareRateThrottle
+from ..throttles import PastProjectShareRateThrottle, PastProjectShareUpdateRateThrottle
+
+# Far more curations than a person keeps; it bounds what one account can store and what "mine" lists.
+MAX_SHARES_PER_MEMBER = 100
 
 
 class PastProjectShareCreateAPIView(CreateAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = PastProjectShareSerializer
     throttle_classes = [PastProjectShareRateThrottle]
+
+    def create(self, request, *args, **kwargs):
+        if PastProjectShare.objects.filter(created_by=request.user).count() >= MAX_SHARES_PER_MEMBER:
+            return Response(
+                {
+                    "code": "share_limit_reached",
+                    "detail": (
+                        f"You can keep up to {MAX_SHARES_PER_MEMBER} shared curations. "
+                        "Delete one you no longer need, then save again."
+                    ),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().create(request, *args, **kwargs)
 
 
 class PastProjectShareMineAPIView(ListAPIView):
@@ -28,7 +45,11 @@ class PastProjectShareMineAPIView(ListAPIView):
     serializer_class = PastProjectShareListSerializer
 
     def get_queryset(self):
-        return PastProjectShare.objects.filter(created_by=self.request.user).order_by("-updated_at", "-created_at")
+        return (
+            PastProjectShare.objects.summaries()
+            .filter(created_by=self.request.user)
+            .order_by("-updated_at", "-created_at")
+        )
 
 
 _WRITE_METHODS = {"DELETE", "PATCH", "PUT"}
@@ -53,6 +74,11 @@ class PastProjectShareDetailAPIView(RetrieveUpdateDestroyAPIView):
         if self.request.method in _WRITE_METHODS:
             return [IsAuthenticated()]
         return [AllowAny()]
+
+    def get_throttles(self):
+        if self.request.method in _WRITE_METHODS:
+            return [PastProjectShareUpdateRateThrottle()]
+        return []
 
     def update(self, request, *args, **kwargs):
         # Re-filter by owner (not get_object) so a non-owner gets 404, not 403,

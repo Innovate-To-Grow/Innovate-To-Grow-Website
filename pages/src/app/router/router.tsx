@@ -1,5 +1,5 @@
 import React, {Suspense, type ReactElement} from 'react';
-import {createBrowserRouter, Navigate} from 'react-router';
+import {createBrowserRouter, Navigate, type DataRouter, type RouteObject} from 'react-router';
 import {Layout} from '@/features/layout';
 import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';
@@ -9,6 +9,8 @@ import {LegacyLoginLinkRedirect} from './LegacyLoginLinkRedirect';
 import {RouteDocumentTitle, type RouteHandle} from './RouteDocumentTitle';
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
 import {EMBED_APP_ROUTES} from './embedAppRoutes';
+import {NavigationPending, type LatestLocationSource} from './NavigationPending';
+import {RouteErrorPage} from './RouteErrorPage';
 
 // Matches the inline spinner in pages/index.html (#root:empty::before) so
 // lazy-route fallbacks and the initial-load spinner share one visual language.
@@ -33,7 +35,20 @@ const lazyRoute = (element: ReactElement): ReactElement => (
     <Suspense fallback={routeFallback}>{element}</Suspense>
 );
 
-const titled = (title: string): {handle: RouteHandle} => ({handle: {title}});
+const titled = (title: string, meta: Omit<RouteHandle, 'title'> = {}): {handle: RouteHandle} => ({
+    handle: {title, ...meta},
+});
+
+// Without its own error element a route error reaches React Router's developer screen (the raw message
+// and stack trace, and no way back). Top-level routes replace the whole of #root on error.
+const topLevelError = {errorElement: <RouteErrorPage inShell={false}/>};
+
+const CURRENT_PROJECTS_DESCRIPTION =
+    "This semester's Innovate to Grow student projects at UC Merced's School of Engineering: teams, partner organizations and abstracts.";
+const PRESENTING_TEAMS_DESCRIPTION =
+    "The student teams presenting at this semester's Innovate to Grow showcase at UC Merced, with their projects and partner organizations.";
+const PAST_PROJECTS_DESCRIPTION =
+    'Search the archive of past Innovate to Grow student projects at UC Merced, and collect them into lists to save, share or export.';
 
 // Auth pages (lazy)
 const LoginPage = React.lazy(() => import('@/features/auth/components/pages/LoginPage').then(m => ({default: m.LoginPage})));
@@ -60,83 +75,117 @@ const LoginLinkPage = React.lazy(() => import('@/routes/LoginLinkPage').then(m =
 const EmailAuthLinkPage = React.lazy(() => import('@/routes/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
 const ImpersonateLoginPage = React.lazy(() => import('@/routes/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
-export const createAppRouter = () => createBrowserRouter([
+// Every page inside the site layout (menu, footer, content column).
+const pageRoutes = (): RouteObject[] => [
+    // support rout pointer for support old url
+    {path: 'membership/events', element: lazyRoute(<EventRegistrationPage/>), ...titled('Event Registration')},
+
+    // homepage — resolved dynamically from SiteSettings.homepage_route
+    {index: true, element: <HomepageResolver/>},
+
+    // news pages
+    {path: 'news', element: lazyRoute(<NewsPage/>), ...titled('News')},
+    {path: 'news/:id', element: lazyRoute(<NewsDetailPage/>)},
+
+    // project pages (plain CMS routes like /projects, /sample-proposals
+    {
+        path: 'current-projects',
+        element: lazyRoute(<ProjectsPage/>),
+        ...titled('Current Projects', {description: CURRENT_PROJECTS_DESCRIPTION}),
+    },
+    {
+        path: 'presenting-teams',
+        element: lazyRoute(<PresentingTeamsPage/>),
+        ...titled('Presenting Teams', {description: PRESENTING_TEAMS_DESCRIPTION}),
+    },
+    {
+        path: 'past-projects',
+        element: lazyRoute(<PastProjectsPage/>),
+        ...titled('Past Projects', {description: PAST_PROJECTS_DESCRIPTION}),
+    },
+    {path: 'past-projects/project/:id', element: lazyRoute(<ProjectDetailPage/>)},
+    // Shared curations are visitors' own lists (names and notes): kept out of search indexes.
+    {
+        path: 'past-projects/:shareId',
+        element: lazyRoute(<PastProjectsPage/>),
+        ...titled('Past Projects', {noindex: true}),
+    },
+    {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
+    // Legacy-site path still linked from CMS pages (/judges, /about-engsl).
+    {path: 'projects-teams', element: <Navigate to="/current-projects" replace/>},
+
+    // event pages (plain CMS routes like /event, /past-events are served
+    // by the catch-all CMS route below)
+    {path: 'event-registration', element: lazyRoute(<EventRegistrationPage/>), ...titled('Event Registration')},
+    {path: 'events/:eventSlug', element: lazyRoute(<EventArchivePage/>)},
+    {path: 'schedule', element: lazyRoute(<SchedulePage/>), ...titled('Event Schedule')},
+
+    // Subscribe
+    {path: 'subscribe', element: lazyRoute(<SubscribePage/>), ...titled('Subscriptions')},
+
+    // Auto-login from email links
+    {path: 'login-link', element: lazyRoute(<LoginLinkPage/>), ...titled('Sign In')},
+    // Legacy aliases: previously-sent emails point at /magic-login (still
+    // valid tokens) and /ticket-login (tokens already invalidated).
+    {path: 'magic-login', element: <LegacyLoginLinkRedirect/>},
+    {path: 'ticket-login', element: <LegacyLoginLinkRedirect/>},
+    // Retired: old unsubscribe emails point at /unsubscribe-login, whose
+    // tokens have all expired. Their email preferences live on /account;
+    // the redirect drops the stale token instead of forwarding it.
+    {path: 'unsubscribe-login', element: <Navigate to="/account" replace/>},
+    {path: 'email-auth-link', element: lazyRoute(<EmailAuthLinkPage/>), ...titled('Sign In')},
+    {path: 'impersonate-login', element: lazyRoute(<ImpersonateLoginPage/>), ...titled('Sign In')},
+
+    // Convenience redirects
+    {path: 'profile', element: <Navigate to="/account" replace/>},
+
+    // Auth pages
+    {path: 'login', element: lazyRoute(<LoginPage/>), ...titled('Sign In')},
+    {path: 'register', element: lazyRoute(<RegisterPage/>)},
+    {path: 'forgot-password', element: lazyRoute(<ForgotPasswordPage/>), ...titled('Forgot Password')},
+    {path: 'verify-email', element: lazyRoute(<VerifyEmailPage/>), ...titled('Verify Your Email')},
+    {path: 'verify-phone', element: lazyRoute(<VerifyPhonePage/>), ...titled('Verify Your Phone')},
+    {path: 'complete-profile', element: lazyRoute(<CompleteProfilePage/>), ...titled('Complete Your Profile')},
+
+    // Account management
+    {path: 'account', element: lazyRoute(<AccountPage/>), ...titled('Account Dashboard')},
+    {
+        path: 'account/past-project-curation-shared-links',
+        element: lazyRoute(<PastProjectCurationSharedLinksPage/>),
+        ...titled('Past Project Curation Shared Links'),
+    },
+
+    // Catch-all CMS route
+    {path: '*', element: <CMSPageComponent/>},
+];
+
+const buildRoutes = (latestLocation: LatestLocationSource): RouteObject[] => [
     // Block preview route — rendered in iframe for admin live preview, no menu/footer
-    {path: '/_block-preview', element: <BlockPreviewPage/>},
-    {path: '/_footer-preview', element: <FooterPreviewPage/>},
+    {path: '/_block-preview', element: <BlockPreviewPage/>, ...topLevelError},
+    {path: '/_footer-preview', element: <FooterPreviewPage/>, ...topLevelError},
     // Public embed widget — rendered in third-party iframe, no menu/footer
-    {path: '/_embed/:embedSlug', element: <EmbedBlockPage appRoutes={EMBED_APP_ROUTES}/>},
+    {path: '/_embed/:embedSlug', element: <EmbedBlockPage appRoutes={EMBED_APP_ROUTES}/>, ...topLevelError},
     {
         path: '/',
         element: (
             <>
                 <RouteDocumentTitle/>
+                <NavigationPending source={latestLocation}/>
                 <Layout/>
             </>
         ),
-        children: [
-
-            // support rout pointer for support old url
-            {path: 'membership/events', element: lazyRoute(<EventRegistrationPage/>), ...titled('Event Registration')},
-
-            // homepage — resolved dynamically from SiteSettings.homepage_route
-            {index: true, element: <HomepageResolver/>},
-
-            // news pages
-            {path: 'news', element: lazyRoute(<NewsPage/>), ...titled('News')},
-            {path: 'news/:id', element: lazyRoute(<NewsDetailPage/>)},
-
-            // project pages (plain CMS routes like /projects, /sample-proposals
-            {path: 'current-projects', element: lazyRoute(<ProjectsPage/>), ...titled('Current Projects')},
-            {path: 'presenting-teams', element: lazyRoute(<PresentingTeamsPage/>), ...titled('Presenting Teams')},
-            {path: 'past-projects', element: lazyRoute(<PastProjectsPage/>), ...titled('Past Projects')},
-            {path: 'past-projects/project/:id', element: lazyRoute(<ProjectDetailPage/>)},
-            {path: 'past-projects/:shareId', element: lazyRoute(<PastProjectsPage/>), ...titled('Past Projects')},
-            {path: 'projects/:id', element: lazyRoute(<ProjectDetailPage/>)},
-
-            // event pages (plain CMS routes like /event, /past-events are served
-            // by the catch-all CMS route below)
-            {path: 'event-registration', element: lazyRoute(<EventRegistrationPage/>), ...titled('Event Registration')},
-            {path: 'events/:eventSlug', element: lazyRoute(<EventArchivePage/>)},
-            {path: 'schedule', element: lazyRoute(<SchedulePage/>), ...titled('Event Schedule')},
-
-            // Subscribe
-            {path: 'subscribe', element: lazyRoute(<SubscribePage/>), ...titled('Subscriptions')},
-
-            // Auto-login from email links
-            {path: 'login-link', element: lazyRoute(<LoginLinkPage/>), ...titled('Sign In')},
-            // Legacy aliases: previously-sent emails point at /magic-login (still
-            // valid tokens) and /ticket-login (tokens already invalidated).
-            {path: 'magic-login', element: <LegacyLoginLinkRedirect/>},
-            {path: 'ticket-login', element: <LegacyLoginLinkRedirect/>},
-            // Retired: old unsubscribe emails point at /unsubscribe-login, whose
-            // tokens have all expired. Their email preferences live on /account;
-            // the redirect drops the stale token instead of forwarding it.
-            {path: 'unsubscribe-login', element: <Navigate to="/account" replace/>},
-            {path: 'email-auth-link', element: lazyRoute(<EmailAuthLinkPage/>), ...titled('Sign In')},
-            {path: 'impersonate-login', element: lazyRoute(<ImpersonateLoginPage/>), ...titled('Sign In')},
-
-            // Convenience redirects
-            {path: 'profile', element: <Navigate to="/account" replace/>},
-
-            // Auth pages
-            {path: 'login', element: lazyRoute(<LoginPage/>), ...titled('Sign In')},
-            {path: 'register', element: lazyRoute(<RegisterPage/>)},
-            {path: 'forgot-password', element: lazyRoute(<ForgotPasswordPage/>), ...titled('Forgot Password')},
-            {path: 'verify-email', element: lazyRoute(<VerifyEmailPage/>), ...titled('Verify Your Email')},
-            {path: 'verify-phone', element: lazyRoute(<VerifyPhonePage/>), ...titled('Verify Your Phone')},
-            {path: 'complete-profile', element: lazyRoute(<CompleteProfilePage/>), ...titled('Complete Your Profile')},
-
-            // Account management
-            {path: 'account', element: lazyRoute(<AccountPage/>), ...titled('Account Dashboard')},
-            {
-                path: 'account/past-project-curation-shared-links',
-                element: lazyRoute(<PastProjectCurationSharedLinksPage/>),
-                ...titled('Past Project Curation Shared Links'),
-            },
-
-            // Catch-all CMS route
-            {path: '*', element: <CMSPageComponent/>},
-        ],
+        ...topLevelError,
+        // A page's error renders in the page's place, inside the layout (menu, footer and title stay).
+        children: [{errorElement: <RouteErrorPage/>, children: pageRoutes()}],
     },
-]);
+];
+
+export const createAppRouter = (): DataRouter => {
+    // NavigationPending compares the router's latest location with the one React shows; the routes are
+    // built before the router exists, so they reach it through this closure.
+    const router: DataRouter = createBrowserRouter(buildRoutes({
+        subscribe: (listener) => router.subscribe(listener),
+        getLocationKey: () => router.state.location.key,
+    }));
+    return router;
+};

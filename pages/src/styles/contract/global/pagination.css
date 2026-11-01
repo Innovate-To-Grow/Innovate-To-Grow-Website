@@ -60,6 +60,19 @@
   cursor: default;
 }
 
+/* Forced colours (Windows Contrast themes) drop the gradient and turn every
+   link's transparent border into a visible one, so the current page looked
+   like the others: mark it in the theme's selection colours. */
+@media (forced-colors: active) {
+  .itg-pagination-link[aria-current='page'],
+  .itg-pagination-link[aria-current='page']:hover {
+    forced-color-adjust: none;
+    border-color: Highlight;
+    background: Highlight;
+    color: HighlightText;
+  }
+}
+
 .itg-pagination-gap {
   padding: 0 1em;
 }

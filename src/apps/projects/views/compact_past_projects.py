@@ -6,6 +6,7 @@ from rest_framework.views import APIView
 from apps.core.utils.http_cache import public_json_response
 
 from ..models import Project
+from ..ordering import archive_ordering
 from ..serializers import CompactPastProjectSerializer, PastProjectQuerySerializer
 
 
@@ -43,13 +44,7 @@ class CompactPastProjectsAPIView(APIView):
         if semester := params.get("semester"):
             queryset = queryset.filter(semester__label__iexact=semester)
 
-        queryset = queryset.order_by(
-            "-semester__year",
-            "-semester__season",
-            "class_code",
-            "team_number",
-            "id",
-        )
+        queryset = queryset.order_by(*archive_ordering(), "id")
         paginator = CompactPastProjectsPagination()
         paginator.page_size = params["page_size"]
         page = paginator.paginate_queryset(queryset, request, view=self)

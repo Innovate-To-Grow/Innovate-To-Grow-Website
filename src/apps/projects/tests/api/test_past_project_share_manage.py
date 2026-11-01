@@ -88,7 +88,7 @@ class PastProjectShareManageTests(PastProjectShareTestCase):
     @override_settings(FRONTEND_URL="")
     def test_list_serializer_shape_without_request(self):
         share = PastProjectShare.objects.create(name="Shape", rows=[sample_row()], created_by=self.member)
-        data = PastProjectShareListSerializer(share).data
+        data = PastProjectShareListSerializer(PastProjectShare.objects.summaries().get(pk=share.pk)).data
         self.assertEqual(data["share_url"], f"/past-projects/{share.pk}")
         self.assertEqual(data["row_count"], 1)
         self.assertEqual(data["name"], "Shape")
