@@ -222,7 +222,8 @@ class MicrosoftGraphProviderConfigAdminPagesTest(TestCase):
             self.certificate.sha256_fingerprint,
             self.certificate.serial_number,
             self.certificate.subject,
-            f"{self.certificate.not_after.astimezone(datetime.UTC):%Y-%m-%d %H:%M} UTC",
+            # In the site's time zone, as the admin shows every date, with the zone named.
+            f"{timezone.localtime(self.certificate.not_after):%Y-%m-%d %H:%M %Z}",
             f'Stored in the in-memory store (tests only), version <span class="break-all font-mono">'
             f"{self.certificate.store_version_id}",
             "Thumbprint (SHA-1, as shown in Entra)",

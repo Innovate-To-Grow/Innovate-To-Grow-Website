@@ -3,7 +3,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.utils import timezone
 
-from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_guid
+from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_guid, is_plain_address
 
 from ..control import ProjectControlModel
 from .microsoft_graph_certificate import MicrosoftGraphCertificate
@@ -14,6 +14,9 @@ GRAPH_DEFAULT_MESSAGES_PER_MINUTE = 24
 GRAPH_DAILY_RECIPIENT_LIMIT = 10_000
 # Emails one admin request may send inline (outside the paced queue) while Graph is the provider.
 GRAPH_INLINE_BATCH_LIMIT = 20
+# Characters that would change a Graph URL (percent-encoding keeps them out of the path, but a deny mailbox that
+# needs them is never what an operator meant).
+_URL_CHARACTERS = frozenset("/?#%\\")
 
 
 def normalize_mailbox(value: str) -> str:
@@ -21,12 +24,18 @@ def normalize_mailbox(value: str) -> str:
     return str(value or "").strip().lower()
 
 
+def is_deny_mailbox(value: str) -> bool:
+    """A mailbox the access check may use as its deny mailbox: a plain email address (it is also the From address
+    of the probes that must be refused), with nothing that could change a Graph URL."""
+    return is_plain_address(value) and not _URL_CHARACTERS & set(value)
+
+
 class MicrosoftGraphProviderConfig(ProjectControlModel):
     """The Entra app used to send and read email through Microsoft Graph (Outlook / Exchange Online).
 
     The app authenticates only with a certificate. Its public data and a pointer to the private key live in
     ``MicrosoftGraphCertificate`` rows (one current, one previous for rollback); the key itself is kept in the
-    credential store, never in this table.
+    credential store, never in this table. ``MicrosoftGraphAccessCheck`` rows record each access check run.
     """
 
     name = models.CharField(max_length=128, default="Default", verbose_name="Config Name")
@@ -65,6 +74,28 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
             "Keep this below that limit so login codes and tickets are not throttled during campaigns."
         ),
     )
+    access_check_deny_mailbox = models.CharField(
+        max_length=254,
+        blank=True,
+        default="",
+        verbose_name="Access Check Deny Mailbox",
+        help_text=(
+            "An existing mailbox outside the scope, designated by OIT / InfoSec for the denial test (an email "
+            "address, not another name of a scoped mailbox). The access check expects Microsoft to refuse reading "
+            "it, sending as it and sending from it."
+        ),
+    )
+    permission_exception_reference = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="InfoSec Exception Reference",
+        help_text=(
+            "Only after InfoSec has approved, in writing, Graph application permissions beyond the approved "
+            "Mail.Send and Mail.Read: the reference of that review (for example its ticket number). Superusers "
+            "only; the site never fills it in."
+        ),
+    )
 
     class Meta:
         verbose_name = "Microsoft Graph Provider Config"
@@ -91,6 +122,12 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
             errors["client_id"] = "The application (client) ID must be a GUID."
         if self.mailbox and not is_exchange_mailbox(self.mailbox):
             errors["mailbox"] = "Enter the mailbox email address / user principal name, or its object ID (GUID)."
+        self.access_check_deny_mailbox = normalize_mailbox(self.access_check_deny_mailbox)
+        self.permission_exception_reference = str(self.permission_exception_reference or "").strip()
+        if self.access_check_deny_mailbox and not is_deny_mailbox(self.access_check_deny_mailbox):
+            errors["access_check_deny_mailbox"] = "Enter the plain email address of the designated test mailbox."
+        elif self.access_check_deny_mailbox and self.access_check_deny_mailbox == normalize_mailbox(self.mailbox):
+            errors["access_check_deny_mailbox"] = "The deny mailbox must not be the sender mailbox."
         changed = self._application_field_changed_under_a_certificate()
         if changed:
             errors.setdefault(

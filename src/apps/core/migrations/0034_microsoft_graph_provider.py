@@ -89,6 +89,26 @@ class Migration(migrations.Migration):
                         verbose_name="Messages per Minute",
                     ),
                 ),
+                (
+                    "access_check_deny_mailbox",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        help_text="An existing mailbox outside the scope, designated by OIT / InfoSec for the denial test (an email address, not another name of a scoped mailbox). The access check expects Microsoft to refuse reading it, sending as it and sending from it.",
+                        max_length=254,
+                        verbose_name="Access Check Deny Mailbox",
+                    ),
+                ),
+                (
+                    "permission_exception_reference",
+                    models.CharField(
+                        blank=True,
+                        default="",
+                        help_text="Only after InfoSec has approved, in writing, Graph application permissions beyond the approved Mail.Send and Mail.Read: the reference of that review (for example its ticket number). Superusers only; the site never fills it in.",
+                        max_length=255,
+                        verbose_name="InfoSec Exception Reference",
+                    ),
+                ),
             ],
             options={
                 "verbose_name": "Microsoft Graph Provider Config",

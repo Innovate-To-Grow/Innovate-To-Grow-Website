@@ -4,8 +4,9 @@ import datetime
 from io import StringIO
 from unittest.mock import patch
 
+from django.conf import settings
 from django.core.management import CommandError, call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.core.models import (
@@ -26,6 +27,14 @@ FROM = "i2g@g.ucmerced.edu"
 NO_CERTIFICATE = "MicrosoftGraphProviderConfig has no installed certificate."
 NO_SCOPE = "has no mailbox scope; Graph refuses every mailbox"
 NOT_IN_SCOPE = "not in the mailbox scope with send permission"
+WARNING_DAYS = settings.GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS
+CRITICAL_DAYS = settings.GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS
+HOUR = datetime.timedelta(hours=1)
+
+
+def local(value):
+    """How the command (like the admin) shows a date: the site's time zone, named."""
+    return f"{timezone.localtime(value):%Y-%m-%d %H:%M %Z}"
 
 
 class VerifyServiceConfigsGraphScopeTest(TestCase):
@@ -55,7 +64,9 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
         return create_graph_config(scope=scope, **{**values, **overrides})
 
     def expire(self, config, delta):
-        MicrosoftGraphCertificate.objects.filter(config=config).update(not_after=timezone.now() + delta)
+        not_after = timezone.now() + delta
+        MicrosoftGraphCertificate.objects.filter(config=config).update(not_after=not_after)
+        return not_after
 
     def test_a_valid_certificate_passes_strict_quietly(self):
         self.email()
@@ -87,24 +98,79 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
 
         out = self.run_command()
 
-        self.assertIn(f"FAIL: The Microsoft Graph certificate is not valid until {start:%Y-%m-%d}.", out)
+        self.assertIn(f"FAIL: The Microsoft Graph certificate is not valid until {local(start)}.", out)
         self.assertIn("MicrosoftGraphProviderConfig: MISSING", out)
 
-    def test_a_certificate_expiring_within_30_days_warns(self):
+    def test_inside_the_warning_window_warns_and_strict_still_passes(self):
         self.email()
-        self.expire(self.graph(), datetime.timedelta(days=10, hours=1))
+        not_after = self.expire(self.graph(), datetime.timedelta(days=WARNING_DAYS - 1) + HOUR)
+
+        out = self.run_command("--strict")
+
+        self.assertIn(
+            f"WARN: The Microsoft Graph certificate expires on {local(not_after)} ({WARNING_DAYS - 1} days); "
+            "rotate it.",
+            out,
+        )
+        self.assertIn("Service config verification passed.", out)
+
+    def test_inside_the_critical_window_fails_strict_while_graph_is_the_provider(self):
+        self.email()
+        not_after = self.expire(self.graph(), datetime.timedelta(days=CRITICAL_DAYS - 1) + HOUR)
+        out = StringIO()
+
+        with self.assertRaisesMessage(CommandError, "Service config verification failed."):
+            call_command("verify_service_configs", "--strict", stdout=out, stderr=StringIO(), no_color=True)
+
+        self.assertIn(
+            f"FAIL: The Microsoft Graph certificate expires on {local(not_after)} ({CRITICAL_DAYS - 1} days, within "
+            f"{CRITICAL_DAYS}); install the renewed certificate now.",
+            out.getvalue(),
+        )
+        # Still usable: sending works until the certificate actually expires.
+        self.assertIn("MicrosoftGraphProviderConfig: OK", out.getvalue())
+
+    def test_inside_the_critical_window_only_warns_when_graph_is_not_the_provider(self):
+        self.email(provider="smtp")
+        SMTPProviderConfig.objects.create(
+            name="SMTP", is_active=True, host="smtp.example.com", port=587, username="u", password="not-a-real-pw"
+        )
+        self.expire(self.graph(), datetime.timedelta(days=CRITICAL_DAYS - 1) + HOUR)
 
         out = self.run_command("--strict")
 
         self.assertIn("WARN: The Microsoft Graph certificate expires on", out)
-        self.assertIn("(10 days); rotate it.", out)
+        self.assertIn("install the renewed certificate now.", out)
         self.assertIn("Service config verification passed.", out)
 
-    def test_a_certificate_with_more_than_30_days_left_is_quiet(self):
+    def test_outside_the_warning_window_is_quiet(self):
         self.email()
-        self.expire(self.graph(), datetime.timedelta(days=31))
+        self.expire(self.graph(), datetime.timedelta(days=WARNING_DAYS + 1) + HOUR)
 
-        self.assertNotIn("rotate it", self.run_command("--strict"))
+        self.assertNotIn("Microsoft Graph certificate", self.run_command("--strict"))
+
+    def test_the_thresholds_come_from_settings(self):
+        self.email()
+        config = self.graph()
+        cases = ((10, ""), (4, "(4 days); rotate it."), (1, "(1 days, within 2)"))
+        with override_settings(GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS=5, GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS=2):
+            for days, expected in cases:
+                with self.subTest(days=days):
+                    self.expire(config, datetime.timedelta(days=days) + HOUR)
+                    out = self.run_command()
+                    if expected:
+                        self.assertIn(expected, out)
+                    else:
+                        self.assertNotIn("Microsoft Graph certificate", out)
+
+    def test_dates_are_shown_in_the_site_time_zone(self):
+        self.email()
+        not_after = self.expire(self.graph(), datetime.timedelta(days=WARNING_DAYS - 1) + HOUR)
+
+        out = self.run_command()
+
+        self.assertRegex(out, r"expires on \d{4}-\d\d-\d\d \d\d:\d\d P[DS]T ")
+        self.assertNotIn(f"{not_after.astimezone(datetime.UTC):%Y-%m-%d %H:%M} UTC", out)
 
     def test_an_expired_certificate_fails_when_graph_is_the_provider(self):
         self.email()

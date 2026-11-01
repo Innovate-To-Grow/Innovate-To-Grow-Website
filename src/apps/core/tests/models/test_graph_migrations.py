@@ -1,4 +1,4 @@
-"""Migrations 0034/0035: they follow main's 0033, create no secret column, and reverse cleanly."""
+"""Migrations 0034/0035: they follow main's 0033, create no secret or token column, and reverse cleanly."""
 
 import importlib
 
@@ -17,6 +17,7 @@ GRAPH_TABLES = (
     "core_microsoftgraphproviderconfig",
     "core_microsoftgraphmailboxscope",
     "core_microsoftgraphcertificate",
+    "core_microsoftgraphaccesscheck",
 )
 
 
@@ -26,7 +27,9 @@ class GraphMigrationGraphTests(SimpleTestCase):
 
         self.assertEqual([node for node in loader.graph.leaf_nodes() if node[0] == "core"], [CERTIFICATES])
         self.assertEqual({parent.key for parent in loader.graph.node_map[PROVIDER].parents}, {MAIN_0033})
-        self.assertEqual({parent.key for parent in loader.graph.node_map[CERTIFICATES].parents}, {PROVIDER})
+        # 0035 also depends on the user model (the access check's ``run_by``), as earlier core migrations do.
+        certificate_parents = {parent.key for parent in loader.graph.node_map[CERTIFICATES].parents}
+        self.assertEqual({key for key in certificate_parents if key[0] == "core"}, {PROVIDER})
 
     def test_no_operation_creates_a_secret_column(self):
         for name in (PROVIDER[1], CERTIFICATES[1]):

@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.checks import Error, Tags, register
 
 from .services.credential_store import BACKENDS, SECRETS_MANAGER, valid_secret_id, valid_staged_label
+from .utils.security import is_graph_permission
 
 _POSITIVE_NUMBER_SETTINGS = (
     "CREDENTIAL_STORE_CONNECT_TIMEOUT_SECONDS",
@@ -19,6 +20,9 @@ _POSITIVE_NUMBER_SETTINGS = (
     "GRAPH_CERTIFICATE_CHECK_TIMEOUT_SECONDS",
     "GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS",
     "GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS",
+    "GRAPH_ACCESS_CHECK_TIMEOUT_SECONDS",
+    "GRAPH_ACCESS_CHECK_MIME_MAX_BYTES",
+    "GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS",
 )
 
 
@@ -68,3 +72,24 @@ def _secret_errors() -> list[Error]:
 @register(Tags.security)
 def check_credential_store(app_configs=None, **kwargs):
     return _backend_errors() + _secret_errors()
+
+
+def _graph_errors() -> list[Error]:
+    errors = []
+    roles = getattr(settings, "GRAPH_APPROVED_APPLICATION_ROLES", None)
+    if not isinstance(roles, list | tuple) or not roles or not all(is_graph_permission(role) for role in roles):
+        errors.append(
+            Error(
+                "GRAPH_APPROVED_APPLICATION_ROLES must be a non-empty list of Graph permission names.",
+                hint='For example ("Mail.Send", "Mail.Read"): the application permissions InfoSec approved.',
+                id="core.E006",
+            )
+        )
+    if not isinstance(getattr(settings, "GRAPH_REQUIRE_ACCESS_EVIDENCE", None), bool):
+        errors.append(Error("GRAPH_REQUIRE_ACCESS_EVIDENCE must be True or False.", id="core.E007"))
+    return errors
+
+
+@register(Tags.security)
+def check_microsoft_graph(app_configs=None, **kwargs):
+    return _graph_errors()

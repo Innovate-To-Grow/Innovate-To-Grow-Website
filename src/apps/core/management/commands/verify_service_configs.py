@@ -6,10 +6,10 @@ services share a single AWSCredentialConfig. Send verification is checked using
 the effective policy, including settings and environment overrides.
 """
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.core.validators import validate_email
-from django.utils import timezone
 
 from apps.authn.services.send_verification.config import require_ready
 from apps.authn.services.send_verification.exceptions import SendPaused, SendVerificationError
@@ -20,8 +20,8 @@ from apps.core.models import (
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
-
-GRAPH_CERTIFICATE_WARNING_DAYS = 30
+from apps.core.services.email.graph.credential import expiry
+from apps.core.services.email.graph.credential.expiry import local_time_text
 
 
 class Command(BaseCommand):
@@ -109,15 +109,27 @@ class Command(BaseCommand):
         if certificate is None:
             problems.append("MicrosoftGraphProviderConfig has no installed certificate.")
             return
-        if certificate.not_before > timezone.now():
-            problems.append(f"The Microsoft Graph certificate is not valid until {certificate.not_before:%Y-%m-%d}.")
-        expires_at = certificate.not_after
-        days_left = (expires_at - timezone.now()).days
-        if days_left < 0:
-            problems.append(f"The Microsoft Graph certificate expired on {expires_at:%Y-%m-%d}.")
-        elif days_left < GRAPH_CERTIFICATE_WARNING_DAYS:
+        self._check_graph_expiry(certificate, problems, warnings)
+
+    @staticmethod
+    def _check_graph_expiry(certificate, problems: list[str], warnings: list[str]) -> None:
+        """Expired or not yet valid, and from ``GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS`` before expiry, are problems
+        (failures while Graph is selected); from ``GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS`` before, a warning."""
+        status = expiry.certificate_expiry(certificate)
+        expires_at = local_time_text(certificate.not_after)
+        if status.level == expiry.NOT_YET_VALID:
+            valid_from = local_time_text(certificate.not_before)
+            problems.append(f"The Microsoft Graph certificate is not valid until {valid_from}.")
+        elif status.level == expiry.EXPIRED:
+            problems.append(f"The Microsoft Graph certificate expired on {expires_at}.")
+        elif status.level == expiry.CRITICAL:
+            problems.append(
+                f"The Microsoft Graph certificate expires on {expires_at} ({status.days_left} days, within "
+                f"{settings.GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS}); install the renewed certificate now."
+            )
+        elif status.level == expiry.WARNING:
             warnings.append(
-                f"The Microsoft Graph certificate expires on {expires_at:%Y-%m-%d} ({days_left} days); rotate it."
+                f"The Microsoft Graph certificate expires on {expires_at} ({status.days_left} days); rotate it."
             )
 
     def _check_email(self, email, *, aws_ok: bool, smtp_ok: bool, graph_ok: bool, failures: list[str]) -> None:

@@ -71,7 +71,11 @@ sender name and email address, and save the active configuration.
   both). This page only selects Graph; the configuration, its scope and its
   certificate are managed on the Graph configuration's admin page (Core app,
   linked from the panel for staff who have it), and must be in place before
-  Graph can be selected. Graph authenticates with a certificate only; a
+  Graph can be selected. In production Graph can be selected only after a
+  superuser has run the access check with the current certificate and it
+  matched the approval (the panel's **Go-live evidence** line says what is
+  missing; see [Validate the access restriction](../integrations/microsoft-graph-email.md#validate-the-access-restriction)).
+  Graph authenticates with a certificate only; a
   superuser installs it there, and its private key is kept in the credential
   store, never in the database. The sender mailbox
   defaults to the From email; both must be in the scope with send permission.

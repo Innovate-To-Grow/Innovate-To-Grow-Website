@@ -51,11 +51,18 @@ _DNS_NAME_RE = re.compile(r"(?=.{3,253}$)" + _DNS_LABEL + r"(?:\." + _DNS_LABEL 
 # A dot-atom local part (RFC 5322 section 3.2.3) without the HTML metacharacters ' and &.
 _ATEXT = r"[A-Za-z0-9!#$%*+/=?^_`{|}~-]"
 _PLAIN_LOCAL_PART_RE = re.compile(_ATEXT + r"+(?:\." + _ATEXT + r"+)*")
+# A Microsoft Graph permission value as it appears in an access token's ``roles`` claim, such as ``Mail.Send``.
+_GRAPH_PERMISSION_RE = re.compile(r"[A-Za-z][A-Za-z0-9.]{0,63}")
 
 
 def is_guid(value: str) -> bool:
     """Whether *value* is a canonical GUID (Entra application, tenant and object IDs)."""
     return bool(_GUID_RE.fullmatch(str(value or "")))
+
+
+def is_graph_permission(value) -> bool:
+    """Whether *value* is a Microsoft Graph permission name such as ``Mail.Send`` (safe to show and compare)."""
+    return isinstance(value, str) and bool(_GRAPH_PERMISSION_RE.fullmatch(value))
 
 
 def is_entra_tenant(value: str) -> bool:

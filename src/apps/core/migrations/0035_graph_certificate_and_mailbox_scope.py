@@ -2,17 +2,20 @@
 
 import django.db.models.deletion
 import uuid
+from django.conf import settings
 from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    """The mailbox scope, and installed certificates as public data plus a pointer to the key in the credential store.
+    """The mailbox scope, installed certificates as public data plus a pointer to the key in the credential store, and
+    the recorded access checks.
 
-    No column here (or in 0034) ever holds a private key or a client secret.
+    No column here (or in 0034) ever holds a private key, a client secret or an access token.
     """
 
     dependencies = [
         ("core", "0034_microsoft_graph_provider"),
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
@@ -171,6 +174,91 @@ class Migration(migrations.Migration):
                         name="core_one_previous_graph_certificate",
                     ),
                 ],
+            },
+        ),
+        migrations.CreateModel(
+            name="MicrosoftGraphAccessCheck",
+            fields=[
+                ("id", models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True, db_index=True)),
+                ("updated_at", models.DateTimeField(auto_now=True, db_index=True)),
+                ("certificate_sha1", models.CharField(max_length=40, verbose_name="Certificate Thumbprint (SHA-1)")),
+                ("tenant_id", models.CharField(max_length=253, verbose_name="Tenant ID")),
+                ("client_id", models.CharField(max_length=64, verbose_name="Client ID")),
+                ("deny_mailbox", models.CharField(max_length=254, verbose_name="Deny Mailbox")),
+                (
+                    "source",
+                    models.CharField(
+                        choices=[("command", "manage.py verify_graph_access"), ("admin", "Django admin")],
+                        max_length=16,
+                        verbose_name="Run From",
+                    ),
+                ),
+                ("results", models.JSONField(blank=True, default=list, verbose_name="Probe Results")),
+                ("granted_roles", models.JSONField(blank=True, null=True, verbose_name="Granted Application Roles")),
+                (
+                    "approved_roles",
+                    models.JSONField(blank=True, default=list, verbose_name="Approved Application Roles"),
+                ),
+                (
+                    "mailbox_restriction_passed",
+                    models.BooleanField(default=False, verbose_name="Mailbox Restriction Holds"),
+                ),
+                ("roles_within_approval", models.BooleanField(null=True, verbose_name="Roles Within the Approval")),
+                ("complete", models.BooleanField(default=False, verbose_name="Complete Validation")),
+                (
+                    "permission_exception_reference",
+                    models.CharField(
+                        blank=True, default="", max_length=255, verbose_name="InfoSec Exception Reference (at the time)"
+                    ),
+                ),
+                (
+                    "verdict",
+                    models.CharField(
+                        choices=[
+                            ("compliant", "Matches the approval"),
+                            ("not_compliant", "Does not match the approval"),
+                            ("incomplete", "Not a complete validation"),
+                        ],
+                        max_length=16,
+                        verbose_name="Verdict",
+                    ),
+                ),
+                (
+                    "certificate",
+                    models.ForeignKey(
+                        blank=True,
+                        help_text="The certificate the access token was requested with.",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="access_checks",
+                        to="core.microsoftgraphcertificate",
+                    ),
+                ),
+                (
+                    "config",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="access_checks",
+                        to="core.microsoftgraphproviderconfig",
+                    ),
+                ),
+                (
+                    "run_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="+",
+                        to=settings.AUTH_USER_MODEL,
+                        verbose_name="Run By",
+                    ),
+                ),
+            ],
+            options={
+                "verbose_name": "Microsoft Graph Access Check",
+                "verbose_name_plural": "Microsoft Graph Access Checks",
+                "ordering": ("-created_at",),
             },
         ),
     ]

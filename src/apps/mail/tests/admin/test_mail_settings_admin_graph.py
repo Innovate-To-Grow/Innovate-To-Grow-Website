@@ -19,6 +19,7 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftG
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import create_graph_config, private_key_lines
+from apps.core.tests.models.test_graph_go_live_gate import DENY, evidence
 from apps.event.tests.helpers import make_admin, make_superuser
 
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
@@ -550,3 +551,36 @@ class SendTestEmailTests(GraphSettingsTestCase):
         for leaked in ("leaky detail", FAKE_TOKEN, *private_key_lines()):
             self.assertNotContains(response, leaked)
             self.assertNotIn(leaked, "\n".join(logs.output))
+
+
+@override_settings(GRAPH_REQUIRE_ACCESS_EVIDENCE=True)
+class GoLiveGateTests(GraphSettingsTestCase):
+    """Under the go-live gate (``GRAPH_REQUIRE_ACCESS_EVIDENCE``, on in production)."""
+
+    def test_graph_cannot_be_selected_without_access_check_evidence(self):
+        self.make_graph(access_check_deny_mailbox=DENY)
+
+        response = self.client.post(self.edit_url, self.post_data("graph"))
+
+        self.assertEqual(response.status_code, 200)
+        [error] = response.context["email_form"].errors["provider"]
+        self.assertTrue(error.startswith("Email cannot switch to Microsoft Graph yet: no access check is recorded"))
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.provider, "ses")
+
+    def test_graph_can_be_selected_with_a_recent_passing_access_check(self):
+        evidence(self.make_graph(access_check_deny_mailbox=DENY))
+
+        response = self.client.post(self.edit_url, self.post_data("graph"))
+
+        self.assertRedirects(response, self.summary_url, fetch_redirect_response=False)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.provider, "graph")
+
+    def test_the_read_only_graph_panel_shows_what_is_missing(self):
+        self.make_graph(access_check_deny_mailbox=DENY)
+
+        response = self.client.get(self.edit_url)
+
+        self.assertContains(response, "Go-live evidence:</span>")
+        self.assertContains(response, "missing: no access check is recorded for the current certificate")

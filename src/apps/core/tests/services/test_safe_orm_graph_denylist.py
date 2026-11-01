@@ -1,14 +1,24 @@
-"""The shared safe-ORM denylist keeps the Microsoft Graph config, its mailbox scope and its installed certificates
-away from the assistant and the CLI."""
+"""The shared safe-ORM denylist keeps the Microsoft Graph config, its mailbox scope, its installed certificates and
+its recorded access checks away from the assistant and the CLI."""
 
 from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
-from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
+from apps.core.models import (
+    MicrosoftGraphAccessCheck,
+    MicrosoftGraphCertificate,
+    MicrosoftGraphMailboxScope,
+    MicrosoftGraphProviderConfig,
+)
 from apps.core.services.db_tools.safe_orm import DENIED_MODEL_LABELS, ActionRequestError, is_model_denied, resolve_model
 
-GRAPH_MODELS = (MicrosoftGraphProviderConfig, MicrosoftGraphMailboxScope, MicrosoftGraphCertificate)
+GRAPH_MODELS = (
+    MicrosoftGraphProviderConfig,
+    MicrosoftGraphMailboxScope,
+    MicrosoftGraphCertificate,
+    MicrosoftGraphAccessCheck,
+)
 SAFETY = "apps.core.services.db_tools.safe_orm.safety"
 
 
@@ -36,9 +46,9 @@ class GraphModelDenylistTest(SimpleTestCase):
                             str(error.exception), f"{access} access is not allowed for core.{model.__name__}."
                         )
 
-    def test_the_explicit_label_is_what_blocks_the_scope_and_certificate_models(self):
+    def test_the_explicit_label_is_what_blocks_the_scope_certificate_and_access_check_models(self):
         # Their names match no denied name part ("config", "credential", ...), so only the label protects them.
-        for model in (MicrosoftGraphMailboxScope, MicrosoftGraphCertificate):
+        for model in (MicrosoftGraphMailboxScope, MicrosoftGraphCertificate, MicrosoftGraphAccessCheck):
             with self.subTest(model=model.__name__), patch(f"{SAFETY}.DENIED_MODEL_LABELS", frozenset()):
                 self.assertFalse(is_model_denied(model, write=False))
                 self.assertFalse(is_model_denied(model, write=True))

@@ -4,6 +4,7 @@
 - ``stored_key``: the private key in the credential store, read only by its pinned version.
 - ``entra_check``: one token request that tests a certificate against Microsoft Entra.
 - ``lifecycle``: install a certificate; ``recovery``: roll back to the previous one, or remove both in an emergency.
+- ``expiry``: how close a certificate is to expiry, against the warning and critical thresholds in settings.
 
 The submodules are imported directly: ``auth`` depends on ``stored_key``, and ``entra_check`` on ``auth``.
 """

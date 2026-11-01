@@ -1,6 +1,6 @@
 from apps.cli_admin.models import CliAuditLog
 from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff, make_superuser
-from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
+from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.tests.graph_helpers import create_graph_config
 
 # Graph senders used in this module; the mailbox scope rules have their own tests.
@@ -9,11 +9,13 @@ GRAPH_TEST_SCOPE = ("sender@example.com",)
 ATTACKER_VALUE = "attacker-chosen"
 CONFIG_COLLECTION = "/admin-api/records/core/microsoftgraphproviderconfig/"
 CERTIFICATE_COLLECTION = "/admin-api/records/core/microsoftgraphcertificate/"
+ACCESS_CHECK_COLLECTION = "/admin-api/records/core/microsoftgraphaccesscheck/"
 DENIED = "{access} access is not allowed for core.{model}."
 
 
 class GraphDenylistTests(CliApiTestCase):
-    """The Graph config and its installed certificates are unreachable through /admin-api/, even for superusers."""
+    """The Graph config, its installed certificates and its access checks are unreachable through /admin-api/, even
+    for superusers."""
 
     def setUp(self):
         super().setUp()
@@ -26,9 +28,23 @@ class GraphDenylistTests(CliApiTestCase):
             mailbox="sender@example.com",
         )
         self.certificate = self.config.current_certificate
+        self.access_check = MicrosoftGraphAccessCheck.objects.create(
+            config=self.config,
+            certificate=self.certificate,
+            certificate_sha1=self.certificate.sha1_thumbprint,
+            tenant_id=self.config.tenant_id,
+            client_id=self.config.client_id,
+            deny_mailbox="intruder-test@example.com",
+            source=MicrosoftGraphAccessCheck.Source.COMMAND,
+            verdict=MicrosoftGraphAccessCheck.Verdict.NOT_COMPLIANT,
+        )
         self.targets = {
             "MicrosoftGraphProviderConfig": (CONFIG_COLLECTION, f"{CONFIG_COLLECTION}{self.config.pk}/"),
             "MicrosoftGraphCertificate": (CERTIFICATE_COLLECTION, f"{CERTIFICATE_COLLECTION}{self.certificate.pk}/"),
+            "MicrosoftGraphAccessCheck": (
+                ACCESS_CHECK_COLLECTION,
+                f"{ACCESS_CHECK_COLLECTION}{self.access_check.pk}/",
+            ),
         }
         # Both actors hold the "core" app grant (superusers hold every grant), so a 400 below comes from the
         # denylist and not from the per-app 403.
@@ -72,6 +88,7 @@ class GraphDenylistTests(CliApiTestCase):
                 self.assertIn("projects.Semester", labels)
                 self.assertNotIn("core.MicrosoftGraphProviderConfig", labels)
                 self.assertNotIn("core.MicrosoftGraphCertificate", labels)
+                self.assertNotIn("core.MicrosoftGraphAccessCheck", labels)
 
     def test_create_is_400_and_writes_nothing(self):
         payload = {"name": "Injected", "tenant_id": "contoso.com", "client_id": "x", "state": "current"}
@@ -80,6 +97,7 @@ class GraphDenylistTests(CliApiTestCase):
 
         self.assertEqual(MicrosoftGraphProviderConfig.objects.count(), 1)
         self.assertEqual(MicrosoftGraphCertificate.objects.count(), 1)
+        self.assertEqual(MicrosoftGraphAccessCheck.objects.count(), 1)
 
     def test_update_is_400_and_leaves_the_rows_untouched(self):
         changes = (("mailbox", "attacker@example.com"), ("state", "removed"), ("store_version_id", ATTACKER_VALUE))
@@ -101,6 +119,7 @@ class GraphDenylistTests(CliApiTestCase):
 
         self.assertTrue(MicrosoftGraphProviderConfig.objects.filter(pk=self.config.pk).exists())
         self.assertTrue(MicrosoftGraphCertificate.objects.filter(pk=self.certificate.pk).exists())
+        self.assertTrue(MicrosoftGraphAccessCheck.objects.filter(pk=self.access_check.pk).exists())
 
     def test_denied_writes_are_audited_as_failed(self):
         detail = self.targets["MicrosoftGraphCertificate"][1]

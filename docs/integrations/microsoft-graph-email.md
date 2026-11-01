@@ -147,6 +147,9 @@ provider.
    | **Sender Mailbox** | `i2g@ucmerced.edu`. Blank means the **From Email** address. The admin inbox reads this mailbox too. |
    | **Messages per Minute** | 1 to 30, default 24. Exchange Online allows 30 messages per minute per mailbox. See [Campaign pacing](#campaign-pacing). |
    | **Mailbox scope** (inline rows) | One row: mailbox `i2g@ucmerced.edu`, permission **Send and read (Mail.Send + Mail.Read)**. |
+   | **Access Check Deny Mailbox** | Superusers only. The unrelated test mailbox OIT / InfoSec designated for the denial test ([Validate the access restriction](#validate-the-access-restriction)). |
+   | **InfoSec Exception Reference** | Superusers only, and only after InfoSec has approved in writing Graph permissions beyond `Mail.Send` and `Mail.Read`: the reference of that review. Leave it blank otherwise. |
+   | **Access check** (panel above the form) | The latest access check: verdict, date, certificate, deny mailbox and the token's roles, with a link to the recorded result, and whether it is go-live evidence. Superusers get **Run access check**. |
 
    **Tenant ID** and **Client ID** are read-only while a certificate is installed: a certificate is
    tested for one tenant and app. To move to another app, set up a standby configuration for it, install
@@ -172,14 +175,18 @@ provider.
    store, and the new version is pinned as the current certificate; the replaced one becomes previous.
    Every message is fixed text and never contains key material. The certificate alone (no key) re-issues
    the installed key when its public key matches.
-2. Open **Mail → Notification Delivery**: in the sidebar choose **Delivery Operations** (group
+2. Set **Access Check Deny Mailbox** and run the [access validation](#validate-the-access-restriction)
+   (**Run access check**). In production, Notification Delivery refuses Microsoft Graph until a run with
+   the current certificate matches the approval.
+3. Open **Mail → Notification Delivery**: in the sidebar choose **Delivery Operations** (group
    **Broadcast Delivery**), switch to the **Notification Delivery** tab (`/admin/mail/settings/`), and
    select **Edit Notification Delivery**.
-3. Under **Email Sender**, set **Provider** to **Microsoft Graph**, tick **Active**, set **From Name** and
+4. Under **Email Sender**, set **Provider** to **Microsoft Graph**, tick **Active**, set **From Name** and
    **From Email** (`i2g@ucmerced.edu`), and select **Save Notification Delivery**. The Graph panel shows the
-   configuration from step 1 read-only (with the certificate's SHA-1 thumbprint and expiry, and the mailbox
-   scope); this page cannot change it. Staff with the **Core** app get a link to the configuration page.
-4. Run the [access validation](#validate-the-access-restriction), then send a test email.
+   configuration from step 1 read-only (with the certificate's SHA-1 thumbprint and expiry, the mailbox
+   scope and the latest access check); this page cannot change it. Staff with the **Core** app get a link
+   to the configuration page.
+5. Send a test email.
 
 - The **From Email** and the sending mailbox must both be in the scope with send permission; otherwise
   saving stops under **Provider** with "An active Microsoft Graph configuration whose mailbox scope lets
@@ -220,27 +227,68 @@ provider.
 
 ### Validate the access restriction
 
+The access check asks Microsoft directly, bypassing the site's own scope check, what the Entra app may do
+and compares it with the InfoSec approval (`Mail.Send` and `Mail.Read` for the I2G mailbox). A
+superuser runs it with **Run access check** on the Graph configuration's page (production has no ECS
+Exec), or from a shell:
+
 ```bash
-cd src && python manage.py verify_graph_access --deny-mailbox <unrelated-test-mailbox@ucmerced.edu>
+cd src && python manage.py verify_graph_access
 ```
 
-The command asks Microsoft directly, bypassing the site's own scope check, so it proves the Exchange
-restriction:
+Before the first run a superuser sets **Access Check Deny Mailbox** on the configuration: an existing
+mailbox outside the scope, designated by OIT / InfoSec for the denial test (a plain email address, not
+another name of a scoped mailbox). `--deny-mailbox <address>` tries another one, but only runs against
+the designated mailbox count as go-live evidence. Each run requests a fresh token with the current
+certificate and records one **Microsoft Graph Access Check** row (Core app, read-only): the certificate,
+the deny mailbox, every probe line, the token's roles and the verdict. No token, response body or
+message content is stored.
 
 | Check | Mailbox | Expected |
 |-------|---------|----------|
-| token | | issued with the certificate |
-| read | each scoped mailbox with read permission | `200` |
-| send | each scoped mailbox with send permission (a probe email to itself) | `202` |
-| read | the `--deny-mailbox` | `403` |
-| send | as the `--deny-mailbox`, addressed to the I2G mailbox | `403` |
+| `token` | | issued for the current certificate |
+| `roles` | | the token's `roles` claim within `GRAPH_APPROVED_APPLICATION_ROLES` (default `Mail.Send`, `Mail.Read`) |
+| `folder`, `list`, `value` | each scoped mailbox with read permission | `200`: the Inbox, the newest message with its preview (`$top=1&$select=id,bodyPreview`), and the first `GRAPH_ACCESS_CHECK_MIME_MAX_BYTES` (default 4096) of its raw MIME, which is discarded |
+| `send` | each scoped mailbox with send permission, listed by address | `202`: a MIME probe email to itself (a copy stays in its Sent Items) |
+| `read+` | each scoped mailbox with send permission only | for the record: a `200` is a WARN, because an access policy limits mailboxes, not permissions, so only the site's scope stops reading it |
+| `folder`, `list` | the deny mailbox | `403` |
+| `send` | as the deny mailbox, addressed to the I2G mailbox | `403` |
+| `sendas` | the I2G mailbox, with the deny mailbox as From | `403` (`ErrorSendAsDenied`): the I2G mailbox holds no Send As or Send on Behalf right on it |
 
-It prints one `PASS`/`FAIL` line per check and exits non-zero on any `FAIL`. The deny mailbox must exist
-(a `404` fails with a note) and must not be in the scope. Every probe email is addressed to the I2G
-mailbox, so even if Exchange wrongly allowed the deny send, the email lands only in the I2G mailbox,
-and the line reads `ACCESS WAS GRANTED: the tenant-side restriction is missing`. `--no-send` skips the
-send probes. Run it after setup, after any Exchange or Entra change, and after rotation (wait for the
-30-minute-to-2-hour propagation first). Keep the output as the validation evidence for InfoSec.
+How to read the result:
+
+- The two sends that must be refused are JSON `sendMail` with `saveToSentItems: false`, addressed to the
+  I2G mailbox. If Exchange wrongly accepts one, it files no Sent Items copy and reaches only the I2G
+  mailbox, and the line reads `ACCESS WAS GRANTED` with a note that a probe email was sent.
+- The token's `roles` are decoded without verifying the token (Microsoft supports decoding only for
+  debugging). Any role beyond the approval, such as `Mail.ReadWrite`, is a FAIL, unless a superuser has
+  recorded **InfoSec Exception Reference** (the reference of InfoSec's written review; the site never
+  fills it in), which turns it into a WARN that names the reference. No roles is a WARN: RBAC for
+  Applications grants never appear in the token. Unreadable roles are INCONCLUSIVE.
+- A `403` for the deny mailbox counts only when the same kind of request succeeded for a scoped mailbox
+  in the same run. Otherwise it is INCONCLUSIVE, because an app that may do nothing at all also gets `403`.
+- A `403` whose message starts with `Access to OData is disabled` is noted as an Exchange Application
+  Access Policy refusal (an EWS access policy gives the same message). A deny mailbox that does not
+  exist fails with a `404` note.
+- Each line shows the HTTP status, the Graph error code and Microsoft's request ID, so it can be matched
+  with Entra sign-in and Exchange logs.
+- A skipped check (`--no-send`, no mailbox with read or send permission, a sender listed only by object
+  ID) is SKIP. A run with any SKIP or INCONCLUSIVE line ends with `NOT A COMPLETE VALIDATION`.
+
+The summary line reads, for example, `Mailbox restriction: HOLDS · Granted roles: BEYOND the approval
+(Mail.ReadWrite) · Verdict: DOES NOT MATCH THE APPROVAL`. The command exits non-zero unless the verdict
+is **Matches the approval**: the restriction holds, nothing failed or was skipped, and the roles are
+within the approval or covered by a recorded exception. Run it after setup, after any Exchange or Entra
+change, and after rotation. Microsoft notes that access policy changes can take more than an hour to
+apply, so wait after OIT changes anything. The recorded rows are the validation evidence for InfoSec.
+
+**Go-live gate.** Where `GRAPH_REQUIRE_ACCESS_EVIDENCE` is on (production; off locally and in tests),
+Mail → Notification Delivery can switch email to Microsoft Graph only when the latest access check run
+with the current certificate matched the approval, used the designated deny mailbox, and is at most
+`GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS` (default 30) days old. A role beyond today's approval still needs an
+exception reference at the time of the switch, so clearing the reference withdraws the evidence. The
+gate guards the switch only: editing a config that already sends through Graph is not blocked. The
+certificate panel shows the latest result and whether the evidence is present.
 
 ### Rotate the certificate
 
@@ -251,12 +299,14 @@ Entra accepts several certificates on one app, so rotation has no downtime:
 2. Install the new certificate and private key. Check that the SHA-1 thumbprint and expiry shown in the
    admin match Entra. The replaced certificate is kept as previous, so a rollback (after a fresh Entra
    token test with the previous key) is possible until the next install.
-3. Run `verify_graph_access` and send a test email.
+3. Run the access check (**Run access check** or `verify_graph_access`) and send a test email. Evidence
+   recorded for the old certificate does not count for the new one.
 4. Remove the old certificate from the app in Entra, and destroy any remaining copy of the old key.
 
-The new credential applies to the next request in every process; no restart is needed. Rotate at least
-30 days before expiry ([Monitoring](#monitoring)) and immediately if the key may have been exposed
-([Emergency revocation](#emergency-revocation)).
+The new credential applies to the next request in every process; no restart is needed. Rotate before
+the `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS` threshold (default 14 days before expiry; reminders start at
+`GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS`, default 60, see [Monitoring](#monitoring)), and immediately if
+the key may have been exposed ([Emergency revocation](#emergency-revocation)).
 
 ### Check the stored configuration
 
@@ -268,10 +318,13 @@ The command prints `MicrosoftGraphProviderConfig: OK (<name>)` when Graph can se
 tenant ID and client ID, a current certificate that is valid now, a mailbox scope, and the sending
 mailbox and **From Email** in that scope with send permission) and `MISSING` when Graph is the selected
 provider but cannot. It also reports a missing scope, a missing certificate or one that is not valid yet,
-a certificate that expires within 30 days (warning) or has expired (failure when Graph is selected). It prints
-nothing about Graph when another provider is selected and no Graph configuration exists. With `--strict`,
-a failure makes the command exit non-zero. It reads stored settings only and does not contact Microsoft;
-`verify_graph_access` and **Send Test Email** prove the credentials.
+and certificate expiry: a warning from `GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS` (default 60) days before,
+and a problem from `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS` (default 14) days before or once expired.
+Problems are failures while Graph is the selected provider and warnings otherwise. Dates are shown in the
+site's time zone, as in the admin. It prints nothing about Graph when another provider is selected and no
+Graph configuration exists. With `--strict`, a failure makes the command exit non-zero, so a scheduled
+`--strict` run fails two weeks before the certificate stops email. It reads stored settings only and does
+not contact Microsoft; the access check and **Send Test Email** prove the credentials.
 
 ## How it behaves
 
@@ -340,11 +393,13 @@ a failure makes the command exit non-zero. It reads stored settings only and doe
 | Mailbox scope enforcement | `src/apps/core/services/email/graph/access.py` |
 | Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox.py`, `src/apps/mail/services/inbox/graph_backend.py` |
 | Sent mail access in the admin inbox | `src/apps/mail/admin/inbox/helpers.py` (`sent_mail_restricted`, `sent_mail_denied`) |
-| Access validation | `src/apps/core/services/email/graph/access_check.py`, `manage.py verify_graph_access` |
+| Access validation (probes, roles, verdict, evidence) | `src/apps/core/services/email/graph/access_check/`, `manage.py verify_graph_access` |
+| Recorded access checks and the go-live gate | `src/apps/core/models/base/service_credentials/microsoft_graph_access_check.py`, `EmailServiceConfig.validate_activation` |
+| Certificate expiry thresholds (badge, `verify_service_configs`, worker) | `src/apps/core/services/email/graph/credential/expiry.py` |
 | Provider selection | `src/apps/core/services/email/registry.py` |
 | Settings and scope models | `src/apps/core/models/base/service_credentials/microsoft_graph.py` |
 | Installed certificates (public data + key pointer) | `src/apps/core/models/base/service_credentials/microsoft_graph_certificate.py` |
-| Certificate pages, certificate panel, mailbox scope inline and its guard | `src/apps/core/admin/service_credentials/microsoft_graph*.py` |
+| Certificate pages, certificate panel, Run access check, recorded checks, mailbox scope inline and its guard | `src/apps/core/admin/service_credentials/microsoft_graph*.py` |
 | Notification Delivery (selects the provider; Graph read-only) | `src/apps/mail/admin/settings/` |
 
 ### Sent Items and credential mail
@@ -415,17 +470,20 @@ The page shows the mailbox and `Microsoft Graph` as the source.
 | Signal | Where | Action |
 |--------|-------|--------|
 | `Microsoft Graph sendMail was not accepted: status=… code=… request_id=…` (WARNING) | Backend and worker logs (CloudWatch Logs) | Alert on a burst; see the [error reference](#error-reference). |
-| `Microsoft Graph mailbox read was refused: …` (WARNING) | Backend logs | A `403` means the Exchange scope changed; run `verify_graph_access`. |
+| `Microsoft Graph mailbox read was refused: …` (WARNING) | Backend logs | A `403` means the Exchange scope changed; run the access check. |
 | `Microsoft rejected the Graph credentials (…)` | Email Log, Background Jobs **Last error**, test email | Certificate or app problem; see [Access token requests](#access-token-requests). |
-| Certificate expiry | `verify_service_configs` warns 30 days ahead and fails once expired; the admin list shows **Certificate Expires** | Rotate ([Rotate the certificate](#rotate-the-certificate)). |
+| `Microsoft Graph certificate expiry warning: <n> days left; …` (WARNING, hourly) | Worker logs, from `GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS` (default 60) days before the active config's certificate expires | Rotate ([Rotate the certificate](#rotate-the-certificate)). |
+| Certificate expiry | The panel's expiry badge (amber at the warning, red at `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS`, default 14); `verify_service_configs --strict` fails from the critical threshold while Graph is selected | Rotate before the critical threshold. |
+| Access check | **Microsoft Graph Access Checks** in the admin (Core app); the panel's **Go-live evidence** line | Re-run after any Entra / Exchange change or certificate rotation. |
 | Sign-ins of the app | Entra → Enterprise applications → the app → **Sign-in logs** (service principal sign-ins) | Unexpected IPs or failures. |
 | Mailbox activity | Microsoft Purview audit log for `i2g@ucmerced.edu` (`Send`, `MailItemsAccessed`), run by the M365 admins | Investigations. |
 | Non-delivery reports, mailbox size | The I2G Inbox and Sent Items | Watch for bounces; a full mailbox stops sending (`507`). |
 
 Suggested CloudWatch metric filters: `"Microsoft Graph sendMail was not accepted"`,
 `"Microsoft Graph mailbox read was refused"`, and `"Microsoft rejected the Graph credentials"`, each with
-an alarm on a count above the normal baseline over 15 minutes. Run `verify_service_configs --strict` on a
-schedule (or after each deploy) to catch certificate expiry.
+an alarm on a count above the normal baseline over 15 minutes, and
+`"Microsoft Graph certificate expiry warning"` with an alarm on any match. Running
+`verify_service_configs --strict` after each deploy also catches certificate expiry.
 
 ## Retention
 
@@ -650,6 +708,8 @@ First live check after a new setup or a credential change:
 5. In a non-production environment, install a throwaway certificate that is not registered on the app
    on an inactive configuration and confirm its Entra check reads `invalid_client AADSTS700027`.
 6. Confirm the small campaign completed without `429` responses.
+7. After a credential change, run the access check again: evidence recorded with another certificate does
+   not count for the go-live gate.
 
 ## Sources
 
@@ -658,6 +718,8 @@ First live check after a new setup or a credential change:
 - [Microsoft Graph throttling limits](https://learn.microsoft.com/en-us/graph/throttling-limits): concurrent requests and requests per 10 minutes.
 - [Microsoft Graph error responses](https://learn.microsoft.com/en-us/graph/errors)
 - [RBAC for Applications in Exchange Online](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac): scoping an app to specific mailboxes, the `Application Mail.Send` / `Application Mail.Read` roles, and why tenant-wide Entra grants must be removed.
+- [Access tokens in the Microsoft identity platform](https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens): the `roles` claim, and that apps decode tokens for validation and debugging only.
+- [Limit application permissions to specific Exchange Online mailboxes](https://learn.microsoft.com/en-us/graph/auth-limit-mailbox-access): Application Access Policies, and that policy changes can take more than an hour to apply.
 - [Microsoft identity platform certificate credentials](https://learn.microsoft.com/en-us/entra/identity-platform/certificate-credentials): the client assertion format (`PS256`, `x5t#S256`, claims).
 - [Get MIME content of a message](https://learn.microsoft.com/en-us/graph/outlook-get-mime-message) and [List messages](https://learn.microsoft.com/en-us/graph/api/user-list-messages): the `Mail.Read` calls the admin inbox makes.
 - [OAuth 2.0 client credentials flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-client-creds-grant-flow)

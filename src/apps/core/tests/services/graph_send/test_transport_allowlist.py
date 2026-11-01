@@ -10,7 +10,8 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, TestCase
 
 from apps.core.services.email import PermanentEmailDeliveryError
-from apps.core.services.email.graph import access_check, auth, transport
+from apps.core.services.email.graph import auth, transport
+from apps.core.services.email.graph.access_check.probes import Prober
 from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadError
 from apps.core.services.email.graph.provider import GraphProvider
 from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, create_graph_config, make_test_credential
@@ -147,13 +148,21 @@ class CodePathsStayOnTheAllowlistTests(TestCase):
 
     def test_access_check_probes(self, connection_class):
         connection = self.connection(connection_class, status=403)
+        prober = Prober("token", timeout=5)
+        other = "/v1.0/users/other@ucmerced.edu"
 
-        access_check._probe_read("token", "other@ucmerced.edu", expect_allowed=False, timeout=5)
-        self.assertEqual(
-            self.requested(connection), ("GET", "/v1.0/users/other@ucmerced.edu/mailFolders/inbox?$select=id")
-        )
-        access_check._probe_send("token", "other@ucmerced.edu", "i2g@ucmerced.edu", expect_allowed=False, timeout=5)
-        self.assertEqual(self.requested(connection), ("POST", "/v1.0/users/other@ucmerced.edu/sendMail"))
+        prober.folder("other@ucmerced.edu", expect_allowed=False)
+        self.assertEqual(self.requested(connection), ("GET", f"{other}/mailFolders/inbox?$select=id"))
+        prober.messages("other@ucmerced.edu", expect_allowed=False)
+        method, path = self.requested(connection)
+        self.assertEqual((method, path.split("?")[0]), ("GET", f"{other}/mailFolders/inbox/messages"))
+        prober.send_mime("i2g@ucmerced.edu")
+        self.assertEqual(self.requested(connection), ("POST", f"{USER}/sendMail"))
+        prober.send_json("send", url_mailbox="other@ucmerced.edu", from_mailbox="other@ucmerced.edu", recipient=MAILBOX)
+        self.assertEqual(self.requested(connection), ("POST", f"{other}/sendMail"))
+        connection = self.connection(connection_class, status=200, body=b"Subject: x\r\n\r\nbody")
+        prober.value(MAILBOX, MESSAGE_ID)
+        self.assertEqual(self.requested(connection), ("GET", f"{USER}/messages/{MESSAGE_ID}/$value"))
 
 
 class RefusalHandlingTests(TestCase):
@@ -174,11 +183,15 @@ class RefusalHandlingTests(TestCase):
         connection_class.assert_not_called()
 
     def test_access_check_probes_fail_with_the_refusal_as_note(self):
+        prober = Prober("token", timeout=5)
         with patch.object(transport, "is_allowed", return_value=False), patch(CONNECTION) as connection_class:
-            read = access_check._probe_read("token", "a@ucmerced.edu", expect_allowed=True, timeout=5)
-            send = access_check._probe_send("token", "a@ucmerced.edu", "a@ucmerced.edu", expect_allowed=True, timeout=5)
+            read = prober.folder("a@ucmerced.edu", expect_allowed=True)
+            send = prober.send_mime("a@ucmerced.edu")
+            deny = prober.send_json(
+                "send", url_mailbox="b@ucmerced.edu", from_mailbox="b@ucmerced.edu", recipient=MAILBOX
+            )
 
-        for result in (read, send):
+        for result in (read, send, deny):
             self.assertFalse(result.passed)
             self.assertIsNone(result.status)
             self.assertEqual(result.note, "The site does not make this Microsoft Graph request.")

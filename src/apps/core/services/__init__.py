@@ -25,7 +25,8 @@ Subsystem               What it is                                            Im
                         filter allowlists, ``MAX_ROWS``)
 ``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery;       ``authn``, ``event``, ``mail``
                         ``graph/credential/`` installs the Graph certificate
-                        (key in ``credential_store``)
+                        (key in ``credential_store``); ``graph/access_check/``
+                        records the go-live evidence
 ``helpers/``            In-process task runner + sheet formula safety         ``authn``, ``event``, ``mail``, ``system_intelligence``
 ``legacy_access/``      Signed access to the read-only legacy site viewer      ``core`` only (legacy_view, admin, views)
 ``status/``             Infrastructure status dashboard client                 ``core`` only (admin infrastructure status)

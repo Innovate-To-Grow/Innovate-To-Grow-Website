@@ -7,6 +7,7 @@ from unfold.decorators import display
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 
 from ..common.base import BaseModelAdmin
+from .microsoft_graph_access_check import GraphAccessCheckViewMixin
 from .microsoft_graph_certificate_views import GraphCertificateViewsMixin
 from .microsoft_graph_panel import certificate_panel
 from .microsoft_graph_scope import MicrosoftGraphMailboxScopeInline
@@ -20,9 +21,13 @@ GRAPH_FORM_FIELDS = (
     "client_id",
     "mailbox",
     "messages_per_minute",
+    "access_check_deny_mailbox",
+    "permission_exception_reference",
 )
 # A certificate is tested for one tenant and app, so these are read-only while one is installed.
 APPLICATION_FIELDS = ("tenant_id", "client_id")
+# What the go-live gate accepts as evidence: superusers only, like running the access check itself.
+EVIDENCE_FIELDS = ("access_check_deny_mailbox", "permission_exception_reference")
 NO_CERTIFICATE = "None installed"
 
 
@@ -33,7 +38,7 @@ class MicrosoftGraphProviderConfigForm(forms.ModelForm):
 
 
 @admin.register(MicrosoftGraphProviderConfig)
-class MicrosoftGraphProviderConfigAdmin(GraphCertificateViewsMixin, BaseModelAdmin):
+class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertificateViewsMixin, BaseModelAdmin):
     form = MicrosoftGraphProviderConfigForm
     inlines = (MicrosoftGraphMailboxScopeInline,)
     change_form_outer_before_template = "admin/core/microsoftgraphproviderconfig/certificate_panel.html"
@@ -64,6 +69,18 @@ class MicrosoftGraphProviderConfigAdmin(GraphCertificateViewsMixin, BaseModelAdm
             },
         ),
         (_("Sending"), {"fields": ("mailbox", "messages_per_minute")}),
+        (
+            _("Access check and go-live"),
+            {
+                "fields": EVIDENCE_FIELDS,
+                "description": (
+                    "Superusers only. The access check (Run access check above, or manage.py verify_graph_access) "
+                    "proves against Microsoft that the deny mailbox is refused and that the token's roles are within "
+                    "the approval; where the go-live gate is on, email can switch to Microsoft Graph only with a "
+                    "recent passing check for the current certificate."
+                ),
+            },
+        ),
         (_("Info"), {"fields": ("id", "created_at", "updated_at")}),
     )
 
@@ -91,6 +108,8 @@ class MicrosoftGraphProviderConfigAdmin(GraphCertificateViewsMixin, BaseModelAdm
         readonly = list(super().get_readonly_fields(request, obj))
         if obj is not None and obj.certificates.filter(state__in=MicrosoftGraphCertificate.LIVE_STATES).exists():
             readonly.extend(name for name in APPLICATION_FIELDS if name not in readonly)
+        if not request.user.is_superuser:
+            readonly.extend(name for name in EVIDENCE_FIELDS if name not in readonly)
         return readonly
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
@@ -111,4 +130,4 @@ class MicrosoftGraphProviderConfigAdmin(GraphCertificateViewsMixin, BaseModelAdm
         return actions
 
     def get_urls(self):
-        return self.get_certificate_urls() + super().get_urls()
+        return self.get_access_check_urls() + self.get_certificate_urls() + super().get_urls()

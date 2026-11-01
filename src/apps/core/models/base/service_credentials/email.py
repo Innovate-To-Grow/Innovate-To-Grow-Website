@@ -1,9 +1,11 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from django.db import models, transaction
 
 from ..control import ProjectControlModel
 from .microsoft_graph import GRAPH_INLINE_BATCH_LIMIT, MicrosoftGraphProviderConfig
+from .microsoft_graph_access_check import go_live_problem
 
 
 class EmailServiceConfig(models.Model):
@@ -97,15 +99,30 @@ class EmailServiceConfig(models.Model):
                 raise ValidationError({"provider": "Active AWS SES credentials are required before activation."})
         elif self.provider == self.Provider.SMTP and not SMTPProviderConfig.load().is_configured:
             raise ValidationError({"provider": "An active SMTP configuration is required before activation."})
-        elif self.provider == self.Provider.GRAPH and not MicrosoftGraphProviderConfig.load().sending_ready(
-            self.from_email
-        ):
+        elif self.provider == self.Provider.GRAPH:
+            self._validate_graph_activation()
+
+    def _validate_graph_activation(self):
+        graph = MicrosoftGraphProviderConfig.load()
+        if not graph.sending_ready(self.from_email):
             raise ValidationError(
                 {
                     "provider": "An active Microsoft Graph configuration whose mailbox scope lets the sender "
                     "mailbox and the From address send is required before activation."
                 }
             )
+        if not settings.GRAPH_REQUIRE_ACCESS_EVIDENCE or self._already_sending_through_graph():
+            return
+        problem = go_live_problem(graph)
+        if problem:
+            raise ValidationError({"provider": f"Email cannot switch to Microsoft Graph yet: {problem}"})
+
+    def _already_sending_through_graph(self) -> bool:
+        """The go-live gate guards the switch to Graph; editing a config that already sends through it is not one."""
+        if not self.pk:
+            return False
+        stored = type(self).objects.filter(pk=self.pk).values_list("is_active", "provider").first()
+        return stored == (True, self.Provider.GRAPH)
 
     def save(self, *args, **kwargs):
         if self.is_active:
