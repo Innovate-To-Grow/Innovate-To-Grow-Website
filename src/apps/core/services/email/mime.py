@@ -6,7 +6,8 @@ from email.utils import formataddr, make_msgid
 from .contracts import EmailMessage
 from .exceptions import PermanentEmailDeliveryError
 
-_PROTECTED_HEADERS = {"bcc", "cc", "from", "message-id", "reply-to", "subject", "to"}
+# Headers the builders set themselves; a caller-supplied one is refused (JSON sendMail applies the same rule).
+PROTECTED_HEADERS = {"bcc", "cc", "from", "message-id", "reply-to", "subject", "to"}
 
 
 def _set_headers(mime: MimeMessage, message: EmailMessage, *, from_email: str, from_name: str) -> None:
@@ -15,9 +16,10 @@ def _set_headers(mime: MimeMessage, message: EmailMessage, *, from_email: str, f
     for header, addresses in (("To", message.to), ("Cc", message.cc), ("Reply-To", message.reply_to)):
         if addresses:
             mime[header] = ", ".join(addresses)
-    mime["Message-ID"] = make_msgid()
+    # Without a domain make_msgid() uses this host's FQDN, which would publish the server's internal name.
+    mime["Message-ID"] = make_msgid(domain=from_email.rpartition("@")[2] or None)
     for name, value in message.headers.items():
-        if name.lower() in _PROTECTED_HEADERS:
+        if name.lower() in PROTECTED_HEADERS:
             raise PermanentEmailDeliveryError(f"Email header {name!r} is managed by the delivery service.")
         mime[name] = value
 
@@ -35,7 +37,7 @@ def _set_body(mime: MimeMessage, message: EmailMessage):
 
 
 def _attach_inline(html_part, attachment) -> None:
-    maintype, subtype = _attachment_content_type(attachment.content_type)
+    maintype, subtype = attachment_content_type(attachment.content_type)
     content_id = attachment.content_id or attachment.filename
     if not content_id.startswith("<"):
         content_id = f"<{content_id}>"
@@ -68,7 +70,7 @@ def build_mime_message(message: EmailMessage, *, from_email: str, from_name: str
     for attachment in inline_attachments:
         _attach_inline(html_part, attachment)
     for attachment in ordinary_attachments:
-        maintype, subtype = _attachment_content_type(attachment.content_type)
+        maintype, subtype = attachment_content_type(attachment.content_type)
         mime.add_attachment(
             attachment.content,
             maintype=maintype,
@@ -80,7 +82,7 @@ def build_mime_message(message: EmailMessage, *, from_email: str, from_name: str
     return mime
 
 
-def _attachment_content_type(content_type: str) -> tuple[str, str]:
+def attachment_content_type(content_type: str) -> tuple[str, str]:
     maintype, separator, subtype = content_type.partition("/")
     if not separator or not maintype or not subtype:
         raise PermanentEmailDeliveryError(f"Invalid attachment content type: {content_type!r}.")

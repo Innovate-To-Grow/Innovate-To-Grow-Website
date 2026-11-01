@@ -72,7 +72,7 @@ that names no business app:
 | Durable job queue | `core/services/background_jobs/` | `authn`, `cms`, `event`, `mail` (each registers its job kinds in `AppConfig.ready()`) |
 | Read-only ORM sandbox | `core/services/db_tools/safe_orm/` | `cli_admin`, `system_intelligence` |
 | AWS credentials + SNS SMS | `core/services/aws/` | `authn`, `event`, `mail` |
-| Email delivery (MIME, SES/SMTP) | `core/services/email/` | `authn`, `event`, `mail` |
+| Email delivery (MIME, SES/SMTP/Graph) | `core/services/email/` | `authn`, `event`, `mail` |
 
 Domain subsystems that used to live here have moved to their owners. The Bedrock client is now
 `system_intelligence/services/bedrock/`, the assistant's query tools are

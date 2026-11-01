@@ -285,6 +285,8 @@ def _aws_meta(metric_payload: dict, recipient_details: dict) -> dict:
     configured = email_config.ses_configured
     return {
         "configured": configured,
+        "provider": email_config.provider,
+        "provider_label": email_config.get_provider_display(),
         "email_config": email_config.name,
         "aws_config": aws_config.name,
         "region": aws_config.region,

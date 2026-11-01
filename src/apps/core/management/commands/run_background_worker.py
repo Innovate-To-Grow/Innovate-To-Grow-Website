@@ -17,12 +17,17 @@ from apps.core.services.background_jobs import (
     recover_stale_jobs,
     worker_metrics,
 )
+from apps.core.services.email.graph.credential import expiry
+from apps.core.services.email.graph.credential.expiry import active_certificate_expiry
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAINTENANCE_SECONDS = 3600
 MIN_MAINTENANCE_SECONDS = 300
+# One fixed line (a log metric filter can match its prefix); only the day count varies.
+GRAPH_EXPIRY_WARNING = "Microsoft Graph certificate expiry warning: %d days left; install the renewed certificate"
+GRAPH_EXPIRED_WARNING = "Microsoft Graph certificate expiry warning: expired; install the renewed certificate"
 
 
 def _purge_retired_keys(should_stop=None) -> None:
@@ -60,16 +65,28 @@ def _purge_login_failure_windows(should_stop=None) -> None:
         logger.info("Purged %d expired login failure windows", purged)
 
 
+def _check_graph_certificate_expiry(should_stop=None) -> None:
+    # The active Graph config's current certificate, from GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS before expiry on.
+    status = active_certificate_expiry()
+    if status is None or status.level in (expiry.OK, expiry.NOT_YET_VALID):
+        return
+    if status.level == expiry.EXPIRED:
+        logger.warning(GRAPH_EXPIRED_WARNING)
+    else:
+        logger.warning(GRAPH_EXPIRY_WARNING, status.days_left)
+
+
 # Periodic maintenance, run in this order every ``--maintenance-seconds`` (hourly by default). Each entry is
 # ``(name, callable)``; ``run_maintenance`` isolates every call, so one failure never stops the worker or the rest.
 # Every callable takes the stop check: the three batched tasks hand it to their batch loops, so a stop request ends
-# them after the batch in flight; the two single-statement purges ignore it.
+# them after the batch in flight; the two single-statement purges and the certificate expiry check ignore it.
 MAINTENANCE_TASKS = (
     ("Retired RSA key purge", _purge_retired_keys),
     ("Public assistant budget purge", _purge_public_assistant_budgets),
     ("Send verification cleanup", _cleanup_send_verification),
     ("Expired session cleanup", _clear_expired_sessions),
     ("Login failure window purge", _purge_login_failure_windows),
+    ("Microsoft Graph certificate expiry check", _check_graph_certificate_expiry),
 )
 
 

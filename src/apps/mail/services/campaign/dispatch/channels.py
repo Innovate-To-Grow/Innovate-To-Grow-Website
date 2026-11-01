@@ -14,10 +14,17 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipientLog
 from apps.mail.services.audience import get_recipients
+from apps.mail.services.campaign.pacing import campaign_job_spacing
 from apps.mail.services.campaign.state import campaign_state
 from apps.mail.services.sms.audience import get_sms_recipients
 
 EMAIL_SUCCESS_STATUSES = frozenset({"sent", "delivered"})
+
+
+def _no_job_spacing() -> float:
+    return 0.0
+
+
 EMAIL_PROVIDER_TERMINAL_STATUSES = frozenset({*EMAIL_SUCCESS_STATUSES, "bounced", "complained", "rejected"})
 ACTIVE_STATUSES = ("pending", "processing", "retry")
 
@@ -39,6 +46,8 @@ class DeliveryChannel:
     #: Statuses the outbox must never overwrite (provider-confirmed outcomes).
     terminal_statuses: frozenset
     recipients: Callable
+    #: Seconds between the recipient jobs of one queued campaign (0 = all due at once).
+    job_spacing: Callable[[], float] = _no_job_spacing
 
 
 EMAIL = DeliveryChannel(
@@ -53,6 +62,7 @@ EMAIL = DeliveryChannel(
     failed_statuses=("failed", "bounced", "complained", "rejected", "uncertain"),
     terminal_statuses=EMAIL_PROVIDER_TERMINAL_STATUSES,
     recipients=get_recipients,
+    job_spacing=campaign_job_spacing,
 )
 
 SMS = DeliveryChannel(

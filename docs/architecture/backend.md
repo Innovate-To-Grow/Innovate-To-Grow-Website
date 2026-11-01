@@ -6,7 +6,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 
 | App | Purpose | Key models |
 |-----|---------|------------|
-| `core` | Base models, reusable DRF building blocks, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `TimeStampedModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `GoogleCredentialConfig`, `AWSCredentialConfig`, `BackgroundJob`, `DeliveryRateLimit` |
+| `core` | Base models, reusable DRF building blocks, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `TimeStampedModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `SMTPProviderConfig`, `MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`, `MicrosoftGraphAccessCheck`, `GoogleCredentialConfig`, `AWSCredentialConfig`, `BackgroundJob`, `DeliveryRateLimit` |
 | `authn` | Authentication, member management, contacts, admin invitations | `Member`, `ContactEmail`, `ContactPhone`, `EmailAuthChallenge`, `PhoneVerificationChallenge`, `RSAKeypair`, `AdminInvitation` |
 | `cms` | CMS pages and blocks, news, analytics, menus, footer, site settings | `CMSPage`, `CMSBlock`, `CMSAsset`, `NewsArticle`, `NewsFeedSource`, `PageView`, `Menu`, `FooterContent`, `SiteSettings` |
 | `event` | Event registration, ticketing, schedule, check-in | `Event`, `EventRegistration`, `Ticket`, `Question`, `CheckIn`, `CheckInRecord`, `CurrentProjectSchedule`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` |
@@ -88,7 +88,7 @@ config/settings/
 |---------|-----|-----|------|
 | Database | SQLite | PostgreSQL (GH Actions service) | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis when `REDIS_URL` is set, else a per-container file cache (production today; see [Environments](../deployment/environments.md#production-cache-today)). Send quotas and the login lockout are in PostgreSQL either way; the assistant / AI-search token budgets use Redis when set, else PostgreSQL rows. Every environment also has the in-process `throttle` alias for throttles keyed on a caller-chosen value |
-| Email | Console backend | Console backend | Application services use AWS SES |
+| Email | Console backend | Console backend | Application services use the provider selected under Notification Delivery: AWS SES, SMTP, or Microsoft Graph (see [Integrations](integrations.md#email-delivery-aws-ses-smtp-or-microsoft-graph)) |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Password transport | Plain text accepted | Plain text accepted | RSA encryption required |
 | Debug | True | False | False |
@@ -150,6 +150,8 @@ The following configuration selectors enforce their single-active invariant in b
 |-------|-------|--------------------|
 | `AWSCredentialConfig` | One active globally | Unsaved defaults; AWS-backed operations remain unconfigured |
 | `EmailServiceConfig` | One active globally | Unsaved sender defaults; no inactive row is reused |
+| `SMTPProviderConfig` | One active globally | Unsaved defaults; SMTP delivery remains unconfigured |
+| `MicrosoftGraphProviderConfig` | One active globally | Unsaved defaults; Microsoft Graph delivery remains unconfigured |
 | `GoogleCredentialConfig` | One active globally | Unsaved defaults; Sheets operations remain unconfigured |
 | `GmailAccessAccount` | One active globally | Unsaved defaults; Gmail import remains unconfigured |
 | `SystemIntelligenceConfig` | One active globally | Unsaved defaults |
@@ -168,8 +170,9 @@ The following configuration selectors enforce their single-active invariant in b
 | `seed_service_configs` | `core/management/commands/seed_service_configs.py` | Creates skeleton EmailServiceConfig row and optional AWSCredentialConfig from local env |
 | `migrate_aws_credentials` | `core/management/commands/migrate_aws_credentials.py` | Copies and verifies application AWS keys in Secrets Manager; `--clear-legacy` retires database plaintext after rollout |
 | `verify_service_configs` | `core/management/commands/verify_service_configs.py` | Verifies active service configs exist before removing env vars |
+| `verify_graph_access` | `core/management/commands/verify_graph_access.py` | Asks Microsoft what the Graph app may do (token roles, allowed and denied mailbox probes), records a `MicrosoftGraphAccessCheck` row and exits non-zero unless it matches the approval; the evidence the production go-live gate needs |
 | `migrate_locked` | `authn/management/commands/migrate_locked.py` | Runs migrations on PostgreSQL while holding the repository advisory lock |
-| `run_background_worker` | `core/management/commands/run_background_worker.py` | Claims and processes durable background jobs (`--once` processes one batch) and runs the hourly maintenance list (`MAINTENANCE_TASKS`: retired RSA keys, public-assistant budgets, send-verification cleanup, expired sessions, login failure windows; `--maintenance-seconds`, minimum 300) |
+| `run_background_worker` | `core/management/commands/run_background_worker.py` | Claims and processes durable background jobs (`--once` processes one batch) and runs the hourly maintenance list (`MAINTENANCE_TASKS`: retired RSA keys, public-assistant budgets, send-verification cleanup, expired sessions, login failure windows, Microsoft Graph certificate expiry warning; `--maintenance-seconds`, minimum 300) |
 | `cleanup_send_verification` | `authn/management/commands/cleanup_send_verification.py` | On-demand run of the send-verification retention cleanup (`--batch-size`, default 1000); the worker already runs it hourly |
 | `createsuperuser` | `authn/management/commands/createsuperuser.py` | Custom: prompts for email, not username |
 | `sync_news` | `cms/management/commands/sync_news.py` | Fetches and parses RSS feeds into NewsArticle records |

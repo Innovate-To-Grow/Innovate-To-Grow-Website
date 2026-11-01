@@ -46,3 +46,9 @@ LOGGING = {
 
 # Application service credentials must never fall back to database plaintext.
 AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER = True
+# Private keys (credential store) live only in Secrets Manager; the core system check refuses any other backend.
+CREDENTIAL_STORE_BACKEND = "secretsmanager"
+CREDENTIAL_STORE_REQUIRE_SECRETS_MANAGER = True
+# Email may switch to Microsoft Graph only with recorded evidence that Microsoft's restriction and the granted roles
+# match the InfoSec approval (a recent, complete, passing access check for the current certificate).
+GRAPH_REQUIRE_ACCESS_EVIDENCE = True

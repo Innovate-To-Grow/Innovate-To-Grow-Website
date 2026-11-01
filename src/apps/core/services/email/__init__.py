@@ -8,6 +8,7 @@ from .exceptions import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
+from .graph import GraphProvider
 from .registry import resolve_provider
 from .ses import SESProvider
 from .smtp import SMTPProvider
@@ -19,6 +20,7 @@ __all__ = [
     "EmailDeliveryService",
     "EmailMessage",
     "EmailProvider",
+    "GraphProvider",
     "PermanentEmailDeliveryError",
     "SESProvider",
     "SMTPProvider",

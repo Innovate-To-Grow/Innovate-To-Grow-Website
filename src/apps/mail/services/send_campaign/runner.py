@@ -1,9 +1,9 @@
 import logging
-import time
 
 from django.utils import timezone
 
 from apps.core.models import EmailServiceConfig
+from apps.core.services.background_jobs import configured_ses_rate, wait_for_delivery_slot
 from apps.mail.models import RecipientLog
 from apps.mail.services.tokens.login_links import issue_login_link
 
@@ -40,18 +40,18 @@ def send_campaign(campaign, sent_by):
     if ses_client is None:
         _fail_campaign_for_missing_delivery_config(campaign, recipients)
 
-    send_timing = SendTiming(config.max_send_rate or 0)
+    send_rate = configured_ses_rate(config)
     configuration_set = _get_configuration_set_name(config)
-    if ses_client is not None and not configuration_set:
+    if ses_client is not None and config.provider == "ses" and not configuration_set:
         logger.warning(
             "No SES configuration set configured; bounce/complaint tracking disabled for campaign %s",
             campaign.pk,
         )
 
     for index, (recipient, log) in enumerate(zip(recipients, logs, strict=True), start=1):
-        send_timing.wait_if_needed()
+        # One provider-wide schedule, shared with other campaign threads and the outbox workers.
+        wait_for_delivery_slot(config.provider, send_rate)
         _send_one_recipient(campaign, config, ses_client, configuration_set, recipient, log=log)
-        send_timing.mark_sent()
         if index % 10 == 0:
             _refresh_campaign_progress(campaign)
 
@@ -76,22 +76,6 @@ def _refresh_campaign_progress(campaign):
     campaign.refresh_from_db(
         fields=["status", "total_recipients", "sent_count", "failed_count", "sent_at", "error_message"]
     )
-
-
-class SendTiming:
-    def __init__(self, send_rate: float):
-        self.min_interval = (1.0 / send_rate) if send_rate > 0 else 0
-        self.last_send_time = 0.0
-
-    def wait_if_needed(self):
-        if self.min_interval <= 0 or self.last_send_time <= 0:
-            return
-        elapsed = time.monotonic() - self.last_send_time
-        if elapsed < self.min_interval:
-            time.sleep(self.min_interval - elapsed)
-
-    def mark_sent(self):
-        self.last_send_time = time.monotonic()
 
 
 def _send_one_recipient(campaign, config, ses_client, configuration_set, recipient, *, log=None):
@@ -119,6 +103,7 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
             unsubscribe_url=unsubscribe_url,
             recipient_log_id=log.pk,
             delivery_attempt=log.attempts,
+            keep_sent_copy=not carries_login_link(context, subject, body_html),
         )
         _record_send_result(campaign, log, result)
     except Exception as exc:
@@ -146,6 +131,7 @@ def _send_with_configured_provider(
     unsubscribe_url,
     recipient_log_id=None,
     delivery_attempt=0,
+    keep_sent_copy=True,
 ):
     if ses_client is not None:
         return _send_via_ses(
@@ -158,6 +144,7 @@ def _send_with_configured_provider(
             configuration_set=configuration_set,
             recipient_log_id=recipient_log_id,
             delivery_attempt=delivery_attempt,
+            keep_sent_copy=keep_sent_copy,
         )
     return SesSendResult(provider="", error="Email delivery is not configured.")
 
@@ -195,6 +182,12 @@ def _recipient_context(recipient, campaign):
         "full_name": recipient["full_name"],
         "login_link": _build_login_link(recipient["member_id"], campaign),
     }
+
+
+def carries_login_link(context, *texts) -> bool:
+    """Whether the personalized message holds the recipient's login link, a credential (``keep_sent_copy=False``)."""
+    link = context.get("login_link")
+    return bool(link) and any(link in text for text in texts)
 
 
 def _build_login_link(member_id, campaign):

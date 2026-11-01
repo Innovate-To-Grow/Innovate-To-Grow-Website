@@ -55,16 +55,50 @@ The mail app (`src/apps/mail/`) provides email campaign functionality through Dj
 ### Choose the email sender
 
 Open **Mail → Notification Delivery → Edit Notification Delivery**. Under
-**Email Sender**, select **AWS SES** or **SMTP**, set the sender name and email
-address, and save the active configuration.
+**Email Sender**, select **AWS SES**, **SMTP**, or **Microsoft Graph**, set the
+sender name and email address, and save the active configuration.
 
-- **AWS SES** uses the active AWS credentials and region. SMTP fields are not
-  required, and any saved SMTP credentials are preserved when selecting SES.
+- **AWS SES** uses the active AWS credentials and region. SMTP and Microsoft
+  Graph fields are not required, and any saved SMTP or Graph credentials are
+  preserved when selecting SES.
 - **SMTP** shows the server, port, security, and optional authentication fields.
   Leave the password blank when editing to retain the saved password. STARTTLS
   and SSL both verify the server certificate; enable only one of them.
-- AWS settings remain available for SMS even when email uses SMTP. Changing the
-  email provider does not switch the SMS provider.
+- **Microsoft Graph** shows the active Graph configuration read-only: tenant
+  ID, client ID, sender mailbox, messages per minute, the installed
+  certificate's SHA-1 thumbprint and expiry, and the **mailbox scope** (the
+  mailboxes Graph may use and each one's permission level: send, read, or
+  both). This page only selects Graph; the configuration, its scope and its
+  certificate are managed on the Graph configuration's admin page (Core app,
+  linked from the panel for staff who have it), and must be in place before
+  Graph can be selected. In production Graph can be selected only after a
+  superuser has run the access check with the current certificate and it
+  matched the approval (the panel's **Go-live evidence** line says what is
+  missing; see [Validate the access restriction](../integrations/microsoft-graph-email.md#validate-the-access-restriction)).
+  Graph authenticates with a certificate only; a
+  superuser installs it there, and its private key is kept in the credential
+  store, never in the database. The sender mailbox
+  defaults to the From email; both must be in the scope with send permission.
+  With read permission, **Mail → Inbox** reads that mailbox through Graph
+  instead of the Gmail import account; its **Sent** folder (and any message
+  from the site's own address) is then shown to superusers only, and Sent
+  mail is never sent to the AI scam review. Opening an Inbox message whose
+  rule score is in the medium band still sends its sender, subject,
+  authentication results and the first 4,000 characters of its body to
+  Amazon Bedrock for a second opinion (see
+  [Admin inbox](../integrations/microsoft-graph-email.md#admin-inbox)).
+  Graph mail counts against the
+  mailbox's Exchange Online limits (about 30 messages per minute) and reports
+  no delivery events. Campaigns, replies and notices are copied to its Sent
+  Items folder; verification codes, admin invitations, tickets and campaign
+  messages that contain the recipient's `{{ login_link }}` are not, because
+  they carry sign-in credentials. A campaign message with a login link then
+  has no `List-Unsubscribe` header (Graph cannot send one without the copy);
+  its footer's unsubscribe link stays.
+  Setup in Entra and Exchange Online is in
+  [Microsoft Graph email](../integrations/microsoft-graph-email.md).
+- AWS settings remain available for SMS even when email uses SMTP or Microsoft
+  Graph. Changing the email provider does not switch the SMS provider.
 
 This selection applies to verification codes, admin invitations, tickets,
 campaigns, inbox replies, and the **Send Test Email** action. Saving settings
@@ -158,7 +192,7 @@ nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeho
 1. Resolve the audience and materialize one recipient log plus one durable job
    per recipient
 2. Personalize the body for each recipient
-3. Resolve the single globally active provider (AWS SES or SMTP) and submit through the shared provider-neutral service
+3. Resolve the single globally active provider (AWS SES, SMTP, or Microsoft Graph) and submit through the shared provider-neutral service
 4. Persist processing, retry, failed, and uncertain-delivery state per
    recipient
 5. Aggregate campaign state/counts from the recipient logs
@@ -171,8 +205,14 @@ evidence before using the explicit admin retry action.
 
 Switching providers is global and does not configure failover. SES campaign
 delivery, bounce, and complaint events remain available only for messages sent
-through SES. SMTP campaigns record submission acceptance as `sent`; no later
-delivery status is inferred without an SMTP feedback integration.
+through SES. SMTP and Microsoft Graph campaigns record submission acceptance as
+`sent` (for Graph, an HTTP 202 from `sendMail`); no later delivery status is
+inferred without a feedback integration. Graph's non-delivery reports arrive in
+the sender mailbox, not in the application, and its uncertain outcomes are
+explained in the
+[error reference](../integrations/microsoft-graph-email.md#error-reference). The
+Delivery Dashboard under **Delivery Operations** charts SES CloudWatch metrics
+only and shows a notice while another provider is active.
 
 ### Login link tokens
 
@@ -208,5 +248,6 @@ Viewable as inline records in the campaign admin.
 
 - [Django Admin](django-admin.md) — Admin interface and customization
 - [API: Auth & Mail](../api/auth-and-mail.md) — Auth and mail API endpoints
-- [Architecture: Integrations](../architecture/integrations.md) — AWS SES and AWS SNS configuration
+- [Architecture: Integrations](../architecture/integrations.md) — AWS SES, SMTP, Microsoft Graph, and AWS SNS configuration
+- [Microsoft Graph email](../integrations/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
 - [Operations](operations.md) — Operational tasks

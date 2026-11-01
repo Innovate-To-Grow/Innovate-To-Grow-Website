@@ -438,6 +438,11 @@
     const banner = document.getElementById('mail-delivery-banner');
     const text = banner ? banner.querySelector('p') : null;
     if (!banner || !text) return;
+    if (aws.provider && aws.provider !== 'ses') {
+      text.textContent = 'These metrics come from AWS SES CloudWatch. The active email provider is ' + (aws.provider_label || aws.provider) + ', which reports no delivery events here; open a campaign send status for per-recipient results.';
+      banner.classList.remove('hidden');
+      return;
+    }
     if (!aws.configured) {
       text.textContent = 'AWS SES is not fully configured. Check Notification Delivery and AWS IAM credentials before sending.';
       banner.classList.remove('hidden');

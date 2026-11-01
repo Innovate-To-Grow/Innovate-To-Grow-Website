@@ -29,6 +29,13 @@
             </div>
         </div>
 
+        {% if inline_limit and registration_count > inline_limit %}
+        <div class="mb-6 rounded-default border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300">
+            The active email provider allows at most {{ inline_limit }} emails per request, so sending to all {{ registration_count }} registrants from this page will be refused.
+            Select fewer registrations in the list and use the Resend ticket email action, or switch the email provider.
+        </div>
+        {% endif %}
+
         <div class="mb-6 text-sm space-y-1">
             <p><span class="text-base-400">Total registrations:</span> <strong>{{ registration_count }}</strong></p>
             <p><span class="text-base-400">Already sent:</span> {{ already_sent_count }}</p>

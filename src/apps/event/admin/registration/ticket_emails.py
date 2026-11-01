@@ -7,6 +7,8 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
 
+from apps.core.models import EmailServiceConfig
+
 from ...models import EventRegistration
 
 logger = logging.getLogger(__name__)
@@ -54,7 +56,23 @@ class TicketEmailAdminMixin:
             )
         return True
 
+    @staticmethod
+    def _inline_batch_allowed(request, count) -> bool:
+        """Inline sends bypass the paced queue, so a rate-limited provider only takes small batches."""
+        config = EmailServiceConfig.load()
+        limit = config.inline_send_limit
+        if limit is None or count <= limit:
+            return True
+        messages.error(
+            request,
+            f"{count} ticket emails cannot be sent from one request while {config.get_provider_display()} is the "
+            f"email provider (limit {limit}). Select fewer registrations, or switch the email provider.",
+        )
+        return False
+
     def _send_ticket_email_batch(self, request, queryset):
+        if not self._inline_batch_allowed(request, queryset.count()):
+            return 0
         sent = 0
         for registration in queryset.select_related("event", "ticket", "member"):
             if self._send_ticket_email_registration(request, registration, show_success=False):
@@ -101,6 +119,7 @@ class TicketEmailAdminMixin:
             "already_sent_count": queryset.exclude(ticket_email_sent_at__isnull=True).count(),
             "error_count": queryset.exclude(ticket_email_error="").count(),
             "event_name": event_name,
+            "inline_limit": EmailServiceConfig.load().inline_send_limit,
         }
         return TemplateResponse(
             request,

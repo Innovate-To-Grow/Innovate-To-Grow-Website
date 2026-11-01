@@ -28,6 +28,8 @@ class SesSendResult:
     error: str = ""
     provider: str = "ses"
     outcome: str = ""
+    # Seconds the provider asked us to wait before retrying (a transient outcome only).
+    retry_after: float | None = None
 
     def __post_init__(self):
         if not self.outcome:
@@ -77,10 +79,18 @@ def _send_via_ses(
     before_provider_call=None,
     recipient_log_id=None,
     delivery_attempt=0,
+    keep_sent_copy=True,
 ) -> SesSendResult:
+    """Send one campaign message. ``keep_sent_copy=False`` marks one that carries the recipient's login link.
+
+    Microsoft Graph then files no copy in the sender mailbox's Sent Items, which needs its JSON form, and that form
+    cannot carry ``List-Unsubscribe``: such a message keeps only the footer's unsubscribe link.
+    """
     del source
-    headers = _build_unsubscribe_headers(unsubscribe_url)
-    if getattr(ses_client, "provider", "") == "ses" and recipient_log_id and delivery_attempt:
+    provider = getattr(ses_client, "provider", "")
+    sent_as_json = provider == "graph" and not keep_sent_copy
+    headers = {} if sent_as_json else _build_unsubscribe_headers(unsubscribe_url)
+    if provider == "ses" and recipient_log_id and delivery_attempt:
         # SES returns these tags in mail.tags even when the event arrives before
         # send_raw_email returns its provider-assigned message ID.
         headers["X-SES-MESSAGE-TAGS"] = f"i2g_recipient_id={recipient_log_id}, i2g_delivery_attempt={delivery_attempt}"
@@ -91,6 +101,7 @@ def _send_via_ses(
                 to=(recipient,),
                 html_body=html_body,
                 headers=headers,
+                keep_sent_copy=keep_sent_copy,
             ),
             config=ses_client,
             retry_config=NO_PROVIDER_RETRIES,
@@ -99,7 +110,12 @@ def _send_via_ses(
         )
         return SesSendResult(message_id=result.message_id, provider=result.provider, outcome=result.outcome)
     except EmailDeliveryError as exc:
-        return SesSendResult(error=str(exc), provider=getattr(ses_client, "provider", ""), outcome=exc.outcome)
+        return SesSendResult(
+            error=str(exc),
+            provider=getattr(ses_client, "provider", ""),
+            outcome=exc.outcome,
+            retry_after=getattr(exc, "retry_after", None),
+        )
 
 
 def _classify_ses_failure(exc: Exception) -> tuple[str, str]:

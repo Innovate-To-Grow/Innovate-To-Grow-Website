@@ -3,6 +3,8 @@ from django.core.validators import validate_email
 from django.db import models, transaction
 
 from ..control import ProjectControlModel
+from .microsoft_graph import GRAPH_INLINE_BATCH_LIMIT, MicrosoftGraphProviderConfig
+from .microsoft_graph_access_check import takeover_problem
 
 
 class EmailServiceConfig(models.Model):
@@ -18,6 +20,7 @@ class EmailServiceConfig(models.Model):
     class Provider(models.TextChoices):
         SES = "ses", "AWS SES"
         SMTP = "smtp", "SMTP"
+        GRAPH = "graph", "Microsoft Graph"
 
     name = models.CharField(
         max_length=128,
@@ -54,7 +57,10 @@ class EmailServiceConfig(models.Model):
     max_send_rate = models.PositiveIntegerField(
         default=10,
         verbose_name="Campaign Send Rate (emails/sec)",
-        help_text="Max emails per second for bulk campaigns. Keep below SES account limit to leave room for transactional mail.",
+        help_text=(
+            "Max emails per second for bulk campaigns. Keep below your provider's sending limit to leave room for "
+            "transactional mail."
+        ),
     )
 
     updated_at = models.DateTimeField(auto_now=True)
@@ -92,6 +98,34 @@ class EmailServiceConfig(models.Model):
                 raise ValidationError({"provider": "Active AWS SES credentials are required before activation."})
         elif self.provider == self.Provider.SMTP and not SMTPProviderConfig.load().is_configured:
             raise ValidationError({"provider": "An active SMTP configuration is required before activation."})
+        elif self.provider == self.Provider.GRAPH:
+            self._validate_graph_activation()
+
+    def _validate_graph_activation(self):
+        graph = MicrosoftGraphProviderConfig.load()
+        if not graph.sending_ready(self.from_email):
+            raise ValidationError(
+                {
+                    "provider": "An active Microsoft Graph configuration whose mailbox scope lets the sender "
+                    "mailbox and the From address send is required before activation."
+                }
+            )
+        if self._already_sending_through_graph():
+            return
+        problem = takeover_problem(graph)
+        if problem:
+            raise ValidationError({"provider": f"Email cannot switch to Microsoft Graph yet: {problem}"})
+
+    def _already_sending_through_graph(self) -> bool:
+        """The go-live checks guard the switch to Graph; editing a config that already sends through it is not one.
+
+        Moving email that is already on Graph to another Graph config or Entra app is checked on that config instead
+        (``MicrosoftGraphProviderConfig.clean``).
+        """
+        if not self.pk:
+            return False
+        stored = type(self).objects.filter(pk=self.pk).values_list("is_active", "provider").first()
+        return stored == (True, self.Provider.GRAPH)
 
     def save(self, *args, **kwargs):
         if self.is_active:
@@ -137,6 +171,48 @@ class EmailServiceConfig(models.Model):
         )
 
     @property
+    def effective_send_rate(self) -> float:
+        """Emails per second this configuration may sustain; 0 means unlimited.
+
+        ``max_send_rate`` is the operator's cap. Microsoft Graph also has a per-minute ceiling of its own, so it is
+        never unlimited: setting the cap to 0 falls back to that ceiling.
+        """
+        configured = float(self.max_send_rate or 0)
+        if self.provider != self.Provider.GRAPH:
+            return configured
+        ceiling = MicrosoftGraphProviderConfig.load().messages_per_minute / 60
+        return min(configured, ceiling) if configured > 0 else ceiling
+
+    @property
+    def send_rate_display(self) -> str:
+        rate = self.effective_send_rate
+        if rate <= 0:
+            return "Unlimited"
+        if rate < 1:
+            return f"{round(rate * 60)} emails/min"
+        return f"{rate:g} emails/sec"
+
+    @property
+    def inline_send_limit(self) -> int | None:
+        """How many emails one admin request may send inline, outside the paced queue; None means no limit."""
+        return GRAPH_INLINE_BATCH_LIMIT if self.provider == self.Provider.GRAPH else None
+
+    @property
+    def delivery_summary(self):
+        """Where mail goes right now, for admin panels: ``AWS SES (us-west-2)``, ``SMTP (host:587)``, ..."""
+        if not self.delivery_configured:
+            return "Not configured"
+        if self.provider == self.Provider.SMTP:
+            smtp = SMTPProviderConfig.load()
+            return f"SMTP ({smtp.host}:{smtp.port})"
+        if self.provider == self.Provider.GRAPH:
+            graph = MicrosoftGraphProviderConfig.load()
+            return f"Microsoft Graph ({graph.mailbox or self.from_email})"
+        from apps.core.models import AWSCredentialConfig
+
+        return f"AWS SES ({AWSCredentialConfig.load().region or 'us-west-2'})"
+
+    @property
     def delivery_configured(self):
         """Return whether the selected provider is structurally ready."""
         if not (self.pk and self.is_active and self.from_email):
@@ -149,6 +225,8 @@ class EmailServiceConfig(models.Model):
             return self.ses_configured
         if self.provider == self.Provider.SMTP:
             return SMTPProviderConfig.load().is_configured
+        if self.provider == self.Provider.GRAPH:
+            return MicrosoftGraphProviderConfig.load().sending_ready(self.from_email)
         return False
 
 

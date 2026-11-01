@@ -1,0 +1,52 @@
+{# The active Microsoft Graph config, read-only: it is managed on its own admin page, which needs the Core app. #}
+<h3 class="mb-2 text-sm font-semibold text-font-important-light dark:text-font-important-dark">Microsoft Graph Provider</h3>
+<p class="mb-4 text-xs text-base-500 dark:text-base-400">
+    Sends (and, with read permission, reads the admin inbox) through Outlook / Exchange Online with an Entra app.
+    This page only selects it: the configuration, its mailbox scope and its certificate are managed on the Microsoft Graph configuration's own admin page.
+    The sender mailbox and the From email must both be in the mailbox scope with send permission.
+    Exchange Online allows about 30 messages per minute per mailbox.
+</p>
+{% if graph_saved %}
+    <dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-sm md:grid-cols-3">
+        <div>
+            <dt class="text-xs font-medium uppercase text-base-400">Config Name</dt>
+            <dd class="mt-1 font-medium">{{ graph_config.name }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium uppercase text-base-400">Tenant ID</dt>
+            <dd class="mt-1 break-all font-mono">{{ graph_config.tenant_id }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium uppercase text-base-400">Client ID</dt>
+            <dd class="mt-1 break-all font-mono">{{ graph_config.client_id }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium uppercase text-base-400">Sender Mailbox</dt>
+            <dd class="mt-1 break-all">{{ graph_config.mailbox|default:"The From email" }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium uppercase text-base-400">Messages per Minute</dt>
+            <dd class="mt-1">{{ graph_config.messages_per_minute }}</dd>
+        </div>
+    </dl>
+{% else %}
+    <p class="text-sm text-base-500 dark:text-base-400">No Microsoft Graph configuration is active.</p>
+{% endif %}
+<div class="mt-4 text-sm">
+    <p class="font-medium text-font-important-light dark:text-font-important-dark">Mailbox scope</p>
+    {% if graph_scopes %}
+        <ul class="mt-1 list-disc pl-5">
+            {% for scope in graph_scopes %}<li>{{ scope.mailbox }} &mdash; {{ scope.get_permission_display }}</li>{% endfor %}
+        </ul>
+    {% else %}
+        <p class="mt-1 text-base-500 dark:text-base-400">No mailboxes yet: Microsoft Graph refuses every mailbox until the scope lists one.</p>
+    {% endif %}
+</div>
+{% if graph_saved %}
+    <div class="mt-4">{% include "admin/core/microsoftgraphproviderconfig/certificate_panel.html" %}</div>
+{% endif %}
+{% if graph_admin_url %}
+    <a href="{{ graph_admin_url }}" class="mt-2 inline-block text-sm text-primary-600 hover:underline">Manage the Microsoft Graph configuration (mailbox scope and certificate)</a>
+{% else %}
+    <p class="mt-2 text-xs text-base-500 dark:text-base-400">Changing the Microsoft Graph configuration needs the Core app; certificates are installed by a superuser.</p>
+{% endif %}

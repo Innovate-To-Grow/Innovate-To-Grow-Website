@@ -56,7 +56,7 @@ After the new revision is fully deployed and every old task has drained, add a f
 cd src && python manage.py seed_service_configs
 ```
 
-Creates an empty active `EmailServiceConfig` row for backend defaults. Create application AWS keys in Secrets Manager under `itg/backend/aws-credentials/`, then enter the secret ARN and AWS region in the AWS Credentials admin UI. Production stores no key values in the database. `AWS_SERVICE_CREDENTIALS_SECRET_ARN` can seed that reference; `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` seeding is supported only outside production. SMS origination and OTP settings remain service metadata.
+Creates an empty active `EmailServiceConfig` row for backend defaults; it selects AWS SES until you choose SMTP or Microsoft Graph under Mail → Notification Delivery. SMTP credentials are entered there; the Microsoft Graph configuration and its certificate are managed on the Graph configuration's admin page and selected there. Neither is seeded from the environment. Create application AWS keys in Secrets Manager under `itg/backend/aws-credentials/`, then enter the secret ARN and AWS region in the AWS Credentials admin UI. Production stores no key values in the database. `AWS_SERVICE_CREDENTIALS_SECRET_ARN` can seed that reference; `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` seeding is supported only outside production. SMS origination and OTP settings remain service metadata.
 
 ### Verifying configs before deploy
 
@@ -64,7 +64,7 @@ Creates an empty active `EmailServiceConfig` row for backend defaults. Create ap
 cd src && python manage.py verify_service_configs --strict
 ```
 
-Confirms an active `EmailServiceConfig` and an AWS credential reference are structurally configured for SES; this does not prove that Secrets Manager or provider calls succeed. Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
+Confirms the active `EmailServiceConfig` has a valid From address and that the provider it selects is structurally configured: an AWS credential reference for SES, an active `SMTPProviderConfig` for SMTP, or an active `MicrosoftGraphProviderConfig` (tenant ID, client ID, an installed certificate that is valid now, and a mailbox scope that lets the sender mailbox and From address send) for Microsoft Graph; it also warns `GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS` (default 60) days before the Graph certificate expires, and from `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS` (default 14) days before it fails `--strict` while Graph is the selected provider. This does not prove that Secrets Manager or provider calls succeed. Providers that are not selected only produce warnings, and `MicrosoftGraphProviderConfig` is reported only when Graph is selected or configured. The Graph check reads the stored settings and does not contact Microsoft; the access check (**Run access check** on the Graph configuration's page, or `python manage.py verify_graph_access`, against the designated deny mailbox) proves the credentials, the mailbox restriction and the token's roles against Microsoft and records the evidence that production's go-live gate requires; **Send Test Email** under Mail → Notification Delivery proves delivery ([Microsoft Graph email](../integrations/microsoft-graph-email.md)). Add `--require-sms`, `--require-google`, or `--require-aws` to harden the check before removing env vars or rotating secrets.
 
 ### Managing via admin
 
@@ -73,7 +73,10 @@ Configuration models are available in Django admin:
 | Model | Admin area | Purpose |
 |-------|------------|---------|
 | `AWSCredentialConfig` | Site Settings | Shared AWS Secrets Manager reference, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
-| `EmailServiceConfig` | Site Settings | Sender identity and campaign send rate |
+| `EmailServiceConfig` | Mail → Notification Delivery | Sender identity, campaign send rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph) |
+| `SMTPProviderConfig` | Mail → Notification Delivery | SMTP host, port, TLS/SSL, optional authentication, and timeout |
+| `MicrosoftGraphProviderConfig` | `/admin/core/microsoftgraphproviderconfig/` (Core app; shown read-only under Mail → Notification Delivery) | Entra tenant ID, client ID, optional sender mailbox, and messages per minute for Microsoft Graph, plus the installed certificates (`MicrosoftGraphCertificate`: public data and the pinned credential-store version; the private key is in AWS Secrets Manager in production, never the database); its **mailbox scope** (mailboxes and permission levels, `MicrosoftGraphMailboxScope`) is edited on the same page (not in the sidebar; linked from the Graph panel for staff with the Core app); certificates are installed, rolled back and removed there by a superuser |
+| `MicrosoftGraphAccessCheck` | `/admin/core/microsoftgraphaccesscheck/` (Core app, read-only; linked from the Graph certificate panel) | One row per Microsoft Graph access check (**Run access check** or `verify_graph_access`): the certificate, the deny mailbox, every probe line, the token's roles and the verdict. Production's go-live gate reads the latest one for the current certificate. A Graph configuration with recorded checks cannot be deleted |
 | `GoogleCredentialConfig` | Site Settings | Google service-account JSON |
 | `GmailAccessAccount` | Site Settings | Gmail IMAP import account |
 | `MemberSheetSyncConfig` | Members & Auth | Member-to-Sheets selection |
@@ -88,17 +91,17 @@ The selector models permit only one active/enabled row in their scope; saving a 
 
 Active selection is fail-closed. Runtime `load()` methods never fall back to an inactive row:
 
-- AWS, email, Google, Gmail, system-intelligence, current-schedule, and past-project selectors permit at most one active row.
+- AWS, email, SMTP, Microsoft Graph, Google, Gmail, system-intelligence, current-schedule, and past-project selectors permit at most one active row.
 - Member Sheet Sync permits at most one enabled row.
 - RSA permits at most one active row per key name.
-- AWS, Google, and Gmail loaders return an unsaved, unconfigured default; Email returns unsaved sender defaults; Member Sheet Sync returns an unsaved disabled default; System Intelligence returns unsaved defaults; schedule/project loaders return `None`.
+- AWS, SMTP, Microsoft Graph, Google, and Gmail loaders return an unsaved, unconfigured default; Email returns unsaved sender defaults; Member Sheet Sync returns an unsaved disabled default; System Intelligence returns unsaved defaults; schedule/project loaders return `None`.
 - An unexpected duplicate raises instead of letting `.load()` choose a row. The database constraints should make that state impossible after the invariant migrations.
 
 Check active-row counts without printing credentials:
 
 ```bash
 cd src
-python manage.py shell -c "from apps.core.models import AWSCredentialConfig as A, EmailServiceConfig as E, GoogleCredentialConfig as G, GmailAccessAccount as M; print({'aws': A.objects.filter(is_active=True).count(), 'email': E.objects.filter(is_active=True).count(), 'google': G.objects.filter(is_active=True).count(), 'gmail': M.objects.filter(is_active=True).count()})"
+python manage.py shell -c "from apps.core.models import AWSCredentialConfig as A, EmailServiceConfig as E, GoogleCredentialConfig as G, GmailAccessAccount as M, SMTPProviderConfig as S, MicrosoftGraphProviderConfig as H; print({'aws': A.objects.filter(is_active=True).count(), 'email': E.objects.filter(is_active=True).count(), 'smtp': S.objects.filter(is_active=True).count(), 'graph': H.objects.filter(is_active=True).count(), 'google': G.objects.filter(is_active=True).count(), 'gmail': M.objects.filter(is_active=True).count()})"
 python manage.py shell -c "from apps.authn.models import MemberSheetSyncConfig as M, RSAKeypair as R; print({'member_sync': M.objects.filter(is_enabled=True).count(), 'auth_rsa': R.objects.filter(name='auth-encryption', is_active=True).count()})"
 python manage.py shell -c "from apps.event.models import CurrentProjectSchedule as E; from apps.projects.models import PastProjectsSheetConfig as P; from apps.system_intelligence.models import SystemIntelligenceConfig as S; print({'schedule': E.objects.filter(is_active=True).count(), 'past_projects': P.objects.filter(is_active=True).count(), 'system_intelligence': S.objects.filter(is_active=True).count()})"
 ```

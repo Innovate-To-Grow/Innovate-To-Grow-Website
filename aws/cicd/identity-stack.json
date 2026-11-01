@@ -468,6 +468,104 @@
           ]
         }
       }
+    },
+    "GraphCertificateKeySecret": {
+      "Type": "AWS::SecretsManager::Secret",
+      "DeletionPolicy": "Retain",
+      "UpdateReplacePolicy": "Retain",
+      "Properties": {
+        "Name": "itg/backend/microsoft-graph/certificate-key",
+        "Description": "I2G Microsoft Graph certificate private key. The backend adds versions from Django admin and the database pins the version in use. Never set a value here."
+      }
+    },
+    "ApplicationGraphCertificateKey": {
+      "Type": "AWS::IAM::Policy",
+      "Properties": {
+        "PolicyName": "itg-application-graph-certificate-key",
+        "Roles": [
+          "ecsTaskRole"
+        ],
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "ReadPinnedAndAddVersions",
+              "Effect": "Allow",
+              "Action": [
+                "secretsmanager:GetSecretValue",
+                "secretsmanager:DescribeSecret",
+                "secretsmanager:PutSecretValue",
+                "secretsmanager:UpdateSecretVersionStage"
+              ],
+              "Resource": {
+                "Ref": "GraphCertificateKeySecret"
+              }
+            },
+            {
+              "Sid": "NoLifecycleOrPolicyChangesFromTheApp",
+              "Effect": "Deny",
+              "Action": [
+                "secretsmanager:DeleteSecret",
+                "secretsmanager:RestoreSecret",
+                "secretsmanager:UpdateSecret",
+                "secretsmanager:RotateSecret",
+                "secretsmanager:CancelRotateSecret",
+                "secretsmanager:PutResourcePolicy",
+                "secretsmanager:DeleteResourcePolicy",
+                "secretsmanager:TagResource",
+                "secretsmanager:UntagResource",
+                "secretsmanager:ReplicateSecretToRegions",
+                "secretsmanager:RemoveRegionsFromReplication",
+                "secretsmanager:StopReplicationToReplica"
+              ],
+              "Resource": {
+                "Ref": "GraphCertificateKeySecret"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "GraphCertificateKeySecretPolicy": {
+      "Type": "AWS::SecretsManager::ResourcePolicy",
+      "Properties": {
+        "SecretId": {
+          "Ref": "GraphCertificateKeySecret"
+        },
+        "BlockPublicPolicy": true,
+        "ResourcePolicy": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "OnlyTheBackendReadsTheKey",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": "secretsmanager:GetSecretValue",
+              "Resource": "*",
+              "Condition": {
+                "ArnNotEquals": {
+                  "aws:PrincipalArn": "arn:aws:iam::394167325273:role/ecsTaskRole"
+                }
+              }
+            },
+            {
+              "Sid": "OnlyTheBackendWritesVersions",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Action": [
+                "secretsmanager:PutSecretValue",
+                "secretsmanager:UpdateSecretVersionStage"
+              ],
+              "Resource": "*",
+              "Condition": {
+                "ArnNotEquals": {
+                  "aws:PrincipalArn": "arn:aws:iam::394167325273:role/ecsTaskRole"
+                }
+              }
+            }
+          ]
+        }
+      }
     }
   },
   "Outputs": {
@@ -517,6 +615,11 @@
           "ArchiveDeployer",
           "Arn"
         ]
+      }
+    },
+    "GraphCertificateKeySecretArn": {
+      "Value": {
+        "Ref": "GraphCertificateKeySecret"
       }
     }
   }

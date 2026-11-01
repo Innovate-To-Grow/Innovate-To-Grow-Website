@@ -59,12 +59,49 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 
 ### AWS services (SES, SNS, Bedrock)
 
-A Secrets Manager object referenced by [`AWSCredentialConfig`](../../src/apps/core/models/base/service_credentials/aws.py) supplies the shared IAM key for SES, SNS, Bedrock, and usage metrics. Production resolves the object using the ECS task role and refuses database plaintext fallback. The database stores only the secret ARN and service metadata. It also stores the shared AWS region, SNS origination number, and SMS OTP template. SES sender identity lives in [`EmailServiceConfig`](../../src/apps/core/models/base/service_credentials/email.py).
+A Secrets Manager object referenced by [`AWSCredentialConfig`](../../src/apps/core/models/base/service_credentials/aws.py) supplies the shared IAM key for SES, SNS, Bedrock, and usage metrics. Production resolves the object using the ECS task role and refuses database plaintext fallback. The database stores only the secret ARN and service metadata. It also stores the shared AWS region, SNS origination number, and SMS OTP template. The email sender identity and the selected email provider (AWS SES, SMTP, or Microsoft Graph) live in [`EmailServiceConfig`](../../src/apps/core/models/base/service_credentials/email.py).
+
+The SES variables below matter only while AWS SES is the selected email provider.
 
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
 | `SES_CONFIGURATION_SET_NAME` | Optional SES configuration set name for campaign tagging | No |
 | `SES_SNS_TOPIC_ARN` | SNS topic ARN used to validate SES bounce/complaint webhook | If using bounce webhook |
+
+### Microsoft Graph (email)
+
+The Microsoft Graph email provider has no environment variables. Its Entra tenant ID, client ID, sender mailbox and mailbox scope live in [`MicrosoftGraphProviderConfig`](../../src/apps/core/models/base/service_credentials/microsoft_graph.py) and are entered on the Graph configuration's admin page (`/admin/core/microsoftgraphproviderconfig/`, Core app); Mail → Notification Delivery only selects Graph and shows the configuration read-only. It authenticates with a certificate only (no client secret) whose private key is kept in the credential store: the Secrets Manager secret `itg/backend/microsoft-graph/certificate-key` in production, written by the backend's task role ([Production](production.md#microsoft-graph-certificate-key)). The database keeps only the certificate's public data and the pinned version (`MicrosoftGraphCertificate`). The other deployment requirement is outbound HTTPS (port 443) from the backend and background-worker containers to `login.microsoftonline.com` and `graph.microsoft.com`; the provider connects to them directly and ignores proxy environment variables. Setup and limits: [Microsoft Graph email](../integrations/microsoft-graph-email.md).
+
+These Django settings (not environment variables) bound the certificate, the access check and the key store. The defaults are in `config/settings/base/integrations/microsoft_graph/` and `config/settings/base/integrations/credential_store/`; the production values come from `config/settings/production/django.py`, and the test values from `config/settings/environments/test.py` (and `local.py` under `manage.py test`). The `core` system checks (`core.E001`–`core.E007`, `apps/core/checks.py`) stop every management command, container start-up included, when one is invalid.
+
+| Setting | Default | Production | Purpose |
+|---------|---------|------------|---------|
+| `CREDENTIAL_STORE_BACKEND` | `local_file` (`memory` in tests) | `secretsmanager` | Where private keys are kept: a 0600 file store, process memory, or AWS Secrets Manager |
+| `CREDENTIAL_STORE_REQUIRE_SECRETS_MANAGER` | `False` | `True` | Refuse to start (`core.E002`) with any store other than Secrets Manager |
+| `CREDENTIAL_STORE_LOCAL_DIR` | `src/data/credential-store` | not used | Directory of the local file store (gitignored, excluded from the image); throwaway keys only |
+| `CREDENTIAL_STORE_SECRETS` | `{"microsoft_graph_certificate_key": "itg/backend/microsoft-graph/certificate-key"}` | same | Logical name → secret name; a name inside `itg/backend/aws-credentials/` is refused (`core.E003`) |
+| `CREDENTIAL_STORE_STAGED_LABEL` | `I2G-STAGED` | same | Staging label of a newly written version; it must not start with `AWS` (`core.E004`) |
+| `CREDENTIAL_STORE_AWS_REGION`, `CREDENTIAL_STORE_AWS_ACCOUNT_ID` | `us-west-2`, `394167325273` | same | Region of the secret, and the account its ARN must belong to |
+| `CREDENTIAL_STORE_CONNECT_TIMEOUT_SECONDS`, `CREDENTIAL_STORE_READ_TIMEOUT_SECONDS`, `CREDENTIAL_STORE_TOTAL_MAX_ATTEMPTS` | `3`, `5`, `3` | same | Secrets Manager timeouts, and attempts including the first |
+| `CREDENTIAL_STORE_MAX_PAYLOAD_BYTES` | `65536` | same | Largest stored payload (Secrets Manager's own limit) |
+| `GRAPH_REQUEST_TIMEOUT_SECONDS` | `30` | same | Timeout of each token, `sendMail` and admin-inbox request |
+| `GRAPH_MAX_RESPONSE_BYTES` | `65536` | same | Most of a token or `sendMail` answer (and of each access-check folder or list probe) that is read |
+| `GRAPH_INBOX_LIST_MAX_BYTES`, `GRAPH_INBOX_MESSAGE_MAX_BYTES`, `GRAPH_INBOX_MAX_LIST_LIMIT` | `2097152`, `26214400`, `100` | same | Admin inbox: largest message list and raw message read, and most messages per list |
+| `GRAPH_MAX_RETRY_AFTER_SECONDS` | `3600` | same | Longest `Retry-After` taken from Microsoft; a longer one is capped |
+| `GRAPH_TOKEN_EXPIRY_MARGIN_SECONDS`, `GRAPH_TOKEN_MAX_LIFETIME_SECONDS` | `300`, `86400` | same | An access token is reused until this long before it expires, and a longer `expires_in` is not believed |
+| `GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS` | `300` | same | Lifetime of each signed client assertion (Microsoft: 5–10 minutes at most) |
+| `GRAPH_CERTIFICATE_MIN_RSA_KEY_BITS` | `2048` | same | Smallest RSA key the Install page accepts |
+| `GRAPH_CERTIFICATE_MAX_INPUT_BYTES` | `65536` | same | Largest certificate, key or `.p12` input |
+| `GRAPH_CERTIFICATE_CLOCK_SKEW_SECONDS` | `300` | same | How far in the future a certificate's validity may start and still count as valid |
+| `GRAPH_CERTIFICATE_CHECK_TIMEOUT_SECONDS` | `10` | same | Timeout of the Entra token test before an install or rollback |
+| `GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS`, `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS` | `60`, `14` | same | Expiry badge, worker warning and `verify_service_configs --strict` thresholds |
+| `GRAPH_APPROVED_APPLICATION_ROLES` | `("Mail.Send", "Mail.Read")` | same | Application permissions InfoSec approved; any other role in the token fails the access check (`core.E006` checks the list) |
+| `GRAPH_ACCESS_CHECK_TIMEOUT_SECONDS`, `GRAPH_ACCESS_CHECK_MIME_MAX_BYTES` | `10`, `4096` | same | Timeout of each access-check request, and how much raw MIME the `value` probe reads |
+| `GRAPH_ACCESS_CHECK_MAX_ROLES` | `64` | same | A token claiming more roles than this counts as unreadable, so the run is not a complete validation |
+| `GRAPH_REQUIRE_ACCESS_EVIDENCE` | `False` | `True` | Go-live gate: email can switch to Graph, or move to another Graph configuration once on it, only with a recorded, passing access check for that configuration's current certificate (`core.E007` checks it is a boolean) |
+| `GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS` | `30` | same | Oldest access check the gate accepts |
+
+Every number above must be positive (`core.E005`), except the clock skew, which may be `0`.
 
 ### Cache
 
@@ -241,12 +278,16 @@ Google service-account credentials live in [`GoogleCredentialConfig`](../../src/
 
 ### Database-managed credentials
 
-These integrations read credentials from Django admin → Site Settings at runtime, **not** from process env:
+These integrations read credentials from Django admin at runtime (Site Settings, or Mail → Notification Delivery for the email sender and its provider), **not** from process env:
 
 | Model | Purpose |
 |-------|---------|
 | `AWSCredentialConfig` | Secrets Manager ARN + region + SMS origination number + OTP template |
-| `EmailServiceConfig` | Sender identity, campaign rate, SMTP fallback |
+| `EmailServiceConfig` | Sender identity, campaign rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph); there is no fallback between providers |
+| `SMTPProviderConfig` | SMTP host, port, TLS/SSL, optional username and password |
+| `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, optional sender mailbox, messages per minute, mailbox scope, access-check deny mailbox, InfoSec exception reference |
+| `MicrosoftGraphCertificate` | Installed Graph certificates (current, previous for rollback, removed): public data, thumbprints, validity, and the pinned credential-store version of the private key |
+| `MicrosoftGraphAccessCheck` | Recorded Graph access checks (probe results, token roles, verdict): the evidence the production go-live gate reads |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
 
 Before removing legacy env vars from a deployed environment, run `python manage.py verify_service_configs --strict` against the prod DB to confirm active rows exist. See [CMS & Admin → Operations](../cms-admin/operations.md#service-configuration).
@@ -265,7 +306,7 @@ Before removing legacy env vars from a deployed environment, run `python manage.
 |---------|-----|-----|------|
 | Database | SQLite | PostgreSQL 16 | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis if `REDIS_URL` is set, else per-container file cache (production today); plus the in-process `throttle` alias in every environment |
-| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP |
+| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP / Microsoft Graph |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Password hashers | Plain text OK | Plain text OK | Argon2/bcrypt required |
 | Debug mode | True | False | False |

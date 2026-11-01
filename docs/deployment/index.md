@@ -28,7 +28,7 @@ Engineers setting up a local development environment, deploying changes, or debu
 | Database | SQLite | PostgreSQL 16 (GH Actions service) | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis if `REDIS_URL` is set, else per-container file cache (production today); plus the in-process `throttle` alias everywhere |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
-| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP |
+| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP / [Microsoft Graph](../integrations/microsoft-graph-email.md) |
 | Load balancer | None | None | ALB with health probes |
 
 ## Quick start

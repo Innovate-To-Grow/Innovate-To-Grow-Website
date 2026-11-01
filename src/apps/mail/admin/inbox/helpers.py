@@ -20,6 +20,39 @@ def parse_folder(request) -> str:
     return folder if folder in inbox_api.INBOX_FOLDER_CHOICES else inbox_api.INBOX_FOLDER
 
 
+def sent_mail_restricted(user) -> bool:
+    """Whether *user* may not read Sent mail: while the inbox reads the Graph mailbox, only superusers may.
+
+    That folder holds what the site sends without a credential flag (campaigns with login links, replies), so
+    Mail-app staff could otherwise read other people's links. When the backend cannot be resolved, the answer is
+    "restricted".
+    """
+    if user.is_superuser:
+        return False
+    try:
+        return inbox_api.graph_inbox_active()
+    except Exception:
+        inbox_api.logger.exception("Could not resolve the inbox backend; Sent mail stays restricted.")
+        return True
+
+
+def sent_mail_denied(request, folder: str, msg: dict | None = None) -> bool:
+    """Whether the request reaches Sent mail (the folder, or a message from the site's own address) it may not read."""
+    is_sent_mail = folder == inbox_api.SENT_FOLDER or bool(msg and msg.get("from_own_mailbox"))
+    return is_sent_mail and sent_mail_restricted(request.user)
+
+
+OWN_MAIL_SUBJECT = "(Sent from the site's own address: shown to superusers only)"
+
+
+def hide_own_mail(messages: list[dict]) -> list[dict]:
+    """List rows for a user who may not read Sent mail: a message from the site's own address keeps its row, sender
+    and date, but not its subject or opening text (opening it is refused as well)."""
+    return [
+        {**msg, "subject": OWN_MAIL_SUBJECT, "snippet": ""} if msg.get("from_own_mailbox") else msg for msg in messages
+    ]
+
+
 def message_body_html(msg: dict) -> str:
     """Return sanitized text fallback when a message has no HTML body."""
     if msg["html"]:
