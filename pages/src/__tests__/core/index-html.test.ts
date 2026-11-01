@@ -123,6 +123,29 @@ describe('index.html page shell', () => {
     }
   });
 
+  it('gives every token in the boot ring and label a fallback, since they paint before any token sheet loads', () => {
+    for (const selector of ['#root:empty::before', '#root:empty::after']) {
+      for (const [property, value] of Object.entries(declarations(inline, selector))) {
+        for (const use of value.match(/var\([^)]*\)/g) ?? []) {
+          expect(use, `${selector} ${property}`).toMatch(/^var\(--[\w-]+, .+\)$/);
+        }
+      }
+    }
+  });
+
+  it('keeps the scrollbar gutter free while the boot ring shows, so the ring does not move sideways', () => {
+    // The fallback's page is taller than the screen, so where scrollbars take up width it has one and the boot page
+    // (one screen tall) would not; the reserved gutter puts both rings in the same centred column.
+    const gutterRules: string[] = [];
+    postcss.parse(inline).walkRules((rule) => {
+      rule.walkDecls('scrollbar-gutter', (decl) => {
+        // Unlayered (top level), like the row rule, so nothing in the bundle outranks it.
+        gutterRules.push(`${rule.parent?.type} ${rule.selector} ${decl.value}`);
+      });
+    });
+    expect(gutterRules).toEqual(['root html:has(#root:empty) stable']);
+  });
+
   it('lays the boot ring and label out in a row that outranks the bundle and keeps its motion and contrast rules', () => {
     const root = postcss.parse(inline);
     const rowRules = root.nodes.filter((node) => node.type === 'rule' && node.selector === '#root:empty');

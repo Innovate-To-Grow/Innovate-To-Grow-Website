@@ -55,7 +55,7 @@
           content: "Loading\2026";
           margin-top: calc(16px + (50vh - 24px) / 2);
           margin-left: 0.75rem;
-          color: var(--itg-color-text-secondary);
+          color: var(--itg-color-text-secondary, #555555);
           font-size: var(--itg-font-size-body, 1rem);
           line-height: 24px;
           animation: itg-init-loader-fade-in 0.25s ease-out;
@@ -83,6 +83,13 @@
         flex-direction: row;
         align-items: flex-start;
         justify-content: center;
+      }
+      /* The boot page is one screen tall, so it has no scrollbar; the fallback's page (header, 50vh box, footer) is
+         taller and gets one. Where scrollbars take up width (Windows, macOS with a mouse), that would move the
+         centred ring and label half a scrollbar sideways when the fallback takes over, so the boot page keeps the
+         same gutter free until React fills #root. */
+      html:has(#root:empty) {
+        scrollbar-gutter: stable;
       }
 
       /* Block preview iframe: strip all page chrome so only the block content renders. These rules
