@@ -269,8 +269,9 @@ jobs:
           POSTGRES_PASSWORD: itg_ci_pass
         ports:
           - 5432:5432
+        # Probe TCP: the image's init-only first-start server is socket-only.
         options: >-
-          --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U itg_ci_user -d itg_ci"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -461,8 +462,9 @@ jobs:
           POSTGRES_PASSWORD: itg_ci_pass
         ports:
           - 5432:5432
+        # Probe TCP: the image's init-only first-start server is socket-only.
         options: >-
-          --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U itg_ci_user -d itg_ci"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -587,8 +589,9 @@ jobs:
           POSTGRES_PASSWORD: itg_ci_pass
         ports:
           - 5432:5432
+        # Probe TCP: the image's init-only first-start server is socket-only.
         options: >-
-          --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U itg_ci_user -d itg_ci"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -1367,13 +1370,9 @@ jobs:
             -e POSTGRES_PASSWORD=itg_ci_pass \
             "$postgres_image"
 
-          for _ in {1..30}; do
-            if docker exec "$postgres" pg_isready -U itg_ci_user -d itg_ci >/dev/null 2>&1; then
-              break
-            fi
-            sleep 2
-          done
-          docker exec "$postgres" pg_isready -U itg_ci_user -d itg_ci
+          # A socket pg_isready can pass against the image's init-only server
+          # and then fail while it restarts; the script waits on TCP instead.
+          bash scripts/ci/wait_for_postgres.sh "$postgres" itg_ci_user itg_ci 60
 
           docker run -d --name "$backend" --network "$network" -p 127.0.0.1:8000:8000 \
             -e DJANGO_SETTINGS_MODULE=config.settings.environments.test \
@@ -1794,8 +1793,9 @@ jobs:
           POSTGRES_DB: itg_ci
           POSTGRES_USER: itg_ci_user
           POSTGRES_PASSWORD: itg_ci_pass
+        # Probe TCP: the image's init-only first-start server is socket-only.
         options: >-
-          --health-cmd "pg_isready -U itg_ci_user -d itg_ci"
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U itg_ci_user -d itg_ci"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

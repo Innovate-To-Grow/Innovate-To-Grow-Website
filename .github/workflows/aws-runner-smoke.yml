@@ -12,6 +12,7 @@ on:
     paths:
       - "aws/ci-runners/**"
       - ".github/workflows/aws-runner-smoke.yml"
+      - "scripts/ci/wait_for_postgres.sh"
 
 permissions:
   contents: read
@@ -57,8 +58,9 @@ jobs:
           POSTGRES_PASSWORD: ephemeral-smoke-only
         ports:
           - 5432:5432
+        # Probe TCP: the image's init-only first-start server is socket-only.
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U postgres"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -82,7 +84,7 @@ jobs:
           python --version
           node --version
           docker info >/dev/null
-          docker exec "$POSTGRES_CONTAINER" pg_isready -U postgres
+          bash scripts/ci/wait_for_postgres.sh "$POSTGRES_CONTAINER" postgres postgres 60
           docker image inspect mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f >/dev/null
           printf 'Runner %s ready with %s CPUs\n' "$RUNNER_NAME" "$(nproc)"
           # Long enough to observe concurrent runners and their subsequent termination.
