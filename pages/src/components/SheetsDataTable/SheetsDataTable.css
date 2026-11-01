@@ -226,6 +226,47 @@
   }
 }
 
+/* Print, as the projects table prints (projectsResponsive.css): the rows as a document, with no search, sort
+   arrows or Details buttons (the pager leaves itself off: pagination.css; the count line says which rows they
+   are). The table leaves its scroll box, which cut it off at the paper's right edge, so every column prints and
+   Chromium repeats the headings on each page; each row is kept with the start of its open details. */
+@media print {
+  .sdt-search,
+  .sdt-sort-button::after {
+    display: none;
+  }
+
+  .itg-table-wrap.sdt-table-wrap {
+    overflow: visible;
+  }
+
+  /* Chromium leaves the labels out of the repeated headings while they are buttons: on paper they are text. */
+  .sdt-sort-button {
+    display: contents;
+  }
+
+  /* The Details column holds only buttons. Squeezed to nothing rather than removed, so an open row's details
+     still span the table. */
+  .sdt-table th.sdt-th-expand,
+  .sdt-table td.sdt-td-expand {
+    width: 0;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .sdt-table .sdt-td-expand > * {
+    display: none;
+  }
+
+  .sdt-table tbody > tr.sdt-row {
+    break-inside: avoid;
+  }
+
+  .sdt-table tbody > tr.sdt-row:has(+ .sdt-detail-row) {
+    break-after: avoid;
+  }
+}
+
 /* Forced colours (Windows Contrast themes) repaint backgrounds. The Details button keeps its 2px edge (forced to
    the theme's colour), but its arrow, like the sort arrows, is a mask filled with background-color, so the arrows
    vanished: fill them with the theme's own text colours. */
