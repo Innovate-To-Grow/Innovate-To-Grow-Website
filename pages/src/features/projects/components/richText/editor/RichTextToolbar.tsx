@@ -42,7 +42,7 @@ export const RichTextToolbar = ({label, formatting, isExpanded, onToggleExpanded
       onMouseDown={formatting.handleToolbarMouseDown}
       onClick={() => formatting.applyInlineFormat('underline', 'u')}
     >
-      <span style={{textDecoration: 'underline'}}>U</span>
+      <span className="project-grid-rich-editor-underline">U</span>
     </button>
     <button
       type="button"

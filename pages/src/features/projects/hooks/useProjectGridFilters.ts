@@ -17,6 +17,14 @@ const distinctValues = (rows: ProjectGridItem[], pick: (row: ProjectGridItem) =>
   return [...values];
 };
 
+/** A filter in use, as a removable chip names it: "Class: Engineering Capstone (CAP)". */
+export interface ProjectGridFilterChip {
+  key: 'class' | 'industry';
+  name: 'Class' | 'Industry';
+  /** The chosen option's label, as its select shows it. */
+  valueLabel: string;
+}
+
 /** The filters to start with, e.g. restored from the URL. */
 export interface ProjectGridFilterValues {
   classCode?: string;
@@ -69,15 +77,21 @@ export function useProjectGridFilters(
     setIndustry('');
   }, []);
 
+  // The filters in use, Class first, each with the option label its select shows.
+  const filterChips = useMemo(() => {
+    const chips: ProjectGridFilterChip[] = [
+      {key: 'class', name: 'Class', valueLabel: classOptions.find((option) => option.value === activeClass)?.label ?? ''},
+      {
+        key: 'industry',
+        name: 'Industry',
+        valueLabel: industryOptions.find((option) => option.value === activeIndustry)?.label ?? '',
+      },
+    ];
+    return chips.filter((chip) => chip.valueLabel);
+  }, [activeClass, activeIndustry, classOptions, industryOptions]);
+
   // How the count line and the no-results state name the filters in use: the option labels the selects show.
-  const activeLabels = useMemo(
-    () =>
-      [
-        classOptions.find((option) => option.value === activeClass)?.label ?? '',
-        industryOptions.find((option) => option.value === activeIndustry)?.label ?? '',
-      ].filter(Boolean),
-    [activeClass, activeIndustry, classOptions, industryOptions],
-  );
+  const activeLabels = useMemo(() => filterChips.map((chip) => chip.valueLabel), [filterChips]);
 
   return {
     classCode: activeClass,
@@ -88,6 +102,7 @@ export function useProjectGridFilters(
     industryOptions,
     filterRow,
     activeLabels,
+    filterChips,
     clear,
   };
 }

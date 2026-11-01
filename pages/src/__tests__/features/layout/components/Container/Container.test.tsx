@@ -77,7 +77,10 @@ describe('Container', () => {
 
     renderContainer(<Suspend />);
 
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    const loader = screen.getByRole('status');
+    expect(loader).toHaveClass('page-loader');
+    expect(loader).toHaveTextContent(/^Loading…$/);
+    expect(loader.querySelector('.loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('renders no section sidebar or section select, even on a page in a menu section', () => {

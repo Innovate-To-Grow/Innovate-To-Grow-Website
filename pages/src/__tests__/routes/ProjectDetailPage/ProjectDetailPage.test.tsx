@@ -226,9 +226,17 @@ describe('ProjectDetailPage', () => {
         </MemoryRouter>,
       );
 
-      fireEvent.click(await screen.findByRole('button', {name: 'Copy link to this project'}));
+      const copyButton = await screen.findByRole('button', {name: 'Copy Link to this project'});
+      expect(copyButton.closest('article')).toHaveAttribute('data-launcher-avoid', '');
+      expect(copyButton).toHaveClass('itg-btn', 'itg-btn-primary');
+      // The back link beside it is an outline button, the same at every width.
+      const backLinks = screen.getAllByRole('link', {name: /^back to /i});
+      expect(backLinks[1]).toHaveClass('itg-btn', 'itg-btn-outline', 'project-detail-actions-back');
+      fireEvent.click(copyButton);
 
-      expect(await screen.findByRole('status')).toHaveTextContent('Link copied.');
+      const status = await screen.findByRole('status');
+      expect(status).toHaveTextContent('Link copied.');
+      expect(status).toHaveClass('itg-success');
       expect(writeText).toHaveBeenCalledWith(window.location.href);
     } finally {
       Object.defineProperty(window.navigator, 'clipboard', {value: undefined, configurable: true});
@@ -248,10 +256,16 @@ describe('ProjectDetailPage', () => {
 
     expect(await screen.findByRole('heading', {level: 1, name: "We couldn't find this project"})).toBeInTheDocument();
     expect(screen.getByText(/The link may be incomplete, or the project has been removed/)).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
-    expect(screen.getByRole('link', {name: 'Current Projects'})).toHaveAttribute('href', '/current-projects');
+    expect(screen.getByRole('heading', {level: 1}).closest('section')).toHaveAttribute('data-launcher-avoid', '');
+    // One primary action, then a text link.
+    const search = screen.getByRole('link', {name: 'Search Past Projects'});
+    expect(search).toHaveAttribute('href', '/past-projects');
+    expect(search).toHaveClass('itg-btn', 'itg-btn-primary');
+    const current = screen.getByRole('link', {name: 'Current Projects'});
+    expect(current).toHaveAttribute('href', '/current-projects');
+    expect(current).toHaveClass('itg-link');
     expect(screen.getByRole('link', {name: /back to current projects/i})).toHaveAttribute('href', '/current-projects');
-    expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+    expect(screen.queryByRole('button', {name: 'Try Again'})).toBeNull();
     // The mark is claimed in an effect, which can run after the heading that findByRole saw.
     await waitFor(() =>
       expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex'),
@@ -302,6 +316,18 @@ describe('ProjectDetailPage', () => {
     expect(screen.queryByRole('heading', {name: 'Rotary Joint Testing System'})).toBeNull();
     const backLink = screen.getByRole('link', {name: /back to past projects/i});
     expect(backLink.getAttribute('href')).toBe('/past-projects');
+    // Try Again is the page's one primary action; the ways out are text links.
+    expect(screen.getByRole('button', {name: 'Try Again'})).toHaveClass('itg-btn', 'itg-btn-primary');
+    const search = screen.getByRole('link', {name: 'Search Past Projects'});
+    expect(search).toHaveAttribute('href', '/past-projects');
+    expect(search).toHaveClass('itg-link');
+    expect(search).not.toHaveClass('itg-btn');
+    expect(screen.getByRole('link', {name: 'Current Projects'})).toHaveClass('itg-link');
+    // The two links wrap as one group, so a phone never leaves one alone under the button and the other.
+    const links = search.parentElement as HTMLElement;
+    expect(links).toHaveClass('project-detail-error-links');
+    expect(links).toContainElement(screen.getByRole('link', {name: 'Current Projects'}));
+    expect(links.previousElementSibling).toBe(screen.getByRole('button', {name: 'Try Again'}));
   });
 
   it('keeps a failed load out of search results until a retry loads the project', async () => {
@@ -311,7 +337,7 @@ describe('ProjectDetailPage', () => {
     const robots = () => document.head.querySelector('meta[name="robots"]');
 
     // The mark is claimed and withdrawn in effects, which can run after the DOM change findByRole saw.
-    const tryAgain = await screen.findByRole('button', {name: 'Try again'});
+    const tryAgain = await screen.findByRole('button', {name: 'Try Again'});
     await waitFor(() => expect(robots()).toHaveAttribute('content', 'noindex'));
     fireEvent.click(tryAgain);
 
@@ -436,7 +462,7 @@ describe('ProjectDetailPage', () => {
     expect(await screen.findByRole('heading', {level: 1, name: "We couldn't load this project"})).toBeInTheDocument();
     expect(screen.queryByRole('heading', {name: "We couldn't find this project"})).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Try Again'}));
 
     expect(
       await screen.findByRole('heading', {level: 1, name: 'ASHRAE HVAC Design Calculations'}),

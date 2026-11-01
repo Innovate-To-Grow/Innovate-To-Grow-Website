@@ -63,7 +63,7 @@ export const SharedPastProjectMergeSearch = ({
         error={archiveUnavailable ? error : null}
         loading={loading || isSaving}
         title="Add More Projects"
-        saveLabel="Add Selected"
+        saveLabel="Add to Curation"
         saveTarget="this curation"
         savedLabel="Added"
         aiSearchDisabled={tables.hasAISearchTable}
@@ -86,7 +86,7 @@ export const SharedPastProjectMergeSearch = ({
           isAuthenticated={isAuthenticated}
           canRefresh={Boolean(onRefreshRows)}
           cardProps={{
-            mergeLabel: 'Add Selected',
+            mergeLabel: 'Add to Curation',
             mergeVerb: 'Add',
             mergingVerb: 'Adding',
             mergeDisabled: isSaving,
@@ -96,7 +96,8 @@ export const SharedPastProjectMergeSearch = ({
           }}
           copy={{
             aiDescription:
-              'Use AI to load matching projects into this table, then check the projects you want and click Add Selected.',
+              'Use AI to load matching projects into this table, then check the projects you want and click Add ' +
+              'to Curation.',
             standardDescription: 'Search for more projects to add to this curation.',
             noTablesMessage: 'No search tables are open. Add a new table to search for more projects.',
           }}

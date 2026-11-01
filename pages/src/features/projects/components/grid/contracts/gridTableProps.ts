@@ -63,7 +63,7 @@ export interface ProjectGridTableProps {
   onSortChange: (field: ProjectGridColumnKey) => void;
   /** Sort from the Sort by select, whose options name the direction ("Project title (Z to A)"). */
   onSortSelect?: (field: ProjectGridColumnKey, direction: ProjectGridSortDirection) => void;
-  /** Clears the extra filters too when the visitor clicks "Clear search" in the no-results state. */
+  /** Clears the extra filters too when the visitor clicks "Clear Search" in the no-results state. */
   onClearFilters?: () => void;
   /** Extra hint and actions for the no-results state (e.g. a link to search past projects). */
   noResultsHint?: string;
@@ -85,12 +85,23 @@ export interface ProjectGridTableProps {
   onPageSizeChange: (size: number) => void;
   loading?: boolean;
   error?: string | null;
-  /** Loads the rows again after `error`; shown as a "Try again" button beside it. */
+  /** Loads the rows again after `error`; shown as a "Try Again" button beside it. */
   onRetry?: () => void;
+  /** What shows when there are no rows at all: the text under `emptyTitle`, or on its own without one. */
   emptyMessage?: string;
+  /**
+   * Turns the empty message into an empty state like the no-results one: this heading (at `noResultsHeadingLevel`),
+   * the message, then `emptyActions`. Without it the message shows alone.
+   */
+  emptyTitle?: string;
+  /** The empty state's action, e.g. a link to Past Projects; shown only with `emptyTitle`. */
+  emptyActions?: ReactNode;
   /** Plural noun for the result count ("projects", "teams"). */
   countLabel?: string;
-  /** Actions shown above the results ('top', after the filter well) or under the table ('bottom'). */
+  /**
+   * Actions shown above the results ('top', after the filter well) or under the table ('bottom'). Any truthy value is
+   * wrapped in a spaced toolbar box, so pass undefined, not an empty fragment, when there is nothing to show.
+   */
   toolbar?: ReactNode;
   toolbarPlacement?: 'top' | 'bottom';
   /** Which project page a title links to. Past-project links open in a new tab so curation work is kept. */

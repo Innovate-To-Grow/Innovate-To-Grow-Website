@@ -35,7 +35,8 @@ export const CatalogBuilderView = ({
     : '';
 
   return (
-    <div className="past-projects-page">
+    // Marked so the chat launcher tucks away over the page's text and cards, not only its controls (useLauncherYield).
+    <div className="past-projects-page" data-launcher-avoid="">
       <header className="past-projects-header" data-embed-section="page-header">
         <h1 className="itg-page-title">{title}</h1>
         {/* Its line is there while the list loads too: arriving later, it pushed the lede and the whole builder

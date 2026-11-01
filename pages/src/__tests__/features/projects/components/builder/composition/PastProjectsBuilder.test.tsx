@@ -238,19 +238,27 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       '+ Search Table',
       '+ AI Search Table',
     ]);
-    expect(within(section).getByText('Help: buttons, saving and tables')).toBeInTheDocument();
+    expect(within(section).getByText('Help: Buttons, Saving and Tables')).toBeInTheDocument();
+    // The embed's "Section titles" option hides the heading by this marker (visually only: it stays a heading).
+    expect(within(section).getByRole('heading', {level: 2, name: 'Search Tables'})).toHaveAttribute(
+      'data-embed-section',
+      'section-title',
+    );
   });
 
   it('says in its help that tables share one archive and that Refresh starts a table over', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    const help = screen.getByText('Help: buttons, saving and tables').closest('details') as HTMLElement;
+    const help = screen.getByText('Help: Buttons, Saving and Tables').closest('details') as HTMLElement;
     expect(help).toHaveTextContent('Adds another search table over the same past-project archive');
     expect(help).not.toHaveTextContent('loads the full past-project archive on its own');
     expect(help).toHaveTextContent(
       'Refresh Search Table reloads the archive and starts that table over: its search, sort, Per page, ' +
         'checked rows and tidy edits are cleared.',
     );
+    // Button names in Title Case, in bold like the help's other button names.
+    expect(within(help).getByText('Delete Table', {selector: 'dt'})).toBeInTheDocument();
+    expect(within(help).getByText('Delete Table', {selector: 'dd strong'})).toBeInTheDocument();
   });
 
   it('omits the search table number until there are multiple tables', () => {

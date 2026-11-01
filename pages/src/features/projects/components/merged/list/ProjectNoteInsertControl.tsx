@@ -29,7 +29,7 @@ export const ProjectNoteInsertControl = ({
     >
       <div className="project-grid-note-insert-actions">
         <button type="button" className="itg-btn itg-btn-text" onClick={onInsert} disabled={!rows.length}>
-          Insert projects into note
+          Insert Projects into Note
         </button>
         <button
           type="button"
@@ -39,7 +39,7 @@ export const ProjectNoteInsertControl = ({
           onMouseDown={(event) => event.preventDefault()}
           onClick={() => setIsOpen((current) => !current)}
         >
-          Choose fields
+          Choose Fields
         </button>
       </div>
       {insertProblem ? (

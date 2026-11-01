@@ -25,9 +25,21 @@ export const EMBED_BODY_CSS = embedBodyCss('transparent');
 
 /**
  * App-route widgets are whole site pages, whose text colours and striped rows assume the site's page
- * background; on a coloured host page a transparent one would leave them unreadable.
+ * background; on a coloured host page a transparent one would leave them unreadable. So they keep it, with
+ * padding inside the frame (16px; at 768px and below 20px, the phone page gutter): the controls never touch
+ * the iframe's edge, and the background reads as a card around the widget. Block widgets get neither.
  */
-export const EMBED_APP_ROUTE_BODY_CSS = embedBodyCss('var(--itg-color-bg-page, #fff)');
+export const EMBED_APP_ROUTE_BODY_CSS = `${embedBodyCss('var(--itg-color-bg-page, #fff)')}
+      .cms-embed-app-route {
+        box-sizing: border-box;
+        padding: 16px;
+      }
+      @media (max-width: 768px) {
+        .cms-embed-app-route {
+          padding: 20px;
+        }
+      }
+    `;
 
 /** The embeddable block for ``slug``; ``notFound`` once fetching it failed. */
 export function useEmbedData(slug: string | undefined) {

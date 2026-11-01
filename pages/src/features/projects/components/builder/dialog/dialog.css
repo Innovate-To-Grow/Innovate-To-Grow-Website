@@ -4,9 +4,10 @@
 
 /* ---- Dialog -------------------------------------------------------------------- */
 
-/* The theme's panel: an 8px #0f5479 top rule. The browser centres a modal dialog in the viewport. */
+/* The theme's panel: an 8px sidebar-rule top rule. The browser centres a modal dialog in the viewport, with at
+   least the phone page gutter on either side. */
 .past-projects-dialog {
-  width: min(100% - 2rem, 27.5rem);
+  width: min(100% - 2 * var(--itg-page-gutter-mobile), 27.5rem);
   max-width: none;
   padding: 0;
   border: 0;
@@ -39,9 +40,11 @@ dialog.past-projects-dialog.is-placed:modal {
   padding: 1.25rem 1.5rem 0;
 }
 
+/* An h2, sized like one. */
 .past-projects-dialog-title {
   margin: 0;
-  font-size: var(--itg-font-size-h3);
+  font-size: var(--itg-font-size-h2);
+  line-height: var(--itg-line-height-heading);
   font-weight: 600;
   color: var(--itg-color-primary);
 }

@@ -52,7 +52,7 @@ describe('MergedResultsTable — an export whose code is missing', () => {
           'Reload the page, then export again.',
       ),
     ).toBeInTheDocument();
-    expect(within(exportCluster).getByRole('button', {name: 'Reload page'})).toBeInTheDocument();
+    expect(within(exportCluster).getByRole('button', {name: 'Reload Page'})).toBeInTheDocument();
     // The other formats still export, and are not blocked by the failed one.
     expect(within(exportCluster).getByRole('button', {name: 'Excel'})).not.toHaveAttribute('aria-disabled');
   });

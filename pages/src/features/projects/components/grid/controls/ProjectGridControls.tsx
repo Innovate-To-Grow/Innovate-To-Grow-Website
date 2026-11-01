@@ -42,7 +42,7 @@ type ControlsProps = Pick<
 > & {
   /** Per page and View All Details, when the results bar does not hold them (no sort select). */
   pageControls: ReactNode;
-  /** The search field, which takes focus back when "Clear search" clears it. */
+  /** The search field, which takes focus back when "Clear Search" clears it. */
   searchInputRef?: Ref<HTMLInputElement>;
 };
 

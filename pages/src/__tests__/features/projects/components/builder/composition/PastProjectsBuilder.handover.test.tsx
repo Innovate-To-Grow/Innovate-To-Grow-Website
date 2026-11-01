@@ -106,6 +106,13 @@ describe('PastProjectsBuilder and the Past Projects widget', () => {
       }
       expect(within(draftSection()).queryByRole('link', {name: /sign in/i})).toBeNull();
       expect(draftSection().querySelector('a[href*="/login"]')).toBeNull();
+      // Both are buttons; the save section's says what happens there, once.
+      for (const link of continueLinks) expect(link).toHaveClass('itg-btn', 'itg-btn-primary');
+      expect(
+        within(draftSection()).getByText(
+          'Sign in there to save this curation and get a link to share it. This draft goes with you.',
+        ),
+      ).toHaveClass('project-grid-share-actions-note');
     });
 
     it("offers AI search's sign-in on the full page, with the draft, as a link to a new tab", async () => {
@@ -197,10 +204,12 @@ describe('PastProjectsBuilder and the Past Projects widget', () => {
       render(renderBuilder());
       await addToCuration('Alpha Project');
 
-      expect(within(draftSection()).getByRole('link', {name: 'Sign in to save'})).toHaveAttribute(
-        'href',
-        `/login?returnTo=${encodeURIComponent('/past-projects?value=solar')}`,
-      );
+      // The card header's button and the save section's, the same link.
+      const signInLinks = within(draftSection()).getAllByRole('link', {name: 'Sign In to Save'});
+      expect(signInLinks).toHaveLength(2);
+      for (const link of signInLinks) {
+        expect(link).toHaveAttribute('href', `/login?returnTo=${encodeURIComponent('/past-projects?value=solar')}`);
+      }
     });
   });
 });

@@ -1,3 +1,4 @@
+import {Link} from 'react-router';
 import {CurrentProjectsView} from '@/features/projects/components/views/pages/CurrentProjectsView';
 import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
 
@@ -14,7 +15,13 @@ export const ProjectsPage = () => {
       onRetry={refetch}
       classLabels={classLabels}
       namespace="current-projects"
-      emptyMessage="No current projects are available yet."
+      emptyTitle="No current projects yet"
+      emptyMessage="This semester's projects appear here once the schedule is published. Older projects are in Past Projects."
+      emptyActions={
+        <Link className="itg-btn itg-btn-outline" to="/past-projects">
+          Search Past Projects
+        </Link>
+      }
       countLabel="projects"
     />
   );

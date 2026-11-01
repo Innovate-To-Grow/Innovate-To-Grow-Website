@@ -29,7 +29,8 @@ const view = (overrides: Partial<Parameters<typeof CurrentProjectsView>[0]> = {}
     error={null}
     classLabels={{CAP: 'Engineering Capstone'}}
     namespace="current-projects"
-    emptyMessage="No current projects are available yet."
+    emptyTitle="No current projects yet"
+    emptyMessage="This semester's projects appear here once the schedule is published."
     {...overrides}
   />
 );

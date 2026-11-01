@@ -49,13 +49,19 @@
   min-height: min(100vh, 850px);
 }
 
-/* A list that could not load: the message, then "Try again" beside it (under it on narrow screens). */
+/* A list that could not load: the message, then "Try Again" beside it (under it on narrow screens). */
 .project-grid-load-error {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem 1rem;
   padding: 1rem 0;
+}
+
+/* It holds the same room as the loading line above, so the footer does not jump up when the load fails. */
+.projects-page .project-grid-load-error {
+  min-height: min(100vh, 850px);
+  align-content: flex-start;
 }
 
 .project-grid-load-error .project-grid-state {

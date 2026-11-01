@@ -156,6 +156,14 @@
   line-height: 24px;
 }
 
+/* Both schedules' loading boxes hold the shared LoadingIndicator (SchedulePage.tsx, ScheduleGrid.tsx). As a flex
+   row each stays the one 24px line its text was; on a text line the indicator would add the line's descent under it. */
+.schedule-page-state-loading,
+.sg-loading {
+  display: flex;
+  align-items: center;
+}
+
 .schedule-page-state-error,
 .sg-error {
   border-left-color: var(--itg-color-error);

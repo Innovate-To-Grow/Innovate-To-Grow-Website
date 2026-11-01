@@ -38,7 +38,7 @@ const view = (status: Partial<ViewProps['status']>, share: PastProjectShare | nu
 
 const renderView = (status: Partial<ViewProps['status']>) => render(view(status));
 
-/** A curation whose load failed; Try again loads it again, as usePastProjectShareData does. */
+/** A curation whose load failed; Try Again loads it again, as usePastProjectShareData does. */
 const RetryHarness = () => {
   const [state, setState] = useState<{loading: boolean; error: string | null; share: PastProjectShare | null}>({
     loading: false,
@@ -69,25 +69,32 @@ describe('SharedCurationView', () => {
   it('announces that the curation is loading from a status line kept in the page', () => {
     const {rerender} = renderView({loading: true});
     const line = screen.getByRole('status');
-    expect(line).toHaveTextContent('Loading curation...');
+    expect(line).toHaveTextContent('Loading curation…');
+    // The shared loading indicator: its spinner is hidden from assistive technology, and the line keeps the role.
+    expect(line.querySelector('.loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
+    expect(line.querySelector('.loading-indicator')).not.toHaveAttribute('role');
 
     rerender(view({}, SHARE));
     expect(line).toBeInTheDocument();
     expect(line).toBeEmptyDOMElement();
   });
 
-  it('keeps Try again, and its focus, while the retry loads, then hands focus to the curation title', () => {
+  it('keeps Try Again, and its focus, while the retry loads, then hands focus to the curation title', () => {
     render(<RetryHarness />);
-    const tryAgain = screen.getByRole('button', {name: 'Try again'});
+    const tryAgain = screen.getByRole('button', {name: 'Try Again'});
     tryAgain.focus();
 
     fireEvent.click(tryAgain);
     expect(tryAgain).toBeInTheDocument();
     expect(tryAgain).toHaveFocus();
     expect(tryAgain).toHaveAttribute('aria-disabled', 'true');
-    expect(screen.getAllByText('Loading curation...')).toHaveLength(1);
+    expect(screen.getAllByText('Loading curation…')).toHaveLength(1);
+    // The failure page's live region shows the loading indicator while the retry runs.
+    const retrying = screen.getByText('Loading curation…').closest('[role="status"]') as HTMLElement;
+    expect(retrying.closest('.past-projects-share-failed')).not.toBeNull();
+    expect(retrying.querySelector('.loading-indicator-spinner')).not.toBeNull();
 
-    // A retry that fails again says so in a live region, and Try again works again.
+    // A retry that fails again says so in a live region, and Try Again works again.
     fireEvent.click(screen.getByRole('button', {name: 'Fail the load'}));
     expect(screen.getByText(/Something went wrong while loading this curation/)).toHaveAttribute('role', 'status');
     expect(tryAgain).toHaveFocus();
@@ -139,8 +146,8 @@ describe('SharedCurationView', () => {
     );
 
     expect(screen.getByRole('heading', {level: 2, name: 'Add More Projects'})).toBeInTheDocument();
-    expect(screen.getByText('Loading projects...')).toHaveAttribute('role', 'status');
-    expect(screen.queryByText('Loading past projects...')).toBeNull();
+    expect(screen.getByText('Loading projects…').closest('[role="status"]')).not.toBeNull();
+    expect(screen.queryByText('Loading past projects…')).toBeNull();
     // The way back to a builder still names Past Projects.
     expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
   });
@@ -170,6 +177,19 @@ describe('SharedCurationView', () => {
     // One of archive projects only still points to Past Projects.
     render(view({}, {...SHARE, rows: [{...currentRow, catalog: 'archive'}]}));
     expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
+  });
+
+  it('keeps the chat launcher off the page in every state', () => {
+    const {container, rerender} = renderView({loading: true});
+    const root = () => container.querySelector('.past-projects-page--shared');
+    expect(root()).toHaveAttribute('data-launcher-avoid', '');
+
+    rerender(view({}, SHARE));
+    expect(root()).toHaveAttribute('data-launcher-avoid', '');
+    rerender(view({error: 'Not found', notFound: true}));
+    expect(root()).toHaveAttribute('data-launcher-avoid', '');
+    rerender(view({error: 'Network Error'}));
+    expect(root()).toHaveAttribute('data-launcher-avoid', '');
   });
 
   it('names the tab after a curation that does not exist', () => {

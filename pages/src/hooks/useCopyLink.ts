@@ -7,6 +7,9 @@ interface CopyLinkMessages {
   failed: string;
 }
 
+/** How the last copy went, for the status line's colour (.itg-success / .itg-error); '' while it shows nothing. */
+export type CopyLinkTone = 'success' | 'error' | '';
+
 /** Copies ``text`` from a selected, off-screen field; false when the browser refuses. */
 function copyBySelection(text: string): boolean {
   if (typeof document.execCommand !== 'function') return false;
@@ -43,9 +46,12 @@ async function copyText(text: string): Promise<boolean> {
   return copyBySelection(text);
 }
 
-/** Copies a link to the clipboard and reports the outcome for a role=status message that clears itself. */
+/**
+ * Copies a link to the clipboard and reports the outcome for a role=status message that clears itself:
+ * `status` is the message and `tone` whether the copy worked, both cleared together after four seconds.
+ */
 export function useCopyLink({copied, failed}: CopyLinkMessages) {
-  const [status, setStatus] = useState('');
+  const [outcome, setOutcome] = useState<{status: string; tone: CopyLinkTone}>({status: '', tone: ''});
   const timer = useRef<number | undefined>(undefined);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
@@ -53,12 +59,12 @@ export function useCopyLink({copied, failed}: CopyLinkMessages) {
   const copy = useCallback(
     async (text: string) => {
       const ok = await copyText(text);
-      setStatus(ok ? copied : failed);
+      setOutcome(ok ? {status: copied, tone: 'success'} : {status: failed, tone: 'error'});
       window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => setStatus(''), STATUS_MS);
+      timer.current = window.setTimeout(() => setOutcome({status: '', tone: ''}), STATUS_MS);
     },
     [copied, failed],
   );
 
-  return {status, copy};
+  return {status: outcome.status, tone: outcome.tone, copy};
 }

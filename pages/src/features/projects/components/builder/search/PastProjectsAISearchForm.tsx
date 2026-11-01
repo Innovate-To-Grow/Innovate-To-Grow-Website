@@ -1,4 +1,5 @@
 import {useId, useState, type FormEvent} from 'react';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 
 interface PastProjectsAISearchFormProps {
@@ -58,7 +59,7 @@ export const PastProjectsAISearchForm = ({
       </button>
       {loading ? (
         <p className="past-projects-ai-search-status" role="status" aria-live="polite">
-          {copy.aiSearching}
+          <LoadingIndicator label={copy.aiSearching} />
         </p>
       ) : null}
     </form>

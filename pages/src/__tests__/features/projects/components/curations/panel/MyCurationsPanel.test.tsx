@@ -84,7 +84,7 @@ describe('MyCurationsPanel', () => {
     ]);
     expect(within(panel).getByText('1 project · updated Oct 18, 2026')).toBeInTheDocument();
     expect(within(panel).getByText('3 projects · saved Sep 10, 2026')).toBeInTheDocument();
-    expect(within(panel).getByRole('link', {name: 'Manage curations'})).toHaveAttribute(
+    expect(within(panel).getByRole('link', {name: 'Manage Curations'})).toHaveAttribute(
       'href',
       '/account/past-project-curation-shared-links',
     );
@@ -103,7 +103,7 @@ describe('MyCurationsPanel', () => {
     expect(within(panel).getAllByRole('listitem')).toHaveLength(5);
     expect(within(panel).getByText('List 6')).toBeInTheDocument();
     expect(within(panel).queryByText('List 1')).toBeNull();
-    expect(within(panel).getByRole('link', {name: 'See all 7'})).toHaveAttribute(
+    expect(within(panel).getByRole('link', {name: 'See All 7'})).toHaveAttribute(
       'href',
       '/account/past-project-curation-shared-links',
     );
@@ -115,15 +115,37 @@ describe('MyCurationsPanel', () => {
     mockListMyShares.mockResolvedValue([share({})]);
 
     await renderPanel();
-    // Speech input users say what they see ("click Copy link"), so the visible label leads the name.
-    const copyButton = screen.getByRole('button', {name: 'Copy link to Water projects'});
-    expect(copyButton).toHaveTextContent('Copy link');
+    // Speech input users say what they see ("click Copy Link"), so the visible label leads the name.
+    const copyButton = screen.getByRole('button', {name: 'Copy Link to Water projects'});
+    expect(copyButton).toHaveTextContent('Copy Link');
     await act(async () => {
       fireEvent.click(copyButton);
     });
 
     expect(writeText).toHaveBeenCalledWith('https://i2g.example/past-projects/share-1');
     expect(screen.getByRole('status')).toHaveTextContent('Link copied.');
+    // Green, like every copy confirmation on these pages.
+    expect(screen.getByRole('status')).toHaveClass('itg-success');
+    expect(screen.getByRole('status')).not.toHaveClass('itg-error');
+  });
+
+  it('says in the error colour when a link could not be copied', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+    Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
+    // The fallback, copying a selected field, is refused too.
+    Object.defineProperty(document, 'execCommand', {configurable: true, writable: true, value: () => false});
+    mockListMyShares.mockResolvedValue([share({})]);
+
+    await renderPanel();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', {name: 'Copy Link to Water projects'}));
+    });
+
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('Could not copy the link. Open the curation and copy its address instead.');
+    expect(status).toHaveClass('past-projects-my-curations-status', 'itg-error');
+    expect(status).not.toHaveClass('itg-success');
+    Object.defineProperty(document, 'execCommand', {configurable: true, writable: true, value: undefined});
   });
 
   it('stays out of the way with no curations, a failed load, or no sign-in', async () => {

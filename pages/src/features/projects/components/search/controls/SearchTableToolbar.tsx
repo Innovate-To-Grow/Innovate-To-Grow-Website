@@ -103,7 +103,7 @@ interface SearchTableToolbarProps {
   saveControls: ReactNode;
   topStatus: ReactNode;
   isPhone: boolean;
-  /** Names the Save group after what its button does ("Add to Curation", "Add Selected"). */
+  /** Names the Save group after what its button does ("Add to Curation" in the builder and on a shared page). */
   saveGroupLabel: string;
   /** Id for the hint the selection-dependent buttons point to while no row is checked. */
   selectionHintId: string;
@@ -168,7 +168,7 @@ export const SearchTableToolbar = ({
           // Seven buttons, most of them disabled until rows are checked, would push the results
           // a full screen down on a phone; the table-tidying ones fold away here.
           <details className="search-table-more-actions">
-            <summary className="search-table-more-actions-summary">More table actions</summary>
+            <summary className="search-table-more-actions-summary">More Table Actions</summary>
             {tidyActions}
           </details>
         ) : (

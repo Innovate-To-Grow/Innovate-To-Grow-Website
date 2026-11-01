@@ -54,6 +54,31 @@ describe('coversPageControl', () => {
     expect(coversPageControl(LAUNCHER_BOX, widget, () => [page.querySelector('p')!, document.body])).toBe(false);
   });
 
+  it('keeps off the text of a page region marked data-launcher-avoid', () => {
+    const page = pageWith('<article data-launcher-avoid=""><section><p>Team members: Kyle On</p></section></article>');
+    const widget = pageWith('<button type="button">Open chat assistant</button>');
+    const text = page.querySelector('p')!;
+
+    expect(coversPageControl(LAUNCHER_BOX, widget, () => [text, page, document.body])).toBe(true);
+    // The marked root itself (its padding or the gap between its cards) counts too.
+    expect(coversPageControl(LAUNCHER_BOX, widget, () => [page.querySelector('article')!, document.body])).toBe(true);
+  });
+
+  it('still sits over text outside any marked region, with a marked region elsewhere on the page', () => {
+    pageWith('<article data-launcher-avoid=""><p>Project abstract</p></article>');
+    const footer = pageWith('<footer><p>UC Merced School of Engineering</p></footer>');
+    const widget = pageWith('<button type="button">Open chat assistant</button>');
+
+    expect(coversPageControl(LAUNCHER_BOX, widget, () => [footer.querySelector('p')!, footer, document.body])).toBe(false);
+  });
+
+  it("ignores the widget's own elements even inside a marked region", () => {
+    const page = pageWith('<div data-launcher-avoid=""><span>Chat</span></div>');
+    const ownRoot = page.firstElementChild!;
+
+    expect(coversPageControl(LAUNCHER_BOX, ownRoot, () => [ownRoot.querySelector('span')!, ownRoot])).toBe(false);
+  });
+
   it('samples the whole box, corners included', () => {
     const widget = pageWith('<span></span>');
     const points: Array<[number, number]> = [];
@@ -96,6 +121,25 @@ describe('AssistantWidget launcher', () => {
     await waitFor(() => expect(launcher).toHaveClass('is-tucked'));
 
     underLauncher = [document.body];
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+    await waitFor(() => expect(launcher).not.toHaveClass('is-tucked'));
+  });
+
+  it('tucks over the text of a marked page region, and not over plain text elsewhere', async () => {
+    const article = pageWith('<article data-launcher-avoid=""><p>Abstract-001</p></article>');
+    const elsewhere = pageWith('<p>News story paragraph</p>');
+    render(<AssistantWidget />);
+    const launcher = screen.getByRole('button', {name: 'Open chat assistant'});
+
+    underLauncher = [article.querySelector('p')!, article, document.body];
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+    await waitFor(() => expect(launcher).toHaveClass('is-tucked'));
+
+    underLauncher = [elsewhere.querySelector('p')!, elsewhere, document.body];
     act(() => {
       window.dispatchEvent(new Event('scroll'));
     });

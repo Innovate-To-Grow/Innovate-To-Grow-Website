@@ -32,10 +32,11 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  height: 34px;
+  /* The site's control height: 40px, as tall as the .itg-btn beside it (44px on touch screens, phones.css). */
+  height: 40px;
   padding: 4px 6px;
   /* The field's edge is all that marks it out on the grey filter well, so it
-     needs 3:1 against the #f2f2f2 fill, the #f5f5f5 well and white (WCAG
+     needs 3:1 against the #f2f2f2 fill, the #f7f7f7 well and white (WCAG
      1.4.11): --itg-color-border-field (#858585) reaches 3.3:1 or more. The
      reference's #ccc (--itg-color-border-input, still used by other controls)
      reaches 1.5:1. */
@@ -52,7 +53,7 @@
 
 /* A select's text box is laid out by the engine (its line-height is always
    'normal'); WebKit adds its own vertical padding on top of ours, which pushed
-   the text below the 34px box and cut it off. The engines centre it. */
+   the text below the 40px box and cut it off. The engines centre it. */
 select.itg-select {
   padding-top: 0;
   padding-bottom: 0;
@@ -69,12 +70,6 @@ textarea.itg-input {
   color: var(--itg-color-disabled-text);
 }
 
-.itg-input:focus,
-.itg-select:focus {
-  border-color: rgba(82, 168, 236, 0.8);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6);
-}
-
 .itg-input:disabled,
 .itg-select:disabled {
   background-color: var(--itg-color-disabled-bg);
@@ -86,5 +81,16 @@ textarea.itg-input {
 .itg-input[aria-invalid='true'],
 .itg-select[aria-invalid='true'] {
   border-color: var(--itg-color-error);
+}
+
+/* Forced colours: the placeholder takes the theme's GrayText, the system
+   colour for hint and disabled text, in every engine. Chromium already maps
+   it there (#600000 in a High Contrast White palette, the "dark red" seen in
+   its emulation); Firefox drew it as CanvasText at 54% opacity. */
+@media (forced-colors: active) {
+  .itg-input::placeholder {
+    forced-color-adjust: none;
+    color: GrayText;
+  }
 }
 }

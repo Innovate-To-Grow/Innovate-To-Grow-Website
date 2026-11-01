@@ -70,7 +70,7 @@
 }
 
 /* A status line stays in the page while empty, so screen readers announce the first message put in it; empty,
-   it takes no room (or gap) in its flex column. A loading line ("Loading past projects...") is one too. */
+   it takes no room (or gap) in its flex column. A loading line ("Loading past projects…") is one too. */
 .project-grid-status:empty,
 .past-projects-loading-line:empty {
   position: absolute;
@@ -100,14 +100,10 @@
   color: var(--itg-color-primary);
 }
 
-/* The name on its own row, the note under it at the card's full width. */
+/* The name on its own row, the note under it, both at the card's full width. */
 .project-grid-share-fields {
   display: grid;
   gap: 1rem;
-}
-
-.project-grid-share-name {
-  max-width: 40rem;
 }
 
 .project-grid-share-note {
@@ -151,10 +147,6 @@
   color: var(--itg-color-text-secondary);
 }
 
-.project-grid-share-login-hint {
-  margin: 0;
-}
-
 /* Note insert tools under the curation note. */
 .project-grid-note-insert-actions {
   display: flex;
@@ -193,6 +185,13 @@
 
 .project-grid-note-insert-option input {
   accent-color: var(--itg-color-primary);
+}
+
+/* 44px targets on touch screens: the whole label row checks its box. */
+@media (max-width: 992px) {
+  .project-grid-note-insert-option {
+    min-height: 2.75rem;
+  }
 }
 
 /* Checked draft rows under forced colours, as in the search tables (searchTables.css). */

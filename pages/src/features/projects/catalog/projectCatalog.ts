@@ -10,9 +10,9 @@ export type ProjectCatalogKey = 'past' | 'all';
 
 /** How the builder's states, messages and help name the list it searches. */
 export interface ProjectCatalogCopy {
-  /** The loading line while the rows load ("Loading past projects..."). */
+  /** The loading line while the rows load ("Loading past projects…"). */
   loading: string;
-  /** When the first load failed, next to Try again. */
+  /** When the first load failed, next to Try Again. */
   loadFailed: string;
   /** While a table's Refresh Search Table reloads the rows, once it has, and when it could not. */
   refreshing: string;

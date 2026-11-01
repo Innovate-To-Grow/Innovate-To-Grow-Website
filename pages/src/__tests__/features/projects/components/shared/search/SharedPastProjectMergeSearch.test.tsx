@@ -82,7 +82,7 @@ describe('SharedPastProjectMergeSearch', () => {
   it('announces that the archive is loading', () => {
     render(<SharedPastProjectMergeSearch currentRows={[alphaRow]} rows={[]} error={null} loading onAddRows={vi.fn()} />);
 
-    expect(screen.getByText('Loading past projects...')).toHaveAttribute('role', 'status');
+    expect(screen.getByText('Loading past projects…').closest('[role="status"]')).not.toBeNull();
   });
 
   it('keeps reporting an add in its table when a refresh lands while it runs', async () => {
@@ -95,13 +95,13 @@ describe('SharedPastProjectMergeSearch', () => {
 
     fireEvent.click(screen.getByRole('button', {name: 'Refresh Search Table'}));
     fireEvent.click(screen.getAllByLabelText('Select Id Only')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
     rerender(<SharedPastProjectMergeSearch rows={[{...compact}]} {...props} />);
 
     await act(async () => resolveDetails({rows: [compact], failedIndexes: [0], unavailableIndexes: []}));
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      '1 project could not be loaded and is still selected. Click Add Selected to try again.',
+      '1 project could not be loaded and is still selected. Click Add to Curation to try again.',
     );
     expect(screen.getAllByLabelText('Select Id Only')[0]).toBeChecked();
     expect(onAddRows).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe('SharedPastProjectMergeSearch', () => {
 
     cleanup();
     render(<SharedPastProjectMergeSearch rows={[]} error="Network Error" {...props} />);
-    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Try Again'}));
     expect(onRefreshRows).toHaveBeenCalledTimes(2);
     expect(screen.queryByText('Network Error')).toBeNull();
   });
@@ -142,15 +142,15 @@ describe('SharedPastProjectMergeSearch', () => {
     );
 
     expect(screen.getByRole('heading', {level: 2, name: 'Add More Projects'})).toBeInTheDocument();
-    expect(screen.getByText('Help: buttons, saving and tables')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', {name: 'Add Selected'}).length).toBeGreaterThan(0);
+    expect(screen.getByText('Help: Buttons, Saving and Tables')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', {name: 'Add to Curation'}).length).toBeGreaterThan(0);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     expect(screen.queryByText('Alpha Project')).toBeNull();
     expect(screen.getAllByText('Bravo Project').length).toBeGreaterThan(0);
 
     // The per-table merge button adds the checked rows directly — there is no confirmation dialog.
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     await waitFor(() => {
       expect(onAddRows).toHaveBeenCalledWith([
@@ -177,7 +177,7 @@ describe('SharedPastProjectMergeSearch', () => {
         rows={[compact]} onAddRows={onAddRows} />,
     );
     fireEvent.click(screen.getAllByLabelText('Select Compact Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     await waitFor(() => expect(onAddRows).toHaveBeenCalled());
     expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalled();
@@ -209,10 +209,10 @@ describe('SharedPastProjectMergeSearch', () => {
         rows={[compact]} onAddRows={onAddRows} />,
     );
     fireEvent.click(screen.getAllByLabelText('Select Compact Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      '1 project could not be loaded and is still selected. Click Add Selected to try again.',
+      '1 project could not be loaded and is still selected. Click Add to Curation to try again.',
     );
     expect(onAddRows).not.toHaveBeenCalled();
     expect(screen.getAllByLabelText('Select Compact Project')[0]).toBeChecked();
@@ -234,7 +234,7 @@ describe('SharedPastProjectMergeSearch', () => {
     );
     fireEvent.click(screen.getAllByLabelText('Select Loads Fine')[0]);
     fireEvent.click(screen.getAllByLabelText('Select Fails To Load')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('1 project added. 1 project could not be loaded');
     expect(onAddRows).toHaveBeenCalledWith([expect.objectContaining({project_title: 'Loads Fine', abstract: 'Loaded'})]);
@@ -254,7 +254,7 @@ describe('SharedPastProjectMergeSearch', () => {
     );
     fireEvent.click(screen.getAllByLabelText('Select New One')[0]);
     fireEvent.click(screen.getAllByLabelText('Select New Two')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('A curation can include at most 1000 projects.');
     expect(mockHydrateProjectGridRowsSettled).not.toHaveBeenCalled();
@@ -272,7 +272,7 @@ describe('SharedPastProjectMergeSearch', () => {
         rows={[compact]} onAddRows={onAddRows} />,
     );
     fireEvent.click(screen.getAllByLabelText('Select Removed Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('1 project is no longer in the archive and was skipped.');
     expect(onAddRows).not.toHaveBeenCalled();
@@ -288,7 +288,7 @@ describe('SharedPastProjectMergeSearch', () => {
         rows={[alphaRow, bravoRow]} onAddRows={onAddRows} />,
     );
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     await waitFor(() =>
       expect(tableStatus()).toHaveTextContent('That project is already in this curation.'),
@@ -315,7 +315,7 @@ describe('SharedPastProjectMergeSearch', () => {
     expect(onRefreshRows).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
     // Without a catalog in context it words itself as Past Projects does.
-    expect(screen.getByText('Refreshing this search table from the latest past-project archive...')).toBeInTheDocument();
+    expect(screen.getByText('Refreshing this search table from the latest past-project archive…')).toBeInTheDocument();
 
     // The refetch resolves with a new archive snapshot; the table picks up the new project.
     const deltaRow = makeRow({team_number: 'T04', team_name: 'Team Delta', project_title: 'Delta Project'});
@@ -349,7 +349,7 @@ describe('SharedPastProjectMergeSearch', () => {
     expect(screen.queryByText(/archive/)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', {name: /refresh search table/i}));
-    expect(screen.getByText('Refreshing this search table from the latest project list...')).toBeInTheDocument();
+    expect(screen.getByText('Refreshing this search table from the latest project list…')).toBeInTheDocument();
 
     rerender(search([alphaRow, bravoRow, charlieRow]));
     expect(screen.getByText('Search table refreshed from the latest project list.')).toBeInTheDocument();
@@ -415,7 +415,7 @@ describe('SharedPastProjectMergeSearch', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     await waitFor(() =>
       expect(tableStatus()).toHaveTextContent('That project is already in this curation.'),
@@ -437,7 +437,7 @@ describe('SharedPastProjectMergeSearch', () => {
     );
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: 'Add to Curation'}));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Unable to add selected projects. They are still selected, so you can try again.',

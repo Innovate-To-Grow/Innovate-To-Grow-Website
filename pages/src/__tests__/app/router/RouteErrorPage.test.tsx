@@ -134,7 +134,10 @@ describe('RouteErrorPage', () => {
     const router = buildRouter('/chunk');
     render(<RouterProvider router={router} />);
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading page…');
+    const checking = await screen.findByRole('status');
+    expect(checking).toHaveTextContent('Loading page…');
+    // The shared loading indicator: its spinner is decoration only.
+    expect(checking.querySelector('.loading-indicator .loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
     act(() => answer(pageOf(RUNNING_ENTRY)));
 
     expect(await screen.findByRole('heading', {level: 1, name: 'Something went wrong'})).toHaveAccessibleDescription(

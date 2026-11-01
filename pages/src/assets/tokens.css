@@ -20,6 +20,7 @@
     --itg-color-bg-light: #f2f2f2;
     --itg-color-bg-panel: #f7f7f7;
     --itg-color-bg-page: #ffffff;
+    --itg-color-row-stripe: #f9f9f9;
     --itg-color-white: #fff;
     --itg-color-border: #dddddd;
     --itg-color-border-table: #cccccc;
@@ -34,6 +35,8 @@
     --itg-color-footer-bar-rule: #d9a928;
     --itg-color-highlight: #fff6db;
     --itg-color-tag-new: #ffe9a8;
+    --itg-color-tag-added: #e8f3eb;
+    --itg-color-tag-current: #e1ecf3;
     --itg-color-success: #1e7b34;
     --itg-color-disabled-text: #6b6b6b;
     --itg-color-disabled-bg: #efefef;

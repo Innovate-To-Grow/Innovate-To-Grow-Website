@@ -2,9 +2,9 @@ import {useEffect, useRef, type RefObject} from 'react';
 import {focusWasDropped} from './useResultsFocus';
 
 /**
- * Keeps keyboard focus in the grid through "Try again", whose button leaves with the error it answers. While the
+ * Keeps keyboard focus in the grid through "Try Again", whose button leaves with the error it answers. While the
  * rows load again, focus is on the loading line; then on the start of the results (the count line, or the empty
- * message when there are none), or back on Try again when the load fails again. Focus the visitor moved somewhere
+ * message when there are none), or back on Try Again when the load fails again. Focus the visitor moved somewhere
  * else in the meantime is left there.
  */
 export function useRetryFocus(

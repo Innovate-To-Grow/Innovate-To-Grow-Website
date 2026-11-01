@@ -1,5 +1,6 @@
 import {useEffect, type ReactNode} from 'react';
 import {Link, useLocation, useParams} from 'react-router';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ProjectsMessagePage} from '@/features/projects/components/views/pages/ProjectsMessagePage';
 import {useCopyLink} from '@/hooks/useCopyLink';
 import {useProjectDetail, type ProjectDetailError} from '@/features/projects/hooks/useProjectDetail';
@@ -15,7 +16,12 @@ interface ProjectLoadFailedProps {
   retry: () => void;
 }
 
-/** A project that does not exist (or a link that is wrong), or one that could not be loaded right now. */
+/**
+ * A project that does not exist (or a link that is wrong), or one that could not be loaded right now. Each has one
+ * primary action, then text links: "Search Past Projects" when it is not found, "Try Again" when it failed. A failed
+ * load's two links are one group, beside Try Again when they fit and on the next line together when not, so a phone
+ * never leaves one of them alone on a line under the other two.
+ */
 const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => {
   const notFound = error !== 'failed';
   // Neither state belongs in search results; the mark goes with this message (a retry that loads the project).
@@ -26,19 +32,30 @@ const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => 
       before={backLink}
       title={notFound ? "We couldn't find this project" : "We couldn't load this project"}
       actions={
-        <>
-          {notFound ? null : (
+        notFound ? (
+          <>
+            <Link className="itg-btn itg-btn-primary" to="/past-projects">
+              Search Past Projects
+            </Link>
+            <Link className="itg-link" to="/current-projects">
+              Current Projects
+            </Link>
+          </>
+        ) : (
+          <>
             <button type="button" className="itg-btn itg-btn-primary" onClick={retry}>
-              Try again
+              Try Again
             </button>
-          )}
-          <Link className={`itg-btn ${notFound ? 'itg-btn-primary' : 'itg-btn-outline'}`} to="/past-projects">
-            Search past projects
-          </Link>
-          <Link className="itg-link" to="/current-projects">
-            Current Projects
-          </Link>
-        </>
+            <div className="project-detail-error-links">
+              <Link className="itg-link" to="/past-projects">
+                Search Past Projects
+              </Link>
+              <Link className="itg-link" to="/current-projects">
+                Current Projects
+              </Link>
+            </div>
+          </>
+        )
       }
     >
       <p>
@@ -50,31 +67,32 @@ const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => 
   );
 };
 
-/** Back to the list, and copy a link to this project. */
+/**
+ * Back to the list, and copy a link to this project: the same two buttons at every width, side by side on wide
+ * screens and stacked full width on phones. The back link also sits above the title; this one is where a reader
+ * ends up after a long abstract and team list, several phone screens below it.
+ */
 const ProjectDetailActions = ({backTarget}: {backTarget: ProjectBackTarget}) => {
-  const {status: copyStatus, copy} = useCopyLink({
+  const {status: copyStatus, tone, copy} = useCopyLink({
     copied: 'Link copied.',
     failed: 'Could not copy the link. Copy it from the address bar instead.',
   });
   return (
     <div className="project-detail-actions">
-      <ProjectBackLink target={backTarget} className="itg-link project-detail-actions-back">
-        <span className="project-detail-wide-only" aria-hidden="true">
-          ‹{' '}
-        </span>
+      <ProjectBackLink target={backTarget} className="itg-btn itg-btn-outline project-detail-actions-back">
+        <span aria-hidden="true">‹ </span>
         <span>{backTarget.label}</span>
       </ProjectBackLink>
       <button
         type="button"
-        className="itg-btn itg-btn-text project-detail-copy"
+        className="itg-btn itg-btn-primary project-detail-copy"
         onClick={() => void copy(window.location.href)}
       >
-        <span>
-          Copy link <span className="project-detail-wide-only">to this project</span>
-        </span>
+        Copy Link{' '}
+        <span className="sr-only">to this project</span>
       </button>
       {copyStatus ? (
-        <p className="project-detail-copy-status" role="status">
+        <p className={`project-detail-copy-status ${tone === 'error' ? 'itg-error' : 'itg-success'}`} role="status">
           {copyStatus}
         </p>
       ) : null}
@@ -120,8 +138,8 @@ export const ProjectDetailPage = () => {
 
   if (loading) {
     return (
-      <div className="project-detail">
-        <p className="itg-loading">Loading...</p>
+      <div className="project-detail-loading" role="status" data-launcher-avoid="">
+        <LoadingIndicator label="Loading project…" />
       </div>
     );
   }
@@ -131,7 +149,8 @@ export const ProjectDetailPage = () => {
   }
 
   return (
-    <article className="project-detail">
+    // Marked so the chat launcher tucks away over the abstract, not only over links and buttons (useLauncherYield).
+    <article className="project-detail" data-launcher-avoid="">
       {backLink}
       <ProjectDetailBody result={result} />
       <ProjectDetailActions backTarget={backTarget} />

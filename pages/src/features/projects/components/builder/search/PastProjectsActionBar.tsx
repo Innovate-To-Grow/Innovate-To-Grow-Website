@@ -72,7 +72,7 @@ type HelpProps = Required<Pick<PastProjectsActionBarProps, 'saveLabel' | 'saveTa
 /** What each button does, folded away under a summary. */
 const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel, copy}: HelpProps) => (
   <details className="past-projects-help-details">
-    <summary className="past-projects-help-summary">Help: buttons, saving and tables</summary>
+    <summary className="past-projects-help-summary">Help: Buttons, Saving and Tables</summary>
     <p className="past-projects-help-intro">
       Add one or more search tables, then work inside each table to choose the projects you want.
     </p>
@@ -109,10 +109,10 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel, copy}: HelpProps) 
         </dd>
       </div>
       <div className="project-grid-help-card">
-        <dt>Delete table</dt>
+        <dt>Delete Table</dt>
         <dd>
-          When more than one search table is open, each one has a Delete table button in its header. It removes
-          that table only, so the last table always stays.
+          When more than one search table is open, each one has a <strong>Delete Table</strong> button in its header.
+          It removes that table only, so the last table always stays.
         </dd>
       </div>
       <div className="project-grid-help-card project-grid-help-card--wide">
@@ -153,7 +153,13 @@ export const PastProjectsActionBar = ({
   return (
     <div className="past-projects-action-bar">
       <div className="past-projects-action-bar-header">
-        <h2 id={headingId} className="project-grid-card-title past-projects-action-bar-title" tabIndex={-1}>
+        {/* Hidden visually (not from the outline) by the embed's "Section titles" option: a retry focuses it. */}
+        <h2
+          id={headingId}
+          className="project-grid-card-title past-projects-action-bar-title"
+          tabIndex={-1}
+          data-embed-section="section-title"
+        >
           {title}
         </h2>
         <div className="past-projects-action-bar-group" role="group" aria-label="Add a table">

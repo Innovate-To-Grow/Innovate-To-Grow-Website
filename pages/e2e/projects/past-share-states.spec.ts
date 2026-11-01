@@ -40,7 +40,10 @@ test('a link to a list that does not exist says the list is not available', asyn
   await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
   await expect(page.getByRole('heading', {level: 1, name: "This curation isn't available"})).toBeVisible();
-  await expect(page.getByRole('button', {name: 'Try again'})).toHaveCount(0);
+  await expect(page.getByRole('button', {name: 'Try Again'})).toHaveCount(0);
+  // It cannot know which list the curation came from, so it points to All Projects under a neutral eyebrow.
+  await expect(page.locator('.past-projects-share-unavailable .itg-eyebrow')).toHaveText('Curation');
+  await expect(page.getByRole('link', {name: 'Search All Projects'})).toHaveAttribute('href', '/all-projects');
 });
 
 test('a list that fails to load can be tried again', async ({page}) => {
@@ -53,8 +56,9 @@ test('a list that fails to load can be tried again', async ({page}) => {
 
   await expect(page.getByRole('heading', {level: 1, name: "We couldn't load this curation"})).toBeVisible();
   await expect(page.getByText("This curation isn't available")).toHaveCount(0);
+  await expect(page.getByRole('link', {name: 'Search All Projects'})).toHaveClass(/\bitg-link\b/);
 
-  await page.getByRole('button', {name: 'Try again'}).click();
+  await page.getByRole('button', {name: 'Try Again'}).click();
 
   await expect(page.getByRole('heading', {level: 1, name: 'Water projects'})).toBeVisible();
   await expect(page.getByText('ASHRAE HVAC Design Calculations').first()).toBeVisible();

@@ -114,6 +114,8 @@ describe('AllProjectsPage', () => {
         ).toHaveClass('itg-lead');
         // The embed widget's "Section titles and page header" hides it.
         expect(container.querySelector('header[data-embed-section="page-header"] h1')).toHaveTextContent('All Projects');
+        // The chat launcher tucks away over the whole page, its text and cards included (useLauncherYield).
+        expect(container.querySelector('.past-projects-page')).toHaveAttribute('data-launcher-avoid', '');
     });
 
     it('keeps the meta line in place while the list loads', () => {

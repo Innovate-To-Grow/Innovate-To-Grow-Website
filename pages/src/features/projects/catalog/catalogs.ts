@@ -30,15 +30,15 @@ export const PAST_PROJECTS_CATALOG: ProjectCatalog = {
   searchRemote: searchPastRows,
   aiScope: 'past',
   copy: {
-    loading: 'Loading past projects...',
+    loading: 'Loading past projects…',
     loadFailed: 'The past-project archive could not be loaded. Check your connection and try again.',
-    refreshing: 'Refreshing this search table from the latest past-project archive...',
+    refreshing: 'Refreshing this search table from the latest past-project archive…',
     refreshed: (count) => `Search ${tables(count)} refreshed from the latest past-project archive.`,
     refreshFailed:
       'This table was not refreshed: the past-project archive could not be loaded. Its rows are unchanged; ' +
       'click Refresh Search Table to try again.',
-    aiPlaceholder: 'Ask AI to find relevant past projects...',
-    aiSearching: 'Searching past projects with AI...',
+    aiPlaceholder: 'Ask about past projects…',
+    aiSearching: 'Searching past projects with AI…',
     aiNoResults: 'AI search did not find matching past projects.',
     aiDescription:
       'Use AI to load matching past projects into this table, then check the projects you want and click Add to ' +
@@ -70,15 +70,15 @@ export const ALL_PROJECTS_CATALOG: ProjectCatalog = {
   searchRemote: searchAllRows,
   aiScope: 'all',
   copy: {
-    loading: 'Loading projects...',
+    loading: 'Loading projects…',
     loadFailed: 'The project list could not be loaded. Check your connection and try again.',
-    refreshing: 'Refreshing this search table from the latest project list...',
+    refreshing: 'Refreshing this search table from the latest project list…',
     refreshed: (count) => `Search ${tables(count)} refreshed from the latest project list.`,
     refreshFailed:
       'This table was not refreshed: the project list could not be loaded. Its rows are unchanged; ' +
       'click Refresh Search Table to try again.',
-    aiPlaceholder: 'Ask AI to find relevant projects...',
-    aiSearching: 'Searching projects with AI...',
+    aiPlaceholder: 'Ask about projects…',
+    aiSearching: 'Searching projects with AI…',
     aiNoResults: 'AI search did not find matching projects.',
     aiDescription:
       'Use AI to load matching projects into this table, then check the projects you want and click Add to Curation.',

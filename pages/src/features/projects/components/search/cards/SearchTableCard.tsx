@@ -91,11 +91,11 @@ const SearchTableCardHeader = ({card, headingId, isSaving}: {card: CardProps; he
       <button
         type="button"
         className="itg-btn itg-btn-text search-table-remove-button"
-        aria-label={`Delete table: ${card.title}`}
+        aria-label={`Delete Table: ${card.title}`}
         onClick={() => card.onRemove(card.tableId)}
         disabled={isSaving}
       >
-        Delete table
+        Delete Table
       </button>
     ) : null}
   </div>

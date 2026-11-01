@@ -110,7 +110,7 @@ describe('PastProjectsBuilder — status messages', () => {
 
     expect(onRefreshRows).toHaveBeenCalledTimes(1);
     expect(searchTablesStatus()).toBe(status);
-    expect(status).toHaveTextContent('Refreshing this search table from the latest past-project archive...');
+    expect(status).toHaveTextContent('Refreshing this search table from the latest past-project archive…');
   });
 
   it('announces that the archive is loading from a status line kept in the page', () => {
@@ -120,7 +120,10 @@ describe('PastProjectsBuilder — status messages', () => {
     expect(line).toBeEmptyDOMElement();
 
     rerender(<PastProjectsBuilder rows={[]} loading error={null} onRefreshRows={vi.fn()} onCreateShare={vi.fn()} />);
-    expect(within(searchTablesSection()).getByText('Loading past projects...')).toBe(line);
+    // The site's loading indicator, inside the line that stays in the page.
+    const label = within(searchTablesSection()).getByText('Loading past projects…');
+    expect(label.closest('.past-projects-loading-line')).toBe(line);
+    expect(line?.querySelector('.loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
 
     rerender(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onRefreshRows={vi.fn()} onCreateShare={vi.fn()} />);
     expect(line).toBeInTheDocument();

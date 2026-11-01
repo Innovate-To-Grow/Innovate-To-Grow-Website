@@ -136,7 +136,7 @@ describe('PastProjectsBuilder on All Projects', () => {
     it('says it is loading projects, not past projects', () => {
       render(builder({rows: [], loading: true}));
 
-      expect(screen.getByText('Loading projects...')).toHaveAttribute('role', 'status');
+      expect(screen.getByText('Loading projects…').closest('[role="status"]')).not.toBeNull();
       expect(screen.queryByText(/past projects/i)).toBeNull();
     });
 
@@ -167,7 +167,7 @@ describe('PastProjectsBuilder on All Projects', () => {
 
       fireEvent.click(within(searchTable('Search Table')).getByRole('button', {name: 'Refresh Search Table'}));
       expect(onRefreshRows).toHaveBeenCalledTimes(1);
-      expect(screen.getByText('Refreshing this search table from the latest project list...')).toBeInTheDocument();
+      expect(screen.getByText('Refreshing this search table from the latest project list…')).toBeInTheDocument();
 
       const delta = makeRow({id: ID_GONE, team_number: '103', project_title: 'Delta Project'});
       rerender(builder({rows: [...ROWS, delta], onRefreshRows}));
@@ -201,13 +201,13 @@ describe('PastProjectsBuilder on All Projects', () => {
       expect(aiTable).toHaveTextContent(
         'Use AI to load matching projects into this table, then check the projects you want and click Add to Curation.',
       );
-      fireEvent.change(within(aiTable).getByPlaceholderText('Ask AI to find relevant projects...'), {
+      fireEvent.change(within(aiTable).getByPlaceholderText('Ask about projects…'), {
         target: {value: 'irrigation'},
       });
       fireEvent.click(within(aiTable).getByRole('button', {name: 'Search'}));
 
       expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('irrigation', 10, 'all');
-      expect(within(aiTable).getByText('Searching projects with AI...')).toHaveAttribute('role', 'status');
+      expect(within(aiTable).getByText('Searching projects with AI…').closest('[role="status"]')).not.toBeNull();
 
       await act(async () =>
         answer({

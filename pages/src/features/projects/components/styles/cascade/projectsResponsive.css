@@ -3,12 +3,6 @@
    override the base rules of all the files before them, so they must follow every one of them.
    Imported in order by projects.css; see the note there. */
 
-/* ---- Utilities ----------------------------------------------------------------- */
-
-.project-grid-wide-only {
-  display: inline;
-}
-
 /* ---- Narrow screens ------------------------------------------------------------ */
 
 @media (max-width: 992px) {
@@ -69,7 +63,6 @@
   /* Previous / Page x of y / Next. */
   .project-grid-pagination {
     justify-content: space-between;
-    margin-top: 8px;
   }
 
   .project-grid-pager-pages {
@@ -78,10 +71,6 @@
 
   .project-grid-pager-status {
     display: inline;
-  }
-
-  .project-grid-pager-step {
-    min-height: 2.75rem;
   }
 
   /* Search tables: full-width Save, a two-column grid of the other actions. */
@@ -127,11 +116,6 @@
     width: 100%;
   }
 
-  .search-table-save-button {
-    min-height: 3rem;
-    font-size: var(--itg-font-size-meta);
-  }
-
   .search-table-save-count {
     display: inline;
   }
@@ -163,7 +147,7 @@
     display: none;
   }
 
-  /* "More table actions": the table-tidying buttons, folded away until opened. */
+  /* "More Table Actions": the table-tidying buttons, folded away until opened. */
   .search-table-more-actions {
     border-top: 1px solid var(--itg-color-border);
   }
@@ -199,10 +183,16 @@
     color: var(--itg-color-white);
   }
 
-  .search-table-action-group .itg-btn-text:disabled {
+  /* Disabled, or soft-disabled (aria-disabled keeps focus on a button that has nothing to do yet): greyed out as
+     above 768px, and not filled navy on hover or focus. */
+  .search-table-action-group .itg-btn-text:disabled,
+  .search-table-action-group .itg-btn-text[aria-disabled='true'],
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:hover,
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:focus-visible {
     border-color: var(--itg-color-disabled-border);
     background: var(--itg-color-disabled-bg);
     color: var(--itg-color-disabled-text);
+    cursor: not-allowed;
   }
 
   /* Saved Merged Results and shared lists. */
@@ -245,10 +235,6 @@
     grid-column: 1 / -1;
   }
 
-  .project-grid-wide-only {
-    display: none;
-  }
-
   .project-grid-share-result-row {
     flex-direction: column;
   }
@@ -259,6 +245,20 @@
 
   .past-projects-dialog-actions .itg-btn {
     flex: 1 1 auto;
+  }
+}
+
+/* ---- Small phones ---------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  /* The AI question gets the full width, and its Search button goes under it: side by side, the field was too
+     narrow for its placeholder. */
+  .past-projects-ai-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .past-projects-ai-search > .itg-btn {
+    width: 100%;
   }
 }
 
@@ -292,10 +292,6 @@
     flex-wrap: nowrap;
   }
 
-  .project-grid-pager-step {
-    padding-inline: 0.5em;
-  }
-
   .project-grid-pager-status {
     text-align: center;
   }
@@ -308,14 +304,10 @@
 
 /* ---- Forced colours (Windows Contrast themes) ------------------------------------ */
 
-/* The theme repaints backgrounds and drops shadows. The Details button is a navy square with a bevel and its
-   arrow, like the sort arrows, is a mask filled with background-color, so all of them vanished: give the button
-   an edge and fill the arrows with the theme's own text colours. */
+/* The theme repaints backgrounds. The Details button keeps its 2px edge (forced to the theme's colour), but its
+   arrow, like the sort arrows, is a mask filled with background-color, so the arrows vanished: fill them with the
+   theme's own text colours. */
 @media (forced-colors: active) {
-  .project-grid-detail-icon-button {
-    border: 1px solid ButtonText;
-  }
-
   .project-grid-detail-icon {
     forced-color-adjust: none;
     background-color: ButtonText;
@@ -325,13 +317,23 @@
     forced-color-adjust: none;
     background-color: CanvasText;
   }
+
+  /* The phone rules above outrank buttons.css's GrayText for an unavailable button, and the theme turns their
+     author colours into ButtonText, which looked available: use the theme's disabled colour again. */
+  .search-table-action-group .itg-btn-text:disabled,
+  .search-table-action-group .itg-btn-text[aria-disabled='true'],
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:hover,
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:focus-visible {
+    color: GrayText;
+    border-color: GrayText;
+  }
 }
 
 /* ---- Print ------------------------------------------------------------------------ */
 
-/* A printed list is the rows on the screen as a document: no search, sort, paging or row buttons (the count line
-   says which rows they are), each row kept with the start of its details, and the column headings repeated on
-   every page. */
+/* A printed list is the rows on the screen as a document: no search, sort, paging or row buttons, each row kept
+   with the start of its details, and the column headings repeated on every page. The count line says which rows
+   they are, so the whole pager leaves the paper here; other pagers print their "Page x of y" (pagination.css). */
 @media print {
   .project-grid-controls,
   .project-grid-results-controls,
@@ -341,6 +343,7 @@
   .project-grid-no-results .itg-empty-state-actions,
   .project-grid-detail-links,
   .project-grid-detail-state .itg-btn,
+  .project-grid-detail-error .itg-btn,
   .project-grid-sort-button::after,
   .project-grid-mobile-card-select,
   .project-grid-mobile-card-actions {
@@ -389,10 +392,6 @@
 @media (prefers-reduced-motion: reduce) {
   .search-table-results-motion {
     animation: none;
-  }
-
-  .past-projects-ai-search-status::before {
-    animation-duration: 3s;
   }
 }
 }

@@ -122,14 +122,14 @@ describe('PastProjectsBuilder — keyboard focus after its actions', () => {
     expect(addButton).toHaveFocus();
   });
 
-  it("moves focus to a new table's search field, and to the neighbouring table's heading after Delete table", () => {
+  it("moves focus to a new table's search field, and to the neighbouring table's heading after Delete Table", () => {
     renderBuilder();
 
     press(screen.getByRole('button', {name: '+ Search Table'}));
     const secondTable = searchTable('Search Table 2');
     expect(within(secondTable).getByRole('searchbox')).toHaveFocus();
 
-    press(within(secondTable).getByRole('button', {name: 'Delete table: Search Table 2'}));
+    press(within(secondTable).getByRole('button', {name: 'Delete Table: Search Table 2'}));
     expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toHaveFocus();
   });
 
@@ -179,7 +179,12 @@ describe('PastProjectsBuilder — keyboard focus after its actions', () => {
 
     const clearDraft = card.getByRole('button', {name: 'Clear Draft'});
     press(clearDraft);
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: 'Clear Draft'}));
+    // The confirm is boxed red like the button that opened it; Cancel, the safe choice, has focus.
+    const confirm = within(screen.getByRole('dialog')).getByRole('button', {name: 'Clear Draft'});
+    expect(confirm).toHaveClass('itg-btn', 'itg-btn-outline', 'itg-btn-danger');
+    expect(confirm).not.toHaveClass('itg-btn-primary');
+    expect(within(screen.getByRole('dialog')).getByRole('button', {name: 'Cancel'})).toHaveFocus();
+    fireEvent.click(confirm);
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(clearDraft).toHaveFocus();
     expect(clearDraft).toHaveAttribute('aria-disabled', 'true');

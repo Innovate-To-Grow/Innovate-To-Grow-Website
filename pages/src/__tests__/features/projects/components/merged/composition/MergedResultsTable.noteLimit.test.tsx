@@ -53,17 +53,17 @@ describe('MergedResultsTable — the curation note limit', () => {
     );
     fireEvent.click(screen.getByRole('button', {name: /edit curation note/i}));
     const noteEditor = screen.getByRole('textbox', {name: 'Curation note'});
-    const insertButton = screen.getByRole('button', {name: 'Insert projects into note'});
+    const insertButton = screen.getByRole('button', {name: 'Insert Projects into Note'});
     insertButton.focus();
 
     fireEvent.click(insertButton);
     expect(screen.getByRole('alert')).toHaveTextContent(
       'Inserting 30 projects would make the note longer than a curation can save (50,000 characters with ' +
-        'formatting). Leave out Abstract under Choose fields, or shorten the note.',
+        'formatting). Leave out Abstract under Choose Fields, or shorten the note.',
     );
     expect(noteEditor.textContent).toBe('');
 
-    fireEvent.click(screen.getByRole('button', {name: 'Choose fields'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Choose Fields'}));
     fireEvent.click(screen.getByRole('checkbox', {name: 'Abstract'}));
     expect(screen.queryByRole('alert')).toBeNull();
     insertButton.focus();
@@ -134,7 +134,8 @@ describe('MergedResultsTable — the curation note limit', () => {
     fireEvent.click(screen.getByRole('button', {name: /save curation note/i}));
 
     expect(onUpdateShare).not.toHaveBeenCalled();
-    expect(screen.getByRole('status')).toHaveTextContent('The curation note is too long to save');
+    // The list's status line says why (the link panel has a status line of its own for copies).
+    expect(screen.getByText(/^The curation note is too long to save/)).toHaveAttribute('role', 'status');
     expect(screen.getByRole('button', {name: /save curation note/i})).toBeInTheDocument();
   });
 });

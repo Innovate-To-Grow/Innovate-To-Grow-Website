@@ -17,7 +17,7 @@ interface UseAddToShareOptions {
 }
 
 /**
- * "Add Selected" on a shared page: add one search table's checked rows to the share. Projects already in
+ * "Add to Curation" on a shared page: add one search table's checked rows to the share. Projects already in
  * it (by id or fingerprint) are skipped so each project is stored once, and compact archive rows load their
  * details first. The outcome is reported inside the table that added them.
  */
@@ -83,7 +83,7 @@ export function useAddToShare({currentRows, isAlreadyShared, onAddRows, onMessag
             failed: failedIndexes.length,
             unavailable: unavailableIndexes.length,
           },
-          {added: 'added.', already: 'in this curation', place: 'in this curation', retryLabel: 'Add Selected'},
+          {added: 'added.', already: 'in this curation', place: 'in this curation', retryLabel: 'Add to Curation'},
         );
         return {...result, retainedIndexes: failedIndexes.map((index) => toAdd[index])};
       } catch {

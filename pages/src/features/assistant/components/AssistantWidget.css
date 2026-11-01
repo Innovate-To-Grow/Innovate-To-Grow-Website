@@ -63,10 +63,12 @@
   fill: currentColor;
 }
 
-/* Tucked (useLauncherYield): a page control is under the launcher's spot, so
-   it shrinks to a 16px tab at the viewport edge, inside the page gutter
-   (20px on phones, 24px wider), where no page content sits. The tab opens
-   the chat as before; keyboard focus brings the whole button back. */
+/* Tucked (useLauncherYield): a page control, or a page region marked
+   data-launcher-avoid, is under the launcher's spot, so it shrinks to a tab
+   at the viewport edge, inside the page gutter, where no page content sits:
+   16px wide in the 24px gutter above 992px and 12px in the 20px gutter at
+   992px and below, so it keeps 8px clear of the content at both. The tab
+   opens the chat as before; keyboard focus brings the whole button back. */
 .itg-assistant__launcher.is-tucked {
   right: -1rem;
   width: 16px;
@@ -99,6 +101,18 @@
 
 .itg-assistant__launcher.is-tucked:focus-visible .itg-assistant__launcher-icon {
   visibility: visible;
+}
+
+/* The 20px phone and tablet gutter: a 12px tab. The :focus-visible rule above
+   (0,3,0) still brings the whole 56px button back. */
+@media (max-width: 992px) {
+  .itg-assistant__launcher.is-tucked {
+    width: 12px;
+  }
+
+  .itg-assistant__launcher.is-tucked::before {
+    left: 3px;
+  }
 }
 
 /* ---- Panel ------------------------------------------------------------- */

@@ -187,7 +187,7 @@ function useSeededShareState(shareId: string | undefined, requestKey: symbol | n
 /**
  * The share at `shareId`. A `seed` is a share the caller already holds (the one a save just created): when it is the
  * share at `shareId` it stands in for loading it, so the page shows it without asking the server again. Each seed
- * stands in once; Try again (`retry`) loads the share from the server.
+ * stands in once; Try Again (`retry`) loads the share from the server.
  */
 export function usePastProjectShareData(
     shareId: string | undefined,

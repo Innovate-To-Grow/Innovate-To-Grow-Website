@@ -73,7 +73,7 @@ describe('compact archive row details', () => {
     fireEvent.click(desktop().getByRole('checkbox', {name: `Select ${row.project_title}`}));
     fireEvent.click(desktop().getByRole('button', {name: /^Details for /, expanded: false}));
     const detailsId = desktop().getByRole('button', {name: /^Details for /, expanded: true}).getAttribute('aria-controls');
-    expect(desktop().getByRole('status')).toHaveTextContent('Loading project details...');
+    expect(desktop().getByRole('status')).toHaveTextContent('Loading project details…');
     expect(fetchDetail).toHaveBeenCalledExactlyOnceWith(row.id, expect.any(AbortSignal), 15_000);
 
     await act(async () => response.resolve(detail(row.id!)));
@@ -102,11 +102,14 @@ describe('compact archive row details', () => {
   it('shows a failure without losing the link and retries from mobile in both layouts', async () => {
     fetchDetail.mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(detail('retry-details'));
     const {desktop, mobile, layout} = renderTable([compactRow('retry-details')], vi.fn(), 'phone');
-    fireEvent.click(mobile().getByRole('button', {name: /^Show details for /}));
+    fireEvent.click(mobile().getByRole('button', {name: /^Show Details for /}));
     expect(await mobile().findByRole('alert')).toHaveTextContent('Unable to load project details.');
     expect(mobile().getByRole('link', {name: /open the project page/i})).toHaveAttribute('href', `${window.location.origin}/past-projects/project/retry-details`);
     expect(fetchDetail).toHaveBeenCalledTimes(1);
-    fireEvent.click(mobile().getByRole('button', {name: 'Retry'}));
+    // An outline Try Again, named after its row.
+    const tryAgain = mobile().getByRole('button', {name: 'Try Again for Project retry-details'});
+    expect(tryAgain).toHaveClass('itg-btn', 'itg-btn-outline');
+    fireEvent.click(tryAgain);
     await waitFor(() => expect(mobile().getByText('Students retry-details')).toBeInTheDocument());
     act(() => layout.setPhone(false));
     expect(desktop().getByText('Abstract retry-details')).toBeInTheDocument();
@@ -197,7 +200,7 @@ describe('compact archive row details', () => {
     Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
     try {
       render(<ProjectGridRowDetails row={{...compactRow('copy-me'), abstract: 'Copied abstract'}} scope="past" />);
-      fireEvent.click(screen.getByRole('button', {name: /^Copy project link for /}));
+      fireEvent.click(screen.getByRole('button', {name: /^Copy Project Link for /}));
       expect(await screen.findByRole('status')).toHaveTextContent('Project link copied.');
       expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/past-projects/project/copy-me`);
     } finally {
@@ -207,13 +210,13 @@ describe('compact archive row details', () => {
 
   it('says when a project link cannot be copied', async () => {
     render(<ProjectGridRowDetails row={{...compactRow('no-clipboard'), abstract: 'Abstract'}} scope="past" />);
-    fireEvent.click(screen.getByRole('button', {name: /^Copy project link for /}));
+    fireEvent.click(screen.getByRole('button', {name: /^Copy Project Link for /}));
     expect(await screen.findByRole('status')).toHaveTextContent('Could not copy the link.');
   });
 
   it('links current projects to their page without a copy button', () => {
     render(<ProjectGridRowDetails row={{...compactRow('current'), abstract: 'Abstract'}} scope="current" />);
-    expect(screen.getByRole('link', {name: /^Open the project page for /})).toHaveAttribute('href', '/projects/current');
-    expect(screen.queryByRole('button', {name: /^Copy project link/})).toBeNull();
+    expect(screen.getByRole('link', {name: /^Open the Project Page for /})).toHaveAttribute('href', '/projects/current');
+    expect(screen.queryByRole('button', {name: /^Copy Project Link/})).toBeNull();
   });
 });

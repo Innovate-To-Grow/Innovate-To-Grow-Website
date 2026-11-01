@@ -57,7 +57,8 @@ const renderView = (
         error={null}
         classLabels={{CAP: 'Engineering Capstone'}}
         namespace="current-projects"
-        emptyMessage="No current projects are available yet."
+        emptyTitle="No current projects yet"
+        emptyMessage="This semester's projects appear here once the schedule is published."
         {...props}
       />
     </MemoryRouter>,
@@ -72,7 +73,9 @@ describe('CurrentProjectsView', () => {
   });
 
   it('renders the title, a meta line computed from the rows, and the lede', () => {
-    renderView();
+    const {container} = renderView();
+    // The chat launcher tucks away over the list's text and rows, not only its controls (useLauncherYield).
+    expect(container.querySelector('.projects-page')).toHaveAttribute('data-launcher-avoid', '');
 
     expect(screen.getByRole('heading', {level: 1, name: 'Current Projects'})).toBeInTheDocument();
     expect(screen.getByText('Spring 2026 · 3 projects · 2 teams presenting at the showcase')).toBeInTheDocument();
@@ -105,11 +108,11 @@ describe('CurrentProjectsView', () => {
 
     expect(table.getByText('An HVAC abstract.')).toBeInTheDocument();
     expect(table.getByText('Brian Arroyo, Joel Gonzalez')).toBeInTheDocument();
-    expect(table.getByRole('link', {name: 'Open the project page for HVAC Design'})).toHaveAttribute(
+    expect(table.getByRole('link', {name: 'Open the Project Page for HVAC Design'})).toHaveAttribute(
       'href',
       '/projects/project-1',
     );
-    expect(table.queryByRole('button', {name: /^Copy project link/})).toBeNull();
+    expect(table.queryByRole('button', {name: /^Copy Project Link/})).toBeNull();
   });
 
   it('builds the Class and Industry filters from the rows and filters by them', async () => {
@@ -183,7 +186,7 @@ describe('CurrentProjectsView', () => {
     );
     expect(container.querySelector('.project-grid-table-wrap')).toBeNull();
 
-    fireEvent.click(screen.getByRole('button', {name: 'Clear search and filters'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Clear Search and Filters'}));
 
     await waitFor(() => expect(countLine(container)).toHaveTextContent('3 projects · showing 1–3'));
     expect(screen.getByRole('searchbox')).toHaveValue('');
@@ -192,7 +195,7 @@ describe('CurrentProjectsView', () => {
 
   it('shows the loading and error states without a meta line, keeping its room while loading', () => {
     const {container, rerender} = renderView({loading: true, rows: []});
-    expect(screen.getByText('Loading project data...')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Loading project data…');
     expect(screen.queryByText(/projects ·/)).toBeNull();
     // A blank line, so the lede and the grid do not move down when the real one appears.
     const meta = container.querySelector('.itg-page-meta') as HTMLElement;
@@ -209,26 +212,45 @@ describe('CurrentProjectsView', () => {
           loading={false}
           error="Schedule down"
           namespace="current-projects"
-          emptyMessage="No current projects are available yet."
+          emptyTitle="No current projects yet"
+          emptyMessage="This semester's projects appear here once the schedule is published."
         />
       </MemoryRouter>,
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Schedule down');
-    expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+    expect(screen.queryByRole('button', {name: 'Try Again'})).toBeNull();
   });
 
   it('offers to load the projects again after an error', () => {
     const onRetry = vi.fn();
     renderView({rows: [], error: "We couldn't load the projects.", onRetry});
 
-    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    const tryAgain = screen.getByRole('button', {name: 'Try Again'});
+    // An outline button: the failure sits inside the page and does not outrank its own actions.
+    expect(tryAgain).toHaveClass('itg-btn', 'itg-btn-outline');
+    fireEvent.click(tryAgain);
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the empty message when there are no projects yet', () => {
-    renderView({rows: []});
+  it('shows an empty state like the no-results one when there are no projects yet', () => {
+    const {container} = renderView({
+      rows: [],
+      emptyActions: (
+        <a className="itg-btn itg-btn-outline" href="/past-projects">
+          Search Past Projects
+        </a>
+      ),
+    });
 
-    expect(screen.getByText('No current projects are available yet.')).toBeInTheDocument();
+    const heading = screen.getByRole('heading', {level: 2, name: 'No current projects yet'});
+    expect(heading).toHaveClass('itg-empty-state-title');
+    const emptyState = heading.closest('.itg-empty-state') as HTMLElement;
+    expect(emptyState).toHaveClass('project-grid-empty-state');
+    expect(within(emptyState).getByText("This semester's projects appear here once the schedule is published.")).toHaveClass(
+      'itg-empty-state-text',
+    );
+    expect(within(emptyState).getByRole('link', {name: 'Search Past Projects'})).toHaveAttribute('href', '/past-projects');
+    expect(container.querySelector('.project-grid-empty')).toBeNull();
     expect(screen.queryByText(/projects ·/)).toBeNull();
   });
 });

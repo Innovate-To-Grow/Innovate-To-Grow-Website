@@ -34,8 +34,10 @@
     border-color var(--itg-transition-fast) ease-in-out;
 }
 
+/* :focus-visible, not :focus: a text button tapped or clicked keeps focus, and :focus stripped its link
+   underline until focus moved on. Keyboard focus still drops it, beside the focus ring. */
 .itg-btn:hover,
-.itg-btn:focus {
+.itg-btn:focus-visible {
   text-decoration: none;
 }
 

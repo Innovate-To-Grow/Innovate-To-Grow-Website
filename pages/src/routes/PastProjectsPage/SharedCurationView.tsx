@@ -1,5 +1,6 @@
 import {useCallback} from 'react';
 import {Link} from 'react-router';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {MergedResultsTable, SharedPastProjectMergeSearch, type ProjectGridItem} from '@/features/projects';
 import {DEFAULT_PAST_PROJECT_SHARE_NAME, type PastProjectShare, type ProjectGridRow} from '@/features/projects/api';
 import {ALL_PROJECTS_CATALOG, PAST_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
@@ -91,7 +92,7 @@ export const SharedCurationView = ({
   projects,
   onAddRows,
 }: SharedCurationViewProps) => {
-  // A retry that brings the curation moves focus from the gone Try again to its title (focusable).
+  // A retry that brings the curation moves focus from the gone Try Again to its title (focusable).
   const focusTitle = useCallback(
     () => document.querySelector<HTMLElement>('.past-projects-page--shared h1[tabindex]'),
     [],
@@ -105,10 +106,11 @@ export const SharedCurationView = ({
   });
 
   return (
-    <div className="past-projects-page past-projects-page--shared">
-      {/* Kept in the page while empty, so screen readers announce "Loading curation..." when it is put in. */}
+    // Marked so the chat launcher tucks away over the page's text and rows, not only its controls (useLauncherYield).
+    <div className="past-projects-page past-projects-page--shared" data-launcher-avoid="">
+      {/* Kept in the page while empty, so screen readers announce "Loading curation…" when it is put in. */}
       <p className="past-projects-state past-projects-loading-line" role="status">
-        {status.loading && !loadFailure.showFailure ? 'Loading curation...' : null}
+        {status.loading && !loadFailure.showFailure ? <LoadingIndicator label="Loading curation…" /> : null}
       </p>
       {status.error && status.notFound ? <SharedListUnavailable /> : null}
       {loadFailure.showFailure ? (

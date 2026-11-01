@@ -104,7 +104,7 @@ describe('MergedResultsTable', () => {
     expect(nameArg).toBe('Spring finalists');
     expect(noteArg).toBe('Review these with the team');
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
-    expect(await screen.findByText('Saved. Opening your curation...')).toBeInTheDocument();
+    expect(await screen.findByText('Saved. Opening your curation…')).toBeInTheDocument();
   });
 
   it('select-all + Remove Selected only removes rows matching the active search, never hidden rows', async () => {
@@ -175,7 +175,7 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={onCreateShare} />);
 
     const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
-    fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Insert Projects into Note'}));
 
     const expectedIndividualHref = new URL(`/past-projects/project/${rowWithId.id}`, window.location.origin).href;
     await waitFor(() => expect(noteEditor.textContent).toContain('Project 1'));
@@ -197,7 +197,7 @@ describe('MergedResultsTable', () => {
     render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={vi.fn()} />);
 
     const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
-    const insertButton = screen.getByRole('button', {name: 'Insert projects into note'});
+    const insertButton = screen.getByRole('button', {name: 'Insert Projects into Note'});
     noteEditor.focus();
     expect(noteEditor).toHaveFocus();
 
@@ -211,10 +211,10 @@ describe('MergedResultsTable', () => {
   it('excludes configured project fields from inserted note text', async () => {
     render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', {name: 'Choose fields'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Choose Fields'}));
     fireEvent.click(screen.getByRole('checkbox', {name: 'Individual Link'}));
     fireEvent.click(screen.getByRole('checkbox', {name: 'Abstract'}));
-    fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Insert Projects into Note'}));
 
     const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
     await waitFor(() => expect(noteEditor.textContent).toContain('Project 1'));
@@ -229,7 +229,7 @@ describe('MergedResultsTable', () => {
 
     const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
     setRichTextEditorHtml(noteEditor, '<div>Manual intro</div>');
-    fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Insert Projects into Note'}));
 
     await waitFor(() => expect(noteEditor.textContent).toContain('Project 2'));
     expect(noteEditor.textContent).toContain('Manual intro');
@@ -238,7 +238,7 @@ describe('MergedResultsTable', () => {
     // Re-inserting keeps the manual intro and the existing curated block intact: projects already in
     // the block are not rebuilt or duplicated (they survive hand edits), so a single curation
     // container holds exactly one "Project 1" entry.
-    fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Insert Projects into Note'}));
 
     await waitFor(() => expect(noteEditor.textContent).toContain('Project 2'));
     expect(noteEditor.textContent).toContain('Manual intro');
@@ -289,7 +289,7 @@ describe('MergedResultsTable', () => {
     expect(screen.getByRole('textbox', {name: /curation note/i})).toHaveTextContent('Kept note');
     fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'New name'}});
     expect(onNameDraftChange).toHaveBeenCalledWith('New name');
-    fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Insert Projects into Note'}));
     expect(onNoteDraftChange).toHaveBeenLastCalledWith(expect.stringContaining('Kept note'));
     expect(onNoteDraftChange).toHaveBeenLastCalledWith(expect.stringContaining('<strong>Project Title:</strong> Shared Project'));
 
@@ -374,7 +374,7 @@ describe('MergedResultsTable', () => {
     );
 
     expect(await screen.findByText(/1 newly added project is hidden by your search\./)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Clear Search'}));
     await waitFor(() => expect(screen.queryByText(/hidden by your search/)).toBeNull());
     expect(screen.getAllByText('Irrigation Sensor').length).toBeGreaterThan(0);
   });
@@ -429,7 +429,7 @@ describe('MergedResultsTable', () => {
         /Your search shows 1 of the 2 projects in this draft\. Saving and exports include only the 1 it shows; after saving, 1 other project stays in this draft\./,
       ),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Clear Search'}));
     await waitFor(() => expect(screen.queryByText(/Your search shows/)).toBeNull());
   });
 
@@ -455,7 +455,7 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
     expect(await screen.findByText('Unable to save this curation. Please try again.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', {name: 'Saving...'})).toBeNull();
+    expect(screen.queryByRole('button', {name: 'Saving…'})).toBeNull();
   });
 
   it('shares only the rows matching the active search filter in builder mode', async () => {
@@ -472,30 +472,37 @@ describe('MergedResultsTable', () => {
     expect(rowsArg[0]).toMatchObject({project_title: 'Irrigation Sensor'});
   });
 
-  it('hides the share controls and shows a login hint for anonymous users', () => {
+  it('hides the share controls and offers Sign In to Save where the save buttons would be', () => {
     mockUseAuth.mockReturnValue({isAuthenticated: false});
     render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
 
     expect(screen.queryByRole('button', {name: /save curation/i})).toBeNull();
     expect(screen.queryByLabelText(/curation name/i)).toBeNull();
-    expect(screen.getByText(/to save this curation and get a link to share it/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: 'Sign in to save'}).getAttribute('href')).toMatch(/^\/login\?returnTo=/);
-    // The sign-in link carries a returnTo so sign-in brings the visitor back to this page.
-    const loginLink = screen.getByRole('link', {name: 'Sign in'});
-    expect(loginLink.getAttribute('href')).toMatch(/^\/login\?returnTo=/);
+    // The card header's button again under "Save this curation", as for a member, and no sign-in sentence.
+    const signInLinks = screen.getAllByRole('link', {name: 'Sign In to Save'});
+    expect(signInLinks).toHaveLength(2);
+    for (const link of signInLinks) {
+      expect(link).toHaveClass('itg-btn', 'itg-btn-primary');
+      // Each carries a returnTo, so sign-in brings the visitor back to this page.
+      expect(link.getAttribute('href')).toMatch(/^\/login\?returnTo=/);
+    }
+    expect(screen.queryByText(/Sign in to save this curation/i)).toBeNull();
+    const section = screen.getByRole('heading', {name: 'Save this curation'}).closest('.project-grid-share') as HTMLElement;
+    expect(within(section).getByText('Saved curations are listed under My Curations, each with a link anyone can view.'))
+      .toBeInTheDocument();
   });
 
   it('folds the saved list behind a disclosure for phones', () => {
     render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={vi.fn()} />);
 
-    const toggle = screen.getByRole('button', {name: 'Show the 2 projects'});
+    const toggle = screen.getByRole('button', {name: 'Show the 2 Projects'});
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     const list = document.getElementById(toggle.getAttribute('aria-controls') as string);
     expect(list).not.toHaveClass('is-open');
 
     fireEvent.click(toggle);
 
-    expect(screen.getByRole('button', {name: 'Hide the projects'})).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', {name: 'Hide the Projects'})).toHaveAttribute('aria-expanded', 'true');
     expect(list).toHaveClass('is-open');
   });
 
@@ -539,11 +546,11 @@ describe('MergedResultsTable', () => {
   it('re-includes an excluded field when the checkbox is toggled again', async () => {
     render(<MergedResultsTable rows={makeItems([rowWithId])} onCreateShare={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole('button', {name: 'Choose fields'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Choose Fields'}));
     const individualLinkCheckbox = screen.getByRole('checkbox', {name: 'Individual Link'});
     fireEvent.click(individualLinkCheckbox);
     fireEvent.click(individualLinkCheckbox);
-    fireEvent.click(screen.getByRole('button', {name: 'Insert projects into note'}));
+    fireEvent.click(screen.getByRole('button', {name: 'Insert Projects into Note'}));
 
     const noteEditor = screen.getByRole('textbox', {name: /curation note/i});
     await waitFor(() => expect(noteEditor.textContent).toContain('Individual Link'));

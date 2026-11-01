@@ -1,6 +1,7 @@
-import {Suspense, isValidElement} from 'react';
+import {Suspense, isValidElement, type ReactElement, type SuspenseProps} from 'react';
 import {matchRoutes, type RouteObject} from 'react-router';
-import {describe, it, expect} from 'vitest';
+import {cleanup, render, screen} from '@testing-library/react';
+import {afterEach, describe, it, expect} from 'vitest';
 
 /** The route with `path` anywhere under `routes` (pages sit inside a pathless error-boundary route). */
 const findRoute = (routes: RouteObject[], path: string): RouteObject | undefined => {
@@ -77,6 +78,25 @@ describe('Router', () => {
         // a bare lazy component instead of <Suspense>, a slow chunk load leaves
         // the UI frozen on the previous page.
         expect((route?.element as { type: unknown }).type).toBe(Suspense);
+    });
+
+    describe('while a lazy route loads', () => {
+        afterEach(cleanup);
+
+        it.each(lazyRoutePaths)('route %s shows the shared loading indicator, centred', async (path) => {
+            const {createAppRouter} = await import('@/app/router');
+            const route = findRoute(createAppRouter().routes, path);
+            const {fallback} = (route?.element as ReactElement<SuspenseProps>).props;
+
+            render(fallback as ReactElement);
+
+            // The look of the page's own loading line that follows it (LoadingIndicator), not a bigger bare ring.
+            const status = screen.getByRole('status');
+            expect(status).toHaveClass('page-loader');
+            expect(status).toHaveTextContent(/^Loading…$/);
+            expect(status.querySelector('.loading-indicator .loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
+            expect(status).not.toHaveAttribute('style');
+        });
     });
 
     it('titles All Projects and describes it for search engines', async () => {

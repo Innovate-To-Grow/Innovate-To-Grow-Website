@@ -22,7 +22,7 @@ export const initialSearchTableId = (idPrefix: string) => `${idPrefix}-1`;
 
 const createAISearchTableTitle = (query: string) => {
   const normalized = query.trim().replace(/\s+/g, ' ');
-  const clipped = normalized.length > 54 ? `${normalized.slice(0, 51).trim()}...` : normalized;
+  const clipped = normalized.length > 54 ? `${normalized.slice(0, 51).trim()}…` : normalized;
   return `AI Search Table: ${clipped}`;
 };
 

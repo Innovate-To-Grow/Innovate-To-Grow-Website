@@ -1,4 +1,4 @@
-import {useId, useMemo} from 'react';
+import {useId, useMemo, type ReactNode} from 'react';
 import {Link} from 'react-router';
 import {useProjectGridFilters, type ProjectGridFilterOption} from '../../../hooks/useProjectGridFilters';
 import {useListScrollPosition} from '../../../hooks/useListScrollPosition';
@@ -19,6 +19,7 @@ import {
 } from '../../grid/contracts/projectGrid';
 import {pluralize} from '../../shared/utils/saveResults';
 import {useProjectGridTable} from '../../grid/state/useProjectGridTable';
+import {ActiveFilterChips} from './ActiveFilterChips';
 
 const CURRENT_SORT_OPTIONS: ProjectGridSortOption[] = [
   {field: 'class_code', label: 'Team number'},
@@ -27,6 +28,8 @@ const CURRENT_SORT_OPTIONS: ProjectGridSortOption[] = [
 ];
 
 interface FilterSelectProps {
+  /** The select's id: the filter chips focus it when its chip goes (ActiveFilterChips). */
+  id: string;
   label: string;
   allLabel: string;
   value: string;
@@ -34,39 +37,38 @@ interface FilterSelectProps {
   onChange: (value: string) => void;
 }
 
-const FilterSelect = ({label, allLabel, value, options, onChange}: FilterSelectProps) => {
-  const selectId = useId();
-  return (
-    <div className="itg-field project-grid-filter">
-      <label className="project-grid-field-label" htmlFor={selectId}>
-        {label}
-      </label>
-      <select
-        id={selectId}
-        className="itg-select project-grid-select"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      >
-        <option value="">{allLabel}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-};
+const FilterSelect = ({id, label, allLabel, value, options, onChange}: FilterSelectProps) => (
+  <div className="itg-field project-grid-filter">
+    <label className="project-grid-field-label" htmlFor={id}>
+      {label}
+    </label>
+    <select
+      id={id}
+      className="itg-select project-grid-select"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+    >
+      <option value="">{allLabel}</option>
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  </div>
+);
 
 interface CurrentProjectsFiltersProps {
   filters: ReturnType<typeof useProjectGridFilters>;
   changeFilter: (setter: (value: string) => void) => (value: string) => void;
+  selectIds: {class: string; industry: string};
 }
 
 /** The Class and Industry selects. */
-const CurrentProjectsFilters = ({filters, changeFilter}: CurrentProjectsFiltersProps) => (
+const CurrentProjectsFilters = ({filters, changeFilter, selectIds}: CurrentProjectsFiltersProps) => (
   <>
     <FilterSelect
+      id={selectIds.class}
       label="Class"
       allLabel="All classes"
       value={filters.classCode}
@@ -74,6 +76,7 @@ const CurrentProjectsFilters = ({filters, changeFilter}: CurrentProjectsFiltersP
       onChange={changeFilter(filters.setClassCode)}
     />
     <FilterSelect
+      id={selectIds.industry}
       label="Industry"
       allLabel="All industries"
       value={filters.industry}
@@ -110,7 +113,10 @@ interface CurrentProjectsViewProps {
   classLabels?: Record<string, string>;
   /** Key prefix for the grid rows. */
   namespace: string;
+  /** The empty state's heading, text and action, when the schedule has no rows (ProjectGridTable). */
+  emptyTitle: string;
   emptyMessage: string;
+  emptyActions?: ReactNode;
   /** 'teams' on the presenting-teams page, whose rows are all presenting. */
   countLabel?: 'projects' | 'teams';
 }
@@ -135,10 +141,11 @@ const CurrentProjectsGrid = ({
   error,
   onRetry,
   classLabels,
-  emptyMessage,
   countLabel = 'projects',
+  ...emptyState
 }: CurrentProjectsGridProps) => {
   const initial = useInitialProjectListUrlState();
+  const selectIds = {class: useId(), industry: useId()};
   const filters = useProjectGridFilters(items, classLabels, initial);
   const table = useProjectGridTable({
     rows: items,
@@ -182,7 +189,17 @@ const CurrentProjectsGrid = ({
       totalCount={items.length}
       search={table.search}
       searchPlaceholder="Project, team, organization, student…"
-      filterControls={<CurrentProjectsFilters filters={filters} changeFilter={changeFilter} />}
+      filterControls={<CurrentProjectsFilters filters={filters} changeFilter={changeFilter} selectIds={selectIds} />}
+      toolbar={
+        filters.filterChips.length ? (
+          <ActiveFilterChips
+            filters={filters}
+            changeFilter={changeFilter}
+            selectIds={selectIds}
+            noResults={table.filteredRows.length === 0}
+          />
+        ) : undefined
+      }
       activeFilters={filters.activeLabels}
       sortOptions={CURRENT_SORT_OPTIONS}
       sortField={table.sortField}
@@ -213,7 +230,7 @@ const CurrentProjectsGrid = ({
       loading={loading}
       error={error}
       onRetry={onRetry}
-      emptyMessage={emptyMessage}
+      {...emptyState}
       countLabel={countLabel}
       linkScope="current"
     />
@@ -231,7 +248,8 @@ export const CurrentProjectsView = ({title, lede, rows, namespace, ...gridProps}
   const meta = ready ? metaLine(rows, countLabel) : '';
 
   return (
-    <div className="projects-page">
+    // Marked so the chat launcher tucks away over the list's text and rows, not only its controls (useLauncherYield).
+    <div className="projects-page" data-launcher-avoid="">
       <h1 className="itg-page-title" data-embed-section="page-header">{title}</h1>
       {/* Kept, blank, while the rows load: appearing later, the line pushed the lede and the grid down. */}
       <p className="itg-page-meta" data-embed-section="page-header" aria-hidden={meta ? undefined : true}>

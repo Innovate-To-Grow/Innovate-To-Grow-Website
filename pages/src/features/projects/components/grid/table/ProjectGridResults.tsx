@@ -1,4 +1,4 @@
-import {useId, type ReactNode, type Ref} from 'react';
+import {useId, type ReactNode, type Ref, type RefObject} from 'react';
 import type {ProjectGridColumnKey, ProjectGridSortDirection} from '../contracts/projectGrid';
 import type {ProjectGridSortOption, ProjectGridTableProps} from '../contracts/gridTableProps';
 
@@ -77,7 +77,10 @@ const sortChoicesFor = (
   );
 };
 
-/** The count line: the bold count, then the rest of the sentence. */
+/**
+ * The count line: the bold count, the rest of the sentence, and the range shown ("· showing 1–10", or '' with no
+ * rows), which is kept apart so it never breaks over two lines.
+ */
 const countText = ({
   filteredCount,
   totalCount,
@@ -87,14 +90,14 @@ const countText = ({
   countLabel,
   activeFilters,
 }: Pick<ResultsBarProps, 'filteredCount' | 'totalCount' | 'page' | 'pageSize' | 'query' | 'countLabel' | 'activeFilters'>) => {
-  const showing =
-    filteredCount > 0 ? ` · showing ${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filteredCount)}` : '';
-  if (filteredCount === totalCount) return {bold: countNoun(totalCount, countLabel), rest: showing};
+  const range =
+    filteredCount > 0 ? `· showing ${page * pageSize + 1}–${Math.min((page + 1) * pageSize, filteredCount)}` : '';
+  if (filteredCount === totalCount) return {bold: countNoun(totalCount, countLabel), rest: '', range};
   const verb = filteredCount === 1 ? 'matches' : 'match';
   const filters = activeFilters.length ? `in ${joinFilters(activeFilters)}` : '';
   // "match “a” in AeroSpace", "in AeroSpace", or "match “a”" (and "match the filters" when the caller names none).
   const criteria = query ? [`${verb} “${query}”`, filters].filter(Boolean).join(' ') : filters || `${verb} the filters`;
-  return {bold: `${filteredCount} of ${totalCount}`, rest: ` ${countLabel} ${criteria}${showing}`};
+  return {bold: `${filteredCount} of ${totalCount}`, rest: ` ${countLabel} ${criteria}`, range};
 };
 
 /**
@@ -115,7 +118,7 @@ export const ProjectGridResultsBar = ({
 }: ResultsBarProps) => {
   const sortSelectId = useId();
   const sortChoices = sortChoicesFor(sortOptions, sortField, columns);
-  const {bold, rest} = countText(counts);
+  const {bold, rest, range} = countText(counts);
 
   const selectSort = (value: string) => {
     const [field, direction] = value.split(':') as [ProjectGridColumnKey, ProjectGridSortDirection];
@@ -127,7 +130,8 @@ export const ProjectGridResultsBar = ({
     <div className="project-grid-results-bar">
       <p ref={countRef} className="project-grid-count" aria-live="polite" tabIndex={-1}>
         <strong>{bold}</strong>
-        <span>{rest}</span>
+        <span>{`${rest}${range ? ' ' : ''}`}</span>
+        {range ? <span className="project-grid-count-range">{range}</span> : null}
         {/* In the count line, so it is read out with the count; on a line of its own. */}
         {abstractsSkipped ? <span className="project-grid-count-note">{ABSTRACTS_SKIPPED[abstractsSkipped]}</span> : null}
       </p>
@@ -180,7 +184,7 @@ const noResultsText = ({
   if (filters) {
     advice = query ? `Clear the filters to search all ${countLabel}, or check the spelling.` : `Clear the filters to see all ${countLabel}.`;
   }
-  const clearLabel = filters ? (query ? 'Clear search and filters' : 'Clear filters') : 'Clear search';
+  const clearLabel = filters ? (query ? 'Clear Search and Filters' : 'Clear Filters') : 'Clear Search';
   return {heading, hint: noResultsHint ? `${advice} ${noResultsHint}` : advice, clearLabel};
 };
 
@@ -199,6 +203,41 @@ export const ProjectGridNoResults = ({headingLevel, noResultsActions, searching,
         </button>
         {noResultsActions}
       </div>
+    </div>
+  );
+};
+
+type EmptyProps = Pick<ProjectGridTableProps, 'emptyTitle' | 'emptyActions'> & {
+  emptyMessage: string;
+  headingLevel: 2 | 3 | 4;
+  /** The heading (or the message), which takes focus after Try Again when no rows came back (useRetryFocus). */
+  emptyRef: RefObject<HTMLElement | null>;
+};
+
+/**
+ * No rows at all. With a title (an empty schedule), a heading, the text and the caller's action, laid out like the
+ * no-results state; without one, the message alone (an empty table in the builder).
+ */
+export const ProjectGridEmpty = ({emptyTitle, emptyMessage, emptyActions, headingLevel, emptyRef}: EmptyProps) => {
+  // A heading or a paragraph: either one is the element focus goes to.
+  const setEmptyElement = (element: HTMLElement | null) => {
+    emptyRef.current = element;
+  };
+  if (!emptyTitle) {
+    return (
+      <p ref={setEmptyElement} className="project-grid-empty" tabIndex={-1}>
+        {emptyMessage}
+      </p>
+    );
+  }
+  const EmptyHeading = `h${headingLevel}` as const;
+  return (
+    <div className="itg-empty-state project-grid-empty-state">
+      <EmptyHeading ref={setEmptyElement} className="itg-empty-state-title" tabIndex={-1}>
+        {emptyTitle}
+      </EmptyHeading>
+      <p className="itg-empty-state-text">{emptyMessage}</p>
+      {emptyActions ? <div className="itg-empty-state-actions">{emptyActions}</div> : null}
     </div>
   );
 };

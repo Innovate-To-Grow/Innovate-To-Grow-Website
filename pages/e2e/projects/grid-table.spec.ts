@@ -38,7 +38,7 @@ test('search input filters rows across all columns', async ({page}) => {
 test('row expand shows abstract and student names', async ({page}) => {
   await mockSchedule(page, schedulePayload());
   await page.goto('/current-projects', {waitUntil: 'domcontentloaded'});
-  // "Details for …" in the table, "Show details for …" in the phone list: whichever layout is showing.
+  // "Details for …" in the table, "Show Details for …" in the phone list: whichever layout is showing.
   const toggle = page.locator('.project-grid-detail-button:visible').first();
   await expect(toggle).toHaveAttribute('aria-expanded', 'false');
   await toggle.click();
@@ -65,6 +65,16 @@ test('class and industry filters narrow the rows', async ({page}) => {
   await page.getByLabel('Class').selectOption('CSE 101');
   await expect(page.locator('.project-grid-count')).toContainText('1 of 10 projects in CSE 101 and Hardware');
   await expect(page.locator('.projects-page')).toContainText('Project Title 2');
+
+  // The filters in use show as chips; Clear Filters removes both and hands focus to the Class select. (Browsers
+  // set the hidden ", remove filter" apart with a space.)
+  const chips = page.getByRole('group', {name: 'Active filters'});
+  await expect(chips.getByRole('button', {name: /^Class: CSE 101 ?, remove filter$/})).toBeVisible();
+  await expect(chips.getByRole('button', {name: /^Industry: Hardware ?, remove filter$/})).toBeVisible();
+  await chips.getByRole('button', {name: 'Clear Filters'}).click();
+  await expect(page.locator('.project-grid-count')).toHaveText('10 projects · showing 1–10');
+  await expect(page.getByLabel('Class')).toBeFocused();
+  await expect(chips).toHaveCount(0);
 });
 
 test('a filtered, sorted, paged list comes back the same after a project page and Back', async ({page}) => {
@@ -107,7 +117,7 @@ test('a search with no results offers to clear it or search past projects', asyn
     'href',
     '/past-projects?value=hydroponics',
   );
-  await page.getByRole('button', {name: 'Clear search'}).click();
+  await page.getByRole('button', {name: 'Clear Search'}).click();
   await expect(page.locator('.project-grid-count')).toContainText('3 projects');
 });
 

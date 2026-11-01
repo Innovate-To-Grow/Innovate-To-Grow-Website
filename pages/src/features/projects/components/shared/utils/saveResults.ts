@@ -1,5 +1,5 @@
-// Wording for the outcome of saving a search table's checked rows, shared by the builder (Add to Curation) and
-// the shared page (Add Selected).
+// Wording for the outcome of saving a search table's checked rows, shared by the builder and the shared page (both
+// Add to Curation).
 import type {SearchTableSaveResult} from '../../search/cards/SearchTableCard';
 
 export const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;

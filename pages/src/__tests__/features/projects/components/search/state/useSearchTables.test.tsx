@@ -44,7 +44,7 @@ describe('useSearchTables AI search', () => {
     const aiTable = startAISearch(renderTables(), 'solar');
 
     expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar', 10, 'past');
-    expect(aiTable()).toMatchObject({message: 'Searching past projects with AI...', messageTone: 'loading'});
+    expect(aiTable()).toMatchObject({message: 'Searching past projects with AI…', messageTone: 'loading'});
   });
 
   it('asks All Projects to rank every project, and names them so', async () => {
@@ -53,9 +53,24 @@ describe('useSearchTables AI search', () => {
     const aiTable = startAISearch(renderTables(allProjects), 'irrigation');
 
     expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('irrigation', 10, 'all');
-    expect(aiTable()).toMatchObject({message: 'Searching projects with AI...', messageTone: 'loading'});
+    expect(aiTable()).toMatchObject({message: 'Searching projects with AI…', messageTone: 'loading'});
 
     await act(async () => answer({available: true, query: 'irrigation', results: [], usage: null}));
     expect(aiTable()).toMatchObject({message: 'AI search did not find matching projects.', messageTone: 'error'});
+  });
+
+  it('names an AI table after its question, clipping a long one with an ellipsis', async () => {
+    const question = 'Projects that measure soil moisture with low-cost sensors for small farms in the valley';
+    const row = {
+      id: 'ai-1', semester_label: '2024-1 Spring', class_code: 'CAP', team_number: '101', team_name: 'Team',
+      project_title: 'Soil Sensors', organization: 'Org', industry: 'Agriculture', abstract: '', student_names: '',
+      track: null, presentation_order: null,
+    };
+    mockSearchPastProjectsWithAI.mockResolvedValue({available: true, query: question, results: [row], usage: null});
+    const tables = renderTables();
+    const aiTable = startAISearch(tables, question);
+    await act(async () => {});
+
+    expect(aiTable().title).toBe(`AI Search Table: ${question.slice(0, 51).trim()}…`);
   });
 });

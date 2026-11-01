@@ -94,7 +94,7 @@ test('AI search ranks every project, this semester\'s included', async ({page}) 
 
   await page.getByRole('button', {name: '+ AI Search Table'}).click();
   const form = page.locator('.past-projects-ai-search');
-  await form.getByPlaceholder('Ask AI to find relevant projects...').fill('soil sensors');
+  await form.getByPlaceholder('Ask about projects…').fill('soil sensors');
   await form.getByRole('button', {name: 'Search'}).click();
 
   await expect.poll(() => queries.length).toBe(1);

@@ -262,6 +262,10 @@ describe('EmbedBlockPage', () => {
       expect(tag).not.toBeNull();
       expect(tag?.textContent).toContain('[data-embed-section="schedule-projects"]');
       expect(tag?.textContent).toContain('.section-title');
+      // Builder section headings are clipped, not removed: they stay headings and focus targets.
+      expect(tag?.textContent).toContain(
+        '[data-embed-section="section-title"] { position: absolute !important; width: 1px !important;',
+      );
     });
   });
 
@@ -495,6 +499,7 @@ describe('EmbedBlockPage', () => {
     renderAtSlug('blocks-widget');
     await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
     expect(document.getElementById('itg-embed-body')?.textContent).toContain('background: transparent !important');
+    expect(document.getElementById('itg-embed-body')?.textContent).not.toContain('.cms-embed-app-route');
     cleanup();
 
     fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
@@ -503,6 +508,18 @@ describe('EmbedBlockPage', () => {
     const css = document.getElementById('itg-embed-body')?.textContent;
     expect(css).toContain('background: var(--itg-color-bg-page, #fff) !important');
     expect(css).not.toContain('transparent');
+  });
+
+  it('pads an app-route widget inside its frame: 16px, and the 20px phone gutter at 768px and below', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+    await screen.findByRole('link', {name: 'Project ABC'});
+
+    expect(screen.getByRole('link', {name: 'Project ABC'}).closest('.cms-embed-app-route')).not.toBeNull();
+    const css = (document.getElementById('itg-embed-body')?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(css).toMatch(/^@layer itg\.components \{/);
+    expect(css).toContain('.cms-embed-app-route { box-sizing: border-box; padding: 16px; }');
+    expect(css).toContain('@media (max-width: 768px) { .cms-embed-app-route { padding: 20px; } }');
   });
 
   it('opens app-route links to other pages in a new tab, keeping the widget', async () => {

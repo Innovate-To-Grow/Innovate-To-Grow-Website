@@ -83,6 +83,24 @@ describe('PastProjectsDialog', () => {
     expect(dialog.querySelector('.itg-btn-primary')).toHaveFocus();
   });
 
+  it('boxes a destructive confirm in red, like the control that opened it, and leaves Cancel outlined navy', () => {
+    const {unmount} = render(<DialogHarness destructive />);
+    openFromButton();
+    let dialog = screen.getByRole('dialog');
+    const confirm = dialog.querySelector('.past-projects-dialog-actions > :last-child');
+    expect(confirm).toHaveClass('itg-btn', 'itg-btn-outline', 'itg-btn-danger');
+    expect(confirm).not.toHaveClass('itg-btn-primary');
+    expect(screen.getByRole('button', {name: 'Cancel'})).toHaveClass('itg-btn-outline');
+    expect(screen.getByRole('button', {name: 'Cancel'})).not.toHaveClass('itg-btn-danger');
+    unmount();
+
+    render(<DialogHarness />);
+    openFromButton();
+    dialog = screen.getByRole('dialog');
+    expect(dialog.querySelector('.past-projects-dialog-actions > :last-child')).toHaveClass('itg-btn', 'itg-btn-primary');
+    expect(dialog.querySelector('.itg-btn-danger')).toBeNull();
+  });
+
   it('gives focus back to the control that opened it, however it closes', () => {
     const onConfirm = vi.fn();
     render(<DialogHarness destructive onConfirm={onConfirm} />);
@@ -98,7 +116,7 @@ describe('PastProjectsDialog', () => {
     expect(opener).toHaveFocus();
 
     opener = openFromButton();
-    fireEvent.click(screen.getByRole('dialog').querySelector('.itg-btn-primary')!);
+    fireEvent.click(screen.getByRole('dialog').querySelector('.itg-btn-danger')!);
     expect(onConfirm).toHaveBeenCalledTimes(1);
     expect(opener).toHaveFocus();
   });

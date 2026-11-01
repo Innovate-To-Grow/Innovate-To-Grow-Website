@@ -64,7 +64,7 @@ export const SharedListHeader = ({
             disabled={editor.isSaving}
           >
             {isEditing ? <SharedSaveIcon /> : <SharedEditIcon />}
-            {isEditing ? 'Save name' : 'Edit name'}
+            <span>{isEditing ? 'Save Name' : 'Edit Name'}</span>
           </button>
         ) : null}
       </div>
@@ -112,7 +112,7 @@ export const BuilderCardHeader = ({
           saveButton
         ) : (
           <SignInToSaveLink className="itg-btn itg-btn-primary" signIn={signIn}>
-            Sign in to save
+            Sign In to Save
           </SignInToSaveLink>
         )}
         <p className="project-grid-draft-note">Not saved yet. This browser keeps the draft until you save it.</p>

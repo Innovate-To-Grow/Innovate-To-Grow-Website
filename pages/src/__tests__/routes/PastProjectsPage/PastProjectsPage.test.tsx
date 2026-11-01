@@ -425,11 +425,18 @@ describe('PastProjectsPage', () => {
 
         renderPage();
 
-        expect(screen.getByText('Curation · Past Projects')).toHaveClass('itg-eyebrow');
+        // The curation did not load, so the page cannot say which list it came from: a neutral eyebrow, and All
+        // Projects, which searches both lists.
+        expect(screen.getByText('Curation', {selector: '.itg-eyebrow'})).toBeInTheDocument();
+        expect(screen.queryByText(/Curation · /)).toBeNull();
         expect(screen.getByRole('heading', {level: 1, name: "This curation isn't available"})).toBeInTheDocument();
-        expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
+        expect(screen.getByText(/or search all projects yourself\.$/)).toBeInTheDocument();
+        const search = screen.getByRole('link', {name: 'Search All Projects'});
+        expect(search).toHaveAttribute('href', '/all-projects');
+        expect(search).toHaveClass('itg-btn', 'itg-btn-primary');
         expect(screen.getByRole('link', {name: 'Go to Projects'})).toHaveAttribute('href', '/projects');
-        expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+        expect(screen.queryByRole('link', {name: /past projects/i})).toBeNull();
+        expect(screen.queryByRole('button', {name: 'Try Again'})).toBeNull();
         expect(screen.queryByTestId('share-title')).toBeNull();
     });
 
@@ -439,14 +446,19 @@ describe('PastProjectsPage', () => {
 
         renderPage();
 
-        expect(screen.getByText('Curation · Past Projects')).toHaveClass('itg-eyebrow');
+        expect(screen.getByText('Curation', {selector: '.itg-eyebrow'})).toBeInTheDocument();
         expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this curation"})).toBeInTheDocument();
         expect(screen.queryByRole('heading', {name: "This curation isn't available"})).toBeNull();
         expect(screen.queryByText(/deleted the list/)).toBeNull();
-        expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
+        // Try Again is the page's one primary action; the way on is a text link.
+        expect(screen.getByRole('button', {name: 'Try Again'})).toHaveClass('itg-btn', 'itg-btn-primary');
+        const search = screen.getByRole('link', {name: 'Search All Projects'});
+        expect(search).toHaveAttribute('href', '/all-projects');
+        expect(search).toHaveClass('itg-link');
+        expect(search).not.toHaveClass('itg-btn');
         expect(screen.queryByTestId('share-title')).toBeNull();
 
-        fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Try Again'}));
         expect(mockRetryShare).toHaveBeenCalledTimes(1);
     });
 });

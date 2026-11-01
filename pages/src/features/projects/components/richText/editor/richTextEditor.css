@@ -27,18 +27,20 @@
 
 .project-grid-rich-detail-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.25rem;
 }
 
+/* 40px, like the site's other controls, edged like a field. */
 .project-grid-rich-editor-button,
 .project-grid-rich-copy-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 2rem;
-  height: 2rem;
+  min-width: 2.5rem;
+  height: 2.5rem;
   padding: 0 0.5rem;
-  border: 1px solid var(--itg-color-border-input);
+  border: 1px solid var(--itg-color-border-field);
   border-radius: var(--itg-radius-button);
   background: var(--itg-color-bg-page);
   color: var(--itg-color-primary);
@@ -47,8 +49,21 @@
   cursor: pointer;
 }
 
+/* 44px targets on touch screens; the toolbar wraps when they do not fit one line. */
+@media (max-width: 992px) {
+  .project-grid-rich-editor-button,
+  .project-grid-rich-copy-button {
+    min-width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
 .project-grid-rich-editor-size-button {
   gap: 0.375rem;
+}
+
+.project-grid-rich-editor-underline {
+  text-decoration: underline;
 }
 
 .project-grid-rich-editor-button:hover,
@@ -69,15 +84,16 @@
   stroke-linejoin: round;
 }
 
-/* The reference's textarea: #f2f2f2, 1px #ccc, 4px radius, inset shadow, blue glow on focus. It opens about
-   eight lines tall; the corner handle drags it taller (or shorter), and Expand gives it most of the screen. */
+/* A field like .itg-input: bg-light, the field edge, 4px radius and the resting inset shadow; focus shows the
+   site's one focus ring. It opens about eight lines tall; the corner handle drags it taller (or shorter), and
+   Expand gives it most of the screen. */
 .project-grid-rich-detail-input {
   height: 13.5rem;
   min-height: 6rem;
   overflow-y: auto;
   resize: vertical;
   padding: 4px 6px;
-  border: 1px solid var(--itg-color-border-input);
+  border: 1px solid var(--itg-color-border-field);
   border-radius: var(--itg-radius-input);
   background: var(--itg-color-bg-light);
   box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
@@ -89,11 +105,6 @@
   transition: border-color 0.2s linear, box-shadow 0.2s linear;
 }
 
-.project-grid-rich-detail-input:focus {
-  border-color: rgba(82, 168, 236, 0.8);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6);
-}
-
 .project-grid-rich-detail-input.is-large-detail-set {
   min-height: 9rem;
 }
@@ -102,7 +113,7 @@
   height: min(40rem, 75vh);
 }
 
-/* Not being edited (the owner's saved note, until "Edit curation note"): as tall as the note, up to a limit, and
+/* Not being edited (the owner's saved note, until "Edit Curation Note"): as tall as the note, up to a limit, and
    read as content in the body colour on a panel, not as a greyed-out disabled field. */
 .project-grid-rich-detail-input[contenteditable='false'] {
   height: auto;
