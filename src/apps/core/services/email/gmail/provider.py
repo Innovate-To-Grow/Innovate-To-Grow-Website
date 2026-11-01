@@ -14,7 +14,7 @@ from apps.core.models.base.service_credentials.gmail_api import (
     GmailApiProviderConfig,
     is_subject,
 )
-from apps.core.services.delivery_rates import external_recipients, mailbox_identity, none, uncertain
+from apps.core.services.delivery_rates import SignalKind, external_recipients, mailbox_identity, none, uncertain
 
 from ..contracts import DeliveryResult, EmailMessage
 from ..exceptions import (
@@ -120,10 +120,11 @@ class GmailProvider:
                 self.last_sent_label = self._log_accepted(response)
                 return DeliveryResult(provider=self.name, message_id=message_id)
             self._log_failure(response)
-            if response.status in (401, 403):
-                # A fresh token also picks up delegation changes made after this one was issued.
+            error = send_error(response, fresh_token=fresh)
+            if response.status == 401 or error.rate_signal.kind == SignalKind.BLOCKED:
+                # A fresh token also picks up delegation changes made after this one was issued (a throttle keeps it).
                 auth.forget_access_token(self.credential, self.subject)
-            raise send_error(response, fresh_token=fresh)
+            raise error
         except EmailDeliveryError:
             raise
         except Exception as exc:

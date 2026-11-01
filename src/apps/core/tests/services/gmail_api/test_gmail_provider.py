@@ -236,6 +236,20 @@ class AnswerTests(GmailProviderTestCase):
         provider.send(self.message())
         self.assertEqual([path for _host, path in self.post.paths()].count("/token"), 2)
 
+    def test_a_throttle_keeps_the_token_and_a_refused_grant_drops_it(self):
+        for answer, refreshed in (
+            (gmail_error(403, reason="rateLimitExceeded"), False),
+            (gmail_error(403, reason="insufficientPermissions"), True),
+        ):
+            with self.subTest(refreshed=refreshed):
+                auth.clear_access_token_cache()
+                self.post = FakePost(token_response(), answer, token_response(), send_response()).install(self)
+                provider = self.provider()
+                with self.assertRaises(Exception):  # noqa: B017 - the class is covered above
+                    provider.send(self.message())
+                provider.send(self.message())
+                self.assertEqual([path for _host, path in self.post.paths()].count("/token"), 2 if refreshed else 1)
+
     def test_an_unexpected_error_after_the_callback_is_uncertain(self):
         self.post = FakePost(token_response(), RuntimeError("boom with a secret")).install(self)
         with self.assertLogs(provider_module.logger, level="ERROR") as logs:
