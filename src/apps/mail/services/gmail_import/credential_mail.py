@@ -3,8 +3,13 @@
 Gmail files a copy of everything it sends in the account's Sent folder (the Gmail API cannot turn that off), so
 once the site sends through the Gmail API as the account the inbox and the import read, that folder holds sign-in
 codes, login links, invitations and tickets. Such messages carry ``X-I2G-Mail-Class: credential``
-(``core.services.email.mime``; callers cannot set it). Every Gmail IMAP read searches without them and drops any
-that still come back, before anything is listed, opened or cached.
+(``core.services.email.mime``; callers cannot set it). Every Gmail IMAP read of a Sent folder (the inbox's Sent view,
+the whole import) searches without them and drops any that still come back, before anything is listed, opened or
+cached.
+
+The header is not authenticated: anyone can put it on a message they send to the account. So it is honoured only
+in Sent, which holds nothing but the account's own outgoing mail. Received mail is listed as it always was, tagged
+or not, so an outside sender cannot hide a message from staff by tagging it.
 """
 
 from imap_tools import NOT, H

@@ -90,8 +90,9 @@ same narrow task-role grant and resource policy as the Graph key in
 `aws/cicd/identity-stack.json`). `verify_gmail_access` (or **Run access check**)
 records the evidence switching email to it needs. Gmail keeps a Sent copy of
 everything, so mail with a credential carries a protected `X-I2G-Mail-Class:
-credential` header that the admin inbox and the Gmail import filter out, and the
-inbox's Sent folder is superuser-only while the copies are kept. See
+credential` header that the admin inbox's Sent view and the Gmail import filter
+out (only in Sent: the header is not authenticated, so received mail is listed as
+before), and the inbox's Sent folder is superuser-only while the copies are kept. See
 [Gmail API email](../integrations/gmail-api-email.md).
 
 Delivery fails closed unless the selected provider and sender are structurally

@@ -105,8 +105,8 @@ sender name and email address, and save the active configuration.
   From email must be on the list, and email can switch to the Gmail API (or
   change its From address there) only after the access check passed for the
   installed key. Gmail keeps a copy of everything it sends in the account's Sent
-  folder: mail with sign-in codes or login links is tagged and never shown by
-  **Mail → Inbox** or **Import from Gmail**, and the inbox's **Sent** folder is
+  folder: mail with sign-in codes or login links is tagged and never shown from
+  that folder by **Mail → Inbox** or **Import from Gmail**, and the inbox's **Sent** folder is
   shown to superusers only while the Gmail import account is one the site sends
   as. Rates and daily limits are on **Mail → Delivery Rates**. Setup:
   [Gmail API email](../integrations/gmail-api-email.md).

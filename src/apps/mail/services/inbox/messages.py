@@ -18,6 +18,7 @@ from .connection import (
     INBOX_MSG_CACHE_TTL,
     INBOX_STALE_LIST_CACHE_PREFIX,
     INBOX_STALE_LIST_CACHE_TTL,
+    SENT_FOLDER,
     InboxBusy,
     InboxError,
 )
@@ -61,10 +62,10 @@ def _read_list(reader, mailbox: str | None, folder: str, limit: int) -> list[dic
         import apps.mail.services.inbox as inbox_api
 
         with inbox_api._open_inbox(mailbox=mailbox, folder=folder) as client:
-            # Credential mail is never listed (``credential_mail``): left out of the search and dropped if it
-            # still comes back, before the list is cached.
-            fetched = client.fetch(WITHOUT_CREDENTIAL_MAIL, limit=limit, reverse=True, mark_seen=False, bulk=True)
-            messages = without_credential_mail(fetched)
+            # The site's own credential mail is never listed from Sent (``credential_mail``): left out of the search
+            # and dropped if it still comes back, before the list is cached.
+            fetched = client.fetch(_list_search(folder), limit=limit, reverse=True, mark_seen=False, bulk=True)
+            messages = _shown(fetched, folder)
     except InboxError:
         raise
     except Exception as exc:
@@ -90,9 +91,10 @@ def fetch_inbox_message(uid: str, mailbox: str | None = None, *, folder: str = I
         import apps.mail.services.inbox as inbox_api
 
         with inbox_api._open_inbox(mailbox=mailbox, folder=folder) as client:
-            # Credential mail is never opened or cached (``credential_mail``), as if it were not there.
-            fetched = client.fetch(AND(WITHOUT_CREDENTIAL_MAIL, uid=uid), limit=1, mark_seen=True, bulk=False)
-            message = next(iter(without_credential_mail(fetched)), None)
+            # The site's own credential mail is never opened or cached from Sent (``credential_mail``), as if it
+            # were not there.
+            fetched = client.fetch(_uid_search(folder, uid), limit=1, mark_seen=True, bulk=False)
+            message = next(iter(_shown(fetched, folder)), None)
             if message is None:
                 raise InboxError("Message not found.")
             result = detailed_message(message)
@@ -104,6 +106,24 @@ def fetch_inbox_message(uid: str, mailbox: str | None = None, *, folder: str = I
     except Exception as exc:
         logger.exception("Failed to fetch inbox message uid=%s.", uid)
         raise InboxError("Failed to fetch the message.") from exc
+
+
+def _is_sent(folder: str) -> bool:
+    # The credential tag is not authenticated, so it is honoured only in Sent (the account's own outgoing mail): a
+    # tagged message received from outside is listed like any other (``credential_mail``).
+    return str(folder or INBOX_FOLDER).upper() == SENT_FOLDER
+
+
+def _list_search(folder: str):
+    return WITHOUT_CREDENTIAL_MAIL if _is_sent(folder) else "ALL"
+
+
+def _uid_search(folder: str, uid: str):
+    return AND(WITHOUT_CREDENTIAL_MAIL, uid=uid) if _is_sent(folder) else AND(uid=uid)
+
+
+def _shown(messages, folder: str) -> list:
+    return without_credential_mail(messages) if _is_sent(folder) else list(messages)
 
 
 def _graph_reader():

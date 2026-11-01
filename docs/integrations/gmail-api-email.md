@@ -152,8 +152,10 @@ Gmail always files a copy of what it sends in the account's **Sent** folder; the
 Mail that carries a credential (sign-in codes, login links, admin invitations, tickets, campaign messages with a
 `{{ login_link }}`) is tagged `X-I2G-Mail-Class: credential` (callers cannot set this header), and:
 
-- the admin inbox and **Import from Gmail** (Gmail IMAP) never list, open, snippet or cache tagged messages (the IMAP
-  search leaves them out and anything that still comes back is dropped);
+- the admin inbox's **Sent** view and **Import from Gmail** (Gmail IMAP, which reads only Sent) never list, open,
+  snippet or cache tagged messages (the IMAP search leaves them out and anything that still comes back is dropped).
+  The header is not authenticated (anyone can add it to mail they send the account), so it is honoured only in Sent,
+  which holds only the account's own outgoing mail; received mail is listed as before, tagged or not;
 - while email is sent through the Gmail API, or the Gmail import account is on an allow-list, the inbox's **Sent**
   folder is shown to superusers only;
 - **Mail With Codes or Login Links = Refuse** on the config makes such mail fail with this provider instead (it then

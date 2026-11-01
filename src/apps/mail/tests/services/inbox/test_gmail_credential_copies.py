@@ -1,6 +1,7 @@
-"""Gmail keeps a Sent copy of everything it sends, credential mail included: the admin inbox and the Gmail import
-never list, open, snippet or cache a message tagged ``X-I2G-Mail-Class: credential``, and Sent mail is for superusers
-while the Gmail account is one the site sends as."""
+"""Gmail keeps a Sent copy of everything it sends, credential mail included: the admin inbox's Sent view and the Gmail
+import never list, open, snippet or cache a message tagged ``X-I2G-Mail-Class: credential``, and Sent mail is for
+superusers while the Gmail account is one the site sends as. The tag is not authenticated, so received mail carrying
+it is still listed."""
 
 from unittest.mock import patch
 
@@ -69,6 +70,21 @@ class InboxFilterTests(CredentialCopyTestCase):
             fetch_inbox_message("9", folder="SENT")
         self.assertIsNone(cache.get("inbox:msg:SENT:9"))
         self.assertIn("NOT (HEADER", str(self.client_of(factory).fetch.call_args.args[0]))
+
+    def test_received_mail_with_the_tag_is_still_listed_and_opened(self):
+        # Anyone can put the header on mail they send the account; honouring it outside Sent would let them hide
+        # their message from staff.
+        spoofed = tagged(uid="8")
+        factory = mailbox_factory(messages=[message(uid="7"), spoofed])
+        with patch(INBOX_MAILBOX, factory):
+            rows = list_inbox_messages(limit=15, folder="INBOX", force_refresh=True)
+        self.assertEqual([row["uid"] for row in rows], ["7", "8"])
+        self.assertEqual(self.client_of(factory).fetch.call_args.args[0], "ALL")
+
+        with patch(INBOX_MAILBOX, mailbox_factory(messages=[spoofed])) as factory:
+            detail = fetch_inbox_message("8", folder="INBOX")
+        self.assertEqual(detail["uid"], "8")
+        self.assertNotIn("HEADER", str(self.client_of(factory).fetch.call_args.args[0]))
 
 
 class ImportFilterTests(CredentialCopyTestCase):
