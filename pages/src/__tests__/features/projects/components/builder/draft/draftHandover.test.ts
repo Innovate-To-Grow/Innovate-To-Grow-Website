@@ -19,6 +19,13 @@ describe('draftHandover', () => {
     expect(draftHandoverHref([])).toBe('/past-projects');
   });
 
+  it('links the builder page it is given, for the All Projects widget', () => {
+    expect(draftHandoverHref([{id: ID_A}, {id: ID_B}], '/all-projects')).toBe(
+      `/all-projects#curation-draft=${ID_A},${ID_B}`,
+    );
+    expect(draftHandoverHref([{}], '/all-projects')).toBe('/all-projects');
+  });
+
   it('reads the ids back, dropping anything that is not a project id', () => {
     expect(readDraftHandover(`#curation-draft=${ID_A},${ID_B},${ID_A},nope,../x`)).toEqual([ID_A, ID_B]);
     expect(readDraftHandover('#curation-draft=')).toEqual([]);

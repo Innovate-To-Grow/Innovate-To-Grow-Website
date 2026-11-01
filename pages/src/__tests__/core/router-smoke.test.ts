@@ -24,6 +24,7 @@ describe('Router', () => {
     it.each([
         ['/past-projects/project/project-123', 'past-projects/project/:id'],
         ['/past-projects/share-123', 'past-projects/:shareId'],
+        ['/all-projects', 'all-projects'],
         ['/account/past-project-curation-shared-links', 'account/past-project-curation-shared-links'],
         ['/news/article-123', 'news/:id'],
         // A CMS page, copy and sponsors edited in the CMS.
@@ -53,6 +54,7 @@ describe('Router', () => {
         'current-projects',
         'presenting-teams',
         'past-projects',
+        'all-projects',
         'projects/:id',
         'schedule',
         'events/:eventSlug',
@@ -75,6 +77,17 @@ describe('Router', () => {
         // a bare lazy component instead of <Suspense>, a slow chunk load leaves
         // the UI frozen on the previous page.
         expect((route?.element as { type: unknown }).type).toBe(Suspense);
+    });
+
+    it('titles All Projects and describes it for search engines', async () => {
+        const {createAppRouter} = await import('@/app/router');
+        const route = findRoute(createAppRouter().routes, 'all-projects');
+
+        expect(route?.handle).toEqual({
+            title: 'All Projects',
+            description: expect.stringMatching(/^Search every Innovate to Grow student project at UC Merced/),
+        });
+        expect(route?.handle).not.toHaveProperty('noindex');
     });
 
     it.each(['/', '/_block-preview', '/_footer-preview', '/_embed/:embedSlug'])(

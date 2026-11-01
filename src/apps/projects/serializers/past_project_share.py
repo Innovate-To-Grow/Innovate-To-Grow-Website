@@ -75,8 +75,12 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     abstract = serializers.CharField(allow_blank=True, max_length=ROW_ABSTRACT_MAX_LENGTH)
     student_names = serializers.CharField(allow_blank=True, max_length=ROW_STUDENT_NAMES_MAX_LENGTH)
     # Accepted so clients that send the presenting flag ('Yes'/'No'/'') keep validating; it is never stored as
-    # sent. The row is rebuilt from the catalog (services/share_rows.py), which always stores "".
+    # sent. The row is rebuilt from the catalog (services/share_rows.py): "" for an archive project, and the
+    # event's flag as "Yes"/"No" for a current-semester one.
     is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
+    # "archive" or "current": the catalog the stored row was rebuilt from. Read-only, so that a row kept as stored
+    # (one that no longer resolves) still names it; rows saved before rows carried it leave it out.
+    catalog = serializers.CharField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
     def validate_id(self, value):
@@ -115,8 +119,8 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
     # name is optional: a blank/omitted name is replaced with the first line of the owner's note, else a
-    # generic title (services.share_names.default_share_name), in create()/update(). It is never taken from
-    # the rows. trim_whitespace=True still trims a given name.
+    # generic title for the stored rows (services.share_names.default_share_name), in create()/update(). It is
+    # never a row's project title. trim_whitespace=True still trims a given name.
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -135,13 +139,13 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         if len(value) > MAX_SHARE_ROWS:
             raise serializers.ValidationError(f"At most {MAX_SHARE_ROWS} rows may be shared.")
         self._check_member_row_total(len(value))
-        # Store what the archive says, never the text a client sent (services/share_rows.py).
+        # Store what the catalog says, never the text a client sent (services/share_rows.py).
         try:
             return rebuild_share_rows(value, stored_rows=self.instance.rows if self.instance else ())
         except UnknownShareRows as exc:
             projects = "project is" if exc.count == 1 else "projects are"
             raise serializers.ValidationError(
-                f"{exc.count} {projects} not in the published archive. Remove them and save again."
+                f"{exc.count} {projects} not among the published projects. Remove them and save again."
             ) from exc
 
     def _check_member_row_total(self, row_count: int) -> None:
@@ -174,7 +178,7 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         created_by = user if (user is not None and user.is_authenticated) else None
         note = validated_data.get("note", "")
-        name = (validated_data.get("name") or "").strip() or default_share_name(note)
+        name = (validated_data.get("name") or "").strip() or default_share_name(note, validated_data["rows"])
         return PastProjectShare.objects.create(
             name=name,
             rows=validated_data["rows"],
@@ -185,10 +189,12 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         expected_version = validated_data.pop("version")
         next_note = validated_data.get("note", instance.note)
+        # The rows this write stores (rebuilt by validate_rows), else the ones the share already stores.
+        next_rows = validated_data.get("rows", instance.rows)
         updates = {field: validated_data[field] for field in ("rows", "note") if field in validated_data}
         if "name" in validated_data:
             name = (validated_data.get("name") or "").strip()
-            updates["name"] = name or default_share_name(next_note)
+            updates["name"] = name or default_share_name(next_note, next_rows)
         updates.update(version=F("version") + 1, updated_at=timezone.now())
         updated = type(instance).objects.filter(pk=instance.pk, version=expected_version).update(**updates)
         if updated != 1:

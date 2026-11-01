@@ -172,6 +172,13 @@ describe('buildPastProjectsNoteInsertHtml', () => {
         expect(withoutId).not.toContain('Individual Link');
     });
 
+    it("links a current-semester project to its own page, not the archive's", () => {
+        const html = buildPastProjectsNoteInsertHtml([makeRow({id: 'current-1', catalog: 'current'})]);
+
+        expect(html).toContain(`href="${window.location.origin}/projects/current-1"`);
+        expect(html).not.toContain('/past-projects/project/current-1');
+    });
+
 });
 
 describe('appendPastProjectsNoteInsertHtml', () => {

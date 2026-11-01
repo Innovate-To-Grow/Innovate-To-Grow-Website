@@ -1,5 +1,6 @@
 import {useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useAuth} from '@/features/auth';
+import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 import {AISearchLoginDialog} from '../search/AISearchLoginDialog';
 import {PastProjectsActionBar} from '../search/PastProjectsActionBar';
 import {MERGED_RESULTS_ID, scrollToMergedResults, useKeepScrollAnchor} from '../selection/scrollAnchor';
@@ -12,7 +13,6 @@ import {useSearchTables} from '../../search/state/useSearchTables';
 import {MergedResultsTable, type PastProjectShareCreationResult} from '../../merged/composition/MergedResultsTable';
 import type {ListMessage} from '../../merged/list/useMergedList';
 import {createProjectGridRowMatcher, type ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {pluralize} from '../../shared/utils/saveResults';
 import {askPartnerPageToScroll} from '../../shared/utils/partnerFrame';
 
 const TABLE_ID_PREFIX = 'search-table';
@@ -71,24 +71,24 @@ interface WidgetHandoverOptions {
 }
 
 /**
- * Adds the projects a Past Projects widget on a partner's page handed over (see draftHandover.ts) to this draft,
- * loading their details as Add to Curation does, and says what happened.
+ * Adds the projects a Past Projects (or All Projects) widget on a partner's page handed over (see draftHandover.ts)
+ * to this draft, loading their details as Add to Curation does, and says what happened.
  */
 function useWidgetHandover({rows, loading, addRows, reportDraftChange, reportElsewhere}: WidgetHandoverOptions) {
+    const {copy} = useProjectCatalog();
     useDraftHandover({
         rows,
         loading,
         onHandover: (found, missing) => {
-            const missingNote = missing
-                ? `${pluralize(missing, 'project')} from the Past Projects widget ${missing === 1 ? 'is' : 'are'} no longer in the archive.`
-                : '';
+            const missingNote = missing ? copy.handoverMissing(missing) : '';
             if (!found.length) {
                 reportElsewhere(missingNote);
                 return;
             }
             Promise.resolve(addRows(found, {tableId: HANDOVER_SOURCE_ID, reportProgress: () => {}})).then(
-                (result) => reportDraftChange(`From the Past Projects widget: ${result.message} ${missingNote}`.trim()),
-                () => reportElsewhere('The projects from the Past Projects widget could not be added to the curation draft.'),
+                (result) => reportDraftChange(`From the ${copy.widgetName}: ${result.message} ${missingNote}`.trim()),
+                () =>
+                    reportElsewhere(`The projects from the ${copy.widgetName} could not be added to the curation draft.`),
             );
         },
     });
@@ -153,6 +153,7 @@ const BuilderSearchSection = ({
                               }: BuilderSearchSectionProps) => {
     const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
     const headingId = useId();
+    const {copy} = useProjectCatalog();
     // A failed refresh keeps the archive it had, and the table that asked reports it; only a first load that
     // failed leaves nothing to search.
     const archiveUnavailable = Boolean(error) && !rows.length;
@@ -197,12 +198,7 @@ const BuilderSearchSection = ({
                     isAuthenticated={isAuthenticated}
                     canRefresh={Boolean(onRefreshRows)}
                     cardProps={cardProps}
-                    copy={{
-                        aiDescription:
-                            'Use AI to load matching past projects into this table, then check the projects you want and click Add to Curation.',
-                        noTablesMessage:
-                            'No search tables are open. Add a new table to start searching past projects.',
-                    }}
+                    copy={{aiDescription: copy.aiDescription, noTablesMessage: copy.noTablesMessage}}
                 />
             ) : null}
         </section>
@@ -212,7 +208,8 @@ const BuilderSearchSection = ({
 /**
  * The past-projects builder: search tables whose checked rows are saved into one merged list, which is a
  * draft (kept in localStorage) until it is saved as a curation. State lives in `builder/draft/useCurationDraft`,
- * `search/state/useSearchTables` and `builder/selection/useSaveSelectedRows`.
+ * `search/state/useSearchTables` and `builder/selection/useSaveSelectedRows`. The list it searches and the words
+ * naming it are the page's ProjectCatalog (Past Projects, or All Projects); both pages share the one draft.
  */
 export const PastProjectsBuilder = ({
                                         error,
@@ -240,7 +237,6 @@ export const PastProjectsBuilder = ({
         rowsError: error,
         onRefreshRows,
         onMessage: setTablesMessage,
-        refreshingMessage: 'Refreshing this search table from the latest past-project archive...',
     });
     const saving = useSaveSelectedRows({draft, scrollAnchorRef, onMessage: reportDraftChange});
     useWidgetHandover({

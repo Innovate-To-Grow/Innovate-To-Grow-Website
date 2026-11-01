@@ -1,4 +1,5 @@
 import {buildLoginPath} from '@/features/auth/api/redirects';
+import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {PastProjectsDialog} from '../dialog/PastProjectsDialog';
 import {draftHandoverHref, isEmbeddedBuilder} from '../draft/draftHandover';
@@ -12,22 +13,23 @@ interface AISearchLoginDialogProps {
 /**
  * Shown when a visitor who is not signed in asks for an AI search table. In the widget, signing in inside the
  * partner's frame loaded the whole site (header, menu, footer) into it, so there the visitor continues on the
- * full Past Projects page in a new tab, with the draft (draftHandover.ts).
+ * full builder page (Past Projects or All Projects) in a new tab, with the draft (draftHandover.ts).
  */
-export const AISearchLoginDialog = ({draftRows = [], onClose}: AISearchLoginDialogProps) =>
-  isEmbeddedBuilder() ? (
+export const AISearchLoginDialog = ({draftRows = [], onClose}: AISearchLoginDialogProps) => {
+  const {path, title} = useProjectCatalog();
+  return isEmbeddedBuilder() ? (
     <PastProjectsDialog
       title="Sign in required"
       cancelLabel="Close"
-      confirmLabel="Continue in Past Projects"
-      confirmHref={draftHandoverHref(draftRows)}
+      confirmLabel={`Continue in ${title}`}
+      confirmHref={draftHandoverHref(draftRows, path)}
       onCancel={onClose}
       // Closed after the click: a link taken off the page while its click is handled opens nothing.
       onConfirm={() => window.setTimeout(onClose)}
     >
       <p>
-        AI search needs you to sign in on the Innovate to Grow site. Past Projects opens in a new tab, with your
-        curation draft, where you can sign in and use it.
+        AI search needs you to sign in on the Innovate to Grow site. {title} opens in a new tab, with your curation
+        draft, where you can sign in and use it.
       </p>
     </PastProjectsDialog>
   ) : (
@@ -43,3 +45,4 @@ export const AISearchLoginDialog = ({draftRows = [], onClose}: AISearchLoginDial
       <p>You need to sign in before using AI search.</p>
     </PastProjectsDialog>
   );
+};

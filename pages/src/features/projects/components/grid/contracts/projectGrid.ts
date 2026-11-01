@@ -1,4 +1,4 @@
-import type {ProjectGridRow, ProjectTableRow} from '@/features/projects/api';
+import type {ProjectGridRow} from '@/features/projects/api';
 import {formatSemesterLabel} from '@/lib/format';
 
 export type {ProjectGridRow} from '@/features/projects/api';
@@ -138,20 +138,6 @@ const semesterSortKey = (value: string) => {
   return {year, seasonRank};
 };
 
-export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
-  id: project.id,
-  semester_label: formatSemesterLabel(project.semester_label),
-  class_code: project.class_code,
-  team_number: project.team_number,
-  team_name: project.team_name,
-  project_title: project.project_title,
-  organization: project.organization,
-  industry: project.industry,
-  abstract: project.abstract,
-  student_names: project.student_names,
-  is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
-});
-
 // `id` is deliberately excluded from the content fingerprint so equivalent rows from archive and
 // AI search sources still deduplicate when one source lacks an id. The id remains on the row for
 // the per-project Individual Link.
@@ -169,22 +155,28 @@ export const createProjectGridFingerprint = (row: ProjectGridRow) =>
     row.is_presenting,
   ]);
 
+/** The ids a row is known by: its own, and the current-semester project's an archive row stands in for. */
+export const getProjectRowIds = (row: ProjectGridRow) =>
+  [row.id, row.current_project_id].filter((id): id is string => Boolean(id));
+
 /**
  * Tells whether a row is one of `rows`: the same project id, or the same content. The fingerprint alone is not
  * enough, since a compact archive row and the hydrated copy of the same project differ in abstract and students.
+ * A current-semester project and the archive row that stands in for it once its semester is archived are the same
+ * project: the archive row names the current id in `current_project_id`, so a draft that holds either matches.
  */
 export const createProjectGridRowMatcher = (rows: ProjectGridRow[]) => {
   const ids = new Set<string>();
   const fingerprints = new Set<string>();
   const add = (row: ProjectGridRow) => {
-    if (row.id) ids.add(row.id);
+    getProjectRowIds(row).forEach((id) => ids.add(id));
     fingerprints.add(createProjectGridFingerprint(row));
   };
   rows.forEach(add);
   return {
     add,
     has: (row: ProjectGridRow) =>
-      (Boolean(row.id) && ids.has(row.id as string)) || fingerprints.has(createProjectGridFingerprint(row)),
+      getProjectRowIds(row).some((id) => ids.has(id)) || fingerprints.has(createProjectGridFingerprint(row)),
   };
 };
 
@@ -212,6 +204,15 @@ export const getPastProjectDetailPath = (projectId: string) =>
 
 export const getCurrentProjectDetailPath = (projectId: string) => `/projects/${encodeURIComponent(projectId)}`;
 
+/**
+ * The page a past or all-projects list row's project is on: a current-semester project's own page (its id is an
+ * event CurrentProject's, which `/projects/:id` reads), else the archive's; '' for a row without an id.
+ */
+export const getProjectRowDetailPath = ({id, catalog}: Pick<ProjectGridRow, 'id' | 'catalog'>) => {
+  if (!id) return '';
+  return catalog === 'current' ? getCurrentProjectDetailPath(id) : getPastProjectDetailPath(id);
+};
+
 /** History state of a project page opened from a list: the list's path and query, for its back link. */
 export interface ProjectPageLinkState {
   from: string;
@@ -224,15 +225,19 @@ const currentFrontendOrigin = () => {
   return window.location.origin;
 };
 
-export const getPastProjectDetailUrl = (projectId: string) => {
-  const path = getPastProjectDetailPath(projectId);
+/** getProjectRowDetailPath as a full URL, for a link that opens in a new tab or is copied into a note. */
+export const getProjectRowDetailUrl = (row: Pick<ProjectGridRow, 'id' | 'catalog'>) => {
+  const path = getProjectRowDetailPath(row);
   const origin = currentFrontendOrigin();
-  return origin ? new URL(path, origin).href : path;
+  return path && origin ? new URL(path, origin).href : path;
 };
 
-/** The project page a row links to, or '' for rows without a project id (legacy snapshots). */
-export const getProjectGridRowHref = (row: Pick<ProjectGridRow, 'id'>, scope: ProjectGridLinkScope) =>
-  row.id ? (scope === 'past' ? getPastProjectDetailUrl(row.id) : getCurrentProjectDetailPath(row.id)) : '';
+/**
+ * The project page a row links to, or '' for rows without a project id (legacy snapshots). The 'past' scope (the
+ * builders and shared curations) follows the row's own list; the current-projects pages link every row to theirs.
+ */
+export const getProjectGridRowHref = (row: Pick<ProjectGridRow, 'id' | 'catalog'>, scope: ProjectGridLinkScope) =>
+  row.id ? (scope === 'past' ? getProjectRowDetailUrl(row) : getCurrentProjectDetailPath(row.id)) : '';
 
 export const hasProjectGridDetails = (row: ProjectGridRow) => Boolean(row.id || row.abstract || row.student_names);
 

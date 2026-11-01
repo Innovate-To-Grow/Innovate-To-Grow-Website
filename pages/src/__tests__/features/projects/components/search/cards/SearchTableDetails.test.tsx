@@ -26,7 +26,7 @@ function compactRow(id: string): ProjectGridRow {
 
 function detail(id: string, fields: Partial<ProjectDetail> = {}): ProjectDetail {
   return {
-    ...compactRow(id), id, track: null, presentation_order: null,
+    ...compactRow(id), id, track: null, presentation_order: null, is_presenting: null,
     abstract: `Abstract ${id}`, student_names: `Students ${id}`, ...fields,
   };
 }

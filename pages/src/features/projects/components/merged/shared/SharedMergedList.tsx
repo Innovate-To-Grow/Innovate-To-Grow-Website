@@ -1,5 +1,6 @@
 import {RichDetailPreview} from '../../richText/content/RichDetailPreview';
 import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {curationBranding} from '../list/curationBranding';
 import {noteHasContent, sharedListExportTarget} from '../list/curationNote';
 import {MergedEditButtons} from '../list/MergedEditButtons';
 import {MergedExportGroup} from '../list/MergedExportGroup';
@@ -69,12 +70,11 @@ export const SharedMergedList = ({
     <MergedExportGroup
       rows={allRows}
       buildTarget={() =>
-        sharedListExportTarget(title, {
-          enabled: canEdit,
-          titleDraft: editor.titleDraft,
-          noteDraft: editor.noteDraft,
-          savedNoteHtml: noteHtml,
-        })
+        sharedListExportTarget(
+          title,
+          {enabled: canEdit, titleDraft: editor.titleDraft, noteDraft: editor.noteDraft, savedNoteHtml: noteHtml},
+          allRows,
+        )
       }
       onStatus={setStatusMessage}
     />
@@ -89,6 +89,7 @@ export const SharedMergedList = ({
     >
       <SharedListHeader
         headingId={headingId}
+        eyebrow={curationBranding(allRows).eyebrow}
         title={title}
         rowCount={rows.length}
         sharedAt={sharedAt}

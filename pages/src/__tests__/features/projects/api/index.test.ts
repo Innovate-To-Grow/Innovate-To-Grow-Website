@@ -422,6 +422,7 @@ describe('project archive and detail fetch helpers', () => {
     expect(authApiMock.post).toHaveBeenCalledWith('/projects/past-ai-search/', {
       query: 'solar',
       limit: 10,
+      scope: 'past',
     });
   });
 
@@ -431,6 +432,7 @@ describe('project archive and detail fetch helpers', () => {
     expect(authApiMock.post).toHaveBeenCalledWith('/projects/past-ai-search/', {
       query: 'solar',
       limit: 25,
+      scope: 'past',
     });
   });
 

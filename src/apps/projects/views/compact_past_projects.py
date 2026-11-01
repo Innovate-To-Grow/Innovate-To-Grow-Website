@@ -1,17 +1,11 @@
-from django.db.models import Q
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
 from apps.core.utils.http_cache import public_json_response
 
-from ..models import Project
-from ..ordering import archive_ordering
+from ..pagination import CompactPastProjectsPagination
 from ..serializers import CompactPastProjectSerializer, PastProjectQuerySerializer
-
-
-class CompactPastProjectsPagination(PageNumberPagination):
-    page_size = 20
+from ..services.catalog_filters import archive_queryset
 
 
 class CompactPastProjectsAPIView(APIView):
@@ -25,29 +19,9 @@ class CompactPastProjectsAPIView(APIView):
         query_serializer.is_valid(raise_exception=True)
         params = query_serializer.validated_data
 
-        queryset = Project.objects.filter(semester__is_published=True).select_related("semester")
-        if search := params.get("search"):
-            queryset = queryset.filter(
-                Q(project_title__icontains=search)
-                | Q(team_name__icontains=search)
-                | Q(team_number__icontains=search)
-                | Q(organization__icontains=search)
-                | Q(industry__icontains=search)
-                | Q(class_code__icontains=search)
-                | Q(abstract__icontains=search)
-                | Q(student_names__icontains=search)
-            )
-        if year := params.get("year"):
-            queryset = queryset.filter(semester__year=year)
-        if season := params.get("season"):
-            queryset = queryset.filter(semester__season=season)
-        if semester := params.get("semester"):
-            queryset = queryset.filter(semester__label__iexact=semester)
-
-        queryset = queryset.order_by(*archive_ordering(), "id")
         paginator = CompactPastProjectsPagination()
         paginator.page_size = params["page_size"]
-        page = paginator.paginate_queryset(queryset, request, view=self)
+        page = paginator.paginate_queryset(archive_queryset(params), request, view=self)
         serializer = CompactPastProjectSerializer(page, many=True)
         response = paginator.get_paginated_response(serializer.data)
         return public_json_response(request, response.data)

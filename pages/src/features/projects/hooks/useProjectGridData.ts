@@ -1,22 +1,19 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {
     PROJECT_REQUEST_TIMEOUT_MS,
-    compactProjectToGridRow,
-    fetchAllPastProjectArchive,
     fetchPastProjectShare,
     scheduleProjectToGridRow,
     type PastProjectShare,
     type ProjectGridRow,
 } from '@/features/projects/api';
 import {fetchCurrentSchedule, type EventSchedulePayload} from '@/features/events/api';
+import {ALL_PROJECTS_CATALOG, PAST_PROJECTS_CATALOG} from '../catalog/catalogs';
 import {getPredominantTerm} from '../components/grid/contracts/projectGrid';
+import {PROJECT_LIST_LOAD_ERROR, useRevalidatingRows, type RevalidatingRowsResult} from './useRevalidatingRows';
 
-interface ProjectGridDataResult {
-    rows: ProjectGridRow[];
-    loading: boolean;
-    error: string | null;
-    refetch: () => void;
-}
+export {PROJECT_LIST_LOAD_ERROR} from './useRevalidatingRows';
+
+type ProjectGridDataResult = RevalidatingRowsResult;
 
 interface CurrentProjectGridDataResult extends ProjectGridDataResult {
     /** Class names by class code ("CAP" -> "Engineering Capstone"), from the schedule's sections. */
@@ -33,24 +30,14 @@ interface PastProjectShareResult {
     retry: () => void;
 }
 
-interface ProjectGridRowsState {
+interface CurrentProjectGridState {
     requestKey: symbol | null;
     rows: ProjectGridRow[];
     error: string | null;
-}
-
-interface CurrentProjectGridState extends ProjectGridRowsState {
     classLabels: Record<string, string>;
 }
 
 const EMPTY_CLASS_LABELS: Record<string, string> = {};
-
-/**
- * What a project list says when its rows could not be loaded. The request's own message ("Network Error",
- * "Request failed with status code 503") means nothing to a visitor. It names no cause: the same words follow a
- * dropped connection, a server error and a timeout.
- */
-export const PROJECT_LIST_LOAD_ERROR = "We couldn't load the projects. Please try again.";
 
 const responseStatus = (error: unknown) => (error as {response?: {status?: number}} | null)?.response?.status;
 
@@ -164,83 +151,58 @@ export function useCurrentProjectGridData(enabled: boolean = true): CurrentProje
     };
 }
 
+/** The published archive, as the Past Projects builder searches it (useRevalidatingRows: stale while revalidating). */
 export function usePastProjectGridData(enabled: boolean = true): ProjectGridDataResult {
-    const [refetchCount, setRefetchCount] = useState(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- refetchCount forces a new Symbol to trigger the fetch useEffect
-    const requestKey = useMemo(() => (enabled ? Symbol('past-project-grid') : null), [enabled, refetchCount]);
-    const [state, setState] = useState<ProjectGridRowsState>({
-        requestKey: null,
-        rows: [],
-        error: null,
-    });
-
-    const refetch = useCallback(() => setRefetchCount((c) => c + 1), []);
-
-    useEffect(() => {
-        if (!requestKey) {
-            return;
-        }
-
-        const controller = new AbortController();
-
-        fetchAllPastProjectArchive({}, controller.signal)
-            .then((projects) => {
-                if (controller.signal.aborted) return;
-                setState({
-                    requestKey,
-                    rows: projects.map(compactProjectToGridRow),
-                    error: null,
-                });
-            })
-            .catch(() => {
-                if (controller.signal.aborted) return;
-                // A failed refetch keeps the rows it was revalidating (see below); only a first load has none.
-                setState((previous) => ({
-                    requestKey,
-                    rows: previous.rows,
-                    error: PROJECT_LIST_LOAD_ERROR,
-                }));
-            });
-
-        return () => {
-            controller.abort();
-        };
-    }, [requestKey]);
-
-    if (!requestKey) {
-        return {rows: [], loading: false, error: null, refetch};
-    }
-
-    // Stale-while-revalidate: a refetch() keeps serving the previously resolved rows (loading stays
-    // false) until the new response lands, so consumers keep their search tables mounted — and their
-    // per-table curation intact — across a refresh. Only a load with no rows to serve meanwhile (the
-    // first one, or a retry after it failed) reports loading. A failed refetch reports its error next to
-    // the rows it kept.
-    const hasResolved = state.requestKey === requestKey;
-    const hasStaleRows = state.requestKey !== null && state.rows.length > 0;
-    return {
-        rows: state.rows,
-        loading: !hasResolved && !hasStaleRows,
-        error: hasResolved ? state.error : null,
-        refetch,
-    };
+    return useRevalidatingRows(PAST_PROJECTS_CATALOG.loadRows, enabled);
 }
 
-export function usePastProjectShareData(shareId: string | undefined): PastProjectShareResult {
-    const [attempt, setAttempt] = useState(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- attempt forces a new Symbol so retry() loads again
-    const requestKey = useMemo(() => (shareId ? Symbol(shareId) : null), [shareId, attempt]);
+/**
+ * Every project, the active schedule's that are not archived yet and then the archive, as the All Projects builder
+ * searches it and a share's owner adds to it.
+ */
+export function useAllProjectGridData(enabled: boolean = true): ProjectGridDataResult {
+    return useRevalidatingRows(ALL_PROJECTS_CATALOG.loadRows, enabled);
+}
+
+/**
+ * The share state, with `seed` put in it as the answer to `requestKey` when it is the share at `shareId`, once per
+ * seed. Set while rendering, so the seed is there on the first render and the load never requests it (see
+ * https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes).
+ */
+function useSeededShareState(shareId: string | undefined, requestKey: symbol | null, seed: PastProjectShare | null) {
     const [state, setState] = useState<PastProjectShareState>({
         requestKey: null,
         share: null,
         error: null,
         notFound: false,
     });
+    const [usedSeed, setUsedSeed] = useState<PastProjectShare | null>(null);
+    if (requestKey && seed?.id === shareId && seed !== usedSeed) {
+        setUsedSeed(seed);
+        setState({requestKey, share: seed, error: null, notFound: false});
+    }
+    return [state, setState] as const;
+}
+
+/**
+ * The share at `shareId`. A `seed` is a share the caller already holds (the one a save just created): when it is the
+ * share at `shareId` it stands in for loading it, so the page shows it without asking the server again. Each seed
+ * stands in once; Try again (`retry`) loads the share from the server.
+ */
+export function usePastProjectShareData(
+    shareId: string | undefined,
+    seed: PastProjectShare | null = null,
+): PastProjectShareResult {
+    const [attempt, setAttempt] = useState(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- attempt forces a new Symbol so retry() loads again
+    const requestKey = useMemo(() => (shareId ? Symbol(shareId) : null), [shareId, attempt]);
+    const [state, setState] = useSeededShareState(shareId, requestKey, seed);
 
     const retry = useCallback(() => setAttempt((count) => count + 1), []);
+    const hasResolved = requestKey !== null && state.requestKey === requestKey;
 
     useEffect(() => {
-        if (!requestKey || !shareId) {
+        if (!requestKey || !shareId || hasResolved) {
             return;
         }
 
@@ -269,13 +231,12 @@ export function usePastProjectShareData(shareId: string | undefined): PastProjec
         return () => {
             cancelled = true;
         };
-    }, [requestKey, shareId]);
+    }, [requestKey, shareId, hasResolved, setState]);
 
     if (!requestKey) {
         return {share: null, loading: false, error: null, notFound: false, retry};
     }
 
-    const hasResolved = state.requestKey === requestKey;
     return {
         share: hasResolved ? state.share : null,
         loading: !hasResolved,

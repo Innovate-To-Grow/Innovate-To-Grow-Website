@@ -1,7 +1,7 @@
 import {useId, type ReactNode} from 'react';
-import {DEFAULT_PAST_PROJECT_SHARE_NAME} from '@/features/projects/api';
 import {RichTextDetailEditor} from '../../richText/editor/RichTextDetailEditor';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {curationBranding} from '../list/curationBranding';
 import type {SignInToSave} from '../list/curationNote';
 import {ProjectNoteInsertControl} from '../list/ProjectNoteInsertControl';
 import type {NoteInsertFields} from '../list/useNoteInsertFields';
@@ -71,7 +71,8 @@ export const CurationSaveSection = ({
                 className="itg-input project-grid-share-name-input"
                 value={nameDraft}
                 maxLength={200}
-                placeholder={DEFAULT_PAST_PROJECT_SHARE_NAME}
+                // The name the server gives a curation saved without one, for the rows it would save.
+                placeholder={curationBranding(rows).defaultName}
                 aria-describedby={nameHintId}
                 onChange={(event) => onNameDraftChange(event.target.value)}
               />

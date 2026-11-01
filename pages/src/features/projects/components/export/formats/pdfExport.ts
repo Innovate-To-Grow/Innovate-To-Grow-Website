@@ -55,6 +55,8 @@ interface PdfPage {
   typeface: PdfTypeface;
   logo: ExportLogoAsset | null;
   title: string;
+  /** The list's name under the title ("Innovate to Grow Past Projects"). */
+  heading: string;
   pageWidth: number;
   pageHeight: number;
   contentWidth: number;
@@ -68,8 +70,8 @@ const setBodyTextColor = (pdf: jsPDF) => pdf.setTextColor(TEXT_COLOR_RGB[0], TEX
 const showValue = (page: PdfPage, value: string | number | null | undefined) =>
   page.typeface.drawable(toDisplayValue(value)).trim();
 
-/** Logo, title (at most two lines) and site name over the gold rule, repeated on every page. */
-const drawPageHeader = ({pdf, typeface, logo, title, pageWidth, contentWidth}: PdfPage) => {
+/** Logo, title (at most two lines) and heading over the gold rule, repeated on every page. */
+const drawPageHeader = ({pdf, typeface, logo, title, heading, pageWidth, contentWidth}: PdfPage) => {
   const logoSize = 16;
   const titleX = logo ? MARGIN + logoSize + 7 : MARGIN;
   const titleWidth = contentWidth - (logo ? logoSize + 7 : 0);
@@ -88,7 +90,7 @@ const drawPageHeader = ({pdf, typeface, logo, title, pageWidth, contentWidth}: P
   pdf.setFont(typeface.family, 'normal');
   pdf.setFontSize(8);
   pdf.setTextColor(MUTED_TEXT_RGB[0], MUTED_TEXT_RGB[1], MUTED_TEXT_RGB[2]);
-  pdf.text('Innovate to Grow Past Projects', titleX, titleLines.length > 1 ? 25 : 21);
+  pdf.text(heading, titleX, titleLines.length > 1 ? 25 : 21);
 
   // The gold rule the site draws under page headers and table headings.
   pdf.setDrawColor(ACCENT_GOLD_RGB[0], ACCENT_GOLD_RGB[1], ACCENT_GOLD_RGB[2]);
@@ -213,6 +215,7 @@ export const exportProjectRowsPdf = async (
     typeface,
     logo,
     title: typeface.drawable(exportContext.title),
+    heading: typeface.drawable(exportContext.heading),
     pageWidth,
     pageHeight: pdf.internal.pageSize.getHeight(),
     contentWidth: pageWidth - MARGIN * 2,

@@ -21,7 +21,7 @@ _ROBOTS_ALLOWED_READS = (
     "/media/",
     "/static/",
 )
-# Under /projects/, only the archive and project details render public pages.
+# Under /projects/, only the archive, the all-projects list and project details render public pages.
 _ROBOTS_DISALLOWED_READS = (
     "/projects/past-shares/",
     "/projects/past-ai-search/",

@@ -1,5 +1,6 @@
 import {useMemo, type ReactNode} from 'react';
 import {useAuth} from '@/features/auth';
+import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {builderExportTarget, signInToSave, type SignInToSave} from '../list/curationNote';
 import {CurationSaveButton, CurationSaveSection} from './CurationSaveSection';
@@ -71,11 +72,11 @@ const BuilderListToolbar = ({
       <MergedExportGroup
         rows={visibleRows}
         buildTarget={() =>
-          builderExportTarget(title, {
-            enabled: canShare,
-            nameDraft: curation.nameDraft,
-            noteDraft: curation.noteDraft,
-          })
+          builderExportTarget(
+            title,
+            {enabled: canShare, nameDraft: curation.nameDraft, noteDraft: curation.noteDraft},
+            visibleRows,
+          )
         }
         onStatus={setStatusMessage}
         reloadNote="Your curation draft is kept."
@@ -164,7 +165,8 @@ function useBuilderList({
     />
   ) : null;
   // The whole draft, not just the rows its search shows, goes along to the full page from the widget.
-  const signIn = useMemo(() => signInToSave(rows), [rows]);
+  const {path} = useProjectCatalog();
+  const signIn = useMemo(() => signInToSave(rows, path), [path, rows]);
 
   return {
     isAuthenticated,

@@ -130,7 +130,7 @@ describe('PastProjectsBuilder — AI search table', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Search'}));
 
     expect(await screen.findByRole('heading', {level: 3, name: 'AI Search Table: solar sensors'})).toBeInTheDocument();
-    expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar sensors', 10);
+    expect(mockSearchPastProjectsWithAI).toHaveBeenCalledWith('solar sensors', 10, 'past');
 
     const aiTable = screen
       .getByRole('heading', {level: 3, name: 'AI Search Table: solar sensors'})

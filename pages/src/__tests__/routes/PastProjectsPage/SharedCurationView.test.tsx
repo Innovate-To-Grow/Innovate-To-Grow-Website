@@ -4,6 +4,7 @@ import {MemoryRouter} from 'react-router';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import type {PastProjectShare} from '@/features/projects/api';
+import {ALL_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
 import {SharedCurationView} from '@/routes/PastProjectsPage/SharedCurationView';
 
 type ViewProps = Parameters<typeof SharedCurationView>[0];
@@ -29,7 +30,7 @@ const view = (status: Partial<ViewProps['status']>, share: PastProjectShare | nu
       share={share}
       items={[]}
       onUpdateShare={vi.fn()}
-      archive={{rows: [], loading: false, error: null, refetch: vi.fn()}}
+      projects={{rows: [], loading: false, error: null, refetch: vi.fn()}}
       onAddRows={vi.fn()}
     />
   </MemoryRouter>
@@ -96,6 +97,79 @@ describe('SharedCurationView', () => {
     fireEvent.click(screen.getByRole('button', {name: 'Finish the load'}));
     expect(tryAgain).not.toBeInTheDocument();
     expect(screen.getByRole('heading', {level: 1, name: 'Water projects'})).toHaveFocus();
+  });
+
+  it('names the builder that saved the curation in its saved notice', () => {
+    render(
+      <MemoryRouter>
+        <SharedCurationView
+          status={{loading: false, error: null, notFound: false, retry: vi.fn()}}
+          conflictMessage={null}
+          justSaved
+          builtOn={ALL_PROJECTS_CATALOG}
+          share={{...SHARE, can_edit: true}}
+          items={[]}
+          onUpdateShare={vi.fn()}
+          projects={{rows: [], loading: true, error: null, refetch: vi.fn()}}
+          onAddRows={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/^Curation saved\./)).toHaveTextContent(
+      'Curation saved. It is listed under My Curations on the All Projects page, and you can keep editing it here.',
+    );
+    expect(screen.getByRole('link', {name: 'All Projects'})).toHaveAttribute('href', '/all-projects');
+  });
+
+  it("words the owner's search for more projects as All Projects, which it searches", () => {
+    render(
+      <MemoryRouter>
+        <SharedCurationView
+          status={{loading: false, error: null, notFound: false, retry: vi.fn()}}
+          conflictMessage={null}
+          justSaved={false}
+          share={{...SHARE, can_edit: true}}
+          items={[]}
+          onUpdateShare={vi.fn()}
+          projects={{rows: [], loading: true, error: null, refetch: vi.fn()}}
+          onAddRows={vi.fn()}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('heading', {level: 2, name: 'Add More Projects'})).toBeInTheDocument();
+    expect(screen.getByText('Loading projects...')).toHaveAttribute('role', 'status');
+    expect(screen.queryByText('Loading past projects...')).toBeNull();
+    // The way back to a builder still names Past Projects.
+    expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
+  });
+
+  it('points a visitor to All Projects from a curation holding a current-semester project', () => {
+    const currentRow = {
+      id: '33333333-3333-4333-8333-333333333333',
+      semester_label: '2026 Fall',
+      class_code: 'CAP',
+      team_number: '303',
+      team_name: 'Team Gamma',
+      project_title: 'This Semester Project',
+      organization: 'Acme',
+      industry: 'Technology',
+      abstract: '',
+      student_names: '',
+      is_presenting: 'Yes',
+      catalog: 'current' as const,
+    };
+    const {unmount} = render(view({}, {...SHARE, rows: [currentRow]}));
+
+    expect(screen.getByText(/Want to make your own list\?/)).toHaveClass('past-projects-shared-closing');
+    expect(screen.getByRole('link', {name: 'Search all projects'})).toHaveAttribute('href', '/all-projects');
+    expect(screen.queryByRole('link', {name: 'Search all past projects'})).toBeNull();
+    unmount();
+
+    // One of archive projects only still points to Past Projects.
+    render(view({}, {...SHARE, rows: [{...currentRow, catalog: 'archive'}]}));
+    expect(screen.getByRole('link', {name: 'Search all past projects'})).toHaveAttribute('href', '/past-projects');
   });
 
   it('names the tab after a curation that does not exist', () => {

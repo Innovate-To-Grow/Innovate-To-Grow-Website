@@ -1,17 +1,18 @@
 import {useEffect, useRef, useState} from 'react';
 import {
-  DEFAULT_PAST_PROJECT_SHARE_NAME,
   fetchPastProjectShare,
   updatePastProjectShare,
   type PastProjectShare,
   type ProjectGridRow,
 } from '@/features/projects/api';
+import {curationBranding} from '@/features/projects/components/merged/list/curationBranding';
 import {haveEqualRows, rebaseSubmittedRows, rowsNotYetShared} from './shareRows';
 
 type PastProjectSharePatch = Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>>;
 
-export const shareDisplayTitle = (share: Pick<PastProjectShare, 'name'>) =>
-  share.name?.trim() || DEFAULT_PAST_PROJECT_SHARE_NAME;
+/** A share's name, or for one stored with a blank name the default the server gives its rows. */
+export const shareDisplayTitle = (share: Pick<PastProjectShare, 'name' | 'rows'>) =>
+  share.name?.trim() || curationBranding(share.rows ?? []).defaultName;
 
 const SHARE_CONFLICT_RELOADED =
   'This curation changed elsewhere. The latest version was reloaded; review it before editing again.';

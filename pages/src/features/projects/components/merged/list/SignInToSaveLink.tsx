@@ -1,4 +1,5 @@
 import type {ReactNode} from 'react';
+import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 import type {SignInToSave} from './curationNote';
 
 interface SignInToSaveLinkProps {
@@ -10,12 +11,14 @@ interface SignInToSaveLinkProps {
 
 /**
  * The draft's sign-in link. In the widget, signing in inside the partner's frame would neither reach the site's
- * own tabs nor keep the draft, so it continues on the full Past Projects page in a new tab, draft included.
+ * own tabs nor keep the draft, so it continues on the full builder page (Past Projects or All Projects) in a new
+ * tab, draft included.
  */
-export const SignInToSaveLink = ({signIn, className, children}: SignInToSaveLinkProps) =>
-  signIn.inNewTab ? (
+export const SignInToSaveLink = ({signIn, className, children}: SignInToSaveLinkProps) => {
+  const {title} = useProjectCatalog();
+  return signIn.inNewTab ? (
     <a className={className} href={signIn.href} target="_blank" rel="noopener">
-      Continue in Past Projects
+      {`Continue in ${title}`}
       {/* The space is inside the hidden text, so the link's underline stops at its last visible word. */}
       <span className="sr-only"> (opens in a new tab)</span>
     </a>
@@ -24,3 +27,4 @@ export const SignInToSaveLink = ({signIn, className, children}: SignInToSaveLink
       {children}
     </a>
   );
+};
