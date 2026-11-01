@@ -8,18 +8,25 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import DomainNameValidator, MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from .control import ProjectControlModel
 
-SMART_RATE_HELP = (
+# Marked for translation; the site ships no translations yet, so they render as written.
+SMART_RATE_HELP = _(
     "Adjusts the rate automatically to actual conditions. It uses the limit the provider reports (where it reports "
     "one), slows down as soon as the provider throttles or pushes back, then speeds up again step by step, never "
     "above the provider limit. While Smart rate is on it takes priority over the manual rate; the manual rate is "
     "kept and is used again when you turn Smart rate off."
 )
-MANUAL_RATE_HELP = (
+MANUAL_RATE_HELP = _(
     "Fixed rate used while Smart rate is off. It cannot be set above the provider limit (Advanced). Pauses the "
     "provider explicitly asks for, and daily limits, still apply."
+)
+NO_INTERNAL_DOMAIN = "No account is on a Gmail API allow-list yet, so no domain can count as internal; leave it blank."
+INTERNAL_DOMAIN_REFUSED = (
+    "It must be the domain of an account on a Gmail API allow-list, or a parent domain of it ({allowed}). Any other "
+    "domain would stop its recipients counting against Google's external-recipient limit."
 )
 
 # Column shapes (schema, not tunables): rates keep three decimal places, so 0.001 is the slowest storable rate; the
@@ -29,6 +36,7 @@ RATE_PLACES = 3
 SHARE_DIGITS = 4
 MIN_RATE = Decimal("0.001")
 MAX_RESERVE = Decimal("0.999")
+DOMAIN_VALIDATOR = DomainNameValidator(accept_idna=False)
 
 
 class RateUnit(NamedTuple):
@@ -117,6 +125,18 @@ def display_number(value: Decimal) -> str:
     return f"{value.normalize():,f}"
 
 
+def allow_list_domains() -> set[str]:
+    """The domain of every account on a Gmail API allow-list (superusers keep those lists) and its parent domains of
+    two labels or more: ``i2g@g.ucmerced.edu`` gives ``g.ucmerced.edu`` and ``ucmerced.edu``."""
+    from .service_credentials.gmail_api import GmailApiSubject
+
+    found = set()
+    for subject in GmailApiSubject.objects.values_list("subject", flat=True):
+        labels = subject.rpartition("@")[2].lower().split(".")
+        found.update(".".join(labels[start:]) for start in range(len(labels) - 1))
+    return found
+
+
 def seed_value(field: str, value):
     """A DELIVERY_RATES seed in the form its column stores."""
     if field in DECIMAL_FIELDS and value is not None:
@@ -143,6 +163,15 @@ class DeliveryRatePolicy(ProjectControlModel):
         "The provider's rate limit, in the channel's unit. Blank uses the limit the provider reports or documents.",
         null=True,
         blank=True,
+    )
+    # SES only, from migration 0036: ``provider_limit`` holds the previous release's campaign send rate, a stand-in
+    # bound until AWS reports the account's own limit (the rate rule ignores it from then on). Saving another value,
+    # or none, makes the field the operator's again.
+    provider_limit_carried_over = models.BooleanField(
+        default=False,
+        editable=False,
+        verbose_name="Provider limit carried over",
+        help_text="The provider rate limit is the old campaign send rate, used only until the provider reports one.",
     )
     parts_limit = _rate_field(
         "Message parts per second (MPS)",
@@ -175,7 +204,7 @@ class DeliveryRatePolicy(ProjectControlModel):
         max_length=253,
         blank=True,
         default="",
-        validators=[DomainNameValidator(accept_idna=False)],
+        validators=[DOMAIN_VALIDATOR],
         verbose_name="Internal domain",
         help_text="Gmail API only: the Workspace primary domain. Blank counts every recipient as external.",
     )
@@ -231,6 +260,8 @@ class DeliveryRatePolicy(ProjectControlModel):
     def clean_fields(self, exclude=None):
         # Normalize before the field validators see it: domains compare case-insensitively.
         self.internal_domain = str(self.internal_domain or "").strip().lower()
+        if self.provider_limit is None:
+            self.provider_limit_carried_over = False
         super().clean_fields(exclude=exclude)
 
     def clean(self):
@@ -243,6 +274,7 @@ class DeliveryRatePolicy(ProjectControlModel):
         self._check_ceilings(spec, errors)
         self._check_manual_rate(spec, errors)
         self._check_daily_limits(spec, errors)
+        self._check_internal_domain(spec, errors)
         if errors:
             raise ValidationError(errors)
 
@@ -300,3 +332,20 @@ class DeliveryRatePolicy(ProjectControlModel):
                 errors.setdefault(
                     name, f"It cannot be above the daily limit of {display_number(daily)} {self.unit.budget}."
                 )
+
+    def _check_internal_domain(self, spec, errors):
+        """Recipients in the internal domain do not count against Google's external limit, so naming one raises that
+        limit: only the deployer's seed, or the domain of an allow-listed account (or a parent of it), may be named."""
+        domain = self.internal_domain
+        if not domain or "internal_domain" in errors or domain == str(spec.get("internal_domain") or "").lower():
+            return
+        try:
+            DOMAIN_VALIDATOR(domain)
+        except ValidationError:
+            return  # the field's own validation reports it
+        allowed = allow_list_domains()
+        if domain not in allowed:
+            listed = ", ".join(sorted(allowed))
+            errors["internal_domain"] = (
+                INTERNAL_DOMAIN_REFUSED.format(allowed=listed) if allowed else NO_INTERNAL_DOMAIN
+            )

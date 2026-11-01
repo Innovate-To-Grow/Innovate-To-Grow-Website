@@ -66,8 +66,10 @@ was sent to Google (the tests use mocked HTTP).
    that only that scope is listed. With Multi-party approval, a second super admin approves.
 4. Changes "can take up to 24 hours". Confirm that the sending account has Gmail enabled, and tell I2G the Workspace
    **primary domain** (set it as the Gmail API channel's internal domain on Mail → Delivery Rates; blank counts every
-   recipient as external). **[CONFIRM LIVE]** UC Merced's primary domain: Google counts aliases and alternate
-   domains as external.
+   recipient as external). The field accepts only the domain of an account on a Gmail API allow-list or a parent
+   domain of it (for `i2g@g.ucmerced.edu`: `g.ucmerced.edu` or `ucmerced.edu`), or the deployer's
+   `DELIVERY_RATES` seed, so naming it cannot lift Google's external-recipient limit for unrelated domains.
+   **[CONFIRM LIVE]** UC Merced's primary domain: Google counts aliases and alternate domains as external.
 
 ### Site superuser
 

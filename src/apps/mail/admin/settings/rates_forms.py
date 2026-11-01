@@ -9,12 +9,18 @@ and stored as posted, also while Smart rate is on.
 from decimal import Decimal
 
 from django import forms
+from django.utils.translation import gettext_lazy as _
 from unfold.widgets import UnfoldAdminTextInputWidget, UnfoldBooleanSwitchWidget
 
 from apps.core.models import DeliveryRatePolicy
 from apps.core.models.base.delivery_rates import CEILING_FIELDS, DECIMAL_FIELDS, display_number
+from apps.core.services.delivery_rates import channel_info
 
-MANUAL_RATE_NOTE = "Not used while Smart rate is on. Kept for when you turn Smart rate off."
+MANUAL_RATE_NOTE = _("Not used while Smart rate is on. Kept for when you turn Smart rate off.")
+CARRIED_OVER_NOTE = (
+    "Carried over from the old campaign send rate: it applies only until {provider} reports the account's limit. "
+    "Enter another value to make it your own limit, or clear it to use only what {provider} reports."
+)
 
 # The Advanced fields, in display order. Every channel has ``provider_limit``; the others only where the channel's
 # DELIVERY_RATES seed lists them (the model refuses them elsewhere).
@@ -115,6 +121,17 @@ class DeliveryRatePolicyForm(forms.ModelForm):
             if name in DECIMAL_FIELDS and not self.is_bound:
                 self.initial[name] = plain_number(getattr(policy, name))
         self._add_ceiling_help(spec)
+        if policy.provider_limit_carried_over:
+            field = self.fields["provider_limit"]
+            note = CARRIED_OVER_NOTE.format(provider=channel_info(policy.channel).provider)
+            field.help_text = f"{field.help_text} {note}"
+
+    def clean(self):
+        cleaned = super().clean()
+        if "provider_limit" in self.changed_data:
+            # A limit staff enter (or clear) is theirs: it no longer gives way to the one the provider reports.
+            self.instance.provider_limit_carried_over = False
+        return cleaned
 
     def _suffixes(self) -> dict:
         unit = self.instance.unit

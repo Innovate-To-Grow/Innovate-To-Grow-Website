@@ -5,13 +5,18 @@ implementation: the limiter, the status lines and the send estimates all call it
 
     bound B = min(operator provider_limit, documented ceiling, last-known reported limit)   # those that exist
               else the channel's fallback_rate ("limit unknown")
-    Smart on : rate = B × headroom × factor(now)          # the manual rate is never read
-    Smart off: rate = manual rate, capped at the provider limits (never at the fallback)
-    Both     : burst k = min(burst − 1, ⌊B⌋ − rate), so rate·W + k never exceeds the bound in a window W
+    Smart on : rate = min(B × headroom × factor(now), ⌊B⌋)          # the manual rate is never read
+    Smart off: rate = manual rate, capped at min(B, ⌊B⌋) when B is a provider limit (never at the fallback)
+    Both     : burst k = min(burst − 1, ⌊B⌋ − rate), so rate·W + k never exceeds ⌊B⌋ in a window W
     SMS      : the same for message parts per second (MPS); Smart scales both, the manual rate only the messages
 
+A window holds whole requests, so under a bound of at least one per window the pace never exceeds ⌊B⌋: a 14.5/sec
+limit allows 14 in any one second (pacing at 14.5 would let 15 into some second).
+
 "Last-known" is the most recent successful provider read for the identity, whatever its age: a failed refresh
-keeps it. Settings ceilings apply here too, so lowering one with ``DELIVERY_RATES_OVERRIDES`` caps stored rows.
+keeps it. Settings ceilings apply here too, so lowering one with ``DELIVERY_RATES_OVERRIDES`` caps stored rows. A
+provider limit migration 0036 carried over from the old campaign send rate (``provider_limit_carried_over``) counts
+only until the provider reports a limit for the identity.
 """
 
 import math
@@ -26,6 +31,8 @@ from .defaults import RateSpec
 class BoundSource(StrEnum):
     REPORTED = "reported"
     OPERATOR = "operator"
+    # The previous release's campaign send rate, standing in until the provider reports its limit.
+    CARRIED_OVER = "carried_over"
     DOCUMENTED = "documented"
     FALLBACK = "fallback"
 
@@ -82,12 +89,22 @@ def _smallest(candidates) -> Bound | None:
     return min(present, key=lambda bound: bound.value) if present else None
 
 
+def _operator_limit(policy, reported: float | None) -> tuple[float | None, BoundSource]:
+    """The policy's provider limit and its source. One carried over from the old campaign send rate stands in only
+    until the provider reports a limit, which then replaces it (it is not an operator cap)."""
+    value = _positive(policy.provider_limit)
+    if policy.provider_limit_carried_over:
+        return (value if reported is None else None), BoundSource.CARRIED_OVER
+    return value, BoundSource.OPERATOR
+
+
 def rate_bound(policy, state, spec: RateSpec) -> Bound:
+    reported = _positive(state.discovered_rate)
     hard = _smallest(
         (
-            (_positive(state.discovered_rate), BoundSource.REPORTED),
+            (reported, BoundSource.REPORTED),
             (_positive(spec.provider_limit), BoundSource.DOCUMENTED),
-            (_positive(policy.provider_limit), BoundSource.OPERATOR),
+            _operator_limit(policy, reported),
         )
     )
     return hard or Bound(float(spec.fallback_rate), BoundSource.FALLBACK)
@@ -106,6 +123,11 @@ def parts_bound(policy, state, spec: RateSpec) -> Bound | None:
     return hard or Bound(float(spec.parts_fallback_rate), BoundSource.FALLBACK)
 
 
+def pace_ceiling(bound: float) -> float:
+    """The fastest pace a bound allows: ⌊B⌋ per window, since a window holds whole requests (B itself below one)."""
+    return float(math.floor(bound)) if bound >= 1 else bound
+
+
 def _tolerance(spec: RateSpec, bound: float, rate: float) -> float:
     # ⌊B⌋: a window holds whole requests, so a fractional limit (14.5/sec) allows 14 in any one second.
     return max(0.0, min(spec.burst - 1, math.floor(bound) - rate))
@@ -114,7 +136,8 @@ def _tolerance(spec: RateSpec, bound: float, rate: float) -> float:
 def smart_rate(policy, state, spec: RateSpec, now: datetime) -> float:
     """What Smart rate runs at (or would run at, while it is off), in the channel's unit."""
     bound = rate_bound(policy, state, spec)
-    return bound.value * spec.headroom * current_factor(state, spec, now, limit_known=bound.known)
+    rate = bound.value * spec.headroom * current_factor(state, spec, now, limit_known=bound.known)
+    return min(rate, pace_ceiling(bound.value))
 
 
 def effective_rate(policy, state, spec: RateSpec, now: datetime) -> EffectiveRate:
@@ -124,18 +147,18 @@ def effective_rate(policy, state, spec: RateSpec, now: datetime) -> EffectiveRat
     capped = False
     if policy.smart_enabled:
         factor = current_factor(state, spec, now, limit_known=bound.known)
-        rate = bound.value * spec.headroom * factor
-        parts_rate = parts.value * spec.headroom * factor if parts else None
+        rate = min(bound.value * spec.headroom * factor, pace_ceiling(bound.value))
+        parts_rate = min(parts.value * spec.headroom * factor, pace_ceiling(parts.value)) if parts else None
         mode = SMART
     else:
         factor = None
         rate = float(policy.manual_rate)
         # clean() keeps the manual rate within the operator's and the documented limit, so this only bites when
-        # the provider reports less, or a deployer lowered a ceiling below a stored row. The fallback is a guess
-        # and never caps an operator's choice.
-        if bound.known and rate > bound.value:
-            rate, capped = bound.value, True
-        parts_rate = parts.value if parts else None
+        # the provider reports less, a deployer lowered a ceiling below a stored row, or the limit is fractional
+        # (whole requests per window). The fallback is a guess and never caps an operator's choice.
+        if bound.known and rate > pace_ceiling(bound.value):
+            rate, capped = pace_ceiling(bound.value), True
+        parts_rate = pace_ceiling(parts.value) if parts else None
         mode = MANUAL
     tolerance = _tolerance(spec, bound.value, rate)
     if parts and parts_rate:

@@ -11,6 +11,7 @@ from django.test import TestCase, override_settings
 
 from apps.core.models import DeliveryRatePolicy
 from apps.core.models.base.delivery_rates import CHANNEL_UNITS, MANUAL_RATE_HELP, SMART_RATE_HELP, display_number
+from apps.core.tests.gmail_api_helpers import make_config
 
 Channel = DeliveryRatePolicy.Channel
 
@@ -254,12 +255,37 @@ class PolicyCeilingTests(TestCase):
                 self.assert_field_error(policy, field, "has no such limit; leave it empty.")
 
     def test_internal_domain_is_normalized_and_validated(self):
+        make_config(subjects=("i2g@g.ucmerced.edu",), active=False)
         gmail = DeliveryRatePolicy.for_channel(Channel.GMAIL_API_SEND)
         gmail.internal_domain = "  UCMerced.EDU "
         gmail.full_clean()
         self.assertEqual(gmail.internal_domain, "ucmerced.edu")
         gmail.internal_domain = "not a domain"
         self.assert_field_error(gmail, "internal_domain", "domain")
+
+    def test_only_an_allow_listed_account_domain_or_its_parent_can_be_internal(self):
+        # Recipients in the internal domain skip Google's 2,000 external recipients a day, so naming any other
+        # domain (gmail.com, a bare TLD) would raise that documented limit.
+        make_config(subjects=("i2g@g.ucmerced.edu",), active=False)
+        gmail = DeliveryRatePolicy.for_channel(Channel.GMAIL_API_SEND)
+        for allowed in ("g.ucmerced.edu", "ucmerced.edu", ""):
+            with self.subTest(allowed=allowed):
+                gmail.internal_domain = allowed
+                gmail.full_clean()
+        for refused in ("gmail.com", "merced.edu", "x.g.ucmerced.edu"):
+            with self.subTest(refused=refused):
+                gmail.internal_domain = refused
+                self.assert_field_error(gmail, "internal_domain", "g.ucmerced.edu, ucmerced.edu")
+        # A bare top-level domain is never a parent domain the list offers (and is no valid domain name either).
+        gmail.internal_domain = "edu"
+        self.assert_field_error(gmail, "internal_domain", "")
+
+    def test_without_an_allow_list_only_the_settings_seed_can_be_internal(self):
+        gmail = DeliveryRatePolicy.for_channel(Channel.GMAIL_API_SEND)
+        gmail.internal_domain = "ucmerced.edu"
+        self.assert_field_error(gmail, "internal_domain", "No account is on a Gmail API allow-list yet")
+        with override_settings(DELIVERY_RATES=rates_with(Channel.GMAIL_API_SEND, internal_domain="ucmerced.edu")):
+            gmail.full_clean()
 
     def test_shares_are_bounded(self):
         gmail = DeliveryRatePolicy.for_channel(Channel.GMAIL_API_SEND)

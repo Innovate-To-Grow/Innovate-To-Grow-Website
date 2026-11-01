@@ -94,7 +94,29 @@ class WindowPropertyTests(SimpleTestCase):
             with self.subTest(case=case, channel=channel, bound=bound, burst=burst, smart=smart, manual=manual):
                 busiest = busiest_window(run(rate, count=300, gaps=idle), window)
                 self.assertLessEqual(busiest, math.floor(rate.rate + burst + 1e-9))
-                self.assertLessEqual(busiest, max(math.floor(bound), math.ceil(rate.rate - 1e-9)))
+                self.assertLessEqual(busiest, math.floor(bound))
+
+    def test_fractional_bounds_with_rates_between_their_whole_part_and_the_bound_never_exceed_the_whole_part(self):
+        # The case a 400-trial review simulation found: B fractional, the rate in (⌊B⌋, B] (a manual rate at or
+        # just below the limit, or Smart rate at full speed with headroom 1). Pacing at the rate itself let ⌊B⌋ + 1
+        # requests into some window.
+        rng = random.Random(1_745)
+        for case in range(200):
+            channel = rng.choice([Channel.GRAPH_SEND, Channel.SES_SEND, Channel.GMAIL_API_SEND, Channel.SMTP_SEND])
+            bound = rng.choice([1.5, 2.7, 7.25, 14.2, 14.5, 30.9, 59.99])
+            burst = rng.randint(1, 5)
+            spec = spec_for(channel, provider_limit=bound, burst=burst, headroom=1.0)
+            smart = rng.random() < 0.5
+            manual = Decimal(str(round(rng.uniform(math.floor(bound) + 0.001, bound), 3)))
+            policy = policy_for(channel, smart_enabled=smart, manual_rate=manual, provider_limit=None)
+            state = smart_state(channel, factor=1.0)
+            rate = effective_rate(policy, state, spec, START)
+            window = spec.window
+            idle = lambda index, rng=rng, window=window: rng.choice([0, 0, 0, window * rng.random() * 2])  # noqa: E731
+            cooldown = START + timedelta(seconds=window * rng.random()) if rng.random() < 0.3 else None
+            with self.subTest(case=case, channel=channel, bound=bound, burst=burst, smart=smart, manual=manual):
+                sent = run(rate, count=300, gaps=idle, cooldown_until=cooldown, bulk_share=rng.choice([None, 0.8]))
+                self.assertLessEqual(busiest_window(sent, window), math.floor(bound))
 
 
 class LanesAndCooldownTests(SimpleTestCase):

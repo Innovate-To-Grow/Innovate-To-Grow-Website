@@ -4,15 +4,22 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
+    """Retire the two old send rates, which migration 0036 carried over to the delivery-rate policies.
+
+    Both columns stay, no longer editable and no longer read, for one release: the production migration runs before
+    the service is replaced, and an image rollback never reverses DDL, so a task of the previous release must still
+    find them. The follow-up release removes them (and ``DeliveryRateLimit``).
+    """
 
     dependencies = [
         ('core', '0036_delivery_rate_control'),
     ]
 
     operations = [
-        migrations.RemoveField(
+        migrations.AlterField(
             model_name='microsoftgraphproviderconfig',
             name='messages_per_minute',
+            field=models.PositiveSmallIntegerField(default=24, editable=False, help_text='No longer used: rates are set under Mail → Delivery Rates.', verbose_name='Messages per Minute'),
         ),
         migrations.AlterField(
             model_name='emailserviceconfig',

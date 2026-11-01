@@ -68,6 +68,16 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
             "the mailbox scope below."
         ),
     )
+    # Replaced by the graph_send policy (Mail → Delivery Rates), which migration 0036 seeded from it. Kept, not
+    # editable, for one release so a task of the previous release (a rolling deploy, an image rollback) still finds
+    # the column; the follow-up release drops it with EmailServiceConfig.max_send_rate. 24 is that release's own
+    # default, so a row created now still reads as valid there.
+    messages_per_minute = models.PositiveSmallIntegerField(
+        default=24,
+        editable=False,
+        verbose_name="Messages per Minute",
+        help_text="No longer used: rates are set under Mail → Delivery Rates.",
+    )
     access_check_deny_mailbox = models.CharField(
         max_length=254,
         blank=True,

@@ -1,5 +1,6 @@
 """Migrations 0036 and 0037: 0036 follows PR #643's 0035 and seeds one policy row per channel (Smart rate on
-everywhere) while keeping the rates people set before; 0037 retires the old rate fields. Both reverse cleanly."""
+everywhere) while keeping the rates people set before; 0037 hides the old rate fields but keeps their columns for one
+release. Both reverse cleanly."""
 
 import copy
 import importlib
@@ -13,7 +14,8 @@ from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.loader import MigrationLoader
 from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 
-from apps.core.models import DeliveryRatePolicy, EmailServiceConfig
+from apps.core.models import DeliveryRatePolicy, EmailServiceConfig, MicrosoftGraphProviderConfig
+from apps.core.tests.graph_helpers import create_graph_config
 
 GRAPH_CERTIFICATES = ("core", "0035_graph_certificate_and_mailbox_scope")
 RATE_CONTROL = ("core", "0036_delivery_rate_control")
@@ -69,6 +71,7 @@ class RateControlSeedTests(TestCase):
                 self.assertEqual(policy.manual_rate, DeliveryRatePolicy.seed_values(channel)["manual_rate"])
                 policy.full_clean()
         self.assertEqual((policies["ses_send"].manual_rate, policies["ses_send"].provider_limit), (Decimal(10), None))
+        self.assertFalse(policies["ses_send"].provider_limit_carried_over)
         self.assertEqual(policies["smtp_send"].manual_rate, Decimal(30))
         self.assertEqual(policies["graph_send"].manual_rate, Decimal(24))
         self.assertEqual(policies["gmail_api_send"].transactional_reserve, Decimal("0.250"))
@@ -80,6 +83,9 @@ class RateControlSeedTests(TestCase):
         self.assertEqual(
             (policies["ses_send"].manual_rate, policies["ses_send"].provider_limit), (Decimal(7), Decimal(7))
         )
+        # Flagged as carried over: it stands in only until GetAccount reports the account's limit.
+        self.assertTrue(policies["ses_send"].provider_limit_carried_over)
+        self.assertFalse(any(policies[name].provider_limit_carried_over for name in policies if name != "ses_send"))
         self.assertTrue(policies["ses_send"].smart_enabled)
         self.assertEqual(policies["smtp_send"].manual_rate, Decimal(30))
         policies["ses_send"].full_clean()
@@ -202,8 +208,9 @@ class RateControlMigrationRoundTripTests(TransactionTestCase):
 
 
 class RetireOldSendRatesMigrationTests(TransactionTestCase):
-    """Migration 0037 drops the Graph messages-per-minute column (its value lives on as the Graph manual rate) and
-    keeps EmailServiceConfig.max_send_rate, no longer editable, for one release."""
+    """Migration 0037 hides the Graph messages-per-minute and the campaign send rate fields (their values live on in
+    the delivery-rate policies) but keeps both columns for one release: production migrates before it replaces the
+    service, and an image rollback never reverses DDL, so a task of the previous release must still read them."""
 
     def tearDown(self):
         executor = MigrationExecutor(connection)
@@ -215,7 +222,7 @@ class RetireOldSendRatesMigrationTests(TransactionTestCase):
             table = "core_microsoftgraphproviderconfig"
             return {column.name for column in connection.introspection.get_table_description(cursor, table)}
 
-    def test_forward_drops_the_graph_rate_column_and_reverse_restores_its_default(self):
+    def test_forward_hides_both_fields_but_keeps_their_columns_and_reverses(self):
         executor = MigrationExecutor(connection)
         executor.migrate([RATE_CONTROL])
         self.assertIn("messages_per_minute", self.graph_columns())
@@ -223,10 +230,24 @@ class RetireOldSendRatesMigrationTests(TransactionTestCase):
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
         executor.migrate([RETIRED_RATES])
-        self.assertNotIn("messages_per_minute", self.graph_columns())
-        self.assertFalse(EmailServiceConfig._meta.get_field("max_send_rate").editable)
+        self.assertIn("messages_per_minute", self.graph_columns())
+        retired = executor.loader.project_state([RETIRED_RATES]).apps
+        for model, name in (
+            ("MicrosoftGraphProviderConfig", "messages_per_minute"),
+            ("EmailServiceConfig", "max_send_rate"),
+        ):
+            with self.subTest(field=name):
+                self.assertFalse(retired.get_model("core", model)._meta.get_field(name).editable)
 
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
         executor.migrate([RATE_CONTROL])
         self.assertIn("messages_per_minute", self.graph_columns())
+
+    def test_a_row_created_now_holds_a_rate_the_previous_release_accepts(self):
+        config = create_graph_config(name="Mail", certificate=False)
+
+        stored = MicrosoftGraphProviderConfig.objects.values_list("messages_per_minute", flat=True).get(pk=config.pk)
+        # The previous release validates 1-30 and defaulted to 24.
+        self.assertEqual(stored, 24)
+        self.assertFalse(MicrosoftGraphProviderConfig._meta.get_field("messages_per_minute").editable)

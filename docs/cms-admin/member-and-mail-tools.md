@@ -266,7 +266,10 @@ Notification Delivery, the Delivery Dashboard and the campaign send confirmation
 
 The manual rate is the total for the channel, sign-in codes and tickets included, and campaigns get at most 80 % of
 it; the old campaign send rate paced only queued mail. The SES card's **Provider rate limit** starts at that old
-campaign send rate: once the card shows the limit AWS reports, clear the field so Smart rate can use AWS's figure.
+campaign send rate, marked as carried over: it applies only until AWS reports the account's limit, which then
+replaces it (enter another value to make it your own limit). **Internal domain** (Gmail API, Advanced) accepts only
+the domain of an account on the Gmail API allow-list or a parent domain of it, since recipients there do not count
+against Google's external limit.
 How the rate, the daily limits and the stops are worked out, every seed with its source, and what to do when a
 provider stops sending: [Delivery rates](../integrations/delivery-rates.md).
 

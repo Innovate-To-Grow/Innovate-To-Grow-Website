@@ -28,6 +28,10 @@ TAKEOVER_REFUSED = (
     "one only when email could switch to it: {problem}"
 )
 RUN_THE_CHECK = "run the access check (Run access check on this page, or manage.py verify_gmail_access)"
+# The ceilings themselves are GMAIL_API settings (a deployment may override them); the admin form names the values.
+RECIPIENTS_HELP = "Recipients one message may have (To and Cc)."
+MESSAGE_BYTES_HELP = "Size of the encoded message."
+CEILING_HELP = "At most Google's documented limit; it can be lowered here, not raised."
 
 
 def default_max_recipients() -> int:
@@ -90,12 +94,12 @@ class GmailApiProviderConfig(ProjectControlModel):
     max_recipients_per_message = models.PositiveIntegerField(
         default=default_max_recipients,
         verbose_name="Max Recipients per Message",
-        help_text="Google allows 500. It can be lowered here, not raised.",
+        help_text=f"{RECIPIENTS_HELP} {CEILING_HELP}",
     )
     max_message_bytes = models.PositiveIntegerField(
         default=default_max_message_bytes,
         verbose_name="Max Message Size (bytes)",
-        help_text="Of the encoded message. Google allows 25 MB before encoding. It can be lowered here, not raised.",
+        help_text=f"{MESSAGE_BYTES_HELP} {CEILING_HELP}",
     )
     credential_mail = models.CharField(
         max_length=8,

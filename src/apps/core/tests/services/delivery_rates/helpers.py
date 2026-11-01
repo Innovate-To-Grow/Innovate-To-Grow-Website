@@ -50,7 +50,7 @@ def spec_for(channel, **overrides):
 def policy_for(channel, **values):
     """An in-memory policy row with the channel's seeds (pure tests never save it)."""
     seeds = DeliveryRatePolicy.seed_values(channel)
-    fields = {"provider_limit": None, "parts_limit": None, **seeds, **values}
+    fields = {"provider_limit": None, "parts_limit": None, "provider_limit_carried_over": False, **seeds, **values}
     for name in ("manual_rate", "provider_limit", "parts_limit"):
         if fields[name] is not None:
             fields[name] = Decimal(str(fields[name]))

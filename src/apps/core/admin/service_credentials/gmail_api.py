@@ -6,6 +6,7 @@ installed and removed on its own pages (``GmailApiKeyViewsMixin``), never throug
 """
 
 from django import forms
+from django.conf import settings
 from django.contrib import admin
 from django.contrib.admin.utils import unquote
 from django.db.models.constants import LOOKUP_SEP
@@ -15,7 +16,7 @@ from unfold.admin import TabularInline
 from unfold.decorators import display
 
 from apps.core.models import EmailServiceConfig, GmailApiProviderConfig, GmailApiSubject
-from apps.core.models.base.service_credentials.gmail_api import normalize_subject
+from apps.core.models.base.service_credentials.gmail_api import MESSAGE_BYTES_HELP, RECIPIENTS_HELP, normalize_subject
 
 from ..common.base import BaseModelAdmin
 from .gmail_api_panel import key_panel
@@ -32,6 +33,11 @@ KEY_FACTS = (
 # Changelist filters: only these. Anything else (the store pointer, the key facts, the allow-list) could be probed
 # one guess at a time through the result count.
 ALLOWED_LOOKUPS = frozenset({"is_active", "credential_mail"})
+# The config's limits whose ceiling is a GMAIL_API setting: (help text, unit).
+CEILING_FIELDS = {
+    "max_recipients_per_message": (RECIPIENTS_HELP, "recipients"),
+    "max_message_bytes": (MESSAGE_BYTES_HELP, "bytes"),
+}
 ALLOW_LIST_HELP = (
     "Only these Google accounts may be impersonated, and mail is sent only From one of them. Google cannot restrict "
     "domain-wide delegation per user (\"OAuth scopes don't restrict which users the service account can "
@@ -111,6 +117,17 @@ class GmailApiProviderConfigForm(forms.ModelForm):
     class Meta:
         model = GmailApiProviderConfig
         fields = ("name", "is_active", "max_recipients_per_message", "max_message_bytes", "credential_mail")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # The ceilings are GMAIL_API settings (overridable per deployment): name the ones in force.
+        for name, (lead, unit) in CEILING_FIELDS.items():
+            ceiling = settings.GMAIL_API[name]
+            self.fields[
+                name
+            ].help_text = (
+                f"{lead} At most {ceiling:,} {unit} (Google's documented limit); it can be lowered here, not raised."
+            )
 
 
 @admin.register(GmailApiProviderConfig)

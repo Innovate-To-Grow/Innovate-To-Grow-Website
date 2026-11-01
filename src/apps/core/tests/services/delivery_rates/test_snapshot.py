@@ -69,8 +69,45 @@ class StatusLineTests(TestCase):
 
         status = lines(Channel.SES_SEND)
 
-        self.assertEqual(status[0], "Now: 14 recipients/sec · Manual · capped to the 14 recipients/sec AWS reports")
+        self.assertEqual(
+            status[0],
+            "Now: 14 recipients/sec · Manual · capped by the 14 recipients/sec provider limit (reported by AWS 3 min ago)",
+        )
         self.assertEqual(status[1], "Provider limit: 14 recipients/sec (reported by AWS 3 min ago)")
+
+    def test_a_carried_over_ses_limit_is_labelled_until_aws_reports_and_then_replaced(self):
+        set_policy(
+            Channel.SES_SEND, provider_limit=Decimal(10), manual_rate=Decimal(10), provider_limit_carried_over=True
+        )
+        state(Channel.SES_SEND, SES)
+
+        before = lines(Channel.SES_SEND)
+        self.assertEqual(
+            before[1],
+            "Provider limit: 10 recipients/sec (the old campaign send rate, until AWS reports the account's limit)",
+        )
+        self.assertTrue(before[0].startswith("Now: 9 recipients/sec · Smart · 90% of the 10 recipients/sec limit"))
+
+        DeliveryRateState.objects.filter(channel=Channel.SES_SEND).update(discovered_rate=14.0, discovered_at=START)
+        status = rates.channel_status(Channel.SES_SEND, now=START).identities[0]
+
+        self.assertEqual(
+            status.lines[0],
+            "Now: 12.6 recipients/sec · Smart · 90% of the 14 recipients/sec limit (reported by AWS 0 s ago)",
+        )
+        self.assertEqual(
+            status.warnings,
+            (
+                "The provider limit carried over from the old campaign send rate (10 recipients/sec) no longer "
+                "applies: AWS reports 14 recipients/sec. Clear it, or enter your own limit.",
+            ),
+        )
+
+    def test_an_operator_limit_below_the_reported_one_still_applies(self):
+        set_policy(Channel.SES_SEND, provider_limit=Decimal(10), manual_rate=Decimal(10))
+        state(Channel.SES_SEND, SES, discovered_rate=14.0, discovered_at=START)
+
+        self.assertEqual(lines(Channel.SES_SEND)[1], "Provider limit: 10 recipients/sec (set under Advanced)")
 
     def test_a_cooldown_and_a_breaker_replace_the_rate(self):
         state(Channel.GRAPH_SEND, MAILBOX, cooldown_until=START + timedelta(seconds=20), cooldown_reason="throttled")

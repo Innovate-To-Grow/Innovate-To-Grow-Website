@@ -3,6 +3,7 @@ key anywhere, and the changelist lookup guard."""
 
 import json
 
+from django.conf import settings
 from django.contrib.admin.models import LogEntry
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -94,6 +95,17 @@ class SuperuserOnlyTests(GmailAdminTestCase):
         for url in (reverse(f"{PREFIX}_changelist"), self.url("change"), self.url("install_key")):
             with self.subTest(url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_the_change_form_names_the_ceilings_in_force(self):
+        self.client.force_login(self.superuser)
+        overridden = {**settings.GMAIL_API, "max_recipients_per_message": 400, "max_message_bytes": 20_000_000}
+
+        with override_settings(GMAIL_API=overridden):
+            content = self.client.get(self.url("change")).content.decode()
+
+        self.assertIn("At most 400 recipients (Google", content)
+        self.assertIn("At most 20,000,000 bytes (Google", content)
+        self.assertNotIn("Google allows 500", content)
 
     def test_the_superuser_adds_an_account_through_the_inline(self):
         self.client.force_login(self.superuser)

@@ -5,7 +5,8 @@
 2. ``Provider limit: 30 messages/min (documented)``;
 3. one line per budget: ``Last 24 h: 1,240 / 10,000 recipients (campaigns stop at 9,000)``.
 
-Warnings follow: a failed limit read, or an Advanced limit above what the provider reports.
+Warnings follow: a failed limit read, an Advanced limit above what the provider reports, or a carried-over limit the
+provider's report has replaced.
 """
 
 from datetime import UTC, datetime, timedelta
@@ -75,6 +76,8 @@ def _source(rate: EffectiveRate, provider: str, state, now: datetime) -> str:
         return f"reported by {provider} {age(now - state.discovered_at)} ago" if state.discovered_at else "reported"
     if source == BoundSource.OPERATOR:
         return "set under Advanced"
+    if source == BoundSource.CARRIED_OVER:
+        return f"the old campaign send rate, until {provider} reports the account's limit"
     if source == BoundSource.DOCUMENTED:
         return "documented"
     return "unknown: Smart rate starts from the app default; enter the real limit under Advanced"
@@ -101,7 +104,8 @@ def now_line(*, rate: EffectiveRate, smart_rate: float, spec, state, provider: s
     if rate.smart:
         line = f"{head} · Smart · {_smart_detail(rate, spec, state, provider, unit, now)}"
     elif rate.manual_capped:
-        line = f"{head} · Manual · capped to the {number(rate.bound.value)} {unit} {provider} reports"
+        source = _source(rate, provider, state, now)
+        line = f"{head} · Manual · capped by the {number(rate.bound.value)} {unit} provider limit ({source})"
     else:
         line = f"{head} · Manual (Smart rate would use {number(smart_rate)})"
     if state.breaker_state != CLOSED:
@@ -142,7 +146,12 @@ def warnings(*, policy, state, rate: EffectiveRate, provider: str, unit: str, no
         else:
             found.append(f"{provider} limits not read yet ({state.discovery_error})")
     reported, operator = state.discovered_rate, policy.provider_limit
-    if reported and operator is not None and float(operator) > reported:
+    if reported and operator is not None and policy.provider_limit_carried_over:
+        found.append(
+            f"The provider limit carried over from the old campaign send rate ({number(operator)} {unit}) no longer "
+            f"applies: {provider} reports {number(reported)} {unit}. Clear it, or enter your own limit."
+        )
+    elif reported and operator is not None and float(operator) > reported:
         found.append(
             f"The provider limit set under Advanced ({number(operator)} {unit}) is above the {number(reported)} "
             f"{unit} {provider} reports; {number(reported)} applies."

@@ -52,16 +52,21 @@ lines, the send estimates and the inline batch limit all call it.
 bound B   = the smallest of: the limit the provider last reported for this identity,
             the documented limit (DELIVERY_RATES), and the operator's "Provider rate limit" (Advanced)
             else the channel's fallback_rate, shown as "limit unknown"
-Smart on  : rate = B × headroom × factor(now)              the manual rate is never read
-Smart off : rate = manual rate, capped at B only when B is a known limit (never at the fallback)
+Smart on  : rate = min(B × headroom × factor(now), ⌊B⌋)    the manual rate is never read
+Smart off : rate = manual rate, capped at min(B, ⌊B⌋) only when B is a known limit (never at the fallback)
 Both      : burst k = min(burst − 1, ⌊B⌋ − rate) in the channel's unit, so no window of one unit
-            (a second or a minute) holds more than B requests
+            (a second or a minute) holds more than ⌊B⌋ requests
             cooldowns, breakers and daily budgets apply in both modes
             campaigns (bulk lane) use at most bulk_share × rate
 SMS       : one message every max(1 / message rate, parts / parts rate);
             Smart scales both rates, the manual rate sets only the message rate
 ```
 
+- **Whole requests.** A window holds whole requests, so under a fractional bound of at least one per window the pace
+  is at most ⌊B⌋: a 14.5 recipients/sec limit sends at most 14 in any second, with Smart rate at full speed or a
+  manual rate of 14.5 alike (the status line then says the manual rate is capped).
+- **Carried-over SES limit.** A provider limit migration 0036 copied from the old campaign send rate counts only until
+  AWS reports a limit for the account; from then on the reported one replaces it (below).
 - **Last-known.** The limit a provider reported is used whatever its age. A failed read keeps it and adds a warning
   to the status line ("AWS limits last read 26 h ago (AccessDenied: ses:GetAccount); using the last known 14
   recipients/sec"). The fallback applies only while the provider has never answered for that identity.
@@ -79,7 +84,7 @@ SMS       : one message every max(1 / message rate, parts / parts rate);
 
 | Event | Effect |
 |-------|--------|
-| The provider throttles (`429`, `ThrottlingException`, `421 4.7.0`, …) | Cooldown for the whole group: the provider's `Retry-After` (seconds or an HTTP date, capped at `controller.retry_after_max_seconds`, 3,600 s), else a backoff that doubles from the channel's `backoff_initial_seconds` to `backoff_max_seconds` (±20 % jitter). No burst follows a cooldown. With Smart rate on, the factor is also halved (`decrease_factor` 0.5), once per episode, never below `floor` 0.25 |
+| The provider throttles (`429`, `ThrottlingException`, `421 4.7.0`, …) | Cooldown for the whole group: the provider's `Retry-After` (seconds or an HTTP date, capped at `controller.retry_after_max_seconds`, 3,600 s; Microsoft Graph also at `GRAPH_MAX_RETRY_AFTER_SECONDS`, the smaller applying), else a backoff that doubles from the channel's `backoff_initial_seconds` to `backoff_max_seconds` (±20 % jitter). No burst follows a cooldown. With Smart rate on, the factor is also halved (`decrease_factor` 0.5), once per episode, never below `floor` 0.25 |
 | Pushback on a non-throttle answer (Graph `ApplicationThrottled`) | The same pause; the message counts as possibly sent |
 | An unclear outcome (5xx, lost response) | No speed-up credit for this interval; the usage stays counted |
 | Success | Throttle count reset; after every `recovery_interval_seconds` (600 s for Graph, SMTP, IMAP and the Gmail API, 60 s for SES and SMS) the factor gains `recovery_step` 0.10, up to 1 |
@@ -115,11 +120,19 @@ manual rate and provider limit, and, while SMTP is active, the SMTP manual rate 
 messages per minute becomes the Graph manual rate (at most 30). A value above the documented limit is capped, and a
 value too large for the column keeps the default.
 
-**The carried-over SES provider limit stays an operator limit.** It gives Smart rate a bound before AWS can be read,
-but it is stored as the Advanced **Provider rate limit**, and B is the smaller of it and what AWS reports. Once
-`ses:GetAccount` works and the card shows the limit AWS reports, clear that field (blank uses the reported limit), or
-SES stays at the old campaign send rate even if AWS allows more. The card labels the limit in use "set under
-Advanced" while the field decides it.
+**The carried-over SES provider limit gives way to AWS's.** It is stored as the Advanced **Provider rate limit** and
+flagged as carried over (`provider_limit_carried_over`), so Smart rate has a bound before AWS can be read: the card
+labels it "the old campaign send rate, until AWS reports the account's limit". As soon as `ses:GetAccount` reports a
+limit for the account, that limit replaces it (higher or lower), and the card warns that the carried-over value no
+longer applies. Entering another value, or clearing the field, makes it an ordinary operator limit; an operator limit
+always applies, also below what AWS reports.
+
+**SMTP campaigns are slower with Smart rate on.** SMTP servers report no limit and none is documented in general, so
+Smart rate bounds SMTP by its 60 messages/min fallback and starts at 27 (campaigns 21.6), climbing to 54 (campaigns
+43.2). The old campaign send rate (default 10 emails/sec, 600 a minute) is carried over only as the SMTP **manual**
+rate, which Smart rate never reads. An installation that sends through SMTP and needs its old speed either enters the
+server's real limit as the SMTP **Provider rate limit** under Advanced (Smart rate then uses it), or turns Smart rate
+off so the carried-over manual rate applies. Production sends through SES or Microsoft Graph [CONFIRM LIVE].
 
 **[CONFIRM LIVE]** Seeds that rest on assumptions about the real accounts:
 
@@ -139,9 +152,10 @@ and campaigns only; sign-in codes and other mail sent from a request were not pa
 **total for the channel**: login codes, tickets, invitations, replies and test mail count against it, and campaigns
 get at most `lanes.bulk_share` (80 %) of it. With the carried-over value, an SES campaign therefore runs 20 % slower
 in manual mode than before, and at 72 % of its old speed with Smart rate on (0.9 headroom × 0.8 of the carried-over
-limit). The campaign confirmation page shows the resulting campaign rate and expected duration. To get the old speed
-back, let Smart rate use a higher limit AWS reports (clear the carried-over provider limit, above), or raise the
-provider limit and the manual rate together, never above what the account allows.
+limit) until AWS reports the account's limit, which then replaces the carried-over one. The campaign confirmation page
+shows the resulting campaign rate and expected duration. To get the old speed back before AWS can be read, raise the
+provider limit and the manual rate together, never above what the account allows. SMTP campaigns slow down more (see
+above).
 
 ## Budgets, the transactional reserve and lanes
 
@@ -286,24 +300,23 @@ before it starts. See [Environments](../deployment/environments.md#delivery-rate
 
 ## Release notes
 
-- **Kept for one release.** `EmailServiceConfig.max_send_rate` stays as a hidden column (only migration 0036 reads
-  it, for the carry-over) and the `DeliveryRateLimit` table stays. A follow-up release removes both. Migration
-  `core.0037_retire_old_send_rates` already drops `MicrosoftGraphProviderConfig.messages_per_minute`.
+- **Kept for one release.** `EmailServiceConfig.max_send_rate` and `MicrosoftGraphProviderConfig.messages_per_minute`
+  stay as hidden columns (migration `core.0037_retire_old_send_rates` makes both non-editable; only migration 0036
+  reads them, for the carry-over) and the `DeliveryRateLimit` table stays. A follow-up release removes all three.
 - **Deploy outside campaign sends.** During a rolling deploy the old tasks pace with `DeliveryRateLimit` and the new
   ones with this limiter, independently, so their combined traffic can reach twice the rate. An in-process campaign
   an old task is sending also keeps its old pacing until it ends.
-- **Ship with PR #643.** If the Graph provider (PR #643) were in production on its own, 0037 would remove a column
-  its tasks still read, and Graph pages and sends on those tasks would fail until they are replaced. Deploying both
-  together avoids it.
+- **Backward compatible with PR #643.** Production migrates before it replaces the service, so tasks of the running
+  release (PR #643's Graph provider among them) still query the old columns while 0036–0038 apply; no migration here
+  drops or renames a column they read.
 - **Enable the background worker.** `BACKGROUND_JOBS_ENABLED` defaults to `false` (`deploy-backend.yml`). Without
   it, deferral, priorities and lane gating do not apply, campaigns run in a web process (and pause on long holds),
   and old usage buckets are never purged (at most 288 rows a day per identity in use). Set it to `true` in
   `itg/backend/deploy-config` before relying on Smart rate for campaigns. **[CONFIRM LIVE]** the production value.
-- **Grant the IAM reads** listed above before or with the deploy, or Smart SES runs on the seeded limit; then clear
-  the carried-over SES provider limit on the card so the reported one applies.
+- **Grant the IAM reads** listed above before or with the deploy, or Smart SES runs on the carried-over limit until
+  they are granted (the reported limit replaces it on the first successful read).
 - **Image rollback.** ECS rollback never reverses DDL. An image from before this change does not know the `gmail`
-  provider: switch email to SES first. It also reads `messages_per_minute`, so reverse 0037 (it re-adds the column
-  with its old default) before running such an image.
+  provider: switch email to SES first. Its other columns are all still there (0037 only hides the old rate fields).
 
 ## Code map
 

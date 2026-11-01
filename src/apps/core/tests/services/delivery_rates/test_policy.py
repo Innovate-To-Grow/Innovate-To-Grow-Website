@@ -143,6 +143,36 @@ class BoundTests(SimpleTestCase):
         self.assertEqual((bound.value, bound.source), (1.0, BoundSource.FALLBACK))
         self.assertFalse(bound.known)
 
+    def test_a_carried_over_limit_stands_in_only_until_the_provider_reports_one(self):
+        policy = policy_for(Channel.SES_SEND, provider_limit=10, provider_limit_carried_over=True)
+        spec = spec_for(Channel.SES_SEND)
+        cases = ((None, 10, BoundSource.CARRIED_OVER), (14.0, 14, BoundSource.REPORTED), (5.0, 5, BoundSource.REPORTED))
+        for reported, value, source in cases:
+            with self.subTest(reported=reported):
+                bound = rate_bound(policy, state_for(Channel.SES_SEND, discovered_rate=reported), spec)
+                self.assertEqual((bound.value, bound.source), (value, source))
+                self.assertTrue(bound.known)
+
+    def test_an_operator_limit_still_caps_a_higher_report(self):
+        bound = rate_bound(
+            policy_for(Channel.SES_SEND, provider_limit=10),
+            state_for(Channel.SES_SEND, discovered_rate=14.0),
+            spec_for(Channel.SES_SEND),
+        )
+
+        self.assertEqual((bound.value, bound.source), (10, BoundSource.OPERATOR))
+
+    def test_smart_ses_runs_at_the_reported_limit_once_it_replaces_the_carried_over_one(self):
+        policy = policy_for(Channel.SES_SEND, provider_limit=10, manual_rate=10, provider_limit_carried_over=True)
+        spec = spec_for(Channel.SES_SEND)
+        smart = {"mode": SMART, "factor_base": 1.0, "factor_changed_at": START}
+
+        before = effective_rate(policy, state_for(Channel.SES_SEND, **smart), spec, START)
+        after = effective_rate(policy, state_for(Channel.SES_SEND, discovered_rate=14.0, **smart), spec, START)
+
+        self.assertAlmostEqual(before.rate, 9.0)
+        self.assertAlmostEqual(after.rate, 14 * 0.9)
+
     def test_a_zero_or_missing_report_is_ignored(self):
         state = state_for(Channel.SES_SEND, discovered_rate=0.0)
 
@@ -174,6 +204,51 @@ class ToleranceTests(SimpleTestCase):
         rate = effective_rate(policy, state_for(Channel.SES_SEND), spec_for(Channel.SES_SEND), START)
 
         self.assertAlmostEqual(rate.tolerance, 0.8)
+
+
+class WholeRequestCeilingTests(SimpleTestCase):
+    """A window holds whole requests: under a fractional bound B ≥ 1 the pace never exceeds ⌊B⌋."""
+
+    def test_a_manual_rate_at_a_fractional_limit_paces_at_its_whole_part(self):
+        for manual in (14.5, 14.2):
+            with self.subTest(manual=manual):
+                policy = policy_for(Channel.SES_SEND, smart_enabled=False, manual_rate=manual, provider_limit=14.5)
+                rate = effective_rate(policy, state_for(Channel.SES_SEND), spec_for(Channel.SES_SEND), START)
+                self.assertEqual((rate.rate, rate.tolerance), (14.0, 0.0))
+                self.assertTrue(rate.manual_capped)
+
+    def test_smart_rate_at_full_speed_paces_at_the_whole_part(self):
+        spec = spec_for(Channel.SES_SEND, provider_limit=14.5, headroom=1.0)
+        state = state_for(Channel.SES_SEND, mode=SMART, factor_base=1.0, factor_changed_at=START)
+
+        rate = effective_rate(policy_for(Channel.SES_SEND), state, spec, START)
+
+        self.assertEqual(rate.rate, 14.0)
+        self.assertEqual(smart_rate(policy_for(Channel.SES_SEND, smart_enabled=False), state, spec, START), 14.0)
+
+    def test_a_bound_below_one_per_window_is_kept_as_is(self):
+        policy = policy_for(Channel.SES_SEND, smart_enabled=False, manual_rate=0.5, provider_limit=0.5)
+
+        rate = effective_rate(policy, state_for(Channel.SES_SEND), spec_for(Channel.SES_SEND), START)
+
+        self.assertEqual(rate.rate, 0.5)
+        self.assertFalse(rate.manual_capped)
+
+    def test_the_fallback_still_never_caps_a_manual_rate(self):
+        policy = policy_for(Channel.SMTP_SEND, smart_enabled=False, manual_rate=60.5)
+
+        rate = effective_rate(policy, state_for(Channel.SMTP_SEND), spec_for(Channel.SMTP_SEND), START)
+
+        self.assertEqual(rate.rate, 60.5)
+
+    def test_sms_parts_pace_at_the_whole_part_of_a_fractional_mps(self):
+        state = state_for(Channel.SMS_SEND, discovered_parts_rate=2.5)
+
+        manual = effective_rate(
+            policy_for(Channel.SMS_SEND, smart_enabled=False), state, spec_for(Channel.SMS_SEND), START
+        )
+
+        self.assertEqual(manual.parts_rate, 2.0)
 
 
 class SmsPrecedenceTests(SimpleTestCase):

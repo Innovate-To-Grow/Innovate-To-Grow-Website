@@ -74,12 +74,14 @@ def _legacy_rates(apps):
 
 def _carry_over(channel, values, legacy):
     """Keep what people set: SES takes the campaign send rate as its manual rate and, until GetAccount reports the
-    real one, as its provider limit; SMTP takes it per minute while SMTP sends; Graph keeps its messages per minute.
-    Each is capped at the documented limit, as the policy's own validation requires."""
+    real one, as its provider limit (flagged as carried over, so the reported limit replaces it); SMTP takes it per
+    minute while SMTP sends; Graph keeps its messages per minute. Each is capped at the documented limit, as the
+    policy's own validation requires."""
     limit = values.get("provider_limit")
     per_second = legacy["per_second"]
     if channel == "ses_send" and per_second is not None:
         values["provider_limit"] = _capped(per_second, limit)
+        values["provider_limit_carried_over"] = True
         values["manual_rate"] = values["provider_limit"]
     elif channel == "smtp_send" and per_second is not None and legacy["provider"] == "smtp":
         per_minute = _rate(per_second * 60)
@@ -173,6 +175,18 @@ class Migration(migrations.Migration):
                         null=True,
                         validators=[django.core.validators.MinValueValidator(Decimal("0.001"))],
                         verbose_name="Provider rate limit",
+                    ),
+                ),
+                (
+                    "provider_limit_carried_over",
+                    models.BooleanField(
+                        default=False,
+                        editable=False,
+                        help_text=(
+                            "The provider rate limit is the old campaign send rate, used only until the provider "
+                            "reports one."
+                        ),
+                        verbose_name="Provider limit carried over",
                     ),
                 ),
                 (
