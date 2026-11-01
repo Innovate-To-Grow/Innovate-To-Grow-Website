@@ -63,7 +63,6 @@
   /* Previous / Page x of y / Next. */
   .project-grid-pagination {
     justify-content: space-between;
-    margin-top: 8px;
   }
 
   .project-grid-pager-pages {

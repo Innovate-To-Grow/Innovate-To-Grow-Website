@@ -115,6 +115,12 @@
   gap: 0.5rem;
 }
 
+/* The global pager's 4px jammed the boxed buttons against the table's bottom rule: 12px under every projects table
+   and phone list, framed or not. */
+.itg-pagination.project-grid-pagination {
+  margin-top: 0.75rem;
+}
+
 .project-grid-pager-pages {
   display: flex;
   flex-wrap: wrap;
