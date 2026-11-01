@@ -8,7 +8,7 @@ interface PastProjectsActionBarProps {
   loading: boolean;
   showHelp?: boolean;
   title?: string;
-  /** Id for the heading, so the section holding the tables can be labelled by it. */
+  /** Id for the heading, so the section holding the tables can be labelled by it (and focus moved to it). */
   headingId?: string;
   /** How the help text names each table's save button, where it saves to, and the saved-row tag. */
   saveLabel?: string;
@@ -76,8 +76,9 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
       <div className="project-grid-help-card">
         <dt>+ Search Table</dt>
         <dd>
-          Adds another search table. Each table loads the full past-project archive on its own, so you can try
-          different searches side by side (for example, one for a class code and another for an organization).
+          Adds another search table over the same past-project archive, so you can try different searches side
+          by side (for example, one for a class code and another for an organization). Each table keeps its own
+          search, checked rows and tidy edits.
         </dd>
       </div>
       <div className="project-grid-help-card">
@@ -116,8 +117,9 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
           Search, click a column heading to sort, and change <strong>Per page</strong> to see more rows at once.
           Open <strong>Details</strong> on a row to read its abstract and team members.{' '}
           <strong>Select All</strong> and the header checkbox select the rows that match the current search, and
-          the table shows how many rows are selected. <strong>Deselect</strong> clears the selection and{' '}
-          <strong>Refresh Search Table</strong> reloads the archive.
+          the table shows how many rows are selected. <strong>Deselect</strong> clears the selection.{' '}
+          <strong>Refresh Search Table</strong> reloads the archive and starts that table over: its search, sort,
+          Per page, checked rows and tidy edits are cleared. Other tables keep theirs.
         </dd>
       </div>
     </dl>
@@ -134,9 +136,9 @@ export const PastProjectsActionBar = ({
   showHelp = true,
   title = 'Search Tables',
   headingId,
-  saveLabel = 'Save Selected',
-  saveTarget = 'your saved results at the top of the page',
-  savedLabel = 'Saved',
+  saveLabel = 'Add to Curation',
+  saveTarget = 'the curation draft at the top of the page',
+  savedLabel = 'Added',
   onAddAISearchTable,
   onAddSearchTable,
 }: PastProjectsActionBarProps) => {
@@ -146,7 +148,7 @@ export const PastProjectsActionBar = ({
   return (
     <div className="past-projects-action-bar">
       <div className="past-projects-action-bar-header">
-        <h2 id={headingId} className="project-grid-card-title past-projects-action-bar-title">
+        <h2 id={headingId} className="project-grid-card-title past-projects-action-bar-title" tabIndex={-1}>
           {title}
         </h2>
         <div className="past-projects-action-bar-group" role="group" aria-label="Add a table">
@@ -178,7 +180,10 @@ export const PastProjectsActionBar = ({
 
       {showHelp ? <PastProjectsHelp saveLabel={saveLabel} saveTarget={saveTarget} savedLabel={savedLabel} /> : null}
 
-      {builderMessage ? <p className="project-grid-status past-projects-builder-message">{builderMessage}</p> : null}
+      {/* What the search tables did (a refresh, …). A live region kept in the page, so each message is announced. */}
+      <p className="project-grid-status past-projects-builder-message" role="status">
+        {builderMessage}
+      </p>
     </div>
   );
 };

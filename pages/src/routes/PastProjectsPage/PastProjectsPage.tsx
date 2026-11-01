@@ -1,5 +1,6 @@
-import {useMemo} from 'react';
+import {useMemo, useState} from 'react';
 import {useLocation, useNavigate, useParams, useSearchParams} from 'react-router';
+import {useAuth} from '@/features/auth';
 import {MyCurationsPanel, PastProjectsBuilder, createProjectGridItems} from '@/features/projects';
 import {getEarliestTermYear} from '@/features/projects/components/grid/contracts/projectGrid';
 import {usePastProjectGridData, usePastProjectShareData} from '@/features/projects/hooks/useProjectGridData';
@@ -7,6 +8,19 @@ import {createPastProjectShare} from '@/features/projects/api';
 import {usePageTitle} from '@/hooks/usePageTitle';
 import {SharedCurationView} from './SharedCurationView';
 import {shareDisplayTitle, useSharedListMutations} from './useSharedListMutations';
+
+/**
+ * Whether the viewer may edit a curation (`can_edit`) is the server's answer for whoever was signed in when it
+ * loaded. Signing out (or into another account) without a reload asks again, so the owner's controls go.
+ */
+function useReloadShareForNewViewer(reloadShare: () => void) {
+  const viewerId = useAuth().user?.member_uuid ?? null;
+  const [shareViewerId, setShareViewerId] = useState(viewerId);
+  if (viewerId !== shareViewerId) {
+    setShareViewerId(viewerId);
+    reloadShare();
+  }
+}
 
 /**
  * `/past-projects` (the builder) and `/past-projects/:shareId` (a saved curation's shared page). Edits to a
@@ -26,12 +40,14 @@ export const PastProjectsPage = () => {
     notFound: shareNotFound,
     retry: retryShare,
   } = usePastProjectShareData(shareId);
+  useReloadShareForNewViewer(retryShare);
   const {activeShare, setEditableShare, conflictMessage, updateShare, addShareRows} = useSharedListMutations(
     shareId,
     share,
   );
-  // A shared list is named after the share; the plain page keeps its route title.
-  usePageTitle(sharedMode && activeShare ? shareDisplayTitle(activeShare) : null);
+  // A shared list is named after the share (its message pages name themselves). The builder names itself too: both
+  // routes have the same route title, so coming back from a curation would otherwise keep that curation's title.
+  usePageTitle(sharedMode ? activeShare && shareDisplayTitle(activeShare) : 'Past Projects');
   // The archive is only needed to search (the builder, or the owner adding to a shared list).
   const {rows, loading, error, refetch} = usePastProjectGridData(!sharedMode || Boolean(activeShare?.can_edit));
 
@@ -71,7 +87,11 @@ export const PastProjectsPage = () => {
     <div className="past-projects-page">
       <header className="past-projects-header" data-embed-section="page-header">
         <h1 className="itg-page-title">Past Projects</h1>
-        {archiveMeta ? <p className="itg-page-meta">{archiveMeta}</p> : null}
+        {/* Its line is there while the archive loads too: arriving later, it pushed the lede and the whole builder
+            down (most of the page's layout shift). */}
+        <p className="itg-page-meta" aria-hidden={archiveMeta ? undefined : true}>
+          {archiveMeta || '\u00a0'}
+        </p>
         <p className="itg-lead">
           Search past Innovate to Grow projects, check the ones you want, and collect them into a curation. Save it to
           keep it and share it with a link, or export it.

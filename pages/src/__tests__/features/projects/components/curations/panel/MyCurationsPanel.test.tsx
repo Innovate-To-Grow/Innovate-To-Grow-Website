@@ -109,14 +109,17 @@ describe('MyCurationsPanel', () => {
     );
   });
 
-  it('copies a curation link', async () => {
+  it('copies a curation link from a button whose name starts with the words it shows', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(window.navigator, 'clipboard', {value: {writeText}, configurable: true});
     mockListMyShares.mockResolvedValue([share({})]);
 
     await renderPanel();
+    // Speech input users say what they see ("click Copy link"), so the visible label leads the name.
+    const copyButton = screen.getByRole('button', {name: 'Copy link to Water projects'});
+    expect(copyButton).toHaveTextContent('Copy link');
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', {name: 'Copy the link to Water projects'}));
+      fireEvent.click(copyButton);
     });
 
     expect(writeText).toHaveBeenCalledWith('https://i2g.example/past-projects/share-1');

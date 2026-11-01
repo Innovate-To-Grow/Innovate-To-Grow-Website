@@ -39,7 +39,7 @@ test('a link to a list that does not exist says the list is not available', asyn
   await page.route(SHARE_URL, (route) => route.fulfill(json({detail: 'Not found.'}, 404)));
   await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
-  await expect(page.getByRole('heading', {level: 1, name: "This shared list isn't available"})).toBeVisible();
+  await expect(page.getByRole('heading', {level: 1, name: "This curation isn't available"})).toBeVisible();
   await expect(page.getByRole('button', {name: 'Try again'})).toHaveCount(0);
 });
 
@@ -51,8 +51,8 @@ test('a list that fails to load can be tried again', async ({page}) => {
   });
   await page.goto(`/past-projects/${SHARE_ID}`, {waitUntil: 'domcontentloaded'});
 
-  await expect(page.getByRole('heading', {level: 1, name: "We couldn't load this shared list"})).toBeVisible();
-  await expect(page.getByText("This shared list isn't available")).toHaveCount(0);
+  await expect(page.getByRole('heading', {level: 1, name: "We couldn't load this curation"})).toBeVisible();
+  await expect(page.getByText("This curation isn't available")).toHaveCount(0);
 
   await page.getByRole('button', {name: 'Try again'}).click();
 

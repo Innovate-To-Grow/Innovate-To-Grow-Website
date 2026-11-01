@@ -1,26 +1,38 @@
 @layer itg.components {
-/* The builder's dialogs.
+/* The builder's dialogs: native modal <dialog> elements (PastProjectsDialog.tsx).
    Imported in order by projects.css; see the note there. */
 
 /* ---- Dialog -------------------------------------------------------------------- */
 
-.past-projects-dialog-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background: rgba(15, 45, 82, 0.45);
-  background: color-mix(in srgb, var(--itg-color-primary) 45%, transparent);
-}
-
-/* The theme's panel: an 8px #0f5479 top rule. */
+/* The theme's panel: an 8px #0f5479 top rule. The browser centres a modal dialog in the viewport. */
 .past-projects-dialog {
-  width: min(100%, 27.5rem);
+  width: min(100% - 2rem, 27.5rem);
+  max-width: none;
+  padding: 0;
+  border: 0;
   border-top: 8px solid var(--itg-color-sidebar-rule);
   background: var(--itg-color-bg-page);
+  color: var(--itg-color-text);
+}
+
+/* The browser centres it with auto margins. A dialog that is the last child of a panel (Clear Draft's, in the
+   draft card) also matched `.itg-panel > :last-child { margin-bottom: 0 }`, which pinned it to the bottom of the
+   screen, hence the stronger selector. */
+dialog.past-projects-dialog:modal {
+  margin: auto;
+}
+
+/* Not every browser lets the backdrop inherit the page's custom properties, hence the fallback inside var(). */
+.past-projects-dialog::backdrop {
+  background: rgba(15, 45, 82, 0.45);
+  background: color-mix(in srgb, var(--itg-color-primary, #0f2d52) 45%, transparent);
+}
+
+/* In the embed widget: centred on the part of the frame that is on screen (dialogPlacement.ts). */
+dialog.past-projects-dialog.is-placed:modal {
+  inset-block: var(--past-projects-dialog-center) auto;
+  margin-block: 0;
+  translate: 0 -50%;
 }
 
 .past-projects-dialog-header {
@@ -48,5 +60,14 @@
   justify-content: flex-end;
   gap: 0.625rem;
   padding: 0 1.5rem 1.5rem;
+}
+
+/* Forced colours drop the backdrop's tint and the panel's fill, which left only the top rule to show where the
+   dialog ends and the page behind it starts: draw the whole edge. */
+@media (forced-colors: active) {
+  .past-projects-dialog {
+    border: 2px solid CanvasText;
+    border-top-width: 8px;
+  }
 }
 }

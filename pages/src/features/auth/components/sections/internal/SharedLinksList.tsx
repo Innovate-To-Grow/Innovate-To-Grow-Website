@@ -34,7 +34,7 @@ export const SharedLinksList = ({shares, onDelete}: SharedLinksListProps) => {
                 <button
                   type="button"
                   className="itg-btn itg-btn-outline account-outline-btn"
-                  aria-label={`Copy the link to ${rowLabel}`}
+                  aria-label={`Copy link to ${rowLabel}`}
                   onClick={() => void copy(shareLink(share))}
                 >
                   Copy link

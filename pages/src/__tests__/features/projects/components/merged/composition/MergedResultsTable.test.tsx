@@ -138,6 +138,37 @@ describe('MergedResultsTable', () => {
     expect(removed[0]).toMatchObject({project_title: 'Irrigation Sensor'});
   });
 
+  it('removes only checked rows the search shows, keeping rows checked under an earlier search', async () => {
+    const onDeleteRows = vi.fn();
+    const {container} = render(
+      <MergedResultsTable
+        rows={makeItems([baseRow, addedRow])}
+        onCreateShare={vi.fn()}
+        onDeleteRow={vi.fn()}
+        onDeleteRows={onDeleteRows}
+        onUndoRows={vi.fn()}
+        onResetRows={vi.fn()}
+      />,
+    );
+    const search = screen.getByLabelText('Search this list');
+    const desktop = () => within(desktopTable(container));
+
+    // Check "Shared Project", then search for the other row: the first stays checked but hidden.
+    fireEvent.click(desktop().getByLabelText('Select Shared Project'));
+    fireEvent.change(search, {target: {value: 'Irrigation'}});
+    await waitFor(() => expect(desktop().queryByText('Shared Project')).not.toBeInTheDocument());
+    const removeSelected = screen.getByRole('button', {name: 'Remove Selected'});
+    expect(removeSelected).toHaveAttribute('aria-disabled', 'true');
+
+    fireEvent.click(desktop().getByLabelText('Select Irrigation Sensor'));
+    fireEvent.click(removeSelected);
+
+    expect(onDeleteRows).toHaveBeenCalledTimes(1);
+    expect(onDeleteRows.mock.calls[0][0].map((row: ProjectGridRow) => row.project_title)).toEqual(['Irrigation Sensor']);
+    fireEvent.change(search, {target: {value: ''}});
+    expect(await desktop().findByLabelText('Select Shared Project')).toBeChecked();
+  });
+
   it('inserts visible project details and individual links into the share note', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
 
@@ -279,17 +310,17 @@ describe('MergedResultsTable', () => {
       />,
     );
 
-    const section = screen.getByRole('region', {name: 'Saved Merged Results'});
+    const section = screen.getByRole('region', {name: 'Curation Draft'});
     expect(section).toHaveClass('itg-panel');
-    expect(section.querySelector('.project-grid-card-count')).toHaveTextContent('2 projects in this list');
+    expect(section.querySelector('.project-grid-card-count')).toHaveTextContent('2 projects in this draft');
     const editGroup = within(section).getByRole('group', {name: 'Edit list'});
     expect(within(editGroup).getAllByRole('button').map((button) => button.textContent)).toEqual([
       'Remove Selected',
-      'Undo Merged Change',
-      'Reset Merged Results',
+      'Undo',
+      'Clear Draft',
     ]);
-    expect(within(editGroup).getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
-    expect(within(editGroup).getByRole('button', {name: 'Reset Merged Results'})).toHaveClass('itg-btn-danger');
+    expect(within(editGroup).getByRole('button', {name: 'Remove Selected'})).toHaveAttribute('aria-disabled', 'true');
+    expect(within(editGroup).getByRole('button', {name: 'Clear Draft'})).toHaveClass('itg-btn-danger');
     expect(within(section).getByRole('heading', {level: 3, name: 'Save this curation'})).toBeInTheDocument();
     expect(
       within(section).getByText('Saved curations are listed under My Curations, each with a link anyone can view.'),
@@ -298,7 +329,7 @@ describe('MergedResultsTable', () => {
     // the note.
     const [headerSave, sectionSave] = within(section).getAllByRole('button', {name: 'Save Curation'});
     expect(headerSave.closest('.project-grid-card-header')).not.toBeNull();
-    expect(within(section).getByText(/Not saved yet\. This browser keeps the list until you save it\./)).toBeInTheDocument();
+    expect(within(section).getByText(/Not saved yet\. This browser keeps the draft until you save it\./)).toBeInTheDocument();
     expect(sectionSave.closest('.project-grid-share-actions')).not.toBeNull();
   });
 
@@ -342,7 +373,7 @@ describe('MergedResultsTable', () => {
       />,
     );
 
-    expect(await screen.findByText(/1 newly saved project is hidden by your search\./)).toBeInTheDocument();
+    expect(await screen.findByText(/1 newly added project is hidden by your search\./)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
     await waitFor(() => expect(screen.queryByText(/hidden by your search/)).toBeNull());
     expect(screen.getAllByText('Irrigation Sensor').length).toBeGreaterThan(0);
@@ -376,13 +407,15 @@ describe('MergedResultsTable', () => {
     fireEvent.click(screen.getAllByLabelText(/^Select /)[1]);
     fireEvent.click(screen.getAllByRole('button', {name: /save curation/i})[0]);
 
-    expect(screen.getByRole('button', {name: 'Remove Selected'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Undo Merged Change'})).toBeDisabled();
-    expect(screen.getByRole('button', {name: 'Reset Merged Results'})).toBeDisabled();
-    screen.getAllByRole('button', {name: 'Remove'}).forEach((button) => expect(button).toBeDisabled());
+    expect(screen.getByRole('button', {name: 'Remove Selected'})).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', {name: 'Undo'})).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('button', {name: 'Clear Draft'})).toHaveAttribute('aria-disabled', 'true');
+    screen
+      .getAllByRole('button', {name: /^Remove (Shared Project|Irrigation Sensor)$/})
+      .forEach((button) => expect(button).toBeDisabled());
 
     await act(async () => finishShare('share-1'));
-    expect(screen.getByRole('button', {name: 'Reset Merged Results'})).toBeEnabled();
+    expect(screen.getByRole('button', {name: 'Clear Draft'})).not.toHaveAttribute('aria-disabled');
     expect(onDeleteRows).not.toHaveBeenCalled();
   });
 
@@ -393,7 +426,7 @@ describe('MergedResultsTable', () => {
 
     expect(
       await screen.findByText(
-        /Your search shows 1 of 2 saved projects\. Saving and exports include only the 1 it shows\./,
+        /Your search shows 1 of the 2 projects in this draft\. Saving and exports include only the 1 it shows; after saving, 1 other project stays in this draft\./,
       ),
     ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', {name: 'Clear search'}));
@@ -455,14 +488,14 @@ describe('MergedResultsTable', () => {
   it('folds the saved list behind a disclosure for phones', () => {
     render(<MergedResultsTable rows={makeItems([baseRow, addedRow])} onCreateShare={vi.fn()} />);
 
-    const toggle = screen.getByRole('button', {name: 'Show the 2 saved projects'});
+    const toggle = screen.getByRole('button', {name: 'Show the 2 projects'});
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     const list = document.getElementById(toggle.getAttribute('aria-controls') as string);
     expect(list).not.toHaveClass('is-open');
 
     fireEvent.click(toggle);
 
-    expect(screen.getByRole('button', {name: 'Hide the saved projects'})).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', {name: 'Hide the projects'})).toHaveAttribute('aria-expanded', 'true');
     expect(list).toHaveClass('is-open');
   });
 
@@ -550,7 +583,7 @@ describe('MergedResultsTable', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', {name: /reset merged results/i}));
+    fireEvent.click(screen.getByRole('button', {name: /clear draft/i}));
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: /cancel/i}));
 
     expect(onResetRows).not.toHaveBeenCalled();

@@ -2,9 +2,10 @@ import {useId, type ReactNode} from 'react';
 import {DEFAULT_PAST_PROJECT_SHARE_NAME} from '@/features/projects/api';
 import {RichTextDetailEditor} from '../../richText/editor/RichTextDetailEditor';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {currentLoginPath} from '../list/curationNote';
+import type {SignInToSave} from '../list/curationNote';
 import {ProjectNoteInsertControl} from '../list/ProjectNoteInsertControl';
 import type {NoteInsertFields} from '../list/useNoteInsertFields';
+import {SignInToSaveLink} from '../list/SignInToSaveLink';
 
 interface CurationSaveButtonProps {
   hasRows: boolean;
@@ -36,6 +37,7 @@ interface CurationSaveSectionProps {
   noteInsert: NoteInsertFields;
   saveButton: ReactNode;
   pendingSaveCount: number;
+  signIn: SignInToSave;
 }
 
 export const CurationSaveSection = ({
@@ -48,6 +50,7 @@ export const CurationSaveSection = ({
   noteInsert,
   saveButton,
   pendingSaveCount,
+  signIn,
 }: CurationSaveSectionProps) => {
   const nameInputId = useId();
   const nameHintId = useId();
@@ -88,7 +91,8 @@ export const CurationSaveSection = ({
               <ProjectNoteInsertControl
                 rows={rows}
                 excludedFields={noteInsert.excludedFields}
-                onInsert={() => onNoteDraftChange(noteInsert.appendRows(noteDraft, rows))}
+                insertProblem={noteInsert.insertProblem}
+                onInsert={() => noteInsert.insertRows(noteDraft, rows, onNoteDraftChange)}
                 onToggleExcludedField={noteInsert.toggleField}
               />
             </div>
@@ -108,7 +112,10 @@ export const CurationSaveSection = ({
         </>
       ) : (
         <p className="project-grid-share-login-hint">
-          <a href={currentLoginPath()}>Sign in</a> to save this curation and get a link to share it.
+          <SignInToSaveLink signIn={signIn}>Sign in</SignInToSaveLink>
+          {signIn.inNewTab
+            ? ' to sign in, save this curation and get a link to share it. This draft goes with you.'
+            : ' to save this curation and get a link to share it.'}
         </p>
       )}
     </div>

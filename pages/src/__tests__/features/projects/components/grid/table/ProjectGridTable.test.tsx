@@ -527,7 +527,7 @@ describe('ProjectGridTable', () => {
         const card = within(container.querySelector('.project-grid-mobile-card') as HTMLElement);
         fireEvent.click(card.getByRole('checkbox', {name: 'Select Project 1'}));
         expect(onToggleSelected).toHaveBeenCalledWith(rows[0].__key);
-        fireEvent.click(card.getByRole('button', {name: 'Remove'}));
+        fireEvent.click(card.getByRole('button', {name: 'Remove Project 1'}));
         expect(onDeleteRow).toHaveBeenCalledWith(rows[0]);
     });
 
@@ -552,7 +552,7 @@ describe('ProjectGridTable', () => {
         const rows = makeRows();
         render(<ProjectGridTable {...baseProps} rows={rows} onDeleteRow={onDeleteRow} />);
 
-        const removeButtons = screen.getAllByRole('button', {name: 'Remove'});
+        const removeButtons = screen.getAllByRole('button', {name: /^Remove /});
         expect(removeButtons.length).toBeGreaterThan(0);
         fireEvent.click(removeButtons[0]);
         expect(onDeleteRow).toHaveBeenCalledWith(rows[0]);

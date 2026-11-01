@@ -1,4 +1,4 @@
-import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {SharedPastProjectMergeSearch} from '@/features/projects/components/shared/search/SharedPastProjectMergeSearch';
@@ -48,6 +48,12 @@ const makeRow = (overrides: Partial<ProjectGridRow>): ProjectGridRow => ({
   ...overrides,
 });
 
+// The first search table's save announcer (the page has a status line of its own).
+const tableStatus = () =>
+  within(screen.getAllByRole('heading', {level: 3, name: /search table/i})[0].closest('[data-search-table-id]') as HTMLElement).getByRole(
+    'status',
+  );
+
 const alphaRow = makeRow({team_number: 'T01', team_name: 'Team Alpha', project_title: 'Alpha Project'});
 const bravoRow = makeRow({team_number: 'T02', team_name: 'Team Bravo', project_title: 'Bravo Project'});
 const charlieRow = makeRow({team_number: 'T03', team_name: 'Team Charlie', project_title: 'Charlie Project'});
@@ -71,6 +77,12 @@ describe('SharedPastProjectMergeSearch', () => {
     vi.restoreAllMocks();
   });
 
+  it('announces that the archive is loading', () => {
+    render(<SharedPastProjectMergeSearch currentRows={[alphaRow]} rows={[]} error={null} loading onAddRows={vi.fn()} />);
+
+    expect(screen.getByText('Loading past projects...')).toHaveAttribute('role', 'status');
+  });
+
   it('keeps reporting an add in its table when a refresh lands while it runs', async () => {
     let resolveDetails!: (result: {rows: ProjectGridRow[]; failedIndexes: number[]; unavailableIndexes: number[]}) => void;
     mockHydrateProjectGridRowsSettled.mockReturnValue(new Promise((resolve) => { resolveDetails = resolve; }));
@@ -91,6 +103,27 @@ describe('SharedPastProjectMergeSearch', () => {
     );
     expect(screen.getAllByLabelText('Select Id Only')[0]).toBeChecked();
     expect(onAddRows).not.toHaveBeenCalled();
+  });
+
+  it('keeps its table when a refresh fails, and offers to try again when the first load fails', () => {
+    const onRefreshRows = vi.fn();
+    const props = {currentRows: [alphaRow], loading: false, onAddRows: vi.fn(), onRefreshRows};
+    // A failed refetch keeps serving the same rows array.
+    const archive = [bravoRow];
+    const {rerender} = render(<SharedPastProjectMergeSearch rows={archive} error={null} {...props} />);
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: 'Refresh Search Table'}));
+    rerender(<SharedPastProjectMergeSearch rows={archive} error="Network Error" {...props} />);
+
+    expect(screen.getAllByLabelText('Select Bravo Project')[0]).toBeChecked();
+    expect(screen.getByRole('alert')).toHaveTextContent(/This table was not refreshed/);
+    expect(screen.queryByText('Network Error')).toBeNull();
+
+    cleanup();
+    render(<SharedPastProjectMergeSearch rows={[]} error="Network Error" {...props} />);
+    fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+    expect(onRefreshRows).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Network Error')).toBeNull();
   });
 
   it('uses the search table merge flow to add selected projects', async () => {
@@ -125,7 +158,7 @@ describe('SharedPastProjectMergeSearch', () => {
         }),
       ]);
     });
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 project added.'));
+    await waitFor(() => expect(tableStatus()).toHaveTextContent('1 project added.'));
   });
 
   // Archive rows arrive compact. Saving them unchanged wrote the abstract and student names
@@ -221,7 +254,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getAllByLabelText('Select New Two')[0]);
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('A shared page can include at most 1000 projects.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('A curation can include at most 1000 projects.');
     expect(mockHydrateProjectGridRowsSettled).not.toHaveBeenCalled();
     expect(onAddRows).not.toHaveBeenCalled();
     expect(screen.getAllByLabelText('Select New One')[0]).toBeChecked();
@@ -256,7 +289,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this shared result.'),
+      expect(tableStatus()).toHaveTextContent('That project is already in this curation.'),
     );
   });
 
@@ -362,7 +395,7 @@ describe('SharedPastProjectMergeSearch', () => {
     fireEvent.click(screen.getByRole('button', {name: /add selected/i}));
 
     await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('That project is already in this shared result.'),
+      expect(tableStatus()).toHaveTextContent('That project is already in this curation.'),
     );
     expect(onAddRows).not.toHaveBeenCalled();
   });

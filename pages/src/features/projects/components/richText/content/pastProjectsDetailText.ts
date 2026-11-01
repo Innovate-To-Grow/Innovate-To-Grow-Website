@@ -75,6 +75,32 @@ export const sanitizePastProjectsDetailHtml = (html: string) =>
     ALLOW_DATA_ATTR: false,
   });
 
+// A curation note is written by a site member, not by Innovate to Grow. Its links to other sites are marked as
+// user content that search engines should not credit, and open without a handle on this page.
+const MEMBER_LINK_REL = 'nofollow ugc noopener';
+
+/** Marks the links to other sites in sanitized note HTML (the sanitizer drops rel) for showing it to visitors. */
+export const markMemberNoteLinks = (sanitizedHtml: string) => {
+  if (typeof document === 'undefined') {
+    return sanitizedHtml;
+  }
+
+  const template = document.createElement('template');
+  template.innerHTML = sanitizedHtml;
+  template.content.querySelectorAll('a[href]').forEach((link) => {
+    let origin = '';
+    try {
+      origin = new URL(link.getAttribute('href') ?? '', window.location.href).origin;
+    } catch {
+      // An href that is not a URL leads nowhere; mark it like any other site's.
+    }
+    if (origin !== window.location.origin) {
+      link.setAttribute('rel', MEMBER_LINK_REL);
+    }
+  });
+  return template.innerHTML;
+};
+
 export const plainTextToPastProjectsDetailHtml = (value: string) =>
   escapeHtml(value).replace(/\r\n|\r|\n/g, '<br>');
 

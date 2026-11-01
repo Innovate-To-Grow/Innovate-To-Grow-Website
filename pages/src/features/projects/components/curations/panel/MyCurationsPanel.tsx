@@ -86,7 +86,7 @@ export const MyCurationsPanel = () => {
               <button
                 type="button"
                 className="itg-btn itg-btn-text past-projects-my-curation-copy"
-                aria-label={`Copy the link to ${name}`}
+                aria-label={`Copy link to ${name}`}
                 onClick={() => void copy(share.share_url || `${window.location.origin}/past-projects/${share.id}`)}
               >
                 Copy link

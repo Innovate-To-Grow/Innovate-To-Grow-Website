@@ -47,7 +47,8 @@ test('AI search unavailable state shows message', async ({page}) => {
   await aiSearchForm.getByRole('button', {name: 'Search'}).click();
 
   await expect.poll(() => queries.length).toBe(1);
-  await expect(page.getByRole('alert')).toContainText('AI search is unavailable.');
+  // The API's own text is for the site's administrators; members get their own.
+  await expect(page.getByRole('alert')).toContainText('AI search is not available on this site right now.');
 });
 
 test('"Sign in required" dialog shown for unauthenticated AI search', async ({page}) => {

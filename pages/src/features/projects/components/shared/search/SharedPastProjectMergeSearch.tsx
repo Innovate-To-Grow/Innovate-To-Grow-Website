@@ -3,6 +3,7 @@ import {useAuth} from '@/features/auth';
 import {AISearchLoginDialog} from '../../builder/search/AISearchLoginDialog';
 import {PastProjectsActionBar} from '../../builder/search/PastProjectsActionBar';
 import {createProjectGridRowMatcher, type ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {ArchiveLoadState} from '../../search/cards/ArchiveLoadState';
 import {SearchTableStack} from '../../search/cards/SearchTableStack';
 import {useSearchTables} from '../../search/state/useSearchTables';
 import {useAddToShare} from './useAddToShare';
@@ -37,14 +38,17 @@ export const SharedPastProjectMergeSearch = ({
   // copy of the same project already in this share, which would otherwise be offered (and added) again.
   const isAlreadyShared = useMemo(() => createProjectGridRowMatcher(currentRows).has, [currentRows]);
   const availableRows = useMemo(() => rows.filter((row) => !isAlreadyShared(row)), [isAlreadyShared, rows]);
+  // A failed refresh keeps the archive it had (the table that asked reports it); a failed first load has none.
+  const archiveUnavailable = Boolean(error) && !rows.length;
   const tables = useSearchTables({
     idPrefix: TABLE_ID_PREFIX,
     isAuthenticated,
     rows,
+    rowsError: error,
     onRefreshRows,
     onMessage: setBuilderMessage,
     filterAIRows: (aiRows) => aiRows.filter((row) => !isAlreadyShared(row)),
-    allAIRowsFilteredMessage: 'AI found projects that are already in this shared result.',
+    allAIRowsFilteredMessage: 'AI found projects that are already in this curation.',
     refreshingMessage: 'Refreshing this full-archive search table from the latest past-project data...',
   });
   const {isSaving, addSelected} = useAddToShare({currentRows, isAlreadyShared, onAddRows, onMessage: setBuilderMessage});
@@ -54,11 +58,11 @@ export const SharedPastProjectMergeSearch = ({
       <PastProjectsActionBar
         headingId={headingId}
         builderMessage={builderMessage}
-        error={error}
+        error={archiveUnavailable ? error : null}
         loading={loading || isSaving}
         title="Add Projects from Full Archive"
         saveLabel="Add Selected"
-        saveTarget="this shared page"
+        saveTarget="this curation"
         savedLabel="Added"
         aiSearchDisabled={tables.hasAISearchTable}
         aiSearchLoginRequired={!isAuthenticated}
@@ -70,14 +74,9 @@ export const SharedPastProjectMergeSearch = ({
 
       {isAISearchLoginDialogOpen ? <AISearchLoginDialog onClose={() => setIsAISearchLoginDialogOpen(false)} /> : null}
 
-      {loading ? <p className="project-grid-state">Loading past projects...</p> : null}
-      {error ? (
-        <p className="project-grid-state project-grid-state-error itg-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      <ArchiveLoadState loading={loading} failed={archiveUnavailable} onRetry={onRefreshRows} headingId={headingId} />
 
-      {!loading && !error ? (
+      {!loading && !archiveUnavailable ? (
         <SearchTableStack
           tables={tables}
           idPrefix={TABLE_ID_PREFIX}
@@ -97,7 +96,7 @@ export const SharedPastProjectMergeSearch = ({
             aiDescription:
               'Use AI to load matching past projects into this table, then check the projects you want and click Add Selected.',
             standardDescription:
-              'Search the full past-project archive for additional projects to add to this shared result.',
+              'Search the full past-project archive for additional projects to add to this curation.',
             noTablesMessage: 'No search tables are open. Add a new table to search for more projects.',
           }}
         />

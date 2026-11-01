@@ -5,6 +5,8 @@ import {PAST_PROJECT_NOTE_INSERT_FIELDS, type PastProjectNoteInsertField} from '
 interface ProjectNoteInsertControlProps {
   rows: ProjectGridRow[];
   excludedFields: Set<PastProjectNoteInsertField>;
+  /** Why the last insert was refused (the note would be too long to save). */
+  insertProblem?: string;
   onInsert: () => void;
   onToggleExcludedField: (field: PastProjectNoteInsertField) => void;
 }
@@ -12,6 +14,7 @@ interface ProjectNoteInsertControlProps {
 export const ProjectNoteInsertControl = ({
   rows,
   excludedFields,
+  insertProblem,
   onInsert,
   onToggleExcludedField,
 }: ProjectNoteInsertControlProps) => {
@@ -39,6 +42,11 @@ export const ProjectNoteInsertControl = ({
           Choose fields
         </button>
       </div>
+      {insertProblem ? (
+        <p className="project-grid-note-insert-problem itg-error" role="alert">
+          {insertProblem}
+        </p>
+      ) : null}
       {isOpen ? (
         <fieldset id={menuId} className="project-grid-note-insert-menu">
           <legend className="project-grid-note-insert-menu-title">Leave these fields out</legend>

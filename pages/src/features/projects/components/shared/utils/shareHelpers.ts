@@ -1,7 +1,10 @@
 // Pull a specific message out of a DRF validation error ({field: ["..."]}) so a failed share
 // surfaces the actual reason (e.g. the row/name limit) instead of a generic retry prompt.
 // Row-level errors (e.g. the row-count limit) surface nested under `rows`.
-export const getShareErrorMessage = (error: unknown): string => {
+export const getShareErrorMessage = (
+  error: unknown,
+  fallback = 'Unable to save this curation. Please try again.',
+): string => {
   const data = (error as {response?: {data?: unknown}}).response?.data;
   if (data && typeof data === 'object') {
     for (const field of ['rows', 'name', 'note', 'detail'] as const) {
@@ -12,7 +15,7 @@ export const getShareErrorMessage = (error: unknown): string => {
       }
     }
   }
-  return 'Unable to save this curation. Please try again.';
+  return fallback;
 };
 
 export const getExportFileBaseName = (title: string) => {

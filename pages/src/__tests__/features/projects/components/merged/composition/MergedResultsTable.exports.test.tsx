@@ -102,7 +102,7 @@ describe('MergedResultsTable exports and row details', () => {
     const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsExcel.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
-    expect(context).toMatchObject({title: 'Saved Merged Results'});
+    expect(context).toMatchObject({title: 'Curation Draft'});
   });
 
   it('exports with the typed name and note so the PDF matches the page it will share', async () => {
@@ -229,7 +229,7 @@ describe('MergedResultsTable exports and row details', () => {
     const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsPdf.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
-    expect(context).toMatchObject({title: 'Saved Merged Results'});
+    expect(context).toMatchObject({title: 'Curation Draft'});
   });
 
   it('exports Microsoft Word through the word exporter', async () => {
@@ -244,5 +244,77 @@ describe('MergedResultsTable exports and row details', () => {
     const [rowsArg, fileBaseName] = exportMocks.exportProjectRowsWord.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
+  });
+
+  it('runs one export at a time and says it is preparing it', async () => {
+    let finishPdf!: () => void;
+    exportMocks.exportProjectRowsPdf.mockReturnValueOnce(new Promise<void>((resolve) => { finishPdf = resolve; }));
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+    const pdf = within(exportCluster).getByRole('button', {name: 'PDF'});
+
+    fireEvent.click(pdf);
+    expect(screen.getByRole('status')).toHaveTextContent('Preparing PDF…');
+    await waitFor(() => expect(exportMocks.exportProjectRowsPdf).toHaveBeenCalledTimes(1));
+    expect(exportCluster).toHaveAttribute('aria-busy', 'true');
+    expect(pdf).toHaveAttribute('aria-disabled', 'true');
+    // Clicks while it runs (impatient, or on a slow connection) start nothing.
+    fireEvent.click(pdf);
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
+
+    await act(async () => finishPdf());
+    expect(exportMocks.exportProjectRowsPdf).toHaveBeenCalledTimes(1);
+    expect(exportMocks.exportProjectRowsExcel).not.toHaveBeenCalled();
+    expect(exportCluster).not.toHaveAttribute('aria-busy');
+    expect(screen.queryByText('Preparing PDF…')).toBeNull();
+  });
+
+  it('clears an earlier export failure once an export succeeds', async () => {
+    exportMocks.exportProjectRowsWord.mockRejectedValueOnce(new Error('serialization failed'));
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Microsoft Word'}));
+    expect(await screen.findByText('Unable to export Microsoft Word. Please try again.')).toBeInTheDocument();
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
+
+    await waitFor(() => expect(exportMocks.exportProjectRowsExcel).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText(/Unable to export/)).toBeNull());
+  });
+
+  it('asks for a reload, not a retry, when code an export needs did not download', async () => {
+    // A stale tab after a deploy (the old chunk is gone), or a failed download: browsers keep the failed module.
+    exportMocks.exportProjectRowsPdf.mockRejectedValueOnce(
+      new TypeError('Failed to fetch dynamically imported module: https://i2g.example/assets/jspdf.es.min-OLD.js'),
+    );
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
+
+    expect(
+      await screen.findByText(
+        'Unable to export PDF: part of this page did not download, often because the site was updated. ' +
+          'Reload the page, then export again. Your curation draft is kept.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Please try again/)).toBeNull();
+    expect(within(exportCluster).getByRole('button', {name: 'Reload page'})).toBeInTheDocument();
+  });
+
+  it('drops the reload advice and its button once another export succeeds', async () => {
+    exportMocks.exportProjectRowsPdf.mockRejectedValueOnce(
+      new TypeError('Failed to fetch dynamically imported module: https://i2g.example/assets/jspdf.es.min-OLD.js'),
+    );
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
+    expect(await within(exportCluster).findByRole('button', {name: 'Reload page'})).toBeInTheDocument();
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Microsoft Word'}));
+
+    await waitFor(() => expect(exportMocks.exportProjectRowsWord).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText(/Unable to export/)).toBeNull());
+    expect(within(exportCluster).queryByRole('button', {name: 'Reload page'})).toBeNull();
   });
 });

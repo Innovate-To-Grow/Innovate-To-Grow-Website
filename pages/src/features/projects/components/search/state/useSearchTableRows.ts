@@ -52,7 +52,7 @@ export function useSearchTableRows(initialRows: ProjectGridRow[], tableId: strin
     table.clearSelection();
   }, [rows, table]);
 
-  // Trims the table to the checked rows and keeps them checked, so Save Selected works right away.
+  // Trims the table to the checked rows and keeps them checked, so Add to Curation works right away.
   const keepSelected = useCallback(() => {
     if (!table.hasSelection) {
       return;

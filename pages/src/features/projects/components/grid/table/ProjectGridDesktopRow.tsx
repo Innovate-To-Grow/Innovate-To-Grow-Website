@@ -102,6 +102,8 @@ const DesktopActionsCell = ({
       <button
         type="button"
         className="itg-btn itg-btn-text itg-btn-danger project-grid-delete-button"
+        // Named after its project, so one row's Remove is told from the next in a list of buttons.
+        aria-label={`Remove ${row.project_title}`}
         onClick={() => onDeleteRow(row)}
         disabled={deleteDisabled}
       >
