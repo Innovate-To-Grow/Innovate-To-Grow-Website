@@ -31,19 +31,50 @@ describe('MySharedLinksSection', () => {
 
     afterEach(() => {
         cleanup();
+        vi.unstubAllGlobals();
+        Object.defineProperty(document, 'execCommand', {configurable: true, writable: true, value: undefined});
     });
 
-    it('copies a share link and announces it', async () => {
+    it('copies a share link and announces it in the success colour', async () => {
         const writeText = vi.fn().mockResolvedValue(undefined);
         vi.stubGlobal('navigator', {...window.navigator, clipboard: {writeText}});
         mockListMyShares.mockResolvedValue([share()]);
         render(<MySharedLinksSection/>);
 
-        fireEvent.click(await screen.findByRole('button', {name: /^Copy link to Spring finalists/}));
+        fireEvent.click(await screen.findByRole('button', {name: /^Copy Link to Spring finalists/}));
 
         await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://example.test/past-projects/share-1'));
-        expect(await screen.findByRole('status')).toHaveTextContent('Link copied.');
-        vi.unstubAllGlobals();
+        expect(await screen.findByRole('status')).toHaveTextContent(/^Link copied\.$/);
+        const message = screen.getByText('Link copied.');
+        expect(message).toHaveClass('itg-success');
+        expect(message).not.toHaveClass('itg-error');
+        // The message is the only child of its element, for page translation.
+        expect(message.childNodes).toHaveLength(1);
+        expect(message.firstChild?.nodeType).toBe(Node.TEXT_NODE);
+    });
+
+    it('reports a copy the browser refuses in the error colour', async () => {
+        const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+        vi.stubGlobal('navigator', {...window.navigator, clipboard: {writeText}});
+        Object.defineProperty(document, 'execCommand', {configurable: true, writable: true, value: () => false});
+        mockListMyShares.mockResolvedValue([share()]);
+        render(<MySharedLinksSection/>);
+
+        fireEvent.click(await screen.findByRole('button', {name: /^Copy Link to Spring finalists/}));
+
+        const failed = 'Could not copy the link. Open it and copy the address instead.';
+        expect(await screen.findByRole('status')).toHaveTextContent(failed);
+        expect(screen.getByText(failed)).toHaveClass('itg-error');
+        expect(screen.getByText(failed)).not.toHaveClass('itg-success');
+    });
+
+    it('keeps the copy status line empty until a copy', async () => {
+        mockListMyShares.mockResolvedValue([share()]);
+        render(<MySharedLinksSection/>);
+
+        await screen.findByText('Spring finalists');
+        // Empty, so .account-shares-copy-status:empty hides it.
+        expect(screen.getByRole('status')).toBeEmptyDOMElement();
     });
 
     it('renders the list with copy, open and delete when the user has shares', async () => {
@@ -62,8 +93,11 @@ describe('MySharedLinksSection', () => {
             'href',
             '/account/past-project-curation-shared-links',
         );
-        // Its name starts with the visible "Copy link", so speech input can press it by what it says.
-        expect(screen.getByRole('button', {name: /^Copy link to Spring finalists/})).toHaveTextContent('Copy link');
+        // Its name starts with the visible "Copy Link" (Title Case, like every control label), so speech input can press
+        // it by what it says.
+        expect(screen.getByRole('button', {name: /^Copy Link to Spring finalists/})).toHaveTextContent(/^Copy Link$/);
+        expect(screen.getByRole('link', {name: /^Open Spring finalists/})).toHaveTextContent(/^Open$/);
+        expect(screen.getByRole('button', {name: /^Delete Spring finalists/})).toHaveTextContent(/^Delete$/);
         expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
     });
 
