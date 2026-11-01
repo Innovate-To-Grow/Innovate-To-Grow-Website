@@ -252,6 +252,10 @@ describe('ProjectDetailPage', () => {
     expect(screen.getByRole('link', {name: 'Current Projects'})).toHaveAttribute('href', '/current-projects');
     expect(screen.getByRole('link', {name: /back to current projects/i})).toHaveAttribute('href', '/current-projects');
     expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+    // The mark is claimed in an effect, which can run after the heading that findByRole saw.
+    await waitFor(() =>
+      expect(document.head.querySelector('meta[name="robots"]')).toHaveAttribute('content', 'noindex'),
+    );
   });
 
   it('shows an error message with the Past Projects back link when the fetch fails', async () => {
@@ -276,6 +280,21 @@ describe('ProjectDetailPage', () => {
     expect(screen.queryByRole('heading', {name: 'Rotary Joint Testing System'})).toBeNull();
     const backLink = screen.getByRole('link', {name: /back to past projects/i});
     expect(backLink.getAttribute('href')).toBe('/past-projects');
+  });
+
+  it('keeps a failed load out of search results until a retry loads the project', async () => {
+    vi.mocked(fetchProjectDetail).mockReset();
+    vi.mocked(fetchProjectDetail).mockRejectedValueOnce(new Error('boom')).mockResolvedValue(projectDetail);
+    renderAt(`/past-projects/project/${projectDetail.id}`);
+    const robots = () => document.head.querySelector('meta[name="robots"]');
+
+    // The mark is claimed and withdrawn in effects, which can run after the DOM change findByRole saw.
+    const tryAgain = await screen.findByRole('button', {name: 'Try again'});
+    await waitFor(() => expect(robots()).toHaveAttribute('content', 'noindex'));
+    fireEvent.click(tryAgain);
+
+    expect(await screen.findByRole('heading', {level: 1, name: 'Rotary Joint Testing System'})).toBeInTheDocument();
+    await waitFor(() => expect(robots()).toBeNull());
   });
 
   it('shows the current-projects back link on the error branch of the legacy route', async () => {

@@ -232,12 +232,12 @@ export const CurrentProjectsView = ({title, lede, rows, namespace, ...gridProps}
 
   return (
     <div className="projects-page">
-      <h1 className="itg-page-title">{title}</h1>
+      <h1 className="itg-page-title" data-embed-section="page-header">{title}</h1>
       {/* Kept, blank, while the rows load: appearing later, the line pushed the lede and the grid down. */}
-      <p className="itg-page-meta" aria-hidden={meta ? undefined : true}>
+      <p className="itg-page-meta" data-embed-section="page-header" aria-hidden={meta ? undefined : true}>
         {meta || '\u00a0'}
       </p>
-      <p className="itg-lead">{lede}</p>
+      <p className="itg-lead" data-embed-section="page-header">{lede}</p>
       <CurrentProjectsGrid key={gridKey} tableLabel={title} items={items} ready={ready} {...gridProps} />
     </div>
   );

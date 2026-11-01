@@ -139,11 +139,24 @@ synced independently — not only the one marked **Active**.
    - `python manage.py sync_schedule` (cron; see [operations](operations.md#schedule-auto-sync)).
 2. `fetch_schedule_sheet_records(config)` opens **that row's** `sheet_id` and reads the tracks and projects
    worksheets by `tracks_gid` / `projects_gid`
-3. Parses rows into track and project records
+3. Parses rows into track and project records. One-line cells have runs of whitespace (NBSPs and tabs included)
+   collapsed; abstracts keep their paragraph breaks. Every other value is stored as the sheet has it, placeholders
+   such as an `Abstract-101` abstract or a `CAP-101` team name included.
 4. Replaces that row's `CurrentProject`, `EventScheduleSection`, `EventScheduleTrack` and `EventScheduleSlot`
-   rows inside one transaction (other schedules are untouched). `EventAgendaItem` rows (the Expo and Awards
-   tables) are **not** replaced: the first sync of a schedule seeds the defaults from `defaults.py`, and from then
-   on they are edited in the schedule's admin change form and never rewritten by a sync
+   rows inside one transaction (other schedules are untouched). Each team of the sheet (a Team# and title) updates
+   a stored `CurrentProject` when one matches, so the project keeps its id and its `/projects/<id>` links. The
+   match runs in three passes, each over the schedule's stored rows that no earlier pass took:
+   1. the row with the team's Team# and title;
+   2. when no other team of the sheet has the team's class and title, the row of its class with that title, if
+      exactly one is left (the team was renumbered);
+   3. the oldest row of its class and Team# (the team's title was edited).
+
+   Every title is matched before any number, so a renumbered team keeps its id even when another team now has its
+   old number, in whatever order the sheet lists them (a title two teams share, or two stored rows share, decides
+   nothing and is left to the third pass). A team no pass matches gets a new row, and stored rows no team took are
+   deleted. `EventAgendaItem` rows (the Expo and Awards tables) are **not** replaced: the first sync
+   of a schedule seeds the defaults from `defaults.py`, and from then on they are edited in the schedule's admin
+   change form and never rewritten by a sync
 5. Records grand winners on the schedule and writes a `ScheduleSyncLog` entry
 
 ### Sheet structure
@@ -184,14 +197,15 @@ browser** using a hardcoded API key; the key now lives only in the backend servi
    `python manage.py sync_past_projects` runs on a schedule.
 2. `fetch_past_project_records()` reads the configured worksheet (by **name**) from the configured spreadsheet.
 3. Each row's `Year-Semester` cell is parsed by `resolve_project_row` into a `Semester` FK (auto-creating and
-   publishing the semester); the other columns are mapped by header text to `Project` fields.
+   publishing the semester); the other columns are mapped by header text to `Project` fields. Text cells other
+   than Class and Team# (the sync key) have their whitespace tidied the same way as the schedule sync's.
 4. Rows with an unparseable/empty `Year-Semester`, an out-of-range season, a blank title, or a duplicate
    `(semester, class_code, team_number)` are skipped and counted.
 5. In one transaction, **all `Project` rows with `source="sheet"` are deleted and recreated** from the sheet —
    a full replace. Rows with `source="manual"` (CSV-imported or hand-entered in admin) are **never touched**.
 6. The `projects:past-all` cache is cleared (explicitly, since `bulk_create` does not fire `post_save`), and a
    `PastProjectSyncLog` row records the outcome.
-7. `GET /projects/past-all/` serves the rows to the React `/past-projects` page.
+7. `GET /projects/archive/` (compact pages) and `GET /projects/{id}/` serve the rows to the React `/past-projects` page.
 
 ### Visibility note (newest semester)
 

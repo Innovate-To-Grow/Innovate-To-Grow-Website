@@ -57,5 +57,10 @@ from = "apps.event.admin.registration.admin"
 to = "apps.mail.models"
 reason = "The registration admin's 'send login link' action records the mail LoginLinkToken it issues; imported lazily inside the action."
 
+[[exceptions]]
+from = "apps.projects.services.current_project_links"
+to = "apps.event.services.current_projects"
+reason = "/projects/<id>/ resolves a current-semester project link (an event CurrentProject id) from an earlier schedule to the team's archive project; imported lazily inside the lookup."
+
 # Import-time cycles accepted until refactored, as
 # [[cycles]] modules = [...] reason = "...". None today.

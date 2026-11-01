@@ -18,6 +18,8 @@ _DEFAULT_DESIGN_TOKENS = {
         "border": "#dddddd",
         "border_table": "#cccccc",
         "border_input": "#cccccc",
+        # The edge of the search and filter fields (.itg-input, .itg-select): 3:1 on their grey fill.
+        "border_field": "#858585",
         "accent_gold": "#dbaa00",
         "accent_gold_hover": "#be882c",
         "accent_bright": "#ffbf3c",

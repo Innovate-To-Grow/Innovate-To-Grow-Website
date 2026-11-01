@@ -1,6 +1,16 @@
 import {Suspense, isValidElement} from 'react';
-import {matchRoutes} from 'react-router';
+import {matchRoutes, type RouteObject} from 'react-router';
 import {describe, it, expect} from 'vitest';
+
+/** The route with `path` anywhere under `routes` (pages sit inside a pathless error-boundary route). */
+const findRoute = (routes: RouteObject[], path: string): RouteObject | undefined => {
+    for (const route of routes) {
+        if (route.path === path) return route;
+        const nested = route.children ? findRoute(route.children, path) : undefined;
+        if (nested) return nested;
+    }
+    return undefined;
+};
 
 describe('Router', () => {
     it('router object is created without errors', async () => {
@@ -57,13 +67,7 @@ describe('Router', () => {
     it.each(lazyRoutePaths)('lazy route %s is wrapped in Suspense', async (path) => {
         const {createAppRouter} = await import('@/app/router');
         const router = createAppRouter();
-        const rootRoute = router.routes.find((route) => route.path === '/');
-        // Non-index children carry an `element` prop; the types model index vs
-        // non-index routes separately, so narrow with a cast rather than a
-        // runtime type guard.
-        const route = rootRoute?.children?.find((r) => 'path' in r && r.path === path) as
-            | { element?: unknown }
-            | undefined;
+        const route = findRoute(router.routes, path);
 
         expect(route, `route ${path} not found`).toBeDefined();
         expect(isValidElement(route?.element)).toBe(true);
@@ -71,5 +75,25 @@ describe('Router', () => {
         // a bare lazy component instead of <Suspense>, a slow chunk load leaves
         // the UI frozen on the previous page.
         expect((route?.element as { type: unknown }).type).toBe(Suspense);
+    });
+
+    it.each(['/', '/_block-preview', '/_footer-preview', '/_embed/:embedSlug'])(
+        'top-level route %s has an error element, so a route error never shows the developer screen',
+        async (path) => {
+            const {createAppRouter} = await import('@/app/router');
+            const route = createAppRouter().routes.find((candidate) => candidate.path === path);
+
+            expect(isValidElement(route?.errorElement)).toBe(true);
+        },
+    );
+
+    it('catches page errors inside the layout, in a pathless route around every page', async () => {
+        const {createAppRouter} = await import('@/app/router');
+        const rootRoute = createAppRouter().routes.find((route) => route.path === '/');
+        const [pages] = rootRoute?.children ?? [];
+
+        expect(pages?.path).toBeUndefined();
+        expect(isValidElement(pages?.errorElement)).toBe(true);
+        expect(findRoute(pages?.children ?? [], 'current-projects')).toBeDefined();
     });
 });

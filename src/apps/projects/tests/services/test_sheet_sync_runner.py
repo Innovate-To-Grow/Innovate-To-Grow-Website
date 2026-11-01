@@ -298,3 +298,19 @@ class SyncPastProjectsRunnerTest(TestCase):
         project = Project.objects.get()
         self.assertEqual(project.project_title, "Smart App")
         self.assertEqual(project.class_code, "CSE")
+
+    def test_text_cells_are_tidied_and_abstract_paragraphs_kept(self):
+        record = _record(
+            title="Protein  Separators",
+            organization="UC Merced Sustainability Office",
+            student_names="Ada Lovelace,\tBen Ng",
+            abstract="First  paragraph.\n\nSecond paragraph.  ",
+        )
+
+        sync_past_projects(self.config, records=[record])
+
+        project = Project.objects.get()
+        self.assertEqual(project.project_title, "Protein Separators")
+        self.assertEqual(project.organization, "UC Merced Sustainability Office")
+        self.assertEqual(project.student_names, "Ada Lovelace, Ben Ng")
+        self.assertEqual(project.abstract, "First paragraph.\n\nSecond paragraph.")

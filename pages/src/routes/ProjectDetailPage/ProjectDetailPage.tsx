@@ -18,6 +18,8 @@ interface ProjectLoadFailedProps {
 /** A project that does not exist (or a link that is wrong), or one that could not be loaded right now. */
 const ProjectLoadFailed = ({error, backLink, retry}: ProjectLoadFailedProps) => {
   const notFound = error !== 'failed';
+  // Neither state belongs in search results; the mark goes with this message (a retry that loads the project).
+  usePageTitle(null, {noindex: true});
   return (
     <ProjectsMessagePage
       className="project-detail projects-error"
@@ -80,11 +82,15 @@ const ProjectDetailActions = ({backTarget}: {backTarget: ProjectBackTarget}) => 
   );
 };
 
-/** The tab's title: the project's, or what went wrong, or (while loading) the section's name. */
-const pageTitleFor = (projectTitle: string | undefined, error: ProjectDetailError | null, sectionName: string) => {
+/**
+ * The tab's title: the project's, or what went wrong. None while the project loads: the tab keeps the last page's
+ * title, which is what tells the page view sent to Siteimprove (usePageTracking) to wait for this page's own. A
+ * section name here would read as this page's title to it whenever the visitor came from another section.
+ */
+const pageTitleFor = (projectTitle: string | undefined, error: ProjectDetailError | null) => {
   if (projectTitle) return projectTitle;
   if (error === 'failed') return "Project couldn't be loaded";
-  return error ? 'Project not found' : sectionName;
+  return error ? 'Project not found' : null;
 };
 
 export const ProjectDetailPage = () => {
@@ -95,9 +101,7 @@ export const ProjectDetailPage = () => {
   // older links to archive projects: it looks in the current schedule first. Past-project pages read the archive.
   const {result, loading, error, retry} = useProjectDetail(id, !isPastProjectDetail);
   const backTarget = resolveProjectBackTarget(location.state, isPastProjectDetail || result?.source === 'archive');
-  usePageTitle(
-    pageTitleFor(result?.project.project_title, error, isPastProjectDetail ? 'Past Projects' : 'Current Projects'),
-  );
+  usePageTitle(pageTitleFor(result?.project.project_title, error));
 
   useEffect(() => {
     window.scrollTo(0, 0);
