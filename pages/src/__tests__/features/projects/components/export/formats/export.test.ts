@@ -98,6 +98,19 @@ describe('createProjectRowsWordBlob', () => {
         expect(packageText).toContain('No Logo Export');
         expect(packageText).toContain('Rotary Joint Testing System');
     });
+
+    it('heads the document as Past Projects, or with the heading the context gives', async () => {
+        const packageText = async (blob: Blob) => new TextDecoder().decode(new Uint8Array(await blob.arrayBuffer()));
+
+        expect(await packageText(createProjectRowsWordBlob([row], {title: 'Archive picks'}))).toContain(
+            'Innovate to Grow Past Projects',
+        );
+        const mixed = await packageText(
+            createProjectRowsWordBlob([row], {title: 'Mixed picks', heading: 'Innovate to Grow Projects'}),
+        );
+        expect(mixed).toContain('Innovate to Grow Projects');
+        expect(mixed).not.toContain('Innovate to Grow Past Projects');
+    });
 });
 
 describe('buildProjectsWorksheet', () => {
@@ -162,6 +175,12 @@ describe('buildProjectsWorksheet', () => {
         const workbook = new ExcelJS.Workbook();
         buildProjectsWorksheet(workbook, [row], {title: 'No Logo'}, null);
         expect(workbook.getWorksheet('Projects')?.getImages()).toHaveLength(0);
+    });
+
+    it('names the list with the heading the context gives', () => {
+        const workbook = new ExcelJS.Workbook();
+        buildProjectsWorksheet(workbook, [row], {title: 'Mixed picks', heading: 'Innovate to Grow Projects'}, null);
+        expect(workbook.getWorksheet('Projects')?.getCell(2, 2).value).toBe('Innovate to Grow Projects');
     });
 });
 
@@ -239,5 +258,14 @@ describe('exportProjectRowsPdf', () => {
         expect(drawnText).toContain('Abstract: ');
         // The per-project Notes field was removed.
         expect(pdfTextCalls).not.toContain('Notes: ');
+    });
+
+    it('draws the heading the context gives under the title', async () => {
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: false}));
+
+        await exportProjectRowsPdf([row], 'projects', {title: 'Mixed picks', heading: 'Innovate to Grow Projects'});
+
+        expect(pdfTextCalls).toContain('Innovate to Grow Projects');
+        expect(pdfTextCalls).not.toContain('Innovate to Grow Past Projects');
     });
 });

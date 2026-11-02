@@ -1,0 +1,36 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }} &mdash; {{ original.name }}</h1>{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <div class="mb-6 rounded-default border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300">
+        <p class="font-semibold">For a leaked key or a retired service account.</p>
+        <p class="mt-1">
+            This unpins the key, deactivates the configuration and clears its access-check evidence. The stored version
+            is not deleted, and tokens Google already issued stay valid for up to an hour: also delete the delegation in
+            the Workspace Admin console and disable or delete the key in Google Cloud (see the runbook).
+        </p>
+    </div>
+    {% include "admin/core/gmailapiproviderconfig/key_panel.html" %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="mb-4 rounded-default bg-red-100 px-3 py-2.5 text-sm text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        <fieldset class="mb-6 rounded-default border border-base-200 p-4 dark:border-base-700">
+            {% include "unfold/helpers/field.html" with field=form.confirmation %}
+            {% include "unfold/helpers/field.html" with field=form.reason %}
+            {% include "unfold/helpers/field.html" with field=form.switch_to_ses %}
+        </fieldset>
+        <div class="flex gap-3">
+            <button type="submit" class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">Remove key</button>
+            <a href="{{ cancel_url }}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -29,6 +29,7 @@ from .registrations import (  # noqa: F401 - register admin
 from .service_credentials import (  # noqa: F401 - register admin
     GmailAccessAccountAdmin,
     GoogleCredentialConfigAdmin,
+    MicrosoftGraphProviderConfigAdmin,
     SMTPProviderConfigAdmin,
 )
 

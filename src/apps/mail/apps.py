@@ -36,15 +36,19 @@ class MailConfig(AppConfig):
 
 def register_background_jobs():
     from apps.core.services.background_jobs import register_job_kind
+    from apps.core.services.delivery_rates import Family, Lane
 
     dispatch = "apps.mail.services.campaign.dispatch"
-    for kind, handler in (
-        ("mail.email_recipient", "send_email_recipient_job"),
-        ("mail.sms_recipient", "send_sms_recipient_job"),
+    # Campaign recipients send on the bulk lane: claimed after every other job, and not at all while it is paced.
+    for kind, handler, family in (
+        ("mail.email_recipient", "send_email_recipient_job", Family.EMAIL),
+        ("mail.sms_recipient", "send_sms_recipient_job", Family.SMS),
     ):
         register_job_kind(
             kind,
             handler=f"{dispatch}.{handler}",
             state_handler=f"{dispatch}.sync_delivery_job_state",
             stale_resolver=f"{dispatch}.resolve_stale_delivery_job",
+            family=family,
+            lane=Lane.BULK,
         )

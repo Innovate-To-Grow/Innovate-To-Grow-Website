@@ -1,11 +1,14 @@
 import type {ReactNode, RefObject} from 'react';
 import {pluralize} from '../../shared/utils/saveResults';
 import {SharedEditIcon, SharedSaveIcon} from '../../richText/editor/shareEditorIcons';
-import {currentLoginPath, formatSharedDate} from './curationNote';
+import {formatSharedDate, type SignInToSave} from './curationNote';
+import {SignInToSaveLink} from './SignInToSaveLink';
 import type {SharedListEditor} from '../shared/useSharedListEditor';
 
 interface SharedListHeaderProps {
   headingId: string;
+  /** Over the name: which list the projects come from (curationBranding). */
+  eyebrow: string;
   title: string;
   rowCount: number;
   sharedAt?: string;
@@ -14,20 +17,28 @@ interface SharedListHeaderProps {
   titleInputRef: RefObject<HTMLInputElement | null>;
 }
 
-export const SharedListHeader = ({headingId, title, rowCount, sharedAt, editor, titleInputRef}: SharedListHeaderProps) => {
+export const SharedListHeader = ({
+  headingId,
+  eyebrow,
+  title,
+  rowCount,
+  sharedAt,
+  editor,
+  titleInputRef,
+}: SharedListHeaderProps) => {
   const sharedDate = formatSharedDate(sharedAt);
   const isEditing = Boolean(editor?.isEditingTitle);
 
   return (
     <header className="project-grid-shared-header">
-      <p className="itg-eyebrow">Shared list · Past Projects</p>
+      <p className="itg-eyebrow">{eyebrow}</p>
       <div className={`project-grid-share-title-editor${isEditing ? ' is-editing' : ''}`}>
         {editor && isEditing ? (
           <input
             ref={titleInputRef}
             type="text"
             className="itg-input project-grid-share-title-input"
-            aria-label="Shared page name"
+            aria-label="Curation name"
             value={editor.titleDraft}
             maxLength={200}
             onChange={(event) => editor.setTitleDraft(event.target.value)}
@@ -53,12 +64,13 @@ export const SharedListHeader = ({headingId, title, rowCount, sharedAt, editor, 
             disabled={editor.isSaving}
           >
             {isEditing ? <SharedSaveIcon /> : <SharedEditIcon />}
-            {isEditing ? 'Save name' : 'Edit name'}
+            <span>{isEditing ? 'Save Name' : 'Edit Name'}</span>
           </button>
         ) : null}
       </div>
+      {/* The name and note are a member's own words on the site's domain: say who put the page together. */}
       <p className="itg-page-meta">
-        {pluralize(rowCount, 'project')}
+        Curated by a site member · {pluralize(rowCount, 'project')}
         {sharedDate ? ` · shared ${sharedDate}` : ''}
       </p>
     </header>
@@ -73,6 +85,7 @@ interface BuilderCardHeaderProps {
   canSave: boolean;
   isAuthenticated: boolean;
   saveButton: ReactNode;
+  signIn: SignInToSave;
 }
 
 export const BuilderCardHeader = ({
@@ -82,6 +95,7 @@ export const BuilderCardHeader = ({
   canSave,
   isAuthenticated,
   saveButton,
+  signIn,
 }: BuilderCardHeaderProps) => (
   <div className="project-grid-card-header">
     <div className="project-grid-card-heading">
@@ -89,17 +103,19 @@ export const BuilderCardHeader = ({
         {title}
       </h2>
       <p className="project-grid-card-count">
-        <strong>{pluralize(rowCount, 'project')}</strong> in this list
+        <strong>{pluralize(rowCount, 'project')}</strong> in this draft
       </p>
     </div>
     {canSave ? (
       <div className="project-grid-save-status">
-        {isAuthenticated ? saveButton : (
-          <a className="itg-btn itg-btn-primary" href={currentLoginPath()}>
-            Sign in to save
-          </a>
+        {isAuthenticated ? (
+          saveButton
+        ) : (
+          <SignInToSaveLink className="itg-btn itg-btn-primary" signIn={signIn}>
+            Sign In to Save
+          </SignInToSaveLink>
         )}
-        <p className="project-grid-draft-note">Not saved yet. This browser keeps the list until you save it.</p>
+        <p className="project-grid-draft-note">Not saved yet. This browser keeps the draft until you save it.</p>
       </div>
     ) : null}
   </div>

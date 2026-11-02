@@ -5,8 +5,8 @@
    "global" sheet; this file only lays them out for the project pages.
    Visual language: innovatetogrow.ucmerced.edu (UC Merced theme) -- 16px / 24px
    #323336 text, underlined navy links, the current-projects DataTables table
-   (sort arrows, sorted-column shading, navy square detail buttons, the pager
-   right-aligned under the table).
+   (sort arrows with no sorted-column shading, flat outline Details buttons,
+   the pager right-aligned under the table).
    ========================================================================== */
 
 /* The sections live in their owning feature areas. They are imported in

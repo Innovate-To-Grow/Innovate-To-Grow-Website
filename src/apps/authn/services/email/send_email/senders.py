@@ -60,11 +60,13 @@ def send_admin_invitation_email(*, invitation, request=None):
         },
     )
 
+    # The acceptance URL creates a staff account for whoever holds it, so no copy may stay in Sent Items.
     if email_api._send_via_ses(
         config=config,
         recipient=invitation.email,
         subject=subject,
         html_body=html_body,
+        keep_sent_copy=False,
     ):
         logger.info("Admin invitation email accepted by the configured provider")
         return
@@ -98,12 +100,14 @@ def send_verification_email(
         link_event=link_event,
     )
 
+    # Every purpose's code (and its sign-in link) is a live credential, so no copy may stay in Sent Items.
     if email_api._send_via_ses(
         config=config,
         recipient=recipient,
         subject=subject,
         html_body=html_body,
         raise_provider_errors=True,
+        keep_sent_copy=False,
     ):
         logger.info("Verification email accepted by the configured provider")
         return

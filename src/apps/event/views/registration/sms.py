@@ -32,6 +32,7 @@ def _send_registration_code(member, phone: str, verification_context: str):
     """Start the phone challenge; the guarded send's ``(payload, status)`` or ``SendOutcome``."""
     from apps.authn.services.send_verification.outcomes import SendOutcome, failure_status
     from apps.authn.services.sms import (
+        PhoneVerificationBusy,
         PhoneVerificationDeliveryError,
         PhoneVerificationInvalid,
         start_phone_verification,
@@ -48,6 +49,13 @@ def _send_registration_code(member, phone: str, verification_context: str):
         return (
             {"detail": "Invalid phone number."},
             status.HTTP_400_BAD_REQUEST,
+        )
+    except PhoneVerificationBusy as exc:
+        # Held back by the delivery rate (nothing was sent): say when to ask again; the guard adds Retry-After.
+        return SendOutcome(
+            {"detail": str(exc), "retry_after": exc.retry_after},
+            status.HTTP_503_SERVICE_UNAVAILABLE,
+            failure_status(exc),
         )
     except PhoneVerificationDeliveryError as exc:
         return SendOutcome(

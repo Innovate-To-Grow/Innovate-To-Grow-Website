@@ -587,7 +587,8 @@ class AdminInvitationAdminTests(_AdminTestBase):
     def test_save_model_new_sends_invitation(self, mock_send):
         request = _request(self.rf, self.admin_user, method="post")
         inv = AdminInvitation(email="New@Example.com", role=AdminInvitation.Role.ADMIN)
-        self.model_admin.save_model(request, inv, form=None, change=False)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.model_admin.save_model(request, inv, form=None, change=False)
         inv.refresh_from_db()
         self.assertEqual(inv.email, "new@example.com")
         self.assertTrue(inv.token)
@@ -601,7 +602,8 @@ class AdminInvitationAdminTests(_AdminTestBase):
     def test_save_model_new_email_failure_warns(self, mock_send):
         request = _request(self.rf, self.admin_user, method="post")
         inv = AdminInvitation(email="fail@example.com", role=AdminInvitation.Role.ADMIN)
-        self.model_admin.save_model(request, inv, form=None, change=False)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.model_admin.save_model(request, inv, form=None, change=False)
         self.assertTrue(any("could not be sent" in m for m in self._messages(request)))
 
     def test_save_model_change_does_not_resend(self):
@@ -622,6 +624,17 @@ class AdminInvitationAdminTests(_AdminTestBase):
         msgs = self._messages(request)
         self.assertTrue(any("Skipped" in m for m in msgs))
         self.assertTrue(any("Resent" in m for m in msgs))
+
+    @patch("apps.authn.admin.members.invitation.inline_batch_limit", return_value=1)
+    @patch("apps.authn.services.email.send_admin_invitation_email")
+    def test_resend_invitations_refuses_more_than_one_request_can_send(self, mock_send, _limit):
+        first, second = self._make_invitation(), self._make_invitation()
+        request = _request(self.rf, self.admin_user)
+
+        self.model_admin.resend_invitations(request, AdminInvitation.objects.filter(pk__in=[first.pk, second.pk]))
+
+        mock_send.assert_not_called()
+        self.assertTrue(any("cannot be resent from one request" in m for m in self._messages(request)))
 
     def test_cancel_invitations(self):
         inv = self._make_invitation()
