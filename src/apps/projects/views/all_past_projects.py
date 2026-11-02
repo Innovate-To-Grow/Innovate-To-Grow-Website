@@ -16,6 +16,8 @@ class AllPastProjectsAPIView(ListAPIView):
     included — it is never treated as a hidden "current" semester.
     """
 
+    rate_limit_scope = "public-heavy"
+
     permission_classes = [AllowAny]
     authentication_classes = []
     serializer_class = ProjectTableSerializer

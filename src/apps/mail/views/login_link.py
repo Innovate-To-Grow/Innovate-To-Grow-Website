@@ -58,6 +58,8 @@ def _reject_spent(request, link, detail, code):
 class LoginLinkView(APIView):
     """Exchange an emailed login-link token for JWT credentials."""
 
+    rate_limit_scope = "auth-email-link"
+
     permission_classes = [AllowAny]
     # Authenticated by the one-time token in the body: a stale, expired or other-account Bearer must never 401 this.
     authentication_classes = []

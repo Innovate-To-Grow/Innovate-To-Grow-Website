@@ -18,6 +18,8 @@ from .password import PasswordLoginMixin
 class AdminLoginView(PasswordLoginMixin, EmailCodeLoginMixin, View):
     """Admin login: email code flow OR password flow."""
 
+    rate_limit_scope = {"GET": "staff-admin", "*": "auth-sign-in"}
+
     # noinspection PyMethodMayBeStatic
     def get(self, request):
         import apps.authn.views.admin.login as login_api

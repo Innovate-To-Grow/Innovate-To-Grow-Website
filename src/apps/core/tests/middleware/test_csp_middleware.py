@@ -17,6 +17,7 @@ from django.test import Client, RequestFactory, TestCase, override_settings
 from apps.cms.models import CMSEmbedAllowedHost
 from apps.cms.services.sanitization.embed_hosts import invalidate_cache
 from apps.core.middleware import ContentSecurityPolicyMiddleware, csp_report
+from apps.core.tests.request_limits.helpers import view_limit
 
 
 class CSPHeaderTests(TestCase):
@@ -435,7 +436,7 @@ class CSPReportEndpointTests(TestCase):
         response = client.get("/csp-report/")
         self.assertEqual(response.status_code, 405)
 
-    @override_settings(CSP_REPORT_RATE_LIMIT=1, CSP_REPORT_RATE_WINDOW_SECONDS=60)
+    @view_limit(**{"view-csp-report": (1, 60)})
     def test_reports_are_rate_limited_without_logging_attacker_content(self):
         body = json.dumps({"csp-report": {"effective-directive": "img-src"}})
         with patch("apps.core.middleware.csp_report.logger.warning") as warn:

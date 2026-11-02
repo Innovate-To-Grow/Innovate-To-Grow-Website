@@ -14,6 +14,7 @@ class NewsPageNumberPagination(PageNumberPagination):
 
 
 class NewsListAPIView(ListAPIView):
+    rate_limit_scope = "public-read"
     permission_classes = [AllowAny]
     authentication_classes = []
     serializer_class = NewsArticleSerializer
@@ -26,6 +27,7 @@ class NewsListAPIView(ListAPIView):
 
 
 class NewsDetailAPIView(RetrieveAPIView):
+    rate_limit_scope = "public-read"
     permission_classes = [AllowAny]
     authentication_classes = []
     serializer_class = NewsArticleDetailSerializer

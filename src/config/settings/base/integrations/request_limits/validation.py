@@ -16,7 +16,10 @@ SECTIONS = ("scopes", "routes", "exempt", "tiers", "controller", "admission", "a
 # Mappings whose keys are data (route names), so an override may add entries to them.
 OPEN_SECTIONS = frozenset({"routes", "exempt"})
 TIER_ORDER = ("p0", "p1", "p2", "p3")
-IDENTITY_KINDS = ("member", "session", "cli", "ip", "destination", "global")
+IDENTITY_KINDS = ("member", "session", "cli", "ip", "destination", "global", "view")
+# A per-view limit (identity "view") names the route scope it sits under; it follows that scope's Smart factor.
+VIEW_IDENTITY = "view"
+OPTIONAL_SCOPE_KEYS = ("parent",)
 STORE_MODES = ("auto", "shared", "local")
 SCOPE_KEYS = (
     "label",
@@ -66,9 +69,19 @@ SECTION_KEYS = {
         "member_read",
         "member_write",
         "not_found",
+        "unproven",
     ),
 }
-FALLBACK_SCOPES = ("cli", "admin", "public_read", "public_write", "member_read", "member_write", "not_found")
+FALLBACK_SCOPES = (
+    "cli",
+    "admin",
+    "public_read",
+    "public_write",
+    "member_read",
+    "member_write",
+    "not_found",
+    "unproven",
+)
 # The policy columns: counts are PositiveIntegerField, periods at most a day, shares Decimal(4, 3).
 MAX_COUNT = 2_147_483_647
 MAX_PERIOD = 86_400
@@ -123,7 +136,9 @@ def _below(path, low, high, problem):
 
 
 def _check_scope(path, spec):
-    _keys(path, spec, SCOPE_KEYS)
+    if not isinstance(spec, dict):
+        _fail(path, "must be an object")
+    _keys(path, {key: value for key, value in spec.items() if key not in OPTIONAL_SCOPE_KEYS}, SCOPE_KEYS)
     _text((*path, "label"), spec["label"])
     _text((*path, "description"), spec["description"], blank=True)
     if spec["tier"] not in TIER_ORDER:
@@ -143,6 +158,25 @@ def _check_scope(path, spec):
         _fail((*path, "requests"), "must not be above identity_ceiling")
 
 
+def is_view_scope(spec) -> bool:
+    return spec.get("identity") == VIEW_IDENTITY
+
+
+def _check_view_scopes(scopes):
+    """A per-view limit names a route scope as its parent, and only a per-view limit has one."""
+    for name, spec in scopes.items():
+        path = ("scopes", name)
+        if not is_view_scope(spec):
+            if "parent" in spec:
+                _fail((*path, "parent"), 'is only for a per-view limit (identity "view")')
+            continue
+        parent = spec.get("parent")
+        if not isinstance(parent, str) or parent not in scopes or is_view_scope(scopes[parent]):
+            _fail((*path, "parent"), "must name a route scope (not a per-view limit) in REQUEST_RATE_LIMITS.scopes")
+        if spec["global_cap"] is not None:
+            _fail((*path, "global_cap"), "must be null: a per-view limit keeps its own key")
+
+
 def _check_scope_value(path, value, scopes):
     if isinstance(value, dict):
         if not value:
@@ -153,6 +187,8 @@ def _check_scope_value(path, value, scopes):
             _check_scope_value((*path, method), scope, scopes)
     elif value not in scopes:
         _fail(path, "must name a scope in REQUEST_RATE_LIMITS.scopes")
+    elif is_view_scope(scopes[value]):
+        _fail(path, "names a per-view limit; a route needs a route scope")
 
 
 def _check_routes(config):
@@ -242,8 +278,8 @@ def _check_store(store, fallback, scopes):
         if not isinstance(value, str) or len(value) < 3 or not value.startswith("/") or not value.endswith("/"):
             _fail(("fallback", key), 'must be a path such as "/admin/"')
     for key in FALLBACK_SCOPES:
-        if fallback[key] not in scopes:
-            _fail(("fallback", key), "must name a scope in REQUEST_RATE_LIMITS.scopes")
+        if fallback[key] not in scopes or is_view_scope(scopes[fallback[key]]):
+            _fail(("fallback", key), "must name a route scope in REQUEST_RATE_LIMITS.scopes")
 
 
 def validate_request_limits(config):
@@ -259,6 +295,7 @@ def validate_request_limits(config):
         if not isinstance(name, str) or not SCOPE_KEY.match(name):
             _fail(("scopes", name), "must be a lower-case key of letters, digits and hyphens")
         _check_scope(("scopes", name), spec)
+    _check_view_scopes(config["scopes"])
     _check_routes(config)
     _check_tiers(config["tiers"])
     for section, required in SECTION_KEYS.items():

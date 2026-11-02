@@ -141,9 +141,10 @@ def _middleware_problems(enabled: bool) -> list:
 
 
 def _registration_problems() -> list:
+    from .services.request_limits.priority import registered_checks
     from .services.request_limits.scopes import registered
 
-    known = set(settings.REQUEST_RATE_LIMITS["scopes"])
+    known = {name for name, spec in settings.REQUEST_RATE_LIMITS["scopes"].items() if spec.get("identity") != "view"}
     scopes, _exemptions = registered()
     unknown = sorted(
         target
@@ -151,14 +152,23 @@ def _registration_problems() -> list:
         for scope in (value.values() if isinstance(value, dict) else [value])
         if scope not in known
     )
-    if not unknown:
-        return []
-    return [
-        Error(
-            f"register_scope names a scope REQUEST_RATE_LIMITS does not define, for: {', '.join(unknown)}.",
-            id="core.E009",
+    problems = []
+    if unknown:
+        problems.append(
+            Error(
+                f"register_scope names a scope REQUEST_RATE_LIMITS does not define, for: {', '.join(unknown)}.",
+                id="core.E009",
+            )
         )
-    ]
+    unchecked = sorted(scope for scope in registered_checks() if scope not in known)
+    if unchecked:
+        problems.append(
+            Error(
+                f"register_priority_check names a scope REQUEST_RATE_LIMITS does not define: {', '.join(unchecked)}.",
+                id="core.E011",
+            )
+        )
+    return problems
 
 
 @register()

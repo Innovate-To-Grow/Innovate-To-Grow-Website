@@ -58,6 +58,7 @@ class IdentityKind(models.TextChoices):
     IP = "ip", "Signed-in user, else client IP"
     DESTINATION = "destination", "Code destination, else member"
     GLOBAL = "global", "Everyone together"
+    VIEW = "view", "Kept by the view (see its description)"
 
 
 def scope_seed(scope: str, spec: dict) -> dict:

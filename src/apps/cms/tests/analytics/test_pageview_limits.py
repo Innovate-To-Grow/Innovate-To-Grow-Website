@@ -39,6 +39,7 @@ from apps.cms.views.analytics import (
     PageViewTotalThrottle,
     PageViewVisitorThrottle,
 )
+from apps.core.tests.request_limits.helpers import view_limit
 from apps.core.utils.throttle_cache import throttle_cache
 from config.settings.base.framework.cache import THROTTLE_CACHE
 
@@ -161,7 +162,7 @@ class TotalCapTests(PageViewVisitorTestCase):
     def test_the_cap_is_three_thousand_a_minute_under_one_constant_key(self):
         throttle = PageViewTotalThrottle()
 
-        self.assertEqual(PageViewTotalThrottle.rate, "3000/min")
+        self.assertEqual(PageViewTotalThrottle.policy_scope, "view-pageview-total")
         self.assertEqual((throttle.num_requests, throttle.duration), (TOTAL_RATE, 60))
         self.assertEqual(throttle.get_cache_key(None, None), TOTAL_KEY)
         # Checked around the per-visitor / legacy throttles, not as one of them (see check_throttles).
@@ -202,7 +203,7 @@ class TotalCapTests(PageViewVisitorTestCase):
         per_visitor = self.response(noisy)
         self.assertEqual(total_count(), VISITOR_RATE)
 
-        with patch.object(PageViewTotalThrottle, "rate", f"{VISITOR_RATE}/min"):
+        with view_limit(**{"view-pageview-total": (VISITOR_RATE, 60)}):
             over_the_cap = self.response(str(uuid.uuid4()))
 
         for response in (per_visitor, over_the_cap):
@@ -228,7 +229,7 @@ class TotalCapTests(PageViewVisitorTestCase):
         self.assertEqual(total_count(), LEGACY_RATE)
 
     def test_over_the_cap_nothing_is_counted_and_a_minted_id_gets_no_bucket(self):
-        with patch.object(PageViewTotalThrottle, "rate", "5/min"):
+        with view_limit(**{"view-pageview-total": (5, 60)}):
             self.assertEqual([self.view(str(uuid.uuid4())) for _ in range(5)], [201] * 5)
             keys_at_the_cap = stored_keys("throttle")
             minted = [str(uuid.uuid4()) for _ in range(20)]
@@ -243,7 +244,7 @@ class TotalCapTests(PageViewVisitorTestCase):
         self.assertEqual(PageView.objects.count(), 5)
 
     def test_reaching_the_cap_is_logged_once_a_minute_for_operators(self):
-        with patch.object(PageViewTotalThrottle, "rate", "3/min"):
+        with view_limit(**{"view-pageview-total": (3, 60)}):
             with self.assertLogs(VIEW_LOGGER, level="WARNING") as logs:
                 statuses = [self.view(str(uuid.uuid4())) for _ in range(30)]
 
@@ -285,7 +286,7 @@ class TotalCapTests(PageViewVisitorTestCase):
         self.assertEqual(PageView.objects.count(), 20 * VISITOR_RATE + 2)
 
     def test_the_client_ip_is_no_part_of_the_cap(self):
-        with patch.object(PageViewTotalThrottle, "rate", "3/min"):
+        with view_limit(**{"view-pageview-total": (3, 60)}):
             for index in range(3):
                 address = f"203.0.113.{index + 1}"
                 response = self.client.post(

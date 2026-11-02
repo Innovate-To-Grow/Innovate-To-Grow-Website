@@ -14,15 +14,18 @@ Keys:
 - ``identity``: what one bucket counts. ``member`` = the verified JWT member or the signed-in staff user, never an
   IP; ``session`` = the signed-in (admin) user; ``cli`` = the CLI token; ``ip`` = the signed-in user if any, else
   the client IP; ``destination`` = the key an app registers for the scope (the code's destination), else the member;
-  ``global`` = no per-caller bucket, only ``global_cap``. Sign-in and code flows are never keyed on the IP: most
-  users share one campus address (see ``config/settings/base/integrations/api``).
+  ``global`` = no per-caller bucket, only ``global_cap``; ``view`` = a per-view limit (``view_scopes.py``) whose
+  view keeps its own key. Sign-in and code flows are never keyed on the IP: most users share one campus address
+  (see ``config/settings/base/integrations/api``).
 - ``fixed``: Smart never tightens the scope (webhooks, token refresh, session check, the check-in desk).
 
 Values marked "today" are the rates in force before this feature (``DEFAULT_THROTTLE_RATES`` and class constants);
-the per-view DRF throttles keep them as finer limits underneath. Everything else is a new, generous default sized
+the per-view limits (``view_scopes.py``) keep them as finer limits underneath. Everything else is a new, generous default sized
 to stop floods, not people: the busiest real pattern (the catalog loading ten 100-row pages, a staff member
 scanning tickets every second) stays far below it.
 """
+
+from .view_scopes import VIEW_SCOPES
 
 MINUTE = 60
 
@@ -120,8 +123,9 @@ P0_SCOPES = {
         "p0",
         "ip",
         600,
-        global_cap=6_000,
         fixed=True,
+        # No aggregate cap: unsigned junk from many addresses must never use up the allowance of the real SNS
+        # deliveries; each sender has its own bucket, and the view counts signed and rejected calls apart.
         description="Bounce and complaint events (today 600/min per IP); they feed the delivery-rate controller.",
     ),
 }
@@ -160,6 +164,15 @@ P1_SCOPES = {
 }
 
 P2_SCOPES = {
+    "auth-code-unproven": _scope(
+        "Code requests without a valid proof",
+        "p2",
+        "global",
+        300,
+        global_cap=300,
+        description="A code request that neither comes from a signed-in person nor carries a valid anti-abuse "
+        "proof is not promoted to P0: it is counted here, together, and shed like background traffic.",
+    ),
     "public-background": _scope(
         "Public background requests",
         "p2",
@@ -227,4 +240,4 @@ P3_SCOPES = {
     ),
 }
 
-SCOPES = {**P0_SCOPES, **P1_SCOPES, **P2_SCOPES, **P3_SCOPES}
+SCOPES = {**P0_SCOPES, **P1_SCOPES, **P2_SCOPES, **P3_SCOPES, **VIEW_SCOPES}

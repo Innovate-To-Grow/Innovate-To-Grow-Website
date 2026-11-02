@@ -93,3 +93,23 @@ def limiter_on(scopes=None, **sections):
         REQUEST_RATE_LIMITS=limits_with(scopes, **sections),
         ROOT_URLCONF="apps.core.tests.request_limits.urls",
     )
+
+
+def view_limits_with(**rates):
+    """REQUEST_RATE_LIMITS with per-view limit seeds changed: ``view_limits_with(**{"view-ai-search": (2, 60)})``
+    (requests, period seconds), or ``None`` to switch one off."""
+    config = copy.deepcopy(settings.REQUEST_RATE_LIMITS)
+    for scope, rate in rates.items():
+        spec = {**config["scopes"][scope]}
+        if rate is None:
+            spec["enabled"] = False
+        else:
+            spec["requests"], spec["period_seconds"] = rate
+        config["scopes"][scope] = spec
+    return config
+
+
+def view_limit(**rates):
+    """override_settings changing per-view limit seeds (the rates the throttles use while the limiter is off, as in
+    the test settings), e.g. ``@view_limit(**{"view-past-project-share": (1, 60)})``."""
+    return override_settings(REQUEST_RATE_LIMITS=view_limits_with(**rates))

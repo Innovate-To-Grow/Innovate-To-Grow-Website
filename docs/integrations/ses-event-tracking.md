@@ -108,7 +108,13 @@ is anchored in two checks in `SesEventWebhookView`:
    another SNS topic is misconfigured to point at us.
 
 The endpoint also has a DRF throttle at 600/minute per source IP
-(`ses_events` scope) as defense-in-depth against signed-envelope replay.
+(request-limit policy `view-ses-events`, a fixed scope Smart limiting never
+tightens) as defense-in-depth against signed-envelope replay. It counts a call
+only after its SNS signature verifies; rejected calls (bad envelope or
+signature) are counted in their own bucket (`view-ses-rejected`, 60/minute per
+source IP), so unsigned junk can never use up the allowance of the real SNS
+deliveries. The route scope `webhook-ses` has no aggregate cap for the same
+reason.
 
 ## What this does NOT do (out of scope for now)
 

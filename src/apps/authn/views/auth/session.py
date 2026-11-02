@@ -9,6 +9,8 @@ from apps.authn.serializers import ProfileSerializer
 class SessionView(APIView):
     """Return the authenticated member state used to bootstrap the frontend."""
 
+    rate_limit_scope = "auth-session"
+
     permission_classes = [IsAuthenticated]
 
     # noinspection PyMethodMayBeStatic

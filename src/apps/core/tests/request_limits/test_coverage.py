@@ -31,7 +31,14 @@ P0_ROUTES = (
     "authn:session",
     "authn:send-verification-challenge",
     "event:checkin-scan",
+    "event:checkin-undo",
     "mail:ses-events",
+    "authn:change-password-request-code",
+    "authn:change-password-verify-code",
+    "authn:contact-email-request-verification",
+    "authn:contact-phone-verify-code",
+    "authn:change-password",
+    "maintenance-bypass",
 )
 
 
@@ -82,7 +89,43 @@ class RouteCoverageTests(SimpleTestCase):
                 if scope is not None and scope not in self.known:
                     problems.append(f"{route} {method}: unknown scope {scope!r}")
         self.assertEqual(problems, [])
-        self.assertLessEqual({"fallback", "exempt", "route"}, sources)
+        self.assertLessEqual({"fallback", "exempt", "route", "view"}, sources)
+
+    def test_every_route_outside_the_admin_names_its_scope(self):
+        """The fallback is for Django-admin model pages only: every other route is tagged or in the table."""
+        untagged = sorted(
+            f"{route} {method}"
+            for route, name, view in self.routes
+            if not route.startswith("admin/") and name not in DEBUG_ONLY
+            for method in ("GET", "POST")
+            if classify_route(view, name, method) is None
+        )
+        self.assertEqual(untagged, [])
+
+    def test_no_route_names_a_per_view_limit(self):
+        scopes = settings.REQUEST_RATE_LIMITS["scopes"]
+        for route, name, view in self.routes:
+            for method in ("GET", "POST"):
+                found = classify_route(view, name, method)
+                if found is not None and found.scope is not None:
+                    self.assertNotEqual(scopes[found.scope]["identity"], "view", f"{route} {method}")
+
+    def test_admin_pollers_are_in_generous_or_fixed_scopes(self):
+        by_name = {name: view for _route, name, view in self.routes}
+        scopes = settings.REQUEST_RATE_LIMITS["scopes"]
+        for name in (
+            "event:checkin-status",
+            "admin:mail_emailcampaign_send_status_json",
+            "admin:mail_smscampaign_send_status_json",
+            "cms-live-preview",
+        ):
+            with self.subTest(route=name):
+                spec = scopes[classify_route(by_name[name], name, "GET").scope]
+                self.assertEqual(spec["tier"], "p2")
+                # A 1-second poller is 60 a minute: even at the Smart floor the scope stays above it.
+                floor = spec["smart_floor"] or settings.REQUEST_RATE_LIMITS["tiers"]["p2"]["floor"]
+                self.assertTrue(spec["fixed"] or spec["requests"] * floor >= 60)
+        self.assertTrue(scopes[classify_route(by_name["event:checkin-status"], "x", "GET").scope]["fixed"])
 
     def test_the_fallback_scopes_exist_for_reads_and_writes(self):
         for signed_in in (False, True):

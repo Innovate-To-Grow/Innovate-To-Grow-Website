@@ -55,6 +55,19 @@ class ClassifyTests(SimpleTestCase):
         register_exemption(scopes.view_path(unscoped), "Registered reason.")
         self.assertEqual(self.classify("POST", "/unscoped/").exempt, "Registered reason.")
 
+    def test_the_route_table_beats_the_views_own_scope(self):
+        # A deployment override can move any route, the site's own tagged views included.
+        with self.settings(REQUEST_RATE_LIMITS=limits_with(routes={"p3": "t-p1"})):
+            self.assertEqual(self.classify("GET", "/p3/"), scopes.Classification("t-p1", None, "route"))
+        with self.settings(REQUEST_RATE_LIMITS=limits_with(routes={"methods": {"POST": "t-p0"}})):
+            self.assertEqual(self.classify("POST", "/methods/").scope, "t-p0")
+            # The table has no GET: the view's own map decides.
+            self.assertEqual(self.classify("GET", "/methods/"), scopes.Classification("t-p1", None, "view"))
+
+    def test_the_views_own_scope_beats_an_app_registration(self):
+        register_scope("p3", "t-p2")
+        self.assertEqual(self.classify("GET", "/p3/").source, "view")
+
     def test_settings_exemption(self):
         with self.settings(REQUEST_RATE_LIMITS=limits_with(exempt={"unscoped": "Settings reason."})):
             self.assertEqual(self.classify("GET", "/unscoped/").exempt, "Settings reason.")

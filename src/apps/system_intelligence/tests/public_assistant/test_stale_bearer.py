@@ -6,15 +6,14 @@ its throttle and token budgets on an actor resolved from ``request.user`` (the m
 visitor in the body), so it honours a valid token and treats a bad one as the visitor that sent it.
 """
 
-from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.test import override_settings
 
 from apps.authn.tests.stale_bearer import (
     assert_stale_bearer_reads_as_anonymous,
     stale_bearer_headers,
     valid_bearer_header,
 )
+from apps.core.tests.request_limits.helpers import view_limit
 from apps.system_intelligence.services.public_assistant import actors
 from apps.system_intelligence.tests.public_assistant.test_actor_limits_api import ActorLimitsTestBase
 
@@ -22,8 +21,8 @@ Member = get_user_model()
 
 
 def visitor_rate(rate):
-    rates = {**settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], "public_assistant": rate}
-    return override_settings(REST_FRAMEWORK={**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates})
+    """``"N/minute"``: the assistant's per-actor rate for the test."""
+    return view_limit(**{"view-assistant-chat": (int(rate.split("/")[0]), 60)})
 
 
 class PublicAssistantStaleBearerTests(ActorLimitsTestBase):

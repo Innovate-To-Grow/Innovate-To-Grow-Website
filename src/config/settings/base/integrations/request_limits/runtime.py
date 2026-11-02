@@ -115,4 +115,7 @@ FALLBACK = {
     "member_write": "member-write",
     # Requests for a path no route matches.
     "not_found": "not-found",
+    # A request of a scope that needs proof it is user-initiated (``register_priority_check``) that has none: not
+    # signed in and no valid anti-abuse proof. It is counted here instead of being promoted to P0.
+    "unproven": "auth-code-unproven",
 }

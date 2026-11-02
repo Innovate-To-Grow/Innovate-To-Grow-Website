@@ -42,11 +42,15 @@ Subsystem               What it is                                            Im
                         ``gmail/access_check/`` record the go-live evidence
 ``helpers/``            In-process task runner + sheet formula safety         ``authn``, ``event``, ``mail``, ``system_intelligence``
 ``legacy_access/``      Signed access to the read-only legacy site viewer      ``core`` only (legacy_view, admin, views)
-``request_limits/``     Inbound request limits for every route (one           ``core`` only (its middleware); apps plug in from
+``request_limits/``     Inbound request limits for every route (one           ``core`` (its middleware); apps plug in from
                         middleware): scopes, priority tiers, Smart limiting    ``ready()`` with ``register_scope`` /
                         (shed P3 → P2 → P1, never P0), tier slots, abuse      ``register_exemption`` /
-                        escalation; ``rules/`` is pure, ``runtime/`` holds     ``register_identity_resolver`` or a view's
-                        counters, heartbeats and the Smart state.             ``rate_limit_scope``
+                        escalation; ``rules/`` is pure, ``runtime/`` holds     ``register_identity_resolver`` /
+                        counters, heartbeats and the Smart state;             ``register_priority_check`` or a view's
+                        ``view_limits`` gives per-view throttles their live    ``rate_limit_scope``; ``authn``, ``cms``,
+                        policy rate, ``priority`` gates P0 promotion.         ``event``, ``mail``, ``projects``,
+                                                                              ``cli_admin``, ``system_intelligence``
+                                                                              (``view_limits`` throttle bases)
 ``status/``             Infrastructure status dashboard client                 ``core`` only (admin infrastructure status)
 ======================  ====================================================  ==================================================
 

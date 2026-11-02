@@ -16,6 +16,8 @@ class AllProjectsAPIView(APIView):
     uncached request.
     """
 
+    rate_limit_scope = "public-heavy"
+
     permission_classes = [AllowAny]
     authentication_classes = []
 

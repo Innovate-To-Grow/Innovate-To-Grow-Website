@@ -248,12 +248,12 @@ by it. Three limiters still use the client IP, each for a stated reason:
 
 | Limiter | Rate | Why it remains |
 |---------|------|----------------|
-| `SesEventThrottle` on `POST /mail/ses/events/` | 600/minute | Callers are AWS SNS delivery addresses, never users. Authenticity comes from the SNS signature and topic allowlist; the throttle only sheds junk |
+| `SesEventThrottle` / `SesRejectedThrottle` on `POST /mail/ses/events/` | 600/minute signed, 60/minute rejected | Callers are AWS SNS delivery addresses, never users. Authenticity comes from the SNS signature and topic allowlist; signed deliveries and rejected calls are counted apart, so junk never uses up the real deliveries' allowance |
 | CSP-report log limiter (`/csp-report/`) | 60 reports/minute | Detection only: the endpoint always answers `204` and only logging is skipped |
 | `PhoneAuthCodeRequestThrottle` (anonymous SMS code requests) | 5/minute | Fallback only, attached while **no** SMS daily budget is configured. Setting `sms_daily_limit` removes it with no deploy ([Send verification](send-verification.md#client-ip-policy-and-residual-risks)) |
 
-`EmailCodeVerifyThrottle` is also IP-based but is attached only to authenticated
-views, where an anonymous throttle never applies. The client IP is otherwise
+Their rates are request-limit policies (`view-ses-events`, `view-ses-rejected`,
+`view-csp-report`, `view-code-send-sms-ip`), editable in the admin. The client IP is otherwise
 only recorded, never limited on: `PageView.ip_address`, the assistant log's
 `ip_hash` and the CLI audit rows. The two anonymous endpoints with no
 IP-independent bound on request count, `POST /analytics/pageview/` and

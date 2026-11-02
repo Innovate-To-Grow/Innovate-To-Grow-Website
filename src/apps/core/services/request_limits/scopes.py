@@ -4,11 +4,15 @@ In order, a route is:
 
 1. **exempt** when it is a CORS preflight (OPTIONS), the view says so (``rate_limit_exempt = "reason"``), an app
    registered it with ``register_exemption`` or ``REQUEST_RATE_LIMITS["exempt"]`` lists it;
-2. in the scope its view names (``rate_limit_scope = "scope"`` or ``{"GET": "scope", "*": "scope"}``);
-3. in the scope an app registered for it from ``AppConfig.ready()`` (``register_scope``; for third-party views);
-4. in the scope ``REQUEST_RATE_LIMITS["routes"]`` gives it;
+2. in the scope ``REQUEST_RATE_LIMITS["routes"]`` gives it (the deployment's table, so a
+   ``REQUEST_RATE_LIMITS_OVERRIDES`` entry can move any route, its own views' included);
+3. in the scope its view names (``rate_limit_scope = "scope"`` or ``{"GET": "scope", "*": "scope"}``);
+4. in the scope an app registered for it from ``AppConfig.ready()`` (``register_scope``; for third-party views);
 5. else in a **fallback** scope: ``cli`` under the CLI prefix, ``staff-admin`` under the admin prefix, otherwise
    ``public-read`` / ``member-read`` for GET and HEAD and ``public-write`` / ``member-write`` for the rest.
+
+A scope with a priority check (``priority.register_priority_check``) is then kept only for a request a person
+started; any other is counted in the unproven scope (``fallback.unproven``).
 
 Registrations and settings are keyed by the route's ``view_name`` (``"namespace:name"``) or the view's dotted path.
 """
@@ -16,7 +20,7 @@ Registrations and settings are keyed by the route's ``view_name`` (``"namespace:
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from . import identity
+from . import identity, priority
 from .runtime.context import section
 
 SAFE_METHODS = frozenset({"GET", "HEAD"})
@@ -30,7 +34,7 @@ _EXEMPTIONS: dict[str, str] = {}
 class Classification:
     scope: str | None
     exempt: str | None = None
-    # "preflight", "exempt", "view", "registered", "route" or "fallback".
+    # "preflight", "exempt", "route", "view", "registered", "unproven" or "fallback".
     source: str = "fallback"
 
 
@@ -95,13 +99,16 @@ def classify_route(view_func, view_name: str | None, method: str) -> Classificat
     reason = _exemption(view_func, keys)
     if reason:
         return Classification(None, reason, "exempt")
+    routes = section("routes")
+    for key in keys:
+        if key in routes and (scope := pick(routes[key], method)):
+            return Classification(scope, None, "route")
     scope = pick(_attribute(view_func, "rate_limit_scope"), method)
     if scope:
         return Classification(scope, None, "view")
-    for source, table in (("registered", _REGISTERED), ("route", section("routes"))):
-        for key in keys:
-            if key in table and (scope := pick(table[key], method)):
-                return Classification(scope, None, source)
+    for key in keys:
+        if key in _REGISTERED and (scope := pick(_REGISTERED[key], method)):
+            return Classification(scope, None, "registered")
     return None
 
 
@@ -124,6 +131,10 @@ def classify(request, view_func) -> Classification:
     match = getattr(request, "resolver_match", None)
     found = classify_route(view_func, match.view_name if match else None, method)
     if found is not None:
+        if found.scope is not None:
+            scope = priority.promoted_scope(request, found.scope)
+            if scope != found.scope:
+                return Classification(scope, None, "unproven")
         return found
     signed_in = identity.resolve(request).person is not None
     return Classification(fallback(request.path_info, method, signed_in), None, "fallback")

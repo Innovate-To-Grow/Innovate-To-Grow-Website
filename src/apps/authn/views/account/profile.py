@@ -53,6 +53,8 @@ class ProfileView(APIView):
            multipart: profile_image file).
     """
 
+    rate_limit_scope = {"GET": "member-read", "*": "member-write"}
+
     permission_classes = [IsAuthenticated]
 
     # noinspection PyMethodMayBeStatic

@@ -13,6 +13,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
+from apps.core.services.request_limits.view_limits import PolicyRateThrottle
 from apps.core.utils.throttle_cache import throttle_cache
 from apps.mail.services.ses_events import SesEventError, process_sns_envelope
 from apps.mail.services.sns.signature import SnsVerificationError, verify_sns_message
@@ -20,13 +21,35 @@ from apps.mail.services.sns.signature import SnsVerificationError, verify_sns_me
 logger = logging.getLogger(__name__)
 
 
-class SesEventThrottle(AnonRateThrottle):
-    """Throttle for SES SNS webhook: 600/minute per source IP."""
+class SesEventThrottle(PolicyRateThrottle, AnonRateThrottle):
+    """Signed SNS deliveries per sending address: 600/minute by default (the "view-ses-events" policy, a fixed
+    scope Smart limiting never tightens). Checked only once the SNS signature is verified, so unsigned junk never
+    uses up the allowance of the real deliveries."""
 
     scope = "ses_events"
-    # Keyed on the caller-supplied X-Forwarded-For string (anyone can vary it), so its history stays out of the
-    # file cache. Authenticity comes from the SNS signature check, not from this throttle.
+    policy_scope = "view-ses-events"
+    # Keyed on the client address DRF resolves (in production the one the ALB appended), so its history stays out
+    # of the file cache. Authenticity comes from the SNS signature check, not from this throttle.
     cache = throttle_cache
+
+
+class SesRejectedThrottle(PolicyRateThrottle, AnonRateThrottle):
+    """Calls whose envelope or signature is rejected, per sending address (the "view-ses-rejected" policy).
+
+    ``allow_request`` only checks (a sender over it is refused before any signature work); ``record`` counts a
+    call once it was rejected, so a real SNS sender is never charged for it."""
+
+    scope = "ses_rejected"
+    policy_scope = "view-ses-rejected"
+    cache = throttle_cache
+
+    def throttle_success(self):
+        return True
+
+    def record(self):
+        # Nothing to count when the policy is off or there was no key (``allow_request`` stopped early).
+        if getattr(self, "history", None) is not None and getattr(self, "key", None) is not None:
+            super().throttle_success()
 
 
 class SnsEnvelopeParser(BaseParser):
@@ -49,14 +72,23 @@ class SesEventWebhookView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
-    throttle_classes = [SesEventThrottle]
+    # Throttled inside ``post``: a rejected call and a signed delivery are counted in different buckets.
+    throttle_classes = []
     parser_classes = [SnsEnvelopeParser]
+    rate_limit_scope = "webhook-ses"
+
+    def _reject(self, rejected, body: dict, code: int) -> Response:
+        rejected.record()
+        return Response(body, status=code)
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):
+        rejected = SesRejectedThrottle()
+        if not rejected.allow_request(request, self):
+            self.throttled(request, rejected.wait())
         envelope = request.data
         if not isinstance(envelope, dict):
-            return Response({"detail": "expected JSON object"}, status=status.HTTP_400_BAD_REQUEST)
+            return self._reject(rejected, {"detail": "expected JSON object"}, status.HTTP_400_BAD_REQUEST)
 
         topic_arn = (getattr(settings, "SES_SNS_TOPIC_ARN", "") or "").strip()
         if not topic_arn:
@@ -67,7 +99,11 @@ class SesEventWebhookView(APIView):
             verify_sns_message(envelope, allowed_topic_arns={topic_arn})
         except SnsVerificationError:
             logger.warning("SNS signature rejected", exc_info=True)
-            return Response({"detail": "invalid signature"}, status=status.HTTP_403_FORBIDDEN)
+            return self._reject(rejected, {"detail": "invalid signature"}, status.HTTP_403_FORBIDDEN)
+
+        signed = SesEventThrottle()
+        if not signed.allow_request(request, self):
+            self.throttled(request, signed.wait())
 
         try:
             process_sns_envelope(envelope)

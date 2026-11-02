@@ -19,16 +19,15 @@ import logging
 import time
 from dataclasses import dataclass
 
-from django.conf import settings
 from rest_framework import status
 from rest_framework.exceptions import Throttled
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from apps.authn.security import SoftJWTAuthentication
 from apps.core.models import AWSCredentialConfig
+from apps.core.services.request_limits.view_limits import PolicyRateThrottle, view_rate
 from apps.core.utils.throttle_cache import throttle_cache
 from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog, SystemIntelligenceConfig
 from apps.system_intelligence.serializers import PublicAssistantChatSerializer
@@ -64,7 +63,7 @@ _ERROR_MESSAGE = "The assistant ran into a problem answering that. Please try ag
 _BUDGET_UNAVAILABLE_MESSAGE = "The assistant is temporarily unavailable. Please try again in a moment."
 
 
-class PublicAssistantActorThrottle(SimpleRateThrottle):
+class PublicAssistantActorThrottle(PolicyRateThrottle):
     """Request-rate limit per ACTOR (visitor / member / shared legacy bucket).
 
     Not keyed on the client IP: the whole campus shares one public address, so
@@ -76,9 +75,14 @@ class PublicAssistantActorThrottle(SimpleRateThrottle):
     restart forgets it.
     That is acceptable here because nothing about money depends on it -- spend
     is bounded by the PostgreSQL token budgets (per actor and global).
+
+    Both rates are request-limit policies read live ("view-assistant-chat", 6/minute, and for the shared legacy
+    bucket "view-assistant-legacy", 60/minute): staff edit them in the admin, and Smart limiting lowers them first
+    under overload (AI is P3).
     """
 
     scope = "public_assistant"
+    policy_scope = "view-assistant-chat"
     # NOT the default cache: the key is a visitor token anyone can mint, and in
     # the production file cache each minted key would be one more file slowing
     # down every cache write. The throttle alias is bounded and in-process, so
@@ -86,20 +90,11 @@ class PublicAssistantActorThrottle(SimpleRateThrottle):
     cache = throttle_cache
     # Callers without a usable visitor value (old cached bundles, scripts) all
     # share ONE bucket, so it is sized for many people rather than one.
-    legacy_scope = "public_assistant_legacy"
-    legacy_default_rate = "60/minute"
-
-    def _rates(self) -> dict:
-        # Read live from settings (THROTTLE_RATES is captured at import time,
-        # which would ignore override_settings and runtime changes).
-        return settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
-
-    def get_rate(self):
-        return self._rates()[self.scope]
+    legacy_policy_scope = "view-assistant-legacy"
 
     def allow_request(self, request, view):
         if resolve_chat_actor(request).kind == KIND_LEGACY:
-            self.rate = self._rates().get(self.legacy_scope, self.legacy_default_rate)
+            self.rate = view_rate(self.legacy_policy_scope)
             self.num_requests, self.duration = self.parse_rate(self.rate)
         return super().allow_request(request, view)
 
@@ -124,6 +119,8 @@ def _unavailable_response(config: SystemIntelligenceConfig, actor: AssistantActo
 
 class PublicAssistantConfigView(APIView):
     """GET /assistant/config/ -- public-safe display config only (never secrets)."""
+
+    rate_limit_scope = "public-background"
 
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -152,6 +149,8 @@ class PublicAssistantConfigView(APIView):
 
 class PublicAssistantChatView(APIView):
     """POST /assistant/chat/ -- tool-free, read-only public chat."""
+
+    rate_limit_scope = "ai"
 
     permission_classes = [AllowAny]
     # The actor (member / visitor / shared legacy bucket) that keys every limit comes from ``request.user``: a valid

@@ -9,49 +9,71 @@ login, the identifier-keyed failure lockout in ``apps.authn.services.login_guard
 per-IP throttle to those views. (The mail app's one-click unsubscribe and resubscribe pages are likewise gated
 only by their signed tokens and unthrottled.)
 
-What remains here is deliberate: per-authenticated-user throttles (a user is not a shared bucket), the anonymous
-throttle classes still attached to ``IsAuthenticated`` views, where they are a no-op, and the per-IP SMS request
-throttle, which is only a FALLBACK: ``sms_request_throttles()`` applies it solely while no global SMS daily budget
-is configured (see there).
+What remains here is deliberate: per-authenticated-member throttles (a member is not a shared bucket; an anonymous
+request is never keyed on its IP by them) and the per-IP SMS request throttle, which is only a FALLBACK:
+``sms_request_throttles()`` applies it solely while no global SMS daily budget is configured (see there).
+
+Each rate is a request-limit policy (``policy_scope``), read live: staff edit it in the admin without a restart, and
+Smart limiting takes priority over the manual value (``apps.core.services.request_limits.view_limits``).
 """
 
 import logging
 
-from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
+from rest_framework.throttling import AnonRateThrottle
 
+from apps.core.services.request_limits.view_limits import MemberRateThrottle, PolicyRateThrottle
 from apps.core.utils.throttle_cache import throttle_cache
 
 logger = logging.getLogger(__name__)
 
 
-class ContactEmailCreateThrottle(UserRateThrottle):
-    """Throttle for adding contact emails: 5 requests per hour."""
+class ContactEmailCreateThrottle(MemberRateThrottle):
+    """Adding contact emails, per member: 5 per hour by default."""
 
     scope = "contact_email_create"
+    policy_scope = "view-contact-email-create"
 
 
-class EmailCodeVerifyThrottle(AnonRateThrottle):
-    """Anonymous throttle attached to ``IsAuthenticated`` verify views, where it is a no-op.
+class ContactPhoneCreateThrottle(MemberRateThrottle):
+    """Adding contact phones, per member: 5 per hour by default, like contact emails."""
 
-    Public verify endpoints deliberately do not use it: their guess limit is the per-challenge attempt cap.
+    scope = "contact_phone_create"
+    policy_scope = "view-contact-phone-create"
+
+
+class EmailCodeVerifyThrottle(MemberRateThrottle):
+    """Per-member cap on entering codes on the signed-in verify / confirm views (account changes, contact email /
+    phone codes, event codes): one bucket per member for all of them, 60 per minute by default.
+
+    It used to be an ``AnonRateThrottle`` on ``IsAuthenticated`` views, where DRF keys it on ``None`` and it never
+    applied. Public verify endpoints deliberately do not use it: their guess limit is the per-challenge attempt cap.
     """
 
     scope = "email_code_verify"
+    policy_scope = "view-code-verify"
 
 
-class PhoneCodeRequestThrottle(UserRateThrottle):
+class ChangePasswordThrottle(MemberRateThrottle):
+    """Per-member cap on changing the password with the current one (each try checks a password hash)."""
+
+    scope = "change_password"
+    policy_scope = "view-change-password"
+
+
+class PhoneCodeRequestThrottle(MemberRateThrottle):
     """Per-authenticated-user cap on SMS verification-code sends.
 
     Each send spends real AWS SNS budget on a caller-supplied destination, and
     the service-level cap is per destination number (bypassable by rotating
     numbers). An ``AnonRateThrottle`` is a no-op for authenticated callers, so a
-    ``UserRateThrottle`` is required to bound toll-fraud / SMS pumping.
+    per-member throttle is required to bound toll-fraud / SMS pumping.
     """
 
     scope = "phone_code_request"
+    policy_scope = "view-code-send-sms"
 
 
-class PhoneAuthCodeRequestThrottle(AnonRateThrottle):
+class PhoneAuthCodeRequestThrottle(PolicyRateThrottle, AnonRateThrottle):
     """Per-IP cap on the PUBLIC SMS request endpoints (passwordless phone auth, password reset by phone).
 
     Each request can spend real AWS SNS budget on a caller-supplied destination, and the service-level cap in
@@ -60,6 +82,7 @@ class PhoneAuthCodeRequestThrottle(AnonRateThrottle):
     """
 
     scope = "phone_auth_code_request"
+    policy_scope = "view-code-send-sms-ip"
     # Keyed on the client address DRF resolves from X-Forwarded-For. Production trusts only the entry the ALB
     # appended (``REST_FRAMEWORK["NUM_PROXIES"]``), but with it unset (local, CI) that is the whole caller-supplied
     # string, so the key space is not bounded: its history stays out of the file cache. Either way it is a speed
@@ -87,13 +110,14 @@ def sms_request_throttles() -> list:
     return [] if budget_configured else [PhoneAuthCodeRequestThrottle()]
 
 
-class EmailCodeUserRequestThrottle(UserRateThrottle):
+class EmailCodeUserRequestThrottle(MemberRateThrottle):
     """Per-authenticated-user cap on email verification-code sends.
 
     An ``AnonRateThrottle`` keys on ``None`` for authenticated requests, so on
     an ``IsAuthenticated`` resend endpoint it never throttles — letting a
     logged-in caller bomb an attacker-supplied address (and burn SES budget).
-    This per-user throttle actually applies.
+    This per-member throttle actually applies.
     """
 
     scope = "email_code_user_request"
+    policy_scope = "view-code-send-email"

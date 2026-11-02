@@ -3,7 +3,8 @@ Django REST Framework and SimpleJWT configuration.
 
 NOTE: Do NOT set DEFAULT_THROTTLE_CLASSES globally here -- doing so applies
 throttling to every view (including tests hitting 127.0.0.1) and causes
-widespread test failures.  Per-view throttles are applied via throttle_classes.
+widespread test failures.  Per-view throttles are applied via throttle_classes;
+their rates are request-limit policies (``apps.core.services.request_limits.view_limits``).
 """
 
 from datetime import timedelta
@@ -22,38 +23,10 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.JSONRenderer",
         "apps.core.renderers.UCMercedBrowsableAPIRenderer",
     ],
-    # Throttle *rates* only -- classes are set per-view, not globally.
-    "DEFAULT_THROTTLE_RATES": {
-        "anon": "60/minute",
-        "email_code_verify": "60/minute",
-        # Per-authenticated-user cap on SMS verification sends. Each send spends
-        # real AWS SNS money to an attacker-supplied destination, and the
-        # service-level cap is keyed per destination number (bypassable by
-        # rotating numbers), so this per-actor limit bounds toll-fraud / pumping.
-        "phone_code_request": "5/minute",
-        # Per-IP cap on the PUBLIC passwordless phone-auth SMS request endpoint.
-        # phone_code_request above is a UserRateThrottle (no-op for anonymous
-        # callers). This anon scope is a fallback speed bump, attached only
-        # while no SMS daily budget is configured; the bounds on toll-fraud /
-        # SMS pumping are the per-number caps and that budget.
-        "phone_auth_code_request": "5/minute",
-        # Per-authenticated-user cap on email verification-code sends (an anon,
-        # per-IP throttle is a no-op once authenticated, so it cannot stop
-        # bombing an attacker-supplied address).
-        "email_code_user_request": "5/minute",
-        "past_project_share": "10/minute",
-        # Edits to a shared list are one PATCH each (remove, reorder, rename), so the cap is far above a person's
-        # pace; it bounds a script rewriting a share's payload in a loop.
-        "past_project_share_update": "120/minute",
-        "past_project_ai_search": "10/minute",
-        "contact_email_create": "5/hour",
-        "ses_events": "600/minute",
-        "cli_read": "120/minute",
-        "cli_write": "60/minute",
-        # Per ACTOR (signed visitor value or member), never per IP: see
-        # apps.system_intelligence.views.public_assistant.PublicAssistantActorThrottle.
-        "public_assistant": "6/minute",
-    },
+    # No rates here: every per-view throttle reads its rate live from its request-limit policy (seeded from
+    # config/settings/base/integrations/request_limits/view_scopes.py, edited in the admin), so DRF's import-time
+    # THROTTLE_RATES is never consulted. Classes are still set per view, never globally.
+    "DEFAULT_THROTTLE_RATES": {},
 }
 # A 429 (from the request limiter or a throttle) says when to retry in Retry-After. The SPA calls the API
 # cross-origin, so browsers hide every response header the API does not expose.

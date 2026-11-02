@@ -133,7 +133,10 @@ INVALID = {
     "route method": (lambda c: c["routes"].update(x={"get": "cli"}), "routes.x.get must be an upper-case HTTP method"),
     "route map scope": (lambda c: c["routes"].update(x={"GET": "nope"}), "routes.x.GET must name a scope"),
     "exempt reason": (lambda c: c["exempt"].update(x=""), "exempt.x must be non-empty text"),
-    "exempt and routed": (lambda c: c["exempt"].update({"csp-report": "why"}), "exempt.csp-report is also in routes"),
+    "exempt and routed": (
+        lambda c: c["exempt"].update({"admin:search": "why"}),
+        "exempt.admin:search is also in routes",
+    ),
     "tier order": (lambda c: c.update(tiers=dict(reversed(c["tiers"].items()))), "tiers must list exactly the tiers"),
     "p0 keys": (lambda c: c["tiers"]["p0"].update(floor=1), "tiers.p0 must have exactly the keys label"),
     "tier keys": (lambda c: c["tiers"]["p1"].pop("floor"), "tiers.p1 must have exactly the keys"),
@@ -163,7 +166,40 @@ INVALID = {
     "heartbeat": (lambda c: c["store"].update(heartbeat_seconds=90), "store.heartbeat_seconds must be below"),
     "prune": (lambda c: c["store"].update(process_prune_seconds=60), "store.process_prune_seconds must not be"),
     "prefix": (lambda c: c["fallback"].update(admin_prefix="admin"), "fallback.admin_prefix must be a path"),
-    "fallback scope": (lambda c: c["fallback"].update(cli="nope"), "fallback.cli must name a scope"),
+    "fallback scope": (lambda c: c["fallback"].update(cli="nope"), "fallback.cli must name a route scope"),
+    "fallback view scope": (
+        lambda c: c["fallback"].update(unproven="view-code-verify"),
+        "fallback.unproven must name a route scope",
+    ),
+    "scope not an object": (lambda c: c["scopes"].update(x=[]), "scopes.x must be an object"),
+    "view scope parent": (
+        lambda c: c["scopes"]["view-code-verify"].update(parent="nope"),
+        "scopes.view-code-verify.parent must name a route scope",
+    ),
+    "view scope parent is a view scope": (
+        lambda c: c["scopes"]["view-code-verify"].update(parent="view-cli-read"),
+        "scopes.view-code-verify.parent must name a route scope",
+    ),
+    "view scope parent type": (
+        lambda c: c["scopes"]["view-code-verify"].update(parent={"a": 1}),
+        "scopes.view-code-verify.parent must name a route scope",
+    ),
+    "view scope without parent": (
+        lambda c: c["scopes"]["view-code-verify"].pop("parent"),
+        "scopes.view-code-verify.parent must name a route scope",
+    ),
+    "parent on a route scope": (
+        lambda c: c["scopes"]["public-read"].update(parent="ai"),
+        'scopes.public-read.parent is only for a per-view limit (identity "view")',
+    ),
+    "view scope aggregate": (
+        lambda c: c["scopes"]["view-cli-read"].update(global_cap=5),
+        "scopes.view-cli-read.global_cap must be null",
+    ),
+    "route to a view scope": (
+        lambda c: c["routes"].update(x="view-cli-read"),
+        "routes.x names a per-view limit",
+    ),
 }
 
 
