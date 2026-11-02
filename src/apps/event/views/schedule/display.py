@@ -10,6 +10,7 @@ from apps.event.serializers import build_schedule_payload
 
 
 class CurrentEventScheduleView(APIView):
+    rate_limit_scope = "public-read"
     permission_classes = [AllowAny]
     authentication_classes = []
 

@@ -15,7 +15,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db import connection
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.parsers import JSONParser
@@ -188,6 +188,9 @@ class CampusPageViewTests(PageViewVisitorTestCase):
         self.assertEqual(keys(["/"]), [None, "throttle_pageview_legacy_legacy"])
 
 
+# Six hundred views from one test client: with the request limiter on, the telemetry scope's per-IP ceiling would
+# refuse them before the shared legacy bucket under test fills.
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
 class LegacyBucketTests(PageViewVisitorTestCase):
     def test_views_without_an_id_share_one_bucket_of_six_hundred_a_minute(self):
         self.assertEqual([self.view() for _ in range(LEGACY_RATE)], [201] * LEGACY_RATE)

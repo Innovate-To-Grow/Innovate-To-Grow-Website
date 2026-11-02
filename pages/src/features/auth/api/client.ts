@@ -1,5 +1,8 @@
 import axios, {type InternalAxiosRequestConfig} from 'axios';
 
+// Deep import, not the @/lib/api barrel: the barrel creates the shared client, which this module does not use.
+import {handleRateLimitError, rateLimitRetryDelay, waitUnlessAborted} from '@/lib/api/rateLimit';
+
 import {
   clearTokens,
   getStoredSession,
@@ -132,6 +135,21 @@ function refreshFailure(error: unknown, guard: SessionGuard): RefreshAttempt {
   return {result: null, failure: 'session_changed'};
 }
 
+const sendRefresh = (refresh: string) => axios.post(`${API_BASE_URL}/authn/refresh/`, {refresh});
+
+/**
+ * POST the refresh token, once more after a 429 that asks for a short wait. A 429 is answered before the view runs,
+ * so the token was neither used nor rotated and resending it is safe. A 429 that remains is transient
+ * (`refreshFailure`): it never logs the member out.
+ */
+const postRefresh = (refresh: string) =>
+  sendRefresh(refresh).catch(async (error: unknown) => {
+    const delay = rateLimitRetryDelay(error);
+    if (delay === null) throw error;
+    await waitUnlessAborted(delay);
+    return sendRefresh(refresh);
+  });
+
 /**
  * Refresh the current generation only. If another tab logs out or replaces the
  * account while the request is in flight, the response is discarded.
@@ -155,10 +173,7 @@ async function refreshAccessTokenAttempt(
   const key = `${guard.generation}:${guard.refresh}`;
   if (refreshInFlight?.key === key) return refreshInFlight.promise;
 
-  const promise: Promise<RefreshAttempt> = axios
-    .post(`${API_BASE_URL}/authn/refresh/`, {
-      refresh: snapshot.refresh,
-    })
+  const promise: Promise<RefreshAttempt> = postRefresh(snapshot.refresh)
     .then((response) =>
       storeRefreshedTokens(response.data, guard, snapshot.refresh),
     )
@@ -337,12 +352,14 @@ authApi.interceptors.response.use(
     const originalRequest = error.config;
 
     // Anonymous exchange: a stale stored session must be neither refreshed nor
-    // cleared on its behalf.
+    // cleared on its behalf (nor retried: these are one-time credentials in a POST).
     if (originalRequest?.skipAuth) return Promise.reject(error);
 
     if (error.response?.status === 401 && originalRequest) {
       return retryUnauthorized(error, originalRequest);
     }
+    // A 429 on a read waits out Retry-After and retries once (lib/api/rateLimit); the session is never touched.
+    if (error.response?.status === 429) return handleRateLimitError(authApi, error);
     return Promise.reject(error);
   },
 );

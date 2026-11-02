@@ -97,7 +97,7 @@ i2g-admin --profile staging --output json records list projects Semester
 | `--no-paginate` | off | Disable automatic pagination (`records list` walks all pages by default). |
 | `--max-items <n>` | — | Stop after this many items when paginating. |
 | `--page-size <n>` | — | Items to request per page when paginating (capped at the server max of 50). |
-| `--max-attempts <n>` | `1` | Max HTTP attempts; transient `429/5xx` are retried with exponential backoff + jitter, honoring `Retry-After`. |
+| `--max-attempts <n>` | `1` | Max HTTP attempts; transient `429/5xx` are retried with exponential backoff + jitter, honoring `Retry-After`. Separately, a read or the token exchange refused with `429` always waits out `Retry-After` (at most 60 s; 20 s for the exchange) and is resent up to 3 times; writes never are. |
 | `--connect-timeout <s>` | `5` | Per-request connect timeout (seconds). |
 | `--read-timeout <s>` | `30` | Per-request read timeout (seconds). |
 | `--debug` | off | Emit extra detail (the error `repr`) on failures. |

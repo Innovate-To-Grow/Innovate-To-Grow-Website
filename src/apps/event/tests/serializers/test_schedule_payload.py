@@ -1,6 +1,6 @@
 from django.core.cache import cache
 from django.db import connection
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
@@ -91,6 +91,8 @@ class ScheduleQueryCountTest(TestCase):
         self.assertEqual(response.status_code, 200)
         return len(queries)
 
+    # With the request limiter on, the first request of a process also loads its policy rows.
+    @override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
     def test_query_count_is_independent_of_track_count(self):
         few = self._query_count(self._sync(2))
         many = self._query_count(self._sync(6))

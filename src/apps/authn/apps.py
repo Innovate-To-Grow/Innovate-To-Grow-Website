@@ -13,6 +13,7 @@ class AuthnConfig(AppConfig):
         except ImportError:
             pass
         register_background_jobs()
+        register_request_limits()
 
 
 def register_background_jobs():
@@ -30,3 +31,11 @@ def register_background_jobs():
         family=Family.EMAIL,
         lane=Lane.TRANSACTIONAL,
     )
+
+
+def register_request_limits():
+    from apps.core.services.request_limits import register_priority_check
+
+    # An anonymous code request is P0 only when it carries a valid anti-abuse proof (a signed-in member is P0
+    # anyway); others are counted as unproven traffic, never promoted.
+    register_priority_check("auth-code-send", "apps.authn.services.send_verification.priority.carries_valid_proof")

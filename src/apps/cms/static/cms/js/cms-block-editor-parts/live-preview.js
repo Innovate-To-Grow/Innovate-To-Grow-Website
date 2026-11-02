@@ -4,6 +4,11 @@
     var keepaliveTimer = null;
     var KEEPALIVE_MS = 4 * 60 * 1000; // re-post every 4 min to keep 10-min TTL alive
     var lastBlocks = null;
+    // admin/js/poll-backoff.js: after a 429 nothing is posted until the server's wait has passed, then the latest
+    // blocks are resent once; each refusal in a row waits longer (up to the keepalive interval).
+    var backoff = window.I2GPollBackoff;
+    var gate = backoff ? backoff.createGate({ baseMs: 2000, maxMs: KEEPALIVE_MS }) : null;
+    var resendTimer = null;
 
     function getLivePreviewKey() {
         var config = window.CMS_ROUTE_EDITOR || {};
@@ -65,6 +70,7 @@
         if (!config.pageId) return;
         lastBlocks = blocks;
         startKeepalive();
+        if (gate && gate.blocked()) return; // the pending resend sends these blocks
         var csrfEl = document.querySelector('[name=csrfmiddlewaretoken]');
         var wrapper = document.getElementById('cms-inline-preview');
         if (wrapper && wrapper.classList.contains('is-active')) showSyncStatus('Syncing\u2026');
@@ -74,12 +80,24 @@
             body: JSON.stringify(gatherPageData(blocks)),
             credentials: 'same-origin',
         }).then(function (response) {
+            if (response.status === 429 && gate) { scheduleResend(response); return; }
+            if (gate) gate.succeeded();
             if (!response.ok) console.warn('[CMS Preview] POST failed with status ' + response.status);
             else {
                 showSyncStatus('Synced');
                 if (callback) callback();
             }
         }).catch(function (err) { console.warn('[CMS Preview] Network error:', err.message || err); });
+    }
+
+    function scheduleResend(response) {
+        var wait = gate.refused(backoff.retryAfterMs(response));
+        showSyncStatus('Busy \u2014 retrying ' + backoff.waitText(wait));
+        if (resendTimer) clearTimeout(resendTimer);
+        resendTimer = setTimeout(function () {
+            resendTimer = null;
+            if (lastBlocks && (isActive() || isInlineVisible())) post(lastBlocks);
+        }, wait);
     }
 
     function startKeepalive() {

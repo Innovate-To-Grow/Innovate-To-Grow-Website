@@ -52,8 +52,8 @@ if CORS_ALLOW_CREDENTIALS and CORS_ALLOWED_ORIGINS:
 # CSP starts in report-only mode. Promotion is an explicit configuration
 # change after the documented seven-day observation window.
 CSP_REPORT_ONLY = _get_bool_env("CSP_REPORT_ONLY", True)
-CSP_REPORT_RATE_LIMIT = _get_int_env("CSP_REPORT_RATE_LIMIT", 60)
-CSP_REPORT_RATE_WINDOW_SECONDS = _get_int_env("CSP_REPORT_RATE_WINDOW_SECONDS", 60)
+# The CSP report limit is the "view-csp-report" request-limit policy; CSP_REPORT_RATE_LIMIT and
+# CSP_REPORT_RATE_WINDOW_SECONDS (env) seed it (config/settings/base/integrations/request_limits/view_scopes.py).
 CSP_SCRIPT_SOURCES = (
     "'self'",
     "https://cdn.jsdelivr.net",

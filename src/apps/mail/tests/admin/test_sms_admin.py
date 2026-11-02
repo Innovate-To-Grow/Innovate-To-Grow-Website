@@ -420,6 +420,7 @@ class SmsCampaignStatusViewTests(TestCase):
         self.assertContains(response, "data.status === 'queued' || data.status === 'sending'")
         self.assertContains(response, "SMS Campaign Partially Sent")
         self.assertContains(response, "SMS Campaign Failed")
+        self.assertContains(response, "admin/js/poll-backoff.js")
 
     def test_send_sms_status_json_returns_progress_and_logs(self):
         campaign = SmsCampaign.objects.create(

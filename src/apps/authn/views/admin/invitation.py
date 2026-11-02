@@ -13,8 +13,10 @@ from django.views import View
 from apps.authn.forms.invitation import AcceptInvitationForm
 from apps.authn.models import ContactEmail
 from apps.authn.models.members.admin_invitation import AdminInvitation
+from apps.core.services.request_limits.view_limits import view_rate
 
-_INVITATION_RATE_LIMIT = 10  # max attempts per token per hour
+# Attempts per invitation and period: the live "view-invitation" request-limit policy (10 per hour by default).
+INVITATION_RATE_POLICY = "view-invitation"
 
 
 class InvitationEmailConflict(Exception):
@@ -44,6 +46,8 @@ def _get_unfold_context(request):
 
 class AcceptInvitationView(View):
     """Standalone Django view for accepting admin invitations."""
+
+    rate_limit_scope = {"GET": "tokenized-link", "*": "auth-sign-in"}
 
     def get(self, request, token):
         invitation = self._get_invitation(token)
@@ -82,11 +86,13 @@ class AcceptInvitationView(View):
         if invitation is None:
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
-        cache_key = f"invitation-rate:{invitation.pk}"
-        attempts = cache.get(cache_key, 0)
-        if attempts >= _INVITATION_RATE_LIMIT:
-            return HttpResponse("Too many attempts. Please try again later.", status=429, content_type="text/plain")
-        cache.set(cache_key, attempts + 1, timeout=3600)
+        rate = view_rate(INVITATION_RATE_POLICY)
+        if rate is not None:
+            cache_key = f"invitation-rate:{invitation.pk}"
+            attempts = cache.get(cache_key, 0)
+            if attempts >= rate.requests:
+                return HttpResponse("Too many attempts. Please try again later.", status=429, content_type="text/plain")
+            cache.set(cache_key, attempts + 1, timeout=rate.period)
 
         existing = self._get_verified_member(invitation)
         if existing:

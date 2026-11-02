@@ -15,7 +15,7 @@ Application Load Balancer.
 - Entry command: Uvicorn
 
 ```
-uvicorn config.deploy.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --limit-concurrency 20
+uvicorn config.deploy.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --limit-concurrency 80
 ```
 
 ### Build
@@ -121,7 +121,8 @@ Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 | Setting | Value | Rationale |
 |---------|-------|-----------|
 | Workers | 2 by default (`WEB_CONCURRENCY`) | Keep PostgreSQL connection pressure below the `db.t4g.micro` ceiling |
-| Concurrency cap | 20 by default (`UVICORN_LIMIT_CONCURRENCY`) | Provide backpressure before the app exhausts DB connections |
+| Request slots | 20 by default (`UVICORN_LIMIT_CONCURRENCY`) | Requests one process serves at once: the request limiter's admission control shares them between priority tiers (P0 keeps reserved slots) and answers a lower tier over its share with a 429, before the app exhausts DB connections |
+| Connection cap | 4 × the request slots by default (`UVICORN_CONNECTION_LIMIT`, uvicorn `--limit-concurrency`) | Uvicorn counts idle keep-alive connections toward its cap and answers 503 to every tier alike, so it sits well above the request slots and only bounds connections |
 | Graceful shutdown | 120s | Accommodate long-running operations (sheet sync, email campaigns) |
 | Bind | `0.0.0.0:8000` | Listen on all interfaces (required for Fargate networking) |
 

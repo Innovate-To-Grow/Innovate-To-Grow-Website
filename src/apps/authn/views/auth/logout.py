@@ -20,6 +20,8 @@ class LogoutView(APIView):
     invalid access token can't block logout.
     """
 
+    rate_limit_scope = "member-write"
+
     permission_classes = [AllowAny]
     # Authenticated by the refresh token in the body: a stale, expired or other-account Bearer must never 401 this.
     authentication_classes = []

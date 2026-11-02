@@ -19,6 +19,8 @@ class RegisterView(APIView):
     Creates or updates an inactive user and sends a verification code.
     """
 
+    rate_limit_scope = "auth-code-send"
+
     authentication_classes = []
     permission_classes = [AllowAny]
     # No per-IP throttle by design (campus users share one IP): the ALTCHA proof and the per-destination

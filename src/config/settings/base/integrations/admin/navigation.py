@@ -153,6 +153,7 @@ SIDEBAR = {
                     "permission": _can("core"),
                     "active": _is_service_credentials,
                 },
+                {"title": "Request Limits", "link": "/admin/core/request-limits/", "permission": _can("core")},
                 {
                     "title": "Legacy Viewer",
                     "link": "/admin/legacy-view/",

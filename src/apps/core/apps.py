@@ -13,10 +13,13 @@ class CoreConfig(AppConfig):
 
         from . import checks  # noqa: F401  # registers the system checks
         from .admin.legacy_view import get_legacy_view_admin_urls
+        from .admin.request_limits import get_request_limit_admin_urls
         from .services.delivery_rates import Family, register_family
         from .services.delivery_rates import receivers as delivery_rate_receivers
+        from .services.request_limits import receivers as request_limit_receivers
 
         delivery_rate_receivers.connect()
+        request_limit_receivers.connect()
         # The worker's claim-time gates and the inline batch sizes find each family's active channel through these.
         register_family(Family.EMAIL, "apps.core.services.email.registry.active_rate_target")
         register_family(Family.SMS, "apps.core.services.aws.sms_send.active_rate_target")
@@ -27,7 +30,11 @@ class CoreConfig(AppConfig):
         original_get_urls = admin.AdminSite.get_urls
 
         def patched_get_urls(site_self):
-            return get_legacy_view_admin_urls(site_self) + original_get_urls(site_self)
+            return (
+                get_legacy_view_admin_urls(site_self)
+                + get_request_limit_admin_urls(site_self)
+                + original_get_urls(site_self)
+            )
 
         admin.AdminSite.get_urls = patched_get_urls
         admin.AdminSite._core_legacy_view_urls_patched = True

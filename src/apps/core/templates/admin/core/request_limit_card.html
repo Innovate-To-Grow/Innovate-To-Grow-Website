@@ -1,0 +1,67 @@
+{# One request-limit scope on Site Settings → Request Limits. Needs ``card`` (cards.ScopeCard) and ``manual_limit_note``. #}
+{% with form=card.form %}
+<article id="limit-card-{{ card.scope }}" class="i2g-limit-card rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800" data-limit-card="{{ card.scope }}">
+    <header class="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h3 class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">{{ card.label }}</h3>
+        <span class="i2g-limit-code text-xs text-base-400">{{ card.scope }}</span>
+    </header>
+    {% if card.parent_label %}
+        <p class="mb-1 text-xs text-base-500 dark:text-base-400" data-limit-parent>Per-view limit under {{ card.parent_label }}.</p>
+    {% endif %}
+    {% if card.description %}
+        <p class="mb-3 text-xs text-base-500 dark:text-base-400">{{ card.description }}</p>
+    {% endif %}
+
+    <div class="i2g-limit-status mb-4 rounded-md border border-base-200 p-3 text-sm dark:border-base-700">
+        <ul class="i2g-limit-lines" data-limit-status aria-live="polite">
+            {% for line in card.lines %}<li{% if forloop.first %} class="i2g-limit-headline"{% endif %}>{{ line }}</li>{% endfor %}
+        </ul>
+    </div>
+
+    {% if form.non_field_errors %}
+        <div class="mb-3 rounded-default bg-red-100 px-3 py-2 text-sm text-red-700 dark:bg-red-500/20 dark:text-red-400">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div data-limit-tier-field>
+            <label for="{{ form.tier.id_for_label }}" class="mb-1 block text-sm font-medium">{{ form.tier.label }}</label>
+            {{ form.tier }}
+            <p class="mt-1 text-xs text-base-500 dark:text-base-400">{{ form.tier.help_text }}</p>
+            {% for error in form.tier.errors %}<p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ error }}</p>{% endfor %}
+        </div>
+        <div data-limit-smart>
+            <label for="{{ form.smart_enabled.id_for_label }}" class="inline-flex items-center gap-3 text-sm font-medium">
+                {{ form.smart_enabled }}
+                <span>{{ form.smart_enabled.label }}</span>
+            </label>
+            <p class="mt-1 text-xs text-base-500 dark:text-base-400">{{ form.smart_enabled.help_text }}</p>
+            {% for error in form.smart_enabled.errors %}<p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ error }}</p>{% endfor %}
+        </div>
+        <div class="i2g-limit-manual{% if card.manual_locked %} is-locked{% endif %}" data-limit-manual data-has-errors="{% if form.manual_requests.errors %}true{% else %}false{% endif %}">
+            <label for="{{ form.manual_requests.id_for_label }}" class="mb-1 block text-sm font-medium">{{ form.manual_requests.label }}</label>
+            {{ form.manual_requests }}
+            <p class="mt-1 text-xs font-medium text-base-500 dark:text-base-400" data-limit-manual-note{% if not form.smart_on %} hidden{% endif %}>{{ manual_limit_note }}</p>
+            <p class="mt-1 text-xs text-base-500 dark:text-base-400">{{ form.manual_requests.help_text }}</p>
+            {% for error in form.manual_requests.errors %}<p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ error }}</p>{% endfor %}
+        </div>
+    </div>
+
+    <details class="i2g-limit-advanced mt-4"{% if card.advanced_open %} open{% endif %}>
+        <summary class="cursor-pointer text-sm font-medium text-font-important-light dark:text-font-important-dark">Advanced: period, Smart floor, ceilings</summary>
+        <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
+            {% for field in form.advanced_fields %}
+                <div data-limit-field="{{ field.name }}">
+                    {% if field.field.widget.input_type == "checkbox" %}
+                        <label for="{{ field.id_for_label }}" class="inline-flex items-center gap-3 text-sm font-medium">{{ field }}<span>{{ field.label }}</span></label>
+                    {% else %}
+                        <label for="{{ field.id_for_label }}" class="mb-1 block text-sm font-medium">{{ field.label }}</label>
+                        {{ field }}
+                    {% endif %}
+                    {% if field.help_text %}<p class="mt-1 text-xs text-base-500 dark:text-base-400">{{ field.help_text }}</p>{% endif %}
+                    {% for error in field.errors %}<p class="mt-1 text-xs text-red-600 dark:text-red-400">{{ error }}</p>{% endfor %}
+                </div>
+            {% endfor %}
+        </div>
+    </details>
+</article>
+{% endwith %}

@@ -1,13 +1,16 @@
 from unittest.mock import patch
 
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.event.models import EventRegistration, Ticket
 from apps.event.tests.helpers import make_event, make_member, make_registration
 
 
+# force_authenticate is invisible to the request limiter (it reads the bearer token), so with it switched on every
+# request here would count as one anonymous source against member-send's flood ceiling, across the whole module.
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
 class RegistrationCreateIntegrityErrorTest(TestCase):
     def setUp(self):
         self.client = APIClient()

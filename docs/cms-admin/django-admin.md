@@ -25,7 +25,7 @@ The admin sidebar is organized into five sections:
 
 | Section | Models |
 |---------|--------|
-| Site Settings | SiteSettings, SiteMaintenanceControl, GoogleCredentialConfig, AWSCredentialConfig |
+| Site Settings | SiteSettings, SiteMaintenanceControl, GoogleCredentialConfig, AWSCredentialConfig; the Request Limits page ([Request limits](../integrations/request-limits.md)) |
 | CMS | CMSPage, CMSBlock, CMSAsset, NewsArticle, NewsFeedSource, Menu, FooterContent |
 | Events | Event, EventRegistration, Ticket, Question, CheckIn, CurrentProjectSchedule |
 | Projects | Semester, Project |

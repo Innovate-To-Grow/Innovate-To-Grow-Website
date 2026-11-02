@@ -5,6 +5,7 @@ from .base import AdminAPIView
 
 
 class WhoAmIView(AdminAPIView):
+    rate_limit_scope = "cli"
     throttle_classes = [CliReadThrottle]
 
     def get(self, request):

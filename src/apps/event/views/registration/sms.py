@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.event.models import Event
-from apps.event.throttles import PhoneCodeRequestThrottle
+from apps.event.throttles import PhoneCodeRequestThrottle, PhoneCodeVerifyThrottle
 
 
 def _verification_context(event_slug: str | None) -> str | None:
@@ -115,6 +115,8 @@ def _verify_registration_code(member, phone: str, code: str, challenge_id, verif
 class SendPhoneCodeView(APIView):
     """Send a verification SMS to a phone number (pre-registration, inline)."""
 
+    rate_limit_scope = "auth-code-send"
+
     permission_classes = [IsAuthenticated]
     # Each send spends AWS SNS budget on a caller-supplied destination; bound
     # per-actor abuse (the service cap is per-number and rotation bypasses it).
@@ -161,7 +163,10 @@ class SendPhoneCodeView(APIView):
 class VerifyPhoneCodeView(APIView):
     """Verify a phone SMS code (pre-registration, inline)."""
 
+    rate_limit_scope = "auth-code-verify"
+
     permission_classes = [IsAuthenticated]
+    throttle_classes = [PhoneCodeVerifyThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

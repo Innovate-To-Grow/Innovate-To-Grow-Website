@@ -9,6 +9,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 - [Frontend](frontend.md) — React roots, router, features, shared modules, and styling
 - [Request Flow](request-flow.md) — How requests move from browser through Vite/CDN to Django and back
 - [Integrations](integrations.md) — External services: Google Sheets, AWS SES/End User Messaging/Bedrock, Microsoft Graph email, Gmail API email, S3; every send paced by the [delivery-rate limiter](../integrations/delivery-rates.md)
+- [Request limits](../integrations/request-limits.md) — Inbound limits by scope and priority tier, Smart limit, counters and the operator runbook
 - [Code Quality Rules](code-quality.md) — Size, complexity and nesting limits, dependency directions, check commands, exceptions
 
 ## Who this is for
@@ -25,7 +26,7 @@ Engineers who need to understand how the system is organized before making chang
 | Service layer pattern | Business logic lives in `services/` modules, not in views or serializers |
 | Enforced dependency directions | `core` imports no business app; apps plug into shared machinery (jobs, CSP) through registration hooks — see [Code Quality Rules](code-quality.md) |
 | Modular Django settings | `base/` assembles shared configuration, `production/` holds production overrides, and `environments/` provides the local, test, and production entrypoints |
-| Per-endpoint throttling | Throttle classes applied per-view, not globally (global setting breaks test suite) |
+| Priority-aware request limits | One middleware limits every request by scope and priority tier, so overload sheds bulk and background work first and never a verification code a person asked for; finer DRF throttles stay per view, never `DEFAULT_THROTTLE_CLASSES` (it would break the test suite) — see [Request limits](../integrations/request-limits.md) |
 | Client-side RSA password encryption | Passwords are encrypted with Web Crypto API; active keys rotate daily and retired key IDs remain decryptable for a bounded two-day window |
 | Server-authoritative auth bootstrap | Persisted tokens identify a local session generation, while `/authn/session/` supplies the current member/profile state |
 | Durable one-time challenges | Email, SMS, verification-token, and impersonation credentials use locked or conditional state transitions so concurrent reuse fails |
