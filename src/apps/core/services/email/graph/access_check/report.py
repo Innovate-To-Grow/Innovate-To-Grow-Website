@@ -84,8 +84,6 @@ class AccessCheckReport:
     key_version_id: str
     deny_mailbox: str
     checked_at: datetime.datetime
-    # Roles beyond the approval accepted as granted at the time of the run (``roles.accepted_broader_roles``).
-    broader_roles: tuple[str, ...] = ()
 
     @property
     def token_issued(self) -> bool:
@@ -104,11 +102,6 @@ class AccessCheckReport:
     @property
     def extra_roles(self) -> tuple[str, ...]:
         return tuple(sorted(set(self.granted_roles or ()) - set(self.approved_roles)))
-
-    @property
-    def accepted_extra_roles(self) -> tuple[str, ...]:
-        """The roles beyond the approval accepted as granted: broader roles that cover an approved one."""
-        return tuple(role for role in self.extra_roles if role in self.broader_roles)
 
     @property
     def roles_within_approval(self) -> bool | None:
@@ -146,7 +139,10 @@ class AccessCheckReport:
         if verdict == Verdict.NOT_COMPLIANT:
             return "Microsoft Graph access does NOT match the approval."
         if self.extra_roles:
-            return f"The mailbox restriction holds; {self._extra_roles_conclusion()}."
+            return (
+                "The mailbox restriction holds; the token claims roles beyond the approval, covered by InfoSec "
+                f"exception {self.exception_reference}."
+            )
         return (
             "Microsoft Graph access matches the approval: the mailbox restriction holds and the token claims no "
             "role beyond the approval."
@@ -159,25 +155,7 @@ class AccessCheckReport:
             return "NONE in the token (RBAC for Applications grants never appear there)"
         if not self.extra_roles:
             return "WITHIN the approval"
-        accepted = self.accepted_extra_roles
-        roles = (f"{role}: accepted broader grant" if role in accepted else role for role in self.extra_roles)
-        return f"BEYOND the approval ({', '.join(roles)})"
-
-    def _extra_roles_conclusion(self) -> str:
-        accepted = self.accepted_extra_roles
-        others = [role for role in self.extra_roles if role not in accepted]
-        parts = []
-        if accepted:
-            parts.append(
-                f"the token claims {', '.join(accepted)} beyond the approval, accepted as granted because it covers "
-                "an approved role"
-            )
-        if others:
-            parts.append(
-                f"the token claims {', '.join(others)} beyond the approval, covered by InfoSec exception "
-                f"{self.exception_reference}"
-            )
-        return "; ".join(parts)
+        return f"BEYOND the approval ({', '.join(self.extra_roles)})"
 
     def _verdict_text(self) -> str:
         return {

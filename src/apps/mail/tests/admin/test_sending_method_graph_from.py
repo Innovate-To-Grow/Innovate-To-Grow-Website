@@ -107,18 +107,6 @@ class GraphFromAddressTests(EmailSendingMethodTestCase):
         self.config.refresh_from_db()
         self.assertEqual((self.config.provider, self.config.from_email), ("graph", MAILBOX))
 
-    @override_settings(GRAPH_REQUIRE_ACCESS_EVIDENCE=True)
-    def test_evidence_with_the_roles_oit_granted_lets_email_switch_without_an_exception_reference(self):
-        # OIT granted Mail.ReadWrite (covering Mail.Read) + Mail.Send; the site follows that grant.
-        evidence(self.graph, granted_roles=["Mail.ReadWrite", "Mail.Send"], roles_within_approval=False)
-        self.assertEqual(self.graph.permission_exception_reference, "")
-
-        self.assertEqual(self.cards()["graph"]["problem"], "")
-        self.client.post(self.use_url("graph"))
-
-        self.config.refresh_from_db()
-        self.assertEqual((self.config.provider, self.config.from_email), ("graph", MAILBOX))
-
     def test_the_graph_test_email_sends_from_the_address_switching_would_use(self):
         page = self.client.get(self.page_url("graph"))
         with patch(SEND_TEST, return_value="Microsoft Graph") as send:

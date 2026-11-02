@@ -19,11 +19,10 @@ from apps.core.tests.services.graph_access.helpers import (
     DENIED,
     DENY,
     EMPTY_LIST,
+    EXTRA_ROLES,
     MESSAGE_ID,
-    OIT_ROLES,
     REQUEST_ID,
     SCOPED,
-    UNACCEPTED_ROLES,
     ProbeFixtureMixin,
     Verdict,
     jwt,
@@ -63,7 +62,7 @@ class AccessCheckRunTests(ProbeFixtureMixin, TestCase):
         self.assertEqual(report.verdict, Verdict.COMPLIANT)
         self.assertTrue(report.restriction_holds and report.complete)
         self.assertIs(report.roles_within_approval, True)
-        self.assertEqual(report.granted_roles, ("Mail.Read", "Mail.Send"))
+        self.assertEqual(report.granted_roles, ("Mail.ReadWrite", "Mail.Send"))
         self.assertEqual(report.certificate_sha1, self.config.current_certificate.sha1_thumbprint)
         self.assertIn("Verdict: MATCHES THE APPROVAL", report.summary())
         self.assertIn("matches the approval", report.conclusion())
@@ -120,48 +119,21 @@ class AccessCheckRunTests(ProbeFixtureMixin, TestCase):
             self.assertEqual(body["message"]["from"]["emailAddress"]["address"], DENY)
             self.assertEqual([r["emailAddress"]["address"] for r in body["message"]["toRecipients"]], [SCOPED])
 
-    def test_mail_readwrite_as_oit_granted_it_matches_without_an_infosec_exception(self):
-        # What OIT configured: Mail.ReadWrite (covering Mail.Read) + Mail.Send, and every mailbox probe passes.
-        self.use_roles(OIT_ROLES)
+    def test_a_role_beyond_the_approved_ones_does_not_match(self):
+        # Every mailbox probe passes, yet the token claims a role nobody approved.
+        self.use_roles(EXTRA_ROLES)
 
         report = self.run_check()
 
-        self.assertEqual(outcomes(report)[1], ("WARN", "roles", "-"))
+        self.assertEqual(outcomes(report)[1], ("FAIL", "roles", "-"))
         self.assertTrue(report.restriction_holds)
         self.assertIs(report.roles_within_approval, False)
-        self.assertEqual(
-            (report.broader_roles, report.accepted_extra_roles), (("Mail.ReadWrite",), ("Mail.ReadWrite",))
-        )
-        self.assertEqual(report.verdict, Verdict.COMPLIANT)
-        self.assertIn("BEYOND the approval (Mail.ReadWrite: accepted broader grant)", report.summary())
-        self.assertEqual(
-            report.conclusion(),
-            "The mailbox restriction holds; the token claims Mail.ReadWrite beyond the approval, accepted as granted "
-            "because it covers an approved role.",
-        )
-
-    @override_settings(GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES={})
-    def test_without_accepted_broader_roles_mail_readwrite_does_not_match(self):
-        self.use_roles(OIT_ROLES)
-
-        report = self.run_check()
-
-        self.assertEqual(outcomes(report)[1], ("FAIL", "roles", "-"))
-        self.assertEqual(report.verdict, Verdict.NOT_COMPLIANT)
-        self.assertIn("BEYOND the approval (Mail.ReadWrite)", report.summary())
-        self.assertIn("does NOT match the approval", report.conclusion())
-
-    def test_a_role_that_is_not_an_accepted_broader_grant_does_not_match(self):
-        self.use_roles(UNACCEPTED_ROLES)
-
-        report = self.run_check()
-
-        self.assertEqual(outcomes(report)[1], ("FAIL", "roles", "-"))
         self.assertEqual(report.verdict, Verdict.NOT_COMPLIANT)
         self.assertIn("BEYOND the approval (User.Read.All)", report.summary())
+        self.assertIn("does NOT match the approval", report.conclusion())
 
     def test_an_infosec_exception_reference_accepts_extra_roles_and_says_so(self):
-        self.use_roles((*OIT_ROLES, "User.Read.All"))
+        self.use_roles(EXTRA_ROLES)
         self.config.permission_exception_reference = "RITM0450999"
         self.config.save()
 
@@ -169,12 +141,7 @@ class AccessCheckRunTests(ProbeFixtureMixin, TestCase):
 
         self.assertEqual(outcomes(report)[1], ("WARN", "roles", "-"))
         self.assertEqual(report.verdict, Verdict.COMPLIANT)
-        self.assertEqual(
-            report.conclusion(),
-            "The mailbox restriction holds; the token claims Mail.ReadWrite beyond the approval, accepted as granted "
-            "because it covers an approved role; the token claims User.Read.All beyond the approval, covered by "
-            "InfoSec exception RITM0450999.",
-        )
+        self.assertIn("covered by InfoSec exception RITM0450999", report.conclusion())
 
     def test_no_roles_in_the_token_warn_but_still_match(self):
         self.use_roles(())

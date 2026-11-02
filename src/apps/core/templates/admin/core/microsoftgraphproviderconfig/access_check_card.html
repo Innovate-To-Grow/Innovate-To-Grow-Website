@@ -21,7 +21,7 @@
             </div>
             <div>
                 <dt class="text-xs font-medium text-base-400">Roles in the token</dt>
-                <dd class="mt-1">{{ card.roles }}{% if card.roles_note %} ({{ card.roles_note }}){% endif %}</dd>
+                <dd class="mt-1">{{ card.roles }}{% if card.check.roles_within_approval is False %} (beyond the approval){% endif %}</dd>
             </div>
         </dl>
     {% else %}

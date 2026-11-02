@@ -91,36 +91,13 @@ def _graph_errors() -> list[Error]:
         errors.append(
             Error(
                 "GRAPH_APPROVED_APPLICATION_ROLES must be a non-empty list of Graph permission names.",
-                hint='For example ("Mail.Send", "Mail.Read"): the application permissions InfoSec approved.',
+                hint='For example ("Mail.Send", "Mail.ReadWrite", "Mail.Read"): the application permissions OIT granted.',
                 id="core.E006",
-            )
-        )
-    if not _valid_broader_roles(getattr(settings, "GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES", None)):
-        errors.append(
-            Error(
-                "GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES must map Graph permission names to non-empty lists of the "
-                "permission names they cover.",
-                hint='For example {"Mail.ReadWrite": ("Mail.Read",)}; use {} to accept no broader role.',
-                id="core.E013",
             )
         )
     if not isinstance(getattr(settings, "GRAPH_REQUIRE_ACCESS_EVIDENCE", None), bool):
         errors.append(Error("GRAPH_REQUIRE_ACCESS_EVIDENCE must be True or False.", id="core.E007"))
     return errors
-
-
-def _valid_broader_roles(value) -> bool:
-    """A mapping of permission name to the permission names it covers (``accepted_broader_roles`` uses only the
-    entries whose covered roles are all approved)."""
-    if not isinstance(value, dict):
-        return False
-    return all(
-        is_graph_permission(role)
-        and isinstance(covered, list | tuple)
-        and bool(covered)
-        and all(is_graph_permission(name) for name in covered)
-        for role, covered in value.items()
-    )
 
 
 @register(Tags.security)

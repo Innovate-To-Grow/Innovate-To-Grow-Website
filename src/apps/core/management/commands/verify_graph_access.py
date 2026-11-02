@@ -77,8 +77,6 @@ class Command(BaseCommand):
         )
         self.stdout.write(f"Deny mailbox: {report.deny_mailbox}{'' if designated else NOT_DESIGNATED}")
         self.stdout.write(f"Approved application roles: {', '.join(report.approved_roles)}")
-        broader = ", ".join(report.broader_roles) or "none"
-        self.stdout.write(f"Accepted broader roles (no InfoSec exception needed): {broader}")
         self.stdout.write(f"InfoSec exception: {report.exception_reference or 'none recorded'}")
         self.stdout.write("")
 

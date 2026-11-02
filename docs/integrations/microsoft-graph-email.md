@@ -57,8 +57,8 @@ statements; nothing below has been checked against the tenant from the site's si
 
 | Item | On record | Status |
 |------|-----------|--------|
-| Approval (InfoSec, 2026-10-28) | Application `Mail.Send` and `Mail.Read` for `i2g@ucmerced.edu` only, certificate authentication, no further Graph permissions without a new InfoSec review, documented logging, monitoring, rotation, retention and revocation, and proof that access is allowed for the I2G mailbox and denied for an unrelated one | The conditions this runbook answers |
-| Microsoft-side configuration, as reported by Cloud Systems on 2026-10-30 (unverified) | Entra app "Innovate2Grow" (client ID `f50cd7bc-ab45-4698-ab42-ae737a4c8adc`, tenant `f4dfe9a3-ca78-4998-b7a7-e6d0692eace6`) with application permissions **`Mail.ReadWrite` and `Mail.Send`**, restricted to `i2g@ucmerced.edu` through an "Access Policy group" that must be updated if the mailbox changes. Cloud Systems' reason for `Mail.ReadWrite`: the approved set "cannot compose email" | **Exceeds the 10/28 approval.** No InfoSec review of `Mail.ReadWrite` is on record. The site does not need it: it only calls `sendMail` (`Mail.Send`) and reads messages (`Mail.Read`), and Microsoft's permission reference says `Mail.ReadWrite` allows creating, updating and deleting mail and "does not include permission to send mail". The wording suggests an Exchange Application Access Policy, not RBAC for Applications. **Site policy since 2026-11-02:** the site follows what OIT granted. `Mail.ReadWrite` covers `Mail.Read`, so the access check and the go-live gate accept it without an InfoSec exception reference (`GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES`). Each access check still records it as beyond the approval |
+| Approval (InfoSec, 2026-10-28) | Application `Mail.Send` and `Mail.Read` for `i2g@ucmerced.edu` only, certificate authentication, no further Graph permissions without a new InfoSec review, documented logging, monitoring, rotation, retention and revocation, and proof that access is allowed for the I2G mailbox and denied for an unrelated one | Superseded for the site by the grant OIT made (next row) |
+| Microsoft-side configuration, as reported by Cloud Systems on 2026-10-30 (unverified) | Entra app "Innovate2Grow" (client ID `f50cd7bc-ab45-4698-ab42-ae737a4c8adc`, tenant `f4dfe9a3-ca78-4998-b7a7-e6d0692eace6`) with application permissions **`Mail.ReadWrite` and `Mail.Send`**, restricted to `i2g@ucmerced.edu` through an "Access Policy group" that must be updated if the mailbox changes. Cloud Systems' reason for `Mail.ReadWrite`: the approved set "cannot compose email" | **The site's approved roles**: `GRAPH_APPROVED_APPLICATION_ROLES` is this grant (`Mail.ReadWrite`, `Mail.Send`) plus `Mail.Read`, which `Mail.ReadWrite` includes, so the access check passes it without an exception reference. The site itself only calls `sendMail` (`Mail.Send`) and reads messages. The wording suggests an Exchange Application Access Policy, not RBAC for Applications |
 | Allowed / denied test | None in the ticket | Not done. Nothing may say the tenant restriction is verified until the [access check](#validate-the-access-restriction) has passed against a designated unrelated test mailbox |
 | Certificate | Self-signed RSA 3072 / SHA-256, valid until 2027-10-29, SHA-1 thumbprint `6FC515A1F6013DA98CDDDB9461460BE8A4EE872E`; private key only in the developer's macOS Keychain | To be installed on the [Install certificate](#2-install-the-certificate) page (a Keychain export is a password-protected `.p12`, which the page accepts) |
 | Key storage | Intended for AWS Secrets Manager | Implemented ([Where the private key is kept](#where-the-private-key-is-kept)); the secret, its task-role write grant and its resource policy are not deployed or tested in AWS yet |
@@ -70,14 +70,8 @@ Production refuses to switch email to Microsoft Graph until the [go-live gate](#
 items 3 and 4 block it in code; the others need a decision, a confirmation or OIT's evidence before
 go-live.
 
-1. **Permissions.** The site follows the grant OIT made: `Mail.ReadWrite` (which covers `Mail.Read`) plus
-   `Mail.Send` passes the access check and the go-live gate without an InfoSec exception reference
-   (`GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES`, default `{"Mail.ReadWrite": ("Mail.Read",)}`). Under an access
-   policy the consented permissions appear in the token's `roles`, and every access check records
-   `Mail.ReadWrite` as beyond the 10/28 approval. That approval's terms are still not met: if they must be,
-   ask Cloud Systems to replace `Mail.ReadWrite` with `Mail.Read`, or ask InfoSec to approve it. Any other role
-   beyond the approval still fails the access check unless a superuser records the reference of InfoSec's
-   written review as **InfoSec Exception Reference**.
+1. **Permissions.** Nothing to change: the approved roles are what OIT granted (`Mail.ReadWrite` and
+   `Mail.Send`), so the access check passes the token's `roles` as they are.
 2. **Restriction evidence from OIT.** Ask Cloud Systems for the `Get-ApplicationAccessPolicy` output for the
    app, and for `Test-ApplicationAccessPolicy` results for `i2g@ucmerced.edu` (`Granted`) and for the
    designated test mailbox (`Denied`), and to confirm whether the restriction is an Application Access Policy
@@ -141,15 +135,14 @@ On the Overview page copy **Application (client) ID** and **Directory (tenant) I
 
 ### 2. Grant the approved permissions and restrict them to the I2G mailbox
 
-The approval is application `Mail.Send` and `Mail.Read` for `i2g@ucmerced.edu`. Prefer `Mail.Read` to
-`Mail.ReadWrite`: `Mail.ReadWrite` allows creating, updating and deleting mail and adds nothing the site uses.
-The site still accepts `Mail.ReadWrite` where OIT has granted it (see
-[Validate the access restriction](#validate-the-access-restriction)). Microsoft offers two ways to
-restrict an app to some mailboxes; ask Cloud Systems which one is in place.
+The approved permissions are what OIT granted: application `Mail.ReadWrite` and `Mail.Send` for
+`i2g@ucmerced.edu` (`GRAPH_APPROVED_APPLICATION_ROLES`; `Mail.Read` passes too, since `Mail.ReadWrite`
+includes it). Microsoft offers two ways to restrict an app to some mailboxes; ask Cloud Systems which one is
+in place.
 
 **A. Application Access Policy (what Cloud Systems reported).** The permissions are granted in Entra
-(**API permissions** → Microsoft Graph → **Application permissions** → `Mail.Send`, `Mail.Read`, with admin
-consent), and an Exchange policy limits them to the members of a mail-enabled security group that contains
+(**API permissions** → Microsoft Graph → **Application permissions** → `Mail.Send` and `Mail.ReadWrite` (or
+`Mail.Read`), with admin consent), and an Exchange policy limits them to the members of a mail-enabled security group that contains
 only the I2G mailbox. In Exchange Online PowerShell:
 
 ```powershell
@@ -259,7 +252,7 @@ configuration:
 | **Sender Mailbox** | `i2g@ucmerced.edu`. Blank means the **From Email** address. The admin inbox reads this mailbox too. |
 | **Mailbox scope** (inline rows) | One row: mailbox `i2g@ucmerced.edu`, permission **Send and read (Mail.Send + Mail.Read)**. |
 | **Access Check Deny Mailbox** | Superusers only. The unrelated test mailbox OIT / InfoSec designated for the denial test ([Validate the access restriction](#validate-the-access-restriction)): a plain address, outside the scope, not the sender mailbox or **From Email**. |
-| **InfoSec Exception Reference** | Superusers only, and only after InfoSec has approved in writing Graph permissions beyond `Mail.Send`, `Mail.Read` and the broader roles the site accepts as granted (`Mail.ReadWrite`): the reference of that review. Leave it blank otherwise. |
+| **InfoSec Exception Reference** | Superusers only, and only after Graph permissions beyond the approved roles (`Mail.ReadWrite`, `Mail.Send`, `Mail.Read`) have been approved in writing: the reference of that review. Leave it blank otherwise. |
 
 Save, then use the panel above the form. It shows the **current certificate**: SHA-1 thumbprint (as Entra
 lists it), SHA-256 fingerprint, subject, serial, validity with an expiry badge (amber from
@@ -452,7 +445,8 @@ row pins is never used.
 ## Validate the access restriction
 
 The access check asks Microsoft directly, bypassing the site's own scope check, what the Entra app may do
-and compares it with the InfoSec approval (`Mail.Send` and `Mail.Read` for the I2G mailbox). A superuser
+and compares it with the approved roles (`GRAPH_APPROVED_APPLICATION_ROLES`: what OIT granted, `Mail.ReadWrite` and
+`Mail.Send`) and the mailbox scope. A superuser
 runs it with **Run access check** on the Graph configuration's page (production has no ECS Exec), or from a
 shell:
 
@@ -473,7 +467,7 @@ any recorded exception.
 | Check | Mailbox | Expected |
 |-------|---------|----------|
 | `token` | | issued for the current certificate |
-| `roles` | | the token's `roles` claim within `GRAPH_APPROVED_APPLICATION_ROLES` (default `Mail.Send`, `Mail.Read`), or broader roles accepted as granted (`GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES`, default `Mail.ReadWrite`, covering `Mail.Read`) |
+| `roles` | | the token's `roles` claim within `GRAPH_APPROVED_APPLICATION_ROLES` (default `Mail.Send`, `Mail.ReadWrite`, `Mail.Read`: what OIT granted, plus `Mail.Read`, which `Mail.ReadWrite` includes) |
 | `folder`, `list`, `value` | each scoped mailbox with read permission | `200`: the Inbox, the newest message with its preview (`$top=1&$select=id,bodyPreview`), and the first `GRAPH_ACCESS_CHECK_MIME_MAX_BYTES` (default 4096) bytes of its raw MIME, which are discarded. An empty Inbox makes `value` INCONCLUSIVE, so the run is not a complete validation: run it again once the Inbox holds a message (the `send` probe delivers one) |
 | `send` | each scoped mailbox with send permission, listed by address | `202`: a MIME probe email to itself (a copy stays in its Sent Items) |
 | `read+` | each scoped mailbox with send permission only | for the record: a `200` is a WARN, because an access policy limits mailboxes, not permissions, so only the site's scope stops reading it |
@@ -487,11 +481,7 @@ How to read the result:
   I2G mailbox. If Exchange wrongly accepts one, it files no Sent Items copy and reaches only the I2G
   mailbox, and the line reads `ACCESS WAS GRANTED` with a note that a probe email was sent.
 - The token's `roles` are decoded without verifying the token (Microsoft supports decoding only for
-  debugging). A broader role accepted as granted, `Mail.ReadWrite` by default, is a WARN noted
-  `accepted as granted, covering an approved role`. It counts toward the go-live gate without an exception
-  reference, and the record still lists it as beyond the approval. A role in
-  `GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES` is accepted only while every role it covers is in
-  `GRAPH_APPROVED_APPLICATION_ROLES`. Any other role beyond the approval is a FAIL, unless a superuser has
+  debugging). Any role beyond the approved roles, such as `User.Read.All`, is a FAIL, unless a superuser has
   recorded **InfoSec Exception Reference** (the reference of InfoSec's written review; the site never
   fills it in), which turns it into a WARN that names the reference. No roles is a WARN: RBAC for
   Applications grants never appear in the token. Unreadable roles are INCONCLUSIVE.
@@ -505,13 +495,13 @@ How to read the result:
 - A skipped check (`--no-send`, no mailbox with read or send permission, a sender listed only by object
   ID) is SKIP. A run with any SKIP or INCONCLUSIVE line ends with `NOT A COMPLETE VALIDATION`.
 
-For the configuration Cloud Systems reported, the summary line reads `Mailbox restriction: HOLDS · Granted
-roles: BEYOND the approval (Mail.ReadWrite: accepted broader grant) · Verdict: MATCHES THE APPROVAL`. A role
-that is not accepted, such as `User.Read.All`, gives `BEYOND the approval (User.Read.All) · Verdict: DOES NOT
-MATCH THE APPROVAL`. The command exits non-zero unless the verdict is **Matches the approval**: the
-restriction holds, nothing failed or was skipped, and the roles are within the approval, accepted broader
-grants, or covered by a recorded exception. A check recorded before 2026-11-02 that failed only on
-`Mail.ReadWrite` stays **Does not match the approval**: run the check again. It then prints `Go-live evidence: present` or what is missing. Run it after setup,
+For the grant Cloud Systems made, the summary line reads `Mailbox restriction: HOLDS · Granted roles:
+WITHIN the approval · Verdict: MATCHES THE APPROVAL`. A role beyond the approved ones gives, for example,
+`Granted roles: BEYOND the approval (User.Read.All) · Verdict: DOES NOT MATCH THE APPROVAL`. A check recorded
+before the approved roles became OIT's grant (2026-11-02) that failed only on `Mail.ReadWrite` keeps its
+**Does not match the approval** verdict: run the check again. The command exits non-zero unless the verdict is **Matches the approval**: the
+restriction holds, nothing failed or was skipped, and the roles are within the approval or covered by a
+recorded exception. It then prints `Go-live evidence: present` or what is missing. Run it after setup,
 after any Exchange or Entra change, and after rotation; wait at least an hour after OIT changes an access
 policy. The recorded rows, together with OIT's `Test-ApplicationAccessPolicy` output, are the validation
 evidence for InfoSec.
@@ -521,11 +511,9 @@ evidence for InfoSec.
 Where `GRAPH_REQUIRE_ACCESS_EVIDENCE` is on (production; off locally and in tests), Mail → Notification
 Delivery can switch email to Microsoft Graph only when the latest access check run with the current
 certificate matched the approval, used the designated deny mailbox, and is at most
-`GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS` (default 30) days old. A role beyond today's approval and today's
-accepted broader roles (`Mail.ReadWrite`) still needs an exception reference at the time of the switch.
-Clearing the reference, narrowing `GRAPH_APPROVED_APPLICATION_ROLES` (which also withdraws a broader role
-that covered a role no longer approved), or removing an entry from `GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES`
-therefore withdraws the evidence. Refused saves say why under **Provider**
+`GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS` (default 30) days old. A role beyond today's approval still needs an
+exception reference at the time of the switch, so clearing the reference, or narrowing
+`GRAPH_APPROVED_APPLICATION_ROLES`, withdraws the evidence. Refused saves say why under **Provider**
 (`Email cannot switch to Microsoft Graph yet: …`).
 
 The same rule applies whenever email that is already on Graph would move to another Entra app or
@@ -601,8 +589,8 @@ Email** prove the credentials.
   opening a connection, every request except the token request, `POST …/users/{mailbox}/sendMail`,
   `GET …/mailFolders/{inbox|sentitems}/messages`, `GET …/mailFolders/inbox` (the access-check probe) and
   `GET …/messages/{id}/$value`. No code path can create a draft, reply, move, flag, mark read or delete
-  mail, whatever permissions the Entra app holds. This keeps the site itself from using `Mail.ReadWrite`
-  if OIT leaves it granted, but it does not limit someone who obtains the key or a token. A refused request
+  mail, whatever permissions the Entra app holds. This keeps the site itself to sending and reading
+  although `Mail.ReadWrite` is granted, but it does not limit someone who obtains the key or a token. A refused request
   is the permanent error `The site does not make this Microsoft Graph request.`
 - **Message ID.** `sendMail` answers `202 Accepted` with no body and no message ID, so the app records
   the `Message-ID` header it generated as the provider message ID in the Email Log (`RecipientLog`,

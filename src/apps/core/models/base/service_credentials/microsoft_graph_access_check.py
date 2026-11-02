@@ -76,30 +76,13 @@ class MicrosoftGraphAccessCheck(ProjectControlModel):
         return f"{self.get_verdict_display()} ({timezone.localtime(self.created_at):%Y-%m-%d %H:%M})"
 
 
-def accepted_broader_roles() -> tuple[str, ...]:
-    """Roles beyond ``GRAPH_APPROVED_APPLICATION_ROLES`` that are accepted as granted, without an InfoSec exception.
-
-    These are the ``GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES`` entries (Mail.ReadWrite, which OIT granted in place of
-    Mail.Read) that cover at least one role, every one of which is approved today. Narrowing the approval therefore
-    also withdraws a broader role that covered a role no longer approved.
-    """
-    approved = set(settings.GRAPH_APPROVED_APPLICATION_ROLES)
-    return tuple(
-        sorted(
-            role
-            for role, covered in settings.GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES.items()
-            if role not in approved and covered and set(covered) <= approved
-        )
-    )
-
-
 def go_live_problem(config, *, now=None) -> str:
     """Why email delivery may not switch to Microsoft Graph yet (``GRAPH_REQUIRE_ACCESS_EVIDENCE``), or "".
 
     The latest access check run with *config*'s current certificate must match the approval, have been run against
     the designated deny mailbox, and be no older than ``GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS``. Any role its token
-    claimed beyond today's ``GRAPH_APPROVED_APPLICATION_ROLES`` and ``accepted_broader_roles`` still needs an InfoSec
-    exception reference now, so clearing the reference (or narrowing the approval) withdraws the evidence.
+    claimed beyond today's ``GRAPH_APPROVED_APPLICATION_ROLES`` still needs an InfoSec exception reference now, so
+    clearing the reference (or narrowing the approval) withdraws the evidence.
     """
     certificate = config.current_certificate
     check = None
@@ -114,8 +97,7 @@ def go_live_problem(config, *, now=None) -> str:
         return f"the latest access check did not use the designated deny mailbox. {RUN_THE_CHECK}"
     if check.verdict != MicrosoftGraphAccessCheck.Verdict.COMPLIANT:
         return f"the latest access check found: {check.get_verdict_display().lower()}. {RUN_THE_CHECK}"
-    accepted = set(settings.GRAPH_APPROVED_APPLICATION_ROLES) | set(accepted_broader_roles())
-    extra = sorted(set(check.granted_roles or ()) - accepted)
+    extra = sorted(set(check.granted_roles or ()) - set(settings.GRAPH_APPROVED_APPLICATION_ROLES))
     if extra and not config.permission_exception_reference:
         return (
             f"the access token claims {', '.join(extra)} beyond the approval, and no InfoSec exception reference "
