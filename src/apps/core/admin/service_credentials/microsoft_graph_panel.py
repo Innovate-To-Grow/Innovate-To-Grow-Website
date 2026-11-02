@@ -2,9 +2,8 @@
 
 It shows public data only: thumbprints, subject, serial, validity and the key store version a certificate row pins,
 then the latest access check and whether it is go-live evidence. The private key is never read to build it.
-Certificate actions (install, roll back, remove) and running the access check are superuser-only, so their links
-are offered to superusers only; the views enforce the same rule. Dates are in the site's time zone, with the zone
-named.
+Core admins can install a certificate; rollback, removal and running the access check remain superuser-only.
+The views enforce these permissions too. Dates are in the site's time zone, with the zone named.
 """
 
 from django.conf import settings
@@ -128,8 +127,9 @@ def certificate_panel(request, config, *, actions=True) -> dict:
     args = [config.pk]
     if current is not None:
         panel["download_url"] = reverse(f"admin:{DOWNLOAD_URL_NAME}", args=args)
-    if actions and request.user.is_superuser:
+    if actions:
         panel["install_url"] = reverse(f"admin:{INSTALL_URL_NAME}", args=args)
+    if actions and request.user.is_superuser:
         panel["access_check_url"] = reverse(f"admin:{ACCESS_CHECK_URL_NAME}", args=args)
         if previous is not None:
             panel["rollback_url"] = reverse(f"admin:{ROLLBACK_URL_NAME}", args=args)

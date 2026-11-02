@@ -42,7 +42,10 @@ def reset_postgresql(connection):
         if db_user:
             from psycopg2 import sql
 
-            cursor.execute(sql.SQL("GRANT ALL ON SCHEMA public TO {user};").format(user=sql.Identifier(db_user)))
+            # A Django DB cursor, not SQLAlchemy; psycopg2's sql.Identifier quotes the role name.
+            cursor.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                sql.SQL("GRANT ALL ON SCHEMA public TO {user};").format(user=sql.Identifier(db_user))
+            )
 
 
 def reset_mysql(connection):
@@ -51,7 +54,10 @@ def reset_mysql(connection):
         cursor.execute("SHOW TABLES;")
         for (table,) in cursor.fetchall():
             quoted_table = connection.ops.quote_name(table)
-            cursor.execute(f"DROP TABLE IF EXISTS {quoted_table} CASCADE;")
+            # A Django DB cursor, not SQLAlchemy; the table name comes from SHOW TABLES, quoted by quote_name.
+            cursor.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                f"DROP TABLE IF EXISTS {quoted_table} CASCADE;"
+            )
         cursor.execute("SET FOREIGN_KEY_CHECKS = 1;")
 
 
@@ -81,7 +87,10 @@ def drop_sqlite_tables(connection):
         for (table,) in cursor.fetchall():
             if table != "sqlite_sequence":
                 quoted_table = connection.ops.quote_name(table)
-                cursor.execute(f"DROP TABLE IF EXISTS {quoted_table};")
+                # A Django DB cursor, not SQLAlchemy; the table name comes from sqlite_master, quoted by quote_name.
+                cursor.execute(  # nosemgrep: python.sqlalchemy.security.sqlalchemy-execute-raw-query.sqlalchemy-execute-raw-query
+                    f"DROP TABLE IF EXISTS {quoted_table};"
+                )
         cursor.execute("PRAGMA foreign_keys = ON;")
 
 

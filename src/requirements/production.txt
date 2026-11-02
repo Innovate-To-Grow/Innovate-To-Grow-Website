@@ -9,7 +9,7 @@ uvicorn[standard]>=0.54.0,<1.0
 psycopg2-binary>=2.9.13
 
 # Redis cache backend
-django-redis>=7.0,<8.0  # 7.x needs py>=3.10 + Django>=5.2 (the old "6.0+ needs py3.12" note was wrong); smoke-tested on py3.11 + redis-py 8
+django-redis>=7.0,<8.0  # 7.x needs py>=3.10 + Django>=5.2 (the old "6.0+ needs py3.12" note was wrong); smoke-tested on py3.11 + redis-py 8 when this range was set (the image now runs py3.14)
 
 # Storage Backend (S3/R2/OSS compatible)
 django-storages[s3]>=1.14.6
