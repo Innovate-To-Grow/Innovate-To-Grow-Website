@@ -110,6 +110,7 @@ def view_limits_with(**rates):
 
 
 def view_limit(**rates):
-    """override_settings changing per-view limit seeds (the rates the throttles use while the limiter is off, as in
-    the test settings), e.g. ``@view_limit(**{"view-past-project-share": (1, 60)})``."""
-    return override_settings(REQUEST_RATE_LIMITS=view_limits_with(**rates))
+    """override_settings changing per-view limit seeds, e.g. ``@view_limit(**{"view-past-project-share": (1, 60)})``.
+    The seeds are the rates the throttles use while the limiter is off (with it on, the policy rows win), so this also
+    keeps the limiter off: the test holds when a run switches it on with REQUEST_RATE_LIMITS_ENABLED=true."""
+    return override_settings(REQUEST_RATE_LIMITS=view_limits_with(**rates), REQUEST_RATE_LIMITS_ENABLED=False)

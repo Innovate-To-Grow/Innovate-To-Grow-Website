@@ -17,6 +17,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from django.conf import settings
+from django.contrib.sessions.backends.db import SessionStore
 from django.core.cache import cache, caches
 from django.test import SimpleTestCase, override_settings
 
@@ -67,6 +68,9 @@ def total_count() -> int:
     return len(throttle_cache.get(TOTAL_KEY, []))
 
 
+# These floods come from one test client: with the request limiter on, the telemetry scope's per-IP ceiling refuses
+# them before the page-view throttles under test run, and its own counters share the throttle cache.
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
 class ThrottleCachePlacementTests(PageViewVisitorTestCase):
     def test_all_three_throttles_keep_their_history_in_the_throttle_alias(self):
         for throttle in (PageViewVisitorThrottle, PageViewLegacyThrottle, PageViewTotalThrottle):
@@ -142,6 +146,7 @@ class ThrottleCachePlacementTests(PageViewVisitorTestCase):
             caches["throttle"].clear()
 
 
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)  # one client floods the site cap (see above)
 class TotalCapTests(PageViewVisitorTestCase):
     # noinspection PyPep8Naming
     def setUp(self):
@@ -385,12 +390,16 @@ class StoredFieldBoundTests(PageViewVisitorTestCase):
     def test_a_session_cookie_that_cannot_be_a_session_key_is_not_stored(self):
         self.client.cookies[settings.SESSION_COOKIE_NAME] = "s" * 200
         self.assertEqual(self.post({"path": "/junk-cookie"}).status_code, 201)
-        self.client.cookies[settings.SESSION_COOKIE_NAME] = "k" * 32
+        # A real session: with the request limiter on, resolving the caller loads the session, so a cookie naming
+        # no stored session no longer reads as a session key.
+        session = SessionStore()
+        session.create()
+        self.client.cookies[settings.SESSION_COOKIE_NAME] = session.session_key
         self.assertEqual(self.post({"path": "/session"}).status_code, 201)
 
         flush_sync()
         self.assertEqual(PageView.objects.get(path="/junk-cookie").session_key, "")
-        self.assertEqual(PageView.objects.get(path="/session").session_key, "k" * 32)
+        self.assertEqual(PageView.objects.get(path="/session").session_key, session.session_key)
 
     def test_a_forged_client_address_is_stored_as_null_and_never_loses_the_batch(self):
         """Without trusted-proxy settings the address is the first X-Forwarded-For entry: any text the client likes.

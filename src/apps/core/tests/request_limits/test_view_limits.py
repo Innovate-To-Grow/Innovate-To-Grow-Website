@@ -40,6 +40,7 @@ def set_factor(scope, factor):
     registry.invalidate()
 
 
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
 class SeedTests(TestCase):
     """The request limiter is off in the test settings: the seeds apply and the database is never read."""
 
@@ -230,7 +231,8 @@ class FailureLockoutTests(TestCase):
             "requests": 3,
             "period_seconds": 60,
         }
-        override = override_settings(REQUEST_RATE_LIMITS=config)
+        # The seed is the limit while the limiter is off; with it on the policy row would win.
+        override = override_settings(REQUEST_RATE_LIMITS=config, REQUEST_RATE_LIMITS_ENABLED=False)
         override.enable()
         self.addCleanup(override.disable)
 

@@ -239,8 +239,8 @@ class SwitchTests(SimpleTestCase):
         self.assertIs(test_settings.REQUEST_RATE_LIMITS_ENABLED, enabled_from_env(False))
         self.assertIs(unit_settings.REQUEST_RATE_LIMITS_ENABLED, test_settings.REQUEST_RATE_LIMITS_ENABLED)
 
-    def test_the_running_suite_has_it_off(self):
-        self.assertFalse(settings.REQUEST_RATE_LIMITS_ENABLED)
+    def test_the_running_suite_has_it_off_unless_the_run_switched_it_on(self):
+        self.assertIs(settings.REQUEST_RATE_LIMITS_ENABLED, enabled_from_env(False))
 
     def test_the_concurrency_limit_comes_from_uvicorn(self):
         with patch.dict("os.environ", {"UVICORN_LIMIT_CONCURRENCY": "32"}):

@@ -171,6 +171,7 @@ class SummaryTests(RequestLimitsAdminTestCase):
         set_state("staff-bulk", 0.6, {**SHED, "action": "restore", "at": later})
         self.assertEqual(self.summary()["tier_lines"][3][:21], "P3 heavy: recovering ")
 
+    @override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
     def test_slots_kept_for_p0_in_use(self):
         signals.INFLIGHT.count = 19
         summary = self.summary()
@@ -200,6 +201,7 @@ class SummaryTests(RequestLimitsAdminTestCase):
             "Last assessment in this process (): steady → hold.",
         )
 
+    @override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
     def test_limiter_off_banner(self):
         self.assertContains(self.client.get(self.url), "data-limits-off")
         with override_settings(REQUEST_RATE_LIMITS_ENABLED=True):
@@ -207,6 +209,7 @@ class SummaryTests(RequestLimitsAdminTestCase):
         self.assertNotContains(response, "data-limits-off")
         self.assertTrue(response.context["summary"]["enabled"])
 
+    @override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
     def test_the_page_does_not_register_a_heartbeat_while_the_limiter_is_off(self):
         self.client.get(self.url)
         self.assertFalse(RequestLimitProcess.objects.exists())
