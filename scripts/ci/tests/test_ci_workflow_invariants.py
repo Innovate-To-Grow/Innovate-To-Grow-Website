@@ -296,5 +296,33 @@ class RoutingTests(unittest.TestCase):
                 self.assertIn("'[\"ubuntu-24.04\"]'", runs_on)
 
 
+class ActionPinningTests(unittest.TestCase):
+    """Every action is pinned to a full commit SHA, with the release it was in.
+
+    A tag can be moved to other code at any time; several of these actions run
+    with `id-token: write` against AWS. The `# vX.Y.Z` comment is what lets
+    Dependabot keep the pins current.
+    """
+
+    USES = re.compile(r"^\s*(?:-\s+)?uses:\s*(\S+)(.*)$", re.MULTILINE)
+    PINNED = re.compile(r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$")
+    VERSION_COMMENT = re.compile(r"^\s+# v\d+(?:\.\d+)*$")
+
+    def test_every_action_is_pinned_to_a_commit_sha(self) -> None:
+        files = sorted((REPOSITORY_ROOT / ".github" / "workflows").glob("*.yml"))
+        files += sorted((REPOSITORY_ROOT / ".github" / "actions").glob("*/action.yml"))
+        references = 0
+        for path in files:
+            for match in self.USES.finditer(path.read_text(encoding="utf-8")):
+                reference, rest = match.group(1), match.group(2)
+                if reference.startswith("./"):
+                    continue  # actions in this repository
+                references += 1
+                with self.subTest(file=path.name, uses=reference):
+                    self.assertRegex(reference, self.PINNED)
+                    self.assertRegex(rest, self.VERSION_COMMENT)
+        self.assertGreater(references, 50, "guards against this test silently matching nothing")
+
+
 if __name__ == "__main__":
     unittest.main()

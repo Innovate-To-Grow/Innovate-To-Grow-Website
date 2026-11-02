@@ -234,7 +234,10 @@ When adding new CI stages:
 2. For new backend checks, use `--settings=config.settings.environments.local` (SQLite) or `--settings=config.settings.environments.test` (PostgreSQL)
 3. For new frontend checks, use a Node.js release allowed by `pages/package.json`
 4. Keep stages independent where possible for parallel execution
-5. Pin new third-party actions to a full commit SHA with a `# vX.Y.Z` comment
+5. Pin every action to a full commit SHA with a `# vX.Y.Z` comment, including the
+   `actions/*` ones and those inside `.github/actions/`; `ActionPinningTests` in
+   `scripts/ci/tests/test_ci_workflow_invariants.py` fails preflight otherwise, and
+   Dependabot's monthly `github-actions` update keeps the pins current
 
 ## Related pages
 
