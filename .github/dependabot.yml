@@ -140,9 +140,13 @@ updates:
       prefix: "chore(deps)"
       include: scope
 
-  # GitHub Actions used across workflows
+  # GitHub Actions used across workflows and the composite actions they call.
+  # "/" covers .github/workflows/ only; each .github/actions/<name>/action.yml
+  # needs its own directory entry (DependabotCoverageTests checks this).
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: monthly
       time: "09:00"

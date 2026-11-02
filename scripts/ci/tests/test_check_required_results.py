@@ -21,7 +21,7 @@ class FailuresTests(unittest.TestCase):
     def test_failed_and_cancelled_needs_are_reported_in_order(self) -> None:
         result = failures(needs(lint="failure", build="success", e2e="cancelled"))
 
-        self.assertEqual(result, {"lint": "failure", "e2e": "cancelled"})
+        self.assertEqual(list(result.items()), [("lint", "failure"), ("e2e", "cancelled")])
 
     def test_skipped_is_a_failure_when_requested(self) -> None:
         # The E2E gate: a matrix that never ran must not pass (PR #439).

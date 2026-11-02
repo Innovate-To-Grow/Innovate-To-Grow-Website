@@ -17,6 +17,9 @@ BACKEND_DOCKERFILE = REPOSITORY_ROOT / "src" / "Dockerfile"
 PLAYWRIGHT_CONFIG = REPOSITORY_ROOT / "pages" / "playwright.config.ts"
 COVERAGE_FLOORS = REPOSITORY_ROOT / "scripts" / "ci" / "backend_coverage_floors.json"
 FLEET_LABEL = "i2g-aws"
+DEPENDABOT_CONFIG = REPOSITORY_ROOT / ".github" / "dependabot.yml"
+# Any way a job could create a virtualenv itself instead of using setup-backend-venv.
+VENV_CREATION = re.compile(r"-m\s+venv\b|\buv\s+venv\b|\bvirtualenv\b")
 
 
 def load_yaml(path: Path) -> dict:
@@ -69,10 +72,13 @@ class BackendVirtualenvCacheTests(unittest.TestCase):
         # Guards against this whole test class silently becoming a no-op.
         self.assertEqual(set(backend_venv_jobs(self.jobs)), {"backend-checks", "django-test-coverage", "e2e"})
 
-    def test_no_job_builds_a_virtualenv_around_the_probe(self) -> None:
+    def test_no_job_builds_or_caches_a_virtualenv_around_the_probe(self) -> None:
         for name, job in self.jobs.items():
             with self.subTest(job=name):
-                self.assertNotIn("python -m venv", run_scripts(job))
+                self.assertIsNone(VENV_CREATION.search(run_scripts(job)), "build the venv with setup-backend-venv")
+                for step in steps_of(job):
+                    path = str((step.get("with") or {}).get("path", ""))
+                    self.assertNotIn("venv", path, "only setup-backend-venv may cache a virtualenv")
 
     def test_the_cache_key_pins_the_resolved_python_patch_version(self) -> None:
         key = self._step("backend-venv-cache")["with"]["key"]
@@ -181,6 +187,15 @@ class BackendPythonVersionTests(unittest.TestCase):
         for name, step in backend_venv_jobs(load_ci()["jobs"]).items():
             with self.subTest(job=name):
                 self.assertEqual(step["with"]["python-version"], "${{ env.BACKEND_PYTHON_VERSION }}")
+        # The shared action is where setup-python actually runs; it must install
+        # exactly the version its callers pass in.
+        setups = [
+            step
+            for step in load_yaml(BACKEND_VENV_ACTION)["runs"]["steps"]
+            if str(step.get("uses", "")).startswith("actions/setup-python@")
+        ]
+        self.assertEqual(len(setups), 1)
+        self.assertEqual(setups[0]["with"]["python-version"], "${{ inputs.python-version }}")
 
 
 class MatrixParityTests(unittest.TestCase):
@@ -194,7 +209,10 @@ class MatrixParityTests(unittest.TestCase):
         # coverage floor, and nothing else in CI would notice.
         apps_on_disk = sorted(path.parent.name for path in (REPOSITORY_ROOT / "src" / "apps").glob("*/apps.py"))
         floors = json.loads(COVERAGE_FLOORS.read_text(encoding="utf-8"))["apps"]
-        matrix = self.jobs["django-test-coverage"]["strategy"]["matrix"]["app"]
+        strategy_matrix = self.jobs["django-test-coverage"]["strategy"]["matrix"]
+        # A matrix `exclude:` would silently drop a leg behind an unchanged list.
+        self.assertEqual(set(strategy_matrix), {"app"})
+        matrix = strategy_matrix["app"]
 
         self.assertEqual(sorted(matrix), apps_on_disk)
         self.assertEqual(len(matrix), len(set(matrix)))
@@ -204,7 +222,9 @@ class MatrixParityTests(unittest.TestCase):
         # The full device matrix on every event: PR #433 skipped the iphone14 and
         # ipad legs on its PR and broke them on main (run 32107167026).
         configured = re.findall(r"\{\s*name:\s*'([^']+)'", PLAYWRIGHT_CONFIG.read_text(encoding="utf-8"))
-        matrix = self.jobs["e2e"]["strategy"]["matrix"]["project"]
+        strategy_matrix = self.jobs["e2e"]["strategy"]["matrix"]
+        self.assertEqual(set(strategy_matrix), {"project"})
+        matrix = strategy_matrix["project"]
 
         self.assertEqual(len(configured), 10)
         self.assertEqual(matrix, configured)
@@ -218,6 +238,26 @@ class MatrixParityTests(unittest.TestCase):
         self.assertEqual(
             self.jobs["frontend-chromium-smoke"]["container"]["image"], self.jobs["e2e"]["container"]["image"]
         )
+
+
+class DependabotCoverageTests(unittest.TestCase):
+    """Dependabot must see every action reference, or a moved one stops getting updates."""
+
+    def test_the_github_actions_updates_cover_every_composite_action(self) -> None:
+        updates = load_yaml(DEPENDABOT_CONFIG)["updates"]
+        entry = next(update for update in updates if update["package-ecosystem"] == "github-actions")
+        directories = entry.get("directories") or [entry.get("directory")]
+        # "/" covers .github/workflows/ and a root action.yml only.
+        self.assertIn("/", directories)
+        actions = sorted((REPOSITORY_ROOT / ".github" / "actions").glob("*/action.yml"))
+        self.assertTrue(actions)
+        for action in actions:
+            directory = "/" + action.parent.relative_to(REPOSITORY_ROOT).as_posix()
+            with self.subTest(action=directory):
+                self.assertTrue(
+                    any(directory == pattern or Path(directory).match(pattern) for pattern in directories),
+                    f"{directory} is not in the github-actions directories {directories}",
+                )
 
 
 class RoutingTests(unittest.TestCase):
