@@ -19,6 +19,7 @@ from apps.authn.services.email import send_admin_invitation_email, send_notifica
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SMTPProviderConfig
 from apps.core.services.background_jobs import claim_jobs
 from apps.core.services.background_jobs.worker import run_claimed_job
+from apps.core.services.delivery_rates.families import clear_gate_cache
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
@@ -46,15 +47,21 @@ class Transports:
     """Every provider's transport, recording the recipients each one was handed."""
 
     def __init__(self, test):
-        ses = patch("apps.core.services.email.ses.boto3.client").start()
+        def start(target, new=None):
+            # Stop only these patches: ``patch.stopall`` would also stop the test runner's virtual clock, and every
+            # later test would then wait for real in the delivery-rate limiter.
+            patcher = patch(target) if new is None else patch(target, new)
+            test.addCleanup(patcher.stop)
+            return patcher.start()
+
+        ses = start("apps.core.services.email.ses.boto3.client")
         ses.return_value.send_raw_email.return_value = {"MessageId": "ses-1"}
         self.ses = ses.return_value.send_raw_email
-        smtp = patch("apps.core.services.email.smtp.smtplib.SMTP").start()
+        smtp = start("apps.core.services.email.smtp.smtplib.SMTP")
         smtp.return_value.send_message.return_value = {}
         self.smtp = smtp.return_value.send_message
         self.graph = FakeGraphTransport()
-        patch("apps.core.services.email.graph.transport.post", self.graph).start()
-        test.addCleanup(patch.stopall)
+        start("apps.core.services.email.graph.transport.post", self.graph)
 
     def recipients(self, provider) -> list[str]:
         if provider == "ses":
@@ -77,6 +84,9 @@ class SendingMethodReachesAllMailTests(TestCase):
     def setUp(self):
         cache.clear()
         clear_access_token_cache()
+        # Process-wide caches outlive the test's transaction (the worker's lane gates, Graph tokens): leave none behind.
+        self.addCleanup(clear_access_token_cache)
+        self.addCleanup(clear_gate_cache)
         FakeClock(timezone.now()).install(self)
         self.transports = Transports(self)
         self.superuser = make_superuser()
