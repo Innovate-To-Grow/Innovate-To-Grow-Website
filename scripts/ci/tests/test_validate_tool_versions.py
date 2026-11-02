@@ -3,12 +3,13 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import re
 import tempfile
 import unittest
 from collections.abc import Iterator
 from pathlib import Path
 
-from scripts.ci.validate_tool_versions import PinError, collect_pins, main, mismatches
+from scripts.ci.validate_tool_versions import PIN_GROUPS, PinError, Regex, collect_pins, main, mismatches
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
@@ -60,6 +61,10 @@ jobs:
       postgres:
         image: postgres:16
   migration-check:
+    services:
+      postgres:
+        image: postgres:16
+  cli-admin-coverage:
     services:
       postgres:
         image: postgres:16
@@ -266,7 +271,7 @@ class CollectPinsTests(unittest.TestCase):
 
     def test_fewer_matches_than_the_minimum_is_a_pin_error(self) -> None:
         cases = (
-            (CI, "image: postgres:16", "image: postgres:latest", "postgres", "found 3"),
+            (CI, "image: postgres:16", "image: postgres:latest", "postgres", "found 4"),
             (CI, f'"{IMAGE}"', '"mcr.microsoft.com/playwright:v1.64.0-noble"', "sha256", "found 1"),
             (CI, '"pip-audit[cyclonedx]==2.7.3"', "pip-audit", "pip-audit", "found 1"),
             (BAKE_IMAGE, "$RUNNER_TOOL_CACHE/node/22.22.2/x64/bin/", "$NODE_HOME/bin/", "node", "found 7"),
@@ -289,6 +294,18 @@ class CollectPinsTests(unittest.TestCase):
 
             with self.assertRaisesRegex(PinError, r"^\.github/workflows/deploy-archive\.yml: cannot read"):
                 collect_pins(root)
+
+    def test_each_repository_source_declares_its_exact_match_count(self) -> None:
+        # A minimum below the real count lets one occurrence be rewritten (say to
+        # postgres:latest) and silently drop out of the check while the rest still
+        # agree. Keeping each minimum equal to the count closes that gap.
+        for group, sources in PIN_GROUPS.items():
+            for source in sources:
+                if not isinstance(source, Regex) or source.as_set:
+                    continue
+                with self.subTest(group=group, path=source.path, regex=source.regex):
+                    text = (REPOSITORY_ROOT / source.path).read_text(encoding="utf-8")
+                    self.assertEqual(len(re.findall(source.regex, text, re.MULTILINE)), source.minimum)
 
 
 class MainTests(unittest.TestCase):

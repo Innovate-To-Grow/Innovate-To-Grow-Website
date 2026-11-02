@@ -179,7 +179,7 @@ PIN_GROUPS: dict[str, tuple[Source, ...]] = {
         Regex(BAKE_IMAGE, BAKED_TOOLING_PYTHON),
     ),
     "postgres": (
-        Regex(CI, POSTGRES_IMAGE, minimum=4),
+        Regex(CI, POSTGRES_IMAGE, minimum=5),
         Regex(RUNNER_SMOKE, POSTGRES_IMAGE),
         Regex(BAKE_IMAGE, POSTGRES_IMAGE),
     ),

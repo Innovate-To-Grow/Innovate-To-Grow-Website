@@ -1271,13 +1271,17 @@ jobs:
     timeout-minutes: 15
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
-    permissions:
-      contents: read
-      # Push runs upload the SARIF to the Security tab (last step).
-      security-events: write
+    # Read-only on purpose: `pip install semgrep` pulls ~45 range-resolved
+    # dependencies into this job, so it must not hold a token that can change
+    # code-scanning alerts. semgrep-sarif-upload below uploads the result.
+    outputs:
+      scanned: ${{ steps.semgrep.outcome == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          # Semgrep only needs the files; keep the job token off the disk.
+          persist-credentials: false
 
       - name: Set up Python
         id: setup-python
@@ -1351,12 +1355,35 @@ jobs:
           path: semgrep.sarif
           if-no-files-found: warn
 
-      # Uploaded whenever the scan itself succeeded, including when the gate
-      # above failed: those are the findings the Security tab is for. A
-      # code-scanning API hiccup must not fail the job.
+  # Push runs only. The only job that holds security-events: write for Semgrep,
+  # and it runs no third-party code beyond SHA-pinned actions. Runs whenever the
+  # scan itself succeeded, including when its error-severity gate failed: those
+  # are the findings the Security tab is for. It only reports, so it is not a
+  # need of any required-result job, and a code-scanning API hiccup cannot fail
+  # the run.
+  semgrep-sarif-upload:
+    name: Upload Semgrep SARIF
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [semgrep-sast]
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.semgrep-sast.outputs.scanned == 'true' }}
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      # upload-sarif reads the sources to compute result fingerprints.
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download Semgrep SARIF artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: semgrep-sarif
+
       - name: Upload Semgrep SARIF to GitHub Security tab
-        if: ${{ !cancelled() && github.event_name == 'push' && steps.semgrep.outcome == 'success' }}
-        continue-on-error: true
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: semgrep.sarif
