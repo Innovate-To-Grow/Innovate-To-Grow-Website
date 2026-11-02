@@ -1,5 +1,6 @@
 import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
+import {useEffect} from 'react';
 import {Link, RouterProvider, createMemoryRouter} from 'react-router';
 
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
@@ -44,10 +45,21 @@ const EmbeddedSchedule = ({scheduleId}: {scheduleId?: string | null}) => (
 // Like the project pages: a router link to a page outside the embed.
 const EmbeddedProjects = () => <Link to="/projects/abc">Project ABC</Link>;
 
+// Records the body sheet in place when its first effect runs, i.e. the one the widget first paints with.
+const sheetsSeenOnMount: Array<string | undefined> = [];
+const SheetProbe = () => {
+  useEffect(() => {
+    sheetsSeenOnMount.push(document.getElementById('itg-embed-body')?.textContent);
+  }, []);
+  return <p>Sheet probe</p>;
+};
+
 const appRoutes = {
   supportsSchedule: (route?: string | null) => route === '/schedule',
   resolve: (route?: string | null) =>
-    ({'/schedule': EmbeddedSchedule, '/current-projects': EmbeddedProjects})[route ?? ''] ?? null,
+    ({'/schedule': EmbeddedSchedule, '/current-projects': EmbeddedProjects, '/sheet-probe': SheetProbe})[
+      route ?? ''
+    ] ?? null,
 };
 
 // A data router, as in the app: the page blocks navigations that would leave the embed.
@@ -520,6 +532,16 @@ describe('EmbedBlockPage', () => {
     expect(css).toMatch(/^@layer itg\.components \{/);
     expect(css).toContain('.cms-embed-app-route { box-sizing: border-box; padding: 16px; }');
     expect(css).toContain('@media (max-width: 768px) { .cms-embed-app-route { padding: 20px; } }');
+  });
+
+  it('has the app-route sheet in place before the widget first paints', async () => {
+    sheetsSeenOnMount.length = 0;
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/sheet-probe', blocks: []});
+    renderAtSlug('probe-widget');
+    await screen.findByText('Sheet probe');
+
+    expect(sheetsSeenOnMount).toHaveLength(1);
+    expect(sheetsSeenOnMount[0]).toContain('.cms-embed-app-route');
   });
 
   it('opens app-route links to other pages in a new tab, keeping the widget', async () => {
