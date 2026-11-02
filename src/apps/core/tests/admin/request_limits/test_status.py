@@ -298,6 +298,7 @@ class StatusJsonTests(RequestLimitsAdminTestCase):
             )
         self.assertContains(response, 'data-status-url="/admin/core/request-limits/status/"')
         self.assertContains(response, 'data-refresh-ms="15000"')
+        self.assertContains(response, "admin/js/poll-backoff.js")
 
 
 class SmartLineTests(RequestLimitsAdminTestCase):

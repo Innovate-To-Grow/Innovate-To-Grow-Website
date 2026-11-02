@@ -68,6 +68,7 @@
     </div>
 </form>
 
+<script src="{% static 'admin/js/poll-backoff.js' %}"></script>
 <script nonce="{{ request.csp_nonce }}">
     (() => {
         const form = document.getElementById("request-limits-form");
@@ -116,20 +117,29 @@
             });
         };
 
+        const every = Number(form.dataset.refreshMs);
+        // admin/js/poll-backoff.js: refreshes pause while the server says it is busy (429).
+        const backoff = window.I2GPollBackoff;
+        const gate = backoff ? backoff.createGate({ baseMs: every }) : null;
         const refresh = async () => {
-            if (document.hidden) return;
+            if (document.hidden || (gate && gate.blocked())) return;
             try {
                 const response = await fetch(form.dataset.statusUrl, {
                     credentials: "same-origin",
                     headers: { Accept: "application/json" },
                 });
+                if (response.status === 429 && gate) {
+                    const body = await response.json().catch(() => ({}));
+                    gate.refused(backoff.retryAfterMs(response, body));
+                    return;
+                }
+                if (gate) gate.succeeded();
                 if (!response.ok) return;
                 render(await response.json());
             } catch (error) {
                 // Keep the last status shown; the next refresh tries again.
             }
         };
-        const every = Number(form.dataset.refreshMs);
         if (every > 0) window.setInterval(refresh, every);
     })();
 </script>
