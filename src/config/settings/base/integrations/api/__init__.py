@@ -3,8 +3,13 @@ Django REST Framework and SimpleJWT configuration.
 
 NOTE: Do NOT set DEFAULT_THROTTLE_CLASSES globally here -- doing so applies
 throttling to every view (including tests hitting 127.0.0.1) and causes
-widespread test failures.  Per-view throttles are applied via throttle_classes;
-their rates are request-limit policies (``apps.core.services.request_limits.view_limits``).
+widespread test failures.  Site-wide limiting is the request limiter
+(``apps.core.middleware.RequestRateLimitMiddleware``, configured in
+``config/settings/base/integrations/request_limits``): one middleware limits every
+request by scope and priority tier, and is off in the test settings unless a test
+switches it on.  The finer per-view throttles are set via throttle_classes; their
+rates are request-limit policies (``apps.core.services.request_limits.view_limits``).
+See docs/integrations/request-limits.md.
 """
 
 from datetime import timedelta
@@ -32,8 +37,8 @@ REST_FRAMEWORK = {
 # cross-origin, so browsers hide every response header the API does not expose.
 CORS_EXPOSE_HEADERS = ["Retry-After"]
 
-# Deliberately absent: per-IP rates for password login, email-link exchange, verification-code request/verify
-# and ALTCHA challenge/status. Most users share one campus IP, so such a bucket throttles everyone at once (and
+# Deliberately absent, here and in the request limiter's sign-in and code scopes: per-IP rates for password login,
+# email-link exchange, verification-code request/verify and ALTCHA challenge/status. Most users share one campus IP, so such a bucket throttles everyone at once (and
 # is bypassable through X-Forwarded-For). Those flows are bounded per token / destination / challenge and, for
 # password login, by the identifier-keyed lockout in apps.authn.services.login_guard.
 

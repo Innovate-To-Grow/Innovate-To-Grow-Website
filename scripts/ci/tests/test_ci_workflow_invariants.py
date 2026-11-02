@@ -144,3 +144,37 @@ class BackendPythonVersionTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RequestLimiterOffInCiTests(unittest.TestCase):
+    """The request limiter (``REQUEST_RATE_LIMITS_ENABLED``) is on in production but must stay off where one client
+    on one IP drives the whole site: E2E and the backend container smoke. Its own tests switch it on in-process."""
+
+    LIMITER = "REQUEST_RATE_LIMITS_ENABLED"
+    TEST_SETTINGS = "config.settings.environments.test"
+
+    def setUp(self) -> None:
+        self.workflow = load_ci()
+        self.jobs = self.workflow["jobs"]
+
+    def test_the_jobs_run_the_test_settings(self) -> None:
+        self.assertEqual(self.workflow["env"]["DJANGO_SETTINGS_MODULE"], self.TEST_SETTINGS)
+        self.assertNotIn("DJANGO_SETTINGS_MODULE", self.jobs["e2e"].get("env", {}))
+
+    def test_e2e_states_the_limiter_off(self) -> None:
+        self.assertEqual(self.jobs["e2e"]["env"][self.LIMITER], "false")
+
+    def test_the_container_smoke_states_the_limiter_off(self) -> None:
+        script = next(
+            str(step["run"])
+            for step in steps_of(self.jobs["backend-docker-build"])
+            if step.get("name") == "Smoke-test backend Docker runtime"
+        )
+        self.assertIn(f"-e DJANGO_SETTINGS_MODULE={self.TEST_SETTINGS}", script)
+        self.assertIn(f"-e {self.LIMITER}=false", script)
+
+    def test_no_workflow_switches_it_on(self) -> None:
+        on = re.compile(rf"{self.LIMITER}\s*[:=]\s*[\"']?(1|true|yes|on)\b", re.IGNORECASE)
+        for workflow in sorted((REPOSITORY_ROOT / ".github" / "workflows").glob("*.y*ml")):
+            with self.subTest(workflow=workflow.name):
+                self.assertIsNone(on.search(workflow.read_text(encoding="utf-8")))

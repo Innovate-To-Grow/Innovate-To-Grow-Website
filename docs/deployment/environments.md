@@ -43,8 +43,8 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
-| `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
-| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
+| `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap; the request limiter shares these slots between priority tiers ([Request limits](#request-limits)) | No (defaults to 20) |
+| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle and request-limit identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
 | `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | Enabled in production through `itg/backend/deploy-config`; code defaults to false |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
 
@@ -132,6 +132,45 @@ The Gmail API provider's service account, key facts and account allow-list live 
 | `jobs` | `retry_base_seconds` 15, `retry_max_seconds` 3600, `default_max_attempts` 5, `stale_claim_seconds` 600 (also `run_background_worker --stale-minutes`), `defer_jitter_seconds` 1, `gate_cache_seconds` 1, `runner_refresh_recipients` 10 |
 | `signals.<adapter>` | The provider error codes, statuses and texts each adapter matches (graph, ses, smtp, imap, gmail_api, sms) |
 
+### Request limits
+
+| Variable | Purpose | Required in prod |
+|----------|---------|-----------------|
+| `REQUEST_RATE_LIMITS_ENABLED` | Turns the request limiter (`RequestRateLimitMiddleware`) on or off: `1`/`true`/`yes`/`on` or `0`/`false`/`no`/`off` | No (on in production and the local dev server; off in `config.settings.environments.test` / `unit`, local `manage.py test`, E2E and the CI container smoke unless this enables it) |
+| `REQUEST_RATE_LIMITS_OVERRIDES` | JSON object deep-merged into `REQUEST_RATE_LIMITS`, e.g. `{"scopes": {"public-read": {"global_cap": 20000}}}` or `{"exempt": {"<route name>": "reason"}}` | No (empty keeps the defaults) |
+| `CSP_REPORT_RATE_LIMIT` / `CSP_REPORT_RATE_WINDOW_SECONDS` | Seed of the `view-csp-report` policy (60 per 60 s) | No |
+
+`REQUEST_RATE_LIMITS` (`config/settings/base/integrations/request_limits/`) holds every scope (tier, identity,
+baseline, period, Smart floor, fixed, enabled, per-caller ceiling, aggregate cap), the route table and exemptions, the
+tier shed / recovery factors and slot shares, the Smart controller thresholds, abuse escalation, the counter store and
+the fallback scopes. Each scope seeds a `RequestRateLimitPolicy` row staff edit on **Site Settings → Request Limits**.
+An override's scope `requests` (the Smart baseline), ceilings, routes, exemptions and runtime sections apply to a
+running site at once; its other scope keys only seed rows that do not exist yet. The merged result is validated at
+import (an unknown key, a share or count out of range, a baseline above its per-caller ceiling, a route to an unknown
+scope, a route both limited and exempt…), and a
+bad value raises `ImproperlyConfigured` before any process serves a request. Reference and runbook:
+[Request limits](../integrations/request-limits.md).
+
+| Section | Holds (defaults) |
+|---------|------------------|
+| `tiers.<p1/p2/p3>` | `decrease_factor` 0.85 / 0.7 / 0.5, `recovery_step` 0.15 / 0.10 / 0.10, `floor` 0.5 / 0.25 / 0.1, `admission_share` 0.9 / 0.7 / 0.5 (P0 has none: never shed, every slot) |
+| `controller` | `window_seconds` 15, `min_requests` 20, `latency_overload_ms` 1,500 / `latency_healthy_ms` 800, `error_overload_share` 0.05 / `error_healthy_share` 0.01, `inflight_overload_share` 0.75 / `inflight_healthy_share` 0.4, `recovery_hold_seconds` 30, `max_latency_samples` 500, `state_refresh_seconds` 10 |
+| `admission` | `concurrency_limit` (`UVICORN_LIMIT_CONCURRENCY`, 20), `p0_reserved_slots` 2, `retry_after_seconds` 2 |
+| `abuse` | `strike_window_seconds` 300, `strikes_to_block` 10, `block_base_seconds` 30 doubling to `block_max_seconds` 900, `level_memory_seconds` 3,600 |
+| `store` | `mode` `auto`, `shared_backends` (the Redis backends), `heartbeat_seconds` 30, `process_expiry_seconds` 90, `process_prune_seconds` 86,400, `refusal_history_minutes` 15 |
+| `fallback` | `cli_prefix` `/admin-api/`, `admin_prefix` `/admin/` and the fallback scope names, `not_found`, `unproven` |
+
+**Counter modes.** With `REDIS_URL` set, the default cache is Redis and every limit is one atomic counter shared by all
+processes and tasks (**shared** mode). Without it (production today) each Uvicorn worker counts in its own in-process
+`throttle` cache (**per-process** mode) and enforces `limit ÷ live processes`, rounded up. The live process count
+comes from `RequestLimitProcess` heartbeat rows in PostgreSQL: each web process refreshes its row and recounts the
+live ones at most every 30 seconds, on the request path (no write per request, no background job); a row silent for
+90 seconds stops counting, and one silent for a day is deleted. So two tasks of two workers each allow a quarter of a
+limit per process, and the site-wide total stays close to the limit. A new process counts within 30 seconds; one that
+stopped is no longer counted after at most two minutes, so during a deploy the limits are briefly tighter, never
+looser. The admin page shows the active mode and the process count. A database error keeps the last count, and a
+cache error lets the request through.
+
 ### Cache
 
 | Variable | Purpose | Required in prod |
@@ -178,6 +217,11 @@ effort:
 - the CSP-report log limiter, the once-a-minute guard on the assistant
   budget-exhausted warning, and ordinary read caches (a miss only costs a query).
 
+The request limiter's counters are not here either: with no Redis they are in
+the in-process `throttle` alias, divided by the live process count
+([Request limits](#request-limits)), so they do **not** multiply with the task
+count.
+
 With more than one task, each of these limits is effectively multiplied by the
 task count (managed in AWS, not in this repository; see
 [Backend deployment](backend.md#ecs-service-scaling)). Setting `REDIS_URL`
@@ -200,6 +244,7 @@ total page-view cap:
 | `PublicAssistantActorThrottle` | `POST /assistant/chat/` | visitor token, member, or one shared legacy bucket |
 | `PhoneAuthCodeRequestThrottle` | SMS code requests, only while no SMS daily budget is configured | client address as DRF reads it: in production the `X-Forwarded-For` entry the ALB appended (`NUM_PROXIES`, see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)); with `NUM_PROXIES` unset (local, CI) the whole, forgeable header string. A speed bump only. While it applies, enforce mode sends no SMS and observe mode is bounded only per number, so configure `sms_daily_limit` |
 | `SesEventThrottle` | `POST /mail/ses/events/` | the same client address |
+| Request-limit counters, recent 429s and abuse blocks (per-process mode) | every limited request | a hash of the scope and bucket key (member, admin user, CLI token hash or client IP); `rl:<digest>` |
 
 While `BACKGROUND_JOBS_ENABLED` is off it also holds the one-hour marker that
 limits newsletter unsubscribe / resubscribe confirmation emails to one per
@@ -243,8 +288,21 @@ What that means for the limits:
 
 #### What still keys on the client IP
 
-Campus users share one public IP, so nothing a campus user does may be limited
-by it. Three limiters still use the client IP, each for a stated reason:
+Campus users share one public IP, so sign-in, verification codes and anything
+a signed-in person does are never limited by it. The request limiter keys an
+**anonymous** caller on the client IP (`apps.core.utils.client_ip` with
+`NUM_PROXIES`) only in scopes where one source flooding is the risk, each with a
+ceiling far above a whole campus's honest traffic: `public-read` 3,000/minute
+(12,000 site-wide), `public-write` 120, `public-background` 600, `telemetry` 300,
+`tokenized-link` 60, `legacy-proxy` 1,200, `public-heavy` 60 (the two full-list
+catalog endpoints), `ai` 60, `not-found` 120 and `webhook-ses` 600. Under
+overload Smart lowers these for P3 first, never for P0. A signed-in caller of the
+same scopes counts as that person instead. Sign-in and code scopes
+(`auth-sign-in`, `auth-code-send`, `auth-code-verify`, `auth-email-link`,
+`auth-challenge`) count anonymous callers only in their site-wide caps, next to
+the destination cooldowns, lockout and challenge caps.
+
+Three per-view limiters also use the client IP, each for a stated reason:
 
 | Limiter | Rate | Why it remains |
 |---------|------|----------------|
@@ -253,8 +311,8 @@ by it. Three limiters still use the client IP, each for a stated reason:
 | `PhoneAuthCodeRequestThrottle` (anonymous SMS code requests) | 5/minute | Fallback only, attached while **no** SMS daily budget is configured. Setting `sms_daily_limit` removes it with no deploy ([Send verification](send-verification.md#client-ip-policy-and-residual-risks)) |
 
 Their rates are request-limit policies (`view-ses-events`, `view-ses-rejected`,
-`view-csp-report`, `view-code-send-sms-ip`), editable in the admin. The client IP is otherwise
-only recorded, never limited on: `PageView.ip_address`, the assistant log's
+`view-csp-report`, `view-code-send-sms-ip`), editable in the admin. Apart from these and the
+request limiter's anonymous flood ceilings above, the client IP is only recorded, never limited on: `PageView.ip_address`, the assistant log's
 `ip_hash` and the CLI audit rows. The two anonymous endpoints with no
 IP-independent bound on request count, `POST /analytics/pageview/` and
 `POST /assistant/chat/`, get an off-campus-only rate rule at the edge
@@ -337,6 +395,7 @@ Before removing legacy env vars from a deployed environment, run `python manage.
 |---------|-----|-----|------|
 | Database | SQLite | PostgreSQL 16 | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis if `REDIS_URL` is set, else per-container file cache (production today); plus the in-process `throttle` alias in every environment |
+| Request limiter | On (dev server); off for `manage.py test` | Off (unit tests, E2E, container smoke) | On; shared counters with `REDIS_URL`, else per process ÷ heartbeat count |
 | Email | Console (stdout) | Console (stdout) | AWS SES / SMTP / Microsoft Graph |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Password hashers | Plain text OK | Plain text OK | Argon2/bcrypt required |

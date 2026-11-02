@@ -65,10 +65,43 @@ Non-field errors use the `non_field_errors` key or `detail` for simple messages.
 
 ### Throttling
 
-Rate limits are applied per-view, not globally. **Sign-in, emailed-link, verification-code and ALTCHA-challenge endpoints have no per-IP throttle**: campus users share one public IP, so such a limit throttles everyone at once (and is bypassable through `X-Forwarded-For`). They are bounded by the token, the per-destination cooldown/hourly cap and the per-challenge attempt cap instead, and password login by an identifier-keyed failure lockout (`429` with `code: "login_locked"`; see [Auth & Mail](auth-and-mail.md#login)). Per-IP limits for off-campus traffic belong at the edge and exclude campus addresses: see [WAF rate limits](../deployment/waf-rate-limits.md).
+Two layers limit requests (design and runbook: [Request limits](../integrations/request-limits.md)):
 
-Nothing a campus user does is limited by client IP. Every throttle's rate is a **request-limit policy** (Django
-admin → Request Limit Policies, scope `view-…`), read live: an edit applies within seconds, without a restart. Smart
+1. **The request limiter** (`RequestRateLimitMiddleware`) limits every request by **scope**, a group of endpoints
+   with a priority tier: P0 critical (sign-in, verification codes a person asked for, token refresh, session check,
+   check-in, the SES webhook), P1 interactive (`public-read`, `public-write`, `member-read`, `member-write`,
+   `member-send`, `staff-admin`, `cli`, `tokenized-link`, `legacy-proxy`), P2 background (`public-background`,
+   `telemetry`, `staff-polling`, `checkin-status`, `auth-code-unproven`) and P3 heavy (`public-heavy` for
+   `/projects/all/` and `/projects/past-all/`, `ai`, `staff-bulk`, `not-found`). A view names its scope with
+   `rate_limit_scope`; unnamed routes fall back by path, method and sign-in. Under overload Smart limit sheds P3,
+   then P2, then P1, never P0. Exempt: `/livez/`, `/readyz/`, `/health/`, `/layout/theme.css`, `/robots.txt`,
+   one-click unsubscribe and CORS preflights. Seeds: `src/config/settings/base/integrations/request_limits/scopes.py`.
+2. **Per-view throttles** (below) are finer limits underneath, set per view with `throttle_classes`, never globally
+   (`DEFAULT_THROTTLE_CLASSES` stays unset).
+
+#### The 429 answer
+
+Every refusal by the request limiter has this body, the `Retry-After` header (whole seconds) and
+`Cache-Control: no-store`:
+
+```json
+{"detail": "Too many requests. Please try again in 12 seconds.", "code": "rate_limited", "retry_after": 12}
+```
+
+A per-view throttle answers DRF's `429` (`{"detail": "Request was throttled. Expected available in 12 seconds."}`)
+with `Retry-After`; the sign-in lockout answers `code: "login_locked"`. `Retry-After` is listed in
+`CORS_EXPOSE_HEADERS`, so the cross-origin SPA can read it. Clients wait it out: the shared Axios client and the auth
+client resend an idempotent read once after `Retry-After` (plus jitter; a wait over 10 s fails at once, and a 429 on
+`/authn/refresh/` never signs the member out), the admin pollers pause for it (`admin/js/poll-backoff.js`), and the
+`i2g-admin` CLI waits and resends reads up to three times. Writes are never resent automatically. Repeated 429s from
+one caller in one scope block it for a growing, bounded time, so retrying faster only makes the wait longer.
+
+#### Keys and per-view limits
+
+**Sign-in, emailed-link, verification-code and ALTCHA-challenge endpoints have no per-IP throttle**: campus users share one public IP, so such a limit throttles everyone at once (and is bypassable through `X-Forwarded-For`). They are bounded by the token, the per-destination cooldown/hourly cap and the per-challenge attempt cap instead, and password login by an identifier-keyed failure lockout (`429` with `code: "login_locked"`; see [Auth & Mail](auth-and-mail.md#login)). Per-IP limits for off-campus traffic belong at the edge and exclude campus addresses: see [WAF rate limits](../deployment/waf-rate-limits.md).
+
+Nothing a campus user does is limited by client IP. Every throttle's rate is a **request-limit policy** (Site
+Settings → Request Limits, scope `view-…`), read live: an edit applies within seconds, without a restart. Smart
 limiting is on by default and takes priority over the manual value: the rate is the default below × the Smart factor of
 its parent route scope, never below the scope's floor, and never lowered at all for P0 (sign-in and verification
 codes) or fixed scopes; with Smart off the manual value applies. While the request limiter is off

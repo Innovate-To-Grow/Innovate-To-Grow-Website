@@ -1382,6 +1382,8 @@ jobs:
           # and then fail while it restarts; the script waits on TCP instead.
           bash scripts/ci/wait_for_postgres.sh "$postgres" itg_ci_user itg_ci 60
 
+          # The probes are answered before the request limiter runs; it stays off here (as in the test
+          # settings), stated explicitly so the smoke never depends on that default.
           docker run -d --name "$backend" --network "$network" -p 127.0.0.1:8000:8000 \
             -e DJANGO_SETTINGS_MODULE=config.settings.environments.test \
             -e DB_NAME=itg_ci \
@@ -1391,6 +1393,7 @@ jobs:
             -e DB_PORT=5432 \
             -e RUN_DATABASE_MIGRATIONS=true \
             -e WEB_CONCURRENCY=1 \
+            -e REQUEST_RATE_LIMITS_ENABLED=false \
             "$IMAGE"
 
           ready=false
@@ -1818,6 +1821,9 @@ jobs:
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
       PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:8000
       ADMIN_REQUIRE_CONFIRMATION: "true"
+      # One browser and one IP drive every spec: the request limiter stays off here (the test settings' default,
+      # stated so a settings change cannot switch it on unnoticed); its own tests switch it on.
+      REQUEST_RATE_LIMITS_ENABLED: "false"
       PW_PROJECT: ${{ matrix.project }}
     steps:
       - name: Checkout code

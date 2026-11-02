@@ -455,6 +455,22 @@ and underscores, or its value
 The other tokens still render, so one bad value cannot end the token block early, swallow the next token or
 make visitors load a URL.
 
+## Request limits
+
+**Site Settings → Request Limits** (`/admin/core/request-limits/`; superusers and staff with the Core app) shows and
+edits every request-limit scope: its priority tier, the Smart limit switch, the manual limit and, under *Advanced*,
+the period, Smart floor, fixed and enabled switches and the ceilings. Every save is an admin log entry.
+
+- **Users get `429`**: find the card with recent 429s. *By the view's own limits* is a finer limit (code cooldown,
+  sign-in lockout) and usually intended. *By this limiter* with a Smart factor below ×1.00 and an *overload* reason:
+  the site is overloaded and Smart restores the tier on its own once it is healthy. At ×1.00 and still refused, turn
+  Smart limit off on that card and raise the manual limit (applies within 10 seconds), then turn Smart back on later.
+- **A flood**: lower the manual limit or the aggregate cap, or move the scope to P3.
+- **Switch one scope off**: clear *Enabled* under *Advanced*. **Everything**: set `REQUEST_RATE_LIMITS_ENABLED=false`
+  in the backend environment and redeploy.
+
+Full runbook: [Request limits](../integrations/request-limits.md#runbook).
+
 ## Monitoring
 
 ### Health check

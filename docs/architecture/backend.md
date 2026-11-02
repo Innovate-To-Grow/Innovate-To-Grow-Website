@@ -6,7 +6,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 
 | App | Purpose | Key models |
 |-----|---------|------------|
-| `core` | Base models, reusable DRF building blocks, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `TimeStampedModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `SMTPProviderConfig`, `MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`, `MicrosoftGraphAccessCheck`, `GmailApiProviderConfig`, `GmailApiSubject`, `GoogleCredentialConfig`, `AWSCredentialConfig`, `BackgroundJob`, `DeliveryRatePolicy`, `DeliveryRateState`, `DeliveryUsageBucket`, `DeliveryRateLimit` (retired; dropped in a follow-up release) |
+| `core` | Base models, reusable DRF building blocks, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `TimeStampedModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `SMTPProviderConfig`, `MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`, `MicrosoftGraphAccessCheck`, `GmailApiProviderConfig`, `GmailApiSubject`, `GoogleCredentialConfig`, `AWSCredentialConfig`, `BackgroundJob`, `DeliveryRatePolicy`, `DeliveryRateState`, `DeliveryUsageBucket`, `DeliveryRateLimit` (retired; dropped in a follow-up release), `RequestRateLimitPolicy`, `RequestRateLimitState`, `RequestLimitProcess` |
 | `authn` | Authentication, member management, contacts, admin invitations | `Member`, `ContactEmail`, `ContactPhone`, `EmailAuthChallenge`, `PhoneVerificationChallenge`, `RSAKeypair`, `AdminInvitation` |
 | `cms` | CMS pages and blocks, news, analytics, menus, footer, site settings | `CMSPage`, `CMSBlock`, `CMSAsset`, `NewsArticle`, `NewsFeedSource`, `PageView`, `Menu`, `FooterContent`, `SiteSettings` |
 | `event` | Event registration, ticketing, schedule, check-in | `Event`, `EventRegistration`, `Ticket`, `Question`, `CheckIn`, `CheckInRecord`, `CurrentProjectSchedule`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` |
@@ -68,7 +68,8 @@ config/settings/
 │       ├── credential_store/         # Private-key store backend and secret names
 │       ├── microsoft_graph/          # Graph certificate and request limits
 │       ├── gmail_api/                # GMAIL_API: request limits, token lifetimes, key entry (+ validation)
-│       └── delivery_rates/           # DELIVERY_RATES: channel seeds, controller, waits, lanes, signals (+ validation)
+│       ├── delivery_rates/           # DELIVERY_RATES: channel seeds, controller, waits, lanes, signals (+ validation)
+│       └── request_limits/           # REQUEST_RATE_LIMITS: scopes, per-view limits, routes, tiers, Smart limit (+ validation)
 ├── production/                       # Production-only overrides
 │   ├── __init__.py                   # Side-effect-free package initializer
 │   ├── env.py                        # Environment parsing helpers
@@ -79,12 +80,13 @@ config/settings/
 │   └── cache.py                      # Redis or per-container file cache
 └── environments/
     ├── __init__.py                   # No eager environment imports
-    ├── local.py                      # DEBUG=True, SQLite, console email
-    ├── test.py                       # PostgreSQL container, test credentials
-    └── production.py                 # Loads base and production overrides
+    ├── local.py                      # DEBUG=True, SQLite, console email; request limiter on (off for `manage.py test`)
+    ├── test.py                       # PostgreSQL container, test credentials; request limiter off unless the env enables it
+    ├── unit.py                       # test.py with fast password hashers (CI unit jobs)
+    └── production.py                 # Loads base and production overrides; request limiter on
 ```
 
-**Import order matters:** `config.settings.base` installs the legacy import shim from `base/framework/legacy_imports.py`, then imports `environment` → `django` → `cache` → `admin` → `api` → `editor` → `credential_store` → `microsoft_graph` → `gmail_api` → `delivery_rates`. `config.settings.environments.production` loads base before applying `config/settings/production/` in `django` → `security` → `storage` → `verification` → `cache` order. The production and environment package initializers stay side-effect-free because unittest discovery imports packages.
+**Import order matters:** `config.settings.base` installs the legacy import shim from `base/framework/legacy_imports.py`, then imports `environment` → `django` → `cache` → `admin` → `api` → `editor` → `credential_store` → `microsoft_graph` → `gmail_api` → `delivery_rates` → `request_limits`. `config.settings.environments.production` loads base before applying `config/settings/production/` in `django` → `security` → `storage` → `verification` → `cache` order. The production and environment package initializers stay side-effect-free because unittest discovery imports packages.
 
 ### Environment differences
 
@@ -110,7 +112,16 @@ Detailed in [API: Auth & Mail](../api/auth-and-mail.md). Summary:
 - **Password-login lockout** (`services/login_guard.py`): 10 failures per 15 minutes or 30 per UTC day per HMAC-normalised identifier return `429 login_locked`; counters are rows of `LoginFailureWindow` in PostgreSQL (atomic, shared by every task). Site-wide failures are only *detected* (`login_guard.failure_spike` log line), never blocked. The admin-panel password login (`views/admin/login/password.py`) uses the same guard: its email + password form counts on the submitted email (the member login's counter, so it can be locked remotely by design), while its remembered-admin form counts on a `login_guard.ScopedKey` of the member id in the signed cookie, a counter no typed identifier reaches, so knowing a staff address is not enough to lock it. See [Auth & Mail](../api/auth-and-mail.md#login).
 - **RSA encryption**: Clients encrypt password fields with the public key from `/authn/public-key/`. The active `auth-encryption` key rotates after one day into a new row. Retired keys remain decryptable for 24 hours and are retained, then purged, at 48 hours. An unknown or expired `key_id` fails closed rather than falling back to the current private key. Each process caches up to 8 *parsed* private keys for 15 minutes, keyed on the key id plus a fingerprint of the stored material, because parsing costs about 45 ms per sign-in; the row and its active/grace checks are still read on every decrypt, so rotation and purge take effect immediately (`clear_private_key_cache()` empties it).
 - **Impersonation**: Admin-issued impersonation links are short-lived and atomically consumed before JWTs are returned, so only one concurrent exchange can succeed.
-- **Throttling**: Per-view throttle classes. Never set `DEFAULT_THROTTLE_CLASSES` globally — it breaks the test suite because tests run from `127.0.0.1`. No user-facing limit is keyed on the client IP (campus users share one); the table of what each throttle is keyed on is in [API: Throttling](../api/index.md#throttling), and the few remaining client-IP limiters are listed in [Environments](../deployment/environments.md#what-still-keys-on-the-client-ip).
+- **Throttling**: see [Request limits](#request-limits) below.
+
+## Request limits
+
+Two layers, both described in [Request limits](../integrations/request-limits.md):
+
+- **The request limiter** (`apps.core.middleware.RequestRateLimitMiddleware`, placed after `CorsMiddleware`, `HealthCheckMiddleware` and `AuthenticationMiddleware`; the `core` system checks refuse another order) limits every request the site answers — DRF and plain views, the Django admin, `/admin-api/` and webhooks — by **scope**. A view names its scope with a `rate_limit_scope` attribute or opts out with `rate_limit_exempt = "reason"`; Django-admin and third-party routes are in the `REQUEST_RATE_LIMITS["routes"]` table, and anything else falls back by path, method and sign-in, so no route is unlimited by accident (`apps.core.tests.request_limits.test_coverage` walks the URLconf). Every scope has a priority tier (P0 user-initiated sign-in and verification codes … P3 bulk); Smart limit (on by default, priority over the manual limit) sheds P3, then P2, then P1 under overload and never P0, and slots of the uvicorn concurrency are reserved for P0. Apps plug in from `AppConfig.ready()` (`register_scope`, `register_exemption`, `register_identity_resolver`, `register_priority_check`), so `core` imports no business app. Off when `REQUEST_RATE_LIMITS_ENABLED` is false (the `test` / `unit` settings and local test runs; dedicated tests switch it on with `override_settings`).
+- **Per-view throttles** stay underneath as finer limits (`throttle_classes` on the view, keyed on the member, destination, visitor token or challenge). Their rates are request-limit policies (`view-…` scopes) read live, not `DEFAULT_THROTTLE_RATES` (now empty).
+
+**Never set `DEFAULT_THROTTLE_CLASSES` globally** — it applies a DRF throttle to every view, including tests that all run from `127.0.0.1`, and duplicates what the middleware already does. Site-wide limiting belongs to the middleware; a new limit is a scope or a per-view throttle on a policy (`apps.core.services.request_limits.view_limits`). Sign-in and code flows are never keyed on the client IP (campus users share one); only anonymous callers of flood-prone public scopes are, with generous ceilings. What each throttle is keyed on: [API: Throttling](../api/index.md#throttling); every client-IP limiter: [Environments](../deployment/environments.md#what-still-keys-on-the-client-ip).
 
 ## Assistant, AI search and page-view limits
 
@@ -131,8 +142,9 @@ Defined in `src/config/settings/base/framework/django.py`:
 7. `CommonMiddleware` — URL normalization
 8. `CsrfViewMiddleware` — CSRF protection
 9. `AuthenticationMiddleware` — User attachment to request
-10. `MessageMiddleware` — Flash messages
-11. `XFrameOptionsMiddleware` — Clickjacking protection
+10. `RequestRateLimitMiddleware` — Request limits by scope and priority tier ([Request limits](#request-limits)); a 429 still carries CORS headers, and health probes never reach it
+11. `MessageMiddleware` — Flash messages
+12. `XFrameOptionsMiddleware` — Clickjacking protection
 
 ### HealthCheckMiddleware
 
@@ -187,5 +199,6 @@ The following configuration selectors enforce their single-active invariant in b
 
 - [Frontend](frontend.md) — How the React app consumes this backend
 - [Request Flow](request-flow.md) — End-to-end request lifecycle
+- [Request limits](../integrations/request-limits.md) — Scopes, priority tiers, Smart limit, counters and the operator runbook
 - [API Reference](../api/index.md) — Endpoint documentation
 - [Deployment: Backend](../deployment/backend.md) — Container and ECS configuration
