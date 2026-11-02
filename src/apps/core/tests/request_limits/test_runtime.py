@@ -186,6 +186,25 @@ class RegistryTests(TestCase):
         with override_settings(REQUEST_RATE_LIMITS=limits_with(scopes={"t-new": limits_with()["scopes"]["t-p1"]})):
             self.assertIn("t-new", registry.configs(START + 1))
 
+    def test_a_lowered_deployment_ceiling_holds_existing_rows(self):
+        registry.configs(START)
+        RequestRateLimitPolicy.objects.filter(scope="t-p1").update(identity_ceiling=None, global_cap=10_000)
+        lowered = limits_with()
+        lowered["scopes"]["t-p1"] = {**lowered["scopes"]["t-p1"], "identity_ceiling": 40, "global_cap": 500}
+        with override_settings(REQUEST_RATE_LIMITS=lowered):
+            config = registry.configs(START + 1)["t-p1"]
+        self.assertEqual((config.ceiling, config.global_cap), (40, 500))
+        # A row below the deployment's maximum keeps its own value...
+        RequestRateLimitPolicy.objects.filter(scope="t-p1").update(identity_ceiling=30, global_cap=200)
+        registry.invalidate()
+        with override_settings(REQUEST_RATE_LIMITS=lowered):
+            config = registry.configs(START + 2)["t-p1"]
+        self.assertEqual((config.ceiling, config.global_cap), (30, 200))
+        # ...and so does one whose deployment sets no per-caller ceiling at all.
+        registry.invalidate()
+        config = registry.configs(START + 3)["t-p1"]
+        self.assertEqual((config.ceiling, config.global_cap), (30, 200))
+
     def test_times_round_trip(self):
         self.assertEqual(as_seconds(as_datetime(START)), START)
         self.assertIsNone(as_seconds(None))

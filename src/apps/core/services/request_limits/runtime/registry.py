@@ -35,8 +35,19 @@ def invalidate(**_kwargs) -> None:
     REGISTRY.loaded_at = None
 
 
+def _within(value: int | None, ceiling: int | None) -> int | None:
+    """A row's ceiling or cap held to the deployment's maximum (``None``: no limit)."""
+    if ceiling is None:
+        return value
+    return ceiling if value is None else min(value, ceiling)
+
+
 def build(scope: str, spec: dict, policy=None, state=None) -> ScopeConfig:
-    """``scope``'s config from its settings ``spec`` and, when given, its policy row and Smart state."""
+    """``scope``'s config from its settings ``spec`` and, when given, its policy row and Smart state.
+
+    The row's per-caller ceiling and aggregate cap never exceed the deployment's (``spec``): a
+    ``REQUEST_RATE_LIMITS_OVERRIDES`` deploy that lowers one applies to existing rows at once, without an admin edit.
+    """
     values = (
         policy
         if policy is not None
@@ -54,8 +65,8 @@ def build(scope: str, spec: dict, policy=None, state=None) -> ScopeConfig:
         floor=float(values.smart_floor),
         fixed=values.fixed,
         enabled=values.enabled,
-        ceiling=values.identity_ceiling,
-        global_cap=values.global_cap,
+        ceiling=_within(values.identity_ceiling, spec["identity_ceiling"]),
+        global_cap=_within(values.global_cap, spec["global_cap"]),
         factor=state.factor if state is not None else 1.0,
         factor_changed_at=as_seconds(state.factor_changed_at) if state is not None else None,
         last_cut_at=as_seconds(state.last_cut_at) if state is not None else None,
