@@ -1,6 +1,9 @@
 name: CI
 
 on:
+  # The paths a push to main validates. scripts/ci/plan_changed_areas.py mirrors
+  # this list: a pull request or merge group touching any of them runs the FULL
+  # suite, exactly like the push that follows it (PR/push parity).
   push:
     branches: [main, master]
     paths:
@@ -9,47 +12,39 @@ on:
       - "pages/**"
       - "aws/**"
       - "scripts/**"
+      - ".github/actionlint.yaml"
+      - ".github/codeql/**"
       - ".github/dependabot.yml"
       - ".github/workflows/**"
+      - ".gitleaksignore"
       - "pyproject.toml"
       - ".pre-commit-config.yaml"
       - ".bandit-baseline.json"
-      # Archived legacy static site. An archive-only merge to main must run CI
-      # so the deploy-archive.yml chain (gated on CI completing on main) fires
-      # and ships the archive to ECS. Every push to main runs the FULL suite
-      # (see the `changes` job), so archive merges are validated end to end.
+      # Archived legacy static site. Every push to main runs the FULL suite (see
+      # the `changes` job), so archive merges are validated end to end.
       - "archive/**"
+  # No path filter: every pull request must report the required `CI Result`
+  # check, or a ruleset requiring it would block docs-only pull requests
+  # forever. `changes` runs nothing beyond the ungated checks when the diff
+  # touches none of the push paths above, so such a run is green in minutes.
   pull_request:
-    paths:
-      - "src/**"
-      - "cli/**"
-      - "pages/**"
-      - "aws/**"
-      - "scripts/**"
-      - ".github/dependabot.yml"
-      - ".github/workflows/**"
-      - "pyproject.toml"
-      - ".pre-commit-config.yaml"
-      - ".bandit-baseline.json"
-      # Validate Claude Code project config in PRs so a .claude/-only PR still
-      # produces the required `CI Result` check. Intentionally NOT in the push
-      # paths above: a .claude/-only merge to main should not run CI and so
-      # should not trigger the deploy-*.yml chain (which fires on CI completing
-      # on main).
-      - ".claude/**"
-      # Archived legacy static site. An archive-only PR now runs the FULL suite,
-      # exactly like the archive-only merge to main will (PR/push parity — see
-      # scripts/ci/plan_changed_areas.py). Still in the push paths above so an
-      # archive-only merge to main runs CI and triggers deploy-archive.yml.
-      - "archive/**"
+  # The merge queue's group commit: the exact tree that lands on main. It is
+  # planned from the group's diff exactly like a pull request (merge_group
+  # events accept no path filter).
+  merge_group:
+    types: [checks_requested]
 
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Cancel superseded runs only for pull requests; let every push to a default
-  # branch finish so main/master is always fully validated.
+  # Superseded pull request runs are cancelled. A running push or merge-group
+  # run is never cancelled, but GitHub keeps at most ONE pending run per group:
+  # when a third push to main arrives while one run is in progress and one is
+  # waiting, the waiting (older) run is cancelled. Only the newest main commit
+  # is then guaranteed a complete push run; with the merge queue every merged
+  # tree has already passed its own merge_group run (whose ref is unique).
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -155,15 +150,14 @@ jobs:
         id: filter
         env:
           EVENT_NAME: ${{ github.event_name }}
-          # PR: GitHub gives both endpoints (used to scope the PR's diff).
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Pull requests and merge groups give both endpoints of their diff.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           set -euo pipefail
           # A push to a default branch (main/master) always runs the FULL suite:
-          # every area is validated on the branch that ships to production, and
-          # any push therefore completes CI so the deploy-*.yml chain fires.
-          if [ "${EVENT_NAME}" != "pull_request" ]; then
+          # every area is validated on the branch that ships to production.
+          if [ "${EVENT_NAME}" != "pull_request" ] && [ "${EVENT_NAME}" != "merge_group" ]; then
             echo "Push/non-PR event (${EVENT_NAME}); running the full suite."
             {
               echo "backend=true"
@@ -173,13 +167,13 @@ jobs:
             } >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          # A pull request runs the SAME areas the eventual push to main runs,
-          # so a green PR check cannot become a red main run for the same tree
-          # (see scripts/ci/plan_changed_areas.py). Fall back to the full suite
-          # if no usable base exists.
+          # A pull request or merge group runs the SAME areas the eventual push
+          # to main runs, so a green check cannot become a red main run for the
+          # same tree (see scripts/ci/plan_changed_areas.py). Fall back to the
+          # full suite if no usable base exists.
           if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
             || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            echo "No usable PR base SHA; running the full suite."
+            echo "No usable base SHA; running the full suite."
             {
               echo "backend=true"
               echo "frontend=true"
@@ -191,7 +185,7 @@ jobs:
           echo "Changed files:"
           git diff --name-only "$BASE_SHA...$HEAD_SHA" | tee "$RUNNER_TEMP/changed-files.txt"
           # All-or-nothing: any path a push to main would validate runs the full
-          # suite; a PR touching only PR-only paths (.claude/**) runs none.
+          # suite; a diff touching none of them (docs, README) runs none.
           python scripts/ci/plan_changed_areas.py \
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
@@ -231,8 +225,11 @@ jobs:
 
       - name: Run gitleaks on PR/push diff
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Pull requests and merge groups: every commit between base and head.
+          # (HEAD^..HEAD alone would scan only a merge commit, whose diff git log
+          # does not show.)
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           PUSH_BEFORE: ${{ github.event.before }}
           PUSH_HEAD: ${{ github.sha }}
         run: |
@@ -1175,9 +1172,12 @@ jobs:
     needs:
       - frontend-required
       - changes
+    # Deploy artifact: produced only while deployments are enabled (repository
+    # variable DEPLOY_ARTIFACTS_ENABLED, see docs/deployment/ci-cd.md).
     if: >-
       github.event_name == 'push' &&
       (github.ref_name == 'main' || github.ref_name == 'master') &&
+      vars.DEPLOY_ARTIFACTS_ENABLED == 'true' &&
       needs.changes.outputs.frontend == 'true'
     defaults:
       run:
@@ -1400,6 +1400,12 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    outputs:
+      # Whether this run uploaded the image backend-image-publish pushes. The
+      # publish job keys off this, not off DEPLOY_ARTIFACTS_ENABLED again, so a
+      # variable flipped mid-run cannot make it look for an artifact that was
+      # never uploaded.
+      image_artifact: ${{ steps.upload-image.outcome == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -1574,11 +1580,13 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
 
+      # Feeds backend-image-publish; skipped with it while deployments are paused.
       - name: Export tested and scanned backend image
-        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' && vars.DEPLOY_ARTIFACTS_ENABLED == 'true' }}
         run: docker save --output /tmp/backend-image.tar "itg-backend-ci:${{ github.sha }}"
       - name: Upload tested and scanned backend image
-        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        id: upload-image
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' && vars.DEPLOY_ARTIFACTS_ENABLED == 'true' }}
         uses: actions/upload-artifact@v7
         with:
           name: backend-scanned-image
@@ -1628,9 +1636,14 @@ jobs:
     name: Backend Image Publish
     runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 25
-    needs: [backend-required-result, changes]
+    needs: [backend-required-result, backend-docker-build, changes]
+    # Pushes itg-backend:<sha> for deploy-backend.yml. Off while deployments are
+    # paused (repository variable DEPLOY_ARTIFACTS_ENABLED, see
+    # docs/deployment/ci-cd.md): runs only when backend-docker-build uploaded
+    # the image in this same run. deploy-artifact-result passes when skipped.
     if: >-
       github.event_name == 'push' && github.ref_name == 'main' &&
+      needs.backend-docker-build.outputs.image_artifact == 'true' &&
       needs.changes.outputs.backend == 'true'
     permissions:
       contents: read

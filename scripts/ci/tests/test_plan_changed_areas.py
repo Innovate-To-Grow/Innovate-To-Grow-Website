@@ -23,25 +23,32 @@ class PlanChangedAreasTests(unittest.TestCase):
                 )
 
     def test_pull_request_touching_any_ci_area_runs_the_full_suite(self) -> None:
-        for changed_file in (
-            "src/apps/authn/models.py",
-            "pages/src/App.tsx",
-            "cli/src/i2g_admin/app.py",
-            "archive/page/app.py",
-            "aws/task-definition.json",
-            "scripts/ci/validate_tool_versions.py",
-            ".github/workflows/ci.yml",
-            "pyproject.toml",
-            ".pre-commit-config.yaml",
-            ".bandit-baseline.json",
-        ):
-            with self.subTest(changed_file=changed_file):
-                self.assertEqual(plan_changed_areas("pull_request", [changed_file]), FULL_SUITE)
+        for event_name in ("pull_request", "merge_group"):
+            for changed_file in (
+                "src/apps/authn/models.py",
+                "pages/src/App.tsx",
+                "cli/src/i2g_admin/app.py",
+                "archive/page/app.py",
+                "aws/task-definition.json",
+                "scripts/ci/validate_tool_versions.py",
+                ".github/workflows/ci.yml",
+                ".github/actionlint.yaml",
+                ".github/codeql/codeql-config.yml",
+                ".gitleaksignore",
+                "pyproject.toml",
+                ".pre-commit-config.yaml",
+                ".bandit-baseline.json",
+            ):
+                with self.subTest(event_name=event_name, changed_file=changed_file):
+                    self.assertEqual(plan_changed_areas(event_name, [changed_file]), FULL_SUITE)
 
-    def test_pr_only_paths_run_nothing(self) -> None:
-        for changed_file in (".claude/settings.json", "docs/architecture.md", "README.md", "uv.lock"):
-            with self.subTest(changed_file=changed_file):
-                self.assertEqual(plan_changed_areas("pull_request", [changed_file]), NO_SUITE)
+    def test_paths_outside_the_push_filter_run_nothing(self) -> None:
+        # Merging such a diff starts no push run, so the PR has nothing to match;
+        # ci-result still reports the required `CI Result` check, green.
+        for event_name in ("pull_request", "merge_group"):
+            for changed_file in ("docs/architecture.md", "README.md", "CONTRIBUTING.md", "uv.lock"):
+                with self.subTest(event_name=event_name, changed_file=changed_file):
+                    self.assertEqual(plan_changed_areas(event_name, [changed_file]), NO_SUITE)
 
     def test_pull_request_and_push_agree_whenever_ci_runs(self) -> None:
         # The parity invariant: if merging this diff would start a CI run, the PR
@@ -57,6 +64,23 @@ class PlanChangedAreasTests(unittest.TestCase):
                 self.assertEqual(
                     plan_changed_areas("pull_request", changed_files),
                     plan_changed_areas("push", changed_files),
+                )
+
+    def test_a_merge_group_is_planned_exactly_like_a_pull_request(self) -> None:
+        # The merge queue's group commit is what lands on main; planning it more
+        # narrowly than its pull request would let the queue merge an
+        # unvalidated tree.
+        for changed_files in (
+            [],
+            ["docs/architecture.md"],
+            ["src/apps/authn/views/account/profile.py"],
+            ["pages/src/App.tsx", "docs/architecture.md"],
+            [".github/workflows/ci.yml"],
+        ):
+            with self.subTest(changed_files=changed_files):
+                self.assertEqual(
+                    plan_changed_areas("merge_group", changed_files),
+                    plan_changed_areas("pull_request", changed_files),
                 )
 
     def test_github_change_runs_all_four_areas(self) -> None:
