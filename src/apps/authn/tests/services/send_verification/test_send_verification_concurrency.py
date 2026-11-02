@@ -203,7 +203,11 @@ class SendVerificationPostgresLockTests(TransactionTestCase):
             verified_request(destination=value, kind="phone", operation=OP_PHONE_AUTH_REQUEST_CODE)
             for value in destinations
         ]
-        aws_config = SimpleNamespace(render_sms_otp_message=lambda code: f"Code: {code}")
+        aws_config = SimpleNamespace(
+            render_sms_otp_message=lambda code: f"Code: {code}",
+            region="us-west-2",
+            resolved_sms_from_number=lambda: "+12065550000",
+        )
         with (
             patch("apps.authn.services.sms.sns_verify._assert_configured", return_value=aws_config),
             patch("apps.authn.services.sms.sns_verify._publish_sms", return_value="message-id") as publish,

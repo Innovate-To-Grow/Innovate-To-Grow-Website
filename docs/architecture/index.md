@@ -8,7 +8,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 - [Backend](backend.md) — Django apps, base models, settings, middleware, and auth system
 - [Frontend](frontend.md) — React roots, router, features, shared modules, and styling
 - [Request Flow](request-flow.md) — How requests move from browser through Vite/CDN to Django and back
-- [Integrations](integrations.md) — External services: Google Sheets, AWS SES/End User Messaging/Bedrock, S3
+- [Integrations](integrations.md) — External services: Google Sheets, AWS SES/End User Messaging/Bedrock, Microsoft Graph email, Gmail API email, S3; every send paced by the [delivery-rate limiter](../integrations/delivery-rates.md)
 - [Code Quality Rules](code-quality.md) — Size, complexity and nesting limits, dependency directions, check commands, exceptions
 
 ## Who this is for

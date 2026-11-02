@@ -1,23 +1,77 @@
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {fetchProjectDetail, type ProjectDetail} from '@/features/projects/api';
-import {fetchCurrentSchedule, type EventSchedulePayload} from '@/features/events/api';
+import {
+  fetchCurrentSchedule,
+  type EventSchedulePayload,
+  type ScheduleProjectRow,
+  type ScheduleSection,
+} from '@/features/events/api';
+import {addMinutes} from '@/lib/format';
 import {getPredominantTerm} from '../components/grid/contracts/projectGrid';
 import {currentScheduleClassLabels, currentScheduleToGridRows} from './useProjectGridData';
 
 /** Where a project page's data came from: this semester's schedule, or the published archive. */
 export type ProjectDetailSource = 'current' | 'archive';
 
+/** Where and when a current team presents at the showcase; empty fields are not in the schedule. */
+export interface ProjectPresentation {
+  /** "Track 2". */
+  track: string;
+  /** The slot's start, as the schedule page shows it ("1:30"). */
+  time: string;
+  room: string;
+}
+
 export interface ResolvedProjectDetail {
   project: ProjectDetail;
   /** The class's name for its code ("Engineering Capstone" for CAP), when the schedule names it. */
   classLabel: string;
   source: ProjectDetailSource;
+  /** Current projects: the team's showcase slot, or null when it is not presenting. Absent for archive projects. */
+  presentation?: ProjectPresentation | null;
 }
 
 /** 'not-found': every source answered and none has the project. 'failed': a source could not be read. */
 export type ProjectDetailError = 'not-found' | 'failed';
 
 const isNotFound = (error: unknown) => (error as {response?: {status?: number}} | null)?.response?.status === 404;
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Projects (archive and current) are identified by UUIDs. Anything else in a project URL ("archive", "past", a
+ * mangled link) names no project: requesting it would reach one of the list endpoints that share the /projects/
+ * prefix and render that list as an empty project page.
+ */
+export const isProjectId = (value: string) => UUID_PATTERN.test(value);
+
+/** The section, track and slot of a schedule slot id. */
+const findSlot = (payload: Partial<EventSchedulePayload>, slotId: string) => {
+  for (const section of payload.sections ?? []) {
+    for (const track of section.tracks ?? []) {
+      const slot = (track.slots ?? []).find((candidate) => candidate.id === slotId);
+      if (slot) return {section, track, slot};
+    }
+  }
+  return null;
+};
+
+/** A slot's start, as the schedule page shows it: the class's start plus a slot length per earlier slot. */
+const slotStart = (section: ScheduleSection, order: number) =>
+  section.start_time ? addMinutes(section.start_time, section.slot_minutes * (order - 1)) : '';
+
+/** The showcase slot of a presenting team, whose schedule row has the slot's id. */
+const findPresentation = (
+  payload: Partial<EventSchedulePayload>,
+  scheduleRow: ScheduleProjectRow,
+): ProjectPresentation | null => {
+  if (!scheduleRow.is_presenting) return null;
+  const found = findSlot(payload, scheduleRow.id);
+  // Presenting, but listed outside the grid (by its own id at track 0): no slot to name.
+  if (!found) return {track: '', time: '', room: ''};
+  const {section, track, slot} = found;
+  return {track: track.label || `Track ${track.track_number}`, time: slotStart(section, slot.order), room: (track.room ?? '').trim()};
+};
 
 /**
  * The current-semester project a Current Projects or Presenting Teams row links to, read back from the schedule
@@ -53,6 +107,7 @@ export const findCurrentScheduleProject = (
     },
     classLabel: currentScheduleClassLabels(payload)[row.class_code] ?? '',
     source: 'current',
+    presentation: findPresentation(payload, scheduleRow),
   };
 };
 
@@ -100,15 +155,16 @@ interface ProjectDetailResult {
 
 export function useProjectDetail(projectId: string | undefined, includeCurrent: boolean): ProjectDetailResult {
   const [attempt, setAttempt] = useState(0);
+  const validId = projectId && isProjectId(projectId) ? projectId : undefined;
   // eslint-disable-next-line react-hooks/exhaustive-deps -- attempt forces a new Symbol so retry() loads again
-  const requestKey = useMemo(() => (projectId ? Symbol(projectId) : null), [projectId, includeCurrent, attempt]);
+  const requestKey = useMemo(() => (validId ? Symbol(validId) : null), [validId, includeCurrent, attempt]);
   const [state, setState] = useState<ProjectDetailState>({requestKey: null, result: null, error: null});
   const retry = useCallback(() => setAttempt((count) => count + 1), []);
 
   useEffect(() => {
-    if (!requestKey || !projectId) return;
+    if (!requestKey || !validId) return;
     const controller = new AbortController();
-    loadProjectDetail(projectId, {includeCurrent, signal: controller.signal})
+    loadProjectDetail(validId, {includeCurrent, signal: controller.signal})
       .then((result) => {
         if (!controller.signal.aborted) setState({requestKey, result, error: null});
       })
@@ -118,7 +174,7 @@ export function useProjectDetail(projectId: string | undefined, includeCurrent: 
         }
       });
     return () => controller.abort();
-  }, [requestKey, projectId, includeCurrent]);
+  }, [requestKey, validId, includeCurrent]);
 
   if (!requestKey) return {result: null, loading: false, error: 'not-found', retry};
   const hasResolved = state.requestKey === requestKey;

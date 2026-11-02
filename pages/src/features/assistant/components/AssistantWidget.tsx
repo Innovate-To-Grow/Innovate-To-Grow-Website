@@ -1,4 +1,4 @@
-import {useCallback, useState} from 'react';
+import {useCallback, useRef, useState} from 'react';
 
 import type {AssistantConfig} from '@/features/assistant/api';
 
@@ -6,6 +6,7 @@ import {MessageInput} from './MessageInput';
 import {MessageList} from './MessageList';
 import {useAssistantChat} from './useAssistantChat';
 import {useAssistantConfig} from './useAssistantConfig';
+import {useLauncherYield} from './useLauncherYield';
 
 import './AssistantWidget.css';
 
@@ -88,6 +89,9 @@ export function AssistantWidget() {
   const [open, setOpen] = useState(false);
   const config = useAssistantConfig();
   const chat = useAssistantChat(config.enabled);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const dockRef = useRef<HTMLDivElement>(null);
+  const tucked = useLauncherYield(dockRef, rootRef, !open);
 
   const handleOpen = useCallback(() => {
     window.dispatchEvent(new Event('i2g-assistant-interaction'));
@@ -95,18 +99,22 @@ export function AssistantWidget() {
   }, []);
 
   return (
-    <div className="itg-assistant">
+    <div className="itg-assistant" ref={rootRef}>
       {open && <AssistantPanel config={config} chat={chat} onClose={() => setOpen(false)} />}
 
-      <button
-        type="button"
-        className="itg-assistant__launcher"
-        aria-label="Open chat assistant"
-        aria-expanded={open}
-        onClick={handleOpen}
-      >
-        <ChatIcon />
-      </button>
+      {/* The dock keeps the launcher's spot (and is what useLauncherYield measures); the launcher
+          tucks into the page gutter while a page control is under that spot. */}
+      <div className="itg-assistant__dock" ref={dockRef}>
+        <button
+          type="button"
+          className={`itg-assistant__launcher${tucked ? ' is-tucked' : ''}`}
+          aria-label="Open chat assistant"
+          aria-expanded={open}
+          onClick={handleOpen}
+        >
+          <ChatIcon />
+        </button>
+      </div>
     </div>
   );
 }

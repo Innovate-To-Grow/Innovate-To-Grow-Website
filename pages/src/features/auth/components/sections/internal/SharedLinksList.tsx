@@ -11,7 +11,7 @@ const shareLink = (share: PastProjectShareSummary): string =>
   share.share_url || `${window.location.origin}/past-projects/${share.id}`;
 
 export const SharedLinksList = ({shares, onDelete}: SharedLinksListProps) => {
-  const {status: copyStatus, copy} = useCopyLink({
+  const {status: copyStatus, tone: copyTone, copy} = useCopyLink({
     copied: 'Link copied.',
     failed: 'Could not copy the link. Open it and copy the address instead.',
   });
@@ -34,10 +34,10 @@ export const SharedLinksList = ({shares, onDelete}: SharedLinksListProps) => {
                 <button
                   type="button"
                   className="itg-btn itg-btn-outline account-outline-btn"
-                  aria-label={`Copy the link to ${rowLabel}`}
+                  aria-label={`Copy Link to ${rowLabel}`}
                   onClick={() => void copy(shareLink(share))}
                 >
-                  Copy link
+                  Copy Link
                 </button>
                 <a
                   className="itg-btn itg-btn-outline account-outline-btn"
@@ -61,7 +61,9 @@ export const SharedLinksList = ({shares, onDelete}: SharedLinksListProps) => {
           );
         })}
       </ul>
-      <p className="account-shares-copy-status" role="status">{copyStatus}</p>
+      <p className={`account-shares-copy-status ${copyTone === 'error' ? 'itg-error' : 'itg-success'}`} role="status">
+        {copyStatus}
+      </p>
     </>
   );
 };

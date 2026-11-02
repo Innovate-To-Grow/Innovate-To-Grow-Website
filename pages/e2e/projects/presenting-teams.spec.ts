@@ -32,5 +32,9 @@ test('presenting teams empty state when no teams are presenting', async ({page})
   });
   await mockSchedule(page, empty);
   await page.goto('/presenting-teams', {waitUntil: 'domcontentloaded'});
-  await expect(page.locator('.projects-page')).toContainText('No presenting teams are available yet.');
+  await expect(page.getByRole('heading', {level: 2, name: 'No presenting teams yet'})).toBeVisible();
+  await expect(page.locator('.projects-page')).toContainText(
+    "Teams appear here once this semester's showcase schedule is published. Older projects are in Past Projects.",
+  );
+  await expect(page.getByRole('link', {name: 'Search Past Projects'})).toHaveAttribute('href', '/past-projects');
 });

@@ -31,6 +31,11 @@ export const HIGHLIGHT_FILL_RGB = [255, 233, 168] as const;
 export const HIGHLIGHT_TEXT = '7A5A00';
 
 export const I2G_LOGO_URL = '/assets/images/i2glogo.png';
+/**
+ * The logo for the PDF, which prints it 16 mm wide (about 400 dpi at 256 px). jsPDF re-encodes a PNG's pixels, so
+ * the full 2038 px logo would add megabytes to every PDF and take about a second to embed.
+ */
+export const I2G_PDF_LOGO_URL = '/assets/images/i2glogo-256.png';
 
 /** Tabular columns shared by every export (one row per project). */
 export const EXPORT_COLUMNS = [
@@ -48,6 +53,8 @@ export const EXPORT_COLUMNS = [
 export interface ProjectRowsExportContext {
   note?: string;
   title?: string;
+  /** The line under the title, naming the list the projects come from (curationBranding). */
+  heading?: string;
 }
 
 export interface ExportLogoAsset {
@@ -66,6 +73,7 @@ export type ProjectRowsExporter = (
 export const normalizeProjectRowsExportContext = (context: ProjectRowsExportContext = {}) => ({
   note: (context.note ?? '').trim(),
   title: context.title?.trim() || 'Past Projects',
+  heading: context.heading?.trim() || 'Innovate to Grow Past Projects',
 });
 
 export const toDisplayValue = (value: string | number | null | undefined) => String(value ?? '').trim();

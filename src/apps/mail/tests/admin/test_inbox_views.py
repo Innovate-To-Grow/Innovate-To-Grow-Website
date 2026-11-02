@@ -325,7 +325,7 @@ class InboxListViewTests(TestCase):
         response = self.client.get(reverse("admin:mail_inbox_fragment"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Check Gmail import configuration")
+        self.assertContains(response, "Check the Microsoft Graph mailbox scope or the Gmail import configuration")
 
     @patch("apps.mail.admin.inbox.services.list_inbox_messages", side_effect=RuntimeError("boom"))
     def test_fragment_unexpected_error_shows_server_logs_message(self, mock_list):

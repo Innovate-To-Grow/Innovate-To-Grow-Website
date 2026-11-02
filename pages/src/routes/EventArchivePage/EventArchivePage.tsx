@@ -4,6 +4,7 @@ import {usePastProjectsData} from '@/features/projects/hooks/usePastProjectsData
 import {ScheduleGrid} from '@/features/events/components/ScheduleGrid';
 import {SheetsDataTable} from '@/components/SheetsDataTable';
 import {usePageTitle} from '@/hooks/usePageTitle';
+import {formatSemesterLabel} from '@/lib/format';
 import {EVENT_CONFIGS} from './eventConfigs';
 
 export const EventArchivePage = () => {
@@ -31,10 +32,10 @@ export const EventArchivePage = () => {
 
         const [, year, seasonRaw] = match;
         const season = seasonRaw.toLowerCase() === 'spring' ? 'Spring' : 'Fall';
-        const seasonCode = season === 'Spring' ? '1' : '2';
-        const allowedLabels = new Set([`${year}-${seasonCode} ${season}`, `${season} ${year}`]);
+        // Rows arrive as "2025 Fall" (usePastProjectsData formats "2025-2 Fall"); normalise either form.
+        const allowedLabels = new Set([`${year} ${season}`, `${season} ${year}`]);
 
-        return rows.filter((row) => allowedLabels.has(String(row['Year-Semester'] || '').trim()));
+        return rows.filter((row) => allowedLabels.has(formatSemesterLabel(String(row['Year-Semester'] || '').trim())));
     }, [eventSlug, rows]);
 
     const [teamSearch, setTeamSearch] = useState('');

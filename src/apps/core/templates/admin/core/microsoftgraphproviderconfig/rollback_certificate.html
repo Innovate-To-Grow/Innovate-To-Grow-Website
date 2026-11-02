@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }} &mdash; {{ original.name }}</h1>{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <div class="mb-6 rounded-default border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300">
+        The previous certificate becomes current again, and the current one becomes the previous one. Microsoft Entra
+        must still accept the previous certificate: the site requests a token with its key first, and changes nothing
+        if Entra refuses it.
+    </div>
+    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        {% include "admin/core/microsoftgraphproviderconfig/certificate_card.html" with card=previous heading="Becomes current" %}
+        {% if current %}
+            {% include "admin/core/microsoftgraphproviderconfig/certificate_card.html" with card=current heading="Becomes previous" %}
+        {% endif %}
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="flex gap-3">
+            <button type="submit" class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+                Test and roll back
+            </button>
+            <a href="{{ cancel_url }}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

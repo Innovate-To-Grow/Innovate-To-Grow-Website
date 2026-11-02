@@ -63,12 +63,12 @@ test('saves only the rows a filtered search shows, retrying a failed detail requ
   await table.locator('.project-grid-table-wrap').getByRole('checkbox', {name: 'Select WD Project 0'}).uncheck();
   await expect(table.getByText('11 selected', {exact: true}).first()).toBeVisible();
 
-  await table.getByRole('button', {name: 'Save Selected'}).first().click();
-  await expect(table.getByRole('button', {name: 'Saving…'}).first()).toBeVisible();
+  await table.getByRole('button', {name: 'Add to Curation'}).first().click();
+  await expect(table.getByRole('button', {name: 'Adding…'}).first()).toBeVisible();
 
-  await expect(table.getByRole('status')).toHaveText('11 projects added to Saved Merged Results (11 in total).');
+  await expect(table.getByRole('status')).toHaveText('11 projects added to the curation draft (11 in total).');
   const saved = page.locator('#past-projects-saved-results');
-  await expect(saved.locator('.project-grid-card-count')).toHaveText('11 projects in this list');
+  await expect(saved.locator('.project-grid-card-count')).toHaveText('11 projects in this draft');
   // Only the checked Western Digital rows were loaded, and the 503 was retried rather than failing the save.
   expect(new Set(detailRequests)).toEqual(new Set(rows.slice(1, 12).map((row) => row.id)));
   expect(detailRequests.filter((id) => id === 'wd-3')).toHaveLength(2);
@@ -85,7 +85,7 @@ test('a disabled Save looks disabled and the first save does not move the table 
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
 
   const table = searchTable(page);
-  const save = table.getByRole('button', {name: 'Save Selected'}).first();
+  const save = table.getByRole('button', {name: 'Add to Curation'}).first();
   await expect(save).toBeDisabled();
   const disabledLook = await save.evaluate((button) => {
     const style = getComputedStyle(button);
@@ -101,7 +101,7 @@ test('a disabled Save looks disabled and the first save does not move the table 
   await table.locator('.project-grid-table-wrap').getByRole('checkbox', {name: 'Select WD Project 0'}).check();
   const before = (await table.boundingBox())?.y ?? 0;
   await save.click();
-  await expect(table.getByRole('status')).toHaveText('1 project added to Saved Merged Results (1 in total).');
+  await expect(table.getByRole('status')).toHaveText('1 project added to the curation draft (1 in total).');
   await expect(page.locator('#past-projects-saved-results')).toBeAttached();
   const after = (await table.boundingBox())?.y ?? 0;
   expect(Math.abs(after - before)).toBeLessThanOrEqual(2);
@@ -128,18 +128,18 @@ test('a save that lands while the user names the curation does not move the page
   const rowCheckbox = (title: string) =>
     table.locator('.project-grid-table-wrap').getByRole('checkbox', {name: `Select ${title}`});
   await rowCheckbox('WD Project 0').check();
-  await table.getByRole('button', {name: 'Save Selected'}).first().click();
-  await expect(table.getByRole('status')).toHaveText('1 project added to Saved Merged Results (1 in total).');
+  await table.getByRole('button', {name: 'Add to Curation'}).first().click();
+  await expect(table.getByRole('status')).toHaveText('1 project added to the curation draft (1 in total).');
 
   // Start a second save, then go up to the saved results and type a name while its details load.
   // Same first page as WD Project 0: the table sorts by semester, newest first.
   await rowCheckbox('WD Project 6').check();
-  await table.getByRole('button', {name: 'Save Selected'}).first().click();
+  await table.getByRole('button', {name: 'Add to Curation'}).first().click();
   const name = page.getByLabel('Curation name (optional)');
   await name.click();
   await name.pressSequentially('Spring picks');
   const before = (await name.boundingBox())?.y ?? 0;
-  await expect(table.getByRole('status')).toHaveText('1 project added to Saved Merged Results (2 in total).');
+  await expect(table.getByRole('status')).toHaveText('1 project added to the curation draft (2 in total).');
   const after = (await name.boundingBox())?.y ?? 0;
   expect(Math.abs(after - before)).toBeLessThanOrEqual(2);
   await expect(name).toBeFocused();
