@@ -23,6 +23,9 @@
 
     var config = JSON.parse(configElement.textContent || "{}");
     var statusPollIntervalMs = Number(config.statusPollIntervalMs) || 2000;
+    // admin/js/poll-backoff.js (loaded first): status polls pause while the server says it is busy (429).
+    var backoff = window.I2GPollBackoff;
+    var statusGate = backoff ? backoff.createGate({ baseMs: statusPollIntervalMs }) : null;
 
     var state = {
         camera: null,
@@ -148,6 +151,12 @@
         return [attendee.email, attendee.ticket_type].filter(Boolean).join(" - ");
     }
 
+    /** The line shown when the server refused a request with 429 (it is busy, or this station sent too many). */
+    function busyLine(data) {
+        var wait = backoff ? backoff.waitText(data._retryAfterMs) : "in a moment";
+        return "The server is busy. Try again " + wait + ".";
+    }
+
     function setSyncStatus(kind, label) {
         elements.syncStatus.className = "i2g-checkin-sync is-" + kind;
         elements.syncLabel.textContent = label;
@@ -183,6 +192,9 @@
                     data.scanned_at ? "Time: " + formatTime(data.scanned_at) : data.detail,
                 ]);
                 await loadStatus({ force: true });
+            } else if (data._statusCode === 429) {
+                // Nothing was checked in: the ticket can be scanned again once the wait has passed.
+                setResult("busy", "Busy \u2014 retry", [busyLine(data)]);
             } else {
                 setResult("error", data.status === "not_found" ? "Not found" : "Unable to check in", [
                     data.detail || "Unknown error",
@@ -268,6 +280,7 @@
             setSyncStatus("paused", "Paused");
             return null;
         }
+        if (!force && statusGate && statusGate.blocked()) return null;
         if (state.statusLoading) {
             if (force) state.statusRefreshQueued = true;
             return state.statusPromise;
@@ -278,6 +291,12 @@
         state.statusPromise = (async function () {
             try {
                 var data = await requestJson(config.statusUrl, { method: "GET" });
+                if (data._statusCode === 429 && statusGate) {
+                    var wait = statusGate.refused(data._retryAfterMs);
+                    setSyncStatus("issue", "Busy \u00b7 retrying " + backoff.waitText(wait));
+                    return null;
+                }
+                if (statusGate) statusGate.succeeded();
                 if (data._ok === false) {
                     throw new Error(data.detail || "HTTP " + data._statusCode);
                 }
@@ -325,6 +344,8 @@
             if (data.status === "removed") {
                 setResult("success", "Check-in undone", ["Record: " + recordId]);
                 await loadStatus({ force: true });
+            } else if (data._statusCode === 429) {
+                setResult("busy", "Busy \u2014 retry", [busyLine(data)]);
             } else {
                 setResult("error", "Unable to undo", [data.detail || "Unknown error"]);
             }

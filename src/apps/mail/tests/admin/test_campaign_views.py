@@ -173,6 +173,8 @@ class CampaignStatusViewTests(TestCase):
         self.assertContains(response, "data.status === 'queued' || data.status === 'sending'")
         self.assertContains(response, "Campaign Partially Sent")
         self.assertContains(response, "Campaign Failed")
+        # Polling backs off on 429 (admin/js/poll-backoff.js) instead of reading the refusal as a status.
+        self.assertContains(response, "admin/js/poll-backoff.js")
 
     def test_status_json_returns_progress_and_logs(self):
         campaign = EmailCampaign.objects.create(

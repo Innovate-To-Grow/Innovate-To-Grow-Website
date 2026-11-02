@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 class ImpersonateLoginView(APIView):
     """Exchange a one-time impersonation token for JWT credentials."""
 
+    rate_limit_scope = "auth-email-link"
+
     permission_classes = [AllowAny]
     # Authenticated by the one-time token in the body: a stale, expired or other-account Bearer must never 401 this.
     authentication_classes = []

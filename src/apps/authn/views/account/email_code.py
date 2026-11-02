@@ -31,6 +31,7 @@ from ..auth.email_code_helpers import protected_save
 
 
 class AccountEmailsView(APIView):
+    rate_limit_scope = "member-read"
     permission_classes = [IsAuthenticated]
 
     # noinspection PyMethodMayBeStatic
@@ -40,6 +41,7 @@ class AccountEmailsView(APIView):
 
 
 class ChangePasswordCodeRequestView(APIView):
+    rate_limit_scope = "auth-code-send"
     permission_classes = [IsAuthenticated]
     # Per-user caps on both the email send budget and the SMS send budget — the
     # channel isn't known until the serializer runs, so apply both (equal 5/min
@@ -67,6 +69,7 @@ class ChangePasswordCodeRequestView(APIView):
 
 
 class ChangePasswordCodeVerifyView(APIView):
+    rate_limit_scope = "auth-code-verify"
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailCodeVerifyThrottle]
 
@@ -80,6 +83,7 @@ class ChangePasswordCodeVerifyView(APIView):
 
 
 class ChangePasswordCodeConfirmView(APIView):
+    rate_limit_scope = "auth-code-verify"
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailCodeVerifyThrottle]
 
@@ -96,6 +100,7 @@ class ChangePasswordCodeConfirmView(APIView):
 
 
 class DeleteAccountCodeRequestView(APIView):
+    rate_limit_scope = "auth-code-send"
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailCodeUserRequestThrottle]
 
@@ -117,6 +122,7 @@ class DeleteAccountCodeRequestView(APIView):
 
 
 class DeleteAccountCodeVerifyView(APIView):
+    rate_limit_scope = "auth-code-verify"
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailCodeVerifyThrottle]
 
@@ -130,6 +136,7 @@ class DeleteAccountCodeVerifyView(APIView):
 
 
 class DeleteAccountCodeConfirmView(APIView):
+    rate_limit_scope = "auth-code-verify"
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailCodeVerifyThrottle]
 

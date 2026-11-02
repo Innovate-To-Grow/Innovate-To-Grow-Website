@@ -70,6 +70,8 @@ def _write(request, action, app_label, model_name, func):
 
 
 class RecordCollectionView(AdminAPIView):
+    rate_limit_scope = "cli"
+
     def get_throttles(self):
         self.throttle_classes = [CliWriteThrottle] if self.request.method == "POST" else [CliReadThrottle]
         return super().get_throttles()
@@ -146,6 +148,8 @@ class RecordCollectionView(AdminAPIView):
 
 
 class RecordDetailView(AdminAPIView):
+    rate_limit_scope = "cli"
+
     def get_throttles(self):
         self.throttle_classes = [CliReadThrottle] if self.request.method == "GET" else [CliWriteThrottle]
         return super().get_throttles()

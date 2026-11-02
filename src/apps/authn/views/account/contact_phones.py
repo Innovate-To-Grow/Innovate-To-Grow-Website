@@ -15,7 +15,11 @@ from apps.authn.constants import (
     VERIFICATION_THROTTLED,
 )
 from apps.authn.models import ContactPhone
-from apps.authn.security.throttles import EmailCodeVerifyThrottle, PhoneCodeRequestThrottle
+from apps.authn.security.throttles import (
+    ContactPhoneCreateThrottle,
+    EmailCodeVerifyThrottle,
+    PhoneCodeRequestThrottle,
+)
 from apps.authn.serializers import (
     ContactPhoneCreateSerializer,
     ContactPhoneSerializer,
@@ -42,7 +46,14 @@ from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHAN
 
 
 class ContactPhoneListCreateView(APIView):
+    rate_limit_scope = {"GET": "member-read", "*": "member-write"}
     permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        # Adding phones is bounded like adding emails; listing them is not.
+        if self.request.method == "POST":
+            return [ContactPhoneCreateThrottle()]
+        return []
 
     # noinspection PyMethodMayBeStatic
     def get(self, request):
@@ -70,6 +81,7 @@ class ContactPhoneListCreateView(APIView):
 
 
 class ContactPhoneDetailView(APIView):
+    rate_limit_scope = {"GET": "member-read", "*": "member-write"}
     permission_classes = [IsAuthenticated]
 
     # noinspection PyMethodMayBeStatic
@@ -101,6 +113,8 @@ class ContactPhoneDetailView(APIView):
 
 class ContactPhoneRequestVerificationView(APIView):
     """Request an SMS verification code for a contact phone."""
+
+    rate_limit_scope = "auth-code-send"
 
     permission_classes = [IsAuthenticated]
     # Per-user cap on real SNS spend (an anonymous, per-IP throttle is a no-op
@@ -134,6 +148,8 @@ class ContactPhoneRequestVerificationView(APIView):
 
 class ContactPhoneVerifyCodeView(APIView):
     """Verify an SMS code for a contact phone."""
+
+    rate_limit_scope = "auth-code-verify"
 
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailCodeVerifyThrottle]

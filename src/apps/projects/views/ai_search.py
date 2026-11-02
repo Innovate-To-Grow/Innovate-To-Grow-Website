@@ -168,6 +168,7 @@ def _results_response(turn: _SearchTurn, outcome, latency_ms) -> Response:
 
 
 class PastProjectAISearchAPIView(APIView):
+    rate_limit_scope = "ai"
     permission_classes = [IsAuthenticated]
     throttle_classes = [PastProjectAISearchRateThrottle]
 

@@ -9,6 +9,7 @@ from ..serializers import PastSemesterPageQuerySerializer, SemesterWithProjectsS
 
 
 class PastProjectsAPIView(ListAPIView):
+    rate_limit_scope = "public-read"
     permission_classes = [AllowAny]
     authentication_classes = []
     serializer_class = SemesterWithProjectsSerializer

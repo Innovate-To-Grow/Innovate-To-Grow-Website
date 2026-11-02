@@ -31,6 +31,8 @@ class LoginView(APIView):
     by ``login_guard``: too many recent failures answer 429 ``login_locked`` before the password is even checked.
     """
 
+    rate_limit_scope = "auth-sign-in"
+
     authentication_classes = []
     permission_classes = [AllowAny]
 

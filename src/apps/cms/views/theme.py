@@ -24,6 +24,8 @@ def etag_matches(if_none_match: str, etag: str) -> bool:
 class ThemeStylesheetView(View):
     """The Site Settings design tokens and custom CSS as text/css, linked from index.html."""
 
+    rate_limit_exempt = "Render-blocking stylesheet on every page and cached by the CDN; a refusal unstyles the site."
+
     # noinspection PyMethodMayBeStatic
     def get(self, request, *args, **kwargs):
         cached = cache.get(THEME_CACHE_KEY)

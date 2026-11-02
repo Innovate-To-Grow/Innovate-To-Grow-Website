@@ -13,5 +13,6 @@ from apps.authn.serializers import MemberTokenRefreshSerializer
 
 
 class PublicTokenRefreshView(TokenRefreshView):
+    rate_limit_scope = "auth-token-refresh"
     permission_classes = [AllowAny]
     serializer_class = MemberTokenRefreshSerializer

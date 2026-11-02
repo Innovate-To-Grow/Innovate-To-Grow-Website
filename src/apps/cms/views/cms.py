@@ -32,6 +32,8 @@ CMS_PAGE_CACHE_TIMEOUT = 300
 class CMSEmbedHostsView(APIView):
     """Publish the iframe allowlist used by browser-side sanitization."""
 
+    rate_limit_scope = "public-background"
+
     permission_classes = [AllowAny]
     authentication_classes = []
 
@@ -67,6 +69,8 @@ class HasCMSAppAccess(BasePermission):
 class CMSPreviewFetchView(APIView):
     """Fetch cached preview data by token."""
 
+    rate_limit_scope = "tokenized-link"
+
     permission_classes = [AllowAny]
     authentication_classes = []  # the token in the URL is the capability; the caller's identity is never read
 
@@ -85,6 +89,8 @@ class CMSLivePreviewView(APIView):
     GET  (public cache): preview tab polls this endpoint to render the latest state.
                        cms-app members may fall back to the current DB state.
     """
+
+    rate_limit_scope = "staff-polling"
 
     # Session auth needed for admin JS; JWT default handles API clients.
     authentication_classes = [SessionAuthentication]
@@ -154,6 +160,8 @@ def _legacy_route_response(request, raw_route: str):
 class CMSPageView(APIView):
     """Serve a published CMS page by its route path."""
 
+    rate_limit_scope = "public-read"
+
     permission_classes = [AllowAny]
     # ``?preview=true`` shows a draft to a member with cms access, so a valid token is honoured; a stale one is anonymous.
     authentication_classes = [SoftJWTAuthentication]
@@ -196,6 +204,8 @@ class CMSPageView(APIView):
 
 class CMSHomepageView(APIView):
     """Serve the selected published homepage, falling back to the published root page."""
+
+    rate_limit_scope = "public-read"
 
     permission_classes = [AllowAny]
     authentication_classes = []

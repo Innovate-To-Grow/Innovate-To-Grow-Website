@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{{ title }}{% endblock %}
 {% block content_title %}<h1>{{ title }}</h1>{% endblock %}
@@ -91,11 +91,15 @@
     </a>
 </div>
 
+<script src="{% static 'admin/js/poll-backoff.js' %}"></script>
 <script nonce="{{ request.csp_nonce }}">
 (function() {
     var statusUrl = "{{ status_json_url }}";
     var total = {{ campaign.total_recipients }};
     var polling = null;
+    // admin/js/poll-backoff.js: polls pause while the server says it is busy (429), longer each time in a row.
+    var backoff = window.I2GPollBackoff;
+    var gate = backoff ? backoff.createGate({baseMs: 1000}) : null;
     var seenLogKeys = {};
     var activityEntries = [];
 
@@ -234,9 +238,18 @@
     }
 
     function poll() {
+        if (gate && gate.blocked()) return;
         fetch(statusUrl, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
-            .then(function(r) { return r.json(); })
-            .then(update)
+            .then(function(r) {
+                // A 429 is not the campaign's status: keep the last one shown and ask again after the wait.
+                if (r.status === 429) {
+                    return r.json().catch(function() { return {}; }).then(function(body) {
+                        if (gate) gate.refused(backoff.retryAfterMs(r, body));
+                    });
+                }
+                if (gate) gate.succeeded();
+                return r.json().then(update);
+            })
             .catch(function() {});
     }
 

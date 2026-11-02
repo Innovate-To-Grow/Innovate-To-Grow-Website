@@ -20,3 +20,4 @@ from .integrations.credential_store import *  # noqa: F403  # private-key store 
 from .integrations.microsoft_graph import *  # noqa: F403  # Graph certificate limits
 from .integrations.gmail_api import *  # noqa: F403  # Gmail API request limits, token lifetimes, key entry
 from .integrations.delivery_rates import *  # noqa: F403  # per-channel rate seeds, Smart rate controller
+from .integrations.request_limits import *  # noqa: F403  # inbound request-limit scopes, tiers, Smart limiting

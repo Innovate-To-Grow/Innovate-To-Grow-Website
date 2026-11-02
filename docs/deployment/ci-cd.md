@@ -78,6 +78,12 @@ finding starts.
   attempts does. The required Chromium smoke runs with `--retries=0` on purpose.
 - `E2E Report` (the merged HTML/JUnit report) stays `continue-on-error`: a flaky
   artifact download must not be able to block a merge
+- The backend runs the test settings with `REQUEST_RATE_LIMITS_ENABLED: "false"`
+  stated in the job: one browser on one IP drives every spec, so the request
+  limiter stays off (as in the backend container smoke, which sets
+  `-e REQUEST_RATE_LIMITS_ENABLED=false`). `scripts/ci/tests/test_ci_workflow_invariants.py`
+  fails if either loses it or any workflow switches the limiter on; the limiter's
+  own tests turn it on in-process ([Request limits](../integrations/request-limits.md))
 - The Playwright container image, the npm package (pinned exactly in
   `pages/package.json`), the e2e venv cache label, and the image the AWS runners
   pre-pull (`aws/ci-runners/bake-image.sh`) move together;

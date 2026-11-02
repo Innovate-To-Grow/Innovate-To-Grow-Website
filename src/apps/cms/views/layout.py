@@ -22,6 +22,8 @@ LAYOUT_CACHE_TIMEOUT = 600
 class LayoutAPIView(APIView):
     """Unified endpoint for menu and footer data with caching."""
 
+    rate_limit_scope = "public-read"
+
     permission_classes = [AllowAny]
     authentication_classes = []
 
@@ -64,6 +66,8 @@ class EmbedBlockView(APIView):
     designed for arbitrary third-party embedding. To tighten this, add an
     `allowed_origins` field to CMSEmbedWidget and echo only matching origins.
     """
+
+    rate_limit_scope = "public-read"
 
     permission_classes = [AllowAny]
     authentication_classes = []

@@ -4,12 +4,12 @@ from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
 from apps.authn.security import SoftJWTAuthentication
 from apps.cms.serializers import PageViewCreateSerializer
 from apps.cms.services.analytics import clean_visitor_id, enqueue
+from apps.core.services.request_limits.view_limits import PolicyRateThrottle
 from apps.core.utils.throttle_cache import throttle_cache
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 # history is in the bounded in-process ``throttle`` cache, never in the default cache: the per-visitor key is
 # chosen by the client, and in the production file cache every minted key would be one more file that slows down
 # each cache write of the container. In-process means per Uvicorn worker, so with WEB_CONCURRENCY=2 a container
-# admits up to twice each rate, and a restart forgets the history.
+# admits up to twice each rate, and a restart forgets the history. Each rate is a request-limit policy, read live
+# (staff edit it in the admin; Smart limiting may lower it under overload, page views being background traffic).
 
 
 def _visitor_id(request) -> str | None:
@@ -28,7 +29,7 @@ def _visitor_id(request) -> str | None:
     return clean_visitor_id(data.get("visitor_id")) if hasattr(data, "get") else None
 
 
-class PageViewVisitorThrottle(SimpleRateThrottle):
+class PageViewVisitorThrottle(PolicyRateThrottle):
     """Per-visitor page-view rate, keyed on the browser's ``visitor_id``. The client IP is never part of the key.
 
     Campus visitors share one public IP: a per-IP rate dropped most campus page views on a busy day. One browser
@@ -39,7 +40,7 @@ class PageViewVisitorThrottle(SimpleRateThrottle):
     """
 
     scope = "pageview_visitor"
-    rate = "120/min"
+    policy_scope = "view-pageview-visitor"
     cache = throttle_cache
 
     def get_cache_key(self, request, view):
@@ -49,7 +50,7 @@ class PageViewVisitorThrottle(SimpleRateThrottle):
         return self.cache_format % {"scope": self.scope, "ident": f"visitor:{visitor_id}"}
 
 
-class PageViewLegacyThrottle(SimpleRateThrottle):
+class PageViewLegacyThrottle(PolicyRateThrottle):
     """One shared bucket for page views that carry no usable ``visitor_id``.
 
     Those come from frontend bundles cached before the id existed (the frontend and the backend deploy
@@ -59,7 +60,7 @@ class PageViewLegacyThrottle(SimpleRateThrottle):
     """
 
     scope = "pageview_legacy"
-    rate = "600/min"
+    policy_scope = "view-pageview-legacy"
     cache = throttle_cache
 
     def get_cache_key(self, request, view):
@@ -68,7 +69,7 @@ class PageViewLegacyThrottle(SimpleRateThrottle):
         return self.cache_format % {"scope": self.scope, "ident": "legacy"}
 
 
-class PageViewTotalThrottle(SimpleRateThrottle):
+class PageViewTotalThrottle(PolicyRateThrottle):
     """One bucket for ALL page views of this process, whoever sends them: the bound on what a flood can write.
 
     A script that mints a fresh ``visitor_id`` per request never meets the per-visitor rate, and every accepted
@@ -85,7 +86,7 @@ class PageViewTotalThrottle(SimpleRateThrottle):
     """
 
     scope = "pageview_total"
-    rate = "3000/min"
+    policy_scope = "view-pageview-total"
     cache = throttle_cache
 
     def get_cache_key(self, request, view):
@@ -96,7 +97,9 @@ class PageViewTotalThrottle(SimpleRateThrottle):
         return True
 
     def record(self):
-        """Count the request that ``allow_request`` has just admitted."""
+        """Count the request that ``allow_request`` has just admitted (nothing while the policy is off)."""
+        if getattr(self, "history", None) is None:
+            return True
         return super().throttle_success()
 
     def warn_reached(self):
@@ -112,6 +115,8 @@ class PageViewTotalThrottle(SimpleRateThrottle):
 
 class PageViewCreateView(APIView):
     """Accept page-view tracking events from the frontend."""
+
+    rate_limit_scope = "telemetry"
 
     # Attributes the view to the member behind a valid token; a stale token records it as anonymous, not a 401.
     authentication_classes = [SoftJWTAuthentication]

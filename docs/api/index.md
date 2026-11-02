@@ -65,27 +65,70 @@ Non-field errors use the `non_field_errors` key or `detail` for simple messages.
 
 ### Throttling
 
-Rate limits are applied per-view, not globally. **Sign-in, emailed-link, verification-code and ALTCHA-challenge endpoints have no per-IP throttle**: campus users share one public IP, so such a limit throttles everyone at once (and is bypassable through `X-Forwarded-For`). They are bounded by the token, the per-destination cooldown/hourly cap and the per-challenge attempt cap instead, and password login by an identifier-keyed failure lockout (`429` with `code: "login_locked"`; see [Auth & Mail](auth-and-mail.md#login)). Per-IP limits for off-campus traffic belong at the edge and exclude campus addresses: see [WAF rate limits](../deployment/waf-rate-limits.md).
+Two layers limit requests (design and runbook: [Request limits](../integrations/request-limits.md)):
 
-Nothing a campus user does is limited by client IP. Active throttle classes, by what they are keyed on:
+1. **The request limiter** (`RequestRateLimitMiddleware`) limits every request by **scope**, a group of endpoints
+   with a priority tier: P0 critical (sign-in, verification codes a person asked for, token refresh, session check,
+   check-in, the SES webhook), P1 interactive (`public-read`, `public-write`, `member-read`, `member-write`,
+   `member-send`, `staff-admin`, `cli`, `tokenized-link`, `legacy-proxy`), P2 background (`public-background`,
+   `telemetry`, `staff-polling`, `checkin-status`, `auth-code-unproven`) and P3 heavy (`public-heavy` for the
+   unpaged `/projects/past-all/`, `ai`, `staff-bulk`, `not-found`; the paged `/projects/all/` is `public-read`). A view names its scope with
+   `rate_limit_scope`; unnamed routes fall back by path, method and sign-in. Under overload Smart limit sheds P3,
+   then P2, then P1, never P0. Exempt: `/livez/`, `/readyz/`, `/health/`, `/layout/theme.css`, `/robots.txt`,
+   one-click unsubscribe and CORS preflights. Seeds: `src/config/settings/base/integrations/request_limits/scopes.py`.
+2. **Per-view throttles** (below) are finer limits underneath, set per view with `throttle_classes`, never globally
+   (`DEFAULT_THROTTLE_CLASSES` stays unset).
 
-| Throttle | Rate | Keyed on | Applied to |
-|----------|------|----------|------------|
-| `PhoneCodeRequestThrottle` | 5/min | Member | Authenticated contact-phone, password-change and event-registration SMS requests |
-| `EmailCodeUserRequestThrottle` | 5/min | Member | Authenticated email verification requests |
-| `SecondaryEmailCodeVerifyThrottle` | 60/min | Member | Event-registration secondary-email verification |
-| `ContactEmailCreateThrottle` | 5/hour | Member | Contact email creation |
-| `PastProjectShareRateThrottle` | 10/min | Member | Project sharing |
-| `PastProjectAISearchRateThrottle` | 10/min | Member | `POST /projects/past-ai-search/` |
-| `CliReadThrottle` / `CliWriteThrottle` | 120/min / 60/min | Member | `/admin-api/` reads / writes (the token exchange has no throttle) |
-| `PublicAssistantActorThrottle` | 6/min | Visitor token (signed, issued by `GET /assistant/config/`) or member | `POST /assistant/chat/` |
-| same, legacy bucket | 60/min | One shared bucket | Chat requests without a valid visitor token (older cached frontend bundles) |
-| `PageViewVisitorThrottle` | 120/min | Browser `visitor_id` (random, client-chosen) | `POST /analytics/pageview/` |
-| `PageViewLegacyThrottle` | 600/min | One shared bucket | Page views without a usable `visitor_id` |
-| `PageViewTotalThrottle` | 3,000/min | One constant key (all page views) | `POST /analytics/pageview/`; the only one of these that can drop an honest page view, and only during a flood |
-| `EmailCodeVerifyThrottle` | 60/min | Client IP, anonymous requests only | Attached to authenticated verify views, where it never applies |
-| `PhoneAuthCodeRequestThrottle` | 5/min | Client IP | Fallback only: anonymous phone-auth and phone password-reset SMS requests, attached by `sms_request_throttles()` only while no SMS daily budget (`sms_daily_limit`) is configured |
-| `SesEventThrottle` | 600/min | Client IP | `POST /mail/ses/events/` (callers are AWS SNS, never users) |
+#### The 429 answer
+
+Every refusal by the request limiter has this body, the `Retry-After` header (whole seconds) and
+`Cache-Control: no-store`:
+
+```json
+{"detail": "Too many requests. Please try again in 12 seconds.", "code": "rate_limited", "retry_after": 12}
+```
+
+A per-view throttle answers DRF's `429` (`{"detail": "Request was throttled. Expected available in 12 seconds."}`)
+with `Retry-After`; the sign-in lockout answers `code: "login_locked"`. `Retry-After` is listed in
+`CORS_EXPOSE_HEADERS`, so the cross-origin SPA can read it. Clients wait it out: the shared Axios client and the auth
+client resend an idempotent read once after `Retry-After` (plus jitter; a wait over 10 s fails at once, and a 429 on
+`/authn/refresh/` never signs the member out), the admin pollers pause for it (`admin/js/poll-backoff.js`), and the
+`i2g-admin` CLI waits and resends reads up to three times. Writes are never resent automatically. Repeated 429s from
+one caller in one scope block it for a growing, bounded time, so retrying faster only makes the wait longer.
+
+#### Keys and per-view limits
+
+**Sign-in, emailed-link, verification-code and ALTCHA-challenge endpoints have no per-IP throttle**: campus users share one public IP, so such a limit throttles everyone at once (and is bypassable through `X-Forwarded-For`). They are bounded by the token, the per-destination cooldown/hourly cap and the per-challenge attempt cap instead, and password login by an identifier-keyed failure lockout (`429` with `code: "login_locked"`; see [Auth & Mail](auth-and-mail.md#login)). Per-IP limits for off-campus traffic belong at the edge and exclude campus addresses: see [WAF rate limits](../deployment/waf-rate-limits.md).
+
+Nothing a campus user does is limited by client IP. Every throttle's rate is a **request-limit policy** (Site
+Settings → Request Limits, scope `view-…`), read live: an edit applies within seconds, without a restart. Smart
+limiting is on by default and takes priority over the manual value: the rate is the default below × the Smart factor of
+its parent route scope, never below the scope's floor, and never lowered at all for P0 (sign-in and verification
+codes) or fixed scopes; with Smart off the manual value applies. While the request limiter is off
+(`REQUEST_RATE_LIMITS_ENABLED=false`, as in the test settings) each throttle uses its default. Seeds:
+`src/config/settings/base/integrations/request_limits/view_scopes.py`.
+
+| Throttle | Policy | Default | Keyed on | Applied to |
+|----------|--------|---------|----------|------------|
+| `PhoneCodeRequestThrottle` | `view-code-send-sms` | 5/min | Member | Authenticated contact-phone, password-change and event-registration SMS requests |
+| `EmailCodeUserRequestThrottle` | `view-code-send-email` | 5/min | Member | Authenticated email verification requests |
+| `EmailCodeVerifyThrottle` (and the event `SecondaryEmailCodeVerifyThrottle` / `PhoneCodeVerifyThrottle`) | `view-code-verify` | 60/min | Member (one bucket for every signed-in code check) | Change-password and delete-account verify/confirm, contact email/phone verify, event secondary-email and phone verify |
+| `ChangePasswordThrottle` | `view-change-password` | 10/hour | Member | `POST /authn/change-password/` |
+| `ContactEmailCreateThrottle` | `view-contact-email-create` | 5/hour | Member | Contact email creation |
+| `ContactPhoneCreateThrottle` | `view-contact-phone-create` | 5/hour | Member | Contact phone creation |
+| `RegistrationCreateThrottle` | `view-registration-create` | 20/hour | Member | `POST /event/registrations/` (emails the ticket) |
+| `TicketEmailResendThrottle` | `view-ticket-email-resend` | 10/hour | Member | `POST /event/my-tickets/<id>/resend-email/` |
+| `PastProjectShareRateThrottle` / `PastProjectShareUpdateRateThrottle` | `view-past-project-share` / `-update` | 10/min / 120/min | Member | Project sharing |
+| `PastProjectAISearchRateThrottle` | `view-ai-search` | 10/min | Member | `POST /projects/past-ai-search/` |
+| `CliReadThrottle` / `CliWriteThrottle` | `view-cli-read` / `view-cli-write` | 120/min / 60/min | Member | `/admin-api/` reads / writes (the token exchange has no throttle) |
+| `PublicAssistantActorThrottle` | `view-assistant-chat` | 6/min | Visitor token (signed, issued by `GET /assistant/config/`) or member | `POST /assistant/chat/` |
+| same, legacy bucket | `view-assistant-legacy` | 60/min | One shared bucket | Chat requests without a valid visitor token (older cached frontend bundles) |
+| `PageViewVisitorThrottle` | `view-pageview-visitor` | 120/min | Browser `visitor_id` (random, client-chosen) | `POST /analytics/pageview/` |
+| `PageViewLegacyThrottle` | `view-pageview-legacy` | 600/min | One shared bucket | Page views without a usable `visitor_id` |
+| `PageViewTotalThrottle` | `view-pageview-total` | 3,000/min | One constant key (all page views) | `POST /analytics/pageview/`; the only one of these that can drop an honest page view, and only during a flood |
+| `PhoneAuthCodeRequestThrottle` | `view-code-send-sms-ip` | 5/min | Client IP | Fallback only: anonymous phone-auth and phone password-reset SMS requests, attached by `sms_request_throttles()` only while no SMS daily budget (`sms_daily_limit`) is configured |
+| `SesEventThrottle` | `view-ses-events` (fixed) | 600/min | Client IP | `POST /mail/ses/events/`, counted only after the SNS signature verifies (callers are AWS SNS, never users) |
+| `SesRejectedThrottle` | `view-ses-rejected` (fixed) | 60/min | Client IP | Calls to the SES webhook whose envelope or signature is rejected, counted apart so junk never uses up the signed deliveries' allowance |
 
 Limits that are not throttle classes:
 
@@ -96,6 +139,9 @@ Limits that are not throttle classes:
 | Password sign-in lockout (member and admin-panel login) | Account identifier; the admin "remembered" form uses a separate counter only the signed-cookie holder can reach | [Auth & Mail](auth-and-mail.md#login) |
 | SMS daily budget (`sms_daily_limit`) | Global, set in Django admin | [Send verification](../deployment/send-verification.md#sms-daily-budget) |
 | Assistant and AI search token budgets | Visitor token or member, plus one global budget per feature (limit set in Django admin) | [Assistant and AI search limits](../integrations/assistant-limits.md) |
+| Maintenance bypass: 20 wrong passwords per 15 minutes (policy `view-maintenance-bypass`), then every attempt `429` until the period ends | Everyone together (one shared password; never the client IP) | `POST /maintenance/bypass/` |
+| Staff invitation: 10 submissions per hour (policy `view-invitation`) | The invitation | `POST /authn/invite/<token>/` |
+| CSP reports: 60 per minute (policy `view-csp-report`, seeded from `CSP_REPORT_RATE_LIMIT` / `CSP_REPORT_RATE_WINDOW_SECONDS`) | Client address | `POST /csp-report/` (over the limit a report is dropped, still `204`) |
 
 Throttle histories live in the Django cache. The per-member throttles use the default cache, which in production is per container ([Environments](../deployment/environments.md#production-cache-today)). The assistant, page-view, SMS fallback and SES webhook throttles use the bounded in-process `throttle` alias, so their rates are per Uvicorn worker process ([The `throttle` cache alias](../deployment/environments.md#the-throttle-cache-alias)). The limits in the second table are counted in PostgreSQL.
 

@@ -2,21 +2,15 @@
 
 from unittest.mock import patch
 
-from django.conf import settings
 from django.db import connection
-from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 
 from apps.authn.services.account.delete_account import delete_member_account
+from apps.core.tests.request_limits.helpers import view_limit
 from apps.projects.models import PastProjectShare
 from apps.projects.views.past_project_share import MAX_SHARES_PER_MEMBER
 
 from .share_helpers import Member, PastProjectShareTestCase, sample_payload, sample_row
-
-
-def _rates(**overrides):
-    rates = {**settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], **overrides}
-    return {**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates}
 
 
 class PastProjectShareLimitsTests(PastProjectShareTestCase):
@@ -43,7 +37,7 @@ class PastProjectShareLimitsTests(PastProjectShareTestCase):
 
         self.assertEqual(response.status_code, 201)
 
-    @override_settings(REST_FRAMEWORK=_rates(past_project_share_update="2/minute"))
+    @view_limit(**{"view-past-project-share-update": (2, 60)})
     def test_updates_and_deletes_are_throttled_per_member(self):
         share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
         statuses = []
@@ -57,7 +51,7 @@ class PastProjectShareLimitsTests(PastProjectShareTestCase):
         self.assertEqual(statuses, [200, 200, 429])
         self.assertEqual(self.client.delete(f"/projects/past-shares/{share.pk}/").status_code, 429)
 
-    @override_settings(REST_FRAMEWORK=_rates(past_project_share_update="1/minute"))
+    @view_limit(**{"view-past-project-share-update": (1, 60)})
     def test_reading_a_share_is_not_throttled(self):
         share = PastProjectShare.objects.create(name="Mine", rows=[sample_row()], created_by=self.member)
 

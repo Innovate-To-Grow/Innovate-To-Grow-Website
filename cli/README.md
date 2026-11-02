@@ -64,7 +64,7 @@ These go **before** the command (as in `aws --output json s3 ls`):
   spreadsheet formulas; use `csv-raw` only for trusted machine consumers.
 - `--query <expr>` — client-side projection (JMESPath).
 - `--no-paginate` / `--max-items <n>` / `--page-size <n>` — auto-pagination controls (`records list` walks all pages by default).
-- `--max-attempts <n>` / `--connect-timeout <s>` / `--read-timeout <s>` — HTTP robustness (retries 429/5xx with exponential backoff + jitter, honoring `Retry-After`; default one attempt, timeouts 5s/30s).
+- `--max-attempts <n>` / `--connect-timeout <s>` / `--read-timeout <s>` — HTTP robustness (retries 429/5xx with exponential backoff + jitter, honoring `Retry-After`; default one attempt, timeouts 5s/30s). Independently of it, a read or the token exchange refused with 429 waits out `Retry-After` (up to 60s / 20s) and is resent up to 3 times.
 - `--debug` — emit extra detail on errors.
 - `--version` — print the version and exit.
 

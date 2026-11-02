@@ -49,6 +49,8 @@ class _SubscriptionLinkView(APIView):
 class OneClickUnsubscribeView(_SubscriptionLinkView):
     """Unsubscribe endpoint used by email clients (RFC 8058 POST) and the footer link (GET, then a form POST)."""
 
+    rate_limit_exempt = "Legal one-click opt-out (RFC 8058); an unsubscribe must never be refused."
+
     # Authenticated by the signed token in the URL: a stale, expired or other-account Bearer must never 401 this.
     authentication_classes = []
     # HEAD runs ``get``, which has no side effects.
@@ -77,6 +79,8 @@ class OneClickUnsubscribeView(_SubscriptionLinkView):
 
 class ResubscribeView(_SubscriptionLinkView):
     """Re-subscribe the addresses a one-click unsubscribe just turned off."""
+
+    rate_limit_scope = "tokenized-link"
 
     # Authenticated by the signed token in the URL: a stale, expired or other-account Bearer must never 401 this.
     authentication_classes = []

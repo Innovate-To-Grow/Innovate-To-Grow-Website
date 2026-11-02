@@ -59,6 +59,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertNotIn("System Intelligence", items_by_title)
         self.assertEqual(items_by_title["Site Maintenance Control"]["link"], "/admin/core/sitemaintenancecontrol/")
         self.assertEqual(items_by_title["Service Credentials"]["link"], "/admin/core/awscredentialconfig/")
+        self.assertEqual(items_by_title["Request Limits"]["link"], "/admin/core/request-limits/")
         self.assertNotIn("Service Configs", items_by_title)
 
     def test_content_navigation_prioritizes_editing_before_analytics(self):

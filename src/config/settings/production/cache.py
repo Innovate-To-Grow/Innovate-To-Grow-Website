@@ -13,7 +13,13 @@ CACHES = (
         "default": {
             "BACKEND": "django_redis.cache.RedisCache",
             "LOCATION": REDIS_URL,
-            "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient"},
+            # Timeouts (seconds): a Redis that stops answering fails a cache call (the request limiter then lets
+            # the request through) instead of stalling every request.
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "SOCKET_CONNECT_TIMEOUT": 1,
+                "SOCKET_TIMEOUT": 1,
+            },
             "KEY_PREFIX": "i2g",
             "TIMEOUT": 300,  # 5-minute default TTL
         },

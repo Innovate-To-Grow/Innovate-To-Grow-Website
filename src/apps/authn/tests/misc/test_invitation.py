@@ -118,6 +118,9 @@ class AcceptInvitationViewTests(TestCase):
 
     def test_a_token_that_cannot_be_a_real_one_is_invalid_without_a_query(self):
         """PostgreSQL rejects a NUL in a string parameter; an over-long value can never match the column."""
+        # With the request limiter on, the first request of a process loads its policy rows (then re-reads them only
+        # every few seconds); load them before counting, so only the view's own queries are counted.
+        self.client.get("/authn/invite/x/")
         for token in ("a%00b", "x" * 65, "x" * 200):
             for method in (self.client.get, self.client.post):
                 with self.subTest(token=token[:8], method=method.__name__):

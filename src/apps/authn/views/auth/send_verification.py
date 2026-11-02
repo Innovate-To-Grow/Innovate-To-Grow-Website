@@ -23,6 +23,7 @@ from apps.authn.services.send_verification.principal import authenticate_for_ope
 
 @method_decorator(never_cache, name="dispatch")
 class SendVerificationChallengeView(APIView):
+    rate_limit_scope = "auth-challenge"
     authentication_classes = []
     permission_classes = [AllowAny]
     # No per-IP throttle by design (campus users share one IP). A challenge alone sends nothing: the proof is
@@ -71,6 +72,7 @@ class SendVerificationChallengeView(APIView):
 
 @method_decorator(never_cache, name="dispatch")
 class SendVerificationRequestStatusView(APIView):
+    rate_limit_scope = "auth-challenge"
     authentication_classes = []
     permission_classes = [AllowAny]
     # No per-IP throttle: the lookup is scoped to the caller's own principal and the request id is a UUID.

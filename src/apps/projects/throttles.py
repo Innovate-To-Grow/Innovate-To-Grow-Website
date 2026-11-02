@@ -1,27 +1,22 @@
-from django.conf import settings
-from rest_framework.throttling import UserRateThrottle
+"""Per-member project throttles. Each rate is a request-limit policy (``policy_scope``), read live on every request,
+so staff edit it in the admin without a restart (``apps.core.services.request_limits.view_limits``)."""
+
+from apps.core.services.request_limits.view_limits import MemberRateThrottle
 
 
-class _DynamicProjectUserRateThrottle(UserRateThrottle):
-    """Per-user project throttles with rates read live from settings."""
-
-    def get_rate(self):
-        # Read the rate live from settings. UserRateThrottle.THROTTLE_RATES is captured
-        # at import time, so reading it directly would ignore override_settings in tests
-        # (and any runtime change). The scope is always present in DEFAULT_THROTTLE_RATES.
-        return settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"][self.scope]
-
-
-class PastProjectShareRateThrottle(_DynamicProjectUserRateThrottle):
-    # Creating a share requires authentication, so throttle per-user (not per-anon-IP).
+class PastProjectShareRateThrottle(MemberRateThrottle):
+    # Creating a share requires authentication, so throttle per member (not per anonymous IP).
     scope = "past_project_share"
+    policy_scope = "view-past-project-share"
 
 
-class PastProjectShareUpdateRateThrottle(_DynamicProjectUserRateThrottle):
+class PastProjectShareUpdateRateThrottle(MemberRateThrottle):
     # Changing or deleting a share (each edit of a shared list is one PATCH), per owner.
     scope = "past_project_share_update"
+    policy_scope = "view-past-project-share-update"
 
 
-class PastProjectAISearchRateThrottle(_DynamicProjectUserRateThrottle):
-    # AI search requires authentication, so throttle per-user.
+class PastProjectAISearchRateThrottle(MemberRateThrottle):
+    # AI search requires authentication, so throttle per member.
     scope = "past_project_ai_search"
+    policy_scope = "view-ai-search"

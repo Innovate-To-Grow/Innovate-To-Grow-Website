@@ -8,4 +8,5 @@ Third-party package configuration.
   microsoft_graph/ – Microsoft Graph certificate limits (key size, input size, clock skew, Entra test timeout).
   gmail_api/ – Gmail API request limits, token and assertion lifetimes, and what the admin accepts as a key.
   delivery_rates/ – Per-channel delivery-rate seeds and ceilings, the Smart rate controller, waits and signals.
+  request_limits/ – Inbound request-limit scopes, priority tiers, routes, Smart limiting and the counter store.
 """
