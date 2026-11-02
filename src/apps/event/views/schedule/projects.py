@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from apps.event.models import CurrentProjectSchedule
 from apps.event.serializers import CurrentProjectSerializer
+from apps.event.services.current_projects import CURRENT_PROJECTS_CACHE_KEY
 
 
 class CurrentProjectsAPIView(APIView):
@@ -13,8 +14,7 @@ class CurrentProjectsAPIView(APIView):
 
     # noinspection PyUnusedLocal,PyMethodMayBeStatic
     def get(self, request):
-        cache_key = "event:current-projects"
-        cached = cache.get(cache_key)
+        cached = cache.get(CURRENT_PROJECTS_CACHE_KEY)
         if cached is not None:
             return Response(cached)
 
@@ -27,5 +27,5 @@ class CurrentProjectsAPIView(APIView):
             "schedule": {"id": str(config.pk), "name": config.name},
             "projects": CurrentProjectSerializer(projects, many=True).data,
         }
-        cache.set(cache_key, data, timeout=300)
+        cache.set(CURRENT_PROJECTS_CACHE_KEY, data, timeout=300)
         return Response(data)

@@ -8,9 +8,12 @@ interface RichTextToolbarProps {
   onToggleExpanded: () => void;
 }
 
-/** Bold / italic / underline / highlight / clear formatting, and the expand-collapse toggle. */
+/**
+ * Bold / italic / underline / highlight / clear formatting, and the expand-collapse toggle. A named group (a
+ * toolbar role would promise arrow-key navigation between the buttons).
+ */
 export const RichTextToolbar = ({label, formatting, isExpanded, onToggleExpanded}: RichTextToolbarProps) => (
-  <div className="project-grid-rich-detail-toolbar" aria-label={`${label} formatting`}>
+  <div className="project-grid-rich-detail-toolbar" role="group" aria-label={`${label} formatting`}>
     <button
       type="button"
       className="project-grid-rich-editor-button"
@@ -39,7 +42,7 @@ export const RichTextToolbar = ({label, formatting, isExpanded, onToggleExpanded
       onMouseDown={formatting.handleToolbarMouseDown}
       onClick={() => formatting.applyInlineFormat('underline', 'u')}
     >
-      <span style={{textDecoration: 'underline'}}>U</span>
+      <span className="project-grid-rich-editor-underline">U</span>
     </button>
     <button
       type="button"
@@ -61,11 +64,12 @@ export const RichTextToolbar = ({label, formatting, isExpanded, onToggleExpanded
     >
       <ClearFormattingIcon />
     </button>
+    {/* Its name says what a press does, as its visible word does, so it is not also a pressed toggle (which read
+        "Collapse note editor, pressed"). */}
     <button
       type="button"
-      className="project-grid-rich-editor-button project-grid-rich-editor-size-button"
+      className={`project-grid-rich-editor-button project-grid-rich-editor-size-button${isExpanded ? ' is-active' : ''}`}
       aria-label={isExpanded ? 'Collapse note editor' : 'Expand note editor'}
-      aria-pressed={isExpanded}
       title={isExpanded ? 'Collapse note editor' : 'Expand note editor'}
       onMouseDown={(event) => event.preventDefault()}
       onClick={onToggleExpanded}

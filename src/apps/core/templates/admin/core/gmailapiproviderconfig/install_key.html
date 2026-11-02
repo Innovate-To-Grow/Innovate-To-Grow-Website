@@ -1,0 +1,42 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block extrahead %}{{ block.super }}{{ form.media }}{% endblock %}
+{% block content_title %}<h1>{{ title }} &mdash; {{ original.name }}</h1>{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 text-sm dark:border-base-700 dark:bg-base-800">
+        <p>
+            Paste or upload the JSON key file Google Cloud created for the service account. It is checked in memory
+            (a service-account key, an RSA key of the required size, Google's token endpoint), then the site asks
+            Google for a gmail.send token as <strong>{{ from_email }}</strong> with it. Only then is the key stored in
+            the credential store (AWS Secrets Manager in production) and pinned here. The old key's stored version is
+            kept, and it stays in use until this succeeds.
+        </p>
+        <p class="mt-2">
+            A key that replaces one of the same service account, or that goes on an active configuration, must already
+            get a token. A first key may also be installed while the Workspace admin is still authorizing the client
+            ID (that can take up to 24 hours). Every install clears the access-check evidence.
+        </p>
+    </div>
+    {% include "admin/core/gmailapiproviderconfig/key_panel.html" %}
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="mb-4 rounded-default bg-red-100 px-3 py-2.5 text-sm text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        <fieldset class="mb-6 rounded-default border border-base-200 p-4 dark:border-base-700">
+            {% include "unfold/helpers/field.html" with field=form.service_account_key %}
+            {% include "unfold/helpers/field.html" with field=form.service_account_key_file %}
+        </fieldset>
+        <div class="flex gap-3">
+            <button type="submit" class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">Test and install key</button>
+            <a href="{{ cancel_url }}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,16 +1,16 @@
 import json
-import threading
 from datetime import timedelta
-from unittest import skipUnless
 from unittest.mock import patch
 
-from django.db import OperationalError, close_old_connections, connection
-from django.test import TestCase, TransactionTestCase
+import boto3
+from botocore.stub import Stubber
+from django.db import OperationalError
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 from gspread.exceptions import APIError as GspreadAPIError
 from requests import Response
 
-from apps.core.models import BackgroundJob, DeliveryRateLimit
+from apps.core.models import BackgroundJob
 from apps.core.services.background_jobs import (
     PermanentJobError,
     TransientJobError,
@@ -18,10 +18,10 @@ from apps.core.services.background_jobs import (
     enqueue_job,
     process_claimed_job,
     recover_stale_jobs,
-    reserve_delivery_slot,
     retry_job,
     worker_metrics,
 )
+from apps.core.services.background_jobs.metrics import publish_worker_metrics
 
 
 def _gspread_api_error(status_code: int) -> GspreadAPIError:
@@ -352,75 +352,65 @@ class BackgroundJobQueueTests(TestCase):
         self.assertEqual(metrics["failed_jobs"], 1)
         self.assertEqual(metrics["uncertain_jobs"], 1)
 
-    def test_delivery_rate_slots_enforce_configured_global_throughput(self):
-        now = timezone.now()
 
-        first_delay = reserve_delivery_slot("ses-test", 10, now=now)
-        second_delay = reserve_delivery_slot("ses-test", 10, now=now)
-        third_delay = reserve_delivery_slot(
-            "ses-test",
-            10,
-            now=now + timedelta(milliseconds=50),
+# publish_worker_metrics against a real CloudWatch client and botocore's Stubber: the Stubber validates each
+# request against the service model botocore ships, so an upgrade that changes PutMetricData fails here.
+METRICS_REGION = "us-west-2"
+METRICS_CLIENT = "boto3.client"  # imported inside the function, so patch the attribute it reads
+METRICS = {"heartbeat": 1, "queue_depth": 3, "oldest_job_age_seconds": 12.5, "failed_jobs": 0, "uncertain_jobs": 2}
+
+
+def stubbed_cloudwatch():
+    client = boto3.client(
+        "cloudwatch",
+        region_name=METRICS_REGION,
+        aws_access_key_id="test-access-key",
+        aws_secret_access_key="test-secret-key",
+    )
+    return client, Stubber(client)
+
+
+@override_settings(BACKGROUND_JOB_METRICS_NAMESPACE="I2G/Workers", AWS_S3_REGION_NAME=METRICS_REGION)
+class PublishWorkerMetricsTests(SimpleTestCase):
+    def test_puts_every_metric_with_its_unit_in_the_namespace(self):
+        client, stubber = stubbed_cloudwatch()
+        stubber.add_response(
+            "put_metric_data",
+            {},
+            {
+                "Namespace": "I2G/Workers",
+                "MetricData": [
+                    {"MetricName": "WorkerHeartbeat", "Value": 1.0, "Unit": "Count"},
+                    {"MetricName": "QueueDepth", "Value": 3.0, "Unit": "Count"},
+                    {"MetricName": "OldestJobAge", "Value": 12.5, "Unit": "Seconds"},
+                    {"MetricName": "FailedJobs", "Value": 0.0, "Unit": "Count"},
+                    {"MetricName": "UncertainJobs", "Value": 2.0, "Unit": "Count"},
+                ],
+            },
         )
 
-        self.assertEqual(first_delay, 0)
-        self.assertAlmostEqual(second_delay, 0.1, places=3)
-        self.assertAlmostEqual(third_delay, 0.15, places=3)
+        with stubber, patch(METRICS_CLIENT, return_value=client) as factory:
+            publish_worker_metrics(METRICS)
 
-    def test_delivery_rate_uses_clock_after_database_lock_is_acquired(self):
-        stale_time = timezone.now()
-        current_time = stale_time + timedelta(seconds=1)
-        DeliveryRateLimit.objects.create(
-            provider="ses-stale-clock",
-            next_available_at=stale_time + timedelta(milliseconds=100),
-        )
+        stubber.assert_no_pending_responses()
+        factory.assert_called_once_with("cloudwatch", region_name=METRICS_REGION)
 
-        with patch(
-            "apps.core.services.background_jobs.rate_limit.timezone.now",
-            side_effect=[stale_time, current_time, current_time],
+    def test_provider_error_is_logged_not_raised(self):
+        client, stubber = stubbed_cloudwatch()
+        stubber.add_client_error("put_metric_data", service_error_code="Throttling", http_status_code=400)
+
+        with (
+            stubber,
+            patch(METRICS_CLIENT, return_value=client),
+            self.assertLogs("apps.core.services.background_jobs.metrics", level="ERROR") as logs,
         ):
-            delay = reserve_delivery_slot("ses-stale-clock", 10)
+            publish_worker_metrics(METRICS)
 
-        limiter = DeliveryRateLimit.objects.get(provider="ses-stale-clock")
-        self.assertEqual(delay, 0)
-        self.assertEqual(
-            limiter.next_available_at,
-            current_time + timedelta(milliseconds=100),
-        )
+        self.assertIn("Could not publish background worker metrics", logs.output[0])
 
+    @override_settings(BACKGROUND_JOB_METRICS_NAMESPACE="")
+    def test_no_namespace_means_no_client(self):
+        with patch(METRICS_CLIENT) as factory:
+            publish_worker_metrics(METRICS)
 
-@skipUnless(connection.vendor == "postgresql", "PostgreSQL row locking required")
-class DeliveryRateLimitConcurrencyTests(TransactionTestCase):
-    def test_workers_reserve_distinct_global_slots(self):
-        reservation_time = timezone.now()
-        barrier = threading.Barrier(2)
-        delays = []
-        errors = []
-
-        def reserve():
-            close_old_connections()
-            try:
-                barrier.wait(timeout=5)
-                delays.append(
-                    reserve_delivery_slot(
-                        "ses-concurrent",
-                        10,
-                        now=reservation_time,
-                    )
-                )
-            except Exception as exc:  # noqa: BLE001 - surfaced in the test thread.
-                errors.append(exc)
-            finally:
-                close_old_connections()
-
-        threads = [threading.Thread(target=reserve) for _index in range(2)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join(timeout=10)
-
-        self.assertFalse(any(thread.is_alive() for thread in threads))
-        self.assertEqual(errors, [])
-        self.assertEqual(len(delays), 2)
-        self.assertAlmostEqual(min(delays), 0, places=3)
-        self.assertAlmostEqual(max(delays), 0.1, places=3)
+        factory.assert_not_called()

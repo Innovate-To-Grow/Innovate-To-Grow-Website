@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -12,6 +13,7 @@ from apps.core.services.aws.provider_outcomes import (
     PROVIDER_OUTCOME_TRANSIENT,
     PROVIDER_OUTCOME_UNCERTAIN,
 )
+from apps.core.services.delivery_rates import Lane, RateDeferred, not_now
 from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
 
 SES_OUTCOME_SUCCESS = PROVIDER_OUTCOME_SUCCESS
@@ -28,6 +30,13 @@ class SesSendResult:
     error: str = ""
     provider: str = "ses"
     outcome: str = ""
+    # Seconds the provider asked us to wait before retrying (a transient outcome only).
+    retry_after: float | None = None
+    # Set when the delivery-rate limiter held the message back (certainly not sent): when to try again.
+    deferred_until: datetime | None = None
+    # The provider took nothing but may later (a throttle, a pause, a used-up quota: ``delivery_rates.not_now``);
+    # the limiter holds the next sends back meanwhile, so sending it again later is safe.
+    held_back: bool = False
 
     def __post_init__(self):
         if not self.outcome:
@@ -77,10 +86,19 @@ def _send_via_ses(
     before_provider_call=None,
     recipient_log_id=None,
     delivery_attempt=0,
+    keep_sent_copy=True,
 ) -> SesSendResult:
+    """Send one campaign message on the bulk delivery lane. ``keep_sent_copy=False`` marks one that carries the
+    recipient's login link.
+
+    Microsoft Graph then files no copy in the sender mailbox's Sent Items, which needs its JSON form, and that form
+    cannot carry ``List-Unsubscribe``: such a message keeps only the footer's unsubscribe link.
+    """
     del source
-    headers = _build_unsubscribe_headers(unsubscribe_url)
-    if getattr(ses_client, "provider", "") == "ses" and recipient_log_id and delivery_attempt:
+    provider = getattr(ses_client, "provider", "")
+    sent_as_json = provider == "graph" and not keep_sent_copy
+    headers = {} if sent_as_json else _build_unsubscribe_headers(unsubscribe_url)
+    if provider == "ses" and recipient_log_id and delivery_attempt:
         # SES returns these tags in mail.tags even when the event arrives before
         # send_raw_email returns its provider-assigned message ID.
         headers["X-SES-MESSAGE-TAGS"] = f"i2g_recipient_id={recipient_log_id}, i2g_delivery_attempt={delivery_attempt}"
@@ -91,15 +109,24 @@ def _send_via_ses(
                 to=(recipient,),
                 html_body=html_body,
                 headers=headers,
+                keep_sent_copy=keep_sent_copy,
             ),
             config=ses_client,
             retry_config=NO_PROVIDER_RETRIES,
             configuration_set=configuration_set,
             before_provider_call=before_provider_call,
+            lane=Lane.BULK,
         )
         return SesSendResult(message_id=result.message_id, provider=result.provider, outcome=result.outcome)
     except EmailDeliveryError as exc:
-        return SesSendResult(error=str(exc), provider=getattr(ses_client, "provider", ""), outcome=exc.outcome)
+        return SesSendResult(
+            error=str(exc),
+            provider=getattr(ses_client, "provider", ""),
+            outcome=exc.outcome,
+            retry_after=getattr(exc, "retry_after", None),
+            deferred_until=exc.until if isinstance(exc, RateDeferred) else None,
+            held_back=not isinstance(exc, RateDeferred) and not_now(exc.rate_signal),
+        )
 
 
 def _classify_ses_failure(exc: Exception) -> tuple[str, str]:

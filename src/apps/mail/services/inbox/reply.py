@@ -1,16 +1,17 @@
 import logging
+import re
 
 from apps.core.models import EmailServiceConfig
 from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
+from apps.core.utils.security import is_plain_address
 
 logger = logging.getLogger(__name__)
 REPLY_SEND_FAILURE_MESSAGE = "Failed to send reply. Please check server logs for details."
 REPLY_DELIVERY_NOT_CONFIGURED = "Email delivery is not configured. Check Notification Delivery in admin."
+REPLY_INVALID_ADDRESS_MESSAGE = "Use plain email addresses such as name@example.com in To and Cc."
 
 
 def render_reply_html(body_text, original_from="", original_date="", quoted_text=""):
-    import re
-
     from django.conf import settings
     from django.template.loader import render_to_string
     from django.utils.html import escape
@@ -52,6 +53,9 @@ def send_reply(
 ) -> str:
     config = EmailServiceConfig.load()
     cc_list = [email.strip() for email in cc_email.split(",") if email.strip()] if cc_email else []
+    # The To address comes from the original sender's From header, so it may be crafted.
+    if not all(is_plain_address(address) for address in (to_email, *cc_list)):
+        return REPLY_INVALID_ADDRESS_MESSAGE
     html = render_reply_html(reply_body, original_from, original_date, quoted_text)
     message = _build_reply_message(
         config=config,

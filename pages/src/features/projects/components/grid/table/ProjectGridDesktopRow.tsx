@@ -27,7 +27,8 @@ interface DesktopRowProps {
   isSaved: boolean;
   savedRowLabel: string;
   isHighlighted: boolean;
-  sortField: ProjectGridColumnKey;
+  /** The row's details say they are loading; false when every row was opened at once (useDetailsAnnouncements). */
+  announceDetails: boolean;
 }
 
 type DesktopCellProps = Pick<DesktopRowProps, 'row' | 'linkScope' | 'isHighlighted' | 'isSaved' | 'savedRowLabel'> & {
@@ -88,9 +89,10 @@ const DesktopActionsCell = ({
         aria-controls={detailsId}
         onClick={() => onToggleExpanded(row.__key)}
       >
-        {/* The reference's navy square with a white arrow; the hidden text names the button. */}
+        {/* A square outline button with an arrow. The hidden text names the button after its project, one name
+            whether open or closed: aria-expanded says which. */}
         <span className="project-grid-detail-icon" aria-hidden="true" />
-        <span className="sr-only">{isExpanded ? 'Hide' : 'Details'}</span>
+        <span className="sr-only">{`Details for ${row.project_title}`}</span>
       </button>
     ) : (
       <span className="project-grid-no-details">No details</span>
@@ -99,6 +101,8 @@ const DesktopActionsCell = ({
       <button
         type="button"
         className="itg-btn itg-btn-text itg-btn-danger project-grid-delete-button"
+        // Named after its project, so one row's Remove is told from the next in a list of buttons.
+        aria-label={`Remove ${row.project_title}`}
         onClick={() => onDeleteRow(row)}
         disabled={deleteDisabled}
       >
@@ -125,7 +129,7 @@ export const DesktopRow = ({
   isSaved,
   savedRowLabel,
   isHighlighted,
-  sortField,
+  announceDetails,
 }: DesktopRowProps) => {
   const hasDetails = hasProjectGridDetails(row);
   const detailsId = useId();
@@ -158,10 +162,7 @@ export const DesktopRow = ({
         ) : null}
 
         {columns.map((column) => (
-          <td
-            key={column.key}
-            className={`project-grid-col-${column.key}${column.key === sortField ? ' is-sorted-col' : ''}`}
-          >
+          <td key={column.key} className={`project-grid-col-${column.key}`}>
             <DesktopCell
               columnKey={column.key}
               row={row}
@@ -188,8 +189,19 @@ export const DesktopRow = ({
         <tr className="project-grid-detail-row is-expanded">
           <td className="project-grid-detail-spacer" colSpan={leadingColumns} />
           <td colSpan={detailColumns}>
-            <div id={detailsId} className="project-grid-detail-content">
-              <ProjectGridRowDetails row={row} scope={linkScope} loadMissingDetails={loadMissingDetails} />
+            {/* A row of its own, away from the title: the group's name says which project these details are of. */}
+            <div
+              id={detailsId}
+              className="project-grid-detail-content"
+              role="group"
+              aria-label={`Details for ${row.project_title}`}
+            >
+              <ProjectGridRowDetails
+                row={row}
+                scope={linkScope}
+                loadMissingDetails={loadMissingDetails}
+                announce={announceDetails}
+              />
             </div>
           </td>
         </tr>

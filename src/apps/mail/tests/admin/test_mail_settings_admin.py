@@ -94,7 +94,7 @@ class MailSettingsAdminTest(TestCase):
                 "email-provider": "smtp",
                 "email-from_name": "Updated Sender",
                 "email-from_email": "updated@example.com",
-                "email-max_send_rate": "8",
+                "email-max_send_rate": "8",  # no longer a form field: ignored
                 "aws-name": "Updated AWS",
                 "aws-is_active": "on",
                 "aws-access_key_id": "updated-key",
@@ -120,7 +120,8 @@ class MailSettingsAdminTest(TestCase):
         self.smtp_config.refresh_from_db()
         self.assertEqual(self.config.provider, "smtp")
         self.assertEqual(self.config.from_email, "updated@example.com")
-        self.assertEqual(self.config.max_send_rate, 8)
+        # The old campaign rate is not editable any more (Mail → Delivery Rates has the rates).
+        self.assertEqual(self.config.max_send_rate, 12)
         self.assertEqual(self.smtp_config.password, "existing-secret")
         self.assertEqual(self.aws_config.name, "Updated AWS")
         self.assertEqual(self.aws_config.default_region, "us-east-1")

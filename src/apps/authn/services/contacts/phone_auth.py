@@ -44,7 +44,9 @@ def request_phone_auth(phone_number: str, region: str = "1-US") -> dict:
 
     Returns a generic message that never reveals whether the number maps to an
     existing account (prevents account enumeration). May raise
-    ``PhoneVerificationThrottled`` / ``PhoneVerificationDeliveryError``.
+    ``PhoneVerificationThrottled`` (the per-number cap), ``PhoneVerificationBusy``
+    (SMS delivery held back; the view answers 503 with Retry-After) or
+    ``PhoneVerificationDeliveryError``.
     """
     from apps.authn.services.sms import start_phone_verification
 

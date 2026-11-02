@@ -1,0 +1,36 @@
+@layer itg.components {
+/* ---------- Print ----------
+   Chromium repeats fixed boxes on every printed page, on top of the content:
+   the phone bar (every Letter or A4 page is narrower than 993px, so it is
+   what prints) covered the first lines of each page and the off-screen skip
+   link landed near the foot of the one before. On paper the header is a
+   plain block at the top of the first page, in its own colours (the white
+   wordmark would vanish on an unprinted bar); the skip link, the menu
+   button and the floating UserWay button are left out. */
+@media print {
+  #menu-root,
+  html:not([data-block-preview]) #menu-root {
+    position: static;
+    height: auto;
+    min-height: 0;
+  }
+
+  html:not([data-block-preview]) {
+    scroll-padding-top: 0;
+  }
+
+  .site-header-bar {
+    position: static;
+    box-shadow: none;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .skip-link,
+  .site-header-mobile-toggle,
+  .uwy,
+  .userway_buttons_wrapper {
+    display: none !important;
+  }
+}
+}

@@ -4,8 +4,17 @@ import smtplib
 import ssl
 from contextlib import contextmanager, suppress
 
+from apps.core.models.base.delivery_rates import DeliveryChannel
+from apps.core.services.delivery_rates import smtp_identity
+from apps.core.services.delivery_rates.adapters.smtp import reply_text, smtp_signal
+
 from .contracts import DeliveryResult, EmailMessage
-from .exceptions import PermanentEmailDeliveryError, TransientEmailDeliveryError, UncertainEmailDeliveryError
+from .exceptions import (
+    PermanentEmailDeliveryError,
+    TransientEmailDeliveryError,
+    UncertainEmailDeliveryError,
+    with_signal,
+)
 from .mime import build_mime_message
 
 
@@ -13,6 +22,7 @@ class SMTPProvider:
     """Deliver MIME messages with SMTP, SMTP+STARTTLS, or SMTP-over-SSL."""
 
     name = "smtp"
+    rate_channel = DeliveryChannel.SMTP_SEND
 
     def __init__(
         self,
@@ -33,6 +43,12 @@ class SMTPProvider:
         self.from_email, self.from_name = from_email, from_name
         self.username, self.password = username, password
         self.use_tls, self.use_ssl, self.timeout = use_tls, use_ssl, timeout
+
+    def rate_identity(self) -> str:
+        return smtp_identity(self.host, self.port, self.username)
+
+    def rate_costs(self, message: EmailMessage) -> dict:
+        return {"budget_cost": max(1, len(message.envelope_recipients)), "message_cost": 1}
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         mime = build_mime_message(message, from_email=self.from_email, from_name=self.from_name)
@@ -88,22 +104,26 @@ def _connection_lost_error(submitted: bool) -> Exception:
 
 
 def _reply_code_error(exc: smtplib.SMTPResponseException) -> Exception:
+    """The error for a reply code, with the rate signal of its code, enhanced status and text (only matched)."""
     temporary, permanent = next(
         ((temp, perm) for types, temp, perm in _SMTP_CODE_MESSAGES if isinstance(exc, types)),
         ("SMTP temporarily rejected the request.", "SMTP rejected the request."),
     )
+    signal = smtp_signal(exc.smtp_code, reply_text(exc.smtp_error))
     if 400 <= exc.smtp_code < 500:
-        return TransientEmailDeliveryError(temporary)
-    return PermanentEmailDeliveryError(permanent)
+        return with_signal(TransientEmailDeliveryError(temporary), signal)
+    return with_signal(PermanentEmailDeliveryError(permanent), signal)
 
 
 def _classify_smtp_error(exc: OSError, *, submitted: bool) -> Exception:
     """The delivery error for an SMTP or socket failure (every smtplib error is an ``OSError``)."""
     if isinstance(exc, smtplib.SMTPRecipientsRefused):
-        codes = [response[0] for response in exc.recipients.values()]
+        responses = list(exc.recipients.values())
+        codes = [response[0] for response in responses]
         temporary = codes and all(400 <= code < 500 for code in codes)
         error = TransientEmailDeliveryError if temporary else PermanentEmailDeliveryError
-        return error("SMTP rejected all recipients.")
+        signal = smtp_signal(responses[0][0], reply_text(responses[0][1])) if responses else None
+        return with_signal(error("SMTP rejected all recipients."), signal)
     if isinstance(exc, smtplib.SMTPNotSupportedError):
         return PermanentEmailDeliveryError("SMTP does not support a required operation.")
     if isinstance(exc, smtplib.SMTPServerDisconnected) or not isinstance(exc, smtplib.SMTPException):

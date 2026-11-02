@@ -7,6 +7,7 @@ from django.utils.html import escape, format_html
 from unfold.decorators import action, display
 
 from apps.core.admin import BaseModelAdmin
+from apps.core.services.background_jobs import jobs_enabled
 from apps.mail.models import SmsCampaign
 from apps.mail.models.sms_campaign import SMS_AUDIENCE_CHOICES
 
@@ -47,11 +48,23 @@ class SmsCampaignAdmin(SmsCampaignSendViewsMixin, BaseModelAdmin):
     list_filter = ("status", "phone_policy", SmsAudienceTypeFilter)
     search_fields = ("name", "message")
     ordering = ("-created_at",)
+    actions = ["resume_paused_recipients_action"]
     actions_detail = [
         "preview_sms_action",
         "preview_recipients_action",
         "send_sms_campaign_action",
     ]
+
+    @admin.action(description="Resume paused recipients (held back by delivery limits)", permissions=["change"])
+    def resume_paused_recipients_action(self, request, queryset):
+        from apps.mail.services.campaign.dispatch import resume_paused_sms_recipients
+
+        resumed = sum(resume_paused_sms_recipients(campaign) for campaign in queryset)
+        if not resumed:
+            self.message_user(request, "No paused recipients to resume (or the campaign is still sending).")
+            return
+        how = "queued for the background worker" if jobs_enabled() else "being sent by the web server"
+        self.message_user(request, f"Resumed {resumed} paused recipient(s): {how}.", messages.SUCCESS)
 
     fieldsets = (
         (
@@ -165,7 +178,7 @@ class SmsCampaignAdmin(SmsCampaignSendViewsMixin, BaseModelAdmin):
 
     @display(description="Status", label=True)
     def status_badge(self, obj):
-        colors = {"draft": "info", "sending": "warning", "sent": "success", "failed": "danger"}
+        colors = {"draft": "info", "sending": "warning", "partial": "warning", "sent": "success", "failed": "danger"}
         return obj.get_status_display(), colors.get(obj.status, "info")
 
     @display(description="SMS Message")

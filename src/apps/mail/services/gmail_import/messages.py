@@ -11,6 +11,7 @@ from django.core.cache import cache
 from imap_tools import AND
 
 from .connection import GmailImportError, resolve_gmail_mailbox
+from .credential_mail import WITHOUT_CREDENTIAL_MAIL, is_credential_mail, without_credential_mail
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,9 @@ def list_recent_sent_messages(
         import apps.mail.services.gmail_import as gmail_api
 
         with gmail_api._open_mailbox(mailbox=resolved_mailbox) as client:
-            messages = list(client.fetch(limit=limit, reverse=True, mark_seen=False, bulk=True))
+            # Credential mail (sign-in codes, login links, invitations, tickets) is never listed, shown or cached.
+            fetched = client.fetch(WITHOUT_CREDENTIAL_MAIL, limit=limit, reverse=True, mark_seen=False, bulk=True)
+            messages = without_credential_mail(fetched)
     except GmailImportError:
         raise
     except Exception as exc:  # pragma: no cover - exercised in tests with mocks
@@ -163,6 +166,8 @@ def _is_token_bearing_login_link_url(url: str) -> bool:
 
 
 def find_message_by_uid(mailbox, message_id: str):
-    for message in mailbox.fetch(AND(uid=str(message_id)), limit=1, mark_seen=False, bulk=False):
-        return message
+    criteria = AND(WITHOUT_CREDENTIAL_MAIL, uid=str(message_id))
+    for message in mailbox.fetch(criteria, limit=1, mark_seen=False, bulk=False):
+        if not is_credential_mail(message):
+            return message
     raise GmailImportError("The selected Gmail message could not be found.")
