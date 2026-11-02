@@ -271,8 +271,9 @@ and app cannot change at all: select another provider first.
 
 ### 2. Install the certificate
 
-A superuser chooses **Install certificate** on the panel. It is a separate page, not the configuration
-form: nothing entered is kept in the session or cache, the key and password inputs are never shown again,
+An admin with **Core** access chooses **Install certificate** on the saved configuration's panel.
+Save a new configuration with **Save and continue editing** to reach this panel. It is a separate page,
+not the configuration form: nothing entered is kept in the session or cache, the key and password inputs are never shown again,
 and error reports hide them. It takes either:
 
 - **.p12 / .pfx file** with **Password / passphrase** (what macOS Keychain exports), or
@@ -313,8 +314,8 @@ is refused.
 
 The panel also offers **Roll back to previous** (after a fresh token test with the previous key), **Remove
 (emergency)** ([Emergency revocation](#emergency-revocation)) and **Download .cer** (the public certificate,
-for OIT). Staff with the **Core** app see the panel and can download the `.cer`; only a superuser can change
-the certificate.
+for OIT). Staff with the **Core** app can install or replace a certificate and download the public `.cer`.
+Rollback, emergency removal, access checks and approval-evidence fields remain superuser-only.
 
 ### 3. Validate, then select Graph
 
@@ -426,7 +427,7 @@ AWS permissions (`aws/cicd/identity-stack.json`; deployment notes in
   means an account administrator changes the resource policy, which CloudTrail records.
 - **This is an exception** to the rule that the ECS task role has read-only access to application
   credentials ([Production](../deployment/production.md#application-aws-credentials-and-background-jobs)):
-  the backend must write a version when a superuser installs a certificate. It needs InfoSec sign-off
+  the backend must write a version when a Core admin installs a certificate. It needs InfoSec sign-off
   ([Open items](#open-items-before-go-live)).
 
 What this means: code running as the backend can read the key, as it can every credential the backend
@@ -524,11 +525,11 @@ any certificate Entra does not accept yet, so rotation needs no downtime when do
 1. **Laptop:** create a new key pair and certificate ([step 3](#3-create-the-key-pair-and-certificate)).
 2. **OIT:** send the new `.cer` and its SHA-1 thumbprint, and ask Cloud Systems to add it to the app. The
    old certificate keeps working.
-3. **Admin (superuser):** once OIT confirms, **Install certificate** with the new pair and the expected
+3. **Admin (Core access):** once OIT confirms, **Install certificate** with the new pair and the expected
    SHA-1 thumbprint. The site writes a new key version, tests it with Entra, and switches the pin; the
    replaced certificate is kept as previous.
-4. **Admin:** **Run access check** and send a test email. Evidence recorded for the old certificate does not
-   count for the new one.
+4. **Admin (superuser):** **Run access check** and send a test email. Evidence recorded for the old certificate
+   does not count for the new one.
 5. **OIT:** after a day without problems, ask Cloud Systems to remove the old certificate (by its SHA-1
    thumbprint). From then on **Roll back to previous** fails its token test, as it should.
 6. **Laptop:** destroy the remaining copies of the old key.
@@ -607,9 +608,9 @@ Email** prove the credentials.
 - **No retry inside the provider.** One request is made per message. Retrying is left to the caller
   (see the [error reference](#error-reference)), and an uncertain outcome is never retried
   automatically.
-- **Admin access.** Only staff granted the **Core** app can open the configuration, and only a superuser can
-  install, roll back or remove a certificate or run the access check; **Mail → Notification Delivery** shows
-  the configuration read-only. Changelist filters on secret-looking field names (`?private_key__regex=…`)
+- **Admin access.** Staff granted the **Core** app can open the configuration and install or replace its
+  certificate. Only a superuser can roll back or remove a certificate or run the access check;
+  **Mail → Notification Delivery** shows the configuration read-only. Changelist filters on secret-looking field names (`?private_key__regex=…`)
   are refused with `400` on every admin page. The configuration, its scope, its certificates and its access
   checks are on the safe-ORM denylist, so the `i2g-admin` CLI and the AI assistant cannot read or change
   them. Error messages and log lines carry no key, token, or response body.
@@ -740,7 +741,7 @@ configured.
 | Certificate expiry | The panel's expiry badge (amber at the warning, red at `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS`, default 14); `verify_service_configs --strict` fails from the critical threshold while Graph is selected | Rotate before the critical threshold. |
 | Certificate changes | Admin history (`LogEntry`) of the Graph configuration: install, rollback and removal, with the actor, thumbprint, key version and reason | Review after any change. |
 | Access check | **Microsoft Graph Access Checks** in the admin (Core app); the panel's **Go-live evidence** line | Re-run after any Entra / Exchange change or certificate rotation. |
-| Use of the key secret | CloudTrail for `itg/backend/microsoft-graph/certificate-key`: `GetSecretValue`, `PutSecretValue`, `UpdateSecretVersionStage`, resource-policy changes | Only `ecsTaskRole` sessions are expected: reads about hourly per process, writes only when a superuser installs a certificate. |
+| Use of the key secret | CloudTrail for `itg/backend/microsoft-graph/certificate-key`: `GetSecretValue`, `PutSecretValue`, `UpdateSecretVersionStage`, resource-policy changes | Only `ecsTaskRole` sessions are expected: reads about hourly per process, writes only when a Core admin installs a certificate. |
 | Sign-ins of the app | Entra → Enterprise applications → the app → **Sign-in logs** (service principal sign-ins) | Unexpected IPs or failures. |
 | Mailbox activity | Microsoft Purview audit log for `i2g@ucmerced.edu` (`Send`, `MailItemsAccessed`), run by the M365 admins | Investigations. |
 | Non-delivery reports, mailbox size | The I2G Inbox and Sent Items | Watch for bounces and sending restrictions (`550 5.1.8`); a full mailbox stops sending (`507`). |
