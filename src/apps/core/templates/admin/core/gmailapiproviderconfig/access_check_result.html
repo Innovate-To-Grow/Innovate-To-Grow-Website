@@ -1,0 +1,24 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }} &mdash; {{ original.name }}</h1>{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl">
+    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 text-sm dark:border-base-700 dark:bg-base-800">
+        <p>Checked {{ report.checked_at|date:"Y-m-d H:i:s T" }} &middot; service account <span class="font-mono">{{ report.service_account_email }}</span> &middot; client ID <span class="font-mono">{{ report.client_id }}</span> &middot; key ID <span class="font-mono">{{ report.key_id }}</span></p>
+        <p class="mt-1">Refusal probe address: <span class="font-mono">{{ report.deny_subject }}</span></p>
+        <p class="mt-2 font-semibold">{{ report.conclusion }}</p>
+    </div>
+    <table class="mb-6 w-full text-xs">
+        <thead><tr><th class="px-2 py-1 text-left">Outcome</th><th class="px-2 py-1 text-left">Check</th><th class="px-2 py-1 text-left">Account / scope</th><th class="px-2 py-1 text-left">Expected</th><th class="px-2 py-1 text-left">Got</th><th class="px-2 py-1 text-left">Note</th></tr></thead>
+        <tbody>
+            {% for result in report.results %}
+                <tr><td class="px-2 py-1">{{ result.outcome }}</td><td class="px-2 py-1">{{ result.check }}</td><td class="px-2 py-1 font-mono">{{ result.subject }}</td><td class="px-2 py-1">{{ result.expected }}</td><td class="px-2 py-1">{{ result.got }}</td><td class="px-2 py-1">{{ result.note }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ cancel_url }}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">Back to the configuration</a>
+</div>
+{% endblock %}

@@ -1,21 +1,28 @@
-import {useId, useRef, type ReactNode} from 'react';
+import {useEffect, useId, useRef, useState, type ReactNode} from 'react';
+
+const STATUS_MS = 4000;
+const COPIED = 'Shareable URL copied.';
+const COPY_FAILED = 'Unable to copy URL. Select the link and copy it manually.';
+
+type CopyTone = 'success' | 'error';
 
 interface SharedLinkPanelProps {
   shareUrl: string;
-  onStatus: (message: string) => void;
   /** Shown beside the link (the export buttons). */
   children: ReactNode;
 }
 
-/** Copies through the Clipboard API, then the selected-input `execCommand` fallback, then asks the user. */
-async function copyShareUrl(shareUrl: string, input: HTMLInputElement, onStatus: (message: string) => void) {
+/**
+ * Copies through the Clipboard API, then the selected-input `execCommand` fallback. The visible link is selected
+ * first, so when both fail it is already selected for the manual copy the failure asks for.
+ */
+async function copyShareUrl(shareUrl: string, input: HTMLInputElement): Promise<CopyTone> {
   input.select();
 
   try {
     if (window.navigator.clipboard?.writeText) {
       await window.navigator.clipboard.writeText(shareUrl);
-      onStatus('Shareable URL copied.');
-      return;
+      return 'success';
     }
   } catch {
     // Fall through to the selected-input copy fallback below.
@@ -23,20 +30,37 @@ async function copyShareUrl(shareUrl: string, input: HTMLInputElement, onStatus:
 
   try {
     if (document.execCommand('copy')) {
-      onStatus('Shareable URL copied.');
-      return;
+      return 'success';
     }
   } catch {
-    // Keep the final fallback message below.
+    // Report the failure below.
   }
 
-  onStatus('Unable to copy URL. Select the link and copy it manually.');
+  return 'error';
 }
 
-/** Shared page: the link to pass on, with a Copy button and the exports beside it. */
-export const SharedLinkPanel = ({shareUrl, onStatus, children}: SharedLinkPanelProps) => {
+/** The panel's own copy feedback, cleared after four seconds (as useCopyLink's), and on unmount. */
+function useCopyStatus() {
+  const [status, setStatus] = useState<{message: string; tone: CopyTone | ''}>({message: '', tone: ''});
+  const timer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const report = (tone: CopyTone) => {
+    setStatus({message: tone === 'success' ? COPIED : COPY_FAILED, tone});
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setStatus({message: '', tone: ''}), STATUS_MS);
+  };
+
+  return {...status, report};
+}
+
+/** Shared page: the link to pass on, with a Copy Link button, the exports beside it and the copy's outcome. */
+export const SharedLinkPanel = ({shareUrl, children}: SharedLinkPanelProps) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
+  const {message, tone, report} = useCopyStatus();
+  const copy = async (input: HTMLInputElement) => report(await copyShareUrl(shareUrl, input));
 
   return (
     <div className="itg-panel project-grid-share-result">
@@ -53,25 +77,28 @@ export const SharedLinkPanel = ({shareUrl, onStatus, children}: SharedLinkPanelP
             value={shareUrl}
             readOnly
             title="Click to copy the link"
-            onFocus={(event) => {
-              void copyShareUrl(shareUrl, event.currentTarget, onStatus);
-            }}
+            // Taking focus only selects the link: tabbing through the page must not overwrite the clipboard.
+            onFocus={(event) => event.currentTarget.select()}
             onClick={(event) => {
-              void copyShareUrl(shareUrl, event.currentTarget, onStatus);
+              void copy(event.currentTarget);
             }}
           />
           <button
             type="button"
             className="itg-btn itg-btn-primary project-grid-share-copy"
             onClick={() => {
-              if (inputRef.current) void copyShareUrl(shareUrl, inputRef.current, onStatus);
+              if (inputRef.current) void copy(inputRef.current);
             }}
           >
-            Copy link
+            Copy Link
           </button>
         </div>
       </div>
       {children}
+      {/* In the page while empty, so its first message is announced too; it takes no room until it has one. */}
+      <p className={`project-grid-share-copy-status ${tone === 'error' ? 'itg-error' : 'itg-success'}`} role="status">
+        {message}
+      </p>
     </div>
   );
 };

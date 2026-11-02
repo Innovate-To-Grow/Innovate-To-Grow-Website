@@ -110,9 +110,10 @@
                 </dd>
             </div>
             <div>
-                <dt class="text-xs font-medium uppercase text-base-400">Campaign Send Rate</dt>
-                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
-                    {{ config.max_send_rate }} emails/sec
+                <dt class="text-xs font-medium uppercase text-base-400">Send Rate</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark" data-send-rate="email">
+                    {{ email_send_rate }}
+                    <a href="{{ delivery_rates_url }}{% if email_rate_channel %}#rate-card-{{ email_rate_channel }}{% endif %}" class="ml-1 text-xs font-normal text-primary-600 hover:underline dark:text-primary-400">Delivery Rates</a>
                 </dd>
             </div>
         </dl>
@@ -131,6 +132,13 @@
                 </dd>
             </div>
             <div>
+                <dt class="text-xs font-medium uppercase text-base-400">Send Rate</dt>
+                <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark" data-send-rate="sms">
+                    {{ sms_send_rate }}
+                    <a href="{{ delivery_rates_url }}#rate-card-sms_send" class="ml-1 text-xs font-normal text-primary-600 hover:underline dark:text-primary-400">Delivery Rates</a>
+                </dd>
+            </div>
+            <div>
                 <dt class="text-xs font-medium uppercase text-base-400">SMS OTP Message Template</dt>
                 <dd class="mt-1 text-sm font-medium text-font-default-light dark:text-font-default-dark">
                     {{ sms_template_display }}
@@ -139,6 +147,17 @@
         </dl>
     </section>
 </div>
+
+{% if config.provider == "graph" %}
+    <section id="graph-provider-summary" class="mt-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        {% include "admin/mail/settings_graph_panel.html" %}
+    </section>
+{% endif %}
+{% if config.provider == "gmail" %}
+    <section id="gmail-provider-summary" class="mt-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        {% include "admin/mail/settings_gmail_panel.html" %}
+    </section>
+{% endif %}
 
 <div class="mt-6">
     <a href="{{ edit_url }}"

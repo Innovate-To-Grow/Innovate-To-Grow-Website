@@ -74,6 +74,14 @@ class RealAgentConstructionTests(TestCase):
             },
         )
         self.assertTrue({tool.name for tool in agent.tools} & WRITE_TOOL_NAMES)
+        self.assertEqual(agent.model_settings.temperature, self.chat_config.temperature)
+
+        fixed_sampling_agent = build_agent(
+            chat_config=self.chat_config,
+            aws_config=self.aws_config,
+            model_id="us.anthropic.claude-fable-5",
+        )
+        self.assertIsNone(fixed_sampling_agent.model_settings.temperature)
 
         plan_agent = build_agent(
             chat_config=self.chat_config,
@@ -115,7 +123,7 @@ class RealAgentConstructionTests(TestCase):
                         system_text="sys",
                         input_data="hi",
                         aws_config=self.aws_config,
-                        model_id=self.chat_config.default_model_id,
+                        model_id="us.anthropic.claude-fable-5",
                         max_tokens=64,
                         temperature=0.2,
                     )
@@ -129,7 +137,8 @@ class RealAgentConstructionTests(TestCase):
                 if value is not None:
                     os.environ[key] = value
 
-        self.assertEqual(captured.get("model"), "bedrock/us.anthropic.claude-sonnet-4-20250514-v1:0")
+        self.assertEqual(captured.get("model"), "bedrock/us.anthropic.claude-fable-5")
+        self.assertIsNone(captured.get("temperature"))
         self.assertEqual(captured.get("aws_access_key_id"), "AKIA-TEST")
         self.assertEqual(captured.get("aws_secret_access_key"), "SECRET-TEST")
         self.assertEqual(captured.get("aws_region_name"), "eu-central-1")

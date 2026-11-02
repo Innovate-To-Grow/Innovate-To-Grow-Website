@@ -2,6 +2,7 @@ import type {jsPDF} from 'jspdf';
 
 import type {StyledRun} from './exportRichText';
 import {HIGHLIGHT_FILL_RGB, TEXT_COLOR_RGB} from '../support/exportTypes';
+import type {PdfFontStyle} from '../support/pdfTypeface';
 
 const HIGHLIGHT_RGB = HIGHLIGHT_FILL_RGB;
 const TEXT_RGB = TEXT_COLOR_RGB;
@@ -19,7 +20,8 @@ export interface RunLine {
   tokens: Array<Token & {width: number}>;
 }
 
-const fontStyle = (bold: boolean, italic: boolean) => {
+/** The face a run of the given emphasis is drawn in. */
+export const fontStyle = (bold: boolean, italic: boolean): PdfFontStyle => {
   if (bold && italic) return 'bolditalic';
   if (bold) return 'bold';
   if (italic) return 'italic';
@@ -50,12 +52,13 @@ const tokenize = (runs: StyledRun[]): Array<Token | 'break'> => {
   return tokens;
 };
 
-/** Wrap styled runs into visual lines that each fit within maxWidth at the given font size. */
+/** Wrap styled runs into visual lines that each fit within maxWidth at the given font family and size. */
 export const wrapRunsToLines = (
   pdf: jsPDF,
   runs: StyledRun[],
   maxWidth: number,
   fontSize: number,
+  family: string,
 ): RunLine[] => {
   pdf.setFontSize(fontSize);
   const lines: RunLine[] = [];
@@ -73,7 +76,7 @@ export const wrapRunsToLines = (
       pushLine();
       continue;
     }
-    pdf.setFont('helvetica', fontStyle(token.bold, token.italic));
+    pdf.setFont(family, fontStyle(token.bold, token.italic));
     const width = pdf.getTextWidth(token.text);
 
     if (!token.isSpace && current.tokens.length && lineWidth + width > maxWidth) {
@@ -91,10 +94,17 @@ export const wrapRunsToLines = (
 };
 
 /** Draw a single pre-wrapped line at the given baseline, honoring styling + highlight. */
-export const drawRunLine = (pdf: jsPDF, line: RunLine, x: number, baselineY: number, fontSize: number) => {
+export const drawRunLine = (
+  pdf: jsPDF,
+  line: RunLine,
+  x: number,
+  baselineY: number,
+  fontSize: number,
+  family: string,
+) => {
   let cursorX = x;
   for (const token of line.tokens) {
-    pdf.setFont('helvetica', fontStyle(token.bold, token.italic));
+    pdf.setFont(family, fontStyle(token.bold, token.italic));
     if (token.highlight && !token.isSpace) {
       pdf.setFillColor(HIGHLIGHT_RGB[0], HIGHLIGHT_RGB[1], HIGHLIGHT_RGB[2]);
       pdf.rect(cursorX, baselineY - fontSize * 0.32, token.width, fontSize * 0.42, 'F');

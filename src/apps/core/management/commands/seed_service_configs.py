@@ -8,6 +8,7 @@ are set locally.
 
 import os
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
@@ -36,7 +37,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 "Created skeleton active EmailServiceConfig 'Production'. "
-                "Fill in SES or SMTP credentials in Django admin."
+                "Fill in SES, SMTP, or Microsoft Graph credentials in Django admin."
             )
         )
 
@@ -45,6 +46,21 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("AWSCredentialConfig already exists — skipping."))
             return
 
+        secret_arn = os.environ.get("AWS_SERVICE_CREDENTIALS_SECRET_ARN", "").strip()
+        if secret_arn:
+            AWSCredentialConfig.objects.create(
+                name="Production",
+                is_active=True,
+                credentials_secret_arn=secret_arn,
+                default_region=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"),
+            )
+            self.stdout.write(self.style.SUCCESS("Created active AWS configuration using Secrets Manager."))
+            return
+        if getattr(settings, "AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER", False):
+            self.stdout.write(
+                self.style.WARNING("Set AWS_SERVICE_CREDENTIALS_SECRET_ARN to seed production AWS credentials.")
+            )
+            return
         access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
         secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
         if not access_key and not secret_key:

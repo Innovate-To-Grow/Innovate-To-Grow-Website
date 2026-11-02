@@ -197,7 +197,10 @@ class SESTests(SimpleTestCase):
 
         SESProvider(from_email="from@example.com", retry_config=retry).send(self.message)
 
-        self.assertIs(client_factory.call_args.kwargs["config"], retry)
+        # The caller's retry policy, with the DELIVERY_RATES timeout of each call (botocore's own is 60 s).
+        config = client_factory.call_args.kwargs["config"]
+        self.assertEqual(config.retries, {"max_attempts": 2})
+        self.assertEqual((config.connect_timeout, config.read_timeout), (10, 10))
 
     @patch("apps.core.services.email.ses.resolve_aws_credentials")
     def test_missing_credentials_are_permanent(self, resolve_credentials):
@@ -564,11 +567,15 @@ class RegistryFacadeTests(SimpleTestCase):
                 SimpleNamespace(provider="smtp", from_email="from@example.com", from_name=""),
             )
 
+    @patch("apps.core.services.email.delivery.record")
+    @patch("apps.core.services.email.delivery.admit")
     @patch("apps.core.services.email.delivery.resolve_provider")
     @patch("apps.core.models.EmailServiceConfig.load")
-    def test_delivery_service_loads_config_when_none(self, load_config, resolve):
+    def test_delivery_service_loads_config_when_none(self, load_config, resolve, admit, record):
         load_config.return_value = SimpleNamespace(is_active=True, provider="ses")
-        provider = MagicMock()
+        provider = MagicMock(rate_channel="ses_send")
+        provider.rate_identity.return_value = "1:us-west-2"
+        provider.rate_costs.return_value = {}
         provider.send.return_value = MagicMock(message_id="id-1")
         resolve.return_value = provider
         message = EmailMessage("Subject", ("to@example.com",), text_body="Body")
@@ -578,6 +585,8 @@ class RegistryFacadeTests(SimpleTestCase):
         load_config.assert_called_once_with()
         provider.send.assert_called_once()
         self.assertEqual(result.message_id, "id-1")
+        admit.assert_called_once_with("ses_send", "1:us-west-2", lane="transactional")
+        record.assert_called_once()
 
     @patch("apps.core.services.email.delivery.EmailDeliveryService")
     def test_deliver_email_delegates_to_service(self, service_cls):

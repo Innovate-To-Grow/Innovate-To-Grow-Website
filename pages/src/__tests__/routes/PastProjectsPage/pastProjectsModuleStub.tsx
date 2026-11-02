@@ -1,7 +1,11 @@
 // The `@/features/projects` stand-in for the PastProjectsPage tests: each component is a button
 // (or a heading) that calls the page's callback with a fixed change, so the tests drive the page's
-// share flow without rendering the real builder or tables.
+// share flow without rendering the real builder or tables. The builder and the add-more search say
+// which list they were given (`data-rows`) and which catalog is in context (`data-catalog`).
 import type {ProjectGridRow} from '@/features/projects/api';
+import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
+
+const rowTitles = (rows: ProjectGridRow[] = []) => rows.map((row) => row.project_title).join('|');
 
 export const pastProjectsModuleStub = (sampleRow: ProjectGridRow, addedRow: ProjectGridRow) => ({
     createProjectGridItems: (rows: ProjectGridRow[]) =>
@@ -131,21 +135,29 @@ export const pastProjectsModuleStub = (sampleRow: ProjectGridRow, addedRow: Proj
         );
     },
     MyCurationsPanel: () => <section aria-label="My Curations (mocked)"/>,
-    SharedPastProjectMergeSearch: ({
+    SharedPastProjectMergeSearch: function SharedPastProjectMergeSearch({
                                        onAddRows,
+                                       rows,
                                    }: {
         onAddRows: (rows: ProjectGridRow[]) => Promise<void>;
-    }) => (
-        <button
-            type="button"
-            onClick={() => void onAddRows([addedRow]).catch(() => undefined)}
-        >
-            Add mocked row
-        </button>
-    ),
-    PastProjectsBuilder: ({
+        rows?: ProjectGridRow[];
+    }) {
+        const {key} = useProjectCatalog();
+        return (
+            <button
+                type="button"
+                data-catalog={key}
+                data-rows={rowTitles(rows)}
+                onClick={() => void onAddRows([addedRow]).catch(() => undefined)}
+            >
+                Add mocked row
+            </button>
+        );
+    },
+    PastProjectsBuilder: function PastProjectsBuilder({
                               initialSearch,
                               onCreateShare,
+                              rows,
                           }: {
         initialSearch?: string;
         onCreateShare: (
@@ -153,19 +165,25 @@ export const pastProjectsModuleStub = (sampleRow: ProjectGridRow, addedRow: Proj
             name: string,
             note: string,
         ) => Promise<unknown>;
-    }) => (
-        <button
-            type="button"
-            data-initial-search={initialSearch}
-            onClick={() =>
-                void onCreateShare(
-                    [sampleRow],
-                    'Spring finalists',
-                    'Review note',
-                )
-            }
-        >
-            Create mocked share
-        </button>
-    ),
+        rows?: ProjectGridRow[];
+    }) {
+        const {key} = useProjectCatalog();
+        return (
+            <button
+                type="button"
+                data-initial-search={initialSearch}
+                data-catalog={key}
+                data-rows={rowTitles(rows)}
+                onClick={() =>
+                    void onCreateShare(
+                        [sampleRow],
+                        'Spring finalists',
+                        'Review note',
+                    )
+                }
+            >
+                Create mocked share
+            </button>
+        );
+    },
 });

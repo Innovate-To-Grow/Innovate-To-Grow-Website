@@ -1,16 +1,13 @@
-"""Share notes and project detail text: length caps and HTML sanitization on create and update."""
+"""Share notes: length caps and HTML sanitization on create and update. details_text is read-only."""
 
 from apps.projects.models import PastProjectShare
-from apps.projects.serializers.past_project_share import (
-    DETAILS_TEXT_MAX_LENGTH,
-    NOTE_MAX_LENGTH,
-)
+from apps.projects.serializers.past_project_share import NOTE_MAX_LENGTH
 
 from .share_helpers import PastProjectShareTestCase, sample_payload, sample_row
 
 
 class PastProjectShareContentTests(PastProjectShareTestCase):
-    """Share notes and project detail text: length caps and HTML sanitization on create and update."""
+    """Share notes: length caps and HTML sanitization on create and update. details_text is read-only."""
 
     def test_note_optional_blank(self):
         response = self.client.post("/projects/past-shares/", sample_payload(), format="json")
@@ -22,35 +19,14 @@ class PastProjectShareContentTests(PastProjectShareTestCase):
         self.assertEqual(share.note, "")
         self.assertEqual(share.details_text, "")
 
-    def test_details_text_is_sanitized_on_create(self):
+    def test_details_text_is_not_accepted_on_create(self):
         response = self.client.post(
-            "/projects/past-shares/",
-            sample_payload(
-                details_text=(
-                    "<mark>Keep</mark><script>alert(1)</script><b>bold</b>"
-                    '<span onclick="x">drop</span>'
-                    '<a href="/past-projects/project/11111111-1111-4111-8111-111111111111">Individual Link</a>'
-                    '<a href="javascript:alert(1)">bad</a>'
-                ),
-            ),
-            format="json",
+            "/projects/past-shares/", sample_payload(details_text="<b>Client text</b>"), format="json"
         )
 
         self.assertEqual(response.status_code, 201)
-        stored = response.data["details_text"]
-        # Allowlisted markup survives; script/span and event handlers are stripped.
-        self.assertIn("<mark>Keep</mark>", stored)
-        self.assertIn("<b>bold</b>", stored)
-        self.assertIn(
-            '<a href="/past-projects/project/11111111-1111-4111-8111-111111111111">Individual Link</a>',
-            stored,
-        )
-        self.assertNotIn("<script", stored)
-        self.assertNotIn("onclick", stored)
-        self.assertNotIn("<span", stored)
-        self.assertNotIn("javascript:", stored)
-        share = PastProjectShare.objects.get(pk=response.data["id"])
-        self.assertNotIn("<script", share.details_text)
+        self.assertEqual(response.data["details_text"], "")
+        self.assertEqual(PastProjectShare.objects.get(pk=response.data["id"]).details_text, "")
 
     def test_note_is_sanitized_but_preserves_safe_individual_links(self):
         response = self.client.post(
@@ -72,60 +48,21 @@ class PastProjectShareContentTests(PastProjectShareTestCase):
         )
         self.assertNotIn("javascript:", response.data["note"])
 
-    def test_details_text_is_sanitized_on_patch(self):
+    def test_patch_keeps_the_stored_details_text(self):
         share = PastProjectShare.objects.create(
-            name="Mine", rows=[sample_row()], details_text="<b>old</b>", created_by=self.member
+            name="Mine", rows=[sample_row()], details_text="<b>Saved details</b>", created_by=self.member
         )
 
         response = self.client.patch(
             f"/projects/past-shares/{share.pk}/",
-            {
-                "details_text": "<mark>new</mark><script>alert(1)</script>",
-                "version": share.version,
-            },
+            {"details_text": "x" * 3_000, "version": share.version},
             format="json",
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("<mark>new</mark>", response.data["details_text"])
-        self.assertNotIn("<script", response.data["details_text"])
+        self.assertEqual(response.data["details_text"], "<b>Saved details</b>")
         share.refresh_from_db()
-        self.assertNotIn("<script", share.details_text)
-
-    def test_details_text_at_cap_is_accepted(self):
-        details_text = "x" * DETAILS_TEXT_MAX_LENGTH
-
-        response = self.client.post(
-            "/projects/past-shares/",
-            sample_payload(details_text=details_text),
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(len(response.data["details_text"]), DETAILS_TEXT_MAX_LENGTH)
-
-    def test_details_text_over_cap_is_rejected(self):
-        response = self.client.post(
-            "/projects/past-shares/",
-            sample_payload(details_text="x" * 2_000_001),
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("details_text", response.data)
-
-    def test_large_generated_details_text_is_accepted(self):
-        # A generated detail for many projects with long abstracts can be hundreds of KB; the
-        # cap must not reject a legitimate large share.
-        big_detail = "Project 1\nAbstract: " + ("lorem ipsum " * 40000)  # ~480 KB, well-formed text
-        response = self.client.post(
-            "/projects/past-shares/",
-            sample_payload(details_text=big_detail),
-            format="json",
-        )
-
-        self.assertEqual(response.status_code, 201)
-        self.assertGreater(len(response.data["details_text"]), 100_000)
+        self.assertEqual(share.details_text, "<b>Saved details</b>")
 
     def test_note_at_cap_is_accepted(self):
         note = "x" * NOTE_MAX_LENGTH
@@ -247,6 +184,8 @@ class PastProjectShareContentTests(PastProjectShareTestCase):
         share = PastProjectShare.objects.create(
             name="Mine", rows=[sample_row()], note="Old note", details_text="Old details", created_by=self.member
         )
+        self.catalog["T09"].project_title = "Added Project"
+        self.catalog["T09"].save(update_fields=["project_title"])
         next_rows = [sample_row(team_number="T09", project_title="Added Project")]
 
         response = self.client.patch(
@@ -254,7 +193,6 @@ class PastProjectShareContentTests(PastProjectShareTestCase):
             {
                 "name": "Updated name",
                 "note": "Updated note",
-                "details_text": "Updated project details",
                 "rows": next_rows,
                 "version": share.version,
             },
@@ -265,14 +203,13 @@ class PastProjectShareContentTests(PastProjectShareTestCase):
         self.assertTrue(response.data["can_edit"])
         self.assertEqual(response.data["name"], "Updated name")
         self.assertEqual(response.data["note"], "Updated note")
-        self.assertEqual(response.data["details_text"], "Updated project details")
         self.assertEqual(response.data["rows"][0]["project_title"], "Added Project")
         self.assertEqual(response.data["version"], 2)
         share.refresh_from_db()
         self.assertEqual(share.name, "Updated name")
         self.assertEqual(share.note, "Updated note")
-        self.assertEqual(share.details_text, "Updated project details")
-        self.assertEqual(share.rows, next_rows)
+        self.assertEqual(share.details_text, "Old details")
+        self.assertEqual([row["id"] for row in share.rows], [str(self.catalog["T09"].pk)])
 
     def test_patch_blank_name_rederives_from_the_saved_note(self):
         share = PastProjectShare.objects.create(

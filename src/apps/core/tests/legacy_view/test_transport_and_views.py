@@ -73,8 +73,8 @@ class LegacyTransportTest(SimpleTestCase):
 
     def test_builds_encoded_target_with_only_allowed_query_fields(self):
         self.assertEqual(
-            build_origin_target("/past projects/2025", "page=2&code=secret&q=capstone"),
-            "/past%20projects/2025?page=2&q=capstone",
+            build_origin_target("/static/past projects/2025.pdf", "page=2&code=secret&q=capstone"),
+            "/static/past%20projects/2025.pdf?page=2&q=capstone",
         )
 
     def test_forwards_range_validators_and_representation_headers_only(self):

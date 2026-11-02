@@ -33,7 +33,9 @@ python manage.py createsuperuser
 # Seed skeleton service configs (optional)
 python manage.py seed_service_configs
 
-# Enter SES, SMTP, SNS, or Google credentials via Django admin → Site Settings.
+# Enter SES, SMTP, Microsoft Graph, SNS, or Google credentials via Django admin
+# (Site Settings; the email provider and SMTP are under Mail → Notification Delivery, and the
+# Microsoft Graph configuration and certificate under /admin/core/microsoftgraphproviderconfig/).
 # Verify configs before deploying to prod:
 # python manage.py verify_service_configs --strict
 
@@ -50,7 +52,13 @@ Local development uses `config.settings.environments.local` by default. Key beha
 - SQLite database (`src/db.sqlite3`)
 - Emails printed to console
 - In-memory cache
-- `ALLOWED_HOSTS`: `localhost`, `127.0.0.1`, `0.0.0.0`
+- `DJANGO_ALLOWED_HOSTS`: `localhost`, `127.0.0.1`, `0.0.0.0`
+- Private keys installed in the admin (the Microsoft Graph certificate key) go to the local file store,
+  `src/data/credential-store/` (`CREDENTIAL_STORE_BACKEND = "local_file"`): a 0700 directory of 0600
+  files, gitignored and excluded from the Docker image. Use throwaway keys only; never install the
+  production key in a local site. Under `manage.py test` the store is process memory instead. The Graph
+  go-live gate (`GRAPH_REQUIRE_ACCESS_EVIDENCE`) is off locally. See
+  [Environments](environments.md#microsoft-graph-email).
 
 Most Django commands pick up dev settings automatically. For `test`, you must specify explicitly:
 

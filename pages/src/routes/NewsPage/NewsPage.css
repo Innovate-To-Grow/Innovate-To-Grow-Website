@@ -91,8 +91,8 @@
   line-height: 21px;
 }
 
-/* ---- Pager: the reference news view's centred pager. Links carry a 3px
-   #a29061 underline (#5b5b5b on hover), the current page is bold 20px. ---- */
+/* ---- Pager: centred under the list, with room between Previous, the numbers and Next. Its buttons are the
+   site's pager buttons (.itg-pagination, pagination.css): this only lays them out. ---- */
 .news-pagination.itg-pagination {
   justify-content: center;
   gap: 0 24px;
@@ -107,47 +107,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.news-pagination .itg-pagination-link {
-  padding: 5px 14px;
-  border: 0;
-  border-bottom: 3px solid #a29061;
-  border-radius: 1px;
-  background: var(--itg-color-white);
-  color: var(--itg-color-primary);
-  font-size: var(--itg-font-size-body);
-  line-height: 24px;
-  text-decoration: underline;
-  text-underline-offset: 0.12em;
-}
-
-.news-pagination .itg-pagination-link:hover,
-.news-pagination .itg-pagination-link:focus-visible {
-  border-color: #5b5b5b;
-  background: var(--itg-color-white);
-  color: var(--itg-color-primary-hover);
-  text-decoration: none;
-}
-
-.news-pagination .itg-pagination-link[aria-current='page'],
-.news-pagination .itg-pagination-link[aria-current='page']:hover {
-  padding: 5px 0;
-  border: 0;
-  background: none;
-  color: var(--itg-color-text);
-  font-size: 1.25rem;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.news-pagination .itg-pagination-link:disabled,
-.news-pagination .itg-pagination-link:disabled:hover {
-  border-bottom-color: transparent;
-  background: none;
-  color: var(--itg-color-disabled-text);
-  text-decoration: none;
-  cursor: default;
 }
 
 .news-pagination-info {
@@ -178,14 +137,13 @@
     justify-content: space-between;
     gap: 8px;
   }
+}
 
+/* "Page x of y" takes the numbers' place on phones and on paper, where the pager's buttons stay off the page
+   (pagination.css), so a printed page of the list still says which page it is. */
+@media (max-width: 768px), print {
   .news-pagination-pages {
     display: none;
-  }
-
-  .news-pagination .news-pagination-btn {
-    min-height: 44px;
-    padding: 0 12px;
   }
 
   .news-pagination-info {
@@ -198,6 +156,13 @@
     white-space: normal;
     font-size: var(--itg-font-size-body);
     text-align: center;
+  }
+}
+
+/* On paper the line stands alone under the list, centred as the pager is on wide screens. */
+@media print {
+  .news-pagination.itg-pagination {
+    justify-content: center;
   }
 }
 
