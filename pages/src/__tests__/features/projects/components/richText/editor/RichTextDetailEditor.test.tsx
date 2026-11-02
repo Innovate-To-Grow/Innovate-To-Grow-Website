@@ -40,17 +40,26 @@ describe('RichTextDetailEditor', () => {
         expect(onChange).toHaveBeenLastCalledWith('Bold and highlight');
     });
 
-    it('toggles the note editor expanded height', () => {
+    it('groups the formatting buttons under a name screen readers announce', () => {
+        renderEditor('Draft note');
+
+        const toolbar = screen.getByRole('group', {name: 'Note formatting'});
+        expect(toolbar).toContainElement(screen.getByRole('button', {name: 'Bold'}));
+        expect(toolbar).toContainElement(screen.getByRole('button', {name: 'Expand note editor'}));
+    });
+
+    it('toggles the note editor expanded height, its button naming what a press does', () => {
         const {editor} = renderEditor('Draft note');
         const expandButton = screen.getByRole('button', {name: 'Expand note editor'});
 
         expect(editor).not.toHaveClass('is-expanded');
-        expect(expandButton).toHaveAttribute('aria-pressed', 'false');
+        // Not a pressed toggle as well: the name already carries the state.
+        expect(expandButton).not.toHaveAttribute('aria-pressed');
 
         fireEvent.click(expandButton);
 
         expect(editor).toHaveClass('is-expanded');
-        expect(screen.getByRole('button', {name: 'Collapse note editor'})).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', {name: 'Collapse note editor'})).not.toHaveAttribute('aria-pressed');
 
         fireEvent.click(screen.getByRole('button', {name: 'Collapse note editor'}));
 

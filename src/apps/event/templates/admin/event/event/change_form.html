@@ -88,7 +88,7 @@
                     <div class="flex gap-2">
                         <span class="w-20 shrink-0 text-font-subtle-light dark:text-font-subtle-dark">Provider:</span>
                         <span class="font-medium text-font-default-light dark:text-font-default-dark">
-                            {% if email_config.ses_configured %}AWS SES ({{ aws_config.region|default:"us-west-2" }}){% else %}Not configured{% endif %}
+                            {{ email_config.delivery_summary }}
                         </span>
                     </div>
                     <div class="flex gap-2">

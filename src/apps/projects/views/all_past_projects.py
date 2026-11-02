@@ -4,6 +4,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from ..models import Project
+from ..ordering import archive_ordering
 from ..serializers import ProjectTableSerializer
 
 
@@ -23,9 +24,7 @@ class AllPastProjectsAPIView(ListAPIView):
     # noinspection PyMethodMayBeStatic
     def get_queryset(self):
         return (
-            Project.objects.filter(semester__is_published=True)
-            .select_related("semester")
-            .order_by("-semester__year", "-semester__season", "class_code", "team_number")
+            Project.objects.filter(semester__is_published=True).select_related("semester").order_by(*archive_ordering())
         )
 
     def list(self, request, *args, **kwargs):

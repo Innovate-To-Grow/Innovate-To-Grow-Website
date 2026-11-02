@@ -1,12 +1,12 @@
 #!/bin/sh
 set -e
 
-# Migrations. NOTE: running this at every container boot on a multi-replica
-# service can race on the django_migrations table. The medium-term plan is to
-# move this to a dedicated pre-deploy job in the deploy workflow and then
-# drop it from the runtime entrypoint.
-echo "Running database migrations..."
-python manage.py migrate --noinput
+# Production migrations run once in the deployment workflow before rollout.
+# Local Docker smoke tests can opt in explicitly against their disposable DB.
+if [ "${RUN_DATABASE_MIGRATIONS:-false}" = "true" ]; then
+    echo "Running database migrations..."
+    python manage.py migrate --noinput
+fi
 
 # Both email and SMS challenge issuance require a signing key, including in
 # observe mode. Initialize only missing keys, then check effective policy before

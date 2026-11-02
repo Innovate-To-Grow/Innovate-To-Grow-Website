@@ -1,25 +1,26 @@
 import {useEffect, useRef, useState} from 'react';
 import {
-  DEFAULT_PAST_PROJECT_SHARE_NAME,
   fetchPastProjectShare,
   updatePastProjectShare,
   type PastProjectShare,
   type ProjectGridRow,
 } from '@/features/projects/api';
+import {curationBranding} from '@/features/projects/components/merged/list/curationBranding';
 import {haveEqualRows, rebaseSubmittedRows, rowsNotYetShared} from './shareRows';
 
 type PastProjectSharePatch = Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>>;
 
-export const shareDisplayTitle = (share: Pick<PastProjectShare, 'name'>) =>
-  share.name?.trim() || DEFAULT_PAST_PROJECT_SHARE_NAME;
+/** A share's name, or for one stored with a blank name the default the server gives its rows. */
+export const shareDisplayTitle = (share: Pick<PastProjectShare, 'name' | 'rows'>) =>
+  share.name?.trim() || curationBranding(share.rows ?? []).defaultName;
 
 const SHARE_CONFLICT_RELOADED =
-  'This shared page changed elsewhere. The latest version was reloaded; review it before editing again.';
+  'This curation changed elsewhere. The latest version was reloaded; review it before editing again.';
 const SHARE_CONFLICT_RELOADING =
-  'This shared page changed elsewhere. Reloading the latest version before any more edits are applied.';
+  'This curation changed elsewhere. Reloading the latest version before any more edits are applied.';
 const SHARE_CONFLICT_RELOAD_FAILED =
-  'This shared page changed elsewhere, and the latest version could not be reloaded. Reload the page before editing again.';
-const SHARE_NOT_LOADED = 'Shared past projects are not loaded yet.';
+  'This curation changed elsewhere, and the latest version could not be reloaded. Reload the page before editing again.';
+const SHARE_NOT_LOADED = 'This curation is not loaded yet.';
 
 /** The server's 409 for an update sent with an outdated `version`. */
 const isStaleSnapshotConflict = (error: unknown) => {
@@ -166,7 +167,7 @@ export function useSharedListMutations(shareId: string | undefined, share: PastP
       // `current` is the target share (runnableBaseline checked), so its id is the target id.
       const updated = await updatePastProjectShare(current.id, {...patch, version: current.version});
       if (!isCurrentTarget()) {
-        throw new Error('The shared page changed while this update was running.');
+        throw new Error('The curation changed while this update was running.');
       }
       latestShareRef.current = updated;
       mutationBlockedRef.current = false;

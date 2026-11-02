@@ -1,12 +1,13 @@
-import {RichDetailPreview} from '../../richText/content/RichDetailPreview';
 import type {ProjectGridItem, ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {noteHasContent, sharedListExportTarget} from '../list/curationNote';
-import {BulkActionDialog, MergedEditButtons} from '../list/MergedEditButtons';
+import {curationBranding} from '../list/curationBranding';
+import {sharedListExportTarget} from '../list/curationNote';
+import {MergedEditButtons} from '../list/MergedEditButtons';
 import {MergedExportGroup} from '../list/MergedExportGroup';
 import {MergedListGrid} from '../list/MergedListGrid';
 import {SharedListHeader} from '../list/MergedListHeader';
 import {SharedLinkPanel} from './SharedLinkPanel';
 import {SharedNoteEditor} from './SharedNoteEditor';
+import {SharedNoteView} from './SharedNoteView';
 import {useMergedList} from '../list/useMergedList';
 import {useNoteInsertFields} from '../list/useNoteInsertFields';
 import {useSharedListEditor} from './useSharedListEditor';
@@ -25,35 +26,6 @@ export interface SharedMergedListProps {
   onUndoRows?: () => void;
 }
 
-/** The saved note, read-only, for viewers who cannot edit it. */
-const SharedNoteView = ({noteHtml}: {noteHtml: string}) =>
-  noteHasContent(noteHtml) ? (
-    <div className="project-grid-shared-note">
-      <p className="project-grid-shared-note-label">Curation note</p>
-      <RichDetailPreview className="project-grid-shared-detail-text itg-content" html={noteHtml} />
-    </div>
-  ) : null;
-
-/** A shared list keeps at least one project, so confirming "remove all" only explains that. */
-const SharedBulkActionDialog = ({list}: {list: ReturnType<typeof useMergedList>}) => {
-  if (!list.pendingBulkAction) return null;
-  const handleConfirm = () => {
-    if (list.pendingBulkAction === 'remove-all-shared') {
-      list.setStatusMessage(
-        'A shared page needs at least one project. Remove rows individually, or delete the shared page if it is no longer needed.',
-      );
-    }
-    list.setPendingBulkAction(null);
-  };
-  return (
-    <BulkActionDialog
-      action={list.pendingBulkAction}
-      onCancel={() => list.setPendingBulkAction(null)}
-      onConfirm={handleConfirm}
-    />
-  );
-};
-
 /** A saved curation's page: its link, note and projects, editable in place by its owner. */
 export const SharedMergedList = ({
   id,
@@ -68,7 +40,7 @@ export const SharedMergedList = ({
   onUndoRows,
 }: SharedMergedListProps) => {
   const canEdit = editable && Boolean(onUpdateShare);
-  const list = useMergedList(rows, true);
+  const list = useMergedList(rows);
   const {table, allRows, headingId, setStatusMessage} = list;
   const noteInsert = useNoteInsertFields();
   const {titleInputRef, ...editor} = useSharedListEditor({
@@ -89,14 +61,13 @@ export const SharedMergedList = ({
     <MergedExportGroup
       rows={allRows}
       buildTarget={() =>
-        sharedListExportTarget(title, {
-          enabled: canEdit,
-          titleDraft: editor.titleDraft,
-          noteDraft: editor.noteDraft,
-          savedNoteHtml: noteHtml,
-        })
+        sharedListExportTarget(
+          title,
+          {enabled: canEdit, titleDraft: editor.titleDraft, noteDraft: editor.noteDraft, savedNoteHtml: noteHtml},
+          allRows,
+        )
       }
-      onError={setStatusMessage}
+      onStatus={setStatusMessage}
     />
   );
 
@@ -105,10 +76,11 @@ export const SharedMergedList = ({
       id={id}
       className={`project-grid-shared-list${className ? ` ${className}` : ''}`}
       aria-labelledby={isEditingTitle ? undefined : headingId}
-      aria-label={isEditingTitle ? 'Shared list' : undefined}
+      aria-label={isEditingTitle ? 'Curation' : undefined}
     >
       <SharedListHeader
         headingId={headingId}
+        eyebrow={curationBranding(allRows).eyebrow}
         title={title}
         rowCount={rows.length}
         sharedAt={sharedAt}
@@ -117,22 +89,30 @@ export const SharedMergedList = ({
       />
 
       {shareUrl ? (
-        <SharedLinkPanel shareUrl={shareUrl} onStatus={setStatusMessage}>
+        <SharedLinkPanel shareUrl={shareUrl}>
           {exportGroup}
         </SharedLinkPanel>
       ) : null}
 
       {canEdit ? (
-        <SharedNoteEditor editor={editor} rows={allRows} noteInsert={noteInsert} />
+        <SharedNoteEditor editor={editor} rows={allRows} noteInsert={noteInsert} noteHtml={noteHtml} />
       ) : (
         <SharedNoteView noteHtml={noteHtml} />
       )}
 
       <MergedListGrid
         table={table}
+        title={title}
         rows={rows}
         sharedMode
-        onDeleteRow={canEdit ? editor.deleteRow : undefined}
+        onDeleteRow={
+          canEdit
+            ? (row) => {
+                list.rememberRemoval(row);
+                void editor.deleteRow(row);
+              }
+            : undefined
+        }
         deleteDisabled={false}
         selectable={false}
         toolbar={
@@ -148,13 +128,10 @@ export const SharedMergedList = ({
         }
       />
 
-      <SharedBulkActionDialog list={list} />
-
-      {list.statusMessage ? (
-        <p className="project-grid-status" role="status">
-          {list.statusMessage}
-        </p>
-      ) : null}
+      {/* Always in the page, so screen readers announce its first message too. */}
+      <p className="project-grid-status" role="status">
+        {list.statusMessage}
+      </p>
     </section>
   );
 };

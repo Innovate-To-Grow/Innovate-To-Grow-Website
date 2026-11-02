@@ -5,14 +5,20 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.models import BackgroundJob
+from apps.core.services.delivery_rates.rules.defaults import section
 
 from .registry import notify_job_state, resolve_stale_job_state
 
 logger = logging.getLogger(__name__)
 
 
-def recover_stale_jobs(*, stale_after: timedelta = timedelta(minutes=10)) -> dict[str, int]:
-    """Recover abandoned claims without automatically duplicating deliveries."""
+def recover_stale_jobs(*, stale_after: timedelta | None = None) -> dict[str, int]:
+    """Recover abandoned claims without automatically duplicating deliveries.
+
+    ``stale_after`` defaults to ``DELIVERY_RATES["jobs"]["stale_claim_seconds"]``.
+    """
+    if stale_after is None:
+        stale_after = timedelta(seconds=section("jobs")["stale_claim_seconds"])
     cutoff = timezone.now() - stale_after
     stale_ids = list(
         BackgroundJob.objects.filter(

@@ -49,7 +49,10 @@ ALLOWED_TOKEN_FUNCTIONS = frozenset(
 
 _TOKEN_KEY_RE = re.compile(r"^[a-z0-9_]+$")
 _FORBIDDEN_CHARS = frozenset(";{}<>\\\n\r\f")
-_FUNCTION_RE = re.compile(r"(-?[A-Za-z_][\w-]*)\s*\(")
+# A name and, only when it is a call, the "(" after it. The "(" is optional so a match that
+# starts always succeeds and the scan stays linear: with a required "(", every position of a
+# long name not followed by one is retried to its end (quadratic time, CodeQL py/polynomial-redos).
+_FUNCTION_RE = re.compile(r"(-?[A-Za-z_][\w-]*)(\s*\()?")
 _CLOSERS = {")": "(", "]": "["}
 
 
@@ -100,7 +103,8 @@ def is_safe_token_value(text: str) -> bool:
     unquoted = _unquoted_text(text)
     if unquoted is None:
         return False
-    return all(name.lower() in ALLOWED_TOKEN_FUNCTIONS for name in _FUNCTION_RE.findall(unquoted))
+    calls = (name for name, paren in _FUNCTION_RE.findall(unquoted) if paren)
+    return all(name.lower() in ALLOWED_TOKEN_FUNCTIONS for name in calls)
 
 
 def coerce_token_value(value) -> str | None:

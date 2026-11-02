@@ -1,8 +1,9 @@
 @layer itg.components {
 /* Moved verbatim from the CMS "auth" stylesheet. */
 
-/* The six-digit code: the theme's input (#f2f2f2, 1px #ccc, inset shadow,
-   blue glow on focus) at a size that reads as a code. */
+/* The six-digit code: the theme's input (#f2f2f2, 1px #ccc, inset shadow) at
+   a size that reads as a code. Focus shows the site's one ring (the global
+   :focus-visible outline), with no glow. */
 .auth-code-input {
   box-sizing: border-box;
   width: 100%;
@@ -20,11 +21,6 @@
   letter-spacing: 0.5em;
   text-align: center;
   transition: border-color 0.2s linear, box-shadow 0.2s linear;
-}
-
-.auth-code-input:focus {
-  border-color: rgba(82, 168, 236, 0.8);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075), 0 0 8px rgba(82, 168, 236, 0.6);
 }
 
 .auth-code-input::placeholder {

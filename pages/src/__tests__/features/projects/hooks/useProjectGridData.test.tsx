@@ -2,14 +2,15 @@ import {act, renderHook, waitFor} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {
+    PROJECT_LIST_LOAD_ERROR,
     useCurrentProjectGridData,
     usePastProjectGridData,
     usePastProjectShareData,
 } from '@/features/projects/hooks/useProjectGridData';
-import type {CompactPastProjectRow, PaginatedResponse, PastProjectShare} from '@/features/projects/api';
+import type {CompactPastProjectRow, PastProjectShare} from '@/features/projects/api';
 
-const {mockFetchPastProjectArchive, mockFetchPastProjectShare, mockFetchCurrentSchedule} = vi.hoisted(() => ({
-    mockFetchPastProjectArchive: vi.fn(),
+const {mockFetchAllPastProjectArchive, mockFetchPastProjectShare, mockFetchCurrentSchedule} = vi.hoisted(() => ({
+    mockFetchAllPastProjectArchive: vi.fn(),
     mockFetchPastProjectShare: vi.fn(),
     mockFetchCurrentSchedule: vi.fn(),
 }));
@@ -18,7 +19,7 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@/features/projects/api')>();
     return {
         ...actual,
-        fetchPastProjectArchive: (...args: unknown[]) => mockFetchPastProjectArchive(...args),
+        fetchAllPastProjectArchive: (...args: unknown[]) => mockFetchAllPastProjectArchive(...args),
         fetchPastProjectShare: (...args: unknown[]) => mockFetchPastProjectShare(...args),
     };
 });
@@ -45,34 +46,22 @@ const makeProject = (overrides: Partial<CompactPastProjectRow>): CompactPastProj
     ...overrides,
 });
 
-const makePage = (
-    results: CompactPastProjectRow[],
-    count = results.length,
-): PaginatedResponse<CompactPastProjectRow> => ({
-    count,
-    next: null,
-    previous: null,
-    results,
-});
+const httpError = (status: number) =>
+    Object.assign(new Error(`Request failed with status code ${status}`), {response: {status}});
 
 describe('usePastProjectGridData', () => {
     afterEach(() => {
-        mockFetchPastProjectArchive.mockReset();
+        mockFetchAllPastProjectArchive.mockReset();
     });
 
     it('keeps serving the previous rows, without flipping loading, while a refetch is in flight', async () => {
-        let resolveSecond: (projects: PaginatedResponse<CompactPastProjectRow>) => void = () => {
+        let resolveSecond: (projects: CompactPastProjectRow[]) => void = () => {
         };
-        mockFetchPastProjectArchive
-            .mockResolvedValueOnce({
-                count: 1,
-                next: null,
-                previous: null,
-                results: [makeProject({project_title: 'First Load'})]
-            })
+        mockFetchAllPastProjectArchive
+            .mockResolvedValueOnce([makeProject({project_title: 'First Load'})])
             .mockImplementationOnce(
                 () =>
-                    new Promise<PaginatedResponse<CompactPastProjectRow>>((resolve) => {
+                    new Promise<CompactPastProjectRow[]>((resolve) => {
                         resolveSecond = resolve;
                     }),
             );
@@ -91,15 +80,10 @@ describe('usePastProjectGridData', () => {
         expect(result.current.rows.map((row) => row.project_title)).toEqual(['First Load']);
 
         await act(async () => {
-            resolveSecond({
-                count: 2,
-                next: null,
-                previous: null,
-                results: [
-                    makeProject({project_title: 'First Load'}),
-                    makeProject({id: 'project-2', project_title: 'Second Load'}),
-                ],
-            });
+            resolveSecond([
+                makeProject({project_title: 'First Load'}),
+                makeProject({id: 'project-2', project_title: 'Second Load'}),
+            ]);
         });
 
         await waitFor(() =>
@@ -109,54 +93,54 @@ describe('usePastProjectGridData', () => {
         expect(result.current.error).toBeNull();
     });
 
-    it('paginates until every archive row is collected', async () => {
-        mockFetchPastProjectArchive
-            .mockResolvedValueOnce(makePage([makeProject({}), makeProject({id: 'p-2'})], 3))
-            .mockResolvedValueOnce(makePage([makeProject({id: 'p-3'})], 3));
+    it('loads the whole archive and maps it to grid rows', async () => {
+        mockFetchAllPastProjectArchive.mockResolvedValue([
+            makeProject({}),
+            makeProject({id: 'p-2', student_names: 'Brian Arroyo'}),
+        ]);
 
         const {result} = renderHook(() => usePastProjectGridData());
 
         await waitFor(() => expect(result.current.loading).toBe(false));
 
-        expect(mockFetchPastProjectArchive).toHaveBeenCalledTimes(2);
-        expect(result.current.rows).toHaveLength(3);
+        expect(mockFetchAllPastProjectArchive).toHaveBeenCalledTimes(1);
+        expect(mockFetchAllPastProjectArchive).toHaveBeenCalledWith({}, expect.any(AbortSignal));
+        expect(result.current.rows.map((row) => [row.id, row.semester_label, row.student_names])).toEqual([
+            ['project-1', '2025 Spring', ''],
+            ['p-2', '2025 Spring', 'Brian Arroyo'],
+        ]);
         expect(result.current.error).toBeNull();
     });
 
-    it('surfaces an Error message and clears rows', async () => {
-        mockFetchPastProjectArchive.mockRejectedValue(new Error('offline'));
+    it.each([
+        ['a network failure', new Error('Network Error')],
+        ['a server error', httpError(500)],
+        ['a non-Error rejection', 'network down'],
+    ])('reports %s in plain words and clears rows', async (_case, failure) => {
+        mockFetchAllPastProjectArchive.mockRejectedValue(failure);
 
         const {result} = renderHook(() => usePastProjectGridData());
 
         await waitFor(() => expect(result.current.loading).toBe(false));
-        expect(result.current.error).toBe('offline');
+        expect(result.current.error).toBe(PROJECT_LIST_LOAD_ERROR);
         expect(result.current.rows).toEqual([]);
-    });
-
-    it('falls back to a generic message for non-Error rejections', async () => {
-        mockFetchPastProjectArchive.mockRejectedValue('network down');
-
-        const {result} = renderHook(() => usePastProjectGridData());
-
-        await waitFor(() => expect(result.current.loading).toBe(false));
-        expect(result.current.error).toBe('Failed to load past projects');
     });
 
     it('returns immediately without loading when disabled', () => {
         const {result} = renderHook(() => usePastProjectGridData(false));
 
         expect(result.current).toEqual({rows: [], loading: false, error: null, refetch: expect.any(Function)});
-        expect(mockFetchPastProjectArchive).not.toHaveBeenCalled();
+        expect(mockFetchAllPastProjectArchive).not.toHaveBeenCalled();
     });
 
     it('aborts the in-flight archive request on unmount', async () => {
-        mockFetchPastProjectArchive.mockReturnValue(new Promise(() => {}));
+        mockFetchAllPastProjectArchive.mockReturnValue(new Promise(() => {}));
 
         const {unmount} = renderHook(() => usePastProjectGridData());
-        await waitFor(() => expect(mockFetchPastProjectArchive).toHaveBeenCalled());
+        await waitFor(() => expect(mockFetchAllPastProjectArchive).toHaveBeenCalled());
         unmount();
 
-        const signal = mockFetchPastProjectArchive.mock.calls[0][1] as AbortSignal;
+        const signal = mockFetchAllPastProjectArchive.mock.calls[0][1] as AbortSignal;
         expect(signal.aborted).toBe(true);
     });
 });
@@ -197,23 +181,58 @@ describe('useCurrentProjectGridData', () => {
         ]);
     });
 
-    it('surfaces errors from the current schedule fetch', async () => {
-        mockFetchCurrentSchedule.mockRejectedValue(new Error('schedule down'));
+    it.each([
+        ['a network failure', new Error('Network Error')],
+        ['a timeout', Object.assign(new Error('timeout of 15000ms exceeded'), {code: 'ECONNABORTED'})],
+        ['a server error', httpError(503)],
+        ['a non-Error rejection', 'boom'],
+    ])('reports %s in plain words, not the request error', async (_case, failure) => {
+        mockFetchCurrentSchedule.mockRejectedValue(failure);
 
         const {result} = renderHook(() => useCurrentProjectGridData());
 
         await waitFor(() => expect(result.current.loading).toBe(false));
-        expect(result.current.error).toBe('schedule down');
+        expect(result.current.error).toBe(PROJECT_LIST_LOAD_ERROR);
         expect(result.current.rows).toEqual([]);
     });
 
-    it('falls back to a generic message for non-Error rejections', async () => {
-        mockFetchCurrentSchedule.mockRejectedValue('boom');
+    it('treats a missing schedule (404) as no current projects, not as a failure', async () => {
+        mockFetchCurrentSchedule.mockRejectedValue(
+            Object.assign(httpError(404), {response: {status: 404, data: {detail: 'No schedule available.'}}}),
+        );
 
         const {result} = renderHook(() => useCurrentProjectGridData());
 
         await waitFor(() => expect(result.current.loading).toBe(false));
-        expect(result.current.error).toBe('Failed to load current projects');
+        expect(result.current.error).toBeNull();
+        expect(result.current.rows).toEqual([]);
+    });
+
+    it('gives the schedule request a timeout, so a stalled request ends in the error state', async () => {
+        mockFetchCurrentSchedule.mockReturnValue(new Promise(() => {}));
+
+        const {unmount} = renderHook(() => useCurrentProjectGridData());
+        await waitFor(() => expect(mockFetchCurrentSchedule).toHaveBeenCalled());
+
+        const [scheduleId, options] = mockFetchCurrentSchedule.mock.calls[0];
+        expect(scheduleId).toBeNull();
+        expect(options).toEqual({signal: expect.any(AbortSignal), timeout: 15_000});
+        unmount();
+        expect((options as {signal: AbortSignal}).signal.aborted).toBe(true);
+    });
+
+    it('files the teams that are not presenting under the schedule\'s term', async () => {
+        mockFetchCurrentSchedule.mockResolvedValue({
+            projects: [
+                {...scheduleRow, year_semester: '2026-2 Fall'},
+                {...scheduleRow, id: 'project-9', track: 0, order: 0, year_semester: '', is_presenting: false},
+            ],
+        });
+
+        const {result} = renderHook(() => useCurrentProjectGridData());
+        await waitFor(() => expect(result.current.loading).toBe(false));
+
+        expect(result.current.rows.map((row) => row.semester_label)).toEqual(['2026 Fall', '2026 Fall']);
     });
 
     it('links each row to its project and names the classes from the schedule sections', async () => {
@@ -390,6 +409,69 @@ describe('usePastProjectShareData', () => {
 
         await waitFor(() => expect(result.current.loading).toBe(false));
         expect(result.current.error).toBe('Failed to load shared past projects');
+    });
+
+    it('serves a seed that is the share at the id without requesting it', async () => {
+        const seed = makeShare({name: 'Just saved'});
+
+        const {result} = renderHook(() => usePastProjectShareData('share-1', seed));
+
+        expect(result.current).toMatchObject({share: seed, loading: false, error: null, notFound: false});
+        await act(async () => {});
+        expect(mockFetchPastProjectShare).not.toHaveBeenCalled();
+    });
+
+    it('loads the share when the seed is another share', async () => {
+        mockFetchPastProjectShare.mockResolvedValue(makeShare());
+
+        const {result} = renderHook(() => usePastProjectShareData('share-1', makeShare({id: 'share-2'})));
+
+        expect(result.current.loading).toBe(true);
+        await waitFor(() => expect(result.current.share).toMatchObject({id: 'share-1', name: 'Shared'}));
+        expect(mockFetchPastProjectShare).toHaveBeenCalledWith('share-1');
+    });
+
+    it('uses a seed once: Try again, or coming back to its id, loads the share from the server', async () => {
+        const seed = makeShare({name: 'Just saved'});
+        mockFetchPastProjectShare.mockImplementation(async (id: string) => makeShare({id, name: `Loaded ${id}`}));
+
+        const {result, rerender} = renderHook(({shareId}) => usePastProjectShareData(shareId, seed), {
+            initialProps: {shareId: 'share-1'},
+        });
+        expect(result.current.share).toBe(seed);
+
+        act(() => result.current.retry());
+        await waitFor(() => expect(result.current.share).toMatchObject({name: 'Loaded share-1'}));
+        expect(mockFetchPastProjectShare).toHaveBeenCalledTimes(1);
+
+        rerender({shareId: 'share-2'});
+        await waitFor(() => expect(result.current.share).toMatchObject({name: 'Loaded share-2'}));
+        rerender({shareId: 'share-1'});
+        await waitFor(() => expect(result.current.share).toMatchObject({name: 'Loaded share-1'}));
+        expect(mockFetchPastProjectShare).toHaveBeenCalledTimes(3);
+    });
+
+    it('lets a seed handed over after mounting stand in for the load in flight', async () => {
+        let resolve!: (share: PastProjectShare) => void;
+        mockFetchPastProjectShare.mockReturnValue(
+            new Promise<PastProjectShare>((res) => {
+                resolve = res;
+            }),
+        );
+        const seed = makeShare({name: 'Just saved', version: 2});
+
+        const {result, rerender} = renderHook(({current}) => usePastProjectShareData('share-1', current), {
+            initialProps: {current: null as PastProjectShare | null},
+        });
+        expect(result.current.loading).toBe(true);
+        rerender({current: seed});
+        expect(result.current.share).toBe(seed);
+
+        // The older answer of the request the seed replaced is not shown over it.
+        await act(async () => {
+            resolve(makeShare({name: 'Older', version: 1}));
+        });
+        expect(result.current.share).toBe(seed);
     });
 
     it('ignores a late resolution after unmount', async () => {
