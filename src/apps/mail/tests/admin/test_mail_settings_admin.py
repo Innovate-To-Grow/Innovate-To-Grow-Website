@@ -245,7 +245,7 @@ class MailSettingsAdminTest(TestCase):
         self.assertContains(response, "Send Test SMS")
         self.assertContains(response, "AWS End User Messaging")
 
-    @patch("apps.mail.admin.settings.admin._send_test_email")
+    @patch("apps.mail.admin.settings.test_send._send_test_email")
     def test_test_email_post_uses_active_mail_config(self, mock_send_test_email):
         mock_send_test_email.return_value = "AWS SES"
 
@@ -257,7 +257,7 @@ class MailSettingsAdminTest(TestCase):
         self.assertEqual(mock_send_test_email.call_args.kwargs["config"].pk, self.config.pk)
         self.assertEqual(mock_send_test_email.call_args.kwargs["recipient"], "ops@example.com")
 
-    @patch("apps.mail.admin.settings.admin._send_test_sms")
+    @patch("apps.mail.admin.settings.test_send._send_test_sms")
     def test_test_sms_post_uses_notification_delivery_config(self, mock_send_test_sms):
         mock_send_test_sms.return_value = "message (ID: sns-1)"
 
@@ -275,7 +275,7 @@ class MailSettingsAdminTest(TestCase):
 
         self.assertContains(response, "Please provide a recipient email address")
 
-    @patch("apps.mail.admin.settings.admin._send_test_email", side_effect=RuntimeError("SES boom"))
+    @patch("apps.mail.admin.settings.test_send._send_test_email", side_effect=RuntimeError("SES boom"))
     def test_test_email_post_reports_send_failure(self, mock_send):
         response = self.client.post(
             reverse("admin:mail_settings_test_email"), {"recipient": "ops@example.com"}, follow=True
@@ -290,7 +290,7 @@ class MailSettingsAdminTest(TestCase):
 
         self.assertContains(response, "Please provide a phone number")
 
-    @patch("apps.mail.admin.settings.admin._send_test_sms", side_effect=RuntimeError("SNS boom"))
+    @patch("apps.mail.admin.settings.test_send._send_test_sms", side_effect=RuntimeError("SNS boom"))
     def test_test_sms_post_reports_send_failure(self, mock_send):
         response = self.client.post(
             reverse("admin:mail_settings_test_sms"),

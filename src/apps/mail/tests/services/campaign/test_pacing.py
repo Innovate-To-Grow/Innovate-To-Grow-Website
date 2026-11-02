@@ -132,6 +132,7 @@ class ConfirmPageNoticeTests(TestCase):
         self.assertContains(response, "10000 recipients per rolling 24 hours")
         self.assertContains(response, "campaigns stop at 900")
         self.assertNotContains(response, "more recipients than campaigns may send in 24 hours")
+        self.assertContains(response, 'href="/admin/mail/sending-method/"')
 
     def test_the_notice_warns_when_the_campaign_exceeds_the_campaign_share_of_the_daily_limit(self):
         self.use_graph()

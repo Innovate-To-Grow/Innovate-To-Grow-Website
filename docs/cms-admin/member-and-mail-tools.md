@@ -54,9 +54,22 @@ The mail app (`src/apps/mail/`) provides email campaign functionality through Dj
 
 ### Choose the email sender
 
-Open **Mail → Notification Delivery → Edit Notification Delivery**. Under
-**Email Sender**, select **AWS SES**, **SMTP**, **Microsoft Graph**, or **Gmail API**, set the
-sender name and email address, and save the active configuration.
+**Broadcast Delivery → Email Sending Method** in the sidebar (`/admin/mail/sending-method/`) sets
+which API sends all site email. It names the method in use and has one card for each of **AWS SES**,
+**SMTP**, **Microsoft Graph** and **Gmail API**. Notification Delivery shows the method in use with a link
+here, and the campaign send confirmation links here too. Each card says whether that method is **In use**, **Ready**
+or **Not ready** (and why: the same check that switching to it runs, so Microsoft Graph and the Gmail API need
+their go-live checks), and has:
+
+- **Send test**: a test email through that method, to an address you enter, without switching to it. The test
+  page's **Send through** row moves between methods; one that is not ready cannot be sent through.
+- **Use for email**: switch all site email to that method (Mail app staff; the change is in the admin history).
+- **Configure**: where that method is set up, when you have the access it needs (SES on Edit Notification
+  Delivery; SMTP on its Service Credentials tab, or Edit Notification Delivery without the Core app; Microsoft
+  Graph with the Core app; the Gmail API for superusers).
+
+**Edit Notification Delivery** sets the sender name and email address and the active configuration. Under
+**Email Sender**, **Provider** is the same switch as **Use for email**.
 
 - **AWS SES** uses the active AWS credentials and region. SMTP and Microsoft
   Graph fields are not required, and any saved SMTP or Graph credentials are
@@ -114,8 +127,8 @@ sender name and email address, and save the active configuration.
   Graph or the Gmail API. Changing the email provider does not switch the SMS provider.
 
 This selection applies to verification codes, admin invitations, tickets,
-campaigns, inbox replies, and the **Send Test Email** action. Saving settings
-does not send a message; use the test action to check delivery explicitly.
+campaigns, inbox replies, and the **Send Test Email** action (which tests the method in use; each card's
+**Send test** tests its own). Saving settings does not send a message; use a test to check delivery explicitly.
 
 ### Campaign model
 

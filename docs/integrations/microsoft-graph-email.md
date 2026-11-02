@@ -240,8 +240,9 @@ another provider still sends, then select Graph.
 
 ### 1. Create the Graph configuration
 
-Open `/admin/core/microsoftgraphproviderconfig/` (deliberately not in the sidebar; the Notification Delivery
-page links to it) and add a configuration:
+Open **Site Settings → Service Credentials → Microsoft Graph** (`/admin/core/microsoftgraphproviderconfig/`; the
+**Configure** link on the Microsoft Graph card under Broadcast Delivery → Email Sending Method also leads there) and add a
+configuration:
 
 | Field | Value |
 |-------|-------|
@@ -322,11 +323,13 @@ Rollback, emergency removal, access checks and approval-evidence fields remain s
 1. Set **Access Check Deny Mailbox** and run the [access check](#validate-the-access-restriction)
    (**Run access check**). In production, Notification Delivery refuses Microsoft Graph until a run with the
    current certificate matches the approval ([go-live gate](#go-live-gate)).
-2. Open **Mail → Notification Delivery**: in the sidebar choose **Delivery Operations** (group
-   **Broadcast Delivery**), switch to the **Notification Delivery** tab (`/admin/mail/settings/`), and
-   select **Edit Notification Delivery**.
-3. Under **Email Sender**, set **Provider** to **Microsoft Graph**, tick **Active**, set **From Name** and
-   **From Email** (`i2g@ucmerced.edu`), and select **Save Notification Delivery**. The Graph panel shows the
+2. Open **Email Sending Method**: in the sidebar group **Broadcast Delivery**
+   (`/admin/mail/sending-method/`). The **Microsoft Graph** card says whether Graph could send now and, if not, why
+   (the same check as switching, so the go-live gate applies). Once it is **Ready**, select **Send test** on
+   that card to send a test email through Graph while another method still sends everything else.
+3. Select **Use for email** on the Microsoft Graph card. (The same switch is the **Provider** field under
+   **Email Sender** on **Edit Notification Delivery**, which also sets **Active**, **From Name** and
+   **From Email**, here `i2g@ucmerced.edu`.) The Graph panel shows the
    configuration read-only (with the certificate's SHA-1 thumbprint and expiry, the mailbox scope and the
    latest access check); this page cannot change it. Staff with the **Core** app get a link to the
    configuration page.

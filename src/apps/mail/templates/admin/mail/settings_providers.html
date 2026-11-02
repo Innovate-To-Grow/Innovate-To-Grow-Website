@@ -1,0 +1,57 @@
+{# Broadcast Delivery → Email Sending Method (providers.provider_cards): which API sends email, each one's test. #}
+<section id="email-sending-method" class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+    <h3 class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Email sending method</h3>
+    <p class="mt-1 mb-4 text-xs text-base-500 dark:text-base-400">
+        All site email (sign-in codes, notifications and campaigns) goes through the method in use. Send a test through
+        any method before switching to it; a method that cannot send yet says why, and switching to Microsoft Graph or
+        the Gmail API needs their go-live checks.
+    </p>
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {% for card in provider_cards %}
+            <div id="email-method-{{ card.key }}" class="flex flex-col rounded-default border p-4 {% if card.in_use %}border-primary-400 dark:border-primary-600{% else %}border-base-200 dark:border-base-700{% endif %}">
+                <div class="flex items-start justify-between gap-2">
+                    <h4 class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">{{ card.label }}</h4>
+                    {% if card.in_use and not card.problem %}
+                        <span class="shrink-0 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-500/30">In use</span>
+                    {% elif card.in_use %}
+                        <span class="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">In use · cannot send</span>
+                    {% elif not card.problem %}
+                        <span class="shrink-0 rounded-full bg-base-100 px-2.5 py-1 text-xs font-medium text-base-600 ring-1 ring-inset ring-base-300 dark:bg-base-700 dark:text-base-300 dark:ring-base-600">Ready</span>
+                    {% else %}
+                        <span class="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">Not ready</span>
+                    {% endif %}
+                </div>
+                {% if card.detail %}<p class="mt-1 break-all text-xs text-base-500 dark:text-base-400">{{ card.detail }}</p>{% endif %}
+                {% if card.problem %}<p class="mt-2 text-xs text-orange-700 dark:text-orange-400" data-method-problem>{{ card.problem }}</p>{% endif %}
+                <div class="mt-auto flex flex-wrap gap-2 pt-4">
+                    {% if card.problem %}
+                        <span class="inline-flex cursor-not-allowed items-center rounded-md border border-base-200 px-3 py-1.5 text-xs font-medium text-base-400 dark:border-base-700" title="{{ card.problem }}">Send test</span>
+                    {% else %}
+                        <a href="{{ card.test_url }}" class="inline-flex items-center rounded-md border border-base-300 px-3 py-1.5 text-xs font-medium text-primary-700 hover:border-primary-300 hover:bg-primary-50 dark:border-base-600 dark:text-primary-300 dark:hover:bg-primary-900/20">Send test</a>
+                    {% endif %}
+                    {# Not a disabled button: the admin theme colours every submit button, disabled or not. #}
+                    {% if card.in_use %}
+                    {% elif card.problem %}
+                        <span class="inline-flex cursor-not-allowed items-center rounded-md border border-base-200 px-3 py-1.5 text-xs font-medium text-base-400 dark:border-base-700" title="{{ card.problem }}">Use for email</span>
+                    {% else %}
+                        <form method="post" action="{{ card.use_url }}" data-confirm="Send all site email through {{ card.label }} from now on?">
+                            {% csrf_token %}
+                            <button type="submit" class="inline-flex items-center rounded-md bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700">Use for email</button>
+                        </form>
+                    {% endif %}
+                    {% if card.configure_url %}
+                        <a href="{{ card.configure_url }}" class="inline-flex items-center px-1 py-1.5 text-xs font-medium text-primary-600 hover:underline dark:text-primary-400">Configure</a>
+                    {% endif %}
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+<script nonce="{{ request.csp_nonce }}">
+    // One click switches every email the site sends, so ask first.
+    document.querySelectorAll("#email-sending-method form[data-confirm]").forEach((form) => {
+        form.addEventListener("submit", (event) => {
+            if (!window.confirm(form.dataset.confirm)) event.preventDefault();
+        });
+    });
+</script>
