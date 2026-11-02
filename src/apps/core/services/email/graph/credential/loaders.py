@@ -75,10 +75,10 @@ def load_certificate(data: bytes) -> x509.Certificate:
     try:
         if labels:
             return x509.load_pem_x509_certificate(data)
-        stripped = data.strip()
-        if stripped[:1] == bytes([_DER_SEQUENCE]):
-            return x509.load_der_x509_certificate(stripped)
-        return x509.load_der_x509_certificate(base64.b64decode(b"".join(stripped.split()), validate=True))
+        if data[:1] == bytes([_DER_SEQUENCE]):
+            # Binary DER is read untrimmed: its signature can end in a byte that strip() takes for whitespace.
+            return x509.load_der_x509_certificate(data)
+        return x509.load_der_x509_certificate(base64.b64decode(b"".join(data.split()), validate=True))
     except (ValueError, TypeError, binascii.Error, UnsupportedAlgorithm):
         raise CertificateInputError(CERTIFICATE, UNREADABLE_CERTIFICATE) from None
 
