@@ -20,6 +20,8 @@ from apps.mail.services.sms.audience import get_sms_recipients
 EMAIL_SUCCESS_STATUSES = frozenset({"sent", "delivered"})
 EMAIL_PROVIDER_TERMINAL_STATUSES = frozenset({*EMAIL_SUCCESS_STATUSES, "bounced", "complained", "rejected"})
 ACTIVE_STATUSES = ("pending", "processing", "retry")
+PAUSED_STATUS = "paused"
+PAUSED_MESSAGE = "Some recipients were paused by delivery limits; resume them with “Resume paused recipients”."
 
 
 @dataclass(frozen=True)
@@ -88,13 +90,14 @@ def aggregate_campaign(channel: DeliveryChannel, campaign_id) -> None:
         sent = sum(statuses.get(status, 0) for status in sorted(channel.success_statuses))
         failed = sum(statuses.get(status, 0) for status in channel.failed_statuses)
         active = sum(statuses.get(status, 0) for status in ACTIVE_STATUSES)
-        campaign.status = campaign_state(total=total, sent=sent, failed=failed, active=active)
+        paused = statuses.get(PAUSED_STATUS, 0)
+        campaign.status = campaign_state(total=total, sent=sent, failed=failed, active=active, paused=paused)
         campaign.total_recipients = total
         campaign.sent_count = sent
         campaign.failed_count = failed
         if campaign.sent_at is None and not active:
             campaign.sent_at = timezone.now()
-        campaign.error_message = "One or more deliveries need review." if failed else ""
+        campaign.error_message = "One or more deliveries need review." if failed else (PAUSED_MESSAGE if paused else "")
         campaign.save(
             update_fields=[
                 "status",

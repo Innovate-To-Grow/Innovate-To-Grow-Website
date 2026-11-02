@@ -1,6 +1,11 @@
 from django.test import SimpleTestCase
 
-from apps.projects.services.share_names import DEFAULT_NAME_MAX_CHARS, DEFAULT_SHARE_NAME, default_share_name
+from apps.projects.services.share_names import (
+    DEFAULT_NAME_MAX_CHARS,
+    DEFAULT_PROJECT_SHARE_NAME,
+    DEFAULT_SHARE_NAME,
+    default_share_name,
+)
 
 PROJECT_SUMMARY_BLOCK = (
     '<div data-past-project-note-curation="project-summary">'
@@ -130,3 +135,21 @@ class DefaultShareNameTests(SimpleTestCase):
         name = default_share_name("<div>" + ("x" * 200) + "</div>")
         self.assertEqual(len(name), DEFAULT_NAME_MAX_CHARS)
         self.assertTrue(name.endswith("…"))
+
+
+class DefaultShareNameForRowsTests(SimpleTestCase):
+    """Without the owner's words, the title says which list the rows come from, as the shared page's eyebrow does."""
+
+    def test_a_curation_holding_a_current_project_is_a_project_curation(self):
+        rows = [{"catalog": "archive"}, {"catalog": "current"}]
+        self.assertEqual(DEFAULT_PROJECT_SHARE_NAME, "Project Curation")
+        self.assertEqual(default_share_name("", rows), DEFAULT_PROJECT_SHARE_NAME)
+        self.assertEqual(default_share_name(PROJECT_SUMMARY_BLOCK, rows), DEFAULT_PROJECT_SHARE_NAME)
+
+    def test_archive_rows_and_rows_from_before_the_catalog_field_keep_the_past_project_title(self):
+        for rows in ([{"catalog": "archive"}], [{}], [], ()):
+            with self.subTest(rows=rows):
+                self.assertEqual(default_share_name("", rows), DEFAULT_SHARE_NAME)
+
+    def test_the_owners_first_line_still_names_the_curation(self):
+        self.assertEqual(default_share_name("<div>Fall picks</div>", [{"catalog": "current"}]), "Fall picks")

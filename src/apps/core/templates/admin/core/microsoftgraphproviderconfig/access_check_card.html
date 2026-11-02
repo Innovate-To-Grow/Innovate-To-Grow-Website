@@ -1,0 +1,37 @@
+{# The latest access check and the go-live gate (microsoft_graph_panel.access_check_card). Public data only. #}
+<div id="graph-access-check" class="mt-4 border-t border-base-200 pt-4 dark:border-base-700">
+    <h4 class="mb-3 text-xs font-semibold uppercase text-base-500 dark:text-base-400">Access check</h4>
+    {% if card.check %}
+        <dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-sm md:grid-cols-2">
+            <div>
+                <dt class="text-xs font-medium text-base-400">Latest result</dt>
+                <dd class="mt-1 flex flex-wrap items-center gap-2">
+                    <span class="graph-verdict-badge inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {{ card.badge_classes }}" data-verdict="{{ card.check.verdict }}">{{ card.check.get_verdict_display }}</span>
+                    {{ card.checked }}
+                    {% if card.url %}<a href="{{ card.url }}" class="text-primary-600 hover:underline dark:text-primary-500">View results</a>{% endif %}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium text-base-400">Certificate checked</dt>
+                <dd class="mt-1"><span class="break-all font-mono">{{ card.check.certificate_sha1 }}</span>{% if not card.for_current %} (not the current certificate){% endif %}</dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium text-base-400">Mailbox restriction</dt>
+                <dd class="mt-1">{% if card.check.mailbox_restriction_passed %}Holds{% else %}Not shown{% endif %}, against {{ card.check.deny_mailbox }}</dd>
+            </div>
+            <div>
+                <dt class="text-xs font-medium text-base-400">Roles in the token</dt>
+                <dd class="mt-1">{{ card.roles }}{% if card.check.roles_within_approval is False %} (beyond the approval){% endif %}</dd>
+            </div>
+        </dl>
+    {% else %}
+        <p class="text-sm text-base-500 dark:text-base-400">No access check has been run with this configuration.</p>
+    {% endif %}
+    <p class="mt-3 text-sm">
+        <span class="font-medium">Go-live evidence{% if not card.gate_enforced %} (not required in this environment){% endif %}:</span>
+        {% if card.gate_problem %}missing: {{ card.gate_problem }}{% else %}present.{% endif %}
+    </p>
+    <p class="mt-1 text-xs text-base-500 dark:text-base-400">
+        Deny mailbox: {{ card.deny_mailbox|default:"not set" }} · InfoSec exception: {{ card.exception_reference|default:"none recorded" }}
+    </p>
+</div>

@@ -1,10 +1,11 @@
 import {useId, type ReactNode} from 'react';
-import {DEFAULT_PAST_PROJECT_SHARE_NAME} from '@/features/projects/api';
 import {RichTextDetailEditor} from '../../richText/editor/RichTextDetailEditor';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {currentLoginPath} from '../list/curationNote';
+import {curationBranding} from '../list/curationBranding';
+import type {SignInToSave} from '../list/curationNote';
 import {ProjectNoteInsertControl} from '../list/ProjectNoteInsertControl';
 import type {NoteInsertFields} from '../list/useNoteInsertFields';
+import {SignInToSaveLink} from '../list/SignInToSaveLink';
 
 interface CurationSaveButtonProps {
   hasRows: boolean;
@@ -22,7 +23,7 @@ export const CurationSaveButton = ({hasRows, isSharing, pendingSaveCount, onSave
     onClick={onSave}
     disabled={!hasRows || isSharing || pendingSaveCount > 0}
   >
-    {isSharing ? 'Saving...' : 'Save Curation'}
+    {isSharing ? 'Saving…' : 'Save Curation'}
   </button>
 );
 
@@ -36,6 +37,7 @@ interface CurationSaveSectionProps {
   noteInsert: NoteInsertFields;
   saveButton: ReactNode;
   pendingSaveCount: number;
+  signIn: SignInToSave;
 }
 
 export const CurationSaveSection = ({
@@ -48,6 +50,7 @@ export const CurationSaveSection = ({
   noteInsert,
   saveButton,
   pendingSaveCount,
+  signIn,
 }: CurationSaveSectionProps) => {
   const nameInputId = useId();
   const nameHintId = useId();
@@ -68,7 +71,8 @@ export const CurationSaveSection = ({
                 className="itg-input project-grid-share-name-input"
                 value={nameDraft}
                 maxLength={200}
-                placeholder={DEFAULT_PAST_PROJECT_SHARE_NAME}
+                // The name the server gives a curation saved without one, for the rows it would save.
+                placeholder={curationBranding(rows).defaultName}
                 aria-describedby={nameHintId}
                 onChange={(event) => onNameDraftChange(event.target.value)}
               />
@@ -88,7 +92,8 @@ export const CurationSaveSection = ({
               <ProjectNoteInsertControl
                 rows={rows}
                 excludedFields={noteInsert.excludedFields}
-                onInsert={() => onNoteDraftChange(noteInsert.appendRows(noteDraft, rows))}
+                insertProblem={noteInsert.insertProblem}
+                onInsert={() => noteInsert.insertRows(noteDraft, rows, onNoteDraftChange)}
                 onToggleExcludedField={noteInsert.toggleField}
               />
             </div>
@@ -107,9 +112,17 @@ export const CurationSaveSection = ({
           </div>
         </>
       ) : (
-        <p className="project-grid-share-login-hint">
-          <a href={currentLoginPath()}>Sign in</a> to save this curation and get a link to share it.
-        </p>
+        // Mirrors the signed-in actions: the card header's button again, and a note on what saving gives.
+        <div className="project-grid-share-actions">
+          <SignInToSaveLink className="itg-btn itg-btn-primary" signIn={signIn}>
+            Sign In to Save
+          </SignInToSaveLink>
+          <span className="project-grid-share-actions-note">
+            {signIn.inNewTab
+              ? 'Sign in there to save this curation and get a link to share it. This draft goes with you.'
+              : 'Saved curations are listed under My Curations, each with a link anyone can view.'}
+          </span>
+        </div>
       )}
     </div>
   );

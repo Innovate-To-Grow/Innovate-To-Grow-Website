@@ -35,7 +35,7 @@ All page components are lazy-loaded via `React.lazy()`, reducing the initial bun
 |----------|---------|
 | `VITE_API_BASE_URL` | Backend API URL (baked into the build) |
 
-This must be set before building. In CI/CD, it's configured as a GitHub Actions secret.
+This must be set before building. Production deployment loads it from the AWS Secrets Manager object `itg/frontend/deploy-config` using its OIDC deployment role. CI uses the public API default in workflow code.
 
 ## Deployment flow
 
@@ -48,15 +48,17 @@ Triggered by the `deploy-frontend.yml` GitHub Actions workflow:
 
 ### Trigger conditions
 
-- After successful CI completion (main branch)
-- Manual workflow dispatch
+- The parent `Deploy Production` workflow starts after successful CI on `main`, or by manual dispatch on `main`.
+- Its shared `Manual Deployment Approval` gate must be approved.
+- Frontend deployment starts only after the backend rollout is healthy. The component workflow is reusable and cannot be dispatched separately.
 
 ## Amplify configuration
 
 AWS Amplify serves the static site with:
 - S3 backend for file storage
 - CloudFront CDN for global distribution
-- SPA routing: all paths resolve to `index.html` (client-side routing)
+- Ordered custom rules proxy the API and sitemap, apply active CMS redirects, then use `index.html` as the SPA fallback.
+- The backend background worker owns reconciliation of these rules; frontend deployment publishes assets only.
 
 The SPA routing configuration is critical — without it, direct navigation to frontend routes (e.g., `/about`) would return 404 from the CDN.
 

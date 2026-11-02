@@ -1,4 +1,4 @@
-import {useState, type ReactNode} from 'react';
+import {useId, useState, type ReactNode} from 'react';
 import {useMediaQuery} from '@/features/layout';
 import {ProjectGridTable} from '../../grid/table/ProjectGridTable';
 import {PastProjectsDialog} from '../../builder/dialog/PastProjectsDialog';
@@ -31,15 +31,15 @@ interface SearchTableCardProps {
   controlsStatus?: ReactNode;
   tableId: string;
   title: string;
-  /** Label for the per-table merge button (e.g. "Save Selected" in the builder). */
+  /** Label for the per-table merge button (e.g. "Add to Curation" in the builder). */
   mergeLabel?: string;
-  /** Verb for the merge ("Save" -> "Save 120 Projects" in the large-save confirmation). */
+  /** Verb for the merge ("Add" -> "Add 120 Projects" in the large-save confirmation). */
   mergeVerb?: string;
-  /** Verb shown while that merge runs ("Saving" -> "Saving…" / "Saving 3 projects…"). */
+  /** Verb shown while that merge runs ("Adding" -> "Adding…" / "Adding 3 projects…"). */
   mergingVerb?: string;
   /** Disable the merge button (e.g. while an async add from another table is in flight). */
   mergeDisabled?: boolean;
-  /** Marks rows that are already in the saved results (e.g. with a "Saved" chip). */
+  /** Marks rows that are already in the saved results (e.g. with an "Added" chip). */
   isRowSaved?: (row: ProjectGridRow) => boolean;
   savedRowLabel?: string;
   /** Scroll to the saved results; offered next to a save's outcome. */
@@ -64,13 +64,13 @@ interface SearchTableCardProps {
 const BOTTOM_ACTIONS_MIN_ROWS = 6;
 
 function withCardDefaults({
-  description = 'Search this table, check the projects you want, then click Save Selected to add them to your saved results.',
+  description = 'Search this table, check the projects you want, then click Add to Curation to add them to the curation draft.',
   emptyMessage = 'No rows available in this search table.',
-  mergeLabel = 'Save Selected',
-  mergeVerb = 'Save',
-  mergingVerb = 'Saving',
+  mergeLabel = 'Add to Curation',
+  mergeVerb = 'Add',
+  mergingVerb = 'Adding',
   mergeDisabled = false,
-  viewMergedResultsLabel = 'View Saved Results',
+  viewMergedResultsLabel = 'View Curation Draft',
   ...rest
 }: SearchTableCardProps) {
   return {...rest, description, emptyMessage, mergeLabel, mergeVerb, mergingVerb, mergeDisabled, viewMergedResultsLabel};
@@ -81,21 +81,38 @@ type TableRows = ReturnType<typeof useSearchTableRows>;
 type Save = ReturnType<typeof useSearchTableSave>;
 type Selection = ReturnType<typeof useSearchTableSelection>;
 
-const SearchTableCardHeader = ({card, isSaving}: {card: CardProps; isSaving: boolean}) => (
+const SearchTableCardHeader = ({card, headingId, isSaving}: {card: CardProps; headingId: string; isSaving: boolean}) => (
   <div className="project-grid-card-header search-table-card-header">
-    <h3 className="project-grid-card-title">{card.title}</h3>
+    {/* Focusable from script: deleting the table next to this one moves focus here. */}
+    <h3 id={headingId} className="project-grid-card-title" tabIndex={-1}>
+      {card.title}
+    </h3>
     {card.canRemove ? (
       <button
         type="button"
         className="itg-btn itg-btn-text search-table-remove-button"
-        aria-label={`Delete table: ${card.title}`}
+        aria-label={`Delete Table: ${card.title}`}
         onClick={() => card.onRemove(card.tableId)}
         disabled={isSaving}
       >
-        Delete table
+        Delete Table
       </button>
     ) : null}
   </div>
+);
+
+/**
+ * How many rows are checked, for screen readers. Select All and the header checkbox check every row the search
+ * matches, on every page, so a few visible rows can mean hundreds checked. A polite live region like the table's
+ * count line; the card's status is its save outcome.
+ */
+const SelectionAnnouncer = ({selectedCount, hiddenSelectedCount}: {selectedCount: number; hiddenSelectedCount: number}) => (
+  <p className="sr-only" aria-live="polite">
+    {selectedCount
+      ? `${pluralize(selectedCount, 'project')} selected` +
+        (hiddenSelectedCount ? `, ${hiddenSelectedCount} of them not shown by the current search` : '')
+      : ''}
+  </p>
 );
 
 /** Confirms saving a large selection, whose details all have to be loaded first. */
@@ -132,7 +149,9 @@ const SearchTableGrid = ({card, tableRows, selection, toolbar}: SearchTableGridP
       pagedRows={table.pagedRows}
       filteredCount={table.filteredRows.length}
       totalCount={rows.length}
+      tableLabel={card.title}
       search={table.search}
+      serverSearch={table.serverSearch}
       searchPlaceholder="Team, project, organization…"
       searchControl={card.searchControl}
       controlsStatus={card.controlsStatus}
@@ -179,6 +198,8 @@ export function SearchTableCard(props: SearchTableCardProps) {
   const save = useSearchTableSave({tableId, tableRows, mergeDisabled, onMergeSelected: card.onMergeSelected});
   const selection = useSearchTableSelection({table, save, tableId, title, onSelectionChange: card.onSelectionChange});
   const [appliedResetKey, setAppliedResetKey] = useState(resetKey);
+  const selectionHintId = useId();
+  const headingId = useId();
   // Same breakpoint as the stacked table actions in projectsResponsive.css.
   const isPhone = useMediaQuery('(max-width: 768px)');
 
@@ -198,6 +219,7 @@ export function SearchTableCard(props: SearchTableCardProps) {
       mergeDisabled={mergeDisabled}
       mergeLabel={card.mergeLabel}
       mergingVerb={mergingVerb}
+      selectionHintId={selectionHintId}
     />
   );
 
@@ -221,15 +243,19 @@ export function SearchTableCard(props: SearchTableCardProps) {
   const {onRefresh, resultsMotionKey} = card;
 
   return (
+    // Named after its heading: with several tables open, each one's search field, pager and buttons are
+    // announced inside "Search Table 2" rather than as one more unnamed "Search" or "Pages".
     <section
       className={`project-grid-card search-table-card${card.className ? ` ${card.className}` : ''}`}
       data-search-table-id={tableId}
+      aria-labelledby={headingId}
       aria-busy={save.isSaving}
     >
-      <SearchTableCardHeader card={card} isSaving={save.isSaving} />
+      <SearchTableCardHeader card={card} headingId={headingId} isSaving={save.isSaving} />
       <p className="project-grid-card-copy">{card.description}</p>
 
       <SaveStatusAnnouncer saveProgress={save.saveProgress} saveStatus={save.saveStatus} mergingVerb={mergingVerb} />
+      <SelectionAnnouncer selectedCount={selection.selectedCount} hiddenSelectedCount={selection.hiddenSelectedCount} />
 
       <div
         key={resultsMotionKey === undefined ? 'search-table-static-results' : `search-table-results-${resultsMotionKey}`}
@@ -246,12 +272,14 @@ export function SearchTableCard(props: SearchTableCardProps) {
               saveControls={saveControls('top')}
               topStatus={statusFor('top')}
               isPhone={isPhone}
+              saveGroupLabel={card.mergeLabel}
+              selectionHintId={selectionHintId}
               onRefresh={onRefresh ? () => onRefresh(tableId) : undefined}
             />
           }
         />
         {showBottomActions ? (
-          <div className="search-table-bottom-actions" role="group" aria-label={`Save from ${title}`}>
+          <div className="search-table-bottom-actions" role="group" aria-label={`${card.mergeLabel} below the table`}>
             <div className="project-grid-toolbar-cluster search-table-save-group">{saveControls('bottom')}</div>
             {statusFor('bottom')}
           </div>

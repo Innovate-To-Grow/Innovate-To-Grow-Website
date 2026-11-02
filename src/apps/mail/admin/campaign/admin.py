@@ -3,6 +3,7 @@
 from django.contrib import admin, messages
 
 from apps.core.admin import BaseModelAdmin
+from apps.core.services.background_jobs import jobs_enabled
 from apps.mail.models import EmailCampaign, LoginLinkToken
 
 from .display import CampaignDisplayMixin
@@ -44,7 +45,7 @@ class EmailCampaignAdmin(
     list_filter = ("status", AudienceTypeFilter)
     search_fields = ("subject",)
     ordering = ("-created_at",)
-    actions = ["revoke_login_links_action"]
+    actions = ["revoke_login_links_action", "resume_paused_recipients_action"]
     actions_detail = [
         "preview_email_action",
         "preview_recipients_action",
@@ -58,6 +59,17 @@ class EmailCampaignAdmin(
 
         revoked = revoke_login_links(LoginLinkToken.objects.filter(campaign__in=queryset))
         self.message_user(request, f"Revoked {revoked} login link(s).", messages.SUCCESS)
+
+    @admin.action(description="Resume paused recipients (held back by delivery limits)", permissions=["change"])
+    def resume_paused_recipients_action(self, request, queryset):
+        from apps.mail.services.campaign.dispatch import resume_paused_email_recipients
+
+        resumed = sum(resume_paused_email_recipients(campaign) for campaign in queryset)
+        if not resumed:
+            self.message_user(request, "No paused recipients to resume (or the campaign is still sending).")
+            return
+        how = "queued for the background worker" if jobs_enabled() else "being sent by the web server"
+        self.message_user(request, f"Resumed {resumed} paused recipient(s): {how}.", messages.SUCCESS)
 
     fieldsets = (
         (
