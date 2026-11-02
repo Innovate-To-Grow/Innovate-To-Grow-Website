@@ -21,6 +21,7 @@ from django.test import TestCase
 from django.test.utils import CaptureQueriesContext
 from django.utils.html import escape
 from django.views.debug import ExceptionReporter
+from rest_framework.test import APIClient
 
 from apps.core.admin.service_credentials import microsoft_graph_certificate_forms as forms_module
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
@@ -28,6 +29,7 @@ from apps.core.services.email.graph.certificate import describe_certificate
 from apps.core.services.email.graph.credential import lifecycle
 from apps.core.tests.graph_helpers import make_certificate
 from apps.core.tests.services.graph_credential.helpers import entra_rejection
+from apps.event.tests.helpers import make_admin
 
 from .graph_certificate_pages import P12_PASSWORD, PASSPHRASE, CertificatePagesMixin, key_pem, pem
 
@@ -155,6 +157,16 @@ class NoEchoTests(CertificatePagesMixin, TestCase):
 
         self.assertIsNotNone(self.config.current_certificate)
         self.assert_clean(readable, *key_slices(data["private_key_text"]))
+
+    def test_a_core_staff_install_keeps_the_key_and_password_out_of_readable_state(self):
+        self.client = APIClient()
+        self.client.force_login(make_admin(apps=["core"], email="core-no-echo@example.com"))
+        data = self.encrypted_pem_data()
+
+        readable = self.submit(self.url("install_certificate"), data)
+
+        self.assertIsNotNone(self.config.current_certificate)
+        self.assert_clean(readable, PASSPHRASE, *key_slices(data["private_key_text"]))
 
     def test_an_accepted_p12_install(self):
         readable = self.submit(self.url("install_certificate"), self.p12_data())

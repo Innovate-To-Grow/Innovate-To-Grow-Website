@@ -1,11 +1,15 @@
 """The Microsoft Graph certificate pages: who may use them, every accepted input, refusals, rollback, remove, download."""
 
+from unittest.mock import patch
+
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from django.contrib.admin.models import LogEntry
 from django.test import TestCase, override_settings
+from rest_framework.test import APIClient
 
 from apps.core.admin.service_credentials import microsoft_graph_certificate_forms as forms
+from apps.core.admin.service_credentials.microsoft_graph import MicrosoftGraphProviderConfigAdmin
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphCertificate
 from apps.core.services.email.graph.credential import lifecycle, recovery
 from apps.core.services.email.graph.credential.loaders import KEY_IN_CERTIFICATE, WRONG_PASSPHRASE
@@ -21,6 +25,8 @@ ACTIONS = ("install_certificate", "rollback_certificate", "remove_certificates")
 
 
 class AccessTests(CertificatePagesMixin, TestCase):
+    client_class = APIClient
+
     def setUp(self):
         super().setUp()
         self.current, _key = self.install_existing()
@@ -31,11 +37,14 @@ class AccessTests(CertificatePagesMixin, TestCase):
             with self.subTest(name):
                 self.assertEqual(self.client.get(self.url(name)).status_code, 200)
 
-    def test_core_staff_see_the_panel_and_may_download_but_not_change_the_certificate(self):
+    def test_core_staff_can_open_install_but_cannot_roll_back_or_remove_certificates(self):
         self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
         before = list(MicrosoftGraphCertificate.objects.values_list("pk", "state"))
+        versions = stored_versions()
+        self.script()
 
-        for name in ACTIONS:
+        self.assertEqual(self.client.get(self.url("install_certificate")).status_code, 200)
+        for name in ("rollback_certificate", "remove_certificates"):
             with self.subTest(name):
                 self.assertEqual(self.client.get(self.url(name)).status_code, 403)
                 self.assertEqual(self.client.post(self.url(name), self.pem_data(reason="x")).status_code, 403)
@@ -43,17 +52,45 @@ class AccessTests(CertificatePagesMixin, TestCase):
         page = self.client.get(self.change_url)
         self.assertContains(page, 'id="graph-certificate-panel"')
         self.assertContains(page, "Download .cer")
-        for name in ACTIONS:
+        self.assertContains(page, self.url("install_certificate"))
+        for name in ("rollback_certificate", "remove_certificates", "run_access_check"):
             self.assertNotContains(page, self.url(name))
         self.assertEqual(list(MicrosoftGraphCertificate.objects.values_list("pk", "state")), before)
+        self.assertEqual(stored_versions(), versions)
+        self.assertEqual(self.fake.requests, [])
 
     def test_mail_only_and_other_staff_cannot_reach_any_certificate_page(self):
+        before = list(MicrosoftGraphCertificate.objects.values_list("pk", "state"))
+        versions = stored_versions()
+        self.script()
         for apps in (["mail"], ["cms"], []):
             self.client.force_login(make_admin(apps=apps, email=f"staff-{'-'.join(apps) or 'none'}@example.com"))
             for name in (*ACTIONS, "download_certificate"):
                 with self.subTest(apps=apps, name=name):
                     self.assertEqual(self.client.get(self.url(name)).status_code, 403)
-                    self.assertEqual(self.client.post(self.url(name), {}).status_code, 403)
+                    self.assertEqual(self.client.post(self.url(name), self.pem_data()).status_code, 403)
+        self.assertEqual(list(MicrosoftGraphCertificate.objects.values_list("pk", "state")), before)
+        self.assertEqual(stored_versions(), versions)
+        self.assertEqual(self.fake.requests, [])
+
+    def test_install_respects_change_permission_for_the_selected_config(self):
+        self.client.force_login(make_admin(apps=["core"], email="core-denied@example.com"))
+        before = list(MicrosoftGraphCertificate.objects.values_list("pk", "state"))
+        versions = stored_versions()
+        self.script()
+
+        with patch.object(
+            MicrosoftGraphProviderConfigAdmin, "has_change_permission", autospec=True, return_value=False
+        ) as allowed:
+            self.assertEqual(self.client.get(self.url("install_certificate")).status_code, 403)
+            self.assertEqual(self.client.post(self.url("install_certificate"), self.pem_data()).status_code, 403)
+
+        self.assertEqual(allowed.call_count, 2)
+        for call in allowed.call_args_list:
+            self.assertEqual(call.args[-1], self.config)
+        self.assertEqual(list(MicrosoftGraphCertificate.objects.values_list("pk", "state")), before)
+        self.assertEqual(stored_versions(), versions)
+        self.assertEqual(self.fake.requests, [])
 
     def test_anonymous_visitors_are_sent_to_the_login_page(self):
         self.client.logout()
@@ -73,6 +110,50 @@ class AccessTests(CertificatePagesMixin, TestCase):
         url = self.url("install_certificate").replace(str(self.config.pk), "00000000-0000-0000-0000-000000000000")
 
         self.assertEqual(self.client.get(url).status_code, 404)
+
+
+class CoreStaffInstallTests(CertificatePagesMixin, TestCase):
+    client_class = APIClient
+
+    def test_core_staff_install_and_replace_a_standby_certificate_without_activating_or_sending(self):
+        actor = make_admin(apps=["core"], email="core-install@example.com")
+        self.client.force_login(actor)
+        standby = create_graph_config(name="Standby", is_active=False, certificate=False, scope=(SENDER,))
+        email_settings = list(EmailServiceConfig.objects.values())
+
+        response = self.client.post(self.url("install_certificate", standby), self.pem_data())
+
+        self.assertRedirects(response, self.url("change", standby), fetch_redirect_response=False)
+        first = standby.current_certificate
+        self.assertEqual(first.sha1_thumbprint, self.certificate.fingerprint(hashes.SHA1()).hex().upper())
+        self.assertIn(first.store_version_id, stored_versions())
+        entry = LogEntry.objects.get(object_id=str(standby.pk))
+        self.assertEqual(entry.user_id, actor.pk)
+        self.assertIn(first.sha1_thumbprint, entry.change_message)
+        self.assertEqual(len(self.fake.token_requests), 1)
+        self.assertEqual(self.fake.send_requests, [])
+
+        certificate, key = make_certificate(key_index=1)
+        self.script()
+        response = self.client.post(
+            self.url("install_certificate", standby), self.pem_data(certificate=certificate, key=key)
+        )
+
+        self.assertRedirects(response, self.url("change", standby), fetch_redirect_response=False)
+        current = standby.current_certificate
+        self.assertEqual(current.sha1_thumbprint, certificate.fingerprint(hashes.SHA1()).hex().upper())
+        self.assertEqual(standby.previous_certificate, first)
+        self.assertEqual(set(stored_versions()), {first.store_version_id, current.store_version_id})
+        entry = LogEntry.objects.filter(object_id=str(standby.pk)).latest("action_time")
+        self.assertEqual(entry.user_id, actor.pk)
+        self.assertIn(current.sha1_thumbprint, entry.change_message)
+        standby.refresh_from_db()
+        self.config.refresh_from_db()
+        self.assertFalse(standby.is_active)
+        self.assertTrue(self.config.is_active)
+        self.assertEqual(list(EmailServiceConfig.objects.values()), email_settings)
+        self.assertEqual(len(self.fake.token_requests), 1)
+        self.assertEqual(self.fake.send_requests, [])
 
 
 class InstallFormatTests(CertificatePagesMixin, TestCase):
