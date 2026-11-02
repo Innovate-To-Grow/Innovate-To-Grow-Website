@@ -1,4 +1,7 @@
+from functools import partial
+
 from django.contrib import admin
+from django.db import transaction
 from django.shortcuts import redirect
 from django.urls import path, reverse
 
@@ -121,7 +124,9 @@ class EventRegistrationAdmin(
         super().save_model(request, obj, form, change)
 
         if form.cleaned_data.get("send_ticket_email") or "_send_ticket_email" in request.POST:
-            self._send_ticket_email_registration(request, obj)
+            # The admin saves inside a transaction; the email (paced, and possibly waiting for its slot) goes after
+            # the commit, so no lock is held across the provider call. Its message still reaches the response.
+            transaction.on_commit(partial(self._send_ticket_email_registration, request, obj), robust=True)
 
     def response_change(self, request, obj):
         if "_send_ticket_email" in request.POST:

@@ -79,7 +79,7 @@ These Django settings (not environment variables) bound the certificate, the acc
 | `CREDENTIAL_STORE_BACKEND` | `local_file` (`memory` in tests) | `secretsmanager` | Where private keys are kept: a 0600 file store, process memory, or AWS Secrets Manager |
 | `CREDENTIAL_STORE_REQUIRE_SECRETS_MANAGER` | `False` | `True` | Refuse to start (`core.E002`) with any store other than Secrets Manager |
 | `CREDENTIAL_STORE_LOCAL_DIR` | `src/data/credential-store` | not used | Directory of the local file store (gitignored, excluded from the image); throwaway keys only |
-| `CREDENTIAL_STORE_SECRETS` | `{"microsoft_graph_certificate_key": "itg/backend/microsoft-graph/certificate-key"}` | same | Logical name → secret name; a name inside `itg/backend/aws-credentials/` is refused (`core.E003`) |
+| `CREDENTIAL_STORE_SECRETS` | `{"microsoft_graph_certificate_key": "itg/backend/microsoft-graph/certificate-key", "gmail_api_service_account_key": "itg/backend/gmail-api/service-account-key"}` | same | Logical name → secret name; a name inside `itg/backend/aws-credentials/` is refused (`core.E003`) |
 | `CREDENTIAL_STORE_STAGED_LABEL` | `I2G-STAGED` | same | Staging label of a newly written version; it must not start with `AWS` (`core.E004`) |
 | `CREDENTIAL_STORE_AWS_REGION`, `CREDENTIAL_STORE_AWS_ACCOUNT_ID` | `us-west-2`, `394167325273` | same | Region of the secret, and the account its ARN must belong to |
 | `CREDENTIAL_STORE_CONNECT_TIMEOUT_SECONDS`, `CREDENTIAL_STORE_READ_TIMEOUT_SECONDS`, `CREDENTIAL_STORE_TOTAL_MAX_ATTEMPTS` | `3`, `5`, `3` | same | Secrets Manager timeouts, and attempts including the first |
@@ -102,6 +102,35 @@ These Django settings (not environment variables) bound the certificate, the acc
 | `GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS` | `30` | same | Oldest access check the gate accepts |
 
 Every number above must be positive (`core.E005`), except the clock skew, which may be `0`.
+
+### Gmail API (email)
+
+| Variable | Purpose | Required in prod |
+|----------|---------|-----------------|
+| `GMAIL_API_OVERRIDES` | JSON object of `GMAIL_API` keys to replace, e.g. `{"request_timeout_seconds": 20}` | No (empty keeps the defaults) |
+
+The Gmail API provider's service account, key facts and account allow-list live in `GmailApiProviderConfig` and are managed on its admin page by superusers (`/admin/core/gmailapiproviderconfig/`); Mail → Notification Delivery only selects it. The service-account key is kept in the credential store (`CREDENTIAL_STORE_SECRETS["gmail_api_service_account_key"]`: the Secrets Manager secret `itg/backend/gmail-api/service-account-key` in production, created empty by `aws/cicd/identity-stack.json` and written by the task role), never in the database or the environment, and `seed_service_configs` never seeds it. The backend and worker need outbound HTTPS to `oauth2.googleapis.com` and `gmail.googleapis.com`; proxy variables are ignored.
+
+`GMAIL_API` (`config/settings/base/integrations/gmail_api/`, each value with its source) holds: `request_timeout_seconds` (15), `max_response_bytes` (65536), `max_recipients_per_message` (500, Google's limit), `max_message_bytes` (25,000,000, Google's limit before encoding), `upload_max_bytes` (36,700,160, the upload endpoint's maximum), `assertion_lifetime_seconds` (300; Google allows at most 3600), `token_max_lifetime_seconds` (3600), `token_expiry_margin_seconds` (300), `key_max_input_bytes` (16384), `min_rsa_key_bits` (2048), `key_check_timeout_seconds` (10) and `access_check_timeout_seconds` (10). The recipients and size values seed the config's fields and are their ceilings. Only existing keys can be overridden, with whole numbers; an assertion lifetime above 3600, a token margin not below the token lifetime, or a size above the upload maximum raises `ImproperlyConfigured` when settings load.
+
+### Delivery rates
+
+| Variable | Purpose | Required in prod |
+|----------|---------|-----------------|
+| `DELIVERY_RATES_OVERRIDES` | JSON object deep-merged into the `DELIVERY_RATES` setting, e.g. `{"channels": {"sms_send": {"provider_limit": 20}}}` after an AWS quota increase | No (empty keeps the defaults) |
+
+`DELIVERY_RATES` (`config/settings/base/integrations/delivery_rates/`) holds every delivery channel's seeds: Microsoft Graph send and read, Amazon SES, SMTP, Gmail IMAP, the Gmail API and AWS SMS. Each one has a Smart rate switch (on by default), a manual rate and the provider's documented limits, each with its source. Each channel's `DeliveryRatePolicy` row is seeded from it. A documented limit there is also a ceiling: mail staff can lower it on the policy, never raise it, so a provider that grants more (an AWS quota increase, a larger Google project quota) is reflected here. An override can only replace settings that exist (new SMTP host profiles may be added). The merged result is validated when settings load: an unknown key, a share or count out of range, a manual rate above its provider limit, an hourly or external limit above the daily one, a worker wait not below the stale-claim recovery, or an inline or read wait or an SES or SMS request timeout not below the inline request budget raises `ImproperlyConfigured`, which stops every process before it starts.
+
+| Section | Holds (defaults) |
+|---------|------------------|
+| `channels.<channel>` | `smart_enabled`, `manual_rate`, `provider_limit`, `fallback_rate`, `headroom`, `burst`, `recovery_interval_seconds`, `backoff_initial_seconds` / `backoff_max_seconds`; sending channels also `daily_limit`, `budget_headroom`, `transactional_reserve`; plus per-channel keys (Graph hourly limits and `limits_confirmed`, the Gmail API's message and external limits, SMTP `host_profiles`, SMS `parts_limit`, the SES and SMS discovery intervals, and `request_timeout_seconds` 10 for each SES `SendRawEmail` and SMS `SendTextMessage` call, connect and read, instead of botocore's 60 s). Values and sources: [Delivery rates](../integrations/delivery-rates.md#seeds-by-channel) |
+| `controller` | Smart rate: `start_factor` 1.0 (0.5 without a known limit), `decrease_factor` 0.5, `recovery_step` 0.10, `floor` 0.25, `backoff_jitter` 0.20, `retry_after_max_seconds` 3600 (Microsoft Graph also caps at `GRAPH_MAX_RETRY_AFTER_SECONDS`, the smaller applying), `persistent_throttle_count` 8, `breaker_probe_seconds` 900 doubling to `breaker_probe_max_seconds` 21600 |
+| `waits` | Longest wait for a slot: `inline_seconds` 10 (a request), `read_seconds` 5 (an inbox read), `worker_seconds` 30, `dedicated_seconds` 900 (an in-process campaign); `inline_request_budget_seconds` 25 (sizes inline batches; Graph's 30 s, the Gmail API's 15 s per request and the 30 s Gmail IMAP timeouts are failure bounds that may exceed it) |
+| `lanes` | `bulk_share` 0.8 (campaigns' share of the rate), `transactional_reserve` 0.10 (the share of each daily limit campaigns leave) |
+| `usage` | `bucket_seconds` 300, `retention_seconds` 172800, `idle_state_seconds` 2592000 |
+| `discovery` | `timeout_seconds` 5, `min_refresh_after_throttle_seconds` 60 |
+| `jobs` | `retry_base_seconds` 15, `retry_max_seconds` 3600, `default_max_attempts` 5, `stale_claim_seconds` 600 (also `run_background_worker --stale-minutes`), `defer_jitter_seconds` 1, `gate_cache_seconds` 1, `runner_refresh_recipients` 10 |
+| `signals.<adapter>` | The provider error codes, statuses and texts each adapter matches (graph, ses, smtp, imap, gmail_api, sms) |
 
 ### Cache
 
@@ -283,11 +312,13 @@ These integrations read credentials from Django admin at runtime (Site Settings,
 | Model | Purpose |
 |-------|---------|
 | `AWSCredentialConfig` | Secrets Manager ARN + region + SMS origination number + OTP template |
-| `EmailServiceConfig` | Sender identity, campaign rate, and the selected email provider (AWS SES, SMTP, or Microsoft Graph); there is no fallback between providers |
+| `EmailServiceConfig` | Sender identity and the selected email provider (AWS SES, SMTP, Microsoft Graph or the Gmail API); there is no fallback between providers. Its old campaign send rate (`max_send_rate`) is hidden and no longer used |
 | `SMTPProviderConfig` | SMTP host, port, TLS/SSL, optional username and password |
-| `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, optional sender mailbox, messages per minute, mailbox scope, access-check deny mailbox, InfoSec exception reference |
+| `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, optional sender mailbox, mailbox scope, access-check deny mailbox, InfoSec exception reference |
 | `MicrosoftGraphCertificate` | Installed Graph certificates (current, previous for rollback, removed): public data, thumbprints, validity, and the pinned credential-store version of the private key |
 | `MicrosoftGraphAccessCheck` | Recorded Graph access checks (probe results, token roles, verdict): the evidence the production go-live gate reads |
+| `GmailApiProviderConfig`, `GmailApiSubject` | Gmail API key facts and the pinned credential-store version of the service-account key (never the key), the account allow-list and its access-check evidence; superusers only |
+| `DeliveryRatePolicy` | Per delivery channel (Mail → Delivery Rates): the Smart rate switch, the manual rate and the provider limits, seeded from `DELIVERY_RATES`; no credentials |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
 
 Before removing legacy env vars from a deployed environment, run `python manage.py verify_service_configs --strict` against the prod DB to confirm active rows exist. See [CMS & Admin → Operations](../cms-admin/operations.md#service-configuration).

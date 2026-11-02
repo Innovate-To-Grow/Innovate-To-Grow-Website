@@ -20,7 +20,6 @@ GRAPH_FORM_FIELDS = (
     "tenant_id",
     "client_id",
     "mailbox",
-    "messages_per_minute",
     "access_check_deny_mailbox",
     "permission_exception_reference",
 )
@@ -70,7 +69,13 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
                 ),
             },
         ),
-        (_("Sending"), {"fields": ("mailbox", "messages_per_minute")}),
+        (
+            _("Sending"),
+            {
+                "fields": ("mailbox",),
+                "description": "How fast this mailbox sends and reads is set under Mail → Delivery Rates.",
+            },
+        ),
         (
             _("Access check and go-live"),
             {

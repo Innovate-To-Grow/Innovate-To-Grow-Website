@@ -17,12 +17,16 @@ class AuthnConfig(AppConfig):
 
 def register_background_jobs():
     from apps.core.services.background_jobs import register_job_kind
+    from apps.core.services.delivery_rates import Family, Lane
 
     register_job_kind(
         "authn.member_sheet_sync",
         handler="apps.authn.services.members.sheet_sync.jobs.sync_member_sheet_job",
     )
+    # Security notices: transactional mail, claimed before campaign jobs.
     register_job_kind(
         "authn.notification_email",
         handler="apps.authn.services.email.notification_jobs.send_notification_email_job",
+        family=Family.EMAIL,
+        lane=Lane.TRANSACTIONAL,
     )

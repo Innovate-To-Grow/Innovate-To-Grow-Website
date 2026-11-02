@@ -246,7 +246,7 @@ class GraphTakeoverTests(TestCase):
 
     def test_other_edits_of_the_active_config_are_not_a_takeover(self):
         MicrosoftGraphCertificate.objects.filter(config=self.active).update(entra_check="not_trusted")
-        self.active.messages_per_minute = 12
+        self.active.name = "Renamed"
 
         self.active.save()
 

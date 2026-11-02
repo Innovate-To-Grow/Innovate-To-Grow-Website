@@ -131,7 +131,6 @@ class GraphSettingsTestCase(TestCase):
             "tenant_id": TENANT_ID,
             "client_id": CLIENT_ID,
             "mailbox": "mailer@example.com",
-            "messages_per_minute": 24,
         }
         return create_graph_config(scope=GRAPH_SCOPE, **{**values, **overrides})
 
@@ -493,19 +492,20 @@ class SummaryChipTests(GraphSettingsTestCase):
 
 
 class SummaryRateTests(GraphSettingsTestCase):
-    def test_graph_shows_its_ceiling_per_minute(self):
-        self.make_graph(messages_per_minute=24)
+    def test_graph_shows_the_live_rate_of_its_mailbox(self):
+        self.make_graph()
         self.use_provider("graph")
 
         response = self.client.get(self.summary_url)
 
-        self.assertContains(response, "Campaign Send Rate")
-        self.assertContains(response, "24 emails/min")
+        self.assertContains(response, "Send Rate")
+        self.assertContains(response, "Now: 24 messages/min · Smart")
+        self.assertNotContains(response, "Campaign Send Rate")
 
-    def test_ses_still_shows_the_cap_per_second(self):
+    def test_ses_shows_the_live_rate_of_its_account(self):
         response = self.client.get(self.summary_url)
 
-        self.assertContains(response, "12 emails/sec")
+        self.assertContains(response, "recipients/sec · Smart")
 
 
 class SendTestEmailTests(GraphSettingsTestCase):

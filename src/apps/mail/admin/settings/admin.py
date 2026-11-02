@@ -8,12 +8,21 @@ from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
+from apps.core.admin.service_credentials.gmail_api_panel import key_panel
 from apps.core.admin.service_credentials.helpers import _normalize_phone_number, _send_test_email, _send_test_sms
 from apps.core.admin.service_credentials.microsoft_graph_panel import certificate_panel
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
+from apps.core.models import (
+    AWSCredentialConfig,
+    EmailServiceConfig,
+    GmailApiProviderConfig,
+    MicrosoftGraphProviderConfig,
+    SMTPProviderConfig,
+)
 from apps.core.utils.access import user_can_access_app
+from apps.mail.services.campaign.pacing import email_send_rate_line, sms_send_rate_line
 
 from .forms import AwsDeliveryForm, EmailDeliveryForm, SMTPDeliveryForm
+from .rate_cards import EMAIL_CHANNELS
 
 
 def get_mail_settings_urls():
@@ -109,7 +118,7 @@ def _record_history(request, forms, history) -> None:
 
 _EDIT_FIELD_LISTS = {
     "aws_fields": ("aws_form", ("name", "is_active", "access_key_id", "secret_access_key", "default_region")),
-    "sender_fields": ("email_form", ("name", "is_active", "provider", "from_name", "from_email", "max_send_rate")),
+    "sender_fields": ("email_form", ("name", "is_active", "provider", "from_name", "from_email")),
     "smtp_fields": (
         "smtp_form",
         ("name", "is_active", "host", "port", "username", "password", "use_tls", "use_ssl", "timeout"),
@@ -124,6 +133,7 @@ def _delivery_forms(request, email_config, aws_config, smtp_config) -> dict:
     selected_provider = request.POST.get("email-provider", email_config.provider)
     smtp_enabled = selected_provider == EmailServiceConfig.Provider.SMTP
     graph_enabled = selected_provider == EmailServiceConfig.Provider.GRAPH
+    gmail_enabled = selected_provider == EmailServiceConfig.Provider.GMAIL
     # An unused provider must not block edits or overwrite retained credentials.
     return {
         "email_form": EmailDeliveryForm(form_data, instance=email_config, prefix="email"),
@@ -133,6 +143,7 @@ def _delivery_forms(request, email_config, aws_config, smtp_config) -> dict:
         ),
         "smtp_enabled": smtp_enabled,
         "graph_enabled": graph_enabled,
+        "gmail_enabled": gmail_enabled,
     }
 
 
@@ -174,6 +185,26 @@ def _graph_context(request, graph_config) -> dict:
     return context
 
 
+def _gmail_context(request) -> dict:
+    """The active Gmail API config, read-only and without any credential field: it is managed on its own admin
+    page, by superusers only, because it decides which Workspace users the site may send as."""
+    gmail_config = GmailApiProviderConfig.load()
+    saved = not gmail_config._state.adding
+    admin_url = ""
+    if request.user.is_superuser:
+        admin_url = (
+            reverse("admin:core_gmailapiproviderconfig_change", args=[gmail_config.pk])
+            if saved
+            else reverse("admin:core_gmailapiproviderconfig_add")
+        )
+    return {
+        "gmail_config": gmail_config,
+        "gmail_saved": saved,
+        "gmail_key_panel": key_panel(request, gmail_config, actions=False),
+        "gmail_admin_url": admin_url,
+    }
+
+
 def _notification_delivery_context(request, email_config, aws_config, smtp_config, graph_config):
     email_provider, email_provider_color = _email_provider_state(email_config, aws_config, smtp_config, graph_config)
     sms_provider, sms_provider_color = _sms_provider_state(aws_config)
@@ -185,13 +216,17 @@ def _notification_delivery_context(request, email_config, aws_config, smtp_confi
         "smtp_config": smtp_config,
         "graph_config": graph_config,
         **_graph_context(request, graph_config),
+        **_gmail_context(request),
         "email_status": "Active" if email_config.is_active else "Inactive",
+        "email_send_rate": email_send_rate_line(),
         "aws_status": "Active" if aws_config.is_active else "Inactive",
         "masked_access_key": "Secrets Manager"
         if aws_config.credentials_secret_arn
         else _mask_key(aws_config.access_key_id),
         "secret_key_status": "Configured" if aws_config.is_configured else "Not configured",
         "resolved_sms_number": aws_config.resolved_sms_from_number(),
+        # After the number is resolved: an auto-detected number is known to the limiter once it is cached.
+        "sms_send_rate": sms_send_rate_line(),
         "sms_number_is_override": bool(aws_config.sms_from_number),
         "sms_template_display": aws_config.sms_message_template or "Default OTP message",
         "email_provider": email_provider,
@@ -200,6 +235,8 @@ def _notification_delivery_context(request, email_config, aws_config, smtp_confi
         "sms_provider_color": sms_provider_color,
         "test_email_url": reverse("admin:mail_settings_test_email"),
         "test_sms_url": reverse("admin:mail_settings_test_sms"),
+        "delivery_rates_url": reverse("admin:mail_delivery_rates"),
+        "email_rate_channel": EMAIL_CHANNELS.get(email_config.provider, ""),
     }
 
 
@@ -282,6 +319,10 @@ def _email_provider_state(email_config, aws_config, smtp_config, graph_config):
         if graph_config.is_configured:
             return f"Microsoft Graph ({graph_config.mailbox or email_config.from_email})", "success"
         return "Microsoft Graph not configured", "warning"
+    if email_config.provider == "gmail":
+        if GmailApiProviderConfig.load().sending_ready(email_config.from_email):
+            return f"Gmail API ({email_config.from_email})", "success"
+        return "Gmail API not configured", "warning"
     if aws_config.ses_configured:
         return f"Amazon Simple Email Service ({aws_config.region})", "success"
     return "Amazon Simple Email Service not configured", "warning"

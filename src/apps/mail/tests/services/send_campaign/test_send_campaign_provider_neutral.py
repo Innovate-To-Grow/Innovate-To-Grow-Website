@@ -11,9 +11,16 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
+from django.conf import settings
 from django.test import SimpleTestCase, TestCase, override_settings
 
-from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
+from apps.core.models import (
+    AWSCredentialConfig,
+    DeliveryRateState,
+    EmailServiceConfig,
+    MicrosoftGraphProviderConfig,
+    SMTPProviderConfig,
+)
 from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES
 from apps.core.services.email import (
     DeliveryResult,
@@ -72,6 +79,19 @@ class FakeGraphTransport:
     @property
     def sent(self):
         return [call for call in self.calls if call.host == "graph.microsoft.com"]
+
+
+class ScriptedGraphTransport(FakeGraphTransport):
+    """``FakeGraphTransport`` whose sendMail answers are taken in order, the last one repeating."""
+
+    def __init__(self, *answers):
+        super().__init__(answers[0])
+        self.answers = list(answers)
+
+    def __call__(self, host, path, body, headers, *, timeout):
+        if host == "graph.microsoft.com":
+            self.send_response = self.answers.pop(0) if len(self.answers) > 1 else self.answers[0]
+        return super().__call__(host, path, body, headers, timeout=timeout)
 
 
 def posted_mime(call):
@@ -235,10 +255,12 @@ class SendViaGraphEndToEndTests(TestCase):
             (500, {}, SES_OUTCOME_UNCERTAIN),
             (403, {}, SES_OUTCOME_PERMANENT),
             (400, {}, SES_OUTCOME_PERMANENT),
-            (507, {}, SES_OUTCOME_PERMANENT),
+            # A full sender mailbox stops Graph sending until space is freed: retried later, not failed for good.
+            (507, {}, SES_OUTCOME_TRANSIENT),
         )
         for status, headers, outcome in cases:
             with self.subTest(status=status):
+                DeliveryRateState.objects.all().delete()  # each answer on its own, not inside the last one's cooldown
                 self.transport.send_response = HttpResponse(status, headers, DENIED_BODY.encode())
 
                 with self.assertLogs(GRAPH_LOGGER, level="WARNING") as logs:
@@ -361,30 +383,53 @@ class GraphCampaignRunTests(TestCase):
             self.assertEqual(mime["List-Unsubscribe-Post"], "List-Unsubscribe=One-Click")
         self.assertEqual(len({log.provider_message_id for log in logs.values()}), 3)
 
-    def test_graph_rejection_fails_every_recipient_with_a_generic_message(self):
+    def test_graph_rejection_stops_the_campaign_and_pauses_the_rest_until_resumed(self):
+        # Microsoft refusing to let the app send as the mailbox stops Graph sending (a breaker). The runner waits
+        # out its first timed probe (as long as waits.dedicated_seconds allows), which is refused too; the breaker
+        # then stays open for longer, so the last recipient is paused instead of failing.
         transport = FakeGraphTransport(HttpResponse(403, {}, DENIED_BODY.encode()))
 
         with self.assertLogs(GRAPH_LOGGER, level="WARNING") as captured, patch(POST, transport):
             send_campaign(self.campaign, self.sender)
 
         self.campaign.refresh_from_db()
-        self.assertEqual((self.campaign.status, self.campaign.failed_count), ("failed", 3))
-        for log in self.logs_by_recipient().values():
-            self.assertEqual((log.provider, log.status, log.provider_message_id), ("graph", "failed", ""))
+        self.assertEqual((self.campaign.status, self.campaign.failed_count), ("partial", 2))
+        self.assertEqual(len(transport.sent), 2)
+        logs = list(self.logs_by_recipient().values())
+        failed = [log for log in logs if log.status == "failed"]
+        self.assertEqual([log.status for log in logs if log not in failed], ["paused"])
+        for log in failed:
+            self.assertEqual((log.provider, log.provider_message_id), ("graph", ""))
             self.assertEqual(log.error_message, "Microsoft Graph rejected the request (ErrorSendAsDenied).")
         for leaked in LEAKS:
             self.assertNotIn(leaked, "\n".join(captured.output))
 
-    def test_throttled_recipients_fail_with_a_retryable_message_and_the_run_continues(self):
+    def test_a_throttled_recipient_is_sent_again_after_the_retry_after_and_never_failed(self):
+        transport = ScriptedGraphTransport(
+            HttpResponse(429, {"retry-after": "30"}, DENIED_BODY.encode()), HttpResponse(202, {}, b"")
+        )
+
+        with self.assertLogs(GRAPH_LOGGER, level="WARNING"), patch(POST, transport):
+            summary = send_campaign(self.campaign, self.sender)
+
+        self.assertEqual(summary, {"total": 3, "sent": 3, "failed": 0})
+        self.assertEqual(len(transport.sent), 4)
+        first, second = transport.sent[:2]
+        self.assertEqual(posted_mime(first)["To"], posted_mime(second)["To"])
+
+    def test_recipients_throttled_every_time_are_paused_not_failed(self):
+        # Each 429 cools Graph down for its Retry-After; the runner waits that out and sends again, until the
+        # throttles in a row reach controller.persistent_throttle_count and the rest is left for "Resume paused".
         transport = FakeGraphTransport(HttpResponse(429, {"retry-after": "30"}, DENIED_BODY.encode()))
 
         with self.assertLogs(GRAPH_LOGGER, level="WARNING"), patch(POST, transport):
             summary = send_campaign(self.campaign, self.sender)
 
-        self.assertEqual(summary, {"total": 3, "sent": 0, "failed": 3})
-        self.assertEqual(len(transport.sent), 3)
-        for log in self.logs_by_recipient().values():
-            self.assertEqual(log.error_message, "Microsoft Graph temporarily rejected the request.")
+        self.assertEqual(summary, {"total": 3, "sent": 0, "failed": 0})
+        self.assertEqual(len(transport.sent), settings.DELIVERY_RATES["controller"]["persistent_throttle_count"])
+        self.assertEqual({log.status for log in self.logs_by_recipient().values()}, {"paused"})
+        self.campaign.refresh_from_db()
+        self.assertEqual(self.campaign.status, "partial")
 
     def test_graph_selected_without_active_graph_credentials_fails_before_anything_is_sent(self):
         MicrosoftGraphProviderConfig.objects.update(is_active=False)

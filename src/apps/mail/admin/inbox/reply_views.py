@@ -11,7 +11,13 @@ from apps.core.utils.access import user_can_access_app
 
 from . import services as inbox_api
 from .detail_views import sent_mail_denied_fragment
-from .helpers import build_original_from, build_reply_references, build_reply_subject, sent_mail_denied
+from .helpers import (
+    build_original_from,
+    build_reply_references,
+    build_reply_subject,
+    message_load_error,
+    sent_mail_denied,
+)
 
 
 def _send_reply_from_post(request, msg, *, reply_subject, reply_references, original_from, reply_url, detail_url):
@@ -57,7 +63,7 @@ def inbox_reply_view(request, uid):
         msg = inbox_api.fetch_inbox_message(uid)
     except inbox_api.InboxError as exc:
         inbox_api.logger.warning("Inbox message uid=%s could not be loaded for reply: %s", uid, exc)
-        messages.error(request, inbox_api.INBOX_MESSAGE_ERROR_MESSAGE)
+        messages.error(request, message_load_error(exc))
         return HttpResponseRedirect(list_url)
     # A reply quotes the original, so replying to Sent mail would disclose it like opening it.
     if sent_mail_denied(request, inbox_api.INBOX_FOLDER, msg):
@@ -98,7 +104,7 @@ def inbox_reply_fragment_view(request, uid):
         msg = inbox_api.fetch_inbox_message(uid)
     except inbox_api.InboxError as exc:
         inbox_api.logger.warning("Inbox message uid=%s could not be loaded for reply fragment: %s", uid, exc)
-        return _reply_load_error_response(request)
+        return _reply_load_error_response(request, message_load_error(exc))
     except Exception:
         inbox_api.logger.exception("Unexpected error loading reply fragment uid=%s.", uid)
         return _reply_load_error_response(request)
@@ -155,11 +161,8 @@ def _send_reply_fragment(request, msg, reply_subject):
     return JsonResponse({"ok": True, "message": f"Reply sent to {sent_to}."})
 
 
-def _reply_load_error_response(request):
+def _reply_load_error_response(request, error=None):
+    error = error or inbox_api.INBOX_MESSAGE_ERROR_MESSAGE
     if request.method == "POST":
-        return JsonResponse({"ok": False, "error": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE})
-    return TemplateResponse(
-        request,
-        "admin/mail/inbox/_fragment_error.html",
-        {"error_message": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE},
-    )
+        return JsonResponse({"ok": False, "error": error})
+    return TemplateResponse(request, "admin/mail/inbox/_fragment_error.html", {"error_message": error})

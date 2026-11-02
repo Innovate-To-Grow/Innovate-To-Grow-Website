@@ -5,6 +5,12 @@ from html import escape
 from . import services as inbox_api
 
 
+def message_load_error(exc) -> str:
+    """What staff see when a message cannot be shown: when to try again while reads are held back, else the generic
+    message (other errors may name hosts or accounts)."""
+    return str(exc) if isinstance(exc, inbox_api.InboxBusy) else inbox_api.INBOX_MESSAGE_ERROR_MESSAGE
+
+
 def parse_limit(request) -> int:
     """Parse and validate the requested inbox limit."""
     try:
@@ -21,16 +27,18 @@ def parse_folder(request) -> str:
 
 
 def sent_mail_restricted(user) -> bool:
-    """Whether *user* may not read Sent mail: while the inbox reads the Graph mailbox, only superusers may.
+    """Whether *user* may not read Sent mail: only superusers may while the inbox reads the Graph mailbox, or while
+    the Gmail account it reads is one the site sends as through the Gmail API.
 
-    That folder holds what the site sends without a credential flag (campaigns with login links, replies), so
-    Mail-app staff could otherwise read other people's links. When the backend cannot be resolved, the answer is
-    "restricted".
+    That folder holds what the site sends: Graph keeps what carries no credential flag there (campaigns, replies),
+    and Gmail keeps a copy of everything, sign-in codes included (the list and the import leave tagged credential mail out, which is
+    a second line of defence, not this one). Mail-app staff could otherwise read other people's links and codes.
+    When the backend cannot be resolved, the answer is "restricted".
     """
     if user.is_superuser:
         return False
     try:
-        return inbox_api.graph_inbox_active()
+        return inbox_api.graph_inbox_active() or inbox_api.gmail_sent_copies_kept()
     except Exception:
         inbox_api.logger.exception("Could not resolve the inbox backend; Sent mail stays restricted.")
         return True

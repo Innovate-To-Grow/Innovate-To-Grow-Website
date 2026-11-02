@@ -316,7 +316,8 @@ class InboxConnectionTests(TestCase):
             with _open_inbox() as client:
                 self.assertIs(client, login_client)
 
-        mock_mailbox.assert_called_once_with("imap.gmail.com")
+        # Each session connects with the gmail_imap channel's timeout (DELIVERY_RATES).
+        mock_mailbox.assert_called_once_with("imap.gmail.com", timeout=30)
         mailbox_client.login.assert_called_once_with("campaigns@ucmerced.edu", "app-password", initial_folder="INBOX")
 
     def test_open_inbox_sent_selects_sent_folder(self):

@@ -216,9 +216,8 @@ class SendTicketEmailTest(TestCase):
             [previous.pk],
         )
 
-    @patch("apps.event.services.ticket.jobs.wait_for_email_slot")
     @patch("apps.event.services.ticket.mail.send_ticket_email")
-    def test_ticket_job_fences_login_link_mutation_with_current_claim(self, mock_send, _wait_for_slot):
+    def test_ticket_job_fences_login_link_mutation_with_current_claim(self, mock_send):
         from django.db import transaction
 
         from apps.core.models import BackgroundJob
@@ -498,10 +497,9 @@ class TicketJobRetryAfterTest(TestCase):
         ticket = Ticket.objects.create(event=event, name="GA")
         self.registration = EventRegistration.objects.create(member=make_member(), event=event, ticket=ticket)
 
-    @patch("apps.event.services.ticket.jobs.wait_for_email_slot")
     @patch("apps.event.services.ticket.mail.deliver_email")
     @patch("apps.event.services.ticket.mail._load_config", return_value=_mock_config())
-    def test_a_throttled_ticket_job_retries_no_sooner_than_the_provider_asked(self, _config, deliver, _slot):
+    def test_a_throttled_ticket_job_retries_no_sooner_than_the_provider_asked(self, _config, deliver):
         deliver.side_effect = TransientEmailDeliveryError("throttled", retry_after=120.0)
         job = MagicMock(payload={"registration_id": str(self.registration.pk)})
 
@@ -511,6 +509,26 @@ class TicketJobRetryAfterTest(TestCase):
                 send_ticket_email_job(job)
 
         self.assertEqual(caught.exception.retry_after, 120.0)
+
+    @patch("apps.event.services.ticket.mail.deliver_email")
+    @patch("apps.event.services.ticket.mail._load_config", return_value=_mock_config())
+    def test_a_ticket_held_back_by_the_delivery_rate_reruns_at_its_slot(self, _config, deliver):
+        from apps.core.services.background_jobs import DeferredJobError
+        from apps.core.services.delivery_rates import RateDeferred
+        from apps.core.services.email.exceptions import EmailRateDeferred
+
+        now = timezone.now()
+        deliver.side_effect = EmailRateDeferred(RateDeferred(now + timedelta(seconds=40), "cooldown", now=now))
+        job = MagicMock(payload={"registration_id": str(self.registration.pk)})
+
+        with patch("apps.core.models.BackgroundJob.objects") as jobs:
+            jobs.select_for_update.return_value.filter.return_value.exists.return_value = True
+            with self.assertRaises(DeferredJobError) as caught:
+                send_ticket_email_job(job)
+
+        self.assertEqual(caught.exception.until, now + timedelta(seconds=40))
+        # Nothing was sent, so the provisional login link is gone again.
+        self.assertFalse(self.registration.login_tokens.exists())
 
     @patch("apps.event.services.ticket.mail.deliver_email")
     @patch("apps.event.services.ticket.mail._load_config", return_value=_mock_config())

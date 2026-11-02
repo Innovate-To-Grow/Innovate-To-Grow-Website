@@ -31,7 +31,8 @@ def inbox_fragment_view(request):
     """Return HTML partial for inbox list and config stats."""
     if not user_can_access_app(request.user, "mail"):
         raise PermissionDenied("You do not have permission to access the mail inbox.")
-    error_message = ""
+    error_message = busy_message = ""
+    showing_stale = False
     inbox_messages = []
     limit = parse_limit(request)
     folder = parse_folder(request)
@@ -43,14 +44,18 @@ def inbox_fragment_view(request):
 
     try:
         inbox_messages = inbox_api.list_inbox_messages(limit=limit, force_refresh=force_refresh, folder=folder)
-        if not sent_folder_allowed:
-            inbox_messages = hide_own_mail(inbox_messages)
+    except inbox_api.InboxBusy as exc:
+        # Reads are held back (the provider asked to wait): show the list as last read, with a banner.
+        busy_message, showing_stale = str(exc), exc.stale is not None
+        inbox_messages = exc.stale or []
     except inbox_api.InboxError as exc:
         inbox_api.logger.warning("Inbox fragment could not be loaded: %s", exc)
         error_message = inbox_api.INBOX_CONFIG_ERROR_MESSAGE
     except Exception:
         inbox_api.logger.exception("Unexpected error refreshing inbox fragment.")
         error_message = inbox_api.INBOX_UNEXPECTED_ERROR_MESSAGE
+    if not sent_folder_allowed:
+        inbox_messages = hide_own_mail(inbox_messages)
 
     return TemplateResponse(
         request,
@@ -59,6 +64,8 @@ def inbox_fragment_view(request):
             "inbox_account": _inbox_account(),
             "inbox_messages": inbox_messages,
             "error_message": error_message,
+            "busy_message": busy_message,
+            "showing_stale": showing_stale,
             "limit": limit,
             "limit_choices": inbox_api.INBOX_LIMIT_CHOICES,
             "folder": folder,

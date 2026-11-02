@@ -1,5 +1,4 @@
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -9,12 +8,6 @@ from ..control import ProjectControlModel
 from .microsoft_graph_access_check import takeover_problem
 from .microsoft_graph_certificate import MicrosoftGraphCertificate
 
-# Exchange Online limits for one sender mailbox (Microsoft Learn: "Exchange Online limits").
-GRAPH_MAX_MESSAGES_PER_MINUTE = 30
-GRAPH_DEFAULT_MESSAGES_PER_MINUTE = 24
-GRAPH_DAILY_RECIPIENT_LIMIT = 10_000
-# Emails one admin request may send inline (outside the paced queue) while Graph is the provider.
-GRAPH_INLINE_BATCH_LIMIT = 20
 # Characters that would change a Graph URL (percent-encoding keeps them out of the path, but a deny mailbox that
 # needs them is never what an operator meant).
 _URL_CHARACTERS = frozenset("/?#%\\")
@@ -75,14 +68,15 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
             "the mailbox scope below."
         ),
     )
+    # Replaced by the graph_send policy (Mail → Delivery Rates), which migration 0036 seeded from it. Kept, not
+    # editable, for one release so a task of the previous release (a rolling deploy, an image rollback) still finds
+    # the column; the follow-up release drops it with EmailServiceConfig.max_send_rate. 24 is that release's own
+    # default, so a row created now still reads as valid there.
     messages_per_minute = models.PositiveSmallIntegerField(
-        default=GRAPH_DEFAULT_MESSAGES_PER_MINUTE,
-        validators=[MinValueValidator(1), MaxValueValidator(GRAPH_MAX_MESSAGES_PER_MINUTE)],
+        default=24,
+        editable=False,
         verbose_name="Messages per Minute",
-        help_text=(
-            f"Exchange Online allows {GRAPH_MAX_MESSAGES_PER_MINUTE} messages per minute per mailbox. "
-            "Keep this below that limit so login codes and tickets are not throttled during campaigns."
-        ),
+        help_text="No longer used: rates are set under Mail → Delivery Rates.",
     )
     access_check_deny_mailbox = models.CharField(
         max_length=254,

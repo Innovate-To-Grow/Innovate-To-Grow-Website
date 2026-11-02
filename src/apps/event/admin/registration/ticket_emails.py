@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from apps.core.models import EmailServiceConfig
+from apps.core.services.delivery_rates import Family, inline_batch_limit
 
 from ...models import EventRegistration
 
@@ -58,15 +59,16 @@ class TicketEmailAdminMixin:
 
     @staticmethod
     def _inline_batch_allowed(request, count) -> bool:
-        """Inline sends bypass the paced queue, so a rate-limited provider only takes small batches."""
-        config = EmailServiceConfig.load()
-        limit = config.inline_send_limit
+        """Inline sends wait for their delivery slots inside the request, so one request takes only as many as the
+        email channel's current rate sends in ``waits.inline_request_budget_seconds`` (``inline_batch_limit``)."""
+        limit = inline_batch_limit(Family.EMAIL)
         if limit is None or count <= limit:
             return True
+        provider = EmailServiceConfig.load().get_provider_display()
         messages.error(
             request,
-            f"{count} ticket emails cannot be sent from one request while {config.get_provider_display()} is the "
-            f"email provider (limit {limit}). Select fewer registrations, or switch the email provider.",
+            f"{count} ticket emails cannot be sent from one request at {provider}'s current send rate (limit "
+            f"{limit}; see Mail → Delivery Rates). Select fewer registrations.",
         )
         return False
 
@@ -119,7 +121,7 @@ class TicketEmailAdminMixin:
             "already_sent_count": queryset.exclude(ticket_email_sent_at__isnull=True).count(),
             "error_count": queryset.exclude(ticket_email_error="").count(),
             "event_name": event_name,
-            "inline_limit": EmailServiceConfig.load().inline_send_limit,
+            "inline_limit": inline_batch_limit(Family.EMAIL),
         }
         return TemplateResponse(
             request,

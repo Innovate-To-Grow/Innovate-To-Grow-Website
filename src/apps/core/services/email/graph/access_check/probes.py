@@ -3,6 +3,10 @@
 The probes use the same requests as the site (the transport allowlist refuses anything else) but deliberately skip
 the site's own scope check, because they test what Microsoft allows. No response body, message content or token
 is kept: only the status, the allow-listed Graph error code and Microsoft's request id.
+
+The probes Microsoft should allow share the scoped mailboxes' allowance with the site's own mail, so each is admitted
+on its delivery channel (``graph_send`` or ``graph_read``) and its answer recorded. The probes that must be refused
+target the deny mailbox and record nothing.
 """
 
 import base64
@@ -12,10 +16,15 @@ from urllib.parse import quote
 from django.conf import settings
 from django.views.decorators.debug import sensitive_variables
 
+from apps.core.models.base.delivery_rates import DeliveryChannel
+from apps.core.services.delivery_rates import RateDeferred, admit, mailbox_identity, record, release, uncertain
+from apps.core.services.delivery_rates.adapters.graph import graph_signal
+
 from ...contracts import EmailMessage
 from ...exceptions import PermanentEmailDeliveryError
 from ...mime import build_mime_message
 from .. import json_message, transport
+from ..errors import innermost_error_code
 from .judge import judge, newest_id
 from .report import (
     ALLOWED,
@@ -45,6 +54,7 @@ EXTRA_READ_ALLOWED = (
     "access policy, which limits mailboxes, not permissions)"
 )
 EXTRA_READ_REFUSED = "Microsoft refuses reading this send-only mailbox too"
+RATE_HELD = "not run: Microsoft Graph is paced or cooling down for this mailbox; run the check again in about {} s"
 
 
 def user_path(mailbox: str) -> str:
@@ -118,29 +128,64 @@ class Prober:
 
     def _get_response(self, check, mailbox, path, expect_allowed, max_bytes):
         expected = ALLOWED if expect_allowed else DENIED
+        admission = _admit(DeliveryChannel.GRAPH_READ, mailbox) if expect_allowed else None
+        if isinstance(admission, RateDeferred):
+            return ProbeResult(check, mailbox, expected, FAIL, note=RATE_HELD.format(admission.retry_after)), None
         try:
             response = transport.get(
                 transport.GRAPH_HOST, path, self._headers, timeout=self._timeout, max_bytes=max_bytes
             )
         except (transport.ConnectFailed, transport.ResponseLost):
+            _settle(admission, None)
             return ProbeResult(check, mailbox, expected, FAIL, note=UNREACHABLE), None
         except transport.RequestNotAllowed as exc:
+            _settle(admission, None)
             return ProbeResult(check, mailbox, expected, FAIL, note=str(exc)), None
+        _settle(admission, _answer(response, read=True))
         return judge(check, mailbox, response, allowed_status=200, expect_allowed=expect_allowed), response
 
     def _post(self, check, mailbox, path, body, content_type, *, expect_allowed=False) -> ProbeResult:
         expected = ALLOWED if expect_allowed else DENIED
+        admission = _admit(DeliveryChannel.GRAPH_SEND, mailbox) if expect_allowed else None
+        if isinstance(admission, RateDeferred):
+            return ProbeResult(check, mailbox, expected, FAIL, note=RATE_HELD.format(admission.retry_after))
         headers = {**self._headers, "Content-Type": content_type}
         try:
             response = transport.post(transport.GRAPH_HOST, f"{path}/sendMail", body, headers, timeout=self._timeout)
         except transport.ConnectFailed:
+            _settle(admission, None)
             return ProbeResult(check, mailbox, expected, FAIL, note=UNREACHABLE)
         except transport.ResponseLost:
+            _settle(admission, uncertain("response_lost"))
             return ProbeResult(check, mailbox, expected, FAIL, note=OUTCOME_UNKNOWN)
         except transport.RequestNotAllowed as exc:
+            _settle(admission, None)
             return ProbeResult(check, mailbox, expected, FAIL, note=str(exc))
+        _settle(admission, _answer(response, read=False))
         return judge(check, mailbox, response, allowed_status=202, expect_allowed=expect_allowed)
 
 
 def _with_note(result: ProbeResult, note: str) -> ProbeResult:
     return dataclasses.replace(result, note=note)
+
+
+def _admit(channel: str, mailbox: str):
+    """The probe's admission on ``channel`` for ``mailbox``, or the ``RateDeferred`` that holds it back."""
+    try:
+        return admit(channel, mailbox_identity(mailbox))
+    except RateDeferred as exc:
+        return exc
+
+
+def _answer(response: transport.HttpResponse, *, read: bool):
+    return graph_signal(response.status, response.headers, innermost_error_code(response.body), read=read)
+
+
+def _settle(admission, signal) -> None:
+    """Record Microsoft's answer (None: it was never reached, so the slot is given back)."""
+    if admission is None:
+        return
+    if signal is None:
+        release(admission)
+    else:
+        record(admission, signal)

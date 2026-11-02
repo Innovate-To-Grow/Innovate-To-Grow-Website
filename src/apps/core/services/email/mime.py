@@ -1,13 +1,22 @@
 """MIME generation shared by all email providers."""
 
+import re
 from email.message import EmailMessage as MimeMessage
 from email.utils import formataddr, make_msgid
 
 from .contracts import EmailMessage
 from .exceptions import PermanentEmailDeliveryError
 
+# Marks a message that carries a credential (``keep_sent_copy=False``). Gmail files a copy of everything it sends in
+# Sent (the Gmail API and Gmail SMTP alike), so the admin inbox and the Gmail import use this header to keep such
+# copies out of what they list and cache.
+MAIL_CLASS_HEADER = "X-I2G-Mail-Class"
+CREDENTIAL_MAIL_CLASS = "credential"
 # Headers the builders set themselves; a caller-supplied one is refused (JSON sendMail applies the same rule).
-PROTECTED_HEADERS = {"bcc", "cc", "from", "message-id", "reply-to", "subject", "to"}
+PROTECTED_HEADERS = {"bcc", "cc", "from", "message-id", "reply-to", "subject", "to", MAIL_CLASS_HEADER.lower()}
+# RFC 5322 §2.2 field names: printable US-ASCII except the colon, so no space, tab or line break can slip a protected
+# name past the check below (" X-I2G-Mail-Class" would otherwise fold into the previous header).
+_FIELD_NAME_RE = re.compile(r"[!-9;-~]+")
 
 
 def _set_headers(mime: MimeMessage, message: EmailMessage, *, from_email: str, from_name: str) -> None:
@@ -19,9 +28,13 @@ def _set_headers(mime: MimeMessage, message: EmailMessage, *, from_email: str, f
     # Without a domain make_msgid() uses this host's FQDN, which would publish the server's internal name.
     mime["Message-ID"] = make_msgid(domain=from_email.rpartition("@")[2] or None)
     for name, value in message.headers.items():
+        if not _FIELD_NAME_RE.fullmatch(str(name)):
+            raise PermanentEmailDeliveryError("An email header is malformed.")
         if name.lower() in PROTECTED_HEADERS:
             raise PermanentEmailDeliveryError(f"Email header {name!r} is managed by the delivery service.")
         mime[name] = value
+    if not message.keep_sent_copy:
+        mime[MAIL_CLASS_HEADER] = CREDENTIAL_MAIL_CLASS
 
 
 def _set_body(mime: MimeMessage, message: EmailMessage):

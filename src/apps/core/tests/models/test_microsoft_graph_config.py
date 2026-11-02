@@ -61,7 +61,6 @@ class GraphConfigDefaultsTest(SimpleTestCase):
     def test_new_config_is_inactive_without_a_certificate_or_mailbox(self):
         config = MicrosoftGraphProviderConfig()
 
-        self.assertEqual(config.messages_per_minute, 24)
         self.assertIsNone(config.current_certificate)
         self.assertIsNone(config.certificate_expires_at)
         self.assertEqual(config.mailbox, "")
@@ -155,14 +154,6 @@ class GraphConfigCleanTest(TestCase):
 
         self.assertEqual(sorted(errors), ["client_id", "mailbox", "tenant_id"])
 
-    def test_messages_per_minute_stays_within_the_exchange_limit(self):
-        for rate in (-1, 0, 31, 1000):
-            with self.subTest(rate=rate):
-                self.assertEqual(list(self.field_errors(messages_per_minute=rate)), ["messages_per_minute"])
-        for rate in (1, 24, 30):
-            with self.subTest(rate=rate):
-                self.assertEqual(self.field_errors(messages_per_minute=rate), {})
-
     def test_tenant_and_client_id_are_required_fields(self):
         for field in ("tenant_id", "client_id"):
             with self.subTest(field=field):
@@ -184,7 +175,6 @@ class GraphConfigSaveTest(TestCase):
             {"tenant_id": "common"},
             {"client_id": "not-a-guid"},
             {"mailbox": "garbage"},
-            {"messages_per_minute": 31},
         )
         for overrides in invalid:
             with self.subTest(overrides=overrides), self.assertRaises(ValidationError):
@@ -264,7 +254,6 @@ class GraphConfigLoadTest(TestCase):
         config = MicrosoftGraphProviderConfig.load()
 
         self.assertTrue(config._state.adding)
-        self.assertEqual(config.messages_per_minute, 24)
         self.assertFalse(config.is_configured)
         self.assertFalse(MicrosoftGraphProviderConfig.objects.exists())
 

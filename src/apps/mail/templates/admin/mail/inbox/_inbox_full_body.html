@@ -81,6 +81,12 @@
         <span class="material-symbols-outlined !text-[18px]">error</span>
         <span>{{ error_message }}</span>
     </div>
+    {% elif busy_message %}
+    {% comment %}Reads are held back by the delivery rate: the list below is the last one read, if any.{% endcomment %}
+    <div data-inbox-status data-inbox-busy class="i2g-inbox-status i2g-inbox-status--warning">
+        <span class="material-symbols-outlined !text-[18px]">schedule</span>
+        <span>{{ busy_message }}{% if showing_stale %} Showing the messages as last loaded.{% endif %}</span>
+    </div>
     {% endif %}
 
     {% if inbox_messages %}
@@ -151,7 +157,7 @@
             </div>
         </div>
     </div>
-    {% elif not error_message %}
+    {% elif not error_message and not busy_message %}
     <div class="i2g-inbox-empty-state">
         <span class="material-symbols-outlined !text-[48px] mb-2 block">{% if folder == 'SENT' %}send{% else %}inbox{% endif %}</span>
         <p class="text-sm">No messages in {% if folder == 'SENT' %}Sent{% else %}Inbox{% endif %}.</p>

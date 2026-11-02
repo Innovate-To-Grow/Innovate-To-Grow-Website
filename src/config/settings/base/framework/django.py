@@ -74,6 +74,8 @@ SITEMAP_ENTRY_PROVIDERS = ("apps.projects.services.sitemap.archive_project_sitem
 # ---------------------------------------------------------------------------
 ROOT_URLCONF = "config.routing.urls"
 WSGI_APPLICATION = "config.deploy.wsgi.application"
+# ``manage.py test`` only: Django's runner, with the delivery-rate limiter on a virtual clock (see the module).
+TEST_RUNNER = "apps.core.tests.runner.ProjectTestRunner"
 ASGI_APPLICATION = "config.deploy.asgi.application"
 
 # ---------------------------------------------------------------------------

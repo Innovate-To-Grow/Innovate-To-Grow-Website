@@ -110,8 +110,8 @@ class SmsRecipientJobTests(DurableCampaignQueueTestCase):
         self.assertEqual(log.sns_message_id, "")
         self.assertEqual(campaign.status, "failed")
 
-    @patch("apps.mail.services.campaign.dispatch.sms_job.boto3.client")
-    @patch("apps.mail.services.campaign.dispatch.sms_job.resolve_aws_credentials")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
+    @patch("apps.core.services.aws.sms_send.resolve_aws_credentials")
     def test_sms_transport_disables_sdk_retries_and_marks_provider_boundary(
         self,
         resolve_credentials,

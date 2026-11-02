@@ -4,6 +4,8 @@ import base64
 import logging
 from urllib.parse import quote
 
+from apps.core.models.base.delivery_rates import DeliveryChannel
+from apps.core.services.delivery_rates import external_recipients, mailbox_identity
 from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_guid
 
 from ..contracts import DeliveryResult, EmailMessage
@@ -42,6 +44,7 @@ class GraphProvider:
     """
 
     name = "graph"
+    rate_channel = DeliveryChannel.GRAPH_SEND
 
     def __init__(
         self,
@@ -65,14 +68,31 @@ class GraphProvider:
         self.mailbox, self.from_email, self.from_name = mailbox, from_email, from_name
         self.timeout = auth.request_timeout(timeout)
 
+    def rate_identity(self) -> str:
+        """Exchange limits each sender mailbox (and Outlook each app and mailbox): the URL mailbox."""
+        return mailbox_identity(self.mailbox)
+
+    def rate_costs(self, message: EmailMessage) -> dict:
+        # Exchange counts every recipient against the mailbox's daily limit; the tenant's outbound spam policy
+        # also counts those outside the sender's domain and its subdomains per hour.
+        recipients = message.envelope_recipients
+        domain = self.from_email.rpartition("@")[2]
+        return {
+            "budget_cost": max(1, len(recipients)),
+            "external_cost": external_recipients(recipients, domain, subdomains=True),
+            "message_cost": 1,
+        }
+
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
         message_id, payload, content_type = self._encode(message)
-        access_token = auth.get_access_token(self.credential, timeout=self.timeout)
+        access_token, fresh = auth.obtain_access_token(self.credential, timeout=self.timeout)
         if before_provider_call is not None:
             before_provider_call()
-        return self._submit(access_token, payload, content_type, message_id)
+        return self._submit(access_token, payload, content_type, message_id, fresh_token=fresh)
 
-    def _submit(self, access_token: str, payload: bytes, content_type: str, message_id: str) -> DeliveryResult:
+    def _submit(
+        self, access_token: str, payload: bytes, content_type: str, message_id: str, *, fresh_token: bool = False
+    ) -> DeliveryResult:
         """POST the message. Everything after the callback is classified; unexpected errors are Uncertain."""
         try:
             response = self._post(access_token, payload, content_type)
@@ -82,7 +102,7 @@ class GraphProvider:
             if response.status in _TOKEN_REJECTED_STATUSES:
                 # A fresh token also picks up consent or role changes made after this one was issued.
                 auth.forget_access_token(self.credential)
-            raise send_mail_error(response)
+            raise send_mail_error(response, fresh_token=fresh_token)
         except EmailDeliveryError:
             raise
         except Exception as exc:

@@ -14,19 +14,14 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipientLog
 from apps.mail.services.audience import get_recipients
-from apps.mail.services.campaign.pacing import campaign_job_spacing
 from apps.mail.services.campaign.state import campaign_state
 from apps.mail.services.sms.audience import get_sms_recipients
 
 EMAIL_SUCCESS_STATUSES = frozenset({"sent", "delivered"})
-
-
-def _no_job_spacing() -> float:
-    return 0.0
-
-
 EMAIL_PROVIDER_TERMINAL_STATUSES = frozenset({*EMAIL_SUCCESS_STATUSES, "bounced", "complained", "rejected"})
 ACTIVE_STATUSES = ("pending", "processing", "retry")
+PAUSED_STATUS = "paused"
+PAUSED_MESSAGE = "Some recipients were paused by delivery limits; resume them with “Resume paused recipients”."
 
 
 @dataclass(frozen=True)
@@ -46,8 +41,6 @@ class DeliveryChannel:
     #: Statuses the outbox must never overwrite (provider-confirmed outcomes).
     terminal_statuses: frozenset
     recipients: Callable
-    #: Seconds between the recipient jobs of one queued campaign (0 = all due at once).
-    job_spacing: Callable[[], float] = _no_job_spacing
 
 
 EMAIL = DeliveryChannel(
@@ -62,7 +55,6 @@ EMAIL = DeliveryChannel(
     failed_statuses=("failed", "bounced", "complained", "rejected", "uncertain"),
     terminal_statuses=EMAIL_PROVIDER_TERMINAL_STATUSES,
     recipients=get_recipients,
-    job_spacing=campaign_job_spacing,
 )
 
 SMS = DeliveryChannel(
@@ -98,13 +90,14 @@ def aggregate_campaign(channel: DeliveryChannel, campaign_id) -> None:
         sent = sum(statuses.get(status, 0) for status in sorted(channel.success_statuses))
         failed = sum(statuses.get(status, 0) for status in channel.failed_statuses)
         active = sum(statuses.get(status, 0) for status in ACTIVE_STATUSES)
-        campaign.status = campaign_state(total=total, sent=sent, failed=failed, active=active)
+        paused = statuses.get(PAUSED_STATUS, 0)
+        campaign.status = campaign_state(total=total, sent=sent, failed=failed, active=active, paused=paused)
         campaign.total_recipients = total
         campaign.sent_count = sent
         campaign.failed_count = failed
         if campaign.sent_at is None and not active:
             campaign.sent_at = timezone.now()
-        campaign.error_message = "One or more deliveries need review." if failed else ""
+        campaign.error_message = "One or more deliveries need review." if failed else (PAUSED_MESSAGE if paused else "")
         campaign.save(
             update_fields=[
                 "status",

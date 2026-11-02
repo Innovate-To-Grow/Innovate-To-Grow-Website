@@ -16,7 +16,7 @@ from apps.core.services.email.graph.transport import (
     post,
 )
 
-CONNECTION = "apps.core.services.email.graph.transport.HTTPSConnection"
+CONNECTION = "apps.core.services.email.transport.HTTPSConnection"
 
 
 def make_connection(*, status=200, headers=(), body=b""):

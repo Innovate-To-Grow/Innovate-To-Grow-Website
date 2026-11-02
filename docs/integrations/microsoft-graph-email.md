@@ -250,7 +250,6 @@ page links to it) and add a configuration:
 | **Tenant ID** | Directory (tenant) ID as a GUID, or a verified domain such as `contoso.onmicrosoft.com`. `common`, `organizations`, and `consumers` are rejected. |
 | **Client ID** | Application (client) ID of the Entra app registration (a GUID). |
 | **Sender Mailbox** | `i2g@ucmerced.edu`. Blank means the **From Email** address. The admin inbox reads this mailbox too. |
-| **Messages per Minute** | 1 to 30, default 24. See [Campaign pacing](#campaign-pacing). |
 | **Mailbox scope** (inline rows) | One row: mailbox `i2g@ucmerced.edu`, permission **Send and read (Mail.Send + Mail.Read)**. |
 | **Access Check Deny Mailbox** | Superusers only. The unrelated test mailbox OIT / InfoSec designated for the denial test ([Validate the access restriction](#validate-the-access-restriction)): a plain address, outside the scope, not the sender mailbox or **From Email**. |
 | **InfoSec Exception Reference** | Superusers only, and only after InfoSec has approved in writing Graph permissions beyond `Mail.Send` and `Mail.Read`: the reference of that review. Leave it blank otherwise. |
@@ -845,57 +844,59 @@ Microsoft's defaults for one sender mailbox and app, as published on Microsoft L
   For Graph, a `429` comes from the limits per app and mailbox: at most four requests at a time and 10,000
   per 10 minutes. Every request counts: inline sends from each web process (login codes, invitations,
   replies, ticket resends), the worker, and the admin inbox's list and message reads. The site paces
-  campaigns but does not coordinate the four-request limit.
+  every send and mailbox read, but does not coordinate the four-request limit.
 
 All app email shares one mailbox, so a campaign draws on the same allowance as login codes, tickets,
 invitations, and test emails. Login-code emails are capped per destination but not in total (see
 [Send verification](../deployment/send-verification.md)), so a burst of code requests for many
-different addresses can use the same allowance. Campaigns are paced as described under
-[Campaign pacing](#campaign-pacing); ticket and notification emails are paced only while background jobs
-are enabled; login codes, invitations, replies, and a member's own ticket resend are never paced. When Graph
-throttles a request it answers `429` or `503` and the app treats that as a transient failure; watch the
-sender mailbox Inbox for non-delivery reports too when volume is high.
+different addresses can use the same allowance. Every email and mailbox read is paced as described under
+[Campaign pacing](#campaign-pacing). When Graph throttles a request it answers `429`, `503` or `509` and the
+app pauses Graph for the mailbox; watch the sender mailbox Inbox for non-delivery reports too when volume
+is high.
 
 ### Campaign pacing
 
-While Graph is the active provider the app sends at a **Graph rate**: the lower of **Campaign Send Rate**
-(whole emails per second; `0` means no cap) and **Messages per Minute** divided by 60. Setting **Campaign
-Send Rate** to `0` does not unpace Graph; it falls back to **Messages per Minute**. At the default of 24
-messages per minute the rate is 0.4 emails per second, and 1,000 recipients take about 42 minutes. The
-Notification Delivery page shows the rate as `24 emails/min`.
+Every email the site sends through Graph, and every admin inbox read, goes through the delivery-rate limiter
+(`apps.core.services.delivery_rates`): one schedule per sender mailbox, shared by every web process, worker
+and campaign thread. Its settings are the **Email · Microsoft Graph** and **Inbox · Microsoft Graph**
+delivery-rate policies (Mail → Delivery Rates), seeded from `DELIVERY_RATES` (see
+[Environments](../deployment/environments.md#delivery-rates)). How Smart rate, the manual rate, the budgets and
+the stops work for every channel: [Delivery rates](delivery-rates.md).
 
-- **Where it applies.** Campaigns, sent by the background worker or by the in-process sender. Both take
-  their turn from one schedule per provider, shared by every worker, web process, and campaign. Ticket
-  emails sent at registration and notification emails (subscription confirmations, security notices) are
-  paced too, but only while background jobs are enabled, because only then are they queued. When a Graph
-  campaign is queued, its recipients become due one pace apart, so ticket and notification emails queued
-  meanwhile go out between them instead of waiting for the whole campaign.
-- **Where it does not.** Emails sent straight from a request are not paced: login codes, admin invitations
-  (including the multi-select **Resend selected pending invitations** action, which has no 20-email cap),
-  inbox replies, the test email, the **Send ticket email now** button and **Send ticket email to
-  attendee** checkbox, and a member's own ticket resend from their account page. With background jobs
-  disabled (the default), registration ticket emails and notification emails are sent this way too, and
-  are not retried when Graph throttles them. All of these share the mailbox allowance with campaigns, so
-  keep **Messages per Minute** below 30.
-- **`Retry-After`.** When Graph or the identity platform answers `429`/`503` with a `Retry-After` value,
-  the background worker schedules that email's next attempt no sooner than that (capped at
-  `GRAPH_MAX_RETRY_AFTER_SECONDS`, default one hour, and
-  never sooner than its normal backoff). Other queued emails are not held back and keep their paced slots,
-  so a long throttle can cost several of them a retry too. Without the worker, a throttled recipient is
-  recorded as `failed`.
-- **Confirmation page.** Before a campaign is sent, the confirmation page shows the rate, the expected
-  duration, and the 10,000-recipients-per-day cap. It warns when the campaign has more recipients than
-  that cap, and, when background jobs are disabled, that the web server sends the campaign itself and a
-  deploy or restart during that time stops it and leaves the remaining recipients unsent. It does not
-  block the send.
-- **Bulk ticket actions.** Sending ticket emails from one request (**Send All Tickets** on the Event
-  Registrations list, which opens *Send Ticket Emails to All Registrants*, and the multi-select **Resend
-  ticket email** action) is refused above 20 registrations while Graph is active, because those sends
-  are not paced. Select fewer registrations or switch the email provider.
-- **Not enforced.** The 10,000-recipients-per-day cap is only warned about. Nothing counts the mailbox's
-  daily total, and non-delivery reports for messages over it arrive in the sender mailbox Inbox.
-- **A running campaign keeps its rate.** Lowering **Messages per Minute** applies to campaigns started
-  afterwards; one the web process is already sending keeps the rate it started with.
+- **Rate.** Smart rate is on by default: 80 % of Exchange's 30 messages per minute, that is 24 per minute,
+  slowing down when Graph throttles and speeding up again step by step. With Smart rate off the manual rate
+  applies (at most 30 per minute). A burst never lets more than 30 through in any minute.
+- **Lanes.** Campaigns get at most 80 % of the rate (19.2 per minute at the default, so 1,000 recipients take
+  about 52 minutes) and stop at 90 % of each daily limit, so login codes, tickets, invitations, replies and
+  test emails always have the rest. The limits are 10,000 recipients per rolling 24 hours, and 500 external
+  and 1,000 internal recipients per rolling hour (the Standard outbound spam preset); until **Tenant limits
+  confirmed** is set, campaigns also stay under 1,000 recipients a day.
+- **`Retry-After`.** A `429`, `503` or `509` from Graph pauses every Graph request for that mailbox (sends
+  and reads) for the `Retry-After` value (delta-seconds or an HTTP date, capped at
+  `GRAPH_MAX_RETRY_AFTER_SECONDS`), or for a backoff when there is none. A busy token endpoint pauses Graph
+  the same way; refused credentials, a `403`/`404` on a send and a full mailbox (`507`) stop Graph sending
+  until the configuration is saved again or a timed probe succeeds.
+- **Queued email.** The background worker claims tickets and security notices before campaign recipients,
+  and leaves campaign jobs unclaimed while the campaign lane waits for its next slot. A job held back by the
+  limiter runs again at its slot without using up an attempt.
+- **Email sent from a request** (login codes, invitations, replies, the test email, the **Send ticket email
+  now** button, a member's own ticket resend) waits up to 10 seconds for its slot; beyond that it is not
+  sent, and a login code tells the person to try again in about N seconds.
+- **Without the worker** the web server sends a campaign itself, waiting for each slot (up to 15 minutes).
+  A longer hold, such as a daily limit or a Graph stop, pauses the remaining recipients and the campaign
+  ends partial; the **Resume paused recipients** action on the Email Campaigns list sends exactly those
+  later (queued for the worker when background jobs are enabled).
+- **Confirmation page.** Before a campaign is sent, the confirmation page shows the campaign rate, the
+  expected duration, the daily limit and the campaign share of it, and warns when the campaign has more
+  recipients than that share. It does not block the send.
+- **Bulk ticket actions.** Sending ticket emails from one request (**Send All Tickets**, and the
+  multi-select **Resend ticket email** action) and resending invitations in bulk are refused above what one
+  request sends at the current rate in 25 seconds (13 at the default Graph rate). Select fewer.
+- **[CONFIRM LIVE]** Not observed against the tenant: the format of `Retry-After` on Outlook `429`s (both forms
+  are parsed); whether going over a sending limit returns an error or a `202` followed by a non-delivery report
+  (only an error slows the limiter); the outbound spam policy that applies to `i2g@ucmerced.edu` (tick **Tenant
+  limits confirmed** on the Graph card, and adjust the hourly limits, only once Cloud Systems has stated it); and
+  whether staff also send from the mailbox in Outlook, which the 0.8 headroom assumes.
 
 ## Error reference
 
@@ -934,12 +935,13 @@ correlation ID; quote the AADSTS number and the time instead.
 |--------|-------|------------------|------------------|
 | `202` | Success | none | Accepted for sending; not a delivery confirmation. |
 | `401` | Transient | `Microsoft Graph rejected the access token; it will be refreshed.` | The cached token is dropped and the retry fetches a new one. If it repeats, check **Tenant ID**, **Client ID**, and the installed certificate. |
+| `401` for a token issued for this send | Transient | `Microsoft Graph rejected the access token; it will be refreshed.` | The grant itself is refused, so Graph sending also stops ("refused the credentials" on Mail → Delivery Rates) until the Graph configuration is saved or the timed probe succeeds: queued mail waits instead of failing one message at a time. Check **Tenant ID**, **Client ID**, the installed certificate and the app's Mail.Send permission. |
 | `403` | Permanent | `Microsoft Graph rejected the request (ErrorAccessDenied).` or `(ErrorSendAsDenied)` | The app may not send as this mailbox or address: the mailbox is outside the Exchange restriction (the access policy's group or the management scope), the permission was removed, a change has not applied yet (more than an hour), or **From Email** is not the mailbox or an address it may send as. The cached token is dropped, so the next send picks up Entra permission changes; Exchange restriction changes apply on Exchange's schedule. Never widen the Entra grant to fix it. |
 | `404` | Permanent | `Microsoft Graph rejected the request (MailboxNotEnabledForRESTAPI).` or `(ResourceNotFound)` | **Sender Mailbox** (or **From Email**, when blank) is not an Exchange Online mailbox, or is misspelled. Use the mailbox's primary address. |
 | `400` | Permanent | `Microsoft Graph rejected the request (<code>).` | Graph refused the request or the MIME content, for example an invalid recipient. The code names the problem. |
 | `413` | Permanent | `Microsoft Graph rejected the request (<code>).` | The message is too large, usually attachments. The request-size limit for MIME `sendMail` is not documented in the pages under [Sources](#sources). |
 | Other `4xx` | Permanent | `Microsoft Graph rejected the request (<code>).` | Look the code up on Microsoft's Graph errors page. |
-| `408`, `429`, `503` | Transient | `Microsoft Graph temporarily rejected the request.` | Throttled or briefly unavailable. The `Retry-After` value (capped at 3,600 seconds) delays the background worker's next attempt; see [Campaign pacing](#campaign-pacing). A recurring `429` usually means more than four requests at once for the mailbox ([Limits](#limits)): spread out bulk actions and campaigns; lowering **Messages per Minute** only slows campaigns. |
+| `408`, `429`, `503` | Transient | `Microsoft Graph temporarily rejected the request.` | Throttled or briefly unavailable. The `Retry-After` value (capped at 3,600 seconds) delays the background worker's next attempt; see [Campaign pacing](#campaign-pacing). A recurring `429` usually means more than four requests at once for the mailbox ([Limits](#limits)): spread out bulk actions and campaigns; the limiter already pauses Graph for the mailbox after each one. |
 | `507` | Permanent | `The sender mailbox is full (HTTP 507); free space in the mailbox.` | The mailbox is full, typically Sent Items. Delete old items and set a retention policy. |
 | `500`, `502`, `504`, other `5xx`, any other status | Uncertain | `Microsoft Graph returned HTTP <status>; delivery could not be confirmed (<code>).` | A gateway error can follow acceptance. Check Sent Items before resending. |
 | Cannot connect, or the TLS handshake fails, before the request is sent | Transient | `Microsoft Graph could not be reached before sending.` | Outbound HTTPS to `graph.microsoft.com` is blocked or the network is down. Nothing was sent. |
@@ -1000,7 +1002,8 @@ A token request sends no mail, so these failures are always certain: nothing was
    from sending (non-delivery reports with `550 5.1.8`; Cloud Systems must lift it). Check **Certificates &
    secrets** in Entra, `verify_service_configs`, the Inbox and the mailbox size.
 6. **Frequent `429` or "temporarily rejected".** Spread out bulk actions, stop other tools that use the
-   same app or mailbox, lower **Messages per Minute** for campaigns, and see [Limits](#limits).
+   same app or mailbox, keep Smart rate on (or lower the manual rate) for **Email · Microsoft Graph** under
+   Mail → Delivery Rates, and see [Limits](#limits).
 7. **Campaign recipients marked `uncertain`, or `failed` after a Graph error.** Read the job's **Last
    error** (Admin → Background Jobs) and the [error reference](#error-reference); check Sent Items before
    sending again.

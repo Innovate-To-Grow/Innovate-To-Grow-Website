@@ -1,7 +1,6 @@
 """Starting a campaign send: queued per recipient for the worker, or the legacy in-process run."""
 
 import logging
-from datetime import timedelta
 
 from django.db import transaction
 from django.utils import timezone
@@ -128,16 +127,19 @@ def _run_in_process_sms_campaign(campaign_id, sent_by_id) -> None:
 
 
 def _queue_campaign(channel: DeliveryChannel, campaign, *, sent_by) -> dict[str, int]:
-    """Create (or reset) one recipient log and one outbox job per recipient, atomically."""
+    """Create (or reset) one recipient log and one outbox job per recipient, atomically.
+
+    Every job is due at once: the delivery-rate limiter paces them as they run, and the worker leaves the campaign
+    lane unclaimed while it waits for its next slot, so jobs queued meanwhile still run first.
+    """
     recipients = channel.recipients(campaign)
     now = timezone.now()
-    spacing = timedelta(seconds=channel.job_spacing())
     with transaction.atomic():
         campaign = channel.campaign_model.objects.select_for_update().get(pk=campaign.pk)
         if campaign.status != "draft":
             raise ValueError(channel.not_draft_message)
-        for index, recipient in enumerate(recipients):
-            _queue_recipient(channel, campaign, recipient, available_at=now + index * spacing)
+        for recipient in recipients:
+            _queue_recipient(channel, campaign, recipient, available_at=now)
         campaign.status = "queued" if recipients else "sent"
         campaign.sent_by = sent_by
         campaign.total_recipients = len(recipients)

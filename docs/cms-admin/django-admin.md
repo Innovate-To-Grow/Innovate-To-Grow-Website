@@ -73,6 +73,8 @@ added (a leading-wildcard `icontains` can't use a btree index, but the contact t
 - Inline recipient logs
 - Campaign status display
 - Gmail template import action
+- **Resume paused recipients** action: sends the recipients a delivery limit paused
+  ([Delivery rates](../integrations/delivery-rates.md)); the SMS campaign admin has the same action
 - Audience selection by type
 
 ### Event admin

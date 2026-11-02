@@ -1,18 +1,19 @@
-"""The pacing notice on the campaign confirmation page."""
+"""The pacing notice on the campaign confirmation page, and the order queued campaign jobs run in."""
 
 from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
-from apps.core.models import BackgroundJob, EmailServiceConfig
+from apps.core.models import AWSCredentialConfig, BackgroundJob, EmailServiceConfig
 from apps.core.services.background_jobs import claim_jobs, enqueue_job
 from apps.core.tests.graph_helpers import create_graph_config
+from apps.core.tests.services.delivery_rates.helpers import rates_with
 from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign import pacing
 from apps.mail.services.campaign.dispatch import queue_email_campaign
-from apps.mail.services.campaign.pacing import campaign_job_spacing, delivery_pacing_notice, format_duration
+from apps.mail.services.campaign.pacing import delivery_pacing_notice, format_duration
 
 # Graph senders used in this module; the mailbox scope rules have their own tests.
 GRAPH_TEST_SCOPE = ("sender@example.com", "admin@example.com")
@@ -52,31 +53,45 @@ class DeliveryPacingNoticeTests(TestCase):
         }
         return create_graph_config(scope=GRAPH_TEST_SCOPE, **values | overrides)
 
-    def test_providers_without_extra_limits_get_no_notice(self):
-        for provider in ("ses", "smtp"):
-            with self.subTest(provider):
-                EmailServiceConfig.objects.all().delete()
-                self.assertIsNone(delivery_pacing_notice(self.email(provider), 5000))
-
-    def test_an_empty_campaign_gets_no_notice(self):
+    def test_an_empty_campaign_or_unconfigured_email_gets_no_notice(self):
+        self.assertIsNone(delivery_pacing_notice(EmailServiceConfig(), 10))
+        self.make_graph()
         self.assertIsNone(delivery_pacing_notice(self.email(), 0))
 
-    def test_graph_shows_the_rate_the_duration_and_the_daily_cap(self):
-        self.make_graph(messages_per_minute=24)
+    def test_graph_shows_the_campaign_rate_the_duration_and_the_daily_limits(self):
+        self.make_graph()
 
         notice = delivery_pacing_notice(self.email(), 1000)
 
         self.assertEqual(notice["provider"], "Microsoft Graph")
-        self.assertEqual(notice["rate"], "24 emails/min")
-        self.assertEqual(notice["duration"], "42 minutes")
-        self.assertEqual(notice["daily_limit"], 10_000)
-        self.assertFalse(notice["over_daily_limit"])
+        # Smart rate runs at 24 of Exchange's 30 messages a minute; campaigns get 80 % of that.
+        self.assertEqual(notice["rate"], "19.2 messages/min")
+        self.assertEqual(notice["duration"], "52 minutes")
+        self.assertTrue(notice["now"].startswith("Now: 24 messages/min · Smart"))
+        # Until the tenant's limits are confirmed, campaigns stay under 1,000 a day, minus the 10 % reserve.
+        self.assertEqual((notice["daily_limit"], notice["campaign_daily_limit"]), (10_000, 900))
+        self.assertTrue(notice["over_daily_limit"])
+        self.assertFalse(delivery_pacing_notice(self.email(), 900)["over_daily_limit"])
 
-    def test_more_recipients_than_the_daily_cap_is_flagged(self):
-        self.assertTrue(delivery_pacing_notice(self.email(), 10_001)["over_daily_limit"])
-        self.assertFalse(delivery_pacing_notice(self.email(), 10_000)["over_daily_limit"])
+    def test_every_provider_is_paced_now(self):
+        for provider in ("ses", "smtp"):
+            with self.subTest(provider):
+                EmailServiceConfig.objects.all().delete()
+                with patch.object(pacing, "active_target", return_value=None):
+                    self.assertIsNone(delivery_pacing_notice(self.email(provider), 10))
+        AWSCredentialConfig.objects.create(
+            name="AWS", is_active=True, access_key_id="AKID", secret_access_key="SECRET", default_region="us-west-2"
+        )
+        EmailServiceConfig.objects.all().delete()
+
+        notice = delivery_pacing_notice(self.email("ses"), 100)
+
+        self.assertEqual(notice["provider"], "AWS SES")
+        self.assertIn("recipients/sec", notice["rate"])
+        self.assertIsNone(notice["daily_limit"])  # until GetAccount reports one
 
     def test_the_notice_says_whether_failed_recipients_are_retried(self):
+        self.make_graph()
         config = self.email()
         for enabled in (True, False):
             with self.subTest(enabled=enabled), override_settings(BACKGROUND_JOBS_ENABLED=enabled):
@@ -112,18 +127,19 @@ class ConfirmPageNoticeTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Microsoft Graph limits how fast this mailbox can send.")
-        self.assertContains(response, "24 emails/min")
-        self.assertContains(response, "10000 recipients per day")
-        self.assertNotContains(response, "more recipients than that daily limit")
+        self.assertContains(response, "Campaigns through Microsoft Graph are paced by the delivery limits.")
+        self.assertContains(response, "19.2 messages/min")
+        self.assertContains(response, "10000 recipients per rolling 24 hours")
+        self.assertContains(response, "campaigns stop at 900")
+        self.assertNotContains(response, "more recipients than campaigns may send in 24 hours")
 
-    def test_the_notice_warns_when_the_campaign_exceeds_the_daily_cap(self):
+    def test_the_notice_warns_when_the_campaign_exceeds_the_campaign_share_of_the_daily_limit(self):
         self.use_graph()
 
-        with patch.object(pacing, "GRAPH_DAILY_RECIPIENT_LIMIT", 1):
+        with override_settings(DELIVERY_RATES=rates_with(channels={"graph_send": {"unconfirmed_bulk_daily_limit": 1}})):
             response = self.client.get(self.url)
 
-        self.assertContains(response, "more recipients than that daily limit")
+        self.assertContains(response, "more recipients than campaigns may send in 24 hours")
         self.assertContains(response, "confirm-send-btn")
 
     def test_the_notice_mentions_disabled_background_jobs(self):
@@ -135,44 +151,26 @@ class ConfirmPageNoticeTests(TestCase):
         with override_settings(BACKGROUND_JOBS_ENABLED=True):
             self.assertNotContains(self.client.get(self.url), "Background jobs are disabled")
 
-    def test_ses_campaigns_have_no_notice(self):
-        EmailServiceConfig.objects.create(name="Mail", is_active=True, provider="ses", from_email="a@example.com")
-
+    def test_without_an_email_provider_there_is_no_notice(self):
         response = self.client.get(self.url)
 
-        self.assertNotContains(response, "limits how fast this mailbox can send")
+        self.assertNotContains(response, "are paced by the delivery limits")
 
 
-def make_graph_sender(messages_per_minute=24):
+def make_graph_sender():
     create_graph_config(
         scope=GRAPH_TEST_SCOPE,
         name="Graph",
         is_active=True,
         tenant_id=TENANT_ID,
         client_id=CLIENT_ID,
-        messages_per_minute=messages_per_minute,
     )
     return EmailServiceConfig.objects.create(
         name="Mail", is_active=True, provider="graph", from_email="sender@example.com"
     )
 
 
-class CampaignJobSpacingTests(TestCase):
-    def test_graph_spaces_recipient_jobs_at_its_pace(self):
-        self.assertAlmostEqual(campaign_job_spacing(make_graph_sender(messages_per_minute=24)), 2.5)
-
-    def test_ses_and_smtp_queue_every_recipient_at_once(self):
-        for provider in ("ses", "smtp"):
-            with self.subTest(provider):
-                self.assertEqual(campaign_job_spacing(EmailServiceConfig(provider=provider, max_send_rate=1)), 0.0)
-
-    def test_the_active_config_is_used_by_default(self):
-        make_graph_sender(messages_per_minute=30)
-
-        self.assertAlmostEqual(campaign_job_spacing(), 2.0)
-
-
-class QueuedCampaignSpacingTests(TestCase):
+class QueuedCampaignOrderTests(TestCase):
     def setUp(self):
         self.sender = make_superuser()
         self.campaign = EmailCampaign.objects.create(
@@ -186,26 +184,28 @@ class QueuedCampaignSpacingTests(TestCase):
     def campaign_jobs(self):
         return list(BackgroundJob.objects.filter(kind="mail.email_recipient").order_by("available_at", "created_at"))
 
-    def test_graph_recipient_jobs_become_due_one_pace_apart_and_logs_mirror_them(self):
-        make_graph_sender(messages_per_minute=24)
+    def test_graph_recipient_jobs_are_all_due_at_once_and_logs_mirror_them(self):
+        # The limiter paces them as they run; launch no longer spreads them out.
+        make_graph_sender()
 
         queue_email_campaign(self.campaign, sent_by=self.sender)
 
         jobs = self.campaign_jobs()
-        offsets = [(job.available_at - jobs[0].available_at).total_seconds() for job in jobs]
-        self.assertEqual(offsets, [0.0, 2.5, 5.0])
+        self.assertEqual(len({job.available_at for job in jobs}), 1)
+        self.assertEqual({job.priority for job in jobs}, {100})
         for job in jobs:
             log = RecipientLog.objects.get(pk=job.payload["recipient_log_id"])
             self.assertEqual(log.available_at, job.available_at)
 
     def test_work_queued_during_a_graph_campaign_runs_before_its_later_recipients(self):
-        make_graph_sender(messages_per_minute=24)
+        make_graph_sender()
         queue_email_campaign(self.campaign, sent_by=self.sender)
         enqueue_job(kind="event.ticket_email", dedupe_key="later", payload={})
 
         claimed = claim_jobs(batch_size=10)
 
-        self.assertEqual([job.kind for job in claimed], ["mail.email_recipient", "event.ticket_email"])
+        # A ticket (transactional, priority 10) is claimed before the campaign's recipients, all due already.
+        self.assertEqual([job.kind for job in claimed], ["event.ticket_email"] + ["mail.email_recipient"] * 3)
 
     def test_ses_campaign_jobs_are_all_due_at_once(self):
         EmailServiceConfig.objects.create(name="Mail", is_active=True, provider="ses", from_email="a@example.com")

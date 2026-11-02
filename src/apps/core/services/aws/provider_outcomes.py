@@ -18,6 +18,13 @@ NO_PROVIDER_RETRIES = Config(
     retries={"total_max_attempts": 1, "mode": "standard"},
 )
 
+
+def with_timeout(config: Config | None, seconds: float) -> Config:
+    """*config* (a retry policy, or None) with *seconds* as both the connect and the read timeout of each call."""
+    timeouts = Config(connect_timeout=seconds, read_timeout=seconds)
+    return timeouts if config is None else config.merge(timeouts)
+
+
 _TRANSIENT_ERROR_CODES = {
     "InternalFailure",
     "InternalServerException",

@@ -14,19 +14,32 @@ Consumers below are the apps that import each path today (verified, excluding
 ======================  ====================================================  ==================================================
 Subsystem               What it is                                            Importing apps
 ======================  ====================================================  ==================================================
-``aws/``                Shared AWS credential resolution + SNS SMS send        ``authn``, ``event``, ``mail``
-``background_jobs/``    Durable outbox: queue, worker, retry, rate limit.      ``authn``, ``cms``, ``event``, ``mail``
+``aws/``                Shared AWS credential resolution, the one SMS send     ``authn``, ``event``, ``mail``
+                        (``sms_send``, paced by ``delivery_rates``) and the
+                        SES / SMS limit reads (``quotas``)
+``background_jobs/``    Durable outbox: queue, worker (claims by priority,     ``authn``, ``cms``, ``event``, ``mail``
+                        skipping gated delivery lanes), retry.
                         Apps register job kinds from ``AppConfig.ready()``
-                        with ``register_job_kind`` (dotted handler paths).
-``credential_store/``   Versioned private-key store, read by pinned version:   ``core`` only (system check, Graph key)
+                        with ``register_job_kind`` (dotted handler paths;
+                        delivery kinds also name their family and lane).
+``credential_store/``   Versioned private-key store, read by pinned version:   ``core`` only (system check, Graph and Gmail keys)
                         Secrets Manager (prod), 0600 files (dev), memory
                         (tests). The database keeps only ARN + version id.
+``delivery_rates/``     Delivery-rate control for every channel (Graph, SES,   ``authn``, ``event``, ``mail`` (job-kind
+                        SMTP, Gmail IMAP and API, SMS): Smart and manual      and campaign lanes); in ``core``, ``email/``
+                        rate, pacing, budgets, breakers, AWS limit reads.     and ``aws/sms_send`` admit every message;
+                                                                              ``mail`` admits each Gmail IMAP session
+                        ``rules/`` is pure; ``runtime/`` uses the state rows;
+                        ``families`` gates the worker's claims; ``adapters/``
+                        turn provider answers into rate signals.
 ``db_tools/``           ``safe_orm``: the read-only ORM sandbox (field /       ``cli_admin``, ``system_intelligence``
                         filter allowlists, ``MAX_ROWS``)
-``email/``              Provider-neutral MIME + SES/SMTP/Graph delivery;       ``authn``, ``event``, ``mail``
+``email/``              Provider-neutral MIME + SES/SMTP/Graph/Gmail API       ``authn``, ``event``, ``mail``
+                        delivery over one bounded HTTPS ``transport``;
                         ``graph/credential/`` installs the Graph certificate
-                        (key in ``credential_store``); ``graph/access_check/``
-                        records the go-live evidence
+                        and ``gmail/key/`` the Gmail service-account key
+                        (both in ``credential_store``); ``graph/`` and
+                        ``gmail/access_check/`` record the go-live evidence
 ``helpers/``            In-process task runner + sheet formula safety         ``authn``, ``event``, ``mail``, ``system_intelligence``
 ``legacy_access/``      Signed access to the read-only legacy site viewer      ``core`` only (legacy_view, admin, views)
 ``status/``             Infrastructure status dashboard client                 ``core`` only (admin infrastructure status)

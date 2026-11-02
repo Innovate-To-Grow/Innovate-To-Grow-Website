@@ -9,10 +9,10 @@ from django.test import TestCase
 
 from apps.core.models import EmailServiceConfig, GmailAccessAccount, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph import auth
-from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadError
+from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadBusy, GraphReadError
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.mail.admin.inbox.list_views import _inbox_account
-from apps.mail.services.inbox.connection import INBOX_LIST_CACHE_KEY, INBOX_MSG_CACHE_PREFIX, InboxError
+from apps.mail.services.inbox.connection import INBOX_LIST_CACHE_KEY, INBOX_MSG_CACHE_PREFIX, InboxBusy, InboxError
 from apps.mail.services.inbox.messages import fetch_inbox_message, list_inbox_messages
 from apps.mail.tests.services.test_graph_inbox_backend import (
     GRAPH_MESSAGE,
@@ -71,6 +71,20 @@ class GraphInboxRoutingTests(GraphInboxFixtureMixin, TestCase):
         list_inbox_messages(limit=10, force_refresh=True)
 
         self.assertEqual(list_messages.call_count, 2)
+
+    def test_a_held_back_graph_read_carries_the_last_list_read(self):
+        with patch(LIST_TARGET, autospec=True, return_value=[GRAPH_MESSAGE]):
+            fresh = list_inbox_messages(limit=10)
+
+        with (
+            patch(LIST_TARGET, autospec=True, side_effect=GraphReadBusy(30)),
+            self.assertRaises(InboxBusy) as caught,
+        ):
+            list_inbox_messages(limit=10, force_refresh=True)
+
+        self.assertEqual((caught.exception.retry_after, caught.exception.stale), (30, fresh))
+        self.assertIn("about 30 seconds", str(caught.exception))
+        self.open_inbox.assert_not_called()
 
     def test_an_imap_cache_entry_is_never_served_for_graph(self):
         cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", [{"uid": "imap-1"}])
