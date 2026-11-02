@@ -28,6 +28,12 @@ class PastProjectShareRowsTests(PastProjectShareTestCase):
 
     def test_create_share_accepts_exactly_1000_rows(self):
         rows = [sample_row(team_number=f"T{i:03d}") for i in range(1000)]
+        Project.objects.bulk_create(
+            Project(
+                semester=self.semester, class_code=row["class_code"], team_number=row["team_number"], project_title="P"
+            )
+            for row in rows
+        )
 
         response = self.client.post("/projects/past-shares/", sample_payload(rows=rows), format="json")
 
@@ -56,7 +62,8 @@ class PastProjectShareRowsTests(PastProjectShareTestCase):
         self.assertEqual(response.data["details_text"], "Project 1\nAbstract: A project abstract.")
         self.assertFalse(response.data["can_edit"])
 
-    def test_create_round_trips_is_presenting(self):
+    def test_create_ignores_a_client_presenting_flag(self):
+        # Archive projects carry no presenting flag; the pages give their rows "" and so does the stored row.
         response = self.client.post(
             "/projects/past-shares/",
             sample_payload(rows=[sample_row(is_presenting="Yes")]),
@@ -64,16 +71,16 @@ class PastProjectShareRowsTests(PastProjectShareTestCase):
         )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.data["rows"][0]["is_presenting"], "Yes")
+        self.assertEqual(response.data["rows"][0]["is_presenting"], "")
         share = PastProjectShare.objects.get(pk=response.data["id"])
-        self.assertEqual(share.rows[0]["is_presenting"], "Yes")
+        self.assertEqual(share.rows[0]["is_presenting"], "")
 
     def test_create_round_trips_project_id(self):
-        project_id = "11111111-1111-4111-8111-111111111111"
+        project_id = str(self.catalog["T02"].pk)
 
         response = self.client.post(
             "/projects/past-shares/",
-            sample_payload(rows=[sample_row(id=project_id)]),
+            sample_payload(rows=[sample_row(id=project_id, team_number="T02")]),
             format="json",
         )
 
@@ -94,8 +101,8 @@ class PastProjectShareRowsTests(PastProjectShareTestCase):
 
     def test_rows_saved_without_is_presenting_serialize_as_blank(self):
         # Pre-existing shares were stored before is_presenting existed; GET must still return
-        # "" for them rather than erroring on the missing key.
-        share = PastProjectShare.objects.create(rows=[sample_row(semester_label="2025 Spring")])
+        # "" for them rather than erroring on the missing key. (T77 is not in the catalog.)
+        share = PastProjectShare.objects.create(rows=[sample_row(semester_label="2025 Spring", team_number="T77")])
 
         response = self.client.get(f"/projects/past-shares/{share.pk}/")
 
@@ -104,7 +111,7 @@ class PastProjectShareRowsTests(PastProjectShareTestCase):
         self.assertNotIn("id", response.data["rows"][0])
 
     def test_get_share_backfills_missing_project_id_from_stable_key(self):
-        semester = Semester.objects.create(year=2025, season=Semester.Season.SPRING)
+        semester = Semester.objects.create(year=2024, season=Semester.Season.FALL, is_published=True)
         project = Project.objects.create(
             semester=semester,
             class_code="ENGR 120",
@@ -112,7 +119,7 @@ class PastProjectShareRowsTests(PastProjectShareTestCase):
             project_title="Current Project",
             source=Project.Source.SHEET,
         )
-        share = PastProjectShare.objects.create(rows=[sample_row(semester_label="2025 Spring")])
+        share = PastProjectShare.objects.create(rows=[sample_row(semester_label="2024 Fall")])
 
         response = self.client.get(f"/projects/past-shares/{share.pk}/")
 
@@ -120,6 +127,17 @@ class PastProjectShareRowsTests(PastProjectShareTestCase):
         self.assertEqual(response.data["rows"][0]["id"], str(project.pk))
         share.refresh_from_db()
         self.assertNotIn("id", share.rows[0])
+
+    def test_get_share_does_not_backfill_a_project_of_an_unpublished_semester(self):
+        hidden = Semester.objects.create(year=2024, season=Semester.Season.FALL, is_published=False)
+        Project.objects.create(semester=hidden, class_code="ENGR 120", team_number="T01", project_title="Hidden")
+        share = PastProjectShare.objects.create(rows=[sample_row(semester_label="2024 Fall")])
+
+        response = self.client.get(f"/projects/past-shares/{share.pk}/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("id", response.data["rows"][0])
+        self.assertEqual(response.data["rows"][0]["project_title"], "Shared Project")
 
     def test_get_share_marks_owner_can_edit(self):
         share = PastProjectShare.objects.create(rows=[sample_row()], created_by=self.member)

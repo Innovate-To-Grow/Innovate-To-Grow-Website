@@ -25,7 +25,7 @@ export const MyCurationsPanel = () => {
   const memberId = isAuthenticated && !isInitializing ? (user?.member_uuid ?? null) : null;
   // Tagged with the member they were loaded for, so another account never sees them while its own load runs.
   const [loaded, setLoaded] = useState<{memberId: string; shares: PastProjectShareSummary[]} | null>(null);
-  const {status: copyStatus, copy} = useCopyLink({
+  const {status: copyStatus, tone: copyTone, copy} = useCopyLink({
     copied: 'Link copied.',
     failed: 'Could not copy the link. Open the curation and copy its address instead.',
   });
@@ -64,7 +64,7 @@ export const MyCurationsPanel = () => {
           My Curations
         </h2>
         <Link className="itg-link" to={PAST_PROJECT_CURATION_SHARED_LINKS_PATH}>
-          {shares.length > recent.length ? `See all ${shares.length}` : 'Manage curations'}
+          {shares.length > recent.length ? `See All ${shares.length}` : 'Manage Curations'}
         </Link>
       </div>
       <p className="past-projects-my-curations-hint">Open a saved curation to view or edit it.</p>
@@ -86,16 +86,19 @@ export const MyCurationsPanel = () => {
               <button
                 type="button"
                 className="itg-btn itg-btn-text past-projects-my-curation-copy"
-                aria-label={`Copy the link to ${name}`}
+                aria-label={`Copy Link to ${name}`}
                 onClick={() => void copy(share.share_url || `${window.location.origin}/past-projects/${share.id}`)}
               >
-                Copy link
+                Copy Link
               </button>
             </li>
           );
         })}
       </ul>
-      <p className="past-projects-my-curations-status" role="status">
+      <p
+        className={`past-projects-my-curations-status ${copyTone === 'error' ? 'itg-error' : 'itg-success'}`}
+        role="status"
+      >
         {copyStatus}
       </p>
     </section>

@@ -10,6 +10,7 @@
      */
 
     var MAX_HEIGHT = 4000;
+    var PREVIEW_PATH = '/_block-preview';
     var dataElement = document.getElementById('si-action-preview-data');
     if (!dataElement) return;
 
@@ -24,17 +25,24 @@
         if (entry && entry.nonce) blocks[entry.nonce] = entry.block;
     });
 
-    function frameOrigin(frame) {
+    // The frame URL is rebuilt from a fixed scheme, the validated host, the fixed preview path and
+    // the encoded nonce rather than copying the data-src text into src, so a frame can only ever
+    // load an http(s) /_block-preview page, never e.g. a javascript: or data: URL.
+    function previewUrl(frame, nonce) {
+        var parsed;
         try {
-            return new URL(frame.getAttribute('data-src') || '', window.location.href).origin;
+            parsed = new URL(frame.getAttribute('data-src') || '', window.location.href);
         } catch (e) {
             return '';
         }
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return '';
+        if (parsed.username || parsed.password || parsed.pathname !== PREVIEW_PATH) return '';
+        var scheme = parsed.protocol === 'https:' ? 'https://' : 'http://';
+        return scheme + parsed.host + PREVIEW_PATH + '?nonce=' + encodeURIComponent(nonce);
     }
 
-    function sendBlock(frame, nonce) {
-        var origin = frameOrigin(frame);
-        if (!origin || !frame.contentWindow) return;
+    function sendBlock(frame, nonce, origin) {
+        if (!frame.contentWindow) return;
         frame.contentWindow.postMessage({
             type: 'cms-block-preview',
             nonce: nonce,
@@ -52,15 +60,18 @@
     document.querySelectorAll('.si-action-preview-frame').forEach(function (frame) {
         var nonce = frame.getAttribute('data-preview-nonce') || '';
         if (!nonce || !blocks[nonce]) return;
+        var src = previewUrl(frame, nonce);
+        if (!src) return;
+        var origin = new URL(src).origin;
         var sent = false;
 
         window.addEventListener('message', function (event) {
-            if (event.source !== frame.contentWindow || event.origin !== frameOrigin(frame)) return;
+            if (event.source !== frame.contentWindow || event.origin !== origin) return;
             var message = event.data || {};
             if (message.nonce !== nonce) return;
             if (message.type === 'cms-block-preview-ready') {
                 sent = true;
-                sendBlock(frame, nonce);
+                sendBlock(frame, nonce, origin);
             } else if (message.type === 'cms-block-preview-resize') {
                 setHeight(frame, message.height);
             }
@@ -71,12 +82,12 @@
             window.setTimeout(function () {
                 if (sent) return;
                 sent = true;
-                sendBlock(frame, nonce);
+                sendBlock(frame, nonce, origin);
             }, 300);
         });
 
         // The frame starts loading only now, so neither its ready message nor its load event can
         // arrive before the listeners above exist.
-        frame.setAttribute('src', frame.getAttribute('data-src') || '');
+        frame.setAttribute('src', src);
     });
 })();

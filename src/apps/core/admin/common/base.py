@@ -2,11 +2,13 @@
 Base admin classes for consistent admin interface across the project.
 """
 
+from django.db.models.constants import LOOKUP_SEP
 from unfold.admin import ModelAdmin
 
 from apps.core.utils.access import user_can_access_app
 
 from ..mixins import ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin
+from ..mixins.confirm_on_save_utils import SENSITIVE_FIELD_RE
 
 
 class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin, ModelAdmin):
@@ -46,6 +48,17 @@ class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin,
 
     def has_delete_permission(self, request, obj=None):
         return self._has_app_access(request)
+
+    def lookup_allowed(self, lookup, value, request=None):
+        """Refuse changelist filters on secret-looking fields (``?password__startswith=a`` → 400).
+
+        Django allows a query-string lookup on any local field, so the result count would answer guesses about a
+        stored secret one character at a time, and the guesses would land in the access log. The names follow the
+        same rule as the confirmation diff and the CLI denylist (``SENSITIVE_FIELD_RE``).
+        """
+        if SENSITIVE_FIELD_RE.search(str(lookup).split(LOOKUP_SEP, 1)[0]):
+            return False
+        return super().lookup_allowed(lookup, value, request)
 
     def get_readonly_fields(self, request, obj=None):
         """Include base readonly fields with any model-specific ones."""

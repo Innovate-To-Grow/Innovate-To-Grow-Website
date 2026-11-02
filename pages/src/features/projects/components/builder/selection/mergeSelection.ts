@@ -80,16 +80,16 @@ export function describeMergeResult(
       unavailable: outcome.unavailable.length,
     },
     {
-      added: `added to Saved Merged Results (${context.totalSaved} in total).`,
-      already: 'saved',
-      place: 'in Saved Merged Results',
-      retryLabel: 'Save Selected',
+      added: `added to the curation draft (${context.totalSaved} in total).`,
+      already: 'in the curation draft',
+      place: 'in the curation draft',
+      retryLabel: 'Add to Curation',
     },
   );
   const removed = plan.removedMeanwhile.length;
   const removedNote = removed
-    ? `${pluralize(removed, 'project')} ${removed === 1 ? 'was' : 'were'} removed from Saved Merged ` +
-      `Results while saving and ${removed === 1 ? 'is' : 'are'} still selected.`
+    ? `${pluralize(removed, 'project')} ${removed === 1 ? 'was' : 'were'} removed from the curation draft ` +
+      `while adding and ${removed === 1 ? 'is' : 'are'} still selected.`
     : '';
   // Checked rows another table holds that are not saved now (this save may have saved some of them).
   const unsavedElsewhere = describeUnsavedSelections(

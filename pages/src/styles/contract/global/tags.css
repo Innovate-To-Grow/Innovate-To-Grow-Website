@@ -2,7 +2,10 @@
 /* Moved verbatim from the CMS "global" stylesheet. */
 
 /* ==========================================================================
-   Tags
+   Tags: one shape for every tag (11px, 700, uppercase, 1px letter-spacing,
+   1px 6px padding, square), each with its own fill: NEW tag-new with
+   primary text, ADDED / SAVED tag-added with success text and a check,
+   CURRENT tag-current with primary text.
    ========================================================================== */
 
 .itg-tag {
@@ -26,10 +29,13 @@
 }
 
 .itg-tag-saved {
-  padding-left: 0;
-  padding-right: 0;
-  background: none;
+  background: var(--itg-color-tag-added);
   color: var(--itg-color-success);
+}
+
+.itg-tag-current {
+  background: var(--itg-color-tag-current);
+  color: var(--itg-color-primary);
 }
 
 .itg-tag-saved::before {
@@ -40,5 +46,20 @@
   background: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5L20 7'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* Forced colours (Windows Contrast themes) replace backgrounds with the page
+   colour: the masked check (a currentColor background) vanished and every
+   tag lost its fill. Paint the check in the text colour and give every tag
+   an outline instead. */
+@media (forced-colors: active) {
+  .itg-tag-saved::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+
+  .itg-tag {
+    outline: 1px solid CanvasText;
+  }
 }
 }

@@ -1,4 +1,4 @@
-import {useId, type ReactNode} from 'react';
+import {useId, type ReactNode, type Ref} from 'react';
 import type {ProjectGridTableProps} from '../contracts/gridTableProps';
 
 interface PageSizeFieldProps {
@@ -42,6 +42,8 @@ type ControlsProps = Pick<
 > & {
   /** Per page and View All Details, when the results bar does not hold them (no sort select). */
   pageControls: ReactNode;
+  /** The search field, which takes focus back when "Clear Search" clears it. */
+  searchInputRef?: Ref<HTMLInputElement>;
 };
 
 /** The filter well: the search field (or a replacement such as the AI search form) and any extra filters. */
@@ -54,6 +56,7 @@ export const ProjectGridControls = ({
   filterControls,
   onSearchChange,
   pageControls,
+  searchInputRef,
 }: ControlsProps) => {
   const searchInputId = useId();
   return (
@@ -65,6 +68,7 @@ export const ProjectGridControls = ({
               {searchLabel}
             </label>
             <input
+              ref={searchInputRef}
               id={searchInputId}
               type="search"
               className="itg-input project-grid-search-input"
