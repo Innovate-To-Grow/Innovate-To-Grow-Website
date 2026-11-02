@@ -3,7 +3,16 @@ import { useParams, useSearchParams } from 'react-router';
 import { BlockRenderer } from './BlockRenderer';
 import { cmsPageClassName } from './pageClassName';
 import type { CMSEmbedResponse } from '@/features/cms/api';
-import { EMBED_BODY_CSS, useBaseTargetBlank, useEmbedData, useHeadStyle, useReportHeightToParent } from './embed/useEmbedDocument';
+import {
+  EMBED_APP_ROUTE_BODY_CSS,
+  EMBED_BODY_CSS,
+  useBaseTargetBlank,
+  useEmbedData,
+  useHeadStyle,
+  useReportHeightToParent,
+} from './embed/useEmbedDocument';
+import { BlockedTabNotice } from './embed/BlockedTabNotice';
+import { usePopOutNavigation } from './embed/usePopOutNavigation';
 import { normalizeScheduleId } from './embedScheduleId';
 import {
   SECTION_TITLES_KEY,
@@ -22,7 +31,8 @@ import {
  * - Reports its own height to the parent window via postMessage so the iframe
  *   can auto-resize (message type `i2g-embed-resize`).
  * - Adds <base target="_blank"> so any internal links open in a new window,
- *   preventing users from getting stuck in the chromeless iframe view.
+ *   preventing users from getting stuck in the chromeless iframe view, and
+ *   opens router navigations to other pages in a new window too.
  */
 
 export interface EmbedAppRouteProps {
@@ -60,7 +70,8 @@ export const EmbedBlockPage = ({appRoutes}: {appRoutes: EmbedAppRoutes}) => {
   );
 
   useBaseTargetBlank();
-  useHeadStyle('itg-embed-body', EMBED_BODY_CSS);
+  const blockedNavigation = usePopOutNavigation();
+  useHeadStyle('itg-embed-body', data?.widget_type === 'app_route' ? EMBED_APP_ROUTE_BODY_CSS : EMBED_BODY_CSS);
   // Hide safe preset sections when requested by widget config or preview query params.
   useHeadStyle('itg-embed-hide-sections', hiddenSectionsCss);
   // Report height to parent (once data is rendered, and on any size change).
@@ -78,7 +89,10 @@ export const EmbedBlockPage = ({appRoutes}: {appRoutes: EmbedAppRoutes}) => {
   if (!data) return null;
 
   return (
-    <EmbedBody data={data} containerRef={containerRef} scheduleIdOverride={scheduleIdFromQuery} appRoutes={appRoutes} />
+    <>
+      <BlockedTabNotice blocked={blockedNavigation} />
+      <EmbedBody data={data} containerRef={containerRef} scheduleIdOverride={scheduleIdFromQuery} appRoutes={appRoutes} />
+    </>
   );
 };
 

@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }} &mdash; {{ original.name }}</h1>{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    {% if problem %}
+        <div class="mb-6 rounded-default border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300">
+            <p class="font-semibold">The access check cannot run yet.</p>
+            <p class="mt-1">{{ problem }}</p>
+        </div>
+    {% endif %}
+    <div class="mb-6 rounded-default border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300">
+        <p>The site checks what Google lets the installed key do, with fresh tokens that are never cached, and records the evidence email needs to switch to the Gmail API:</p>
+        <ul class="mt-2 list-disc pl-5">
+            <li>the pinned key reads from the credential store and matches the recorded key ID and service account;</li>
+            <li>Google issues a gmail.send token for each account on the allow-list;</li>
+            <li>an address off the list is refused by the site before any request (Google is not asked: it would grant it);</li>
+            <li>each broader scope (full Gmail, read, modify, Drive, Calendar, Cloud, Directory, …) is refused by Google;</li>
+            <li>optionally, a probe email from each account to itself (it stays in that account's Sent folder).</li>
+        </ul>
+        <p class="mt-2">Google-side per-user restriction is not available for domain-wide delegation: the allow-list is the per-user control, and it does not bind anyone who holds the key.</p>
+    </div>
+    {% include "admin/core/gmailapiproviderconfig/key_panel.html" %}
+    <form method="post">
+        {% csrf_token %}
+        <fieldset class="mb-6 rounded-default border border-base-200 p-4 dark:border-base-700">
+            {% include "unfold/helpers/field.html" with field=form.send %}
+            {% include "unfold/helpers/field.html" with field=form.breadth %}
+        </fieldset>
+        <div class="flex gap-3">
+            <button type="submit" class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"{% if problem %} disabled{% endif %}>Run access check</button>
+            <a href="{{ cancel_url }}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

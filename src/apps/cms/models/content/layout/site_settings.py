@@ -14,10 +14,14 @@ _DEFAULT_DESIGN_TOKENS = {
         "bg_light": "#f2f2f2",
         "bg_panel": "#f7f7f7",
         "bg_page": "#ffffff",
+        # The odd rows of striped tables (.itg-table, the project lists): text #323336 on it is 12:1.
+        "row_stripe": "#f9f9f9",
         "white": "#fff",
         "border": "#dddddd",
         "border_table": "#cccccc",
         "border_input": "#cccccc",
+        # The edge of the search and filter fields (.itg-input, .itg-select): 3:1 on their grey fill.
+        "border_field": "#858585",
         "accent_gold": "#dbaa00",
         "accent_gold_hover": "#be882c",
         "accent_bright": "#ffbf3c",
@@ -27,6 +31,10 @@ _DEFAULT_DESIGN_TOKENS = {
         "footer_bar_rule": "#d9a928",
         "highlight": "#fff6db",
         "tag_new": "#ffe9a8",
+        # The fill of the ADDED / SAVED tag (.itg-tag-saved): its success-green text is 4.69:1 on it.
+        "tag_added": "#e8f3eb",
+        # The fill of the CURRENT tag (.itg-tag-current) on current-catalog rows: primary text is 11.5:1 on it.
+        "tag_current": "#e1ecf3",
         "success": "#1e7b34",
         "disabled_text": "#6b6b6b",
         "disabled_bg": "#efefef",

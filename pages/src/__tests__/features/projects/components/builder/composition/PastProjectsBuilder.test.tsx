@@ -61,7 +61,7 @@ const ROWS: ProjectGridRow[] = [
 ];
 
 const getMergedSection = () => {
-  const heading = screen.queryByRole('heading', {name: /saved merged results/i});
+  const heading = screen.queryByRole('heading', {name: /curation draft/i});
   return heading ? (heading.closest('section') as HTMLElement) : null;
 };
 
@@ -91,11 +91,11 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     // No saved results yet.
     expect(getMergedSection()).toBeNull();
 
-    // Check exactly one row, then Save Selected — the per-table merge button. (The grid renders a
+    // Check exactly one row, then Add to Curation — the per-table merge button. (The grid renders a
     // desktop table and mobile cards, so each row's checkbox/label appears twice — target the first
     // match; both checkboxes map to the same row key.) There is no confirmation dialog anymore.
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     expect(window.confirm).not.toHaveBeenCalled();
 
     const merged = getMergedSection();
@@ -107,26 +107,26 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     expect(mergedView.queryByText('Charlie Project')).toBeNull();
   });
 
-  it('disables Save Selected until a row is selected and never merges everything by default', () => {
+  it('disables Add to Curation until a row is selected and never merges everything by default', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    const mergeButton = screen.getByRole('button', {name: /save selected/i});
-    expect(mergeButton).toBeDisabled();
+    const mergeButton = screen.getByRole('button', {name: /add to curation/i});
+    expect(mergeButton).toHaveAttribute('aria-disabled', 'true');
 
     // Selecting a row enables it.
     fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
-    expect(mergeButton).toBeEnabled();
+    expect(mergeButton).not.toHaveAttribute('aria-disabled');
   });
 
   it('does not toggle selection from desktop row body clicks', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
-    const mergeButton = screen.getByRole('button', {name: /save selected/i});
+    const mergeButton = screen.getByRole('button', {name: /add to curation/i});
     fireEvent.click(screen.getAllByText('Bravo Project')[0]);
-    expect(mergeButton).toBeDisabled();
+    expect(mergeButton).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    expect(mergeButton).toBeEnabled();
+    expect(mergeButton).not.toHaveAttribute('aria-disabled');
   });
 
   it('can undo search-table row deletion and refresh a standard search table', () => {
@@ -142,13 +142,13 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
     );
 
     const undoButton = screen.getByRole('button', {name: /undo row change/i});
-    expect(undoButton).toBeDisabled();
+    expect(undoButton).toHaveAttribute('aria-disabled', 'true');
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
     fireEvent.click(screen.getByRole('button', {name: /remove from table/i}));
 
     expect(screen.queryByText('Bravo Project')).toBeNull();
-    expect(undoButton).toBeEnabled();
+    expect(undoButton).not.toHaveAttribute('aria-disabled');
 
     fireEvent.click(undoButton);
     expect(screen.getAllByText('Bravo Project').length).toBeGreaterThan(0);
@@ -238,7 +238,27 @@ describe('PastProjectsBuilder — Save/Merge selection contract', () => {
       '+ Search Table',
       '+ AI Search Table',
     ]);
-    expect(within(section).getByText('Help: buttons, saving and tables')).toBeInTheDocument();
+    expect(within(section).getByText('Help: Buttons, Saving and Tables')).toBeInTheDocument();
+    // The embed's "Section titles" option hides the heading by this marker (visually only: it stays a heading).
+    expect(within(section).getByRole('heading', {level: 2, name: 'Search Tables'})).toHaveAttribute(
+      'data-embed-section',
+      'section-title',
+    );
+  });
+
+  it('says in its help that tables share one archive and that Refresh starts a table over', () => {
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    const help = screen.getByText('Help: Buttons, Saving and Tables').closest('details') as HTMLElement;
+    expect(help).toHaveTextContent('Adds another search table over the same past-project archive');
+    expect(help).not.toHaveTextContent('loads the full past-project archive on its own');
+    expect(help).toHaveTextContent(
+      'Refresh Search Table reloads the archive and starts that table over: its search, sort, Per page, ' +
+        'checked rows and tidy edits are cleared.',
+    );
+    // Button names in Title Case, in bold like the help's other button names.
+    expect(within(help).getByText('Delete Table', {selector: 'dt'})).toBeInTheDocument();
+    expect(within(help).getByText('Delete Table', {selector: 'dd strong'})).toBeInTheDocument();
   });
 
   it('omits the search table number until there are multiple tables', () => {

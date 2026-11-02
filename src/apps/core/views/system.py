@@ -3,11 +3,39 @@
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 
+# The site's pages are rendered in the browser from this API, so a search engine renders them only if robots.txt
+# lets it fetch the public reads they make. Google and Bing apply the longest matching rule (RFC 9309); the
+# narrower Disallow lines still come first, so a crawler that applies the first matching rule reads them the same.
+# These open what the public pages read and the final Disallow keeps everything else out.
+_ROBOTS_ALLOWED_READS = (
+    "/health/",
+    "/layout/",
+    "/cms/pages/",
+    "/cms/homepage/",
+    "/cms/embed/",
+    # Rich text keeps an iframe only when its host is on this list.
+    "/cms/embed-hosts/",
+    "/news/",
+    "/event/schedule/",
+    "/projects/",
+    "/media/",
+    "/static/",
+)
+# Under /projects/, only the archive, the all-projects list and project details render public pages.
+_ROBOTS_DISALLOWED_READS = (
+    "/projects/past-shares/",
+    "/projects/past-ai-search/",
+    "/projects/past-all/",
+    "/projects/past/",
+)
+
 
 def robots_txt(request):
-    """Serve robots.txt for search engine crawlers."""
+    """Serve robots.txt for search engine crawlers: the public page reads are allowed, nothing else."""
     lines = [
         "User-agent: *",
+        *(f"Disallow: {path}" for path in _ROBOTS_DISALLOWED_READS),
+        *(f"Allow: {path}" for path in _ROBOTS_ALLOWED_READS),
         "Disallow: /",
         "",
     ]

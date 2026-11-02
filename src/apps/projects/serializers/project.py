@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from ..models import Project
+from ..pagination import PastProjectsPageNumberPagination
 
 
 class ProjectListSerializer(serializers.ModelSerializer):
@@ -10,7 +11,11 @@ class ProjectListSerializer(serializers.ModelSerializer):
 
 
 class CompactPastProjectSerializer(serializers.ModelSerializer):
-    """Compact project representation for archive discovery lists."""
+    """Compact project representation for archive discovery lists.
+
+    Abstracts stay on the detail endpoint to keep the list small; student names are short and are included so a
+    list can be searched by team member.
+    """
 
     semester_label = serializers.CharField(source="semester.label", read_only=True)
 
@@ -25,9 +30,39 @@ class CompactPastProjectSerializer(serializers.ModelSerializer):
             "project_title",
             "organization",
             "industry",
+            "student_names",
             "track",
             "presentation_order",
         ]
+
+
+class _ArchiveCatalogFields(serializers.Serializer):
+    """What /projects/all/ rows and project details add for an archive project: it names its catalog, and only a
+    current project has a presenting flag."""
+
+    catalog = serializers.SerializerMethodField()
+    is_presenting = serializers.SerializerMethodField()
+
+    def get_catalog(self, project) -> str:
+        return "archive"
+
+    def get_is_presenting(self, project) -> None:
+        return None
+
+
+class AllProjectsArchiveRowSerializer(_ArchiveCatalogFields, CompactPastProjectSerializer):
+    """An archive row of /projects/all/: the compact row, its catalog, and the current project it stands in for.
+
+    The view passes ``current_ids_by_archive_id`` in the context (apps.projects.services.all_projects.CurrentCatalog).
+    """
+
+    current_project_id = serializers.SerializerMethodField()
+
+    class Meta(CompactPastProjectSerializer.Meta):
+        fields = [*CompactPastProjectSerializer.Meta.fields, "catalog", "is_presenting", "current_project_id"]
+
+    def get_current_project_id(self, project) -> str | None:
+        return self.context.get("current_ids_by_archive_id", {}).get(project.pk)
 
 
 class PastProjectQuerySerializer(serializers.Serializer):
@@ -42,6 +77,17 @@ class PastProjectQuerySerializer(serializers.Serializer):
         if "semester" in self.initial_data and not self.initial_data.get("semester", "").strip():
             raise serializers.ValidationError({"semester": "This field may not be blank."})
         return attrs
+
+
+class PastSemesterPageQuerySerializer(serializers.Serializer):
+    """Query parameters of the semester-grouped /projects/past/ list, validated like /projects/archive/'s."""
+
+    page = serializers.IntegerField(min_value=1, default=1)
+    page_size = serializers.IntegerField(
+        min_value=1,
+        max_value=PastProjectsPageNumberPagination.max_page_size,
+        default=PastProjectsPageNumberPagination.page_size,
+    )
 
 
 class ProjectTableSerializer(serializers.ModelSerializer):
@@ -67,7 +113,7 @@ class ProjectTableSerializer(serializers.ModelSerializer):
         ]
 
 
-class ProjectDetailSerializer(serializers.ModelSerializer):
+class ProjectDetailSerializer(_ArchiveCatalogFields, serializers.ModelSerializer):
     semester_label = serializers.CharField(source="semester.label", read_only=True)
 
     class Meta:
@@ -85,4 +131,6 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "track",
             "presentation_order",
             "semester_label",
+            "catalog",
+            "is_presenting",
         ]

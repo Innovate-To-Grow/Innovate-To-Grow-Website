@@ -3,13 +3,16 @@ Admin configuration for AdminInvitation model.
 """
 
 import logging
+from functools import partial
 
 from django.contrib import admin, messages
+from django.db import transaction
 from django.utils import timezone
 from django.utils.html import format_html
 
 from apps.authn.models import AdminInvitation
 from apps.core.admin import BaseModelAdmin
+from apps.core.services.delivery_rates import Family, inline_batch_limit
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +112,9 @@ class AdminInvitationAdmin(BaseModelAdmin):
             ).update(status=AdminInvitation.Status.CANCELLED, updated_at=timezone.now())
 
             super().save_model(request, obj, form, change)
-            self._send_invitation_message(request, obj, created=True)
+            # The admin saves inside a transaction; the email (paced, and possibly waiting for its slot) goes after
+            # the commit, so no lock is held across the provider call. Its message still reaches the response.
+            transaction.on_commit(partial(self._send_invitation_message, request, obj, created=True), robust=True)
         else:
             super().save_model(request, obj, form, change)
 
@@ -137,6 +142,16 @@ class AdminInvitationAdmin(BaseModelAdmin):
 
     @admin.action(description="Resend selected pending invitations")
     def resend_invitations(self, request, queryset):
+        # The emails wait for their delivery slots inside this request, so it takes only as many as the email
+        # channel's current rate sends in one request's budget.
+        limit = inline_batch_limit(Family.EMAIL)
+        if limit is not None and queryset.count() > limit:
+            messages.error(
+                request,
+                f"{queryset.count()} invitations cannot be resent from one request at the current email send rate "
+                f"(limit {limit}; see Mail → Delivery Rates). Select fewer invitations.",
+            )
+            return
         sent = 0
         skipped = 0
 

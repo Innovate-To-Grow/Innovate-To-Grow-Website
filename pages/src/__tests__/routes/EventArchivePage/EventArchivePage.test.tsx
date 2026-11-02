@@ -1,6 +1,6 @@
-import {render, screen} from '@testing-library/react';
+import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router';
-import {beforeEach, describe, expect, it, vi} from 'vitest';
+import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {EventArchivePage} from '@/routes/EventArchivePage/EventArchivePage';
 
@@ -23,6 +23,10 @@ vi.mock('@/components/SheetsDataTable', () => ({
 }));
 
 describe('EventArchivePage', () => {
+    afterEach(() => {
+        cleanup();
+    });
+
     beforeEach(() => {
         mockUsePastProjectsData.mockReset();
         mockUsePastProjectsData.mockReturnValue({
@@ -63,5 +67,28 @@ describe('EventArchivePage', () => {
         expect(screen.getByTestId('schedule-rows')).not.toHaveTextContent('2025-1 Spring');
         expect(screen.getByTestId('table-rows')).not.toHaveTextContent('2025-1 Spring');
         expect(mockUsePastProjectsData).toHaveBeenCalledWith({year: 2025, season: 2});
+    });
+
+    it.each(['2025 Fall', 'Fall 2025'])('keeps rows labelled "%s" for /events/2025-fall', (label) => {
+        mockUsePastProjectsData.mockReturnValue({
+            rows: [
+                {'Year-Semester': label, Class: 'CAP', Order: '1', Track: '1', 'Team#': '101'},
+                {'Year-Semester': '2025 Spring', Class: 'CAP', Order: '1', Track: '1', 'Team#': '202'},
+            ],
+            loading: false,
+            error: null,
+        });
+
+        render(
+            <MemoryRouter initialEntries={['/events/2025-fall']}>
+                <Routes>
+                    <Route path="/events/:eventSlug" element={<EventArchivePage/>}/>
+                </Routes>
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByTestId('table-rows')).toHaveTextContent(label);
+        expect(screen.getByTestId('table-rows')).not.toHaveTextContent('2025 Spring');
+        expect(screen.getByTestId('schedule-rows')).toHaveTextContent(label);
     });
 });

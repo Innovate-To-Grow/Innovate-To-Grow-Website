@@ -49,3 +49,6 @@ SEND_VERIFICATION_COST = 10
 SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = 0
 SEND_VERIFICATION_SMS_DAILY_LIMIT = 1000
 SEND_VERIFICATION_TEST_AUTOSOLVE = True
+
+# Private keys stay in process memory: tests never touch Secrets Manager or the local key directory.
+CREDENTIAL_STORE_BACKEND = "memory"

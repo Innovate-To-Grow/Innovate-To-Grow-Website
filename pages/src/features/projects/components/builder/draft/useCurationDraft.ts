@@ -1,13 +1,20 @@
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useEffectEvent, useRef, useState, type RefObject} from 'react';
 import {useAuth} from '@/features/auth';
 import {
+  createProjectGridFingerprint,
   createProjectGridItems,
   createProjectGridRowMatcher,
   stripProjectGridItem,
   type ProjectGridItem,
   type ProjectGridRow,
 } from '../../grid/contracts/projectGrid';
-import {clearPersistedDraft, readPersistedDraft, writePersistedDraft} from './curationDraftStorage';
+import {
+  clearPersistedDraft,
+  readPersistedDraft,
+  subscribeToOtherTabsDraft,
+  writePersistedDraft,
+  type CurationDraft,
+} from './curationDraftStorage';
 
 // New rows are added to the snapshot an Undo/Reset restores, so a save that lands after a Reset is
 // neither lost by a later Undo nor allowed to cancel that Undo.
@@ -16,9 +23,93 @@ const appendUnsaved = (snapshot: ProjectGridItem[], added: ProjectGridItem[]) =>
   return [...snapshot, ...added.filter((row) => !inSnapshot.has(row))];
 };
 
+const rowIdentity = (row: ProjectGridRow) => `${row.id ?? ''}\u001f${createProjectGridFingerprint(row)}`;
+
+/**
+ * Another tab's rows as items, reusing this tab's item for each project it already shows: the item's key
+ * keeps that row's checkbox and Details state.
+ */
+const adoptRows = (current: ProjectGridItem[], storedRows: ProjectGridRow[], namespace: string) => {
+  const shown = new Map(current.map((item) => [rowIdentity(stripProjectGridItem(item)), item]));
+  const fresh = createProjectGridItems(storedRows, namespace);
+  return fresh.map((item) => shown.get(rowIdentity(stripProjectGridItem(item))) ?? item);
+};
+
+/**
+ * The draft is one storage key, written whole by every tab with the builder open. Each tab follows the
+ * others' writes, so its next write builds on their changes instead of overwriting them. Returns a check the
+ * mirroring effect uses to skip writing back what it just adopted: tabs that serialize the same draft
+ * differently would otherwise answer each other's writes forever.
+ */
+function useOtherTabsDraft(
+  draftMemberRef: RefObject<string | null>,
+  adopt: (draft: CurationDraft) => ProjectGridItem[],
+) {
+  const adoptedRef = useRef<{rows: ProjectGridItem[]; name: string; note: string} | null>(null);
+  const handleOtherTabDraft = useEffectEvent((draft: CurationDraft) => {
+    adoptedRef.current = {rows: adopt(draft), name: draft.name, note: draft.note};
+  });
+  useEffect(
+    () => subscribeToOtherTabsDraft(() => draftMemberRef.current, (draft) => handleOtherTabDraft(draft)),
+    [draftMemberRef],
+  );
+  return useCallback((rows: ProjectGridItem[], name: string, note: string) => {
+    const adopted = adoptedRef.current;
+    adoptedRef.current = null;
+    return Boolean(adopted && adopted.rows === rows && adopted.name === name && adopted.note === note);
+  }, []);
+}
+
+interface DraftRowEditsOptions {
+  mergedRowsRef: RefObject<ProjectGridItem[]>;
+  commitMergedRows: (update: (current: ProjectGridItem[]) => ProjectGridItem[]) => void;
+  mergedRowsUndo: ProjectGridItem[] | null;
+  setMergedRowsUndo: (rows: ProjectGridItem[] | null) => void;
+  onMessage: (message: string) => void;
+}
+
+/** Removing rows from the draft (one, the checked ones, or all of them), and undoing the last removal. */
+function useDraftRowEdits({mergedRowsRef, commitMergedRows, mergedRowsUndo, setMergedRowsUndo, onMessage}: DraftRowEditsOptions) {
+  const deleteRow = (row: ProjectGridItem) => {
+    setMergedRowsUndo(mergedRowsRef.current);
+    commitMergedRows((current) => current.filter((item) => item.__key !== row.__key));
+    onMessage('Project removed from the curation draft.');
+  };
+
+  const deleteRows = (rowsToRemove: ProjectGridItem[]) => {
+    if (!rowsToRemove.length) {
+      return;
+    }
+    const removeKeys = new Set(rowsToRemove.map((row) => row.__key));
+    setMergedRowsUndo(mergedRowsRef.current);
+    commitMergedRows((current) => current.filter((item) => !removeKeys.has(item.__key)));
+    onMessage(`${rowsToRemove.length} project${rowsToRemove.length === 1 ? '' : 's'} removed from the curation draft.`);
+  };
+
+  const undo = () => {
+    if (!mergedRowsUndo) {
+      return;
+    }
+    commitMergedRows(() => mergedRowsUndo);
+    setMergedRowsUndo(null);
+    onMessage('Curation draft restored.');
+  };
+
+  const reset = () => {
+    if (!mergedRowsRef.current.length) {
+      return;
+    }
+    setMergedRowsUndo(mergedRowsRef.current);
+    commitMergedRows(() => []);
+    onMessage('Curation draft cleared. Undo can restore it until you leave this page.');
+  };
+
+  return {deleteRow, deleteRows, undo, reset};
+}
+
 /**
  * The curation being built: its merged rows (with a one-step undo), name and note, mirrored to
- * localStorage on every change and dropped when the signed-in member changes.
+ * localStorage on every change (and from other tabs' changes) and dropped when the signed-in member changes.
  */
 export function useCurationDraft(onMessage: (message: string) => void) {
   const {isInitializing, unverified, user} = useAuth();
@@ -47,17 +138,38 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     mergedRowsRef.current = next;
     setMergedRows(next);
   }, []);
+  // Swap in a whole other draft (an account change, another tab's, what a saved curation left). The undo
+  // snapshot goes too: undoing would bring back what was swapped out.
+  const replaceDraft = useCallback(
+    (rows: ProjectGridItem[], name: string, note: string) => {
+      commitMergedRows(() => rows);
+      setMergedRowsUndo(null);
+      setRecentlyAdded(null);
+      setNameDraft(name);
+      setNoteDraft(note);
+    },
+    [commitMergedRows],
+  );
+
+  const isAdoptedDraft = useOtherTabsDraft(draftMemberRef, (draft) => {
+    mergeSequence.current += 1;
+    const rows = adoptRows(mergedRowsRef.current, draft.rows, `synced-${mergeSequence.current}`);
+    replaceDraft(rows, draft.name, draft.note);
+    onMessage('The curation draft was changed in another tab. This page now shows those changes.');
+    return rows;
+  });
 
   // Mirror the draft into localStorage on every change so however the visitor leaves (the login reload, a
   // refresh, closing the tab, SPA navigation), it can be restored on return.
   useEffect(() => {
+    if (isAdoptedDraft(mergedRows, nameDraft, noteDraft)) return;
     writePersistedDraft({
       owner: draftMemberRef.current,
       rows: mergedRows.map(stripProjectGridItem),
       name: nameDraft,
       note: noteDraft,
     });
-  }, [mergedRows, nameDraft, noteDraft]);
+  }, [isAdoptedDraft, mergedRows, nameDraft, noteDraft]);
 
   // Revalidation is not a logout. Keep the draft while identity is being checked, and clear it
   // only when a known member actually logs out or changes accounts. Guest drafts survive login.
@@ -66,14 +178,10 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     if (draftMemberRef.current && draftMemberRef.current !== memberId) {
       accountSequenceRef.current += 1;
       clearPersistedDraft();
-      commitMergedRows(() => []);
-      setMergedRowsUndo(null);
-      setRecentlyAdded(null);
-      setNameDraft('');
-      setNoteDraft('');
+      replaceDraft([], '', '');
     }
     draftMemberRef.current = memberId;
-  }, [commitMergedRows, isInitializing, unverified, memberId]);
+  }, [replaceDraft, isInitializing, unverified, memberId]);
 
   /** Append newly saved rows; they are highlighted and kept in any pending undo snapshot. */
   const appendRows = useCallback(
@@ -87,38 +195,18 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     [commitMergedRows],
   );
 
-  const deleteRow = (row: ProjectGridItem) => {
-    setMergedRowsUndo(mergedRowsRef.current);
-    commitMergedRows((current) => current.filter((item) => item.__key !== row.__key));
-    onMessage('Project removed from merged results.');
-  };
+  const rowEdits = useDraftRowEdits({mergedRowsRef, commitMergedRows, mergedRowsUndo, setMergedRowsUndo, onMessage});
 
-  const deleteRows = (rowsToRemove: ProjectGridItem[]) => {
-    if (!rowsToRemove.length) {
-      return;
-    }
-    const removeKeys = new Set(rowsToRemove.map((row) => row.__key));
-    setMergedRowsUndo(mergedRowsRef.current);
-    commitMergedRows((current) => current.filter((item) => !removeKeys.has(item.__key)));
-    onMessage(`${rowsToRemove.length} project${rowsToRemove.length === 1 ? '' : 's'} removed from merged results.`);
-  };
-
-  const undo = () => {
-    if (!mergedRowsUndo) {
-      return;
-    }
-    commitMergedRows(() => mergedRowsUndo);
-    setMergedRowsUndo(null);
-    onMessage('Merged results restored.');
-  };
-
-  const reset = () => {
-    if (!mergedRowsRef.current.length) {
-      return;
-    }
-    setMergedRowsUndo(mergedRowsRef.current);
-    commitMergedRows(() => []);
-    onMessage('Merged results reset. Undo Merged Change can restore them until you leave this page.');
+  /**
+   * A curation was saved from `sharedRows`: they leave the draft, and so do the name and note that went with
+   * them. Rows the save left out (a search hid them) stay for the next curation. Storage is written here and
+   * now, because the save opens the new curation, which unmounts this page before the mirroring effect runs.
+   */
+  const dropShared = (sharedRows: ProjectGridRow[]) => {
+    const shared = createProjectGridRowMatcher(sharedRows);
+    const remaining = mergedRowsRef.current.filter((row) => !shared.has(row));
+    writePersistedDraft({owner: draftMemberRef.current, rows: remaining.map(stripProjectGridItem), name: '', note: ''});
+    replaceDraft(remaining, '', '');
   };
 
   return {
@@ -132,10 +220,8 @@ export function useCurationDraft(onMessage: (message: string) => void) {
     setNoteDraft,
     accountSequenceRef,
     appendRows,
-    deleteRow,
-    deleteRows,
-    undo,
-    reset,
+    ...rowEdits,
+    dropShared,
   };
 }
 

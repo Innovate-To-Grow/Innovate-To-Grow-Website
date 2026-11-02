@@ -8,6 +8,8 @@ import {
 import {DesktopRow} from './ProjectGridDesktopRow';
 
 interface ProjectGridDesktopTableProps {
+  /** The table's accessible name (ProjectGridTableProps.tableLabel). */
+  tableLabel?: string;
   columns: ProjectGridColumn[];
   rows: ProjectGridItem[];
   pagedRows: ProjectGridItem[];
@@ -28,9 +30,92 @@ interface ProjectGridDesktopTableProps {
   isRowSaved?: (row: ProjectGridItem) => boolean;
   savedRowLabel?: string;
   highlightedKeys?: ReadonlySet<string>;
+  announceDetails: boolean;
 }
 
+type DesktopTableHeadProps = Pick<
+  ProjectGridDesktopTableProps,
+  | 'columns'
+  | 'rows'
+  | 'selectable'
+  | 'selectedKeys'
+  | 'selectAllStateRows'
+  | 'onToggleSelectAll'
+  | 'sortField'
+  | 'sortDirection'
+  | 'onSortChange'
+> & {hasRemove: boolean};
+
+/** The header row: "select all" (when rows can be checked), a sort button per column, and the Details heading. */
+const DesktopTableHead = ({
+  columns,
+  rows,
+  selectable,
+  selectedKeys,
+  selectAllStateRows,
+  onToggleSelectAll,
+  sortField,
+  sortDirection,
+  onSortChange,
+  hasRemove,
+}: DesktopTableHeadProps) => {
+  const selectionScopeRows = selectAllStateRows ?? rows;
+  const selectedInScopeCount = selectionScopeRows.filter((row) => selectedKeys.has(row.__key)).length;
+  const allSelected = selectable && selectionScopeRows.length > 0 && selectedInScopeCount === selectionScopeRows.length;
+  const partiallySelected = selectable && selectedInScopeCount > 0 && !allSelected;
+
+  return (
+    <thead>
+      <tr>
+        {selectable ? (
+          <th scope="col" className="project-grid-select-col">
+            <input
+              type="checkbox"
+              aria-label="Select all rows"
+              checked={allSelected}
+              ref={(input) => {
+                if (input) input.indeterminate = partiallySelected;
+              }}
+              onChange={onToggleSelectAll}
+            />
+          </th>
+        ) : null}
+
+        {columns.map((column) => {
+          const isSorted = sortField === column.key;
+          // The sort arrows are drawn after the button (DataTables style); aria-sort states the order.
+          const sortClass = isSorted ? ` is-sorted is-sorted-${sortDirection}` : '';
+          return (
+            <th
+              key={column.key}
+              scope="col"
+              className={`project-grid-col-${column.key} project-grid-sortable${sortClass}`}
+              aria-sort={isSorted ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
+            >
+              <button type="button" className="project-grid-sort-button" onClick={() => onSortChange(column.key)}>
+                {column.label}
+              </button>
+            </th>
+          );
+        })}
+
+        <th scope="col" className="project-grid-actions-col">
+          {/* The space is its own text node: a hidden span's leading space is dropped from the heading's name. */}
+          Details
+          {hasRemove ? (
+            <>
+              {' '}
+              <span className="sr-only">and removal</span>
+            </>
+          ) : null}
+        </th>
+      </tr>
+    </thead>
+  );
+};
+
 export const ProjectGridDesktopTable = ({
+  tableLabel,
   columns,
   rows,
   pagedRows,
@@ -51,11 +136,8 @@ export const ProjectGridDesktopTable = ({
   isRowSaved,
   savedRowLabel = 'Saved',
   highlightedKeys,
+  announceDetails,
 }: ProjectGridDesktopTableProps) => {
-  const selectionScopeRows = selectAllStateRows ?? rows;
-  const selectedInScopeCount = selectionScopeRows.filter((row) => selectedKeys.has(row.__key)).length;
-  const allSelected = selectable && selectionScopeRows.length > 0 && selectedInScopeCount === selectionScopeRows.length;
-  const partiallySelected = selectable && selectedInScopeCount > 0 && !allSelected;
   const tableClassName = [
     'itg-table',
     'project-grid-table',
@@ -67,46 +149,19 @@ export const ProjectGridDesktopTable = ({
 
   return (
     <div className="project-grid-table-wrap">
-      <table className={tableClassName}>
-        <thead>
-          <tr>
-            {selectable ? (
-              <th scope="col" className="project-grid-select-col">
-                <input
-                  type="checkbox"
-                  aria-label="Select all rows"
-                  checked={allSelected}
-                  ref={(input) => {
-                    if (input) input.indeterminate = partiallySelected;
-                  }}
-                  onChange={onToggleSelectAll}
-                />
-              </th>
-            ) : null}
-
-            {columns.map((column) => {
-              const isSorted = sortField === column.key;
-              // The sort arrows are the header's background (DataTables style); aria-sort states the order.
-              const sortClass = isSorted ? ` is-sorted is-sorted-${sortDirection}` : '';
-              return (
-                <th
-                  key={column.key}
-                  scope="col"
-                  className={`project-grid-col-${column.key} project-grid-sortable${sortClass}`}
-                  aria-sort={isSorted ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none'}
-                >
-                  <button type="button" className="project-grid-sort-button" onClick={() => onSortChange(column.key)}>
-                    {column.label}
-                  </button>
-                </th>
-              );
-            })}
-
-            <th scope="col" className="project-grid-actions-col">
-              Details{onDeleteRow ? <span className="sr-only"> and removal</span> : null}
-            </th>
-          </tr>
-        </thead>
+      <table className={tableClassName} aria-label={tableLabel}>
+        <DesktopTableHead
+          columns={columns}
+          rows={rows}
+          selectable={selectable}
+          selectedKeys={selectedKeys}
+          selectAllStateRows={selectAllStateRows}
+          onToggleSelectAll={onToggleSelectAll}
+          sortField={sortField}
+          sortDirection={sortDirection}
+          onSortChange={onSortChange}
+          hasRemove={Boolean(onDeleteRow)}
+        />
 
         <tbody>
           {pagedRows.map((row, index) => (
@@ -127,7 +182,7 @@ export const ProjectGridDesktopTable = ({
               isSaved={Boolean(isRowSaved?.(row))}
               savedRowLabel={savedRowLabel}
               isHighlighted={Boolean(highlightedKeys?.has(row.__key))}
-              sortField={sortField}
+              announceDetails={announceDetails}
             />
           ))}
         </tbody>

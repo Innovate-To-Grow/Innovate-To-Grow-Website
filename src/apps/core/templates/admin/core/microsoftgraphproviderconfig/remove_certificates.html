@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }} &mdash; {{ original.name }}</h1>{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <div class="mb-6 rounded-default border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300">
+        <p class="font-semibold">Emergency use only.</p>
+        <p class="mt-1">
+            The current and the previous certificate are removed from this configuration, so the site stops signing
+            token requests with them at once{% if original.is_active %} and Microsoft Graph email stops{% endif %}.
+            This does not stop tokens issued elsewhere: ask OIT to remove the certificate from the Entra app (by its
+            SHA-1 thumbprint) or to disable the app. The stored key versions are kept, but nothing uses them again.
+        </p>
+    </div>
+    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        {% if current %}
+            {% include "admin/core/microsoftgraphproviderconfig/certificate_card.html" with card=current heading="Current certificate" %}
+        {% endif %}
+        {% if previous %}
+            {% include "admin/core/microsoftgraphproviderconfig/certificate_card.html" with card=previous heading="Previous certificate" %}
+        {% endif %}
+    </div>
+    <form method="post" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="mb-4 rounded-default bg-red-100 px-3 py-2.5 text-sm text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        {% include "unfold/helpers/field.html" with field=form.reason %}
+        {% include "unfold/helpers/field.html" with field=form.switch_to_ses %}
+        {% include "unfold/helpers/field.html" with field=form.confirmation %}
+        <div class="flex gap-3">
+            <button type="submit" class="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700">
+                Remove certificates
+            </button>
+            <a href="{{ cancel_url }}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

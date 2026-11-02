@@ -1,0 +1,20 @@
+{# The active Gmail API config, read-only: it is managed on its own admin page, by superusers only. #}
+<h3 class="mb-2 text-sm font-semibold text-font-important-light dark:text-font-important-dark">Gmail API Provider</h3>
+<p class="mb-4 text-xs text-base-500 dark:text-base-400">
+    Sends as a Google Workspace account through a service account with domain-wide delegation (gmail.send only).
+    This page only selects it: the key and the account allow-list are managed on the Gmail API configuration's own page, by superusers.
+    The From email must be on the allow-list, and email switches to the Gmail API only after a passed access check for the installed key.
+    Gmail keeps a copy of everything it sends in the account's Sent folder, so that folder is shown to superusers only.
+    How fast it sends and its daily limits are set under <a href="{% url 'admin:mail_delivery_rates' %}#rate-card-gmail_api_send" class="text-primary-600 hover:underline dark:text-primary-400">Mail &rarr; Delivery Rates</a>.
+</p>
+{% if gmail_saved %}
+    <p class="mb-2 text-sm">Config: <span class="font-medium">{{ gmail_config.name }}</span>{% if not gmail_config.is_active %} (inactive){% endif %}</p>
+    {% include "admin/core/gmailapiproviderconfig/key_panel.html" %}
+{% else %}
+    <p class="text-sm text-base-500 dark:text-base-400">No Gmail API configuration is active.</p>
+{% endif %}
+{% if gmail_admin_url %}
+    <a href="{{ gmail_admin_url }}" class="mt-2 inline-block text-sm text-primary-600 hover:underline">Manage the Gmail API configuration (key and account allow-list)</a>
+{% else %}
+    <p class="mt-2 text-xs text-base-500 dark:text-base-400">The Gmail API configuration is managed by a superuser.</p>
+{% endif %}

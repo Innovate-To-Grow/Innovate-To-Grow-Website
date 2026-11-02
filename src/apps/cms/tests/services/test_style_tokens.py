@@ -1,5 +1,8 @@
 """Tests for ``apps.cms.services.styles.tokens`` (design tokens rendered as ``--itg-*`` properties)."""
 
+import time
+from unittest import mock
+
 from django.core.cache import cache
 from django.test import SimpleTestCase
 
@@ -159,8 +162,18 @@ REFUSED_TOKEN_VALUES = {
         "attr(data-x)",
         "env(safe-area-inset-top)",
         "expression(alert(1))",
+        "url (x)",
+        "1url(x)",
     ),
-    "unknown function": ("foo()", "foo(1)", "-webkit-linear-gradient(red, blue)", "scaleX(2)", "--x(1)", "red (1)"),
+    "unknown function": (
+        "foo()",
+        "foo(1)",
+        "-webkit-linear-gradient(red, blue)",
+        "scaleX(2)",
+        "--x(1)",
+        "red (1)",
+        "a-url(x)",
+    ),
     "forbidden function nested in an allowed one": (
         "var(--x, url(a.png))",
         "calc(1px + attr(x))",
@@ -189,7 +202,10 @@ ACCEPTED_TOKEN_VALUES = {
         "clamp(1rem, 2vw + 0.5rem, 3rem)",
         "min(100%, 1170px)",
         "max(50vh, calc((100% - 2rem) / 3))",
+        "calc(100% - (2rem + 2px))",
     ),
+    # Only a name followed by "(" is a call; a bare word is not checked against the function list.
+    "names that are not called": ("url", "attr", "expression env", "var(--url)"),
     "colour": (
         "#0f2d52",
         "transparent",
@@ -282,6 +298,47 @@ class IsSafeTokenValueTests(SimpleTestCase):
         self.assertEqual(coerce_token_value("  #fff\n"), "#fff")
         self.assertIsNone(coerce_token_value("#fff\n#000"))
         self.assertEqual(coerce_token_value(" " + "a" * MAX_TOKEN_VALUE_LENGTH + " "), "a" * MAX_TOKEN_VALUE_LENGTH)
+
+
+class FunctionScanTimeTests(SimpleTestCase):
+    """The function-name scan stays linear on long names (CodeQL alert #655, py/polynomial-redos).
+
+    The length cap is lifted so the values reach the scan: a quadratic scan spends about 20 seconds
+    on one of these values, the linear one milliseconds.
+    """
+
+    SIZE = 50_000
+    TIME_LIMIT_SECONDS = 2.0
+
+    def setUp(self):
+        cache.clear()
+        patcher = mock.patch("apps.cms.services.styles.tokens.MAX_TOKEN_VALUE_LENGTH", 4 * self.SIZE)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def assert_checked_quickly(self, value, expected):
+        start = time.perf_counter()
+        self.assertIs(is_safe_token_value(value), expected)
+        self.assertLess(time.perf_counter() - start, self.TIME_LIMIT_SECONDS)
+
+    def test_long_names_without_a_call_are_accepted_quickly(self):
+        n = self.SIZE
+        for value in (
+            "A" * n,
+            "rgb" + "A" * n,
+            "a-" * n,
+            "a1" * n,
+            "A" * n + " " * n + "x",
+            f"var(--{'a' * n})",
+        ):
+            with self.subTest(value=value[:20], length=len(value)):
+                self.assert_checked_quickly(value, True)
+
+    def test_forbidden_call_after_a_long_name_is_still_refused_quickly(self):
+        n = self.SIZE
+        for value in ("A" * n + "(1)", "A" * n + " url(x)", "a-" * n + " attr(x)", "A" * n + " " * n + "(1)"):
+            with self.subTest(value=value[:20], length=len(value)):
+                self.assert_checked_quickly(value, False)
 
 
 class RenderTokensCssTests(SimpleTestCase):

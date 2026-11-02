@@ -1,4 +1,3 @@
-import re
 import uuid
 
 import bleach
@@ -7,10 +6,11 @@ from django.db.models import F
 from django.utils import timezone
 from rest_framework import serializers
 
-from ..models import PastProjectShare, Project
+from ..models import PastProjectShare
 from ..services.share_names import default_share_name
+from ..services.share_rows import UnknownShareRows, rebuild_share_rows, rows_for_display
 
-# Allowlist for the stored details_text HTML: inline emphasis + line/paragraph structure, no
+# Allowlist for a share's stored rich text (the note): inline emphasis + line/paragraph structure, no
 # attributes. Defense-in-depth so safety does not rely solely on every client render calling
 # DOMPurify.
 DETAILS_ALLOWED_TAGS = ["br", "div", "p", "b", "strong", "i", "em", "u", "mark", "a"]
@@ -21,14 +21,18 @@ DETAILS_ALLOWED_ATTRIBUTES = {
     "div": ["data-past-project-note-curation", "data-past-project-key"],
 }
 
-# Generous cap: a generated detail for ~1000 projects with long abstracts is well under this
-# (low hundreds of KB), so it never rejects a legitimate large share, but it stops absurd
-# payloads. details legitimately needs much more room than the note.
-DETAILS_TEXT_MAX_LENGTH = 2_000_000
-
 # The share-level note is rich text (HTML). Cap well above plain-text length so emphasis tags
-# don't reject a reasonable note, but far below the details cap.
+# don't reject a reasonable note.
 NOTE_MAX_LENGTH = 50_000
+
+# Row text is rebuilt from the catalog, so these caps only bound a request: about ten times the longest archive
+# abstract (~2,000 characters) and student list (~140).
+ROW_ABSTRACT_MAX_LENGTH = 20_000
+ROW_STUDENT_NAMES_MAX_LENGTH = 5_000
+MAX_SHARE_ROWS = 1000
+# Rows across all of one member's shares: about five copies of the whole archive. Each row is a catalog copy of up
+# to ~2 KB, so this bounds what one account stores at about 10 MB (100 full shares would be ~200 MB).
+MAX_MEMBER_SHARE_ROWS = 5000
 
 
 class StalePastProjectShareSnapshot(Exception):
@@ -36,93 +40,10 @@ class StalePastProjectShareSnapshot(Exception):
 
 
 def sanitize_details_text(value: str) -> str:
-    """Strip any markup outside the rich-detail allowlist from a share's details_text."""
+    """Strip any markup outside the rich-detail allowlist from a share's rich text."""
     if not value:
         return value
     return bleach.clean(value, tags=DETAILS_ALLOWED_TAGS, attributes=DETAILS_ALLOWED_ATTRIBUTES, strip=True)
-
-
-def _normalized_text_key(value):
-    return re.sub(r"\s+", " ", str(value or "").strip()).casefold()
-
-
-def _semester_label_key(value):
-    label = (value or "").strip()
-    if not label:
-        return None
-
-    match = re.fullmatch(r"(\d{4})(?:-\d+)?\s+(.+)", label)
-    if not match:
-        return None
-
-    year, season_name = match.groups()
-    normalized_season = _normalized_text_key(season_name)
-    if not normalized_season:
-        return None
-    return year, normalized_season
-
-
-def _share_row_stable_key(row):
-    semester_label = (row.get("semester_label") or "").strip()
-    class_code = (row.get("class_code") or "").strip()
-    team_number = (row.get("team_number") or "").strip()
-    if not semester_label or not class_code or not team_number:
-        return None
-
-    semester_key = _semester_label_key(semester_label)
-    if semester_key is None:
-        return None
-    year, season_name = semester_key
-    return year, season_name, class_code, team_number
-
-
-def _project_stable_key(project):
-    return (
-        str(project.semester.year),
-        _normalized_text_key(project.semester.get_season_display()),
-        project.class_code.strip(),
-        project.team_number.strip(),
-    )
-
-
-def _rows_with_backfilled_project_ids(rows):
-    """Add Project UUIDs to legacy share rows when their stable sheet key still resolves.
-
-    Older saved-share JSON snapshots did not include ``id``. The frontend intentionally omits
-    Individual Links for rows without an id, so enrich API output from the canonical
-    Year-Semester + Class + Team# key when possible without mutating the stored snapshot.
-    """
-    missing_keys = {key for row in rows if not row.get("id") for key in [_share_row_stable_key(row)] if key is not None}
-    if not missing_keys:
-        return rows
-
-    years = {int(key[0]) for key in missing_keys}
-    class_codes = {key[2] for key in missing_keys}
-    team_numbers = {key[3] for key in missing_keys}
-    project_ids_by_key = {}
-    projects = (
-        Project.objects.select_related("semester")
-        .filter(semester__year__in=years, class_code__in=class_codes, team_number__in=team_numbers)
-        .order_by("-source", "pk")
-    )
-    for project in projects:
-        key = _project_stable_key(project)
-        if key in missing_keys and key not in project_ids_by_key:
-            project_ids_by_key[key] = str(project.pk)
-
-    if not project_ids_by_key:
-        return rows
-
-    enriched_rows = []
-    for row in rows:
-        next_row = dict(row)
-        if not next_row.get("id"):
-            key = _share_row_stable_key(next_row)
-            project_id = project_ids_by_key.get(key)
-            if project_id:
-                next_row["id"] = project_id
-        enriched_rows.append(next_row)
-    return enriched_rows
 
 
 def _share_url(obj, request):
@@ -151,13 +72,15 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     project_title = serializers.CharField(max_length=500)
     organization = serializers.CharField(max_length=255, allow_blank=True)
     industry = serializers.CharField(max_length=100, allow_blank=True)
-    abstract = serializers.CharField(allow_blank=True)
-    student_names = serializers.CharField(allow_blank=True)
-    # Round-trip the frontend's presenting flag ('Yes'/'No'/'') so stored rows match freshly
-    # searched rows — the client dedup fingerprint includes is_presenting, and dropping it here
-    # made an owner's "add rows" re-add a project already in the share. Optional + default so
-    # pre-existing shares (saved without the field) keep validating and serialize as "".
+    abstract = serializers.CharField(allow_blank=True, max_length=ROW_ABSTRACT_MAX_LENGTH)
+    student_names = serializers.CharField(allow_blank=True, max_length=ROW_STUDENT_NAMES_MAX_LENGTH)
+    # Accepted so clients that send the presenting flag ('Yes'/'No'/'') keep validating; it is never stored as
+    # sent. The row is rebuilt from the catalog (services/share_rows.py): "" for an archive project, and the
+    # event's flag as "Yes"/"No" for a current-semester one.
     is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
+    # "archive" or "current": the catalog the stored row was rebuilt from. Read-only, so that a row kept as stored
+    # (one that no longer resolves) still names it; rows saved before rows carried it leave it out.
+    catalog = serializers.CharField(read_only=True)
 
     # noinspection PyMethodMayBeStatic
     def validate_id(self, value):
@@ -173,9 +96,9 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
     note = serializers.CharField(
         required=False, allow_blank=True, default="", trim_whitespace=False, max_length=NOTE_MAX_LENGTH
     )
-    details_text = serializers.CharField(
-        required=False, allow_blank=True, default="", max_length=DETAILS_TEXT_MAX_LENGTH
-    )
+    # The combined project text clients sent before the rows became the snapshot. Shares that hold one still serve
+    # it, but no client writes it any more, so it is not accepted: it was the only field without a small cap.
+    details_text = serializers.CharField(read_only=True)
     share_url = serializers.SerializerMethodField()
     can_edit = serializers.SerializerMethodField()
     version = serializers.IntegerField(required=False, min_value=1)
@@ -196,33 +119,51 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
     # name is optional: a blank/omitted name is replaced with the first line of the owner's note, else a
-    # generic title (services.share_names.default_share_name), in create()/update(). It is never taken from
-    # the rows. trim_whitespace=True still trims a given name.
+    # generic title for the stored rows (services.share_names.default_share_name), in create()/update(). It is
+    # never a row's project title. trim_whitespace=True still trims a given name.
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data["rows"] = _rows_with_backfilled_project_ids(data["rows"])
+        data["rows"] = rows_for_display(data["rows"])
         return data
 
     # noinspection PyMethodMayBeStatic
-    def validate_details_text(self, value):
-        # Sanitize on write so stored/served details_text can never carry script or other
-        # disallowed markup, regardless of how a client renders it.
-        return sanitize_details_text(value)
-
-    # noinspection PyMethodMayBeStatic
     def validate_note(self, value):
-        # The note is rich text; sanitize on write with the same allowlist as details_text so a
-        # stored note can never carry script or disallowed markup, however a client renders it.
+        # The note is rich text; sanitize on write so a stored note can never carry script or
+        # disallowed markup, however a client renders it.
         return sanitize_details_text(value)
 
-    # noinspection PyMethodMayBeStatic
     def validate_rows(self, value):
         if not value:
             raise serializers.ValidationError("At least one row is required.")
-        if len(value) > 1000:
-            raise serializers.ValidationError("At most 1000 rows may be shared.")
-        return value
+        if len(value) > MAX_SHARE_ROWS:
+            raise serializers.ValidationError(f"At most {MAX_SHARE_ROWS} rows may be shared.")
+        self._check_member_row_total(len(value))
+        # Store what the catalog says, never the text a client sent (services/share_rows.py).
+        try:
+            return rebuild_share_rows(value, stored_rows=self.instance.rows if self.instance else ())
+        except UnknownShareRows as exc:
+            projects = "project is" if exc.count == 1 else "projects are"
+            raise serializers.ValidationError(
+                f"{exc.count} {projects} not among the published projects. Remove them and save again."
+            ) from exc
+
+    def _check_member_row_total(self, row_count: int) -> None:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if user is None or not user.is_authenticated:
+            return
+        other_shares = PastProjectShare.objects.filter(created_by=user)
+        stored_count = 0
+        if self.instance is not None:
+            other_shares = other_shares.exclude(pk=self.instance.pk)
+            stored_count = len(self.instance.rows) if isinstance(self.instance.rows, list) else 0
+        # Only a write that adds rows is refused, so a member already past the bound can still edit and trim.
+        if row_count > stored_count and other_shares.row_total() + row_count > MAX_MEMBER_SHARE_ROWS:
+            raise serializers.ValidationError(
+                f"Your shared curations can hold up to {MAX_MEMBER_SHARE_ROWS:,} projects in all. "
+                "Remove some projects or delete a curation you no longer need, then save again."
+            )
 
     def get_share_url(self, obj):
         return _share_url(obj, self.context.get("request"))
@@ -237,24 +178,23 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         user = getattr(request, "user", None)
         created_by = user if (user is not None and user.is_authenticated) else None
         note = validated_data.get("note", "")
-        name = (validated_data.get("name") or "").strip() or default_share_name(note)
+        name = (validated_data.get("name") or "").strip() or default_share_name(note, validated_data["rows"])
         return PastProjectShare.objects.create(
             name=name,
             rows=validated_data["rows"],
             note=note,
-            details_text=validated_data.get("details_text", ""),
             created_by=created_by,
         )
 
     def update(self, instance, validated_data):
         expected_version = validated_data.pop("version")
         next_note = validated_data.get("note", instance.note)
-        updates = {
-            field: validated_data[field] for field in ("rows", "note", "details_text") if field in validated_data
-        }
+        # The rows this write stores (rebuilt by validate_rows), else the ones the share already stores.
+        next_rows = validated_data.get("rows", instance.rows)
+        updates = {field: validated_data[field] for field in ("rows", "note") if field in validated_data}
         if "name" in validated_data:
             name = (validated_data.get("name") or "").strip()
-            updates["name"] = name or default_share_name(next_note)
+            updates["name"] = name or default_share_name(next_note, next_rows)
         updates.update(version=F("version") + 1, updated_at=timezone.now())
         updated = type(instance).objects.filter(pk=instance.pk, version=expected_version).update(**updates)
         if updated != 1:
@@ -267,7 +207,8 @@ class PastProjectShareListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for the account "my shares" list (omits the rows payload)."""
 
     share_url = serializers.SerializerMethodField()
-    row_count = serializers.SerializerMethodField()
+    # Counted by the database (PastProjectShare.objects.summaries()), so listing never loads the rows.
+    row_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = PastProjectShare
@@ -275,7 +216,3 @@ class PastProjectShareListSerializer(serializers.ModelSerializer):
 
     def get_share_url(self, obj):
         return _share_url(obj, self.context.get("request"))
-
-    # noinspection PyMethodMayBeStatic
-    def get_row_count(self, obj):
-        return len(obj.rows or [])

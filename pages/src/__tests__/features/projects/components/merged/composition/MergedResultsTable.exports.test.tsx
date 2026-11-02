@@ -1,9 +1,10 @@
 
-import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MergedResultsTable} from '@/features/projects/components/merged/composition/MergedResultsTable';
 import {createProjectGridItems, type ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
+import {stubGridLayout} from '@/__tests__/features/projects/fixtures/gridLayout';
 
 const mockUseAuth = vi.fn();
 
@@ -86,7 +87,7 @@ describe('MergedResultsTable exports and row details', () => {
 
   it('offers only Excel, PDF, and Word exports (no CSV)', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
-    expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Microsoft Word']);
+    expect(getExportButtonLabels(container)).toEqual(['PDF', 'Excel', 'Word']);
   });
 
   it('passes the visible rows and export context to the chosen exporter', async () => {
@@ -101,7 +102,7 @@ describe('MergedResultsTable exports and row details', () => {
     const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsExcel.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
-    expect(context).toMatchObject({title: 'Saved Merged Results'});
+    expect(context).toMatchObject({title: 'Curation Draft'});
   });
 
   it('exports with the typed name and note so the PDF matches the page it will share', async () => {
@@ -142,9 +143,10 @@ describe('MergedResultsTable exports and row details', () => {
   });
 
   it('links to the project page from expanded desktop and mobile details', () => {
+    const layout = stubGridLayout('desktop');
     const {container} = render(<MergedResultsTable rows={makeItems([rowWithId])} />);
 
-    const desktopDetailsButton = within(desktopTable(container)).getByRole('button', {name: 'Details'});
+    const desktopDetailsButton = within(desktopTable(container)).getByRole('button', {name: /^Details for /});
     expect(desktopDetailsButton).toHaveAttribute('aria-expanded', 'false');
     const desktopDetailsId = desktopDetailsButton.getAttribute('aria-controls');
     expect(desktopDetailsId).toBeTruthy();
@@ -157,20 +159,23 @@ describe('MergedResultsTable exports and row details', () => {
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
-    expect(desktopLink).toHaveTextContent('Open the project page');
+    expect(desktopLink).toHaveTextContent('Open the Project Page');
     expect(desktopLink).toHaveAttribute('target', '_blank');
-    expect(within(desktopTable(container)).getByRole('button', {name: 'Copy project link'})).toBeVisible();
+    expect(within(desktopTable(container)).getByRole('button', {name: /^Copy Project Link for /})).toBeVisible();
 
+    // On a phone the same row is open in the list.
+    act(() => layout.setPhone(true));
     const mobileCards = container.querySelector('.project-grid-mobile-cards') as HTMLElement;
     const mobileLink = mobileCards.querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(mobileLink).not.toBeNull();
     expect(mobileLink.getAttribute('href')).toBe(expectedHref);
-    expect(mobileLink).toHaveTextContent('Open the project page');
-    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: 'Hide details'});
+    expect(mobileLink).toHaveTextContent('Open the Project Page');
+    const mobileDetailsButton = within(mobileCards).getByRole('button', {name: /^Hide Details for /});
     expect(mobileDetailsButton).toHaveAttribute('aria-expanded', 'true');
     const mobileDetailsId = mobileDetailsButton.getAttribute('aria-controls');
     expect(mobileDetailsId).toBeTruthy();
     expect(document.getElementById(mobileDetailsId as string)).not.toBeNull();
+    vi.unstubAllGlobals();
   });
 
   it('exposes the current desktop sort direction to assistive technology', () => {
@@ -191,7 +196,7 @@ describe('MergedResultsTable exports and row details', () => {
   it('lets an id-only row expand so its individual project URL is reachable', () => {
     const idOnlyRow: ProjectGridRow = {...rowWithId, abstract: '', student_names: ''};
     const {container} = render(<MergedResultsTable rows={makeItems([idOnlyRow])} />);
-    const detailButton = within(desktopTable(container)).getByRole('button', {name: 'Details'});
+    const detailButton = within(desktopTable(container)).getByRole('button', {name: /^Details for /});
 
     expect(detailButton).toBeEnabled();
     fireEvent.click(detailButton);
@@ -200,13 +205,13 @@ describe('MergedResultsTable exports and row details', () => {
     const desktopLink = desktopTable(container).querySelector('.project-grid-individual-link') as HTMLAnchorElement;
     expect(desktopLink).not.toBeNull();
     expect(desktopLink.getAttribute('href')).toBe(expectedHref);
-    expect(desktopLink).toHaveTextContent('Open the project page');
+    expect(desktopLink).toHaveTextContent('Open the Project Page');
   });
 
   it('does not show an individual link for legacy rows without an id', () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} />);
 
-    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: 'Details'}));
+    fireEvent.click(within(desktopTable(container)).getByRole('button', {name: /^Details for /}));
 
     expect(desktopTable(container).querySelector('.project-grid-individual-link')).toBeNull();
     expect(within(desktopTable(container)).queryByRole('link')).toBeNull();
@@ -224,20 +229,92 @@ describe('MergedResultsTable exports and row details', () => {
     const [rowsArg, fileBaseName, context] = exportMocks.exportProjectRowsPdf.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
-    expect(context).toMatchObject({title: 'Saved Merged Results'});
+    expect(context).toMatchObject({title: 'Curation Draft'});
   });
 
-  it('exports Microsoft Word through the word exporter', async () => {
+  it('exports Word through the word exporter', async () => {
     const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
     const exportCluster = container.querySelector(
       '.project-grid-toolbar-cluster[aria-label="Export"]',
     ) as HTMLElement;
 
-    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Microsoft Word'}));
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Word'}));
 
     await waitFor(() => expect(exportMocks.exportProjectRowsWord).toHaveBeenCalledTimes(1));
     const [rowsArg, fileBaseName] = exportMocks.exportProjectRowsWord.mock.calls[0];
     expect(rowsArg[0]).toMatchObject({project_title: 'Shared Project'});
     expect(fileBaseName).toBe('past-projects');
+  });
+
+  it('runs one export at a time and says it is preparing it', async () => {
+    let finishPdf!: () => void;
+    exportMocks.exportProjectRowsPdf.mockReturnValueOnce(new Promise<void>((resolve) => { finishPdf = resolve; }));
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+    const pdf = within(exportCluster).getByRole('button', {name: 'PDF'});
+
+    fireEvent.click(pdf);
+    expect(screen.getByRole('status')).toHaveTextContent('Preparing PDF…');
+    await waitFor(() => expect(exportMocks.exportProjectRowsPdf).toHaveBeenCalledTimes(1));
+    expect(exportCluster).toHaveAttribute('aria-busy', 'true');
+    expect(pdf).toHaveAttribute('aria-disabled', 'true');
+    // Clicks while it runs (impatient, or on a slow connection) start nothing.
+    fireEvent.click(pdf);
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
+
+    await act(async () => finishPdf());
+    expect(exportMocks.exportProjectRowsPdf).toHaveBeenCalledTimes(1);
+    expect(exportMocks.exportProjectRowsExcel).not.toHaveBeenCalled();
+    expect(exportCluster).not.toHaveAttribute('aria-busy');
+    expect(screen.queryByText('Preparing PDF…')).toBeNull();
+  });
+
+  it('clears an earlier export failure once an export succeeds', async () => {
+    exportMocks.exportProjectRowsWord.mockRejectedValueOnce(new Error('serialization failed'));
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Word'}));
+    expect(await screen.findByText('Unable to export Microsoft Word. Please try again.')).toBeInTheDocument();
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Excel'}));
+
+    await waitFor(() => expect(exportMocks.exportProjectRowsExcel).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText(/Unable to export/)).toBeNull());
+  });
+
+  it('asks for a reload, not a retry, when code an export needs did not download', async () => {
+    // A stale tab after a deploy (the old chunk is gone), or a failed download: browsers keep the failed module.
+    exportMocks.exportProjectRowsPdf.mockRejectedValueOnce(
+      new TypeError('Failed to fetch dynamically imported module: https://i2g.example/assets/jspdf.es.min-OLD.js'),
+    );
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
+
+    expect(
+      await screen.findByText(
+        'Unable to export PDF: part of this page did not download, often because the site was updated. ' +
+          'Reload the page, then export again. Your curation draft is kept.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Please try again/)).toBeNull();
+    expect(within(exportCluster).getByRole('button', {name: 'Reload Page'})).toBeInTheDocument();
+  });
+
+  it('drops the reload advice and its button once another export succeeds', async () => {
+    exportMocks.exportProjectRowsPdf.mockRejectedValueOnce(
+      new TypeError('Failed to fetch dynamically imported module: https://i2g.example/assets/jspdf.es.min-OLD.js'),
+    );
+    const {container} = render(<MergedResultsTable rows={makeItems()} onCreateShare={vi.fn()} />);
+    const exportCluster = container.querySelector('.project-grid-toolbar-cluster[aria-label="Export"]') as HTMLElement;
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'PDF'}));
+    expect(await within(exportCluster).findByRole('button', {name: 'Reload Page'})).toBeInTheDocument();
+
+    fireEvent.click(within(exportCluster).getByRole('button', {name: 'Word'}));
+
+    await waitFor(() => expect(exportMocks.exportProjectRowsWord).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText(/Unable to export/)).toBeNull());
+    expect(within(exportCluster).queryByRole('button', {name: 'Reload Page'})).toBeNull();
   });
 });

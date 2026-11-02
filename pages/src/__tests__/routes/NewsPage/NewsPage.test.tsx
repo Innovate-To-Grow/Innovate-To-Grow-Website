@@ -173,7 +173,8 @@ describe('NewsPage', () => {
     );
 
     expect(await screen.findByRole('heading', {name: 'First Article'})).toBeInTheDocument();
-    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+    // The site pager's page line (pagination.css): shown on phones and on paper, where the buttons do not print.
+    expect(screen.getByText('Page 1 of 3')).toHaveClass('itg-pagination-info', 'news-pagination-info');
     expect(screen.getByRole('navigation', {name: 'News pages'})).toHaveClass('itg-pagination');
     const current = screen
       .getByRole('navigation', {name: 'News pages'})

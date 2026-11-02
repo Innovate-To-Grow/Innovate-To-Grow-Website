@@ -1,0 +1,46 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }} &mdash; {{ original.name }}</h1>{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    {% if problem %}
+        <div class="mb-6 rounded-default border border-red-300 bg-red-50 p-4 text-sm text-red-800 dark:border-red-700 dark:bg-red-900/20 dark:text-red-300">
+            <p class="font-semibold">The access check cannot run yet.</p>
+            <p class="mt-1">{{ problem }}</p>
+        </div>
+    {% endif %}
+    <div class="mb-6 rounded-default border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-300">
+        <p>The site asks Microsoft what this Entra app may do, with a fresh token from the current certificate, and records the answer as evidence:</p>
+        <ul class="mt-2 list-disc pl-5">
+            <li>the application roles the token claims, against the approval (<code>GRAPH_APPROVED_APPLICATION_ROLES</code>);</li>
+            <li>each mailbox with read permission: its Inbox, its newest message and the start of that message (nothing is kept);</li>
+            <li>each mailbox with send permission: a probe email to itself (a copy stays in its Sent Items);</li>
+            <li>the deny mailbox <strong>{{ original.access_check_deny_mailbox|default:"(not set)" }}</strong>: reading it, sending as it, and sending with it as the From address must all be refused. Those sends are addressed to the I2G mailbox and keep no Sent Items copy.</li>
+        </ul>
+        <p class="mt-2">Microsoft notes that access policy changes can take more than an hour to apply: after OIT changes anything, wait before running this.</p>
+    </div>
+    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+        {% if current %}
+            {% include "admin/core/microsoftgraphproviderconfig/certificate_card.html" with card=current heading="Current certificate" %}
+        {% endif %}
+        <h4 class="mb-2 mt-4 text-xs font-semibold uppercase text-base-500 dark:text-base-400">Mailbox scope</h4>
+        <ul class="text-sm">
+            {% for scope in scopes %}<li>{{ scope }}</li>{% empty %}<li>Nothing is allowed.</li>{% endfor %}
+        </ul>
+    </div>
+    <form method="post">
+        {% csrf_token %}
+        <div class="flex gap-3">
+            <button type="submit" class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"{% if problem %} disabled{% endif %}>
+                Run access check
+            </button>
+            <a href="{{ cancel_url }}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}
