@@ -3,8 +3,15 @@
 from django.test import SimpleTestCase, override_settings
 
 from apps.core.services.email.graph.access_check import FAIL, INCONCLUSIVE, PASS, WARN
-from apps.core.services.email.graph.access_check.roles import approved_roles, roles_result, token_roles
-from apps.core.tests.services.graph_access.helpers import APPROVED, OIT_ROLES, jwt, token_with_roles
+from apps.core.services.email.graph.access_check.roles import (
+    accepted_broader_roles,
+    approved_roles,
+    roles_result,
+    token_roles,
+)
+from apps.core.tests.services.graph_access.helpers import APPROVED, OIT_ROLES, UNACCEPTED_ROLES, jwt, token_with_roles
+
+BROADER = ("Mail.ReadWrite",)
 
 
 class TokenRolesTests(SimpleTestCase):
@@ -51,19 +58,32 @@ class RolesResultTests(SimpleTestCase):
         self.assertEqual((result.check, result.outcome), ("roles", PASS))
         self.assertEqual(result.note, "granted Mail.Read, Mail.Send")
 
-    def test_mail_readwrite_beyond_the_approval_fails(self):
-        # What OIT reportedly configured; before this check existed the run printed a success line for it.
-        result = roles_result(OIT_ROLES, APPROVED, "")
-
-        self.assertEqual(result.outcome, FAIL)
-        self.assertIn("beyond the approval: Mail.ReadWrite", result.note)
-        self.assertIn("needs OIT to remove them or an InfoSec review", result.note)
-
-    def test_an_infosec_exception_turns_the_failure_into_a_warning_that_names_it(self):
-        result = roles_result(OIT_ROLES, APPROVED, "RITM0450999")
+    def test_mail_readwrite_as_oit_granted_it_is_accepted_without_an_exception(self):
+        result = roles_result(OIT_ROLES, APPROVED, "", BROADER)
 
         self.assertEqual(result.outcome, WARN)
-        self.assertIn("beyond the approval: Mail.ReadWrite; InfoSec exception RITM0450999", result.note)
+        self.assertEqual(
+            result.note,
+            "granted Mail.ReadWrite, Mail.Send; beyond the approval: Mail.ReadWrite; accepted as granted, covering an "
+            "approved role: Mail.ReadWrite",
+        )
+
+    def test_a_role_that_is_not_an_accepted_broader_grant_fails(self):
+        for granted in (UNACCEPTED_ROLES, (*OIT_ROLES, "User.Read.All")):
+            with self.subTest(granted=granted):
+                result = roles_result(granted, APPROVED, "", BROADER)
+
+                self.assertEqual(result.outcome, FAIL)
+                self.assertIn("User.Read.All", result.note)
+                self.assertIn("needs OIT to remove them or an InfoSec review", result.note)
+        # Without the accepted broader roles (as before), Mail.ReadWrite fails too.
+        self.assertEqual(roles_result(OIT_ROLES, APPROVED, "").outcome, FAIL)
+
+    def test_an_infosec_exception_turns_the_failure_into_a_warning_that_names_it(self):
+        result = roles_result(UNACCEPTED_ROLES, APPROVED, "RITM0450999", BROADER)
+
+        self.assertEqual(result.outcome, WARN)
+        self.assertIn("beyond the approval: User.Read.All; InfoSec exception RITM0450999", result.note)
 
     def test_no_roles_warn_that_rbac_grants_are_invisible(self):
         result = roles_result((), APPROVED, "")
@@ -76,3 +96,24 @@ class RolesResultTests(SimpleTestCase):
 
         self.assertEqual(result.outcome, INCONCLUSIVE)
         self.assertEqual(result.expected, "within Mail.Read, Mail.Send")
+
+
+class AcceptedBroaderRolesTests(SimpleTestCase):
+    def test_mail_readwrite_is_accepted_by_default(self):
+        self.assertEqual(accepted_broader_roles(), BROADER)
+
+    @override_settings(GRAPH_APPROVED_APPLICATION_ROLES=("Mail.Send",))
+    def test_a_broader_role_is_withdrawn_when_a_role_it_covers_is_no_longer_approved(self):
+        self.assertEqual(accepted_broader_roles(), ())
+
+    def test_only_entries_that_cover_approved_roles_and_are_not_approved_themselves_count(self):
+        mapping = {
+            "Mail.ReadWrite": ("Mail.Read",),
+            "Mail.ReadBasic.All": (),
+            "Calendars.ReadWrite": ("Calendars.Read",),
+            "Mail.Send": ("Mail.Send",),
+        }
+        with override_settings(GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES=mapping):
+            self.assertEqual(accepted_broader_roles(), ("Mail.ReadWrite",))
+        with override_settings(GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES={}):
+            self.assertEqual(accepted_broader_roles(), ())

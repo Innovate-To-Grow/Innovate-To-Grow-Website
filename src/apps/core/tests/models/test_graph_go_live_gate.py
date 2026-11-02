@@ -91,8 +91,16 @@ class GoLiveProblemTests(TestCase):
                 evidence(self.config, verdict=verdict, complete=False)
                 self.assertIn(f"the latest access check found: {text}", go_live_problem(self.config))
 
+    def test_mail_readwrite_as_oit_granted_it_needs_no_exception_reference(self):
+        evidence(self.config, granted_roles=["Mail.ReadWrite", "Mail.Send"], roles_within_approval=False)
+
+        self.assertEqual(self.config.permission_exception_reference, "")
+        self.assertEqual(go_live_problem(self.config), "")
+        with override_settings(GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES={}):
+            self.assertIn("claims Mail.ReadWrite beyond the approval", go_live_problem(self.config))
+
     def test_extra_roles_need_the_exception_reference_to_still_be_recorded(self):
-        extra = {"granted_roles": ["Mail.ReadWrite", "Mail.Send"], "roles_within_approval": False}
+        extra = {"granted_roles": ["Mail.ReadWrite", "Mail.Send", "User.Read.All"], "roles_within_approval": False}
         evidence(self.config, permission_exception_reference="RITM0450999", **extra)
         self.config.permission_exception_reference = "RITM0450999"
         self.assertEqual(go_live_problem(self.config), "")
@@ -100,7 +108,8 @@ class GoLiveProblemTests(TestCase):
         self.config.permission_exception_reference = ""
         problem = go_live_problem(self.config)
 
-        self.assertIn("claims Mail.ReadWrite beyond the approval", problem)
+        self.assertIn("claims User.Read.All beyond the approval", problem)
+        self.assertNotIn("Mail.ReadWrite", problem)
         self.assertIn("no InfoSec exception reference is recorded", problem)
 
     @override_settings(GRAPH_APPROVED_APPLICATION_ROLES=("Mail.Send",))
@@ -108,6 +117,12 @@ class GoLiveProblemTests(TestCase):
         evidence(self.config)
 
         self.assertIn("claims Mail.Read beyond the approval", go_live_problem(self.config))
+
+    @override_settings(GRAPH_APPROVED_APPLICATION_ROLES=("Mail.Send",))
+    def test_a_narrowed_approval_also_withdraws_the_broader_role_that_covered_it(self):
+        evidence(self.config, granted_roles=["Mail.ReadWrite", "Mail.Send"], roles_within_approval=False)
+
+        self.assertIn("claims Mail.ReadWrite beyond the approval", go_live_problem(self.config))
 
     def test_an_unsaved_config_has_no_evidence(self):
         unsaved = type(self.config)()

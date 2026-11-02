@@ -70,6 +70,7 @@ def run_access_check(config, *, deny_mailbox: str, send: bool = True) -> AccessC
     certificate = config.current_certificate
     credential = credential_for(config)
     approved = roles.approved_roles()
+    broader = roles.accepted_broader_roles()
     reference = config.permission_exception_reference
     timeout = settings.GRAPH_ACCESS_CHECK_TIMEOUT_SECONDS
     # A cached token could predate a change OIT made: its roles must show the grant as it is now.
@@ -82,7 +83,7 @@ def run_access_check(config, *, deny_mailbox: str, send: bool = True) -> AccessC
         granted = roles.token_roles(token)
         results = [
             ProbeResult(TOKEN, "-", ISSUED, PASS, status=200, note="requested with the current certificate"),
-            roles.roles_result(granted, approved, reference),
+            roles.roles_result(granted, approved, reference, broader),
             *_mailbox_probes(Prober(token, timeout=timeout), config, deny_mailbox, send),
         ]
     return AccessCheckReport(
@@ -97,6 +98,7 @@ def run_access_check(config, *, deny_mailbox: str, send: bool = True) -> AccessC
         key_version_id=certificate.store_version_id,
         deny_mailbox=deny_mailbox,
         checked_at=timezone.now(),
+        broader_roles=broader,
     )
 
 

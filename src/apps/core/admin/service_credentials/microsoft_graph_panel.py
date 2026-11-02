@@ -10,7 +10,10 @@ from django.conf import settings
 from django.urls import reverse
 
 from apps.core.models import MicrosoftGraphAccessCheck
-from apps.core.models.base.service_credentials.microsoft_graph_access_check import go_live_problem
+from apps.core.models.base.service_credentials.microsoft_graph_access_check import (
+    accepted_broader_roles,
+    go_live_problem,
+)
 from apps.core.services.credential_store.local_file import LocalFileStore
 from apps.core.services.credential_store.memory import MemoryStore
 from apps.core.services.email.graph.credential import expiry
@@ -105,10 +108,21 @@ def access_check_card(config, current, *, linked: bool) -> dict:
         for_current=current is not None and check.certificate_id == current.pk,
         badge_classes=BADGE_CLASSES[VERDICT_TONES[check.verdict]],
         roles="unreadable" if granted is None else (", ".join(granted) or "none in the token"),
+        roles_note=_roles_note(granted, check.approved_roles),
     )
     if linked:
         card["url"] = reverse(f"admin:{EVIDENCE_URL_NAME}", args=[check.pk])
     return card
+
+
+def _roles_note(granted, approved) -> str:
+    """The roles beyond the approval of the run, each marked when it is a broader grant accepted today, or ""."""
+    extra = sorted(set(granted or ()) - set(approved))
+    if not extra:
+        return ""
+    accepted = set(accepted_broader_roles())
+    labels = (f"{role}, accepted as a broader grant" if role in accepted else role for role in extra)
+    return f"beyond the approval: {'; '.join(labels)}"
 
 
 def certificate_panel(request, config, *, actions=True) -> dict:

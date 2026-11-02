@@ -44,6 +44,11 @@ GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS = 14
 # The access check fails when the token carries any other role, unless the Graph config records the reference of
 # an InfoSec review that approves it.
 GRAPH_APPROVED_APPLICATION_ROLES = ("Mail.Send", "Mail.Read")
+# Broader application permissions accepted as granted, without an InfoSec exception reference, each mapped to the
+# approved roles it covers. OIT granted Mail.ReadWrite (which includes Mail.Read) in place of Mail.Read, and the site
+# follows that grant. A role is accepted only while every role it covers is in GRAPH_APPROVED_APPLICATION_ROLES; it
+# is still listed as beyond the approval in each access check. Any other extra role needs the exception reference.
+GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES = {"Mail.ReadWrite": ("Mail.Read",)}
 # Timeout of each request the access check makes (the token request included).
 GRAPH_ACCESS_CHECK_TIMEOUT_SECONDS = 10
 # A token whose roles claim lists more entries than this counts as unreadable (and the run as incomplete).

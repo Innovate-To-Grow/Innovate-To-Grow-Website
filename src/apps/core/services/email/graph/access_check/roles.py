@@ -12,6 +12,7 @@ import json
 
 from django.conf import settings
 
+from apps.core.models.base.service_credentials.microsoft_graph_access_check import accepted_broader_roles
 from apps.core.utils.security import is_graph_permission
 
 from .report import FAIL, INCONCLUSIVE, PASS, ROLES, WARN, ProbeResult
@@ -21,6 +22,9 @@ NO_ROLES = (
     "probes show what Microsoft allows"
 )
 UNREADABLE = "the token's roles could not be read, so this run cannot show they are within the approval"
+ACCEPTED_BROADER = "accepted as granted, covering an approved role: {roles}"
+
+__all__ = ["accepted_broader_roles", "approved_roles", "roles_result", "token_roles"]
 
 
 def approved_roles() -> tuple[str, ...]:
@@ -46,8 +50,14 @@ def token_roles(token: str) -> tuple[str, ...] | None:
     return tuple(sorted(set(roles)))
 
 
-def roles_result(granted: tuple[str, ...] | None, approved: tuple[str, ...], exception_reference: str) -> ProbeResult:
-    """FAIL for roles beyond the approval (WARN when an InfoSec exception is recorded); WARN when there are none.
+def roles_result(
+    granted: tuple[str, ...] | None,
+    approved: tuple[str, ...],
+    exception_reference: str,
+    broader: tuple[str, ...] = (),
+) -> ProbeResult:
+    """WARN for roles beyond the approval that are all *broader* roles accepted as granted (``accepted_broader_roles``)
+    or covered by a recorded InfoSec exception; FAIL for any other role beyond it; WARN when there are none.
 
     Unreadable roles are INCONCLUSIVE: the run then is not a complete validation.
     """
@@ -61,6 +71,11 @@ def roles_result(granted: tuple[str, ...] | None, approved: tuple[str, ...], exc
     if not extra:
         return ProbeResult(ROLES, "-", expected, PASS, note=note)
     note = f"{note}; beyond the approval: {', '.join(extra)}"
+    accepted = [role for role in extra if role in broader]
+    if accepted:
+        note = f"{note}; {ACCEPTED_BROADER.format(roles=', '.join(accepted))}"
+    if len(accepted) == len(extra):
+        return ProbeResult(ROLES, "-", expected, WARN, note=note)
     if exception_reference:
         return ProbeResult(ROLES, "-", expected, WARN, note=f"{note}; InfoSec exception {exception_reference}")
     return ProbeResult(ROLES, "-", expected, FAIL, note=f"{note}; needs OIT to remove them or an InfoSec review")

@@ -4,9 +4,10 @@ One run, from ``manage.py verify_graph_access`` or the admin's "Run access check
 ``MicrosoftGraphAccessCheck`` row, which the production go-live gate requires. In order:
 
 1. A fresh token with the current certificate, and its ``roles`` read without trusting it (``roles``): FAIL for any
-   role beyond ``GRAPH_APPROVED_APPLICATION_ROLES`` unless an InfoSec exception reference is recorded; WARN when
-   the token claims none (RBAC for Applications grants never appear in it); INCONCLUSIVE (not a complete
-   validation) when they cannot be read.
+   role beyond ``GRAPH_APPROVED_APPLICATION_ROLES`` unless it is a broader role accepted as granted
+   (``GRAPH_ACCEPTED_BROADER_APPLICATION_ROLES``: Mail.ReadWrite, which OIT granted and which covers Mail.Read) or an
+   InfoSec exception reference is recorded, either of which makes it a WARN; WARN when the token claims none (RBAC
+   for Applications grants never appear in it); INCONCLUSIVE (not a complete validation) when they cannot be read.
 2. Each read-scoped mailbox: the Inbox folder, the newest message with its preview, and the start of its raw MIME
    (``$value``), as the admin inbox opens it; an empty Inbox leaves ``$value`` unexercised, which is INCONCLUSIVE. Each send-scoped mailbox listed by address: a MIME ``sendMail`` to
    itself, as the site sends most mail.

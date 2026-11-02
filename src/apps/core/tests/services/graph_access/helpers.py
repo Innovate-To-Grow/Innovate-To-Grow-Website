@@ -23,8 +23,10 @@ DENY = "intruder-test@contoso.com"
 MESSAGE_ID = "AAMkAGI2THVSAAA="
 REQUEST_ID = "8a1b2c3d-1111-2222-3333-444455556666"
 APPROVED = ("Mail.Read", "Mail.Send")
-# What OIT reportedly configured on the app: beyond the approval (Mail.Read).
+# What OIT configured on the app: beyond the approval (Mail.Read), accepted as a broader grant that covers it.
 OIT_ROLES = ("Mail.ReadWrite", "Mail.Send")
+# A role beyond the approval that is not an accepted broader grant: it still needs an InfoSec exception reference.
+UNACCEPTED_ROLES = ("Mail.Send", "User.Read.All")
 APA_MESSAGE = "Access to OData is disabled: [RAOP] : Blocked by tenant configured AppOnly AccessPolicy settings."
 
 ALLOW = {

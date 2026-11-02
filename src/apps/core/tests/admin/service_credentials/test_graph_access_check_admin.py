@@ -9,7 +9,7 @@ from django.urls import reverse
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.access_check.runner import NO_DENY_MAILBOX
 from apps.core.tests.admin.service_credentials.test_graph_provider_guard import change_data
-from apps.core.tests.services.graph_access.helpers import DENY, OIT_ROLES, ProbeFixtureMixin, Verdict
+from apps.core.tests.services.graph_access.helpers import DENY, OIT_ROLES, UNACCEPTED_ROLES, ProbeFixtureMixin, Verdict
 from apps.event.tests.helpers import make_admin, make_superuser
 
 PREFIX = "admin:core_microsoftgraphproviderconfig"
@@ -57,14 +57,29 @@ class RunAccessCheckPageTests(AccessCheckAdminFixture):
         self.assertContains(page, "Mail.Read, Mail.Send")
 
     def test_a_run_that_does_not_match_is_reported_as_an_error(self):
-        self.use_roles(OIT_ROLES)
+        self.use_roles(UNACCEPTED_ROLES)
 
         response = self.client.post(self.run_url, follow=True)
 
         [message] = list(response.context["messages"])
         self.assertEqual(message.level_tag, "error")
-        self.assertIn("BEYOND the approval (Mail.ReadWrite)", message.message)
-        self.assertContains(response, "Mail.ReadWrite, Mail.Send")
+        self.assertIn("BEYOND the approval (User.Read.All)", message.message)
+        self.assertContains(response, "Mail.Send, User.Read.All")
+
+    def test_mail_readwrite_as_oit_granted_it_matches_and_the_card_says_it_was_accepted(self):
+        self.use_roles(OIT_ROLES)
+
+        response = self.client.post(self.run_url, follow=True)
+
+        [message] = list(response.context["messages"])
+        self.assertEqual(message.level_tag, "success")
+        self.assertIn("BEYOND the approval (Mail.ReadWrite: accepted broader grant)", message.message)
+        self.assertIn("accepted as granted because it covers an approved role", message.message)
+        self.assertEqual(MicrosoftGraphAccessCheck.objects.get().verdict, Verdict.COMPLIANT)
+        change = self.client.get(reverse("admin:core_microsoftgraphproviderconfig_change", args=[self.config.pk]))
+        self.assertContains(
+            change, "Mail.ReadWrite, Mail.Send (beyond the approval: Mail.ReadWrite, accepted as a broader grant)"
+        )
 
     def test_without_a_designated_deny_mailbox_the_check_does_not_run(self):
         MicrosoftGraphProviderConfig.objects.filter(pk=self.config.pk).update(access_check_deny_mailbox="")

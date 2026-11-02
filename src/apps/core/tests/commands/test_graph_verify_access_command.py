@@ -16,6 +16,7 @@ from apps.core.tests.services.graph_access.helpers import (
     OIT_ROLES,
     REQUEST_ID,
     SCOPED,
+    UNACCEPTED_ROLES,
     ProbeFixtureMixin,
     Verdict,
 )
@@ -70,19 +71,37 @@ class VerifyGraphAccessCommandTests(ProbeFixtureMixin, TestCase):
         self.assertEqual(MicrosoftGraphAccessCheck.objects.get().deny_mailbox, other)
         self.assertIn("Go-live evidence: missing: the latest access check did not use the designated", output)
 
-    def test_mail_readwrite_in_the_token_fails_even_though_every_mailbox_probe_passes(self):
+    def test_mail_readwrite_as_oit_granted_it_passes_and_is_named(self):
         self.use_roles(OIT_ROLES)
+
+        output = self.run_command()
+
+        self.assertIn("Accepted broader roles (no InfoSec exception needed): Mail.ReadWrite", output)
+        self.assertIn("WARN         roles", output)
+        self.assertIn("accepted as granted, covering an approved role: Mail.ReadWrite", output)
+        self.assertIn(
+            "Mailbox restriction: HOLDS · Granted roles: BEYOND the approval (Mail.ReadWrite: accepted broader grant)",
+            output,
+        )
+        self.assertIn(
+            "Mail.ReadWrite beyond the approval, accepted as granted because it covers an approved role", output
+        )
+        self.assertEqual(MicrosoftGraphAccessCheck.objects.get().verdict, Verdict.COMPLIANT)
+        self.assertIn("Go-live evidence: present", output)
+
+    def test_a_role_that_is_not_an_accepted_broader_grant_fails_even_though_every_mailbox_probe_passes(self):
+        self.use_roles(UNACCEPTED_ROLES)
 
         output = self.run_failing(message="does NOT match the approval")
 
         self.assertIn("FAIL         roles", output)
-        self.assertIn("beyond the approval: Mail.ReadWrite", output)
-        self.assertIn("Mailbox restriction: HOLDS · Granted roles: BEYOND the approval (Mail.ReadWrite)", output)
+        self.assertIn("beyond the approval: User.Read.All", output)
+        self.assertIn("Mailbox restriction: HOLDS · Granted roles: BEYOND the approval (User.Read.All)", output)
         self.assertNotIn(SUCCESS, output)
         self.assertEqual(MicrosoftGraphAccessCheck.objects.get().verdict, Verdict.NOT_COMPLIANT)
 
     def test_an_infosec_exception_reference_lets_the_run_pass_and_is_printed(self):
-        self.use_roles(OIT_ROLES)
+        self.use_roles(UNACCEPTED_ROLES)
         MicrosoftGraphProviderConfig.objects.filter(pk=self.config.pk).update(
             permission_exception_reference="RITM0450999"
         )
