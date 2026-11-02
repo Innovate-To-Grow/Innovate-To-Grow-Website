@@ -53,5 +53,8 @@ GRAPH_ACCESS_CHECK_MIME_MAX_BYTES = 4096
 # Go-live gate (on in production): switching email delivery to Microsoft Graph needs a complete, passing access
 # check for the current certificate, run against the designated deny mailbox...
 GRAPH_REQUIRE_ACCESS_EVIDENCE = False
+# Explicit operator acceptance of OIT provisioning for one pinned config/app/mailbox. This never changes the
+# InfoSec-approved roles or manufactures access-check evidence. Empty means no such activation policy exists.
+GRAPH_OIT_PROVISIONED_ACTIVATION = {}
 # ...and no older than this many days.
 GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS = 30

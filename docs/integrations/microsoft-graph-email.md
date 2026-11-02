@@ -45,15 +45,18 @@ It is the third choice of the **Provider** setting:
    not verified yet: no allowed/denied test result exists (see [UC Merced status](#uc-merced-status-ritm0450512)).
 2. **The site (defense in depth).** Each Graph configuration has a **mailbox scope**: a list of mailboxes,
    each with a permission level (*Send only*, *Read only*, or *Send and read*). The site refuses, before
-   contacting Microsoft, any send as or read of a mailbox that is not listed with that permission. Nothing
-   is hard-coded: the scope is data in Django admin and must match the Exchange restriction. The transport
+   contacting Microsoft, any send as or read of a mailbox that is not listed with that permission. Normally
+   the scope is data in Django admin and must match the Exchange restriction.
+   The [operator activation policy](#operator-activation-policy-2026-11-02) additionally pins its one accepted
+   application to `i2g@ucmerced.edu`, even if more scope rows are added in admin. The transport
    also refuses every Graph request except the five kinds the site needs
    ([How it behaves](#how-it-behaves)), whatever permissions the app holds.
 
 ## UC Merced status (RITM0450512)
 
-Only what the ticket record shows is stated as fact here. Cloud Systems' statements are recorded as their
-statements; nothing below has been checked against the tenant from the site's side.
+The table preserves the ticket and setup baseline before production certificate installation. Cloud Systems'
+statements are recorded as their statements. The later operator decision is documented separately below;
+neither the ticket nor that decision establishes Microsoft-side mailbox isolation.
 
 | Item | On record | Status |
 |------|-----------|--------|
@@ -64,11 +67,41 @@ statements; nothing below has been checked against the tenant from the site's si
 | Key storage | Intended for AWS Secrets Manager | Implemented ([Where the private key is kept](#where-the-private-key-is-kept)); the secret, its task-role write grant and its resource policy are not deployed or tested in AWS yet |
 | Not evidenced | The AWS runtime, a production deploy, an end-to-end Graph send and receive | Open |
 
+### Operator activation policy (2026-11-02)
+
+The platform operator explicitly accepted the OIT-provisioned `Mail.Send` and `Mail.ReadWrite` grants and
+requested Graph activation without contacting OIT again. Production configuration records this decision in
+`GRAPH_OIT_PROVISIONED_ACTIVATION`, separate from the original InfoSec approval and access-check records.
+It identifies only configuration `648a5f99-3abc-484d-9ecd-48608dd47832`, tenant
+`f4dfe9a3-ca78-4998-b7a7-e6d0692eace6`, and application `f50cd7bc-ab45-4698-ab42-ae737a4c8adc`.
+
+For that configuration, selecting Microsoft Graph in **Mail → Notification Delivery** no longer requires a
+complete access check. It still requires a currently valid certificate for that tenant and application that
+Entra has accepted, sender and From address `i2g@ucmerced.edu`, and exactly one mailbox scope with **Send and
+read** permission for that address. Runtime scope checks also refuse any other mailbox. The transport still
+permits only token requests, `sendMail`, and the supported read requests; the platform cannot exercise
+`Mail.ReadWrite` to create drafts, modify, move or delete mail. The Microsoft-issued token itself retains its
+granted capabilities. Other configurations keep the original go-live gate.
+
+The Admin certificate panel, also shown in Notification Delivery, labels this **Operator-accepted OIT
+configuration** and separately shows the actual access-check result. Operator acceptance does not create a
+passing check, populate **InfoSec Exception Reference**, expand `GRAPH_APPROVED_APPLICATION_ROLES`, or
+establish Exchange mailbox isolation. With no recent complete allowed/denied check for the current
+certificate and designated deny mailbox, the panel says **Microsoft mailbox isolation: unverified**. A check
+that proves isolation but reports broader token roles keeps those two findings separate.
+
+This is an application activation policy, not evidence that the production sender has already switched or
+that a Graph message has been delivered. Certificate installation, provider selection and a test message
+remain separate operator actions. Enabling this configuration with read scope also makes the Admin Inbox
+read through Graph. The open verification items below remain outstanding even when this policy permits
+activation.
+
 ### Open items before go-live
 
-Production refuses to switch email to Microsoft Graph until the [go-live gate](#go-live-gate) is met, so
-items 1, 3 and 4 block it in code; the others need a decision, a confirmation or OIT's evidence before
-go-live.
+Under the standard [go-live gate](#go-live-gate), items 1, 3 and 4 block activation in code. The narrowly
+identified [operator activation policy](#operator-activation-policy-2026-11-02) permits activation without
+those items; it does not resolve them or change the original approval conditions. The remaining items
+describe the original setup and verification requirements.
 
 1. **Permissions.** Ask Cloud Systems to replace `Mail.ReadWrite` with `Mail.Read`. Under an access policy the
    consented permissions appear in the token's `roles`, so the access check fails while `Mail.ReadWrite` is
@@ -498,17 +531,22 @@ evidence for InfoSec.
 ### Go-live gate
 
 Where `GRAPH_REQUIRE_ACCESS_EVIDENCE` is on (production; off locally and in tests), Mail → Notification
-Delivery can switch email to Microsoft Graph only when the latest access check run with the current
+Delivery normally switches email to Microsoft Graph only when the latest access check run with the current
 certificate matched the approval, used the designated deny mailbox, and is at most
 `GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS` (default 30) days old. A role beyond today's approval still needs an
 exception reference at the time of the switch, so clearing the reference, or narrowing
 `GRAPH_APPROVED_APPLICATION_ROLES`, withdraws the evidence. Refused saves say why under **Provider**
 (`Email cannot switch to Microsoft Graph yet: …`).
 
-The same rule applies whenever email that is already on Graph would move to another Entra app or
+The one deployment-pinned [operator activation policy](#operator-activation-policy-2026-11-02) is an explicit
+exception to requiring this evidence before activation. The access checker and evidence display continue to
+apply the original approval criteria, so an accepted configuration can be active while its evidence still
+says missing or **Does not match the approval**. No check result is rewritten to make activation look verified.
+
+The same activation rules apply whenever email that is already on Graph would move to another Entra app or
 certificate: activating another configuration on its page is refused under **Active** (`… can become the
-active one only when email could switch to it: …`) unless that configuration's own latest access check is
-evidence, and the active configuration's tenant and app cannot change while email is on Graph. In every
+active one only when email could switch to it: …`) unless that configuration satisfies its applicable activation
+policy, and the active configuration's tenant and app cannot change while email is on Graph. In every
 environment, gate on or off, the configuration email switches to must hold a current certificate that Entra
 issued a token with: one installed on an inactive configuration before OIT registered it says "not trusted"
 until an access check (or a re-install) gets a token with it.

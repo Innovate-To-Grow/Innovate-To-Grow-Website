@@ -49,6 +49,16 @@ AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER = True
 # Private keys (credential store) live only in Secrets Manager; the core system check refuses any other backend.
 CREDENTIAL_STORE_BACKEND = "secretsmanager"
 CREDENTIAL_STORE_REQUIRE_SECRETS_MANAGER = True
-# Email may switch to Microsoft Graph only with recorded evidence that Microsoft's restriction and the granted roles
-# match the InfoSec approval (a recent, complete, passing access check for the current certificate).
+# Other Graph configurations require recent, complete evidence of the mailbox restriction and original approval.
 GRAPH_REQUIRE_ACCESS_EVIDENCE = True
+# The operator accepted OIT's provisioned I2G permissions on 2026-11-02 without waiting for an InfoSec exception or
+# complete Exchange isolation validation. This policy does not claim either exists. Identifiers are public app
+# metadata; the certificate and its private key remain in the existing admin/credential store.
+GRAPH_OIT_PROVISIONED_ACTIVATION = {
+    "config_id": "648a5f99-3abc-484d-9ecd-48608dd47832",
+    "tenant_id": "f4dfe9a3-ca78-4998-b7a7-e6d0692eace6",
+    "client_id": "f50cd7bc-ab45-4698-ab42-ae737a4c8adc",
+    "mailbox": "i2g@ucmerced.edu",
+    "accepted_roles": ("Mail.Send", "Mail.ReadWrite"),
+    "accepted_on": "2026-11-02",
+}

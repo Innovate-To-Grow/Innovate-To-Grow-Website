@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from ..control import ProjectControlModel
 from .microsoft_graph_certificate import MicrosoftGraphCertificate
+from .microsoft_graph_policy import oit_provisioned_policy, provisioned_activation_problem
 
 RUN_THE_CHECK = (
     "Run the access check (superuser: Run access check on the Microsoft Graph configuration's page, or "
@@ -111,8 +112,10 @@ def takeover_problem(config) -> str:
     """Why email may not start being sent with *config* yet, or "": what switching to Microsoft Graph requires.
 
     Its current certificate must be usable and Entra must have issued a token with it (an inactive config may hold a
-    certificate Entra did not trust yet when it was installed); where ``GRAPH_REQUIRE_ACCESS_EVIDENCE`` is on,
-    ``go_live_problem`` must find nothing either. ``EmailServiceConfig`` applies it when email switches to Graph,
+    certificate Entra did not trust yet when it was installed). An explicit OIT-provisioned activation policy can
+    accept missing approval/isolation evidence for its pinned app and mailbox without changing that evidence.
+    Otherwise, where ``GRAPH_REQUIRE_ACCESS_EVIDENCE`` is on, ``go_live_problem`` must find nothing either.
+    ``EmailServiceConfig`` applies it when email switches to Graph,
     ``MicrosoftGraphProviderConfig`` when email already on Graph would move to another config or Entra app.
     """
     certificate = config.current_certificate
@@ -123,4 +126,7 @@ def takeover_problem(config) -> str:
             "Microsoft Entra has not issued a token with its current certificate yet "
             f"({certificate.get_entra_check_display().lower()}). {RUN_THE_CHECK}"
         )
+    policy = oit_provisioned_policy(config)
+    if policy is not None:
+        return provisioned_activation_problem(config, policy)
     return go_live_problem(config) if settings.GRAPH_REQUIRE_ACCESS_EVIDENCE else ""

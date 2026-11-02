@@ -7,6 +7,7 @@ from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_gu
 from ..control import ProjectControlModel
 from .microsoft_graph_access_check import takeover_problem
 from .microsoft_graph_certificate import MicrosoftGraphCertificate
+from .microsoft_graph_policy import oit_provisioned_policy
 
 # Characters that would change a Graph URL (percent-encoding keeps them out of the path, but a deny mailbox that
 # needs them is never what an operator meant).
@@ -261,6 +262,11 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
         *scopes* (``{mailbox: permission level}``) stands in for the stored scope, to check a change before it is saved.
         """
         if not mailbox:
+            return False
+        policy = oit_provisioned_policy(self)
+        if policy is not None and (
+            normalize_mailbox(mailbox) != normalize_mailbox(policy["mailbox"]) or permission not in ("send", "read")
+        ):
             return False
         if scopes is not None:
             return MicrosoftGraphMailboxScope.level_grants(scopes.get(normalize_mailbox(mailbox)), permission)

@@ -6,13 +6,18 @@ Core admins can install a certificate; rollback, removal and running the access 
 The views enforce these permissions too. Dates are in the site's time zone, with the zone named.
 """
 
+import datetime
+
 from django.conf import settings
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.core.models import MicrosoftGraphAccessCheck
 from apps.core.models.base.service_credentials.microsoft_graph_access_check import go_live_problem
+from apps.core.models.base.service_credentials.microsoft_graph_policy import oit_provisioned_policy
 from apps.core.services.credential_store.local_file import LocalFileStore
 from apps.core.services.credential_store.memory import MemoryStore
+from apps.core.services.email.graph.access_check.report import ALLOWED, FOLDER, MESSAGES, PASS, SEND
 from apps.core.services.email.graph.credential import expiry
 from apps.core.services.email.graph.credential.expiry import local_time_text
 from apps.core.utils.access import user_can_access_app
@@ -88,7 +93,7 @@ def certificate_card(certificate) -> dict | None:
 
 
 def access_check_card(config, current, *, linked: bool) -> dict:
-    """The latest access check of *config* and whether email may switch to Graph on it (the go-live gate)."""
+    """Access evidence and any operator activation policy, kept separate so acceptance never implies validation."""
     check = config.access_checks.order_by("-created_at").first()
     card = {
         "check": check,
@@ -97,6 +102,14 @@ def access_check_card(config, current, *, linked: bool) -> dict:
         "deny_mailbox": config.access_check_deny_mailbox,
         "exception_reference": config.permission_exception_reference,
     }
+    policy = oit_provisioned_policy(config)
+    if policy:
+        card["operator_policy"] = {
+            "mailbox": policy["mailbox"],
+            "roles": ", ".join(policy.get("accepted_roles", ())),
+            "accepted_on": policy.get("accepted_on", ""),
+        }
+        card["mailbox_isolation_verified"] = _mailbox_isolation_verified(config, current, policy["mailbox"])
     if check is None:
         return card
     granted = check.granted_roles
@@ -109,6 +122,32 @@ def access_check_card(config, current, *, linked: bool) -> dict:
     if linked:
         card["url"] = reverse(f"admin:{EVIDENCE_URL_NAME}", args=[check.pk])
     return card
+
+
+def _mailbox_isolation_verified(config, current, mailbox: str) -> bool:
+    """Only recent, complete evidence for the designated mailbox proves isolation, regardless of role approval."""
+    if current is None or not config.access_check_deny_mailbox:
+        return False
+    check = config.access_checks.filter(certificate=current).order_by("-created_at").first()
+    cutoff = timezone.now() - datetime.timedelta(days=settings.GRAPH_ACCESS_EVIDENCE_MAX_AGE_DAYS)
+    recent_complete_check = bool(
+        check
+        and check.created_at >= cutoff
+        and check.deny_mailbox == config.access_check_deny_mailbox
+        and check.complete
+        and check.mailbox_restriction_passed
+    )
+    if not recent_complete_check:
+        return False
+    passed = {
+        result.get("check")
+        for result in check.results
+        if isinstance(result, dict)
+        and result.get("mailbox", "").strip().lower() == mailbox.strip().lower()
+        and result.get("expected") == ALLOWED
+        and result.get("outcome") == PASS
+    }
+    return {FOLDER, MESSAGES, SEND} <= passed
 
 
 def certificate_panel(request, config, *, actions=True) -> dict:
