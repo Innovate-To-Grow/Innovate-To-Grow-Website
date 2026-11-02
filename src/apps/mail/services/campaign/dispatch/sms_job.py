@@ -1,12 +1,18 @@
-"""Outbox handler that sends one SMS campaign recipient through AWS End User Messaging."""
+"""Outbox handler that sends one SMS campaign recipient through AWS End User Messaging, on the bulk delivery lane
+(``core.services.aws.sms_send`` paces it; a deferral reruns the job at its slot without using up an attempt)."""
 
-import boto3
 from django.utils import timezone
 
 from apps.core.models import AWSCredentialConfig
-from apps.core.services.aws.credentials import resolve_aws_credentials
-from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES
-from apps.core.services.background_jobs import JobClaimLost, PermanentJobError, UncertainJobError
+from apps.core.services.aws.sms_send import resolve_sender, send_text_message
+from apps.core.services.background_jobs import (
+    DeferredJobError,
+    JobClaimLost,
+    PermanentJobError,
+    UncertainJobError,
+)
+from apps.core.services.background_jobs.delivery import deferral_of
+from apps.core.services.delivery_rates import Lane
 from apps.mail.models import SmsRecipientLog
 from apps.mail.services.campaign.personalize import personalize
 
@@ -15,26 +21,24 @@ from .failures import _classify_pre_provider_error, _classify_sms_job_error, _de
 
 
 def _send_via_sms(*, config, phone_number: str, message: str, before_provider_call) -> str:
-    """Send once with SDK retries disabled so the outbox owns retry policy."""
-    origination_identity = config.resolved_sms_from_number()
-    if not origination_identity:
-        raise ValueError("SMS origination identity is not configured.")
-    credentials = resolve_aws_credentials("sns")
-    client = boto3.client(
-        "pinpoint-sms-voice-v2",
-        region_name=credentials.region,
-        aws_access_key_id=credentials.access_key_id,
-        aws_secret_access_key=credentials.secret_access_key,
-        config=NO_PROVIDER_RETRIES,
+    """Send once with SDK retries disabled so the outbox owns retry policy; campaigns use the bulk lane."""
+    return send_text_message(
+        phone_number,
+        message,
+        lane=Lane.BULK,
+        sender=resolve_sender(config),
+        before_provider_call=before_provider_call,
     )
-    before_provider_call()
-    response = client.send_text_message(
-        DestinationPhoneNumber=phone_number,
-        OriginationIdentity=origination_identity,
-        MessageBody=message,
-        MessageType="TRANSACTIONAL",
-    )
-    return response.get("MessageId", "")
+
+
+def _classified_sms_failure(exc: Exception, job) -> Exception:
+    deferred = deferral_of(exc)
+    if deferred is not None:
+        # Held back by the delivery-rate limiter before any provider call: run again at the slot.
+        return DeferredJobError(str(deferred), until=deferred.until)
+    if job.provider_call_started_at is None:
+        return _classify_pre_provider_error(exc)
+    return _classify_sms_job_error(exc)
 
 
 def _record_sms_sent(log, job, message_id: str) -> None:
@@ -91,9 +95,7 @@ def send_sms_recipient_job(job) -> None:
     except JobClaimLost:
         raise
     except Exception as exc:
-        classified = (
-            _classify_pre_provider_error(exc) if job.provider_call_started_at is None else _classify_sms_job_error(exc)
-        )
+        classified = _classified_sms_failure(exc, job)
         log_status, error_message, uncertain_at = _delivery_failure_values(classified)
         release_failed_log(SMS, log, job, status=log_status, error_message=error_message, uncertain_at=uncertain_at)
         aggregate_sms_campaign(log.campaign_id)

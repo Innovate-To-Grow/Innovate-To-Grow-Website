@@ -20,6 +20,7 @@ from .delivery_metrics import (
     _get_metric_data,
     _has_values,
 )
+from .pacing import email_send_rate_line
 
 DEFAULT_WINDOW_DAYS = 183
 
@@ -285,12 +286,16 @@ def _aws_meta(metric_payload: dict, recipient_details: dict) -> dict:
     configured = email_config.ses_configured
     return {
         "configured": configured,
+        "provider": email_config.provider,
+        "provider_label": email_config.get_provider_display(),
         "email_config": email_config.name,
         "aws_config": aws_config.name,
         "region": aws_config.region,
         "source_address": email_config.source_address,
-        "send_rate": email_config.max_send_rate,
-        "iam_key": f"...{aws_config.access_key_id[-4:]}" if aws_config.access_key_id else "Not configured",
+        "send_rate": email_send_rate_line(),
+        "iam_key": "Secrets Manager"
+        if aws_config.credentials_secret_arn
+        else (f"...{aws_config.access_key_id[-4:]}" if aws_config.access_key_id else "Not configured"),
         "metrics_available": metric_payload["metrics"]["available"],
         "metrics_reason": metric_payload["metrics"]["reason"],
         "metrics_source": metric_payload["metrics"]["source"],

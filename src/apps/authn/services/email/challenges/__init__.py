@@ -36,14 +36,24 @@ class AuthChallengeThrottled(AuthChallengeError):
 
 
 class AuthChallengeDeliveryError(AuthChallengeError):
-    """Raised when the SES send fails."""
+    """Raised when the SES send fails.
+
+    ``retry_after`` (whole seconds) is set when the delivery-rate limiter held the email back: nothing was sent,
+    and the message tells the person when to try again.
+    """
 
     def __init__(
-        self, message: str = "Failed to send verification email.", *, outcome: str = "uncertain", challenge_id: str = ""
+        self,
+        message: str = "Failed to send verification email.",
+        *,
+        outcome: str = "uncertain",
+        challenge_id: str = "",
+        retry_after: int | None = None,
     ):
         super().__init__(message)
         self.outcome = outcome
         self.challenge_id = challenge_id
+        self.retry_after = retry_after
 
 
 def _random_code() -> str:

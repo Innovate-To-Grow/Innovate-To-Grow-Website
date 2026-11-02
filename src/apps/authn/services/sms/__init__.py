@@ -1,6 +1,7 @@
 """SMS verification service modules."""
 
 from .sns_verify import (
+    PhoneVerificationBusy,
     PhoneVerificationDeliveryError,
     PhoneVerificationError,
     PhoneVerificationInvalid,
@@ -12,6 +13,7 @@ from .sns_verify import (
 )
 
 __all__ = [
+    "PhoneVerificationBusy",
     "PhoneVerificationDeliveryError",
     "PhoneVerificationError",
     "PhoneVerificationInvalid",

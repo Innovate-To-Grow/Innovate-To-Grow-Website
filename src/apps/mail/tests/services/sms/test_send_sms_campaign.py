@@ -4,6 +4,7 @@ from django.test import TestCase
 
 from apps.authn.models import ContactPhone
 from apps.core.models import AWSCredentialConfig
+from apps.core.services.delivery_rates import Lane
 from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsCampaign, SmsRecipientLog
 from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
@@ -53,7 +54,8 @@ class SendSmsCampaignTests(TestCase):
         self.assertEqual(log.status, "sent")
         self.assertEqual(log.provider, "aws_sns")
         self.assertEqual(log.sns_message_id, "sns-msg-1")
-        mock_publish.assert_called_once_with(phone_number="+12095551001", message="Hello Ada")
+        # Campaign texts go on the bulk delivery lane.
+        mock_publish.assert_called_once_with(phone_number="+12095551001", message="Hello Ada", lane=Lane.BULK)
 
     def test_send_sms_campaign_fails_when_sns_is_not_configured(self):
         member = make_member(email="recipient@example.com")
