@@ -1,0 +1,58 @@
+@layer itg.components {
+/* ==========================================================================
+   Loading indicator (LoadingIndicator.tsx): a 24px spinner, a 3px
+   --itg-color-border ring with a primary top, beside the label in secondary
+   text. The host element (a role="status" line or box) keeps its own
+   layout and reserved height; this only draws the line inside it.
+   ========================================================================== */
+
+.loading-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.loading-indicator-spinner {
+  box-sizing: border-box;
+  display: inline-block;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--itg-color-border);
+  border-top-color: var(--itg-color-primary);
+  border-radius: 50%;
+  animation: loading-indicator-spin 0.8s linear infinite;
+}
+
+@keyframes loading-indicator-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-indicator-spinner {
+    animation: none;
+  }
+}
+
+/* Forced colours (Windows Contrast themes) would paint the whole ring one
+   colour, so the spinner keeps a GrayText ring with a CanvasText top. */
+@media (forced-colors: active) {
+  .loading-indicator-spinner {
+    forced-color-adjust: none;
+    border-color: GrayText;
+    border-top-color: CanvasText;
+  }
+}
+
+/* A spinner means nothing on paper: print keeps the label only. */
+@media print {
+  .loading-indicator-spinner {
+    display: none;
+  }
+}
+}

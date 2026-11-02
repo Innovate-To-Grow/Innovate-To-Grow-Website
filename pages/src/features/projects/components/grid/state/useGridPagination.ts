@@ -1,10 +1,30 @@
 import {useMemo, useState} from 'react';
 import type {ProjectGridItem} from '../contracts/projectGrid';
 
+interface GridPaginationOptions {
+  initialPageSize: number;
+  pageSizeChoices: readonly number[];
+  /** The page to start on (a page restored from the URL); kept until the rows it needs have loaded. */
+  initialPage?: number;
+  /** The rows' search: when it changes the results start over, so paging goes back to the first page. */
+  resetKey?: string;
+}
+
 /** Paging over the sorted rows: rows per page (with the choices to offer) and the current page. */
-export function useGridPagination(sortedRows: ProjectGridItem[], initialPageSize: number, pageSizeChoices: readonly number[]) {
+export function useGridPagination(
+  sortedRows: ProjectGridItem[],
+  {initialPageSize, pageSizeChoices, initialPage = 0, resetKey = ''}: GridPaginationOptions,
+) {
   const [pageSize, setPageSizeState] = useState(() => Math.max(1, initialPageSize));
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(() => Math.max(0, Math.floor(initialPage)));
+  const [pageResetKey, setPageResetKey] = useState(resetKey);
+
+  // A new search shows its first matches: staying on page 4 hid the first 15 of them, and a shorter result
+  // list clamped to its last page. Adjusted during render, like the clamp below.
+  if (pageResetKey !== resetKey) {
+    setPageResetKey(resetKey);
+    setPage(0);
+  }
 
   const pageSizeOptions = useMemo(() => {
     const merged = new Set<number>([...pageSizeChoices, pageSize]);
@@ -18,8 +38,9 @@ export function useGridPagination(sortedRows: ProjectGridItem[], initialPageSize
   // not a cascading-render risk). This matters when the row count shrinks under the
   // current page and then grows again (e.g. an Undo restores removed rows): without
   // writing the clamped value back, the stale out-of-range index would resurface and
-  // jump the user forward. The guard makes it converge in one extra render.
-  if (page > maxPage) {
+  // jump the user forward. The guard makes it converge in one extra render. With no rows
+  // at all (still loading) there is nothing to clamp to yet, so a restored page waits for them.
+  if (page > maxPage && sortedRows.length > 0) {
     setPage(maxPage);
   }
   const currentPage = Math.min(page, maxPage);

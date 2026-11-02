@@ -195,6 +195,45 @@ class CSPHeaderTests(TestCase):
 
         self.assertNotIn("nonce=", response.content.decode())
 
+    def test_json_responses_get_a_short_static_policy(self):
+        def _json_view(_request):
+            return HttpResponse('{"ok": true}', content_type="application/json; charset=utf-8")
+
+        middleware = ContentSecurityPolicyMiddleware(_json_view)
+        first = middleware(self.factory.get("/projects/archive/"))["Content-Security-Policy-Report-Only"]
+        second = middleware(self.factory.get("/projects/archive/"))["Content-Security-Policy-Report-Only"]
+
+        self.assertEqual(first, "default-src 'none'; frame-ancestors 'none'")
+        self.assertEqual(first, second)
+
+    def test_drf_json_responses_get_the_static_policy(self):
+        middleware = [*settings.MIDDLEWARE, "apps.core.middleware.ContentSecurityPolicyMiddleware"]
+        with override_settings(MIDDLEWARE=middleware):
+            json_response = Client().get("/projects/archive/", HTTP_ACCEPT="application/json")
+            html_response = Client().get("/admin/login/")
+
+        self.assertEqual(
+            json_response["Content-Security-Policy-Report-Only"], "default-src 'none'; frame-ancestors 'none'"
+        )
+        self.assertIn("nonce-", html_response["Content-Security-Policy-Report-Only"])
+
+    def test_problem_json_counts_as_json(self):
+        def _problem_view(_request):
+            return HttpResponse("{}", content_type="application/problem+json")
+
+        response = ContentSecurityPolicyMiddleware(_problem_view)(self.factory.get("/"))
+
+        self.assertNotIn("nonce-", response["Content-Security-Policy-Report-Only"])
+
+    @override_settings(CSP_REPORT_ONLY=False)
+    def test_json_policy_follows_the_enforcing_setting(self):
+        def _json_view(_request):
+            return HttpResponse("{}", content_type="application/json")
+
+        response = ContentSecurityPolicyMiddleware(_json_view)(self.factory.get("/"))
+
+        self.assertEqual(response["Content-Security-Policy"], "default-src 'none'; frame-ancestors 'none'")
+
     def test_preserves_explicit_frame_exemption(self):
         def _embeddable_view(_request):
             response = HttpResponse("embeddable")

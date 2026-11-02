@@ -131,6 +131,8 @@ def _admin_send_code(
     if response.data.get("code") != "send_unknown":
         _restore_login_state(request, previous_state, keep_code_step=recent_code)
     if response.status_code >= 500:
+        if response.data.get("retry_after") is not None:
+            return AdminSendRefused(response.data["detail"])  # the delivery rate held it back: when to try again
         return AdminSendRefused("Failed to send verification code. Please try again later.")
     detail = response.data.get("detail") or "Failed to send verification code. Please try again later."
     return AdminSendRefused(str(detail), recent_code=recent_code)

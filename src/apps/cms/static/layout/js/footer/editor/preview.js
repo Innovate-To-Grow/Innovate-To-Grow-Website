@@ -16,6 +16,20 @@
         return Array.from(bytes, function (value) { return value.toString(16).padStart(2, '0'); }).join('');
     }
 
+    // data-preview-base is page text, so it may only choose an http(s) host and path for the frame:
+    // the URL is rebuilt from a fixed scheme, and a javascript:/data: base yields no URL at all.
+    function previewUrl(iframe, nonce) {
+        var base;
+        try {
+            base = new URL(iframe.getAttribute('data-preview-base') || window.location.origin, window.location.href);
+        } catch (e) {
+            return '';
+        }
+        if (base.protocol !== 'https:' && base.protocol !== 'http:') return '';
+        var path = base.pathname.replace(/\/+$/, '') + PREVIEW_PATH + '?nonce=' + encodeURIComponent(nonce);
+        return (base.protocol === 'https:' ? 'https://' : 'http://') + base.host + path;
+    }
+
     function frameOrigin(iframe) {
         try {
             return new URL(iframe.getAttribute('src') || '', window.location.href).origin;
@@ -54,6 +68,11 @@
             if (errorBox) errorBox.textContent = 'Preview unavailable: this browser has no secure random number generator.';
             return;
         }
+        var src = previewUrl(iframe, state.nonce);
+        if (!src) {
+            if (errorBox) errorBox.textContent = 'Preview unavailable: the frontend URL is not an http(s) URL.';
+            return;
+        }
         window.addEventListener('message', onMessage);
         // A fallback for a ready message that never arrives (the frame was already loaded).
         iframe.addEventListener('load', function () {
@@ -63,8 +82,7 @@
                 post();
             }, 300);
         });
-        var base = (iframe.getAttribute('data-preview-base') || '').replace(/\/+$/, '');
-        iframe.setAttribute('src', base + PREVIEW_PATH + '?nonce=' + encodeURIComponent(state.nonce));
+        iframe.setAttribute('src', src);
     }
 
     function updatePreview(iframe, errorBox, footerData) {

@@ -3,7 +3,8 @@ import {Link} from 'react-router';
 import {usePageTitle} from '@/hooks/usePageTitle';
 
 export function NotFoundPage() {
-  usePageTitle('Page Not Found');
+  // Served with HTTP 200 (the SPA shell), so this is what tells search engines not to index it.
+  usePageTitle('Page Not Found', {noindex: true});
   return (
     <section className="itg-empty-state not-found-page" aria-labelledby="not-found-title">
       <h1 id="not-found-title" className="itg-page-title not-found-title">

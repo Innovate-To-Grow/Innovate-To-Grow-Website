@@ -1,0 +1,141 @@
+{% extends "admin/base_site.html" %}
+{% load static unfold %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'mail/css/delivery-rates.css' %}?v=20261101-delivery-rates">
+{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+{% tab_list "mail_delivery_operations" %}
+
+<p class="mb-6 max-w-3xl text-sm text-base-500 dark:text-base-400">
+    How fast the site sends email and SMS and reads the admin inbox, per channel. Smart rate follows the provider;
+    the manual rate is a fixed rate for when Smart rate is off. Pauses the provider asks for, and the daily limits,
+    apply either way. The status of each channel refreshes on its own.
+</p>
+
+<form method="post" id="delivery-rates-form" class="i2g-rates" data-status-url="{{ status_url }}" data-refresh-ms="{{ status_refresh_ms }}" novalidate>
+    {% csrf_token %}
+    <section class="mb-8" aria-labelledby="rates-email-heading">
+        <h2 id="rates-email-heading" class="mb-3 text-base font-semibold text-font-important-light dark:text-font-important-dark">Email sending</h2>
+        {% if email_selected %}
+            {% include "admin/mail/rate_card.html" with card=email_selected %}
+        {% endif %}
+        <details class="i2g-rates-unused mt-4"{% if email_unused_open %} open{% endif %}>
+            <summary class="cursor-pointer text-sm font-medium text-font-important-light dark:text-font-important-dark">Not in use ({{ email_unused|length }})</summary>
+            <p class="mt-2 text-xs text-base-500 dark:text-base-400">These providers are not selected under Notification Delivery. Their rates stay editable and apply as soon as one is selected.</p>
+            <div class="mt-3 grid grid-cols-1 gap-4">
+                {% for card in email_unused %}
+                    {% include "admin/mail/rate_card.html" with card=card %}
+                {% endfor %}
+            </div>
+        </details>
+    </section>
+
+    <section class="mb-8" aria-labelledby="rates-sms-heading">
+        <h2 id="rates-sms-heading" class="mb-3 text-base font-semibold text-font-important-light dark:text-font-important-dark">SMS</h2>
+        <div class="grid grid-cols-1 gap-4">
+            {% for card in sms_cards %}
+                {% include "admin/mail/rate_card.html" with card=card %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="mb-8" aria-labelledby="rates-inbox-heading">
+        <h2 id="rates-inbox-heading" class="mb-3 text-base font-semibold text-font-important-light dark:text-font-important-dark">Inbox reading</h2>
+        <div class="grid grid-cols-1 gap-4">
+            {% for card in inbox_cards %}
+                {% include "admin/mail/rate_card.html" with card=card %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <div class="mt-6 flex gap-3">
+        <button type="submit" class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+            Save delivery rates
+        </button>
+        <a href="{% url 'admin:mail_settings' %}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+            Notification Delivery
+        </a>
+    </div>
+</form>
+
+{# The card buttons post these forms (HTML forms cannot nest), so an action never submits unsaved rate edits. #}
+{% for card in all_cards %}
+    {% for action in card.actions %}
+        <form id="{{ action.form_id }}" method="post" action="{{ action.url }}" hidden>{% csrf_token %}</form>
+    {% endfor %}
+{% endfor %}
+
+<script nonce="{{ request.csp_nonce }}">
+    (() => {
+        const form = document.getElementById("delivery-rates-form");
+        if (!form) return;
+
+        // While Smart rate is on, the manual rate is read-only and dimmed; it is still posted and kept.
+        form.querySelectorAll("[data-rate-card]").forEach((card) => {
+            const smart = card.querySelector("[data-rate-smart] input[type=checkbox]");
+            const manualBox = card.querySelector("[data-rate-manual]");
+            const manual = manualBox ? manualBox.querySelector("input") : null;
+            const note = card.querySelector("[data-rate-manual-note]");
+            if (!smart || !manual) return;
+            const hasErrors = manualBox.dataset.hasErrors === "true";
+            const sync = () => {
+                manual.readOnly = smart.checked && !hasErrors;
+                manualBox.classList.toggle("is-locked", manual.readOnly);
+                if (note) note.hidden = !smart.checked;
+            };
+            smart.addEventListener("change", sync);
+            sync();
+        });
+
+        const element = (tag, className, text) => {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined) node.textContent = text;
+            return node;
+        };
+
+        const renderStatus = (channel) => {
+            const card = form.querySelector(`[data-rate-card="${CSS.escape(channel.channel)}"]`);
+            if (!card) return;
+            const box = card.querySelector("[data-rate-status]");
+            if (box) {
+                box.replaceChildren(...channel.identities.map((identity) => {
+                    const block = element("div", "i2g-rate-identity");
+                    if (identity.label) {
+                        block.append(element("p", "i2g-rate-identity-label", identity.label + (identity.in_use ? " · in use" : "")));
+                    }
+                    const list = element("ul", "i2g-rate-lines");
+                    identity.lines.forEach((line, index) => list.append(element("li", index === 0 ? "i2g-rate-headline" : "", line)));
+                    block.append(list);
+                    identity.warnings.forEach((warning) => block.append(element("p", "i2g-rate-warning", warning)));
+                    return block;
+                }));
+            }
+            const resumeButton = card.querySelector("[data-rate-action=resume]");
+            if (resumeButton) resumeButton.hidden = !channel.held;
+        };
+
+        const refresh = async () => {
+            if (document.hidden) return;
+            try {
+                const response = await fetch(form.dataset.statusUrl, {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+                if (!response.ok) return;
+                const data = await response.json();
+                (data.channels || []).forEach(renderStatus);
+            } catch (error) {
+                // Keep the last status shown; the next refresh tries again.
+            }
+        };
+        const every = Number(form.dataset.refreshMs);
+        if (every > 0) window.setInterval(refresh, every);
+    })();
+</script>
+{% endblock %}

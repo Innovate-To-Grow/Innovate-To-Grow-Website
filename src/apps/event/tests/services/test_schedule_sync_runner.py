@@ -3,6 +3,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.event.models import (
+    CurrentProject,
     CurrentProjectSchedule,
     EventScheduleSlot,
     ScheduleSyncLog,
@@ -89,6 +90,26 @@ class SyncScheduleRunnerTest(TestCase):
         self.assertIn("db gone", str(ctx.exception))
         log = ScheduleSyncLog.objects.filter(config=self.config).last()
         self.assertEqual(log.status, ScheduleSyncLog.Status.FAILED)
+
+    def test_failed_sync_leaves_the_stored_projects_as_they_were(self):
+        tracks = [{"Track": 1, "Class": "CAP", "Room": "Granite"}]
+        sync_schedule(
+            self.config,
+            tracks_records=tracks,
+            projects_records=[{"Track": 1, "Order": 1, "Class": "CAP", "Team#": "101", "Project Title": "Alpha"}],
+        )
+        projects = CurrentProject.objects.filter(schedule=self.config).values_list("pk", "team_number", "project_title")
+        stored = list(projects)
+        renumbered = [
+            {"Track": 1, "Order": 1, "Class": "CAP", "Team#": "101", "Project Title": "Newcomer"},
+            {"Track": 1, "Order": 2, "Class": "CAP", "Team#": "102", "Project Title": "Alpha"},
+        ]
+
+        with patch("apps.event.services.schedule_sync.runner.create_slots", side_effect=RuntimeError("db gone")):
+            with self.assertRaises(ScheduleSyncError):
+                sync_schedule(self.config, tracks_records=tracks, projects_records=renumbered)
+
+        self.assertEqual(list(projects.all()), stored)
 
     def test_failure_skips_log_for_unsaved_config(self):
         unsaved = CurrentProjectSchedule()

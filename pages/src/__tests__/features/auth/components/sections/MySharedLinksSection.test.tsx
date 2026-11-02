@@ -31,22 +31,58 @@ describe('MySharedLinksSection', () => {
 
     afterEach(() => {
         cleanup();
+        vi.unstubAllGlobals();
+        Object.defineProperty(document, 'execCommand', {configurable: true, writable: true, value: undefined});
     });
 
-    it('copies a share link and announces it', async () => {
+    it('copies a share link and announces it in the success colour', async () => {
         const writeText = vi.fn().mockResolvedValue(undefined);
         vi.stubGlobal('navigator', {...window.navigator, clipboard: {writeText}});
         mockListMyShares.mockResolvedValue([share()]);
         render(<MySharedLinksSection/>);
 
-        fireEvent.click(await screen.findByRole('button', {name: /^Copy the link to Spring finalists/}));
+        fireEvent.click(await screen.findByRole('button', {name: /^Copy Link to Spring finalists/}));
 
         await waitFor(() => expect(writeText).toHaveBeenCalledWith('https://example.test/past-projects/share-1'));
-        expect(await screen.findByRole('status')).toHaveTextContent('Link copied.');
-        vi.unstubAllGlobals();
+        const status = await screen.findByRole('status');
+        expect(status).toHaveTextContent(/^Link copied\.$/);
+        // The status line itself carries the tone class, as every copy-status line does (its own class sets no colour).
+        expect(status).toHaveClass('account-shares-copy-status', 'itg-success');
+        expect(status).not.toHaveClass('itg-error');
+        // The message is the only child of its element, for page translation.
+        expect(screen.getByText('Link copied.')).toBe(status);
+        expect(status.childNodes).toHaveLength(1);
+        expect(status.firstChild?.nodeType).toBe(Node.TEXT_NODE);
     });
 
-    it('renders the list with open + delete only when the user has shares', async () => {
+    it('reports a copy the browser refuses in the error colour', async () => {
+        const writeText = vi.fn().mockRejectedValue(new Error('denied'));
+        vi.stubGlobal('navigator', {...window.navigator, clipboard: {writeText}});
+        Object.defineProperty(document, 'execCommand', {configurable: true, writable: true, value: () => false});
+        mockListMyShares.mockResolvedValue([share()]);
+        render(<MySharedLinksSection/>);
+
+        fireEvent.click(await screen.findByRole('button', {name: /^Copy Link to Spring finalists/}));
+
+        const failed = 'Could not copy the link. Open it and copy the address instead.';
+        const status = await screen.findByRole('status');
+        expect(status).toHaveTextContent(failed);
+        expect(status).toHaveClass('account-shares-copy-status', 'itg-error');
+        expect(status).not.toHaveClass('itg-success');
+        expect(status.childNodes).toHaveLength(1);
+        expect(status.firstChild?.nodeType).toBe(Node.TEXT_NODE);
+    });
+
+    it('keeps the copy status line empty until a copy', async () => {
+        mockListMyShares.mockResolvedValue([share()]);
+        render(<MySharedLinksSection/>);
+
+        await screen.findByText('Spring finalists');
+        // Empty, so .account-shares-copy-status:empty hides it.
+        expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    });
+
+    it('renders the list with copy, open and delete when the user has shares', async () => {
         mockListMyShares.mockResolvedValue([share()]);
         render(<MySharedLinksSection/>);
 
@@ -62,7 +98,11 @@ describe('MySharedLinksSection', () => {
             'href',
             '/account/past-project-curation-shared-links',
         );
-        expect(screen.queryByRole('button', {name: /copy link/i})).toBeNull();
+        // Its name starts with the visible "Copy Link" (Title Case, like every control label), so speech input can press
+        // it by what it says.
+        expect(screen.getByRole('button', {name: /^Copy Link to Spring finalists/})).toHaveTextContent(/^Copy Link$/);
+        expect(screen.getByRole('link', {name: /^Open Spring finalists/})).toHaveTextContent(/^Open$/);
+        expect(screen.getByRole('button', {name: /^Delete Spring finalists/})).toHaveTextContent(/^Delete$/);
         expect(screen.getByRole('button', {name: /delete/i})).toBeInTheDocument();
     });
 

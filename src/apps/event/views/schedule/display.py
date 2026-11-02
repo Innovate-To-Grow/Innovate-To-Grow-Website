@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.utils.http_cache import public_json_response
-from apps.event.models import CurrentProjectSchedule, EventScheduleSection, EventScheduleTrack
+from apps.event.models import CurrentProjectSchedule, EventScheduleSection, EventScheduleSlot, EventScheduleTrack
 from apps.event.serializers import build_schedule_payload
 
 
@@ -26,7 +26,12 @@ class CurrentEventScheduleView(APIView):
                 Prefetch(
                     "schedule_sections",
                     queryset=EventScheduleSection.objects.prefetch_related(
-                        Prefetch("tracks", queryset=EventScheduleTrack.objects.prefetch_related("slots"))
+                        Prefetch(
+                            "tracks",
+                            queryset=EventScheduleTrack.objects.prefetch_related(
+                                Prefetch("slots", queryset=EventScheduleSlot.objects.select_related("project"))
+                            ),
+                        )
                     ),
                 ),
             )

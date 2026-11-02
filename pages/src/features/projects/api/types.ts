@@ -1,5 +1,23 @@
 // Types for the projects API: project rows and details, the past-project archive, and shares.
 
+/**
+ * Which list a row of /projects/all/ comes from: the published archive, or the active schedule's current-semester
+ * projects (an event CurrentProject id). Rows without one are archive rows.
+ */
+export type ProjectCatalogSource = 'archive' | 'current';
+
+/** What an AI search ranks: the published archive only, or the archive and the active schedule's projects. */
+export type ProjectAISearchScope = 'past' | 'all';
+
+/** What /projects/all/ adds to its rows; project details and AI search results add `catalog` and `is_presenting`. */
+interface ProjectCatalogFields {
+    catalog?: ProjectCatalogSource;
+    /** A current row's presenting flag; null on archive rows. */
+    is_presenting?: boolean | null;
+    /** On an archive row that stands in for a current-semester duplicate: that CurrentProject's id; else null. */
+    current_project_id?: string | null;
+}
+
 export interface ProjectSummary {
     id: string;
     project_title: string;
@@ -9,7 +27,7 @@ export interface ProjectSummary {
     class_code: string;
 }
 
-export interface ProjectTableRow {
+export interface ProjectTableRow extends ProjectCatalogFields {
     id: string;
     semester_label: string;
     class_code: string;
@@ -20,12 +38,11 @@ export interface ProjectTableRow {
     industry: string;
     abstract: string;
     student_names: string;
-    is_presenting?: boolean;
     track: number | null;
     presentation_order: number | null;
 }
 
-export interface CompactPastProjectRow {
+export interface CompactPastProjectRow extends ProjectCatalogFields {
     id: string;
     semester_label: string;
     class_code: string;
@@ -34,6 +51,8 @@ export interface CompactPastProjectRow {
     project_title: string;
     organization: string;
     industry: string;
+    /** Sent by servers that list student names with the archive (older ones leave it out). */
+    student_names?: string;
     track: number | null;
     presentation_order: number | null;
 }
@@ -59,9 +78,13 @@ export interface ProjectGridRow {
     abstract: string;
     student_names: string;
     is_presenting: string;
+    /** Absent means an archive row. */
+    catalog?: ProjectCatalogSource;
+    /** Kept from a /projects/all/ archive row that stands in for a current-semester project, so both ids match it. */
+    current_project_id?: string | null;
 }
 
-export interface ProjectDetail {
+export interface ProjectDetail extends ProjectCatalogFields {
     id: string;
     project_title: string;
     team_name: string;

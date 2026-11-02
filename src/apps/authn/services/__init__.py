@@ -73,6 +73,7 @@ from .security import (
     rotate_auth_keypair,
 )
 from .sms import (
+    PhoneVerificationBusy,
     PhoneVerificationDeliveryError,
     PhoneVerificationError,
     PhoneVerificationInvalid,
@@ -137,6 +138,7 @@ __all__ = [
     "PhoneVerificationInvalid",
     "PhoneVerificationThrottled",
     "PhoneVerificationDeliveryError",
+    "PhoneVerificationBusy",
     # RSA Manager
     "get_or_create_auth_keypair",
     "rotate_auth_keypair",
