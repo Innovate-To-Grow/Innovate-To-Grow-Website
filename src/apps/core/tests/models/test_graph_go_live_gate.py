@@ -33,8 +33,8 @@ def evidence(config, *, certificate=None, age_days=0, **values):
         "client_id": config.client_id,
         "deny_mailbox": DENY,
         "source": MicrosoftGraphAccessCheck.Source.COMMAND,
-        "granted_roles": ["Mail.Read", "Mail.Send"],
-        "approved_roles": ["Mail.Read", "Mail.Send"],
+        "granted_roles": ["Mail.ReadWrite", "Mail.Send"],
+        "approved_roles": ["Mail.Read", "Mail.ReadWrite", "Mail.Send"],
         "mailbox_restriction_passed": True,
         "roles_within_approval": True,
         "complete": True,
@@ -92,7 +92,7 @@ class GoLiveProblemTests(TestCase):
                 self.assertIn(f"the latest access check found: {text}", go_live_problem(self.config))
 
     def test_extra_roles_need_the_exception_reference_to_still_be_recorded(self):
-        extra = {"granted_roles": ["Mail.ReadWrite", "Mail.Send"], "roles_within_approval": False}
+        extra = {"granted_roles": ["Mail.ReadWrite", "Mail.Send", "User.Read.All"], "roles_within_approval": False}
         evidence(self.config, permission_exception_reference="RITM0450999", **extra)
         self.config.permission_exception_reference = "RITM0450999"
         self.assertEqual(go_live_problem(self.config), "")
@@ -100,14 +100,14 @@ class GoLiveProblemTests(TestCase):
         self.config.permission_exception_reference = ""
         problem = go_live_problem(self.config)
 
-        self.assertIn("claims Mail.ReadWrite beyond the approval", problem)
+        self.assertIn("claims User.Read.All beyond the approval", problem)
         self.assertIn("no InfoSec exception reference is recorded", problem)
 
     @override_settings(GRAPH_APPROVED_APPLICATION_ROLES=("Mail.Send",))
     def test_a_narrowed_approval_withdraws_earlier_evidence(self):
         evidence(self.config)
 
-        self.assertIn("claims Mail.Read beyond the approval", go_live_problem(self.config))
+        self.assertIn("claims Mail.ReadWrite beyond the approval", go_live_problem(self.config))
 
     def test_an_unsaved_config_has_no_evidence(self):
         unsaved = type(self.config)()

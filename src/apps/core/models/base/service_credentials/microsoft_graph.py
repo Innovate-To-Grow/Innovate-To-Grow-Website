@@ -95,9 +95,9 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
         default="",
         verbose_name="InfoSec Exception Reference",
         help_text=(
-            "Only after InfoSec has approved, in writing, Graph application permissions beyond the approved "
-            "Mail.Send and Mail.Read: the reference of that review (for example its ticket number). Superusers "
-            "only; the site never fills it in."
+            "Only after Graph application permissions beyond the approved ones (what OIT granted: Mail.ReadWrite "
+            "and Mail.Send) have been approved in writing: the reference of that review (for example its ticket "
+            "number). Superusers only; the site never fills it in."
         ),
     )
 

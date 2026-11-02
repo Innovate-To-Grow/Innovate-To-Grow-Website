@@ -64,6 +64,9 @@ their go-live checks), and has:
 - **Send test**: a test email through that method, to an address you enter, without switching to it. The test
   page's **Send through** row moves between methods; one that is not ready cannot be sent through.
 - **Use for email**: switch all site email to that method (Mail app staff; the change is in the admin history).
+  Microsoft Graph can send only from a mailbox in its scope: when the From email is outside it but the Graph
+  **Sender Mailbox** is an address in it, the card says so and the switch also changes the From email to that
+  mailbox (switching back later keeps it; change it on Edit Notification Delivery).
 - **Configure**: where that method is set up, when you have the access it needs (SES on Edit Notification
   Delivery; SMTP on its Service Credentials tab, or Edit Notification Delivery without the Core app; Microsoft
   Graph with the Core app; the Gmail API for superusers).

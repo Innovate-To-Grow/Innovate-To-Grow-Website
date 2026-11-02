@@ -4,6 +4,10 @@ Each card says whether the provider could send now and, if not, why: the reason 
 says when email would switch to it (so the Microsoft Graph and Gmail API go-live checks apply), checked on an unsaved
 copy of the active config. The same check gates "Use for email" and that provider's test email, so neither can send
 through a provider that switching to it would refuse.
+
+The From address is shared by every provider, but Microsoft Graph can send only as a mailbox in its scope. When the
+From address is outside it (the Google Workspace address AWS SES sends as, for example), switching to Graph also
+moves the From address to Graph's configured sender mailbox (``switch_from_email``); the card says so first.
 """
 
 from django.contrib import admin, messages
@@ -23,6 +27,7 @@ from apps.core.models import (
     SMTPProviderConfig,
 )
 from apps.core.utils.access import user_can_access_app
+from apps.core.utils.security import is_plain_address
 
 from .access import _require_mail_access
 
@@ -58,9 +63,27 @@ def as_provider(config: EmailServiceConfig, provider: str) -> EmailServiceConfig
         name=config.name,
         is_active=True,
         provider=provider,
-        from_email=config.from_email,
+        from_email=switch_from_email(config, provider),
         from_name=config.from_name,
     )
+
+
+def switch_from_email(config: EmailServiceConfig, provider: str) -> str:
+    """The From address email would send from after switching to *provider*.
+
+    Every provider keeps the From address, except Microsoft Graph when Graph cannot send from it: Exchange sends only
+    as mailboxes in the Graph scope, so that switch also moves the From address to the configured sender mailbox,
+    when that mailbox is an email address Graph may send from. A provider email already uses keeps its From address,
+    so a card for the method in use reports what email really sends with.
+    """
+    in_use = not config._state.adding and config.is_active and config.provider == provider
+    if provider != Provider.GRAPH or in_use:
+        return config.from_email
+    graph = MicrosoftGraphProviderConfig.load()
+    mailbox = graph.mailbox.strip()
+    if graph.sending_ready(config.from_email) or not is_plain_address(mailbox) or not graph.sending_ready(mailbox):
+        return config.from_email
+    return mailbox
 
 
 def provider_problem(config: EmailServiceConfig, provider: str) -> str:
@@ -84,6 +107,7 @@ def provider_cards(request, config, aws_config, smtp_config) -> list[dict]:
     cards = []
     for provider, label in Provider.choices:
         problem = provider_problem(config, provider)
+        from_email = "" if config._state.adding else switch_from_email(config, provider)
         cards.append(
             {
                 "key": provider,
@@ -91,6 +115,8 @@ def provider_cards(request, config, aws_config, smtp_config) -> list[dict]:
                 "detail": details[provider],
                 "in_use": provider == in_use,
                 "problem": problem,
+                # Set only when switching to this provider also changes the From address.
+                "switch_from_email": from_email if from_email != config.from_email else "",
                 "test_url": reverse("admin:mail_settings_test_email_provider", args=[provider]),
                 "use_url": reverse("admin:mail_settings_use_provider", args=[provider]),
                 "configure_url": _configure_url(request, provider),
@@ -160,17 +186,23 @@ def mail_settings_use_provider_view(request, provider):
     if problem:
         messages.error(request, f"Email cannot switch to {label}: {problem}")
         return HttpResponseRedirect(settings_url)
-    previous = config.get_provider_display()
+    previous, previous_from = config.get_provider_display(), config.from_email
+    from_email = switch_from_email(config, provider)
+    changed = ["Provider"] if from_email == previous_from else ["Provider", "From Email"]
     with transaction.atomic():
         config.provider = provider
+        config.from_email = from_email
         config.validate_activation()
         config.save()
         LogEntry.objects.log_actions(
             user_id=request.user.pk,
             queryset=[config],
             action_flag=CHANGE,
-            change_message=[{"changed": {"fields": ["Provider"]}}],
+            change_message=[{"changed": {"fields": changed}}],
             single_object=True,
         )
-    messages.success(request, f"Email now sends through {label} (was {previous}).")
+    done = f"Email now sends through {label} (was {previous})."
+    if from_email != previous_from:
+        done = f"{done} The From address is now {from_email} (was {previous_from})."
+    messages.success(request, done)
     return HttpResponseRedirect(settings_url)
