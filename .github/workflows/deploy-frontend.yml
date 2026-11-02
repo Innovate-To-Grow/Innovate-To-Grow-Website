@@ -44,7 +44,7 @@ jobs:
           python-version: "3.14"
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: arn:aws:iam::394167325273:role/itg-prod-frontend-deployer
           allowed-account-ids: "394167325273"

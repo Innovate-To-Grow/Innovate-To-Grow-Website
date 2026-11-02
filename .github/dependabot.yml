@@ -34,8 +34,11 @@ updates:
           - minor
           - patch
     ignore:
-      # Python 3.12-only from these versions on; the project targets 3.11.
-      # Keep in sync with the comments in src/requirements/{base,production}.txt.
+      # 0.92+ requires Python >= 3.12. The runtime image is 3.14, but the
+      # pip-audit jobs (ci.yml python-security-audit, dependency-audit.yml)
+      # still resolve src/requirements.txt on PYTHON_VERSION 3.11, and
+      # src/requirements/base.txt holds the current minor until the upgrade is
+      # reviewed. Keep in sync with that pin.
       - dependency-name: "django-unfold"
         versions: [">=0.92"]
       # Agents 0.21+ needs openai 3, while LiteLLM still requires openai <3.
@@ -92,6 +95,12 @@ updates:
       # typescript-eslint; bundle that migration manually.
       - dependency-name: "@eslint/js"
         versions: [">=10"]
+      # Pinned exactly: it must match the Playwright container image in
+      # .github/workflows/ci.yml and aws-runner-smoke.yml, which the AWS runner
+      # image pre-pulls (aws/ci-runners/bake-image.sh). Upgrade all of them,
+      # and the e2e venv cache label, together by hand;
+      # scripts/ci/validate_tool_versions.py fails CI if they drift.
+      - dependency-name: "@playwright/test"
 
   # Archived event-pages Flask app
   - package-ecosystem: pip

@@ -1271,6 +1271,10 @@ jobs:
     timeout-minutes: 15
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
+    permissions:
+      contents: read
+      # Push runs upload the SARIF to the Security tab (last step).
+      security-events: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -1299,16 +1303,64 @@ jobs:
           if [ "$RUN_FRONTEND" = "true" ]; then
             targets+=(pages)
           fi
+          # Without --error, findings never change the exit status: only a
+          # Semgrep failure does (bad config, registry outage, crash), and that
+          # must fail this job instead of passing with an empty or partial SARIF.
+          # The gate on findings is the next step.
           semgrep scan --config p/default --config p/python --config p/javascript \
-            --metrics=off --sarif --output semgrep.sarif "${targets[@]}" || true
+            --metrics=off --sarif --output semgrep.sarif "${targets[@]}"
+
+      # Error-severity findings block; warnings and notes are reported through
+      # the Security tab (push runs) and the semgrep-sarif artifact. Suppress a
+      # reviewed false positive in place with `# nosemgrep: <rule id>` on the
+      # line the finding starts on.
+      - name: Fail on error-severity Semgrep findings
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+
+          with open("semgrep.sarif", encoding="utf-8") as fh:
+              sarif = json.load(fh)
+
+          errors = []
+          for run in sarif.get("runs", []):
+              levels = {
+                  rule["id"]: rule.get("defaultConfiguration", {}).get("level", "warning")
+                  for rule in run.get("tool", {}).get("driver", {}).get("rules", [])
+              }
+              for result in run.get("results", []):
+                  if result.get("suppressions"):
+                      continue
+                  if (result.get("level") or levels.get(result.get("ruleId"), "warning")) != "error":
+                      continue
+                  location = result["locations"][0]["physicalLocation"]
+                  path = location["artifactLocation"]["uri"]
+                  line = location["region"]["startLine"]
+                  errors.append(f"::error file={path},line={line}::Semgrep {result['ruleId']}")
+
+          print("\n".join(errors) or "No error-severity Semgrep findings.")
+          sys.exit(1 if errors else 0)
+          PY
 
       - name: Upload Semgrep SARIF artifact
-        if: ${{ always() }}
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
           name: semgrep-sarif
           path: semgrep.sarif
           if-no-files-found: warn
+
+      # Uploaded whenever the scan itself succeeded, including when the gate
+      # above failed: those are the findings the Security tab is for. A
+      # code-scanning API hiccup must not fail the job.
+      - name: Upload Semgrep SARIF to GitHub Security tab
+        if: ${{ !cancelled() && github.event_name == 'push' && steps.semgrep.outcome == 'success' }}
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
 
   backend-docker-build:
     name: Backend Docker Build and Scan
@@ -1422,12 +1474,19 @@ jobs:
 
       # Persist Trivy's vulnerability DB across runs so the scan below doesn't
       # re-pull it from the registry on every CI run. Both Trivy steps point at
-      # this dir via TRIVY_CACHE_DIR.
+      # this dir via TRIVY_CACHE_DIR. The key changes once a day: a per-run key
+      # never hit exactly, so every run saved another ~90 MB entry and pushed
+      # the repository past its 10 GB Actions cache limit, evicting the venv
+      # and npm caches. Trivy still refreshes a stale DB itself.
+      - name: Pick the Trivy database cache key
+        id: trivy-cache-date
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
       - name: Cache Trivy vulnerability database
         uses: actions/cache@v6
         with:
           path: ${{ github.workspace }}/.cache/trivy
-          key: trivy-db-${{ github.run_id }}
+          key: trivy-db-${{ steps.trivy-cache-date.outputs.today }}
           restore-keys: |
             trivy-db-
 
@@ -1459,9 +1518,11 @@ jobs:
       # Push-only (no PR-side equivalent), so a code-scanning API hiccup must not
       # be able to fail backend-docker-build -> backend-required-result ->
       # CI Result with zero pre-merge signal. The findings are already archived
-      # as the trivy-sarif artifact in the step above.
+      # as the trivy-sarif artifact in the step above. Runs whenever the scan
+      # ran: with exit-code 1 a scan that finds something reports `failure`,
+      # and those are exactly the results the Security tab must show.
       - name: Upload Trivy SARIF to GitHub Security tab
-        if: ${{ github.event_name == 'push' && steps.trivy-sarif.outcome == 'success' }}
+        if: ${{ always() && github.event_name == 'push' && steps.trivy-sarif.outcome != 'skipped' && hashFiles('trivy-results.sarif') != '' }}
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
@@ -1565,7 +1626,7 @@ jobs:
       - name: Load tested image
         run: docker load --input /tmp/backend-image/backend-image.tar
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: arn:aws:iam::394167325273:role/itg-ci-image-publisher
           allowed-account-ids: "394167325273"
@@ -1573,7 +1634,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
       - name: Publish tested image once
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -1836,7 +1897,7 @@ jobs:
           path: src/.venv
           # Do not restore a host-runner venv inside the job container: scripts
           # and interpreter links can contain environment-specific paths.
-          key: backend-venv-${{ runner.environment }}-pw-v1.62.1-noble-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+          key: backend-venv-${{ runner.environment }}-pw-v1.64.0-noble-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v7
@@ -2025,7 +2086,7 @@ jobs:
 
       - name: Annotate test results on the PR
         if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: mikepenz/action-junit-report@v6
+        uses: mikepenz/action-junit-report@8a133bfa3ecb0ea9024c1e2ae788b4c25f6cdb9d # v6.6.2
         with:
           report_paths: pages/results.xml
           detailed_summary: true
