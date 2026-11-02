@@ -6,6 +6,7 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 
 from .channels import CHANNELS_BY_KIND, EMAIL, aggregate_email_campaign, aggregate_sms_campaign
+from .failures import DEFERRED_LOG_MESSAGE
 
 # The outbox states a recipient log mirrors, with the message shown for each.
 _MIRRORED_STATES = {
@@ -65,6 +66,8 @@ def sync_delivery_job_state(job) -> None:
             return
         if not succeeded:
             status, error = mapped
+            if status == "retry" and log.status == "retry" and log.error_message == DEFERRED_LOG_MESSAGE:
+                error = DEFERRED_LOG_MESSAGE  # the handler noted that the delivery rate, not a failure, held it back
             channel.log_model.objects.filter(pk=log.pk).exclude(status__in=channel.terminal_statuses).update(
                 status=status,
                 available_at=job.available_at,

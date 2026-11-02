@@ -490,14 +490,17 @@ class EventRegistrationAdminTest(TestCase):
         registration = make_registration(member, event, current_ticket)
 
         mock_sync.reset_mock()
-        response = self.client.post(
-            f"/admin/event/eventregistration/{registration.pk}/change/",
-            {
-                "ticket": str(new_ticket.pk),
-                "_send_ticket_email": "1",
-            },
-        )
+        # The email goes after the admin's transaction commits (no lock is held across the provider call).
+        with self.captureOnCommitCallbacks(execute=True) as callbacks:
+            response = self.client.post(
+                f"/admin/event/eventregistration/{registration.pk}/change/",
+                {
+                    "ticket": str(new_ticket.pk),
+                    "_send_ticket_email": "1",
+                },
+            )
 
+        self.assertTrue(callbacks)
         self.assertRedirects(response, f"/admin/event/eventregistration/{registration.pk}/change/")
         registration.refresh_from_db()
         self.assertEqual(registration.ticket, new_ticket)

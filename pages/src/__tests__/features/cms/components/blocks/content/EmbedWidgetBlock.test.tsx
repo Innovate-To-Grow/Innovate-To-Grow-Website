@@ -3,14 +3,12 @@ import {describe, expect, it, vi} from 'vitest';
 import {EmbedWidgetBlock} from '@/features/cms/components/blocks/content/EmbedWidgetBlock';
 
 describe('EmbedWidgetBlock', () => {
-  it('renders an iframe pointing at /_embed/<slug> with a safe sandbox', () => {
+  it('renders an iframe pointing at /_embed/<slug>, unsandboxed so exports download and tabs open normally', () => {
     const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
     const iframe = container.querySelector('iframe');
     expect(iframe).not.toBeNull();
     expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
-    expect(iframe?.getAttribute('sandbox')).toBe(
-      'allow-scripts allow-same-origin allow-popups allow-forms',
-    );
+    expect(iframe?.hasAttribute('sandbox')).toBe(false);
     expect(iframe?.getAttribute('loading')).toBe('lazy');
   });
 

@@ -7,10 +7,11 @@ import {
 import {formatSemesterLabel} from '@/lib/format';
 import type {PaginatedResponse} from '@/types/api';
 import type {ScheduleProjectRow} from '@/features/events/api';
+import {PROJECT_REQUEST_TIMEOUT_MS} from './constants';
+import {readCachedProjectDetail} from './projectDetailCache';
 import type {
     ProjectTableRow,
     CompactPastProjectRow,
-    PastProjectArchiveQuery,
     ProjectGridRow,
     ProjectDetail,
     SemesterWithProjects,
@@ -18,6 +19,7 @@ import type {
     PastProjectShare,
     PastProjectShareSummary,
     PastProjectAISearchResponse,
+    ProjectAISearchScope,
     ProjectGridHydrationResult,
 } from './types';
 
@@ -34,11 +36,44 @@ export type {
     PastProjectShareSummary,
     PastProjectAISearchResponse,
     ProjectGridHydrationResult,
+    ProjectCatalogSource,
+    ProjectAISearchScope,
 } from './types';
 
 export type {PaginatedResponse} from '@/types/api';
 
-export {DEFAULT_PAST_PROJECT_SHARE_NAME} from './constants';
+export {DEFAULT_PAST_PROJECT_SHARE_NAME, DEFAULT_PROJECT_SHARE_NAME, PROJECT_REQUEST_TIMEOUT_MS} from './constants';
+export {
+    fetchAllPastProjectArchive,
+    fetchAllProjectsCatalog,
+    fetchCatalogPage,
+    fetchPastProjectArchive,
+    searchAllProjectIds,
+    searchPastProjectArchiveIds,
+    type ProjectCatalogEndpoint,
+} from './archive';
+export {PROJECT_DETAIL_CACHE_TTL_MS, readCachedProjectDetail, rememberProjectDetail} from './projectDetailCache';
+
+/**
+ * How many project detail requests may be open at once, for a row's Details and for saving rows. The API is served
+ * over HTTP/2, so they share one connection; the bound keeps a 100-row "View All Details" from opening 100 at once.
+ */
+export const PROJECT_DETAIL_CONCURRENCY = 6;
+
+/** A project or share id as one URL path segment: a route param is decoded, so "../x" or "a?b" must not escape it. */
+const pathSegment = (id: string) => encodeURIComponent(id);
+
+const presentingText = (isPresenting: boolean | null | undefined) =>
+    isPresenting == null ? '' : isPresenting ? 'Yes' : 'No';
+
+/**
+ * Which list a row came from and the current project an archive row stands in for, as a grid row keeps them: only
+ * when the API sent them (rows of /projects/all/, project details and AI search results; not the archive's own).
+ */
+const catalogFields = ({catalog, current_project_id}: Pick<ProjectGridRow, 'catalog' | 'current_project_id'>) => ({
+    ...(catalog ? {catalog} : {}),
+    ...(current_project_id ? {current_project_id} : {}),
+});
 
 export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
     id: project.id,
@@ -51,7 +86,8 @@ export const toProjectGridRow = (project: ProjectTableRow): ProjectGridRow => ({
     industry: project.industry,
     abstract: project.abstract,
     student_names: project.student_names,
-    is_presenting: project.is_presenting == null ? '' : project.is_presenting ? 'Yes' : 'No',
+    is_presenting: presentingText(project.is_presenting),
+    ...catalogFields(project),
 });
 
 export const scheduleProjectToGridRow = (row: ScheduleProjectRow): ProjectGridRow => ({
@@ -77,17 +113,6 @@ export const fetchCurrentProjectsFull = async (): Promise<SemesterWithFullProjec
     return response.data;
 };
 
-export const fetchPastProjectArchive = async (
-    query: PastProjectArchiveQuery = {},
-    signal?: AbortSignal,
-): Promise<PaginatedResponse<CompactPastProjectRow>> => {
-    const response = await api.get<PaginatedResponse<CompactPastProjectRow>>('/projects/archive/', {
-        params: query,
-        signal,
-    });
-    return response.data;
-};
-
 export const compactProjectToGridRow = (project: CompactPastProjectRow): ProjectGridRow => ({
     id: project.id,
     semester_label: formatSemesterLabel(project.semester_label),
@@ -97,9 +122,13 @@ export const compactProjectToGridRow = (project: CompactPastProjectRow): Project
     project_title: project.project_title,
     organization: project.organization,
     industry: project.industry,
+    // The abstract is left to the detail endpoint; student names come along when the API sends them, so a search
+    // finds a team by its members.
     abstract: '',
-    student_names: '',
-    is_presenting: '',
+    student_names: project.student_names ?? '',
+    // Sent on a current-semester row of /projects/all/; null (shown as nothing) on archive rows.
+    is_presenting: presentingText(project.is_presenting),
+    ...catalogFields(project),
 });
 
 export const fetchPastProjects = async (
@@ -112,28 +141,32 @@ export const fetchPastProjects = async (
     return response.data;
 };
 
+/** `scope` 'all' also ranks the active schedule's projects, as /projects/all/ lists them; 'past' the archive only. */
 export const searchPastProjectsWithAI = async (
     query: string,
     limit = 10,
+    scope: ProjectAISearchScope = 'past',
 ): Promise<PastProjectAISearchResponse> => {
-    const response = await authApi.post<PastProjectAISearchResponse>('/projects/past-ai-search/', {query, limit});
+    const response = await authApi.post<PastProjectAISearchResponse>('/projects/past-ai-search/', {
+        query,
+        limit,
+        scope,
+    });
     return response.data;
 };
 
-export const fetchProjectDetail = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
-    const response = await api.get<ProjectDetail>(`/projects/${id}/`, {signal});
+export const fetchProjectDetail = async (
+    id: string,
+    signal?: AbortSignal,
+    timeout?: number,
+): Promise<ProjectDetail> => {
+    const response = await api.get<ProjectDetail>(`/projects/${pathSegment(id)}/`, {signal, timeout});
     return response.data;
 };
 
-// Matches the inline detail loader's bound. Saving a large selection of archive rows
-// would otherwise open one request per row at once.
-const HYDRATION_CONCURRENCY = 4;
 // A save must not fail because one of many detail requests hit a transient error, so each
 // request is retried after these delays before its row is reported as failed.
 const HYDRATION_RETRY_DELAYS_MS = [300, 900];
-// Without a timeout one stalled request would leave a save "Saving…" indefinitely; a timeout is
-// retried like any other network failure.
-const HYDRATION_REQUEST_TIMEOUT_MS = 15_000;
 // Once rows have kept failing for this long with no request answered in between, the API is down or
 // stalled, and the rows not requested yet are reported as failed at once instead of each waiting out its own
 // timeouts and retries. It counts from the first such failure, not from the last answer, so time the page
@@ -141,9 +174,11 @@ const HYDRATION_REQUEST_TIMEOUT_MS = 15_000;
 // the others keep loading.
 const HYDRATION_STALL_MS = 30_000;
 
-/** Archive rows arrive compact; their abstract and student names live only on the detail endpoint. */
-export const needsProjectGridHydration = (row: ProjectGridRow) =>
-    Boolean(row.id) && !row.abstract && !row.student_names;
+/**
+ * Archive rows arrive compact: their abstract lives only on the detail endpoint. Their student names may come
+ * with them, so a row without an abstract is what needs its details.
+ */
+export const needsProjectGridHydration = (row: ProjectGridRow) => Boolean(row.id) && !row.abstract;
 
 const isRetryableDetailError = (error: unknown) => {
     const status = (error as {response?: {status?: number}}).response?.status;
@@ -169,13 +204,14 @@ const sleep = (ms: number, signal?: AbortSignal) =>
     });
 
 const fetchProjectDetailWithRetry = async (id: string, signal?: AbortSignal): Promise<ProjectDetail> => {
+    // Rows whose Details were just opened are not requested again.
+    const cached = readCachedProjectDetail(id);
+    if (cached) return cached;
     for (let attempt = 0; ; attempt += 1) {
         try {
-            const response = await api.get<ProjectDetail>(`/projects/${id}/`, {
-                signal,
-                timeout: HYDRATION_REQUEST_TIMEOUT_MS,
-            });
-            return response.data;
+            // A timeout is retried like any other network failure; without one a stalled request would leave a save
+            // "Saving…" indefinitely.
+            return await fetchProjectDetail(id, signal, PROJECT_REQUEST_TIMEOUT_MS);
         } catch (error) {
             if (signal?.aborted || attempt >= HYDRATION_RETRY_DELAYS_MS.length || !isRetryableDetailError(error)) {
                 throw error;
@@ -183,6 +219,25 @@ const fetchProjectDetailWithRetry = async (id: string, signal?: AbortSignal): Pr
             await sleep(HYDRATION_RETRY_DELAYS_MS[attempt], signal);
         }
     }
+};
+
+/**
+ * A row as its details load it. A current-semester id answers with its archive project once the team's semester is
+ * archived, so the catalog goes with the id the row now has: the detail's own, else the row's while the id is the
+ * same (an older server sends none). `current_project_id` is kept while the id is the same; a current row that
+ * became its archive row gets its former id there, as /projects/all/ lists such a row, so a list loaded before the
+ * import still matches it.
+ */
+const hydratedGridRow = (row: ProjectGridRow, detail: ProjectDetail): ProjectGridRow => {
+    const sameId = detail.id === row.id;
+    const formerCurrentId = !sameId && row.catalog === 'current' ? row.id : undefined;
+    return {
+        ...toProjectGridRow(detail),
+        ...catalogFields({
+            catalog: detail.catalog ?? (sameId ? row.catalog : undefined),
+            current_project_id: detail.current_project_id || (sameId ? row.current_project_id : formerCurrentId),
+        }),
+    };
 };
 
 interface HydrationOptions {
@@ -210,7 +265,8 @@ export const hydrateProjectGridRowsSettled = async (
     let failingSince: number | null = null;
     const hydrateIndex = async (index: number) => {
         try {
-            hydrated[index] = toProjectGridRow(await fetchProjectDetailWithRetry(rows[index].id as string, signal));
+            const row = rows[index];
+            hydrated[index] = hydratedGridRow(row, await fetchProjectDetailWithRetry(row.id as string, signal));
             failingSince = null;
         } catch (error) {
             if (signal?.aborted) throw error;
@@ -238,7 +294,7 @@ export const hydrateProjectGridRowsSettled = async (
         }
     };
     await Promise.all(
-        Array.from({length: Math.min(HYDRATION_CONCURRENCY, pendingIndexes.length)}, worker),
+        Array.from({length: Math.min(PROJECT_DETAIL_CONCURRENCY, pendingIndexes.length)}, worker),
     );
     const byIndex = (left: number, right: number) => left - right;
     return {
@@ -265,7 +321,7 @@ export const createPastProjectShare = async (
 export const fetchPastProjectShare = async (id: string): Promise<PastProjectShare> => {
     if (getAccessToken()) {
         try {
-            const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${id}/`, {
+            const response = await authApi.get<PastProjectShare>(`/projects/past-shares/${pathSegment(id)}/`, {
                 requireFreshIdentity: true,
             });
             return response.data;
@@ -277,7 +333,7 @@ export const fetchPastProjectShare = async (id: string): Promise<PastProjectShar
         }
     }
 
-    const response = await api.get<PastProjectShare>(`/projects/past-shares/${id}/`);
+    const response = await api.get<PastProjectShare>(`/projects/past-shares/${pathSegment(id)}/`);
     return response.data;
 };
 
@@ -286,7 +342,7 @@ export const updatePastProjectShare = async (
     payload: Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>> &
         Pick<PastProjectShare, 'version'>,
 ): Promise<PastProjectShare> => {
-    const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${id}/`, payload);
+    const response = await authApi.patch<PastProjectShare>(`/projects/past-shares/${pathSegment(id)}/`, payload);
     return response.data;
 };
 
@@ -296,5 +352,5 @@ export const listMyShares = async (): Promise<PastProjectShareSummary[]> => {
 };
 
 export const deleteShare = async (id: string): Promise<void> => {
-    await authApi.delete(`/projects/past-shares/${id}/`);
+    await authApi.delete(`/projects/past-shares/${pathSegment(id)}/`);
 };

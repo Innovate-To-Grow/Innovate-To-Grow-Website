@@ -18,6 +18,13 @@ NO_PROVIDER_RETRIES = Config(
     retries={"total_max_attempts": 1, "mode": "standard"},
 )
 
+
+def with_timeout(config: Config | None, seconds: float) -> Config:
+    """*config* (a retry policy, or None) with *seconds* as both the connect and the read timeout of each call."""
+    timeouts = Config(connect_timeout=seconds, read_timeout=seconds)
+    return timeouts if config is None else config.merge(timeouts)
+
+
 _TRANSIENT_ERROR_CODES = {
     "InternalFailure",
     "InternalServerException",
@@ -35,9 +42,11 @@ _TRANSIENT_ERROR_CODES = {
 class ProviderDeliveryError(RuntimeError):
     """Sanitized provider failure with a retry-safety classification."""
 
-    def __init__(self, message: str, *, outcome: str):
+    def __init__(self, message: str, *, outcome: str, retry_after: float | None = None):
         super().__init__(message)
         self.outcome = outcome
+        # Seconds the provider asked callers to wait before retrying (for example an HTTP Retry-After header).
+        self.retry_after = retry_after
 
 
 def classify_aws_send_failure(exc: Exception, *, provider: str) -> tuple[str, str]:

@@ -2,7 +2,7 @@
 // returns the captured request payloads for assertions. RegExp matchers are
 // used where a request may carry a query string (glob `?`/`*` handling is
 // finicky); exact slash-terminated paths use string globs.
-import type {Page} from '@playwright/test';
+import type {BrowserContext, Page, Route} from '@playwright/test';
 import type {
   PastProjectAISearchResponse,
   PastProjectShare,
@@ -11,26 +11,68 @@ import type {
 } from '../../../src/features/projects/api';
 import {json} from './json';
 
-export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Promise<void> {
+/** A compact list row, as `/projects/archive/` sends it: no abstract. */
+const compactRow = (row: ProjectTableRow) => ({
+  id: row.id, semester_label: row.semester_label, class_code: row.class_code,
+  team_number: row.team_number, team_name: row.team_name, project_title: row.project_title,
+  organization: row.organization, industry: row.industry, track: row.track,
+  presentation_order: row.presentation_order,
+});
+
+/** One `?page=` of `rows` (`page_size` 20 by default), each as `toResult` sends it. */
+function fulfillListPage(route: Route, rows: ProjectTableRow[], toResult: (row: ProjectTableRow) => object) {
+  const url = new URL(route.request().url());
+  const pageNumber = Number(url.searchParams.get('page') ?? 1);
+  const pageSize = Number(url.searchParams.get('page_size') ?? 20);
+  // ?search= matches the fields the API searches, abstracts included, case-insensitively.
+  const search = url.searchParams.get('search')?.toLowerCase();
+  const matching = search
+    ? rows.filter((row) =>
+        [
+          row.project_title, row.team_name, row.team_number, row.organization, row.industry, row.class_code,
+          row.abstract, row.student_names,
+        ].some((value) => value.toLowerCase().includes(search)),
+      )
+    : rows;
+  const start = (pageNumber - 1) * pageSize;
+  const results = matching.slice(start, start + pageSize).map(toResult);
+  return route.fulfill(json({count: matching.length, next: null, previous: null, results}));
+}
+
+/** `/projects/<id>/` for each of `rows`, as given; any other id goes on to the next handler. */
+async function mockRowDetails(page: Page | BrowserContext, rows: ProjectTableRow[]): Promise<void> {
   await page.route(/\/projects\/[^/]+\/(?:\?.*)?$/, async (route) => {
     const id = new URL(route.request().url()).pathname.split('/').at(-2);
     const row = rows.find((project) => project.id === id);
     if (!row) return route.fallback();
     await route.fulfill(json(row));
   });
-  await page.route(/\/projects\/archive\/(?:\?.*)?$/, (route) => {
-    const url = new URL(route.request().url());
-    const pageNumber = Number(url.searchParams.get('page') ?? 1);
-    const pageSize = Number(url.searchParams.get('page_size') ?? 20);
-    const start = (pageNumber - 1) * pageSize;
-    const results = rows.slice(start, start + pageSize).map((row) => ({
-      id: row.id, semester_label: row.semester_label, class_code: row.class_code,
-      team_number: row.team_number, team_name: row.team_name, project_title: row.project_title,
-      organization: row.organization, industry: row.industry, track: row.track,
-      presentation_order: row.presentation_order,
-    }));
-    return route.fulfill(json({count: rows.length, next: null, previous: null, results}));
-  });
+}
+
+export async function mockPastProjects(page: Page, rows: ProjectTableRow[]): Promise<void> {
+  await mockRowDetails(page, rows);
+  await page.route(/\/projects\/archive\/(?:\?.*)?$/, (route) => fulfillListPage(route, rows, compactRow));
+}
+
+/**
+ * `/projects/all/`, the list All Projects and a curation owner's "Add More Projects" search: `rows` in the order
+ * given (the API lists the active schedule's projects first), paged and searched like `/projects/archive/`, with
+ * the fields it adds. A row without `catalog` is an archive row. Their details are served too. Given the context, it
+ * also serves the tabs a page opens (a widget's "Continue in All Projects").
+ */
+export async function mockAllProjects(page: Page | BrowserContext, rows: ProjectTableRow[]): Promise<void> {
+  await mockRowDetails(page, rows);
+  await page.route(/\/projects\/all\/(?:\?.*)?$/, (route) =>
+    fulfillListPage(route, rows, (row) => {
+      const catalog = row.catalog ?? 'archive';
+      return {
+        ...compactRow(row),
+        catalog,
+        is_presenting: catalog === 'current' ? Boolean(row.is_presenting) : null,
+        current_project_id: row.current_project_id ?? null,
+      };
+    }),
+  );
 }
 
 export interface PastProjectShareMockController {

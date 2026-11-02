@@ -6,7 +6,7 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, LoginLinkToken, RecipientLog
 from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
-from apps.mail.services.send_campaign.runner import SendTiming, send_campaign
+from apps.mail.services.send_campaign.runner import send_campaign
 from apps.mail.services.send_campaign.transport import SesSendResult
 
 
@@ -48,6 +48,22 @@ class SendCampaignFlowTests(TestCase):
         mock_send.return_value = SesSendResult(message_id="SES-001")
         send_campaign(self.campaign, self.sender)
         self.assertEqual(RecipientLog.objects.filter(campaign=self.campaign).count(), 3)
+
+    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
+    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    def test_only_messages_that_carry_the_login_link_skip_the_sent_items_copy(self, mock_client, mock_send):
+        mock_client.return_value = MagicMock()
+        mock_send.return_value = SesSendResult(message_id="SES-001")
+        send_campaign(self.campaign, self.sender)
+        self.assertEqual({call.kwargs["keep_sent_copy"] for call in mock_send.call_args_list}, {True})
+
+        mock_send.reset_mock()
+        for subject, body in (("Hi", '<p><a href="{{ login_link }}">Sign in</a></p>'), ("{{login_link}}", "<p>x</p>")):
+            campaign = EmailCampaign.objects.create(
+                subject=subject, body=body, audience_type="subscribers", member_email_scope="primary", status="draft"
+            )
+            send_campaign(campaign, self.sender)
+        self.assertEqual({call.kwargs["keep_sent_copy"] for call in mock_send.call_args_list}, {False})
 
     @patch("apps.mail.services.send_campaign.runner._send_via_ses")
     @patch("apps.mail.services.send_campaign.runner._get_ses_client")
@@ -425,23 +441,3 @@ class SendCampaignPeriodicSaveTests(TestCase):
         self.assertEqual(campaign.total_recipients, 11)
         self.assertEqual(campaign.sent_count, 11)
         self.assertEqual(campaign.status, "sent")
-
-
-class SendTimingTests(TestCase):
-    def test_no_rate_limit_when_send_rate_zero(self):
-        timing = SendTiming(0)
-        self.assertEqual(timing.min_interval, 0)
-
-    def test_min_interval_calculated_from_rate(self):
-        timing = SendTiming(10)
-        self.assertAlmostEqual(timing.min_interval, 0.1)
-
-    def test_first_send_does_not_block(self):
-        timing = SendTiming(10)
-        timing.wait_if_needed()
-
-    @patch("time.sleep")
-    def test_sleep_when_sends_too_fast(self, mock_sleep):
-        timing = SendTiming(1)
-        timing.mark_sent()
-        timing.wait_if_needed()

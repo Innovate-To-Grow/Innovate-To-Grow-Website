@@ -55,16 +55,63 @@ The mail app (`src/apps/mail/`) provides email campaign functionality through Dj
 ### Choose the email sender
 
 Open **Mail → Notification Delivery → Edit Notification Delivery**. Under
-**Email Sender**, select **AWS SES** or **SMTP**, set the sender name and email
-address, and save the active configuration.
+**Email Sender**, select **AWS SES**, **SMTP**, **Microsoft Graph**, or **Gmail API**, set the
+sender name and email address, and save the active configuration.
 
-- **AWS SES** uses the active AWS credentials and region. SMTP fields are not
-  required, and any saved SMTP credentials are preserved when selecting SES.
+- **AWS SES** uses the active AWS credentials and region. SMTP and Microsoft
+  Graph fields are not required, and any saved SMTP or Graph credentials are
+  preserved when selecting SES.
 - **SMTP** shows the server, port, security, and optional authentication fields.
   Leave the password blank when editing to retain the saved password. STARTTLS
   and SSL both verify the server certificate; enable only one of them.
-- AWS settings remain available for SMS even when email uses SMTP. Changing the
-  email provider does not switch the SMS provider.
+- **Microsoft Graph** shows the active Graph configuration read-only: tenant
+  ID, client ID, sender mailbox, the installed
+  certificate's SHA-1 thumbprint and expiry, and the **mailbox scope** (the
+  mailboxes Graph may use and each one's permission level: send, read, or
+  both). This page only selects Graph; the configuration, its scope and its
+  certificate are managed on the Graph configuration's admin page (Core app,
+  linked from the panel for staff who have it), and must be in place before
+  Graph can be selected. In production Graph can be selected only after a
+  superuser has run the access check with the current certificate and it
+  matched the approval (the panel's **Go-live evidence** line says what is
+  missing; see [Validate the access restriction](../integrations/microsoft-graph-email.md#validate-the-access-restriction)).
+  Graph authenticates with a certificate only; a
+  superuser installs it there, and its private key is kept in the credential
+  store, never in the database. The sender mailbox
+  defaults to the From email; both must be in the scope with send permission.
+  With read permission, **Mail → Inbox** reads that mailbox through Graph
+  instead of the Gmail import account; its **Sent** folder (and any message
+  from the site's own address) is then shown to superusers only, and Sent
+  mail is never sent to the AI scam review. Opening an Inbox message whose
+  rule score is in the medium band still sends its sender, subject,
+  authentication results and the first 4,000 characters of its body to
+  Amazon Bedrock for a second opinion (see
+  [Admin inbox](../integrations/microsoft-graph-email.md#admin-inbox)).
+  Graph mail counts against the
+  mailbox's Exchange Online limits (its rate is on **Mail → Delivery Rates**) and reports
+  no delivery events. Campaigns, replies and notices are copied to its Sent
+  Items folder; verification codes, admin invitations, tickets and campaign
+  messages that contain the recipient's `{{ login_link }}` are not, because
+  they carry sign-in credentials. A campaign message with a login link then
+  has no `List-Unsubscribe` header (Graph cannot send one without the copy);
+  its footer's unsubscribe link stays.
+  Setup in Entra and Exchange Online is in
+  [Microsoft Graph email](../integrations/microsoft-graph-email.md).
+- **Gmail API** shows the active Gmail API configuration read-only: its key
+  ID, service account, numeric client ID, project, when the key was installed
+  and the access check last passed, and the **account allow-list** (the Google
+  accounts the site may send as). There are no credential fields here: the key
+  and the list are managed by a superuser on the configuration's own page. The
+  From email must be on the list, and email can switch to the Gmail API (or
+  change its From address there) only after the access check passed for the
+  installed key. Gmail keeps a copy of everything it sends in the account's Sent
+  folder: mail with sign-in codes or login links is tagged and never shown from
+  that folder by **Mail → Inbox** or **Import from Gmail**, and the inbox's **Sent** folder is
+  shown to superusers only while the Gmail import account is one the site sends
+  as. Rates and daily limits are on **Mail → Delivery Rates**. Setup:
+  [Gmail API email](../integrations/gmail-api-email.md).
+- AWS settings remain available for SMS even when email uses SMTP, Microsoft
+  Graph or the Gmail API. Changing the email provider does not switch the SMS provider.
 
 This selection applies to verification codes, admin invitations, tickets,
 campaigns, inbox replies, and the **Send Test Email** action. Saving settings
@@ -81,7 +128,7 @@ does not send a message; use the test action to check delivery explicitly.
 | `audience_type` | Target audience selector |
 | `member_email_scope` | **Send to**: each member's primary contact email only, or every contact email (member-based audiences) |
 | `include_unsubscribe_header` | **Include one-click unsubscribe** (default on): the footer unsubscribe link and the RFC 8058 `List-Unsubscribe` headers |
-| `status` | `draft`, `sending`, `sent`, `failed` |
+| `status` | `draft`, `queued`, `sending`, `partial` (Partially sent: some recipients failed or are paused), `sent`, `failed` |
 | `total_recipients` | Calculated recipient count |
 | `sent_count` | Successfully sent count |
 
@@ -158,10 +205,21 @@ nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeho
 1. Resolve the audience and materialize one recipient log plus one durable job
    per recipient
 2. Personalize the body for each recipient
-3. Resolve the single globally active provider (AWS SES or SMTP) and submit through the shared provider-neutral service
+3. Resolve the single globally active provider (AWS SES, SMTP, Microsoft Graph, or the Gmail API) and submit through the shared provider-neutral service
 4. Persist processing, retry, failed, and uncertain-delivery state per
    recipient
 5. Aggregate campaign state/counts from the recipient logs
+
+A recipient the delivery-rate limiter holds back is not sent and not failed: a
+queued recipient runs again at its slot without using an attempt, and the
+in-process sender (no background worker) sends a recipient the provider
+throttled again after the cooldown, and marks the remaining recipients
+**Paused by delivery limits** on a long hold, such as a daily limit or a provider
+stop, and ends the campaign **Partially sent**. The **Resume paused recipients
+(held back by delivery limits)** action on the Email Campaigns and SMS Campaigns
+lists sends exactly those later, through the queue when background jobs are
+enabled; it leaves a campaign that is still sending or queued alone. See
+[Delivery rates](../integrations/delivery-rates.md#waiting-deferral-and-the-background-worker).
 
 Provider calls whose outcome cannot be determined are marked `uncertain` and
 are never resent automatically. A verified SES event for the same send attempt
@@ -171,8 +229,50 @@ evidence before using the explicit admin retry action.
 
 Switching providers is global and does not configure failover. SES campaign
 delivery, bounce, and complaint events remain available only for messages sent
-through SES. SMTP campaigns record submission acceptance as `sent`; no later
-delivery status is inferred without an SMTP feedback integration.
+through SES. SMTP and Microsoft Graph campaigns record submission acceptance as
+`sent` (for Graph, an HTTP 202 from `sendMail`); no later delivery status is
+inferred without a feedback integration. Graph's non-delivery reports arrive in
+the sender mailbox, not in the application, and its uncertain outcomes are
+explained in the
+[error reference](../integrations/microsoft-graph-email.md#error-reference). The
+Delivery Dashboard under **Delivery Operations** charts SES CloudWatch metrics
+only and shows a notice while another provider is active.
+
+### Delivery rates
+
+**Mail → Delivery Operations → Delivery Rates** (`/admin/mail/settings/rates/`, staff with the Mail app) sets how
+fast the site sends and reads, with one card per channel: the four email providers (the one selected under
+Notification Delivery first, the others under **Not in use** but still editable), AWS SMS, and inbox reading
+(Microsoft Graph, Gmail IMAP). One **Save delivery rates** saves every card. Each card has:
+
+- **Live status**, refreshed every 15 seconds: the rate in use and why ("Now: 12.6 recipients/sec · Smart · 90% of
+  the 14 recipients/sec limit (reported by AWS 3 min ago)"), or "Paused until …" / "Stopped: …" while the provider
+  has asked to wait or refused; the provider limit and where it comes from; and each rolling 24-hour (Graph: also
+  hourly) limit with what has been used and where campaigns stop.
+- **Smart rate** (on by default): adjusts the rate to actual conditions. It uses the limit the provider reports
+  (SES, AWS SMS) or documents, slows down when the provider throttles, then speeds up step by step, never above
+  the provider limit. While it is on it takes priority over the manual rate.
+- **Manual rate**, in the channel's unit: the fixed rate used while Smart rate is off. It is read-only while Smart
+  rate is on but always kept, and it cannot be above the provider limit.
+- **Advanced: provider limits**: the provider rate limit, SMS message parts per second, the daily (and for Graph,
+  hourly) limits, the budget headroom and the share campaigns leave for login codes and tickets. A blank field
+  shows what applies instead. A documented limit can be lowered here but not raised above its `DELIVERY_RATES`
+  value (raise it with `DELIVERY_RATES_OVERRIDES` when the provider grants more, see
+  [Environments](../deployment/environments.md#delivery-rates)). SES and AWS SMS also list what AWS last reported, with
+  **Check provider limits now**. **Reset Smart rate** starts Smart rate afresh; **Resume sending** (shown while a
+  pause or stop holds the channel) clears it.
+
+Every save and button writes an admin history line such as `sms_send: Smart rate on→off; manual 1→0.5`.
+Notification Delivery, the Delivery Dashboard and the campaign send confirmation show the same status line.
+
+The manual rate is the total for the channel, sign-in codes and tickets included, and campaigns get at most 80 % of
+it; the old campaign send rate paced only queued mail. The SES card's **Provider rate limit** starts at that old
+campaign send rate, marked as carried over: it applies only until AWS reports the account's limit, which then
+replaces it (enter another value to make it your own limit). **Internal domain** (Gmail API, Advanced) accepts only
+the domain of an account on the Gmail API allow-list or a parent domain of it, since recipients there do not count
+against Google's external limit.
+How the rate, the daily limits and the stops are worked out, every seed with its source, and what to do when a
+provider stops sending: [Delivery rates](../integrations/delivery-rates.md).
 
 ### Login link tokens
 
@@ -198,7 +298,7 @@ The campaign admin includes a Gmail import feature (`src/apps/mail/services/gmai
 |-------|---------|
 | `campaign` | FK to EmailCampaign |
 | `email` | Recipient email address |
-| `status` | Delivery status |
+| `status` | Delivery status: pending, processing, retry scheduled, paused by delivery limits, sent, delivered, bounced, complained, rejected, failed, uncertain delivery |
 | `sent_at` | Timestamp |
 | `error` | Error message if failed |
 
@@ -208,5 +308,8 @@ Viewable as inline records in the campaign admin.
 
 - [Django Admin](django-admin.md) — Admin interface and customization
 - [API: Auth & Mail](../api/auth-and-mail.md) — Auth and mail API endpoints
-- [Architecture: Integrations](../architecture/integrations.md) — AWS SES and AWS SNS configuration
+- [Architecture: Integrations](../architecture/integrations.md) — AWS SES, SMTP, Microsoft Graph, the Gmail API, and AWS SMS configuration
+- [Microsoft Graph email](../integrations/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
+- [Gmail API email](../integrations/gmail-api-email.md) — service account, domain-wide delegation, key install, the access check and Sent copies for the Gmail API provider
+- [Delivery rates](../integrations/delivery-rates.md) — Smart rate, manual rate, budgets, stops and Resume for every delivery channel
 - [Operations](operations.md) — Operational tasks

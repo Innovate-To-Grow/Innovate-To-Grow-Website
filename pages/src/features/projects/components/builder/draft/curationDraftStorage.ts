@@ -1,4 +1,6 @@
+import type {ProjectCatalogSource} from '@/features/projects/api';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {isProjectId} from './draftHandover';
 
 // The curation being built (its saved projects, name and note) is a draft until it is saved, which needs signing
 // in — and the login button reloads the page. Keep the draft in localStorage so it survives that reload, closing
@@ -20,25 +22,69 @@ export interface CurationDraft {
 
 const EMPTY_DRAFT: CurationDraft = {owner: null, rows: [], name: '', note: ''};
 
+// The text fields of a stored row. Storage is outside this page's control (an older version, another tab, an
+// extension, a hand edit), and the tables format these fields as strings, so one missing field would crash
+// the whole page on every visit.
+const ROW_TEXT_FIELDS = [
+  'semester_label',
+  'class_code',
+  'team_number',
+  'team_name',
+  'project_title',
+  'organization',
+  'industry',
+  'abstract',
+  'student_names',
+  'is_presenting',
+] as const satisfies ReadonlyArray<keyof ProjectGridRow>;
+
+const stringOrEmpty = (value: unknown) => (typeof value === 'string' ? value : '');
+
+const isCatalogSource = (value: unknown): value is ProjectCatalogSource => value === 'archive' || value === 'current';
+
+/**
+ * Which list a stored row came from and the current project an archive row stands in for (projectGrid's matcher and
+ * links read them), when they are still valid; a row without them is an archive row.
+ */
+const draftCatalogFields = (stored: Record<string, unknown>): Pick<ProjectGridRow, 'catalog' | 'current_project_id'> => ({
+  ...(isCatalogSource(stored.catalog) ? {catalog: stored.catalog} : {}),
+  ...(isProjectId(stored.current_project_id) ? {current_project_id: stored.current_project_id} : {}),
+});
+
+/** A stored row with every text field a string (missing ones empty); null when it is not a project row at all. */
+const toDraftRow = (value: unknown): ProjectGridRow | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const stored = value as Record<string, unknown>;
+  const row = Object.fromEntries(ROW_TEXT_FIELDS.map((field) => [field, stringOrEmpty(stored[field])])) as Omit<
+    ProjectGridRow,
+    'id'
+  >;
+  const id = stringOrEmpty(stored.id);
+  if (!id && !row.project_title && !row.team_name) return null;
+  return {...(id ? {id} : {}), ...row, ...draftCatalogFields(stored)};
+};
+
+/** The project rows of a stored list; anything that is not one is dropped. */
+const toDraftRows = (value: unknown): ProjectGridRow[] =>
+  Array.isArray(value) ? value.flatMap((item) => toDraftRow(item) ?? []) : [];
+
 const readLegacyDraft = (): CurationDraft => {
   try {
     const raw = sessionStorage.getItem(LEGACY_MERGED_ROWS_STORAGE_KEY);
-    const rows = raw ? JSON.parse(raw) : [];
-    return Array.isArray(rows) ? {...EMPTY_DRAFT, rows: rows as ProjectGridRow[]} : EMPTY_DRAFT;
+    return {...EMPTY_DRAFT, rows: toDraftRows(raw ? JSON.parse(raw) : [])};
   } catch {
     return EMPTY_DRAFT;
   }
 };
 
-const stringOrEmpty = (value: unknown) => (typeof value === 'string' ? value : '');
-
 /** A parsed stored draft as this member's draft; empty when malformed or owned by someone else. */
-const draftFor = (parsed: Partial<CurationDraft> | null, memberId: string | null): CurationDraft => {
-  const owner = typeof parsed?.owner === 'string' ? parsed.owner : null;
-  if (!parsed || !Array.isArray(parsed.rows) || (owner && owner !== memberId)) {
+const draftFor = (parsed: unknown, memberId: string | null): CurationDraft => {
+  const stored = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : null;
+  const owner = typeof stored?.owner === 'string' ? stored.owner : null;
+  if (!stored || !Array.isArray(stored.rows) || (owner && owner !== memberId)) {
     return EMPTY_DRAFT;
   }
-  return {owner, rows: parsed.rows, name: stringOrEmpty(parsed.name), note: stringOrEmpty(parsed.note)};
+  return {owner, rows: toDraftRows(stored.rows), name: stringOrEmpty(stored.name), note: stringOrEmpty(stored.note)};
 };
 
 /** The stored draft, unless it belongs to another member (or is unreadable). */
@@ -46,7 +92,7 @@ export const readPersistedDraft = (memberId: string | null): CurationDraft => {
   try {
     const raw = localStorage.getItem(DRAFT_STORAGE_KEY);
     if (!raw) return readLegacyDraft();
-    return draftFor(JSON.parse(raw) as Partial<CurationDraft> | null, memberId);
+    return draftFor(JSON.parse(raw), memberId);
   } catch {
     return EMPTY_DRAFT;
   }
@@ -72,4 +118,33 @@ export const clearPersistedDraft = () => {
   } catch {
     // ignore — nothing to clean up if storage is unavailable.
   }
+};
+
+/**
+ * Follow the draft that other tabs store (the `storage` event fires only in the tabs that did not write):
+ * `onChange` gets each new draft, empty when one was removed. A value this page cannot read, or another
+ * member's draft, is skipped. Returns the unsubscribe function.
+ */
+export const subscribeToOtherTabsDraft = (
+  getMemberId: () => string | null,
+  onChange: (draft: CurationDraft) => void,
+) => {
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key !== DRAFT_STORAGE_KEY) return;
+    if (event.newValue === null) {
+      onChange(EMPTY_DRAFT);
+      return;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(event.newValue);
+    } catch {
+      return;
+    }
+    const owner = (parsed as {owner?: unknown} | null)?.owner;
+    if (typeof owner === 'string' && owner !== getMemberId()) return;
+    onChange(draftFor(parsed, getMemberId()));
+  };
+  window.addEventListener('storage', handleStorage);
+  return () => window.removeEventListener('storage', handleStorage);
 };

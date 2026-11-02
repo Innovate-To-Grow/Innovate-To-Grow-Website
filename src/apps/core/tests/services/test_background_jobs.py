@@ -1,16 +1,14 @@
 import json
-import threading
 from datetime import timedelta
-from unittest import skipUnless
 from unittest.mock import patch
 
-from django.db import OperationalError, close_old_connections, connection
-from django.test import TestCase, TransactionTestCase
+from django.db import OperationalError
+from django.test import TestCase
 from django.utils import timezone
 from gspread.exceptions import APIError as GspreadAPIError
 from requests import Response
 
-from apps.core.models import BackgroundJob, DeliveryRateLimit
+from apps.core.models import BackgroundJob
 from apps.core.services.background_jobs import (
     PermanentJobError,
     TransientJobError,
@@ -18,7 +16,6 @@ from apps.core.services.background_jobs import (
     enqueue_job,
     process_claimed_job,
     recover_stale_jobs,
-    reserve_delivery_slot,
     retry_job,
     worker_metrics,
 )
@@ -351,76 +348,3 @@ class BackgroundJobQueueTests(TestCase):
         self.assertEqual(metrics["queue_depth"], 1)
         self.assertEqual(metrics["failed_jobs"], 1)
         self.assertEqual(metrics["uncertain_jobs"], 1)
-
-    def test_delivery_rate_slots_enforce_configured_global_throughput(self):
-        now = timezone.now()
-
-        first_delay = reserve_delivery_slot("ses-test", 10, now=now)
-        second_delay = reserve_delivery_slot("ses-test", 10, now=now)
-        third_delay = reserve_delivery_slot(
-            "ses-test",
-            10,
-            now=now + timedelta(milliseconds=50),
-        )
-
-        self.assertEqual(first_delay, 0)
-        self.assertAlmostEqual(second_delay, 0.1, places=3)
-        self.assertAlmostEqual(third_delay, 0.15, places=3)
-
-    def test_delivery_rate_uses_clock_after_database_lock_is_acquired(self):
-        stale_time = timezone.now()
-        current_time = stale_time + timedelta(seconds=1)
-        DeliveryRateLimit.objects.create(
-            provider="ses-stale-clock",
-            next_available_at=stale_time + timedelta(milliseconds=100),
-        )
-
-        with patch(
-            "apps.core.services.background_jobs.rate_limit.timezone.now",
-            side_effect=[stale_time, current_time, current_time],
-        ):
-            delay = reserve_delivery_slot("ses-stale-clock", 10)
-
-        limiter = DeliveryRateLimit.objects.get(provider="ses-stale-clock")
-        self.assertEqual(delay, 0)
-        self.assertEqual(
-            limiter.next_available_at,
-            current_time + timedelta(milliseconds=100),
-        )
-
-
-@skipUnless(connection.vendor == "postgresql", "PostgreSQL row locking required")
-class DeliveryRateLimitConcurrencyTests(TransactionTestCase):
-    def test_workers_reserve_distinct_global_slots(self):
-        reservation_time = timezone.now()
-        barrier = threading.Barrier(2)
-        delays = []
-        errors = []
-
-        def reserve():
-            close_old_connections()
-            try:
-                barrier.wait(timeout=5)
-                delays.append(
-                    reserve_delivery_slot(
-                        "ses-concurrent",
-                        10,
-                        now=reservation_time,
-                    )
-                )
-            except Exception as exc:  # noqa: BLE001 - surfaced in the test thread.
-                errors.append(exc)
-            finally:
-                close_old_connections()
-
-        threads = [threading.Thread(target=reserve) for _index in range(2)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join(timeout=10)
-
-        self.assertFalse(any(thread.is_alive() for thread in threads))
-        self.assertEqual(errors, [])
-        self.assertEqual(len(delays), 2)
-        self.assertAlmostEqual(min(delays), 0, places=3)
-        self.assertAlmostEqual(max(delays), 0.1, places=3)

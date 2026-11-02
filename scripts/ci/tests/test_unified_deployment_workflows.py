@@ -63,20 +63,19 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
                     job["with"]["deploy_sha"],
                     "${{ needs.approve.outputs.deploy_sha }}",
                 )
-                self.assertEqual(job["secrets"], "inherit")
+                self.assertNotIn("secrets", job)
 
         backend = production["jobs"]["deploy-backend"]
-        self.assertFalse(backend["with"]["build_image"])
         self.assertEqual(backend["needs"], "approve")
-        self.assertEqual(set(backend["with"]), {"deploy_sha", "build_image"})
+        self.assertEqual(set(backend["with"]), {"deploy_sha"})
 
     def test_frontend_ships_after_the_backend(self) -> None:
         production = load_workflow("deploy-production.yml")
 
         frontend = production["jobs"]["deploy-frontend"]
         self.assertEqual(frontend["needs"], ["approve", "deploy-backend"])
-        # Ordered after the backend, but not skipped when a backend leg fails.
-        self.assertEqual(frontend["if"], "${{ !cancelled() && needs.approve.result == 'success' }}")
+        # Default needs semantics prevent a frontend release after backend failure.
+        self.assertNotIn("if", frontend)
         self.assertEqual(production["jobs"]["deploy-archive"]["needs"], "approve")
 
     def test_manual_production_release_requires_successful_ci_for_current_main_sha(self) -> None:
@@ -130,19 +129,24 @@ class UnifiedDeploymentWorkflowTests(unittest.TestCase):
                 self.assertNotIn("strategy", deploy)
                 self.assertEqual({deploy["environment"]["name"]}, environments)
 
-    def test_backend_promotes_ci_image_or_builds_for_manual_dispatch(self) -> None:
-        backend = load_workflow("deploy-backend.yml")
-        deploy = backend["jobs"]["deploy"]
+    def test_backend_promotes_digest_and_migrates_before_rollout(self) -> None:
+        deploy = load_workflow("deploy-backend.yml")["jobs"]["deploy"]
         resolve = named_step(deploy, "Resolve Docker image URI")
-        pull = named_step(deploy, "Pull published Docker image")
-        build = named_step(deploy, "Build and tag Docker image")
-        push = named_step(deploy, "Push Docker image to ECR")
+        self.assertIn("@${digest}", resolve["run"])
+        names = [step.get("name") for step in deploy["steps"]]
+        self.assertLess(
+            names.index("Run database migration before replacing the service"), names.index("Deploy to ECS")
+        )
+        self.assertNotIn("Build and tag Docker image", names)
 
-        self.assertEqual(resolve["env"]["DEPLOY_SHA"], "${{ inputs.deploy_sha }}")
-        self.assertIn("${DEPLOY_SHA}", resolve["run"])
-        self.assertEqual(pull["if"], "${{ !inputs.build_image }}")
-        self.assertEqual(build["if"], "${{ inputs.build_image }}")
-        self.assertEqual(push["if"], "${{ inputs.build_image }}")
+    def test_aws_jobs_use_oidc_with_expected_account(self) -> None:
+        for filename in ("deploy-backend.yml", "deploy-frontend.yml", "deploy-archive.yml"):
+            workflow = load_workflow(filename)
+            self.assertEqual(workflow["permissions"]["id-token"], "write")
+            credentials = named_step(workflow["jobs"]["deploy"], "Configure AWS credentials")["with"]
+            self.assertNotIn("aws-secret-access-key", credentials)
+            self.assertEqual(credentials["allowed-account-ids"], "394167325273")
+            self.assertTrue(credentials["role-to-assume"].startswith("arn:aws:iam::394167325273:role/itg-prod-"))
 
     def test_archive_tags_the_approved_sha(self) -> None:
         archive = load_workflow("deploy-archive.yml")
