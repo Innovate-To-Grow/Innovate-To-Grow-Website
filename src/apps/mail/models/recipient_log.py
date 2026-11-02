@@ -7,6 +7,8 @@ DELIVERY_STATUS_CHOICES = [
     ("pending", "Pending"),
     ("processing", "Processing"),
     ("retry", "Retry scheduled"),
+    # Held back by a delivery limit (a provider pause or a daily budget); "Resume paused recipients" sends them.
+    ("paused", "Paused by delivery limits"),
     ("sent", "Sent"),
     ("delivered", "Delivered"),
     ("bounced", "Bounced"),

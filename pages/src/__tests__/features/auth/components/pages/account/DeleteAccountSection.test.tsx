@@ -34,6 +34,13 @@ describe('DeleteAccountSection', () => {
     expect(screen.getByText(/permanently deletes/)).toBeInTheDocument();
   });
 
+  it('says that shared curations are deleted with the account', () => {
+    renderSection();
+
+    fireEvent.click(toggle());
+    expect(screen.getByText(/including the project curations you shared/)).toBeInTheDocument();
+  });
+
   it('collapses when toggled again', () => {
     renderSection();
 

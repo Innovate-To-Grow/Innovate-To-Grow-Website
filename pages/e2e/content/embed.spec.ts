@@ -1,6 +1,6 @@
 // /_embed/:embedSlug: public embed widget rendered in an isolated iframe.
 import {test, expect} from '../helpers/fixtures';
-import {cmsEmbedResponse, mockCmsEmbed} from '../helpers';
+import {cmsEmbedResponse, mockCmsEmbed, mockPastProjects, mockSchedule, pastProjectRows, schedulePayload} from '../helpers';
 
 test('embed page renders CMS blocks', async ({page}) => {
   await mockCmsEmbed(page, 'test-embed', cmsEmbedResponse({widget_type: 'blocks'}));
@@ -17,4 +17,80 @@ test('embed page applies hidden sections when configured', async ({page}) => {
   }));
   await page.goto('/_embed/hidden-sections', {waitUntil: 'networkidle'});
   await expect(page.locator('.cms-page')).toBeVisible();
+});
+
+// A team listed by its CurrentProject id (not presenting, track 0), so its title links to /projects/<id>.
+const linkedSchedule = () => {
+  const [project] = schedulePayload().projects;
+  return schedulePayload({projects: [{...project, track: 0, order: 0, is_presenting: false}]});
+};
+
+test('a project link in an embedded Current Projects widget opens in a new tab, leaving the widget', async ({page}) => {
+  await mockSchedule(page, linkedSchedule());
+  await mockCmsEmbed(page, 'projects-widget', cmsEmbedResponse({widget_type: 'app_route', app_route: '/current-projects', blocks: []}));
+  await page.goto('/_embed/projects-widget', {waitUntil: 'domcontentloaded'});
+
+  const popup = page.context().waitForEvent('page');
+  await page.getByRole('link', {name: 'Adaptive Irrigation Dashboard', exact: true}).filter({visible: true}).click();
+  const tab = await popup;
+  await tab.waitForURL(/\/projects\/project-e2e-1$/);
+  await tab.close();
+
+  await expect(page).toHaveURL(/\/_embed\/projects-widget$/);
+  await expect(page.getByRole('heading', {name: 'Current Projects'})).toBeVisible();
+});
+
+test('"Section titles" hides the page header of an embedded project page', async ({page}) => {
+  await mockSchedule(page, linkedSchedule());
+  await mockCmsEmbed(page, 'projects-no-titles', cmsEmbedResponse({
+    widget_type: 'app_route',
+    app_route: '/current-projects',
+    blocks: [],
+    hidden_sections: ['section_titles'],
+  }));
+  await page.goto('/_embed/projects-no-titles', {waitUntil: 'domcontentloaded'});
+
+  await expect(page.getByRole('link', {name: 'Adaptive Irrigation Dashboard', exact: true}).filter({visible: true})).toBeVisible();
+  await expect(page.getByRole('heading', {name: 'Current Projects'})).toBeHidden();
+  // The meta line ("N projects · …") is there once the rows load, and goes with the rest of the header.
+  const meta = page.locator('.projects-page .itg-page-meta');
+  await expect(meta).toHaveCount(1);
+  await expect(meta).toBeHidden();
+  await expect(page.locator('.projects-page .itg-lead')).toBeHidden();
+});
+
+test('an app-route widget keeps its controls off the frame edge: 16px in, 20px on phones', {tag: '@core'}, async ({page}) => {
+  await mockSchedule(page, linkedSchedule());
+  await mockCmsEmbed(page, 'projects-widget', cmsEmbedResponse({widget_type: 'app_route', app_route: '/current-projects', blocks: []}));
+  await page.goto('/_embed/projects-widget', {waitUntil: 'domcontentloaded'});
+
+  const title = page.getByRole('heading', {level: 1, name: 'Current Projects'});
+  await expect(title).toBeVisible();
+  const inset = (page.viewportSize()?.width ?? 1280) <= 768 ? 20 : 16;
+  const box = await title.boundingBox();
+  expect(Math.round(box?.x ?? -1)).toBe(inset);
+  await expect(page.locator('.cms-embed-app-route')).toHaveCSS('padding-left', `${inset}px`);
+  // The page background stays, so the widget's text and stripes keep their contrast on a coloured host page.
+  await expect(page.locator('body')).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+});
+
+test('"Section titles" hides a builder\'s section heading from sight, not from the outline', async ({page}) => {
+  await mockPastProjects(page, pastProjectRows());
+  await mockCmsEmbed(page, 'past-no-titles', cmsEmbedResponse({
+    widget_type: 'app_route',
+    app_route: '/past-projects',
+    blocks: [],
+    hidden_sections: ['section_titles'],
+  }));
+  await page.goto('/_embed/past-no-titles', {waitUntil: 'domcontentloaded'});
+
+  await expect(page.getByText(pastProjectRows()[0].project_title).first()).toBeVisible();
+  await expect(page.getByRole('heading', {level: 1, name: 'Past Projects'})).toHaveCount(0);
+  // Still a heading (a retry focuses it), clipped to nothing on screen.
+  const sectionTitle = page.getByRole('heading', {level: 2, name: 'Search Tables'});
+  await expect(sectionTitle).toHaveCount(1);
+  await expect(sectionTitle).toHaveCSS('clip-path', 'inset(50%)');
+  const box = await sectionTitle.boundingBox();
+  expect(box?.width ?? 0).toBeLessThanOrEqual(1);
+  expect(box?.height ?? 0).toBeLessThanOrEqual(1);
 });

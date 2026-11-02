@@ -4,7 +4,7 @@
 /* ==========================================================================
    News: list (/news) and article (/news/:id), in the reference news view's
    type: 28px / 42px underlined navy titles, italic 16px dates, 14px / 21px
-   summaries, a centred pager with #a29061 underlines; articles in the
+   summaries, the site's pager centred under the list; articles in the
    #content prose style with the theme's framed hero image.
    Page title, back link and buttons come from the global sheet. No
    page-width wrappers: the shell owns the column.

@@ -1,3 +1,4 @@
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useCopyLink} from '@/hooks/useCopyLink';
 import {useProjectGridDetails} from '../../../hooks/useProjectGridDetails';
 import {getProjectGridRowHref, type ProjectGridLinkScope, type ProjectGridRow} from '../contracts/projectGrid';
@@ -7,22 +8,31 @@ interface ProjectGridRowDetailsProps {
   row: ProjectGridRow;
   scope: ProjectGridLinkScope;
   loadMissingDetails?: boolean;
+  /**
+   * Loading and load errors are status messages. Off when View All Details opened every row at once: a screen
+   * reader would hear one message per row, so the grid says it once instead.
+   */
+  announce?: boolean;
 }
 
 /** Copies the project's page URL; past-project rows offer it so a single project can be passed on. */
-const CopyProjectLinkButton = ({href}: {href: string}) => {
-  const {status, copy} = useCopyLink({
+const CopyProjectLinkButton = ({href, title}: {href: string; title: string}) => {
+  const {status, tone, copy} = useCopyLink({
     copied: 'Project link copied.',
-    failed: 'Could not copy the link. Use Open the project page and copy its address.',
+    failed: 'Could not copy the link. Use Open the Project Page and copy its address.',
   });
 
   return (
     <>
       <button type="button" className="itg-btn itg-btn-text project-grid-copy-link" onClick={() => void copy(href)}>
-        Copy project link
+        Copy Project Link{' '}
+        <span className="sr-only">{`for ${title}`}</span>
       </button>
       {status ? (
-        <span className="project-grid-copy-status" role="status">
+        <span
+          className={`project-grid-copy-status ${tone === 'error' ? 'itg-error' : 'itg-success'}`}
+          role="status"
+        >
           {status}
         </span>
       ) : null}
@@ -30,29 +40,33 @@ const CopyProjectLinkButton = ({href}: {href: string}) => {
   );
 };
 
-export function ProjectGridRowDetails({row, scope, loadMissingDetails = false}: ProjectGridRowDetailsProps) {
+export function ProjectGridRowDetails({row, scope, loadMissingDetails = false, announce = true}: ProjectGridRowDetailsProps) {
   const href = getProjectGridRowHref(row, scope);
   const {details, loading, error, loaded, retry} = useProjectGridDetails(row, loadMissingDetails);
 
   return (
     <>
       {loading ? (
-        <p className="project-grid-detail-state" role="status">
-          Loading project details...
+        <p className="project-grid-detail-state" role={announce ? 'status' : undefined}>
+          <LoadingIndicator label="Loading project details…" />
         </p>
       ) : null}
       {error ? (
-        <p className="project-grid-detail-state itg-error" role="alert">
-          Unable to load project details.{' '}
-          <button type="button" className="itg-btn itg-btn-text" onClick={retry}>
-            Retry
+        // Try Again is an outline button: the row's failure does not outrank the page's own actions.
+        <div className="project-grid-detail-error">
+          <p className="itg-error" role={announce ? 'alert' : undefined}>
+            Unable to load project details.
+          </p>
+          <button type="button" className="itg-btn itg-btn-outline" onClick={retry}>
+            Try Again{' '}
+            <span className="sr-only">{`for ${row.project_title}`}</span>
           </button>
-        </p>
+        </div>
       ) : null}
       {details.abstract ? <p className="project-grid-detail-abstract">{details.abstract}</p> : null}
       {details.student_names ? (
         <p className="project-grid-detail-members">
-          <strong>Team members:</strong> {details.student_names}
+          <strong>Team members:</strong> <span>{details.student_names}</span>
         </p>
       ) : null}
       {loaded && !details.abstract && !details.student_names ? (
@@ -60,10 +74,12 @@ export function ProjectGridRowDetails({row, scope, loadMissingDetails = false}: 
       ) : null}
       {href ? (
         <div className="project-grid-detail-links">
+          {/* Named after the project, so a list of the page's links tells them apart. */}
           <ProjectPageLink className="project-grid-individual-link" href={href} scope={scope}>
-            Open the project page
+            Open the Project Page{' '}
+            <span className="sr-only">{`for ${row.project_title}`}</span>
           </ProjectPageLink>
-          {scope === 'past' ? <CopyProjectLinkButton href={href} /> : null}
+          {scope === 'past' ? <CopyProjectLinkButton href={href} title={row.project_title} /> : null}
         </div>
       ) : null}
     </>

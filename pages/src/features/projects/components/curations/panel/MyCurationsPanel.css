@@ -18,17 +18,20 @@
   gap: 0.25rem 1rem;
 }
 
-/* h3 size: a panel above the builder's own h2 sections, not one of them. */
 .past-projects-my-curations-title {
   margin: 0;
-  font-size: var(--itg-font-size-h3);
 }
 
+/* The status line sets no colour of its own: .itg-success or .itg-error gives it one, and they load before this
+   file, so a colour here would win. */
 .past-projects-my-curations-hint,
 .past-projects-my-curations-status {
   margin: 0;
   font-size: var(--itg-font-size-small);
   line-height: 21px;
+}
+
+.past-projects-my-curations-hint {
   color: var(--itg-color-text-secondary);
 }
 
@@ -43,12 +46,12 @@
   border-top: 1px solid var(--itg-color-border);
 }
 
+/* Copy Link in its own right-hand column, centred on its row, whatever the name's length. */
 .past-projects-my-curation {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
+  column-gap: 1rem;
   padding: 0.5rem 0;
   border-bottom: 1px solid var(--itg-color-border);
 }

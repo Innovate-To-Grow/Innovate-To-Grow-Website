@@ -6,7 +6,7 @@ Content management, Django admin operations, and member/mail tooling for the Inn
 
 - [Content Management](content-management.md) — CMS pages, blocks, news, and the content editing workflow
 - [Django Admin](django-admin.md) — Admin theme, customizations, and navigation
-- [Member & Mail Tools](member-and-mail-tools.md) — Member management, email campaigns, and contact tools
+- [Member & Mail Tools](member-and-mail-tools.md) — Member management, email campaigns, the email sender, delivery rates, and contact tools
 - [Operations](operations.md) — Maintenance mode, data management, and operational tasks
 - [CSS contract](css-contract.md) — Classes CMS content may use, and how to change them
 - [Theme: design tokens and custom CSS](theme-and-custom-css.md) — Site-wide CSS changes without a deploy

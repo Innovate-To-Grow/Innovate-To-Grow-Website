@@ -7,7 +7,7 @@ URL organization for the Django backend, defined in `src/config/routing/urls.py`
 | Path | Handler | Description |
 |------|---------|-------------|
 | `/` | `root_index` | Static landing response |
-| `/robots.txt` | `robots_txt` | Search engine directives |
+| `/robots.txt` | `robots_txt` | Search engine directives: the public reads the SPA renders pages from are allowed, everything else is disallowed |
 | `/admin/login/` | `AdminLoginView` | Custom admin login (overrides default) |
 | `/admin/` | Django admin | Unfold-themed admin interface |
 | `/livez/` | `HealthCheckMiddleware` | Liveness probe without DB access (intercepted before URL routing) |
@@ -20,7 +20,7 @@ URL organization for the Django backend, defined in `src/config/routing/urls.py`
 | `/news/` | `apps.cms.news_urls` | News article endpoints |
 | `/analytics/` | `apps.cms.analytics_urls` | Page view tracking |
 | `/event/` | `apps.event.urls` | Event registration and management |
-| `/projects/` | `apps.projects.urls` | Past project archives |
+| `/projects/` | `apps.projects.urls` | Past project archives and the all-projects list |
 | `/assistant/` | `apps.system_intelligence.urls` | Public assistant (tool-free, read-only chat) |
 | `/mail/` | `apps.mail.urls` | Login links, subscription links, and SES delivery events |
 | `/admin-api/` | `apps.cli_admin.urls` | OAuth2 + PKCE generic CRUD for the `i2g-admin` CLI |
@@ -67,10 +67,11 @@ See [CMS & News](cms-and-news.md) for details.
 
 ### Projects (`/projects/`)
 
-6 endpoints. See [Projects](projects.md) for details.
+9 endpoints, plus the `/projects/current/` redirect. See [Projects](projects.md) for details.
 
 - Past project listing (paginated and full)
-- Project detail
+- Every project (`/projects/all/`): the active schedule's current-semester projects, then the archive
+- Project detail (an archive project, or a current-semester `CurrentProject` by its id)
 - Sharing
 - AI search (`/projects/past-ai-search/`, members only)
 
@@ -108,7 +109,9 @@ The frontend router (`pages/src/app/router/router.tsx`) maps browser URLs to Rea
 | `/register` | `/authn/register/`, `/authn/public-key/` |
 | `/news` | `/news/` |
 | `/news/:id` | `/news/{id}/` |
-| `/past-projects` | `/projects/past/` |
+| `/past-projects` | `/projects/archive/`, `/projects/{id}/` |
+| `/past-projects/:shareId` | `/projects/past-shares/{id}/`, except right after All Projects' save, which hands the new curation over in the navigation state; for its owner's Add More Projects, `/projects/all/` |
+| `/all-projects` | `/projects/all/`, `/projects/{id}/` |
 | `/projects/:id` | `/projects/{id}/` |
 | `/event-registration` | `/event/registration-events/`, `/event/registration-options/`, `/event/registrations/` |
 | `/schedule` | `/event/schedule/` |

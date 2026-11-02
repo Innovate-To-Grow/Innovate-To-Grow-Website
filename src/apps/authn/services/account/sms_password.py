@@ -28,7 +28,11 @@ def _password_context(*, member, purpose: str) -> str:
 
 
 def request_sms_password_code(*, member, e164: str, purpose: str) -> str:
-    """Send a durable SMS OTP for a password flow and return its challenge ID."""
+    """Send a durable SMS OTP for a password flow and return its challenge ID.
+
+    ``PhoneVerificationBusy`` (SMS delivery held back, nothing sent) propagates like the other OTP errors: password
+    change answers it with a 503 and Retry-After, password reset keeps its neutral answer.
+    """
     result = start_phone_verification(
         e164,
         purpose=purpose,

@@ -1,0 +1,58 @@
+{# The Gmail API key panel (gmail_api_panel.key_panel): on the config's change page, before its form, on the key pages, #}
+{# and on Mail → Notification Delivery. Public facts only; every link is present only when the viewer may use it. #}
+{% if gmail_key_panel %}
+{% with panel=gmail_key_panel %}
+<section id="gmail-key-panel" class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">Service-account key</h3>
+            <p class="mt-1 text-xs text-base-500 dark:text-base-400">
+                The key is kept in the credential store and is never stored or shown here. The Workspace super admin
+                authorizes the numeric client ID for domain-wide delegation with exactly
+                <code>https://www.googleapis.com/auth/gmail.send</code>.
+            </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            {% if panel.install_url %}
+                <a href="{{ panel.install_url }}" class="inline-flex items-center gap-1 rounded-md bg-primary-600 px-3 py-2 text-sm font-medium text-white hover:bg-primary-700">
+                    <span class="material-symbols-outlined !text-[18px]">upload</span>Install key
+                </a>
+            {% endif %}
+            {% if panel.access_check_url %}
+                <a href="{{ panel.access_check_url }}" class="inline-flex items-center gap-1 rounded-md border border-base-300 px-3 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+                    <span class="material-symbols-outlined !text-[18px]">fact_check</span>Run access check
+                </a>
+            {% endif %}
+            {% if panel.remove_url %}
+                <a href="{{ panel.remove_url }}" class="inline-flex items-center gap-1 rounded-md border border-red-300 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20">
+                    <span class="material-symbols-outlined !text-[18px]">block</span>Remove key (emergency)
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    {% if panel.installed %}
+        <p class="text-sm">
+            Key ID <span class="font-mono">{{ panel.key_id }}</span> &middot;
+            <span class="font-mono">{{ panel.service_account }}</span> &middot;
+            Client ID <span class="font-mono">{{ panel.client_id }}</span> &middot;
+            Project <span class="font-mono">{{ panel.project_id }}</span> &middot;
+            installed {{ panel.installed_at }} ({{ panel.store }}, version <span class="font-mono">{{ panel.version }}</span>)
+        </p>
+        <p class="mt-2 text-sm">
+            Access check:
+            {% if panel.check_current %}passed {{ panel.checked_at }} for this key{% else %}<strong>not passed for this key</strong> &mdash; email cannot switch to the Gmail API until it does{% endif %}
+        </p>
+    {% else %}
+        <p class="text-sm text-base-500 dark:text-base-400">No key is installed.</p>
+    {% endif %}
+    <h4 class="mb-1 mt-4 text-xs font-semibold uppercase text-base-500 dark:text-base-400">Account allow-list</h4>
+    <ul class="text-sm">
+        {% for row in panel.subjects %}
+            <li>{{ row.subject }} &mdash; {% if row.verified %}verified with this key{% else %}not verified with this key{% endif %}</li>
+        {% empty %}
+            <li>Nothing is allowed: the Gmail API refuses every account until the list names one.</li>
+        {% endfor %}
+    </ul>
+</section>
+{% endwith %}
+{% endif %}

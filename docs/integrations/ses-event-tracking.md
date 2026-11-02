@@ -1,8 +1,10 @@
 # AWS SES Event Tracking (Bounces, Complaints, Deliveries)
 
 This integration applies only while AWS SES is the globally selected email
-provider. SMTP submissions do not produce SES events, and the webhook ignores
-recipient records sent through another provider.
+provider. SMTP and Microsoft Graph submissions do not produce SES events, and
+the webhook ignores recipient records sent through another provider. Graph, like
+SMTP, reports no delivery events at all; see
+[Microsoft Graph email](microsoft-graph-email.md#how-it-behaves).
 
 This doc is an operator runbook. It covers the AWS-side configuration required
 for `RecipientLog` to reflect the real delivery outcome of campaign emails.

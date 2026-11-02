@@ -4,13 +4,26 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/assets/images/i2glogo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0" />
-    <title>Innovate To Grow | School of Engineering</title>
+    <title>Innovate to Grow | School of Engineering</title>
+    <!-- Site-wide description and link-preview tags. Link unfurlers (Slack, Teams, social sites) do not
+         run scripts, so a shared link shows these; for search engines the app keeps the description,
+         canonical URL, robots and og:title / og:url in step with each route (src/hooks/documentHead.ts). -->
+    <meta name="description" content="Innovate to Grow is UC Merced School of Engineering's experiential learning program: student teams design systems that solve real-world problems for partner organizations." />
+    <meta property="og:site_name" content="Innovate to Grow" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Innovate to Grow | UC Merced School of Engineering" />
+    <meta property="og:description" content="Innovate to Grow is UC Merced School of Engineering's experiential learning program: student teams design systems that solve real-world problems for partner organizations." />
+    <meta name="twitter:card" content="summary" />
 
-    <!-- Critical CSS: paints an init-loader spinner the moment HTML parses, so
-         first paint is never blank. The spinner uses #root:empty::before and
-         auto-disappears the instant React mounts content into #root. Kept in
-         sync with _INIT_LOADER_CSS in src/cms/views/views.py (server no longer
-         emits this block). -->
+    <!-- Critical CSS: paints an init loader the moment HTML parses, so first
+         paint is never blank. It uses #root:empty::before (the ring) and ::after
+         (the "Loading…" label) and disappears the instant React mounts content
+         into #root. It draws the shared LoadingIndicator
+         (src/components/LoadingIndicator: a 24px ring, 3px border colour with a
+         primary top, 0.8s a turn, beside the label) in the place where the
+         lazy-route fallback shows it next, so nothing moves when that takes
+         over: the page shell's 16px top padding, then centred in the
+         fallback's 50vh box (Container.css .app-layout and .page-loader). -->
     <style>
       /* Cascade layer order (src/styles/layers.css); this statement comes first so it fixes the order. */
       @layer itg.defaults, itg.tokens, itg.base, itg.components, itg.overrides, itg.page;
@@ -25,16 +38,27 @@
         @keyframes itg-init-loader-fade-in { from { opacity: 0; } to { opacity: 1; } }
         #root:empty::before {
           content: "";
-          display: block;
-          width: 44px;
-          height: 44px;
-          margin: 96px auto;
-          border: 3px solid rgba(15, 45, 82, 0.15);
+          flex: none;
+          box-sizing: border-box;
+          width: 24px;
+          height: 24px;
+          margin-top: calc(16px + (50vh - 24px) / 2);
+          border: 3px solid var(--itg-color-border, #dddddd);
           border-top-color: var(--itg-color-primary, #0f2d52);
           border-radius: 50%;
           animation:
-            itg-init-loader-spin 0.9s linear infinite,
+            itg-init-loader-spin 0.8s linear infinite,
             itg-init-loader-fade-in 0.25s ease-out;
+        }
+        /* The label: LoadingIndicator's 0.75rem gap and its secondary 16px / 24px text. */
+        #root:empty::after {
+          content: "Loading\2026";
+          margin-top: calc(16px + (50vh - 24px) / 2);
+          margin-left: 0.75rem;
+          color: var(--itg-color-text-secondary, #555555);
+          font-size: var(--itg-font-size-body, 1rem);
+          line-height: 24px;
+          animation: itg-init-loader-fade-in 0.25s ease-out;
         }
         @media (prefers-reduced-motion: reduce) {
           #root:empty::before {
@@ -42,6 +66,30 @@
             opacity: 0.7;
           }
         }
+        /* Forced colours would paint the whole ring one colour: GrayText with a CanvasText top, as LoadingIndicator. */
+        @media (forced-colors: active) {
+          #root:empty::before {
+            forced-color-adjust: none;
+            border-color: GrayText;
+            border-top-color: CanvasText;
+          }
+        }
+      }
+
+      /* The init loader's ring and label side by side, centred like the fallback's. Unlayered, so it wins over
+         the bundle's own #root rules (a column); it stops matching as soon as React mounts into #root. */
+      #root:empty {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        justify-content: center;
+      }
+      /* The boot page is one screen tall, so it has no scrollbar; the fallback's page (header, 50vh box, footer) is
+         taller and gets one. Where scrollbars take up width (Windows, macOS with a mouse), that would move the
+         centred ring and label half a scrollbar sideways when the fallback takes over, so the boot page keeps the
+         same gutter free until React fills #root. */
+      html:has(#root:empty) {
+        scrollbar-gutter: stable;
       }
 
       /* Block preview iframe: strip all page chrome so only the block content renders. These rules
@@ -57,7 +105,8 @@
       html[data-block-preview] #content,
       html[data-block-preview] #content-wrapper,
       html[data-block-preview] .app-layout { padding: 0; margin: 0; max-width: none; width: auto; }
-      html[data-block-preview] #root:empty::before { display: none; }
+      html[data-block-preview] #root:empty::before,
+      html[data-block-preview] #root:empty::after { display: none; }
       html[data-block-preview] .userway_buttons_wrapper { display: none !important; }
       /* Isolated routes mount no header or footer: their roots take no space,
          whatever the site stylesheets reserve for them. */

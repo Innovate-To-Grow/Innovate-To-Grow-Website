@@ -187,10 +187,13 @@ export function newsList(
   };
 }
 
+// Project ids are UUIDs: the project page treats anything else in its URL as no project at all.
+const E2E_PROJECT_IDS = ['e2e00000-0000-4000-8000-000000000001', 'e2e00000-0000-4000-8000-000000000002'] as const;
+
 export function pastProjectRows(): ProjectTableRow[] {
   return [
     {
-      id: 'project-e2e-1',
+      id: E2E_PROJECT_IDS[0],
       semester_label: '2025 Fall',
       class_code: 'CSE 120',
       team_number: '7',
@@ -205,7 +208,7 @@ export function pastProjectRows(): ProjectTableRow[] {
       presentation_order: 3,
     },
     {
-      id: 'project-e2e-2',
+      id: E2E_PROJECT_IDS[1],
       semester_label: '2025 Spring',
       class_code: 'ME 140',
       team_number: '2',
@@ -222,9 +225,55 @@ export function pastProjectRows(): ProjectTableRow[] {
   ];
 }
 
+// CurrentProject ids: /projects/all/ lists the active schedule's teams by them, and /projects/<id>/ answers for them.
+const E2E_CURRENT_PROJECT_IDS = ['e2e00000-0000-4000-8000-0000000000c1', 'e2e00000-0000-4000-8000-0000000000c2'] as const;
+
+/**
+ * What `/projects/all/` lists (mockAllProjects), in its order: the active schedule's teams first, in team order (one
+ * the schedule only lists, with the sheet's placeholder team name and abstract as stored, then a presenting one),
+ * then the archive (pastProjectRows).
+ */
+export function allProjectRows(): ProjectTableRow[] {
+  return [
+    {
+      id: E2E_CURRENT_PROJECT_IDS[0],
+      semester_label: '2026-2 Fall',
+      class_code: 'CAP',
+      team_number: '102',
+      team_name: 'CAP-102',
+      project_title: 'Packing Line Sorter',
+      organization: 'Valley Foods',
+      industry: 'Food Processing',
+      abstract: 'Abstract-102',
+      student_names: 'Mary Jackson',
+      is_presenting: false,
+      track: null,
+      presentation_order: null,
+      catalog: 'current',
+    },
+    {
+      id: E2E_CURRENT_PROJECT_IDS[1],
+      semester_label: '2026-2 Fall',
+      class_code: 'CAP',
+      team_number: '201',
+      team_name: 'Team Kestrel',
+      project_title: 'Orchard Soil Moisture Network',
+      organization: 'UC Merced Farm',
+      industry: 'Agriculture',
+      abstract: 'Wireless probes that report soil moisture across the campus almond groves.',
+      student_names: 'Katherine Johnson, Dorothy Vaughan',
+      is_presenting: true,
+      track: 1,
+      presentation_order: 1,
+      catalog: 'current',
+    },
+    ...pastProjectRows(),
+  ];
+}
+
 export function projectDetail(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
   return {
-    id: 'project-e2e-1',
+    id: E2E_PROJECT_IDS[0],
     project_title: 'Adaptive Irrigation Dashboard',
     team_name: 'Team Helix',
     team_number: '7',
