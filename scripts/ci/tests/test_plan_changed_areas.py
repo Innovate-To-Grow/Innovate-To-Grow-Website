@@ -32,6 +32,7 @@ class PlanChangedAreasTests(unittest.TestCase):
                 "aws/task-definition.json",
                 "scripts/ci/validate_tool_versions.py",
                 ".github/workflows/ci.yml",
+                ".github/actions/setup-frontend/action.yml",
                 ".github/actionlint.yaml",
                 ".github/codeql/codeql-config.yml",
                 ".gitleaksignore",

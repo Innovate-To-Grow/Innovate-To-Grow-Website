@@ -19,8 +19,8 @@ pre-push hooks run the same commands.
 Run both Python checks from the repository root with the dev virtualenv active: complexity comes from
 `ruff` on `PATH` (the version pinned in `src/requirements/local.txt`). Where they run:
 
-- **CI:** `lint.yml` (Python Linting job) runs both Python checks after Ruff. `ci.yml` (Frontend ESLint
-  job) runs `npm run lint` and then `npm run check:structure`. The checkers' own unit tests
+- **CI:** `lint.yml` (Python Linting job) runs both Python checks after Ruff. `ci.yml` (Frontend Lint,
+  Build and Static Checks job) runs `npm run lint` and then `npm run check:structure`. The checkers' own unit tests
   (`scripts/ci/tests/test_check_python_*.py`) run in the Preflight job with the other CI script tests.
 - **Pre-push hooks** (`.pre-commit-config.yaml`): `frontend-eslint`, `frontend-structure`, `python-quality`,
   `python-dependencies`.

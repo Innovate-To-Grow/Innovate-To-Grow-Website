@@ -64,23 +64,16 @@ jobs:
     services:
       postgres:
         image: postgres:16
-  cli-admin-coverage:
-    services:
-      postgres:
-        image: postgres:16
   frontend-chromium-smoke:
     container:
       image: "<image>"
-  python-security-audit:
+  python-dependency-audit:
     steps:
       - run: pip install "pip-audit[cyclonedx]==2.7.3"
       - run: pip-audit --ignore-vuln GHSA-aaaa-bbbb-cccc --ignore-vuln PYSEC-2026-1
   backend-docker-smoke:
     steps:
       - run: postgres_image="postgres:16"
-  python-supply-chain-report:
-    steps:
-      - run: pip install "pip-audit[cyclonedx]==2.7.3"
   e2e:
     container:
       image: "<image>"
@@ -88,8 +81,9 @@ jobs:
       postgres:
         image: postgres:16
     steps:
-      - with:
-          key: backend-venv-${{ runner.environment }}-pw-v1.64.0-noble-${{ runner.os }}
+      - uses: ./.github/actions/setup-backend-venv
+        with:
+          cache-label: pw-v1.64.0-noble
 """,
     # The same advisories in another order, behind a comment that mentions the flag in prose.
     DEPENDENCY_AUDIT: """\
@@ -98,7 +92,7 @@ env:
   NODE_VERSION: "22.22.2"
 steps:
   - run: pip install "pip-audit[cyclonedx]==2.7.3"
-  # Keep the --ignore-vuln list in sync with the python-security-audit job in ci.yml.
+  # Keep the --ignore-vuln list in sync with the python-dependency-audit job in ci.yml.
   - run: pip-audit --ignore-vuln PYSEC-2026-1 --ignore-vuln GHSA-aaaa-bbbb-cccc
 """,
     ".github/workflows/deploy-backend.yml": 'steps:\n  - with:\n      python-version: "3.14"\n',
@@ -271,9 +265,9 @@ class CollectPinsTests(unittest.TestCase):
 
     def test_fewer_matches_than_the_minimum_is_a_pin_error(self) -> None:
         cases = (
-            (CI, "image: postgres:16", "image: postgres:latest", "postgres", "found 4"),
+            (CI, "image: postgres:16", "image: postgres:latest", "postgres", "found 3"),
             (CI, f'"{IMAGE}"', '"mcr.microsoft.com/playwright:v1.64.0-noble"', "sha256", "found 1"),
-            (CI, '"pip-audit[cyclonedx]==2.7.3"', "pip-audit", "pip-audit", "found 1"),
+            (CI, '"pip-audit[cyclonedx]==2.7.3"', "pip-audit", "pip-audit", "found 0"),
             (BAKE_IMAGE, "$RUNNER_TOOL_CACHE/node/22.22.2/x64/bin/", "$NODE_HOME/bin/", "node", "found 7"),
         )
         for path, old, new, looked_for, found in cases:

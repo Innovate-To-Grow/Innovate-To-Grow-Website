@@ -35,7 +35,7 @@ updates:
           - patch
     ignore:
       # 0.92+ requires Python >= 3.12. The runtime image is 3.14, but the
-      # pip-audit jobs (ci.yml python-security-audit, dependency-audit.yml)
+      # pip-audit jobs (ci.yml python-dependency-audit, dependency-audit.yml)
       # still resolve src/requirements.txt on PYTHON_VERSION 3.11, and
       # src/requirements/base.txt holds the current minor until the upgrade is
       # reviewed. Keep in sync with that pin.
@@ -55,7 +55,9 @@ updates:
     directory: /pages
     schedule:
       interval: weekly
-      day: monday
+      # A day after pip: each update PR runs the full CI suite, and the two
+      # ecosystems landing together queued ten full runs on the AWS fleet.
+      day: tuesday
       time: "09:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 5

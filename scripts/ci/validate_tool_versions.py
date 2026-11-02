@@ -179,12 +179,12 @@ PIN_GROUPS: dict[str, tuple[Source, ...]] = {
         Regex(BAKE_IMAGE, BAKED_TOOLING_PYTHON),
     ),
     "postgres": (
-        Regex(CI, POSTGRES_IMAGE, minimum=5),
+        Regex(CI, POSTGRES_IMAGE, minimum=4),
         Regex(RUNNER_SMOKE, POSTGRES_IMAGE),
         Regex(BAKE_IMAGE, POSTGRES_IMAGE),
     ),
-    "pip-audit": (Regex(CI, PIP_AUDIT, minimum=2), Regex(DEPENDENCY_AUDIT, PIP_AUDIT)),
-    # dependency-audit.yml re-runs ci.yml's python-security-audit weekly with the same accepted advisories.
+    "pip-audit": (Regex(CI, PIP_AUDIT), Regex(DEPENDENCY_AUDIT, PIP_AUDIT)),
+    # dependency-audit.yml re-runs ci.yml's python-dependency-audit weekly with the same accepted advisories.
     "pip-audit-ignores": (Regex(CI, IGNORE_VULN, as_set=True), Regex(DEPENDENCY_AUDIT, IGNORE_VULN, as_set=True)),
 }
 

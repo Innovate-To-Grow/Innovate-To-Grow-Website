@@ -1,0 +1,24 @@
+name: Set up frontend
+description: >-
+  Install Node with the npm cache and the locked pages/ dependencies. Run
+  actions/checkout first.
+
+inputs:
+  node-version:
+    description: Node.js version (NODE_VERSION).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v7
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        cache-dependency-path: pages/package-lock.json
+
+    - name: Install frontend dependencies
+      shell: bash
+      working-directory: pages
+      run: npm ci

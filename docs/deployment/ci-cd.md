@@ -2,9 +2,10 @@
 
 GitHub Actions pipelines for linting, testing, building, and deploying.
 
-Compute-intensive jobs can use the repository's [AWS ephemeral runner fleet](../../aws/ci-runners/README.md).
-The fleet scales from zero to 32 machines; `AWS_RUNNERS_ENABLED` controls routing,
-and lightweight planning and result jobs stay on GitHub to avoid cold-start delays.
+CPU-bound jobs use the repository's [AWS ephemeral runner fleet](../../aws/ci-runners/README.md):
+the Django and E2E matrices, frontend unit coverage, and the backend Docker build.
+The fleet scales from zero to 32 machines and `AWS_RUNNERS_ENABLED` controls routing.
+Every job shorter than an AWS cold boot runs on a GitHub-hosted runner instead.
 Pull requests from forks never use the fleet: fleet-routed jobs fall back to GitHub-hosted
 `ubuntu-24.04` runners, and jobs pinned to `ubuntu-latest` run there as for any pull request.
 A `merge_group` run is routed like a push.
@@ -32,7 +33,8 @@ A `merge_group` run is routed like a push.
   the diff touches any path in `on.push.paths` or anything else under `.github/`
   (the planner errs toward running). Otherwise it skips every gated job and only
   the ungated checks run: Preflight, `Secrets Scan`, `Frontend npm Audit`, and
-  `Python Security Audit`, so a docs-only pull request finishes in a few minutes.
+  `Python Dependency Audit and SBOM`, so a docs-only pull request finishes in a
+  few minutes.
   The two audits compare the lockfiles with live advisory databases, so a newly
   published advisory can still turn such a run red.
 - **`merge_group`** is the merge queue's group commit, the tree that lands on
@@ -94,10 +96,12 @@ its `merge_group` run.
 
 **A pull request runs the same job set as the push to main that follows it.**
 `scripts/ci/plan_changed_areas.py` returns the full suite for any pull request
-or merge group touching a path listed in `on.push.paths`;
-`scripts/ci/plan_e2e_tests.py` and `scripts/ci/plan_django_tests.py` return the
-full device matrix and all eight app suites for every event. A green pull
-request check therefore implies a green main run for the same tree.
+or merge group touching a path listed in `on.push.paths`, and the Django and
+E2E matrices are static: all eight app suites and all 10 Playwright projects on
+every event. `MatrixParityTests` in `scripts/ci/tests/test_ci_workflow_invariants.py`
+keeps those lists equal to `src/apps/*`, `scripts/ci/backend_coverage_floors.json`,
+and `pages/playwright.config.ts`. A green pull request check therefore implies a
+green main run for the same tree.
 
 Only these jobs are push-only, because they publish deploy artifacts and need
 repository credentials. While deployments are paused they are also gated off
@@ -106,7 +110,7 @@ repository credentials. While deployments are paused they are also gated off
 | Job | Pre-merge proxy |
 |-----|-----------------|
 | `Backend Image Publish` (pushes `itg-backend:<sha>` to ECR) | `Backend Docker Build and Scan` builds the same `context: src` on every pull request |
-| `Frontend Production Build Artifact` | `Frontend CI Build Artifact` |
+| `Frontend Production Build Artifact` | `Frontend Lint, Build and Static Checks` builds the same frontend on every pull request |
 
 CI used to scope pull request jobs by diff. PR #433 was backend-only, so the
 whole E2E matrix was skipped on the PR and ran for the first time after the
