@@ -149,7 +149,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
 
     const raw = localStorage.getItem(DRAFT_STORAGE_KEY) as string;
