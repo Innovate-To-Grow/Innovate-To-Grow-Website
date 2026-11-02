@@ -338,6 +338,12 @@ Rollback, emergency removal, access checks and approval-evidence fields remain s
 - The **From Email** and the sending mailbox must both be in the scope with send permission; otherwise
   saving stops under **Provider** with "An active Microsoft Graph configuration whose mailbox scope lets
   the sender mailbox and the From address send is required before activation."
+- **Use for email** handles a **From Email** outside the scope (for example `i2g@g.ucmerced.edu`, which AWS
+  SES sends from): when the **Sender Mailbox** is an email address in the scope with send permission, the
+  switch also changes **From Email** to it. The card says so before the switch, the confirmation names the new
+  address, the **Send test** on that card already sends from it, and the admin history records
+  "Changed Provider and From Email." Switching back to AWS SES or SMTP keeps the new **From Email**, so set it
+  back under **Edit Notification Delivery** if that provider has to send from the old address.
 - Choosing AWS SES or SMTP later hides the Graph panel and keeps the saved Graph settings. The AWS panel on
   the same page is always saved and is still used for SMS.
 - An active configuration cannot be deleted. An inactive one with recorded access checks cannot be deleted

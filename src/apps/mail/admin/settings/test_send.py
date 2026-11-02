@@ -79,7 +79,7 @@ def _test_email(request, provider, settings_url):
         "input_label": "Recipient email address",
         "input_type": "email",
         "input_placeholder": "admin@example.com",
-        "input_help": f"A test email will be sent from {config.source_address} through {label}.",
+        "input_help": f"A test email will be sent from {as_provider(config, provider).source_address} through {label}.",
         "submit_label": f"Send Test Email via {label}",
         "cancel_url": settings_url,
         "send_problem": problem,

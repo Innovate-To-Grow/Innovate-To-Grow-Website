@@ -23,6 +23,7 @@
                 </div>
                 {% if card.detail %}<p class="mt-1 break-all text-xs text-base-500 dark:text-base-400">{{ card.detail }}</p>{% endif %}
                 {% if card.problem %}<p class="mt-2 text-xs text-orange-700 dark:text-orange-400" data-method-problem>{{ card.problem }}</p>{% endif %}
+                {% if card.switch_from_email and not card.problem %}<p class="mt-2 text-xs text-base-600 dark:text-base-300" data-method-from>Switching also changes the From address to {{ card.switch_from_email }} (now {{ config.from_email }}): {{ card.label }} can only send from a mailbox in its scope.</p>{% endif %}
                 <div class="mt-auto flex flex-wrap gap-2 pt-4">
                     {% if card.problem %}
                         <span class="inline-flex cursor-not-allowed items-center rounded-md border border-base-200 px-3 py-1.5 text-xs font-medium text-base-400 dark:border-base-700" title="{{ card.problem }}">Send test</span>
@@ -34,7 +35,7 @@
                     {% elif card.problem %}
                         <span class="inline-flex cursor-not-allowed items-center rounded-md border border-base-200 px-3 py-1.5 text-xs font-medium text-base-400 dark:border-base-700" title="{{ card.problem }}">Use for email</span>
                     {% else %}
-                        <form method="post" action="{{ card.use_url }}" data-confirm="Send all site email through {{ card.label }} from now on?">
+                        <form method="post" action="{{ card.use_url }}" data-confirm="Send all site email through {{ card.label }}{% if card.switch_from_email %} from {{ card.switch_from_email }}{% endif %} from now on?">
                             {% csrf_token %}
                             <button type="submit" class="inline-flex items-center rounded-md bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700">Use for email</button>
                         </form>
