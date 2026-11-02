@@ -55,6 +55,10 @@ REST_FRAMEWORK = {
         "public_assistant": "6/minute",
     },
 }
+# A 429 (from the request limiter or a throttle) says when to retry in Retry-After. The SPA calls the API
+# cross-origin, so browsers hide every response header the API does not expose.
+CORS_EXPOSE_HEADERS = ["Retry-After"]
+
 # Deliberately absent: per-IP rates for password login, email-link exchange, verification-code request/verify
 # and ALTCHA challenge/status. Most users share one campus IP, so such a bucket throttles everyone at once (and
 # is bypassable through X-Forwarded-For). Those flows are bounded per token / destination / challenge and, for

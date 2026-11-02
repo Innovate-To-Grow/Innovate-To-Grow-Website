@@ -47,7 +47,9 @@ INSTALLED_APPS = [
 # ---------------------------------------------------------------------------
 # Middleware
 # ---------------------------------------------------------------------------
-# GZip and CORS run early; health-check shortcircuits before auth.
+# GZip and CORS run early; health-check shortcircuits before auth. The request limiter runs after CORS (so a 429
+# carries CORS headers), after the health checks (ALB probes are never limited) and after authentication (it reads
+# the signed-in admin user); the ``core`` system checks refuse any other order.
 MIDDLEWARE = [
     "django.middleware.gzip.GZipMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -57,6 +59,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.core.middleware.RequestRateLimitMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

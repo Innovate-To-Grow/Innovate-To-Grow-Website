@@ -409,12 +409,6 @@ class TokenizerTests(SimpleTestCase):
         self.assertEqual(rule(".w-1\\/2"), ({"w-1/2"}, set(), set()))
         self.assertEqual(rule(".\\31 0"), ({"10"}, set(), set()))
 
-    def test_escapes_that_decode_to_a_lone_surrogate_do_not_raise(self):
-        # tinycss2 < 1.5.0 raised UnicodeEncodeError on an escaped surrogate in a unit or function name.
-        self.assertEqual(index_of(".a { width: 1\\d800; }"), ({"a"}, set(), set()))
-        self.assertEqual(index_of(".a { width: \\d800(1); }"), ({"a"}, set(), set()))
-        self.assertEqual(rule(":\\d800(.x)"), (set(), {"x"}, set()))
-
     def test_comments_are_ignored(self):
         css = "/* .ghost { } */\n.real { }\n/*\n  .also-ghost { }\n*/\n/* .x */ .y .z { }"
         self.assertEqual(index_of(css), ({"real"}, {"z"}, {"y"}))

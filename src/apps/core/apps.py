@@ -15,8 +15,10 @@ class CoreConfig(AppConfig):
         from .admin.legacy_view import get_legacy_view_admin_urls
         from .services.delivery_rates import Family, register_family
         from .services.delivery_rates import receivers as delivery_rate_receivers
+        from .services.request_limits import receivers as request_limit_receivers
 
         delivery_rate_receivers.connect()
+        request_limit_receivers.connect()
         # The worker's claim-time gates and the inline batch sizes find each family's active channel through these.
         register_family(Family.EMAIL, "apps.core.services.email.registry.active_rate_target")
         register_family(Family.SMS, "apps.core.services.aws.sms_send.active_rate_target")

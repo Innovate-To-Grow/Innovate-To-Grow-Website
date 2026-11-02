@@ -89,6 +89,11 @@ if "test" in sys.argv:
     SEND_VERIFICATION_COST = 10
     SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = 0
 
+# The request limiter is on for the dev server (as in production) and off for local test runs, like the test
+# settings; dedicated tests switch it on with override_settings.
+if "test" in sys.argv:
+    REQUEST_RATE_LIMITS_ENABLED = False
+
 # Local test runs keep private keys in memory, never in the developer's src/data/ key files.
 if "test" in sys.argv:
     CREDENTIAL_STORE_BACKEND = "memory"

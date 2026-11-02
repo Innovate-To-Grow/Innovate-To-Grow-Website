@@ -5,7 +5,7 @@ so a production task whose key store is not Secrets Manager stops before it serv
 """
 
 from django.conf import settings
-from django.core.checks import Error, Tags, register
+from django.core.checks import Error, Tags, Warning, register
 
 from .services.credential_store import BACKENDS, SECRETS_MANAGER, valid_secret_id, valid_staged_label
 from .utils.security import is_graph_permission
@@ -103,3 +103,77 @@ def _graph_errors() -> list[Error]:
 @register(Tags.security)
 def check_microsoft_graph(app_configs=None, **kwargs):
     return _graph_errors()
+
+
+REQUEST_LIMIT_MIDDLEWARE = "apps.core.middleware.RequestRateLimitMiddleware"
+# The request limiter must come after each of these (see apps/core/middleware/request_limits.py).
+REQUEST_LIMIT_PREDECESSORS = (
+    "corsheaders.middleware.CorsMiddleware",
+    "apps.core.middleware.HealthCheckMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+)
+
+
+def _middleware_problems(enabled: bool) -> list:
+    middleware = list(getattr(settings, "MIDDLEWARE", []))
+    if REQUEST_LIMIT_MIDDLEWARE not in middleware:
+        if not enabled:
+            return []
+        return [
+            Warning(
+                "REQUEST_RATE_LIMITS_ENABLED is on but the request limiter is not in MIDDLEWARE.",
+                hint=f"Add {REQUEST_LIMIT_MIDDLEWARE!r} after AuthenticationMiddleware.",
+                id="core.W001",
+            )
+        ]
+    position = middleware.index(REQUEST_LIMIT_MIDDLEWARE)
+    late = [name for name in REQUEST_LIMIT_PREDECESSORS if name in middleware and middleware.index(name) > position]
+    if not late:
+        return []
+    return [
+        Error(
+            f"The request limiter must come after {', '.join(late)} in MIDDLEWARE.",
+            hint="Before CORS its 429 has no CORS headers, before the health checks it would limit the ALB "
+            "probes, and before authentication it cannot see the admin user.",
+            id="core.E008",
+        )
+    ]
+
+
+def _registration_problems() -> list:
+    from .services.request_limits.scopes import registered
+
+    known = set(settings.REQUEST_RATE_LIMITS["scopes"])
+    scopes, _exemptions = registered()
+    unknown = sorted(
+        target
+        for target, value in scopes.items()
+        for scope in (value.values() if isinstance(value, dict) else [value])
+        if scope not in known
+    )
+    if not unknown:
+        return []
+    return [
+        Error(
+            f"register_scope names a scope REQUEST_RATE_LIMITS does not define, for: {', '.join(unknown)}.",
+            id="core.E009",
+        )
+    ]
+
+
+@register()
+def check_request_limits(app_configs=None, **kwargs):
+    enabled = getattr(settings, "REQUEST_RATE_LIMITS_ENABLED", None)
+    if not isinstance(enabled, bool):
+        return [Error("REQUEST_RATE_LIMITS_ENABLED must be True or False.", id="core.E010")]
+    problems = _middleware_problems(enabled) + _registration_problems()
+    exposed = {str(name).lower() for name in getattr(settings, "CORS_EXPOSE_HEADERS", ())}
+    if enabled and "retry-after" not in exposed:
+        problems.append(
+            Warning(
+                "CORS_EXPOSE_HEADERS does not include Retry-After.",
+                hint="The SPA calls the API cross-origin and cannot read when to retry after a 429.",
+                id="core.W002",
+            )
+        )
+    return problems

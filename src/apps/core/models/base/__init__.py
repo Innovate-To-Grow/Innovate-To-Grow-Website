@@ -1,5 +1,6 @@
 from .control import ProjectControlModel
 from .delivery_rates import DeliveryRatePolicy
+from .request_limits import RequestRateLimitPolicy
 from .service_credentials import (
     AWSCredentialConfig,
     EmailServiceConfig,
@@ -32,6 +33,7 @@ __all__ = [
     "SendVerificationConfig",
     "SMTPProviderConfig",
     "ProjectControlModel",
+    "RequestRateLimitPolicy",
     "SiteMaintenanceControl",
     "TimeStampedModel",
 ]
