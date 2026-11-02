@@ -206,11 +206,9 @@ Measured with the counting rules above at the start of the refactor (base `378df
 | directory-files | 4 / 2 | 0 / 0 |
 | app boundary violations / import cycles | 59 / 5 | 0 / 0 unlisted (5 exceptions, no cycles) |
 
-Every Python finding left in the "After" column is in in-progress status-page work that was untracked
-when these checks landed (`scripts/ci/validate_status_infrastructure.py`, `src/apps/core/services/status/`)
-and is not part of the committed tree. `python_quality.toml` has no exception for it, so the hard
-`function-lines` finding (`validate_observability_and_iam`, 121 lines) must be split, or given an
-exception, in the change that commits that work.
+Every Python finding left in the "After" column was in status-page work that was never committed
+(`scripts/ci/validate_status_infrastructure.py`, `src/apps/core/services/status/`) and has since been
+dropped. The committed tree has no hard Python finding; only advisory `directory-files` counts remain.
 
 | TypeScript (advisory unless noted) | Before | After |
 |---|---|---|

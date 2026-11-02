@@ -1,5 +1,9 @@
 # Production Deployment Approval
 
+> **Paused:** `Deploy Production` has been disabled since 2026-11-01. See
+> [CI/CD: Deployment pause](ci-cd.md#deployment-pause-since-2026-11-01) for what CI
+> still builds and how to resume.
+
 A successful `CI` run on `main` starts the `Deploy Production` workflow. An
 operator can also start that workflow manually on `main` to redeploy its
 current commit, provided that exact commit has a successful main CI image. Both
@@ -238,14 +242,10 @@ paces every email, SMS and inbox session. Before or with the release:
 
 ### GitHub feature prerequisites
 
-Required reviewers on private repositories depend on the GitHub plan. Free, Pro,
-and Team plans offer this protection only for public repositories; check the
+The repository is public, so environment required reviewers, rulesets, the merge
+queue, and code-scanning uploads (CodeQL, Semgrep, Trivy) are all available on the
+organization's Free plan. If the repository becomes private again, required
+reviewers need a paid plan and code-scanning uploads need GitHub Code Security; check the
 [current environment requirements](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
-before relying on a release pause. Verify an actual pending review in a test
-release, including after repository visibility or plan changes.
-
-CodeQL result uploads for private repositories also require GitHub Code Security
-to be enabled. An Advanced Security/Code Security feature error is an account or
-repository configuration issue, not a failed application test. Resolve the
-[feature prerequisite](https://docs.github.com/en/code-security/reference/code-scanning/troubleshoot-analysis-errors/private-repository-enablement)
-before claiming code-scanning uploads work.
+and the [code-scanning prerequisite](https://docs.github.com/en/code-security/reference/code-scanning/troubleshoot-analysis-errors/private-repository-enablement).
+After any visibility or plan change, verify an actual pending review in a test release.

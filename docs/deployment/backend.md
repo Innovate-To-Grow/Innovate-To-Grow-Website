@@ -8,7 +8,7 @@ Application Load Balancer.
 
 **Dockerfile:** `src/Dockerfile`
 
-- Base image: `python:3.11-slim`
+- Base image: `python:3.14-slim-trixie` (separate builder and production stages)
 - System dependencies: `libpq-dev` (PostgreSQL client library)
 - Python dependencies: installed from `src/requirements.txt`
 - Exposed port: 8000
@@ -100,8 +100,8 @@ The deploy workflow (`deploy-backend.yml`) loads settings and secret ARN referen
 
 Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 
-1. **Build**: Docker image built from `src/Dockerfile`
-2. **Push**: Image pushed to AWS ECR
+1. **Build**: CI builds, tests, and scans the image from `src/Dockerfile` (`Backend Docker Build and Scan`)
+2. **Publish**: CI pushes it to AWS ECR as `itg-backend:<sha>` (`Backend Image Publish`); the deploy workflow pulls that tag by digest and never rebuilds
 3. **Task definition**: Template rendered with environment variables and secret ARNs; the same values are copied to the worker
 4. **Validation**: Deployment fails if the worker can run the Web entrypoint, exposes a port, loses shared configuration, or exceeds the task resource envelope
 5. **Deploy**: ECS task definition updated via `aws-actions/amazon-ecs-deploy-task-definition@v2`
@@ -112,8 +112,9 @@ Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 
 ### Trigger conditions
 
-- Automatically on successful CI completion (main branch)
-- Manually via workflow dispatch
+- Called by `Deploy Production` after successful CI completion on `main`, or by its manual run on `main`
+- `Deploy Production` is disabled since 2026-11-01; see
+  [CI/CD: Deployment pause](ci-cd.md#deployment-pause-since-2026-11-01)
 
 ## Uvicorn configuration
 
@@ -200,7 +201,7 @@ Served from S3 via `django-storages`:
 | `/static/` | Collected static files (admin CSS, CKEditor assets) |
 | `/media/` | User uploads (CMS assets, profile images) |
 
-`collectstatic` is typically run during container startup or as a deploy step.
+`src/Dockerfile` collects the static files into the image at build time, and `deploy-backend.yml` copies them out of the release image and syncs them to S3 before the rollout.
 
 ## Related pages
 

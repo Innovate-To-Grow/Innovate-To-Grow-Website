@@ -28,7 +28,7 @@ Thanks for your interest in helping build the UC Merced Innovate to Grow (ITG) w
 
 | Tool | Recommended Version | Notes |
 | --- | --- | --- |
-| Python | 3.11 | CI, the Docker image, and Ruff all target 3.11 (Django 5.2). |
+| Python | 3.14 | The Docker image and the Django test jobs use 3.14; Ruff targets 3.11 and the lint, audit, and CLI jobs run on 3.11 (Django 5.2). |
 | Node.js | 22.22.2 | Other supported releases are listed in `pages/package.json`. |
 | npm | 10+ | Ships with Node LTS installers. |
 | SQLite | 3.35+ | Used for local dev database. |
@@ -87,9 +87,13 @@ Follow these steps after cloning the repository:
 This project uses automated code style checks in CI/CD. All pull requests must pass these checks before merging.
 
 ### Automated CI/CD Checks
-On every push and pull request, GitHub Actions runs:
-- **Python (Backend):** Ruff linter and formatter check
+On every pull request, GitHub Actions runs:
+- **Python (Backend):** Ruff linter and formatter check, Bandit, and code-structure checks
 - **TypeScript (Frontend):** ESLint and TypeScript type check
+- **Tests:** Django on PostgreSQL, Vitest, the CLI suite, and the Playwright E2E matrix
+- **Security:** gitleaks, Semgrep, `npm audit`, and `pip-audit`
+
+The required `CI Result` check summarizes all of them; see [CI/CD](docs/deployment/ci-cd.md).
 
 ### Local Linting Setup
 
