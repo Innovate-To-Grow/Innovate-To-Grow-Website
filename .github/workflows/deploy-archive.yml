@@ -51,7 +51,7 @@ jobs:
           python-version: "3.14"
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: arn:aws:iam::394167325273:role/itg-prod-archive-deployer
           allowed-account-ids: "394167325273"
@@ -84,7 +84,7 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
 
       - name: Build archive image
         run: docker build -t "itg-archive-ci:${{ inputs.deploy_sha }}" archive/page/
@@ -154,7 +154,7 @@ jobs:
 
       - name: Deploy to ECS
         id: deploy-ecs
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        uses: aws-actions/amazon-ecs-deploy-task-definition@a00d4d57ac0de1a99b39fe469f3d898d38717c2b # v2.6.4
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
           service: ${{ env.ECS_SERVICE }}

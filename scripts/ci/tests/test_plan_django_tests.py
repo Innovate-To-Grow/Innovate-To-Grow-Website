@@ -1,7 +1,10 @@
 import json
 import unittest
+from pathlib import Path
 
 from scripts.ci.plan_django_tests import ALL_APPS, plan_django_tests
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 
 class PlanDjangoTests(unittest.TestCase):
@@ -37,6 +40,16 @@ class PlanDjangoTests(unittest.TestCase):
 
         self.assertEqual(json.loads(outputs["apps"]), ALL_APPS)
         self.assertEqual(outputs["cli_admin_coverage"], "true")
+
+    def test_every_django_app_has_a_matrix_leg_and_a_coverage_floor(self):
+        # A new src/apps/<app>/ would otherwise get no Django test leg and no
+        # coverage floor, and nothing else in CI would notice.
+        apps_on_disk = sorted(path.parent.name for path in (REPOSITORY_ROOT / "src" / "apps").glob("*/apps.py"))
+        floors_path = REPOSITORY_ROOT / "scripts" / "ci" / "backend_coverage_floors.json"
+        floors = json.loads(floors_path.read_text(encoding="utf-8"))["apps"]
+
+        self.assertEqual(sorted(ALL_APPS), apps_on_disk)
+        self.assertEqual(sorted(floors), apps_on_disk)
 
 
 if __name__ == "__main__":
