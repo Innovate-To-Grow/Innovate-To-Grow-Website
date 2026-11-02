@@ -54,8 +54,10 @@ The mail app (`src/apps/mail/`) provides email campaign functionality through Dj
 
 ### Choose the email sender
 
-**Mail → Notification Delivery** starts with **Email sending method**: one card for each of **AWS SES**,
-**SMTP**, **Microsoft Graph** and **Gmail API**. Each card says whether that method is **In use**, **Ready**
+**Broadcast Delivery → Email Sending Method** in the sidebar (`/admin/mail/sending-method/`) sets
+which API sends all site email. It names the method in use and has one card for each of **AWS SES**,
+**SMTP**, **Microsoft Graph** and **Gmail API**. Notification Delivery shows the method in use with a link
+here, and the campaign send confirmation links here too. Each card says whether that method is **In use**, **Ready**
 or **Not ready** (and why: the same check that switching to it runs, so Microsoft Graph and the Gmail API need
 their go-live checks), and has:
 

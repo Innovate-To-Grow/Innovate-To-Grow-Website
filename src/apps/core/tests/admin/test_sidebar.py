@@ -1,3 +1,4 @@
+import re
 from types import SimpleNamespace
 
 from django.conf import settings
@@ -204,6 +205,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         items_by_title = {item["title"]: item for item in mail_section["items"]}
 
         self.assertEqual(items_by_title["Delivery Operations"]["link"], "/admin/mail/delivery-dashboard/")
+        self.assertEqual(items_by_title["Email Sending Method"]["link"], "/admin/mail/sending-method/")
         self.assertEqual(items_by_title["Gmail Inbox"]["link"], "/admin/mail/inbox/")
         self.assertEqual(items_by_title["Broadcast Campaigns"]["link"], "/admin/mail/emailcampaign/")
         self.assertNotIn("Delivery Status & Settings", items_by_title)
@@ -228,6 +230,16 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertTrue(items_by_title["Delivery Operations"]["active"](settings_request))
         self.assertTrue(items_by_title["Delivery Operations"]["active"](rates_request))
         self.assertFalse(items_by_title["Delivery Operations"]["active"](inbox_request))
+        # Email Sending Method has its own entry: it, not Delivery Operations, is highlighted on its pages.
+        for path in (
+            "/admin/mail/sending-method/",
+            "/admin/mail/sending-method/smtp/test-email/",
+            "/admin/mail/sending-method/smtp/use/",
+        ):
+            self.assertTrue(items_by_title["Email Sending Method"]["active"](factory.get(path)), path)
+            self.assertFalse(items_by_title["Delivery Operations"]["active"](factory.get(path)), path)
+        for path in ("/admin/mail/settings/", "/admin/mail/settings/test-email/", "/admin/mail/settings/rates/"):
+            self.assertFalse(items_by_title["Email Sending Method"]["active"](factory.get(path)), path)
 
     def test_mail_delivery_operations_pages_are_grouped_under_tabs(self):
         tabs = settings.UNFOLD["TABS"]
@@ -414,6 +426,26 @@ class AdminIndexNavigationTest(TestCase):
         self.assertNotIn("Delivery Status & Settings", broadcast_sidebar_html)
         self.assertNotIn("Delivery Dashboard", broadcast_sidebar_html)
         self.assertNotIn("Notification Delivery", broadcast_sidebar_html)
+
+    def test_email_sending_method_is_the_only_highlighted_broadcast_entry_on_its_pages(self):
+        # Unfold also highlights an entry when any tab of its group matches the path, so a page under
+        # /admin/mail/settings/ would light up Delivery Operations too; this renders the real sidebar.
+        def sidebar_link_classes(url):
+            html = self.client.get(url).content.decode().split('<div id="main"', maxsplit=1)[0]
+            return dict(re.findall(r'<a href="(/admin/mail/[^"]*)" class="([^"]*)"', html))
+
+        for url in (
+            reverse("admin:mail_sending_method"),
+            reverse("admin:mail_settings_test_email_provider", args=["ses"]),
+        ):
+            with self.subTest(url=url):
+                classes = sidebar_link_classes(url)
+                self.assertIn("font-semibold", classes["/admin/mail/sending-method/"])
+                self.assertNotIn("font-semibold", classes["/admin/mail/delivery-dashboard/"])
+
+        classes = sidebar_link_classes(reverse("admin:mail_settings"))
+        self.assertIn("font-semibold", classes["/admin/mail/delivery-dashboard/"])
+        self.assertNotIn("font-semibold", classes["/admin/mail/sending-method/"])
 
     def test_projects_and_semesters_render_as_admin_tabs(self):
         for url, active_href in (

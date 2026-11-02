@@ -1,4 +1,4 @@
-"""Notification Delivery → Email sending method: one card per email provider, and the switch between them.
+"""Broadcast Delivery → Email Sending Method: one card per email provider, and the switch between them.
 
 Each card says whether the provider could send now and, if not, why: the reason is what ``validate_activation``
 says when email would switch to it (so the Microsoft Graph and Gmail API go-live checks apply), checked on an unsaved
@@ -11,10 +11,17 @@ from django.contrib.admin.models import CHANGE, LogEntry
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
+from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.views.decorators.http import require_POST
 
-from apps.core.models import EmailServiceConfig, GmailApiProviderConfig, MicrosoftGraphProviderConfig
+from apps.core.models import (
+    AWSCredentialConfig,
+    EmailServiceConfig,
+    GmailApiProviderConfig,
+    MicrosoftGraphProviderConfig,
+    SMTPProviderConfig,
+)
 from apps.core.utils.access import user_can_access_app
 
 from .access import _require_mail_access
@@ -26,7 +33,12 @@ NO_SENDER_CONFIG = "Save the Notification Delivery settings (sender name and Fro
 def get_provider_urls():
     return [
         path(
-            "mail/settings/provider/<str:provider>/use/",
+            "mail/sending-method/",
+            admin.site.admin_view(mail_sending_method_view),
+            name="mail_sending_method",
+        ),
+        path(
+            "mail/sending-method/<str:provider>/use/",
             admin.site.admin_view(mail_settings_use_provider_view),
             name="mail_settings_use_provider",
         ),
@@ -111,12 +123,34 @@ def _configure_url(request, provider: str) -> str:
     return reverse("admin:core_gmailapiproviderconfig_changelist") if request.user.is_superuser else ""
 
 
+def mail_sending_method_view(request):
+    """Which API sends all site email, and a test through each (Mail app, as Notification Delivery)."""
+    _require_mail_access(request)
+    config = EmailServiceConfig.load()
+    context = {
+        **admin.site.each_context(request),
+        "title": "Email Sending Method",
+        "config": config,
+        "sending_method": in_use_label(config),
+        "provider_cards": provider_cards(request, config, AWSCredentialConfig.load(), SMTPProviderConfig.load()),
+        "notification_delivery_url": reverse("admin:mail_settings"),
+    }
+    return TemplateResponse(request, "admin/mail/sending_method.html", context)
+
+
+def in_use_label(config: EmailServiceConfig) -> str:
+    """The method all email goes through now, or why none does."""
+    if config._state.adding or not config.is_active:
+        return "None (email sending is off)"
+    return config.get_provider_display()
+
+
 @require_POST
 def mail_settings_use_provider_view(request, provider):
     """Switch email to *provider* (Mail app staff, as on the edit page), if switching to it is allowed."""
     _require_mail_access(request)
     provider = provider_or_404(provider)
-    settings_url = reverse("admin:mail_settings")
+    settings_url = reverse("admin:mail_sending_method")
     config = EmailServiceConfig.load()
     label = Provider(provider).label
     if not config._state.adding and config.provider == provider:

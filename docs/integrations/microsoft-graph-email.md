@@ -241,7 +241,7 @@ another provider still sends, then select Graph.
 ### 1. Create the Graph configuration
 
 Open **Site Settings → Service Credentials → Microsoft Graph** (`/admin/core/microsoftgraphproviderconfig/`; the
-**Configure** link on the Microsoft Graph card under Mail → Notification Delivery also leads there) and add a
+**Configure** link on the Microsoft Graph card under Broadcast Delivery → Email Sending Method also leads there) and add a
 configuration:
 
 | Field | Value |
@@ -322,9 +322,8 @@ the certificate.
 1. Set **Access Check Deny Mailbox** and run the [access check](#validate-the-access-restriction)
    (**Run access check**). In production, Notification Delivery refuses Microsoft Graph until a run with the
    current certificate matches the approval ([go-live gate](#go-live-gate)).
-2. Open **Mail → Notification Delivery**: in the sidebar choose **Delivery Operations** (group
-   **Broadcast Delivery**) and switch to the **Notification Delivery** tab (`/admin/mail/settings/`). Under
-   **Email sending method**, the **Microsoft Graph** card says whether Graph could send now and, if not, why
+2. Open **Email Sending Method**: in the sidebar group **Broadcast Delivery**
+   (`/admin/mail/sending-method/`). The **Microsoft Graph** card says whether Graph could send now and, if not, why
    (the same check as switching, so the go-live gate applies). Once it is **Ready**, select **Send test** on
    that card to send a test email through Graph while another method still sends everything else.
 3. Select **Use for email** on the Microsoft Graph card. (The same switch is the **Provider** field under

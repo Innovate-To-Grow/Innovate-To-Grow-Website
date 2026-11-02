@@ -1,6 +1,6 @@
 """Notification Delivery test sends: one test email per email provider, and the test SMS.
 
-``mail/settings/test-email/`` tests the provider email sends through now; ``mail/settings/test-email/<provider>/``
+``mail/settings/test-email/`` tests the provider email sends through now; ``mail/sending-method/<provider>/test-email/``
 tests any of them, so a provider can be tried before email switches to it. A provider that switching to it would
 refuse (``providers.provider_problem``) is never sent through.
 """
@@ -29,7 +29,7 @@ def get_test_send_urls():
             name="mail_settings_test_email",
         ),
         path(
-            "mail/settings/test-email/<str:provider>/",
+            "mail/sending-method/<str:provider>/test-email/",
             admin.site.admin_view(mail_settings_test_email_provider_view),
             name="mail_settings_test_email_provider",
         ),
@@ -42,21 +42,21 @@ def get_test_send_urls():
 
 
 def mail_settings_test_email_view(request):
-    """A test email through the provider email is set to now."""
+    """A test email through the provider email is set to now (Notification Delivery's Send Test Email)."""
     _require_mail_access(request)
-    return _test_email(request, EmailServiceConfig.load().provider)
+    return _test_email(request, EmailServiceConfig.load().provider, reverse("admin:mail_settings"))
 
 
 def mail_settings_test_email_provider_view(request, provider):
+    """A test email through any provider (Email Sending Method's Send test)."""
     _require_mail_access(request)
-    return _test_email(request, provider_or_404(provider))
+    return _test_email(request, provider_or_404(provider), reverse("admin:mail_sending_method"))
 
 
-def _test_email(request, provider):
+def _test_email(request, provider, settings_url):
     config = EmailServiceConfig.load()
     label = Provider(provider).label
     problem = provider_problem(config, provider)
-    settings_url = reverse("admin:mail_settings")
     if request.method == "POST":
         recipient = request.POST.get("recipient", "").strip()
         error = _recipient_error(recipient)

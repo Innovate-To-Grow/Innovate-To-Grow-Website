@@ -1,4 +1,4 @@
-"""Notification Delivery → Email sending method: a card per provider, the switch, and a test email per provider."""
+"""Broadcast Delivery → Email Sending Method: a card per provider, the switch, and a test email per provider."""
 
 from unittest.mock import patch
 
@@ -44,7 +44,7 @@ class EmailSendingMethodTestCase(TestCase):
         patcher = patch("botocore.client.BaseClient._make_api_call", side_effect=AssertionError("no AWS calls"))
         patcher.start()
         self.addCleanup(patcher.stop)
-        self.settings_url = reverse("admin:mail_settings")
+        self.settings_url = reverse("admin:mail_sending_method")
 
     def use_url(self, provider):
         return reverse("admin:mail_settings_use_provider", args=[provider])
@@ -117,6 +117,42 @@ class ProviderCardTests(EmailSendingMethodTestCase):
             {"Save the Notification Delivery settings (sender name and From email) first."},
         )
         self.assertFalse(any(card["in_use"] for card in cards.values()))
+
+
+class SendingMethodPageTests(EmailSendingMethodTestCase):
+    def test_the_page_says_which_method_sends_all_email(self):
+        response = self.client.get(self.settings_url)
+
+        self.assertContains(response, "All site email is sent through")
+        self.assertContains(
+            response,
+            '<div class="mt-1 text-base font-semibold text-font-important-light dark:text-font-important-dark" data-sending-method>AWS SES</div>',
+            html=True,
+        )
+        self.assertContains(response, 'href="/admin/mail/settings/"')
+        self.assertNotContains(response, 'id="tabs-items"')
+
+    def test_with_email_switched_off_no_method_is_in_use(self):
+        self.config.is_active = False
+        self.config.save()
+
+        response = self.client.get(self.settings_url)
+
+        self.assertEqual(response.context["sending_method"], "None (email sending is off)")
+        self.assertFalse(any(card["in_use"] for card in response.context["provider_cards"]))
+
+    def test_notification_delivery_names_the_method_and_links_here(self):
+        response = self.client.get(reverse("admin:mail_settings"))
+
+        self.assertEqual(response.context["sending_method"], "AWS SES")
+        self.assertContains(response, 'id="email-sending-method-summary"')
+        self.assertContains(response, f'href="{self.settings_url}"')
+        self.assertNotContains(response, 'id="email-sending-method"')
+
+    def test_the_page_needs_the_mail_app(self):
+        self.client.force_login(make_admin(apps=["cms"], email="cms-only@example.com"))
+
+        self.assertEqual(self.client.get(self.settings_url).status_code, 403)
 
 
 class UseProviderTests(EmailSendingMethodTestCase):

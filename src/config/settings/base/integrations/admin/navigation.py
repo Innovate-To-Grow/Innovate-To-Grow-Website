@@ -4,6 +4,10 @@ from apps.core.utils.access import user_can_access_app
 
 from .tabs import SERVICE_CREDENTIAL_MODELS
 
+# Broadcast Delivery → Email Sending Method: its page, each method's test page and the switch. Not under
+# /admin/mail/settings/, so no Delivery Operations tab (and with it that sidebar entry) claims them too.
+_SENDING_METHOD_PATH = "/admin/mail/sending-method/"
+
 
 def _can(app_label):
     """Sidebar visibility callback: show only if the member can access ``app_label``."""
@@ -37,6 +41,10 @@ def _is_mail_delivery_operations(request):
     return request.path.startswith("/admin/mail/delivery-dashboard/") or request.path.startswith(
         "/admin/mail/settings/"
     )
+
+
+def _is_email_sending_method(request):
+    return request.path.startswith(_SENDING_METHOD_PATH)
 
 
 SIDEBAR = {
@@ -102,6 +110,12 @@ SIDEBAR = {
                     "link": "/admin/mail/delivery-dashboard/",
                     "permission": _can("mail"),
                     "active": _is_mail_delivery_operations,
+                },
+                {
+                    "title": "Email Sending Method",
+                    "link": _SENDING_METHOD_PATH,
+                    "permission": _can("mail"),
+                    "active": _is_email_sending_method,
                 },
                 {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/", "permission": _can("mail")},
                 {"title": "Gmail Inbox", "link": "/admin/mail/inbox/", "permission": _can("mail")},

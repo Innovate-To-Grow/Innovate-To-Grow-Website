@@ -22,7 +22,7 @@ from apps.mail.services.campaign.pacing import email_send_rate_line, sms_send_ra
 
 from .access import _require_mail_access
 from .forms import AwsDeliveryForm, EmailDeliveryForm, SMTPDeliveryForm
-from .providers import get_provider_urls, provider_cards
+from .providers import get_provider_urls, in_use_label
 from .rate_cards import EMAIL_CHANNELS
 from .test_send import get_test_send_urls
 
@@ -48,7 +48,8 @@ def mail_settings_view(request):
     graph_config = MicrosoftGraphProviderConfig.load()
     context = _notification_delivery_context(request, email_config, aws_config, smtp_config, graph_config)
     context["edit_url"] = reverse("admin:mail_settings_edit")
-    context["provider_cards"] = provider_cards(request, email_config, aws_config, smtp_config)
+    context["sending_method"] = in_use_label(email_config)
+    context["sending_method_url"] = reverse("admin:mail_sending_method")
     return TemplateResponse(request, "admin/mail/settings.html", context)
 
 

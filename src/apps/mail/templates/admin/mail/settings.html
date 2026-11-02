@@ -38,7 +38,13 @@
     </div>
 </div>
 
-{% include "admin/mail/settings_providers.html" %}
+<div id="email-sending-method-summary" class="mb-6 flex flex-col gap-2 rounded-default border border-base-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-base-700 dark:bg-base-800">
+    <div class="text-sm">
+        <span class="text-xs font-medium uppercase text-base-400">Email sending method</span>
+        <span class="ml-2 font-semibold text-font-important-light dark:text-font-important-dark">{{ sending_method }}</span>
+    </div>
+    <a href="{{ sending_method_url }}" class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">Change it or test each method</a>
+</div>
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">
     <section class="rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
