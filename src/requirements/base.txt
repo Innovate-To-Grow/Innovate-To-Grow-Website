@@ -6,14 +6,14 @@ djangorestframework==3.18.3
 djangorestframework-simplejwt>=5.5.1
 
 # Environment Variables
-python-dotenv>=1.2.3
+python-dotenv>=1.2.4
 
 # Admin Theme
 django-unfold>=0.91.0,<0.92  # Keep the current Unfold minor until its upgrade is reviewed.
 
 # Rich Text Editor
 django-ckeditor-5>=0.2.20
-Pillow>=12.3.0
+Pillow>=13.0.0
 pdf417gen>=0.8.1
 
 # Excel Import/Export
@@ -61,7 +61,7 @@ defusedxml>=0.7.1,<1.0
 bleach>=6.4.0
 
 # CSS parsing (stylesheet class audit; later CSS validation)
-tinycss2>=1.4.0,<2
+tinycss2>=1.5.1,<2
 
 # CORS (needed in every environment so the API is reachable from the SPA)
 django-cors-headers>=4.9.0
