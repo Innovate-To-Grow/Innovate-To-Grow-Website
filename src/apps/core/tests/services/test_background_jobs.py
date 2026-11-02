@@ -2,8 +2,10 @@ import json
 from datetime import timedelta
 from unittest.mock import patch
 
+import boto3
+from botocore.stub import Stubber
 from django.db import OperationalError
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 from gspread.exceptions import APIError as GspreadAPIError
 from requests import Response
@@ -19,6 +21,7 @@ from apps.core.services.background_jobs import (
     retry_job,
     worker_metrics,
 )
+from apps.core.services.background_jobs.metrics import publish_worker_metrics
 
 
 def _gspread_api_error(status_code: int) -> GspreadAPIError:
@@ -348,3 +351,66 @@ class BackgroundJobQueueTests(TestCase):
         self.assertEqual(metrics["queue_depth"], 1)
         self.assertEqual(metrics["failed_jobs"], 1)
         self.assertEqual(metrics["uncertain_jobs"], 1)
+
+
+# publish_worker_metrics against a real CloudWatch client and botocore's Stubber: the Stubber validates each
+# request against the service model botocore ships, so an upgrade that changes PutMetricData fails here.
+METRICS_REGION = "us-west-2"
+METRICS_CLIENT = "boto3.client"  # imported inside the function, so patch the attribute it reads
+METRICS = {"heartbeat": 1, "queue_depth": 3, "oldest_job_age_seconds": 12.5, "failed_jobs": 0, "uncertain_jobs": 2}
+
+
+def stubbed_cloudwatch():
+    client = boto3.client(
+        "cloudwatch",
+        region_name=METRICS_REGION,
+        aws_access_key_id="test-access-key",
+        aws_secret_access_key="test-secret-key",
+    )
+    return client, Stubber(client)
+
+
+@override_settings(BACKGROUND_JOB_METRICS_NAMESPACE="I2G/Workers", AWS_S3_REGION_NAME=METRICS_REGION)
+class PublishWorkerMetricsTests(SimpleTestCase):
+    def test_puts_every_metric_with_its_unit_in_the_namespace(self):
+        client, stubber = stubbed_cloudwatch()
+        stubber.add_response(
+            "put_metric_data",
+            {},
+            {
+                "Namespace": "I2G/Workers",
+                "MetricData": [
+                    {"MetricName": "WorkerHeartbeat", "Value": 1.0, "Unit": "Count"},
+                    {"MetricName": "QueueDepth", "Value": 3.0, "Unit": "Count"},
+                    {"MetricName": "OldestJobAge", "Value": 12.5, "Unit": "Seconds"},
+                    {"MetricName": "FailedJobs", "Value": 0.0, "Unit": "Count"},
+                    {"MetricName": "UncertainJobs", "Value": 2.0, "Unit": "Count"},
+                ],
+            },
+        )
+
+        with stubber, patch(METRICS_CLIENT, return_value=client) as factory:
+            publish_worker_metrics(METRICS)
+
+        stubber.assert_no_pending_responses()
+        factory.assert_called_once_with("cloudwatch", region_name=METRICS_REGION)
+
+    def test_provider_error_is_logged_not_raised(self):
+        client, stubber = stubbed_cloudwatch()
+        stubber.add_client_error("put_metric_data", service_error_code="Throttling", http_status_code=400)
+
+        with (
+            stubber,
+            patch(METRICS_CLIENT, return_value=client),
+            self.assertLogs("apps.core.services.background_jobs.metrics", level="ERROR") as logs,
+        ):
+            publish_worker_metrics(METRICS)
+
+        self.assertIn("Could not publish background worker metrics", logs.output[0])
+
+    @override_settings(BACKGROUND_JOB_METRICS_NAMESPACE="")
+    def test_no_namespace_means_no_client(self):
+        with patch(METRICS_CLIENT) as factory:
+            publish_worker_metrics(METRICS)
+
+        factory.assert_not_called()
