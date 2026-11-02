@@ -90,7 +90,7 @@ The loader validates setting names against `aws/cicd/deploy-config-keys.json`
 and rejects multiline values before exporting them to the job. Application
 passwords and signing keys remain separate secrets injected directly by ECS.
 
-Deployment requires no GitHub Actions secrets or variables. CI runner selection may retain the non-secret `AWS_RUNNERS_ENABLED` bootstrap switch. Public OIDC role ARNs
+Deployment requires no GitHub Actions secrets. Two non-secret repository variables remain: `AWS_RUNNERS_ENABLED` selects CI runners, and `DEPLOY_ARTIFACTS_ENABLED` must be `true` whenever `Deploy Production` is enabled, because CI publishes the backend release image only while it is set (see [CI/CD: Deployment pause](ci-cd.md#deployment-pause-since-2026-11-01)). Public OIDC role ARNs
 and the AWS region are bootstrap identifiers in workflow code; they cannot be
 fetched before authentication. CI's public API URL is a checked-in test/build
 default, while production frontend deployment reads its URL from AWS.
@@ -244,8 +244,10 @@ paces every email, SMS and inbox session. Before or with the release:
 
 The repository is public, so environment required reviewers, rulesets, the merge
 queue, and code-scanning uploads (CodeQL, Semgrep, Trivy) are all available on the
-organization's Free plan. If the repository becomes private again, required
-reviewers need a paid plan and code-scanning uploads need GitHub Code Security; check the
+organization's Free plan. If the repository becomes private again, environment
+required reviewers and the merge queue need GitHub Enterprise Cloud (Free, Pro and
+Team plans offer them only on public repositories), rulesets need Team or higher,
+and code-scanning uploads need GitHub Code Security; check the
 [current environment requirements](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
 and the [code-scanning prerequisite](https://docs.github.com/en/code-security/reference/code-scanning/troubleshoot-analysis-errors/private-repository-enablement).
 After any visibility or plan change, verify an actual pending review in a test release.

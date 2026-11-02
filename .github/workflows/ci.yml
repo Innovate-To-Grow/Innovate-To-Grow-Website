@@ -1400,6 +1400,12 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    outputs:
+      # Whether this run uploaded the image backend-image-publish pushes. The
+      # publish job keys off this, not off DEPLOY_ARTIFACTS_ENABLED again, so a
+      # variable flipped mid-run cannot make it look for an artifact that was
+      # never uploaded.
+      image_artifact: ${{ steps.upload-image.outcome == 'success' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -1579,6 +1585,7 @@ jobs:
         if: ${{ github.event_name == 'push' && github.ref_name == 'main' && vars.DEPLOY_ARTIFACTS_ENABLED == 'true' }}
         run: docker save --output /tmp/backend-image.tar "itg-backend-ci:${{ github.sha }}"
       - name: Upload tested and scanned backend image
+        id: upload-image
         if: ${{ github.event_name == 'push' && github.ref_name == 'main' && vars.DEPLOY_ARTIFACTS_ENABLED == 'true' }}
         uses: actions/upload-artifact@v7
         with:
@@ -1629,13 +1636,14 @@ jobs:
     name: Backend Image Publish
     runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 25
-    needs: [backend-required-result, changes]
+    needs: [backend-required-result, backend-docker-build, changes]
     # Pushes itg-backend:<sha> for deploy-backend.yml. Off while deployments are
     # paused (repository variable DEPLOY_ARTIFACTS_ENABLED, see
-    # docs/deployment/ci-cd.md); deploy-artifact-result passes when skipped.
+    # docs/deployment/ci-cd.md): runs only when backend-docker-build uploaded
+    # the image in this same run. deploy-artifact-result passes when skipped.
     if: >-
       github.event_name == 'push' && github.ref_name == 'main' &&
-      vars.DEPLOY_ARTIFACTS_ENABLED == 'true' &&
+      needs.backend-docker-build.outputs.image_artifact == 'true' &&
       needs.changes.outputs.backend == 'true'
     permissions:
       contents: read

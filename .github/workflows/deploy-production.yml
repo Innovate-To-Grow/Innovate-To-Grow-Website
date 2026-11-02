@@ -110,6 +110,18 @@ jobs:
             exit 1
           fi
 
+          # CI publishes itg-backend:<sha> only while the repository variable
+          # DEPLOY_ARTIFACTS_ENABLED is 'true' (docs/deployment/ci-cd.md), so a
+          # green run can have no image. Refuse it before asking for approval
+          # instead of failing deploy-backend after deploy-archive has shipped.
+          publish="$(gh api --paginate \
+            "/repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}/jobs?per_page=100" \
+            --jq '.jobs[] | select(.name == "Backend Image Publish") | .conclusion')"
+          if [ "$publish" != "success" ]; then
+            echo "::error::CI run ${ci_run_id} did not publish itg-backend:${deploy_sha} (Backend Image Publish: ${publish:-absent}). Set DEPLOY_ARTIFACTS_ENABLED=true and run CI on main again."
+            exit 1
+          fi
+
           {
             echo "deploy_sha=$deploy_sha"
             echo "ci_run_id=$ci_run_id"

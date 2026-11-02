@@ -5,7 +5,9 @@ GitHub Actions pipelines for linting, testing, building, and deploying.
 Compute-intensive jobs can use the repository's [AWS ephemeral runner fleet](../../aws/ci-runners/README.md).
 The fleet scales from zero to 32 machines; `AWS_RUNNERS_ENABLED` controls routing,
 and lightweight planning and result jobs stay on GitHub to avoid cold-start delays.
-Pull requests from forks always run on GitHub-hosted `ubuntu-24.04` runners.
+Pull requests from forks never use the fleet: fleet-routed jobs fall back to GitHub-hosted
+`ubuntu-24.04` runners, and jobs pinned to `ubuntu-latest` run there as for any pull request.
+A `merge_group` run is routed like a push.
 
 ## Workflow files
 
@@ -27,8 +29,12 @@ Pull requests from forks always run on GitHub-hosted `ubuntu-24.04` runners.
 
 - **`pull_request`** has no path filter, so every pull request reports `CI Result`.
   The `changes` job (`scripts/ci/plan_changed_areas.py`) runs the full suite when
-  the diff touches any path in `on.push.paths`, and runs nothing else otherwise:
-  a docs-only pull request is green in a few minutes.
+  the diff touches any path in `on.push.paths` or anything else under `.github/`
+  (the planner errs toward running). Otherwise it skips every gated job and only
+  the ungated checks run: Preflight, `Secrets Scan`, `Frontend npm Audit`, and
+  `Python Security Audit`, so a docs-only pull request finishes in a few minutes.
+  The two audits compare the lockfiles with live advisory databases, so a newly
+  published advisory can still turn such a run red.
 - **`merge_group`** is the merge queue's group commit, the tree that lands on
   `main`. It is planned from the group's diff exactly like a pull request.
 - **`push`** to `main`/`master` runs only when a CI path changed, and then always
@@ -49,7 +55,8 @@ Pull requests from forks always run on GitHub-hosted `ubuntu-24.04` runners.
 
 Backend jobs run Python 3.14, the minor of the production image
 (`BACKEND_PYTHON_VERSION`); lint, audit, and CLI jobs run Python 3.11
-(`PYTHON_VERSION`). Node is 22.22.2 everywhere.
+(`PYTHON_VERSION`). Every job that sets up Node uses 22.22.2 (`NODE_VERSION`); Preflight's
+AWS runner guard test (`node --test`) uses the `ubuntu-latest` image's default Node.
 
 Semgrep fails the job on error-severity findings and on a Semgrep failure.
 Warnings and notes do not block; push runs upload every finding to the
@@ -126,14 +133,21 @@ Result` passes when they are skipped.
 
 To resume deployments:
 
-1. `gh variable set DEPLOY_ARTIFACTS_ENABLED --body true`
-2. `gh workflow enable deploy-production.yml`
-3. Merge a change that touches a CI path. Its `main` CI run publishes
+1. Wait until no CI run on `main` is queued or in progress
+   (`gh run list --workflow ci.yml --branch main --status in_progress`, and the
+   same with `--status queued`), or cancel those runs. A run that started
+   during the pause publishes no image even if it finishes after step 3.
+2. `gh variable set DEPLOY_ARTIFACTS_ENABLED --body true`
+3. `gh workflow enable deploy-production.yml`
+4. Merge a change that touches a CI path. Its `main` CI run publishes
    `itg-backend:<sha>` and, on success, starts `Deploy Production`, which waits
    in `Manual Deployment Approval`.
 
-A manual `Deploy Production` run only works for a `main` commit whose CI run
-published its image, that is, one that ran with the variable set.
+`Deploy Production` only promotes a CI run whose `Backend Image Publish` job
+succeeded; for any other run it stops before the approval step. A manual
+`Deploy Production` run therefore only works for a `main` commit whose CI run
+started with the variable set. Do not use "Re-run failed jobs" on a `main` run
+from the pause; merge a new change or use "Re-run all jobs" instead.
 
 ## Deploy pipelines
 
@@ -146,8 +160,11 @@ reviewer migration procedure.
 
 Each component workflow loads its configuration, including secret ARN
 references, from its own `itg/<component>/deploy-config` entry in AWS Secrets
-Manager through `scripts/deploy/load_config.py`. Deployment needs no GitHub
-Actions secrets or variables.
+Manager through `scripts/deploy/load_config.py`. The deploy workflows read no
+GitHub Actions secrets or variables. The one GitHub-side switch on the release
+path is CI's repository variable `DEPLOY_ARTIFACTS_ENABLED`: `main` CI publishes
+the `itg-backend:<sha>` image that `deploy-backend.yml` pulls only while it is
+`true`, so it must stay set whenever `Deploy Production` is enabled.
 
 ### Backend (`deploy-backend.yml`)
 

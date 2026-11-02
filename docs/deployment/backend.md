@@ -201,7 +201,7 @@ Served from S3 via `django-storages`:
 | `/static/` | Collected static files (admin CSS, CKEditor assets) |
 | `/media/` | User uploads (CMS assets, profile images) |
 
-`src/Dockerfile` collects the static files into the image at build time, and `deploy-backend.yml` copies them out of the release image and syncs them to S3 before the rollout.
+`src/Dockerfile` collects the static files into the image at build time (`/app/static`), and `deploy-backend.yml` copies them out of the release image and syncs them to S3 (`--size-only`) before the rollout. `src/entrypoint.sh` also runs `collectstatic` at every Web container start, because its fallback checks `staticfiles/`, which the image never contains; under the production settings that pass writes to the bucket's `static/` prefix, and if it fails it logs `collectstatic failed (non-fatal)` and the container still starts.
 
 ## Related pages
 

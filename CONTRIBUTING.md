@@ -28,7 +28,7 @@ Thanks for your interest in helping build the UC Merced Innovate to Grow (ITG) w
 
 | Tool | Recommended Version | Notes |
 | --- | --- | --- |
-| Python | 3.14 | The Docker image and the Django test jobs use 3.14; Ruff targets 3.11 and the lint, audit, and CLI jobs run on 3.11 (Django 5.2). |
+| Python | 3.11–3.13 | Use 3.11–3.13 for the dev venv and pre-commit: the pinned Bandit 1.7.10 (`lint.yml` and the pre-push hook) cannot parse files on 3.14 and silently scans nothing. The Docker image and the Django test jobs run 3.14; Ruff targets 3.11 (Django 5.2). |
 | Node.js | 22.22.2 | Other supported releases are listed in `pages/package.json`. |
 | npm | 10+ | Ships with Node LTS installers. |
 | SQLite | 3.35+ | Used for local dev database. |
@@ -87,13 +87,13 @@ Follow these steps after cloning the repository:
 This project uses automated code style checks in CI/CD. All pull requests must pass these checks before merging.
 
 ### Automated CI/CD Checks
-On every pull request, GitHub Actions runs:
+On every pull request that touches code or CI configuration (`src/`, `pages/`, `cli/`, `archive/`, `aws/`, `scripts/`, `.github/`, or the root lint and security configs), GitHub Actions runs:
 - **Python (Backend):** Ruff linter and formatter check, Bandit, and code-structure checks
 - **TypeScript (Frontend):** ESLint and TypeScript type check
 - **Tests:** Django on PostgreSQL, Vitest, the CLI suite, and the Playwright E2E matrix
 - **Security:** gitleaks, Semgrep, `npm audit`, and `pip-audit`
 
-The required `CI Result` check summarizes all of them; see [CI/CD](docs/deployment/ci-cd.md).
+A pull request that touches none of those paths (docs or README only) runs just the preflight checks, gitleaks, `npm audit`, and `pip-audit`. The required `CI Result` check summarizes whichever jobs ran and counts skipped ones as passing; see [CI/CD](docs/deployment/ci-cd.md).
 
 ### Local Linting Setup
 

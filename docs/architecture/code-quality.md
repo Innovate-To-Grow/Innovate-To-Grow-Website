@@ -206,9 +206,11 @@ Measured with the counting rules above at the start of the refactor (base `378df
 | directory-files | 4 / 2 | 0 / 0 |
 | app boundary violations / import cycles | 59 / 5 | 0 / 0 unlisted (5 exceptions, no cycles) |
 
-Every Python finding left in the "After" column was in status-page work that was never committed
-(`scripts/ci/validate_status_infrastructure.py`, `src/apps/core/services/status/`) and has since been
-dropped. The committed tree has no hard Python finding; only advisory `directory-files` counts remain.
+Every Python finding left in the "After" column was in status-page files that were untracked in the
+working tree when these checks landed (`scripts/ci/validate_status_infrastructure.py`,
+`src/apps/core/services/status/`). The same work was committed to main in `c51a2e1f` and deleted in
+`ae208653`, and the untracked copy is gone too. The committed tree has no hard Python finding; only advisory
+`directory-files` counts remain.
 
 | TypeScript (advisory unless noted) | Before | After |
 |---|---|---|
@@ -217,7 +219,8 @@ dropped. The committed tree has no hard Python finding; only advisory `directory
 | tests and E2E helpers: max-lines | 11 | 0 |
 | layer-boundary violations / import cycles | 17 / 1 | 0 / 0 |
 
-Advisory findings are the planned-cleanup backlog; it is empty apart from the in-progress work above. Print
+Advisory findings are the planned-cleanup backlog; on the Python side it holds only those advisory
+`directory-files` counts. Print
 the current list with `python scripts/ci/check_python_quality.py` and `npm run quality:report`.
 
 ### Splitting a long test file
