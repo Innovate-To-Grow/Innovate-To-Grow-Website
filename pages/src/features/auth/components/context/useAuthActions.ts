@@ -21,7 +21,17 @@ export function useAuthActions(setters: AuthStateSetters) {
   const { setUser, setRequiresProfileCompletion, setError } = setters;
   const request = useAuthRequest(setters);
   const signIn = useSignInActions(request);
-  const passwords = usePasswordActions(request);
+  // Merged by name, not spread: to data-flow analysis a spread makes the whole auth context —
+  // `user` included — derive from the password-flow object, so CodeQL reported the member id the
+  // curation draft keeps in localStorage as stored password data.
+  const {
+    requestPasswordReset,
+    verifyPasswordResetCode,
+    confirmPasswordReset,
+    requestPasswordChangeCode,
+    verifyPasswordChangeCode,
+    confirmPasswordChange,
+  } = usePasswordActions(request);
 
   const clearError = useCallback(() => {
     setError(null);
@@ -57,7 +67,31 @@ export function useAuthActions(setters: AuthStateSetters) {
   }, [setUser]);
 
   return useMemo(
-    () => ({ ...signIn, ...passwords, clearError, logout, refreshProfile, clearProfileCompletionRequirement }),
-    [signIn, passwords, clearError, logout, refreshProfile, clearProfileCompletionRequirement],
+    () => ({
+      ...signIn,
+      requestPasswordReset,
+      verifyPasswordResetCode,
+      confirmPasswordReset,
+      requestPasswordChangeCode,
+      verifyPasswordChangeCode,
+      confirmPasswordChange,
+      clearError,
+      logout,
+      refreshProfile,
+      clearProfileCompletionRequirement,
+    }),
+    [
+      signIn,
+      requestPasswordReset,
+      verifyPasswordResetCode,
+      confirmPasswordReset,
+      requestPasswordChangeCode,
+      verifyPasswordChangeCode,
+      confirmPasswordChange,
+      clearError,
+      logout,
+      refreshProfile,
+      clearProfileCompletionRequirement,
+    ],
   );
 }

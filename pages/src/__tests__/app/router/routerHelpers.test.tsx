@@ -51,7 +51,8 @@ describe('router helpers', () => {
   it('redirects the retired /unsubscribe-login to /account and drops its token', async () => {
     const {createAppRouter} = await import('@/app/router');
     const rootRoute = createAppRouter().routes.find((route) => route.path === '/');
-    const legacyRoute = rootRoute?.children?.find(
+    // Pages sit inside the pathless route that catches their errors.
+    const legacyRoute = rootRoute?.children?.[0]?.children?.find(
       (route) => 'path' in route && route.path === 'unsubscribe-login',
     ) as {element?: ReactElement} | undefined;
 
@@ -68,5 +69,26 @@ describe('router helpers', () => {
     );
 
     expect(screen.getByTestId('destination').textContent).toBe('/account');
+  });
+
+  it('sends the legacy /projects-teams path, still linked from CMS pages, to Current Projects', async () => {
+    const {createAppRouter} = await import('@/app/router');
+    const rootRoute = createAppRouter().routes.find((route) => route.path === '/');
+    const legacyRoute = rootRoute?.children?.[0]?.children?.find(
+      (route) => 'path' in route && route.path === 'projects-teams',
+    ) as {element?: ReactElement} | undefined;
+
+    expect(legacyRoute?.element?.type).toBe(Navigate);
+
+    render(
+      <MemoryRouter initialEntries={['/projects-teams']}>
+        <Routes>
+          <Route path="/projects-teams" element={legacyRoute?.element} />
+          <Route path="/current-projects" element={<LocationState />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('destination').textContent).toBe('/current-projects');
   });
 });

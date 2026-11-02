@@ -1,4 +1,5 @@
 import {useSearchParams} from 'react-router';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {SheetsTableRow} from './SheetsTableRow';
 import type {SheetRow} from './types';
 import {useSheetsTable, type SortField} from './useSheetsTable';
@@ -67,7 +68,13 @@ export const SheetsDataTable = ({rows, loading, error, columns: columnsProp, ini
   const {sortField, sortDir} = table;
   const handleSort = table.sortBy;
 
-  if (loading) return <div className="sdt-loading">Loading project data...</div>;
+  if (loading) {
+    return (
+      <div className="sdt-loading" role="status">
+        <LoadingIndicator label="Loading project data…" />
+      </div>
+    );
+  }
   if (error) return <div className="sdt-error">{error}</div>;
 
   return (
@@ -77,7 +84,7 @@ export const SheetsDataTable = ({rows, loading, error, columns: columnsProp, ini
           className="itg-input sdt-search"
           type="search"
           aria-label="Search projects"
-          placeholder="Search projects..."
+          placeholder="Search projects…"
           value={table.search}
           onChange={(event) => table.searchFor(event.target.value)}
         />
@@ -134,7 +141,6 @@ export const SheetsDataTable = ({rows, loading, error, columns: columnsProp, ini
                 item={item}
                 index={index}
                 columns={columns}
-                sortField={sortField}
                 isExpanded={table.expandedKey === item.key}
                 onToggle={() => table.setExpandedKey(table.expandedKey === item.key ? null : item.key)}
               />

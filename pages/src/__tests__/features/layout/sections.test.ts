@@ -87,6 +87,36 @@ describe('resolveSection', () => {
     expect(event.currentPath).toBe('/past-events');
   });
 
+  it('maps both kinds of project page onto All Projects when the menu lists only that', () => {
+    const menu = [item('Home', '/', [], 'home'), item('Explore', '/explore', [item('All Projects', '/all-projects')])];
+
+    expect(resolveSection(menu, '/projects/3f2a')).toMatchObject({menuIndex: 1, currentPath: '/all-projects', isExact: false});
+    expect(resolveSection(menu, '/past-projects/project/9')).toMatchObject({
+      menuIndex: 1,
+      currentPath: '/all-projects',
+      isExact: false,
+    });
+    expect(resolveSection(menu, '/all-projects')).toMatchObject({menuIndex: 1, currentPath: '/all-projects', isExact: true});
+    // A menu that lists the project's own list still marks that one.
+    expect(resolveSection(MENU, '/projects/3f2a').currentPath).toBe('/current-projects');
+    expect(resolveSection(MENU, '/past-projects/project/9').currentPath).toBe('/past-projects');
+  });
+
+  it("maps a curation's shared page onto All Projects when the menu lists only that", () => {
+    const menu = [item('Home', '/', [], 'home'), item('Explore', '/explore', [item('All Projects', '/all-projects')])];
+
+    // All Projects saves its curations at /past-projects/:shareId too.
+    expect(resolveSection(menu, '/past-projects/share-123')).toMatchObject({
+      menuIndex: 1,
+      currentPath: '/all-projects',
+      isExact: false,
+    });
+    // A menu that lists Past Projects still marks that one, even when it lists All Projects first.
+    expect(resolveSection(MENU, '/past-projects/share-123').currentPath).toBe('/past-projects');
+    const both = [item('All Projects', '/all-projects'), item('Past Projects', '/past-projects')];
+    expect(resolveSection(both, '/past-projects/share-123')).toMatchObject({menuIndex: 1, currentPath: '/past-projects'});
+  });
+
   it('falls back to the closest ancestor page for nested CMS pages', () => {
     const match = resolveSection(MENU, '/about/history');
     expect(titleOf(match.menuIndex)).toBe('About');

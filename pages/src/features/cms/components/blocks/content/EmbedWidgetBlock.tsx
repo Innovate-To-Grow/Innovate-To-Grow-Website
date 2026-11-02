@@ -58,7 +58,9 @@ export const EmbedWidgetBlock = ({ data, previewMode = false }: {
           ref={iframeRef}
           src={widgetSrc(slug, data)}
           title={data.heading || `Embedded widget: ${slug}`}
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          // No sandbox: the widget is this site's own same-origin page, which scripts plus same-origin
+          // access could unsandbox anyway. The sandbox only broke it: exports could not download and
+          // every tab opened from it inherited the sandbox. Partners' snippet iframes carry none either.
           loading={previewMode ? 'eager' : 'lazy'}
           referrerPolicy="no-referrer-when-downgrade"
           style={IFRAME_STYLE}

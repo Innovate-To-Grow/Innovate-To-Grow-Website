@@ -4,8 +4,10 @@ from django.core.exceptions import ValidationError
 
 GENERIC_HIDDEN_SECTION_PRESETS = [
     {
+        # Block headings (`.section-title`), plus the header of app-route pages that mark it
+        # `data-embed-section="page-header"` (the project pages), which have no section titles.
         "key": "section_titles",
-        "label": "Section titles",
+        "label": "Section titles and page header",
         "routes": [],
     },
 ]

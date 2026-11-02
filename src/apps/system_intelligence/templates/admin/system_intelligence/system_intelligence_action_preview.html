@@ -93,7 +93,7 @@
   </div>
   {% if has_preview_blocks %}
     {{ preview_payload|json_script:"si-action-preview-data" }}
-    <script src="{% static 'system_intelligence/js/action-preview.js' %}" nonce="{{ request.csp_nonce }}"></script>
+    <script src="{% static 'system_intelligence/js/action-preview.js' %}?v=20261029-safe-frame-src" nonce="{{ request.csp_nonce }}"></script>
   {% endif %}
 </body>
 </html>

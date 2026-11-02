@@ -7,6 +7,8 @@ import type {useProjectGridTable} from '../../grid/state/useProjectGridTable';
 interface MergedListGridProps {
   table: ReturnType<typeof useProjectGridTable>;
   rows: ProjectGridItem[];
+  /** The list's heading, which names the table and its pager for screen readers. */
+  title: string;
   sharedMode: boolean;
   highlightedKeys?: ReadonlySet<string>;
   onDeleteRow?: (row: ProjectGridItem) => void;
@@ -19,6 +21,7 @@ interface MergedListGridProps {
 export const MergedListGrid = ({
   table,
   rows,
+  title,
   sharedMode,
   highlightedKeys,
   onDeleteRow,
@@ -29,8 +32,8 @@ export const MergedListGrid = ({
   const [isPhoneListOpen, setIsPhoneListOpen] = useState(false);
   const phoneListId = useId();
 
-  // Select-all targets the rows currently visible (matching the active search), so a narrowed view +
-  // Remove Selected can never delete rows the user cannot see.
+  // Select-all targets the rows currently visible (matching the active search). Remove Selected likewise
+  // removes only the checked rows the search shows (BuilderMergedList), never rows the user cannot see.
   const handleToggleSelectAll = () => {
     const visible = table.filteredRows;
     const allVisibleSelected = visible.length > 0 && visible.every((row) => table.selectedKeys.has(row.__key));
@@ -51,7 +54,7 @@ export const MergedListGrid = ({
           aria-controls={phoneListId}
           onClick={() => setIsPhoneListOpen((current) => !current)}
         >
-          {isPhoneListOpen ? 'Hide the saved projects' : `Show the ${pluralize(rows.length, 'saved project')}`}
+          <span>{isPhoneListOpen ? 'Hide the Projects' : `Show the ${pluralize(rows.length, 'Project')}`}</span>
           <span aria-hidden="true">{isPhoneListOpen ? ' ▴' : ' ▾'}</span>
         </button>
       )}
@@ -69,6 +72,7 @@ export const MergedListGrid = ({
           pagedRows={table.pagedRows}
           filteredCount={table.filteredRows.length}
           totalCount={rows.length}
+          tableLabel={title}
           search={table.search}
           searchLabel="Search this list"
           searchPlaceholder="Team, project, organization…"
@@ -88,7 +92,7 @@ export const MergedListGrid = ({
           pageSize={table.pageSize}
           pageSizeOptions={table.pageSizeOptions}
           onPageSizeChange={table.setPageSize}
-          emptyMessage={sharedMode ? 'This shared list has no projects.' : 'No merged results saved yet.'}
+          emptyMessage={sharedMode ? 'This curation has no projects.' : 'No projects in this draft yet.'}
           countLabel="projects"
           onDeleteRow={onDeleteRow}
           deleteDisabled={deleteDisabled}
@@ -113,16 +117,20 @@ interface NarrowedSearchHintProps {
   onClearSearch: () => void;
 }
 
-// In the builder the link and exports take the rows the search shows; say so when it hides some, above
-// all when it hides projects that were just saved.
-export const NarrowedSearchHint = ({shownCount, totalCount, hiddenAddedCount, onClearSearch}: NarrowedSearchHintProps) => (
-  <p className="itg-notice project-grid-narrowed-hint" role={hiddenAddedCount ? 'status' : undefined}>
-    {hiddenAddedCount
-      ? `${hiddenAddedCount === 1 ? '1 newly saved project is' : `${hiddenAddedCount} newly saved projects are`} hidden by your search.`
-      : `Your search shows ${shownCount} of ${totalCount} saved projects.`}{' '}
-    Saving and exports include only the {shownCount} it shows.{' '}
-    <button type="button" className="itg-btn itg-btn-text past-projects-status-action" onClick={onClearSearch}>
-      Clear search
-    </button>
-  </p>
-);
+// In the builder saving and exports take the rows the search shows; say so when it hides some, above all
+// when it hides projects that were just added, and that saving leaves the hidden ones in the draft.
+export const NarrowedSearchHint = ({shownCount, totalCount, hiddenAddedCount, onClearSearch}: NarrowedSearchHintProps) => {
+  const hiddenCount = totalCount - shownCount;
+  return (
+    <p className="itg-notice project-grid-narrowed-hint" role={hiddenAddedCount ? 'status' : undefined}>
+      {hiddenAddedCount
+        ? `${hiddenAddedCount === 1 ? '1 newly added project is' : `${hiddenAddedCount} newly added projects are`} hidden by your search.`
+        : `Your search shows ${shownCount} of the ${pluralize(totalCount, 'project')} in this draft.`}{' '}
+      {`Saving and exports include only the ${shownCount} it shows; after saving, ` +
+        `${pluralize(hiddenCount, 'other project')} ${hiddenCount === 1 ? 'stays' : 'stay'} in this draft.`}{' '}
+      <button type="button" className="itg-btn itg-btn-text past-projects-status-action" onClick={onClearSearch}>
+        Clear Search
+      </button>
+    </p>
+  );
+};

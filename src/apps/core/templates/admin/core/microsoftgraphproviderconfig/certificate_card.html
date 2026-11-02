@@ -1,0 +1,41 @@
+{# One installed certificate, public data only. Expects ``card`` (microsoft_graph_panel.certificate_card) and ``heading``. #}
+<div class="mt-4 first:mt-0">
+    <h4 class="mb-3 text-xs font-semibold uppercase text-base-500 dark:text-base-400">{{ heading }}</h4>
+    <dl class="grid grid-cols-1 gap-x-6 gap-y-3 text-sm md:grid-cols-2">
+        <div>
+            <dt class="text-xs font-medium text-base-400">Thumbprint (SHA-1, as shown in Entra)</dt>
+            <dd class="mt-1 break-all font-mono text-font-important-light dark:text-font-important-dark">{{ card.certificate.sha1_thumbprint }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-base-400">SHA-256 fingerprint</dt>
+            <dd class="mt-1 break-all font-mono">{{ card.certificate.sha256_fingerprint }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-base-400">Subject</dt>
+            <dd class="mt-1 break-all">{{ card.certificate.subject }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-base-400">Serial number</dt>
+            <dd class="mt-1 break-all font-mono">{{ card.certificate.serial_number }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-base-400">Valid from</dt>
+            <dd class="mt-1">{{ card.valid_from }}</dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-base-400">Valid until</dt>
+            <dd class="mt-1 flex flex-wrap items-center gap-2">
+                {{ card.valid_until }}
+                <span class="graph-expiry-badge inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset {{ card.badge_classes }}" data-tone="{{ card.expiry_tone }}">{{ card.expiry_label }}</span>
+            </dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-base-400">Private key</dt>
+            <dd class="mt-1">Stored in {{ card.store }}, version <span class="break-all font-mono">{{ card.certificate.store_version_id }}</span></dd>
+        </div>
+        <div>
+            <dt class="text-xs font-medium text-base-400">Entra check</dt>
+            <dd class="mt-1">{{ card.entra_check }}</dd>
+        </div>
+    </dl>
+</div>

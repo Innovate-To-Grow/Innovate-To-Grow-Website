@@ -1,4 +1,5 @@
-"""Outbox handler that sends one email campaign recipient through SES."""
+"""Outbox handler that sends one email campaign recipient through the active provider, on the bulk delivery lane
+(the email facade paces it; a deferral reruns the job at its slot without using up an attempt)."""
 
 from django.db import transaction
 from django.utils import timezone
@@ -9,13 +10,11 @@ from apps.core.services.background_jobs import (
     PermanentJobError,
     TransientJobError,
     UncertainJobError,
-    configured_ses_rate,
-    wait_for_delivery_slot,
 )
 from apps.mail.models import RecipientLog
 from apps.mail.services.campaign.personalize import personalize
 from apps.mail.services.campaign.preview import render_email_html
-from apps.mail.services.send_campaign.runner import _recipient_context, _unsubscribe_url_for
+from apps.mail.services.send_campaign.runner import _recipient_context, _unsubscribe_url_for, carries_login_link
 from apps.mail.services.send_campaign.transport import _get_configuration_set_name, _get_ses_client, _send_via_ses
 
 from .channels import (
@@ -30,7 +29,8 @@ from .failures import _classify_pre_provider_error, _delivery_failure_values, _j
 
 
 def _render_recipient_email(log):
-    """The personalized subject, the wrapped HTML body, and the unsubscribe URL for one recipient."""
+    """The personalized subject, the wrapped HTML body, the unsubscribe URL for one recipient, and whether a copy
+    may stay in the sender's Sent Items (not when the message carries the recipient's login link)."""
     recipient = {
         "member_id": log.member_id,
         "email": log.email_address,
@@ -42,7 +42,8 @@ def _render_recipient_email(log):
     subject = personalize(log.campaign.subject, context)
     body_html = personalize(log.campaign.body, context)
     unsubscribe_url = _unsubscribe_url_for(log.campaign, recipient)
-    return subject, render_email_html(body_html, unsubscribe_url=unsubscribe_url), unsubscribe_url
+    keep_sent_copy = not carries_login_link(context, subject, body_html)
+    return subject, render_email_html(body_html, unsubscribe_url=unsubscribe_url), unsubscribe_url, keep_sent_copy
 
 
 def _classified_email_failure(exc: Exception, job) -> Exception:
@@ -67,8 +68,7 @@ def send_email_recipient_job(job) -> None:
         provider_config = _get_ses_client(config)
         if provider_config is None:
             raise RuntimeError("Email delivery is not configured.")
-        subject, wrapped_html, unsubscribe_url = _render_recipient_email(log)
-        wait_for_delivery_slot(config.provider, configured_ses_rate(config))
+        subject, wrapped_html, unsubscribe_url, keep_sent_copy = _render_recipient_email(log)
 
         def begin_provider_call():
             if not job.begin_provider_call():
@@ -85,6 +85,7 @@ def send_email_recipient_job(job) -> None:
             before_provider_call=begin_provider_call,
             recipient_log_id=log.pk,
             delivery_attempt=job.attempts,
+            keep_sent_copy=keep_sent_copy,
         )
         _record_email_job_result(log, job, result)
     except JobClaimLost:

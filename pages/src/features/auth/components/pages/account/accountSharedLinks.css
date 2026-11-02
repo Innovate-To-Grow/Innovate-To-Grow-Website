@@ -86,6 +86,8 @@
   line-height: 21px;
 }
 
+/* Copy Link and Open are the site's 40px outline buttons (44px at 992px and below, phones.css), the size of
+   View Full Page above the list. */
 .account-shares-actions {
   display: flex;
   flex-wrap: wrap;
@@ -93,28 +95,16 @@
   gap: 8px 12px;
 }
 
-.account-shares-actions .account-outline-btn {
-  min-height: 32px;
-  padding: 2px 12px;
-  font-size: var(--itg-font-size-small);
-}
-
-/* "Link copied." under the list; empty (and no height) until a copy. */
+/* "Link copied." under the list; empty (and no height) until a copy. Its colour comes from the tone class
+   (.itg-success / .itg-error, notices.css), so this class sets none. */
 .account-shares-copy-status:empty {
   display: none;
 }
 
 .account-shares-copy-status {
   margin: 8px 0 0;
-  color: var(--itg-color-success);
   font-size: var(--itg-font-size-small);
   line-height: 21px;
-}
-
-@media (max-width: 992px) {
-  .account-shares-actions .account-outline-btn {
-    min-height: 44px;
-  }
 }
 
 @media (max-width: 600px) {

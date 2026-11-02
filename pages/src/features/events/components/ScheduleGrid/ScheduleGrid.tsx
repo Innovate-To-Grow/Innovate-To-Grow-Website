@@ -1,6 +1,7 @@
 import '../../scheduleShared.css';
 import './ScheduleGrid.css';
 import {useMemo} from 'react';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
 import type {SheetRow, TrackInfo} from '@/components/SheetsDataTable';
 import {addMinutes} from '@/lib/format';
 import {scheduleToneClass} from '@/features/events/scheduleTones';
@@ -156,7 +157,13 @@ export const ScheduleGrid = ({
     return offsets;
   }, [classes]);
 
-  if (loading) return <div className="sg-loading" role="status">Loading schedule...</div>;
+  if (loading) {
+    return (
+      <div className="sg-loading" role="status">
+        <LoadingIndicator label="Loading schedule…" />
+      </div>
+    );
+  }
   if (error) return <div className="sg-error" role="alert">{error}</div>;
 
   return (

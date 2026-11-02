@@ -5,9 +5,9 @@ from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
-from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
 from apps.core.models import AWSCredentialConfig
+from apps.core.services.aws.credentials import resolve_aws_credentials
 
 from ..common.base import BaseModelAdmin
 from .test_send_mixin import TestSendViewsMixin
@@ -19,13 +19,9 @@ class AWSCredentialConfigForm(forms.ModelForm):
         fields = (
             "name",
             "is_active",
-            "access_key_id",
-            "secret_access_key",
+            "credentials_secret_arn",
             "default_region",
         )
-        widgets = {
-            "secret_access_key": UnfoldAdminPasswordToggleWidget(attrs={}, render_value=True),
-        }
 
 
 def _clear_usage_dashboard_cache():
@@ -45,7 +41,7 @@ class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
         "updated_at",
     )
     list_filter = ("is_active",)
-    search_fields = ("name", "access_key_id")
+    search_fields = ("name", "credentials_secret_arn")
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config", "test_bedrock_api"]
     actions_list = ["test_email_list", "test_sms_list"]
@@ -58,8 +54,8 @@ class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
         (
             _("AWS Credentials"),
             {
-                "fields": ("access_key_id", "secret_access_key", "default_region"),
-                "description": "Shared IAM access key and AWS region used by AWS-backed services.",
+                "fields": ("credentials_secret_arn", "default_region"),
+                "description": "Select the Secrets Manager reference and AWS region used by AWS-backed services.",
             },
         ),
         (_("Info"), {"fields": ("updated_at",)}),
@@ -80,6 +76,8 @@ class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
 
     @display(description="Access Key ID")
     def access_key_masked(self, obj):
+        if obj.credentials_secret_arn:
+            return "Secrets Manager"
         if obj.access_key_id:
             return f"...{obj.access_key_id[-4:]}"
         return "—"
@@ -118,18 +116,21 @@ class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
             return HttpResponseRedirect(change_url)
 
         try:
+            credentials = resolve_aws_credentials("bedrock", config=obj)
             client = boto3.client(
                 "bedrock-runtime",
                 region_name=obj.default_region or "us-west-2",
-                aws_access_key_id=obj.access_key_id,
-                aws_secret_access_key=obj.secret_access_key,
+                aws_access_key_id=credentials.access_key_id,
+                aws_secret_access_key=credentials.secret_access_key,
             )
             resp = client.converse(
                 modelId=model_id,
                 messages=[{"role": "user", "content": [{"text": "Reply with exactly: OK"}]}],
-                inferenceConfig={"maxTokens": 16, "temperature": 0},
+                inferenceConfig={"maxTokens": 1024},
             )
-            output_text = resp["output"]["message"]["content"][0]["text"]
+            output_text = "".join(block.get("text", "") for block in resp["output"]["message"]["content"])
+            if not output_text.strip():
+                raise ValueError("The model returned no text; verify its output token limit.")
             messages.success(request, 'Bedrock API test passed. Model responded: "' + output_text.strip() + '"')
         except ClientError as exc:
             messages.error(request, f"Bedrock API test failed: {exc.response['Error']['Message']}")

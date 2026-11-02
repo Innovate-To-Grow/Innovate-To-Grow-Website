@@ -250,7 +250,7 @@ describe('SchedulePage', () => {
     expect(useCurrentEventScheduleMock).toHaveBeenCalledWith('schedule-query');
   });
 
-  it('renders the loading state', () => {
+  it('renders the loading state as the shared loading indicator', () => {
     useCurrentEventScheduleMock.mockReturnValue({data: null, loading: true, error: null});
 
     render(
@@ -259,8 +259,14 @@ describe('SchedulePage', () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText('Loading schedule...')).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Loading schedule...');
+    // The same ring and label as the event archive's schedule box (ScheduleGrid), inside the status line.
+    const label = screen.getByText('Loading schedule…');
+    expect(label).toHaveClass('loading-indicator-label');
+    expect(label.childNodes).toHaveLength(1);
+    const status = screen.getByRole('status');
+    expect(status).toHaveClass('schedule-page-state', 'schedule-page-state-loading');
+    expect(status).toHaveTextContent('Loading schedule…');
+    expect(status.querySelector('.loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('renders the error state and its unavailable fallback', () => {
@@ -520,7 +526,7 @@ describe('SchedulePage', () => {
     fireEvent.click(screen.getByRole('button', {name: 'CSE-101'}));
 
     expect(screen.getByTestId('location-probe')).toHaveTextContent('value=CSE-101');
-    expect(screen.getByPlaceholderText('Search projects...')).toHaveValue('CSE-101');
+    expect(screen.getByPlaceholderText('Search projects…')).toHaveValue('CSE-101');
   });
 
   it('filters the projects grid down to presenting projects', () => {
@@ -562,7 +568,7 @@ describe('SchedulePage', () => {
 
     fireEvent.click(screen.getAllByRole('button', {name: 'CSE-101'})[0]);
 
-    expect(screen.getByPlaceholderText('Search projects...')).toHaveValue('CSE-101');
+    expect(screen.getByPlaceholderText('Search projects…')).toHaveValue('CSE-101');
   });
 
   it('clears the team search param when a slot has no team identifier', () => {
