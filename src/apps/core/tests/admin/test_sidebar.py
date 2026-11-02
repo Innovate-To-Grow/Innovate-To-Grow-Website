@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 from django.conf import settings
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import NoReverseMatch, reverse
@@ -250,12 +252,59 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertNotIn("core.smsserviceconfig", service_config_tab["models"])
         self.assertNotIn("System Intelligence Config", item_titles)
         self.assertNotIn("Notification Delivery", item_titles)
-        self.assertIn("Gmail Access Account", item_titles)
+        self.assertIn("Gmail IMAP (Template Import)", item_titles)
         self.assertNotIn("SMS Config", item_titles)
         self.assertIn("Google Credentials", item_titles)
         self.assertIn("AWS Credentials", item_titles)
         self.assertIn("core.sendverificationconfig", service_config_tab["models"])
         self.assertIn("Send Verification", item_titles)
+
+    def test_service_credentials_tabs_list_every_email_provider(self):
+        tab = next(tab for tab in settings.UNFOLD["TABS"] if "core.awscredentialconfig" in tab["models"])
+        links = {item["title"]: item["link"] for item in tab["items"]}
+
+        self.assertEqual(
+            list(links),
+            [
+                "AWS Credentials",
+                "SMTP",
+                "Microsoft Graph",
+                "Graph Access Checks",
+                "Gmail API",
+                "Gmail IMAP (Template Import)",
+                "Google Credentials",
+                "Send Verification",
+            ],
+        )
+        for title, url_name in (
+            ("SMTP", "admin:core_smtpproviderconfig_changelist"),
+            ("Microsoft Graph", "admin:core_microsoftgraphproviderconfig_changelist"),
+            ("Graph Access Checks", "admin:core_microsoftgraphaccesscheck_changelist"),
+            ("Gmail API", "admin:core_gmailapiproviderconfig_changelist"),
+        ):
+            self.assertEqual(links[title], reverse(url_name))
+        # Every tab's pages show the tab bar.
+        for model in ("core.smtpproviderconfig", "core.microsoftgraphproviderconfig", "core.gmailapiproviderconfig"):
+            self.assertIn(model, tab["models"])
+
+    def test_the_gmail_api_tab_is_for_superusers_only(self):
+        tab = next(tab for tab in settings.UNFOLD["TABS"] if "core.awscredentialconfig" in tab["models"])
+        [gmail_api] = [item for item in tab["items"] if item["title"] == "Gmail API"]
+        core_staff = SimpleNamespace(user=SimpleNamespace(is_active=True, is_superuser=False))
+        superuser = SimpleNamespace(user=SimpleNamespace(is_active=True, is_superuser=True))
+
+        self.assertFalse(gmail_api["permission"](core_staff))
+        self.assertTrue(gmail_api["permission"](superuser))
+
+    def test_service_credentials_stays_highlighted_on_every_credential_tab(self):
+        site_settings = next(
+            group for group in settings.UNFOLD["SIDEBAR"]["navigation"] if group["title"] == "Site Settings"
+        )
+        [item] = [item for item in site_settings["items"] if item["title"] == "Service Credentials"]
+
+        for path in ("/admin/core/microsoftgraphproviderconfig/", "/admin/core/smtpproviderconfig/1/change/"):
+            self.assertTrue(item["active"](SimpleNamespace(path=path)), path)
+        self.assertFalse(item["active"](SimpleNamespace(path="/admin/core/sitemaintenancecontrol/")))
 
     def test_mail_settings_route_is_registered_under_mail_app(self):
         self.assertEqual(reverse("admin:mail_delivery_dashboard"), "/admin/mail/delivery-dashboard/")

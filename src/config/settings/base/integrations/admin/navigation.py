@@ -2,6 +2,8 @@
 
 from apps.core.utils.access import user_can_access_app
 
+from .tabs import SERVICE_CREDENTIAL_MODELS
+
 
 def _can(app_label):
     """Sidebar visibility callback: show only if the member can access ``app_label``."""
@@ -24,6 +26,11 @@ def _can_open_legacy_viewer(request):
 def _is_system_intelligence_chat(request):
     path = request.path
     return path.startswith("/admin/system-intelligence/") and not path.startswith("/admin/system-intelligence/usage/")
+
+
+def _is_service_credentials(request):
+    # One sidebar entry for the whole Service Credentials tab group, highlighted on every tab's pages.
+    return any(request.path.startswith(f"/admin/{model.replace('.', '/')}/") for model in SERVICE_CREDENTIAL_MODELS)
 
 
 def _is_mail_delivery_operations(request):
@@ -130,6 +137,7 @@ SIDEBAR = {
                     "title": "Service Credentials",
                     "link": "/admin/core/awscredentialconfig/",
                     "permission": _can("core"),
+                    "active": _is_service_credentials,
                 },
                 {
                     "title": "Legacy Viewer",

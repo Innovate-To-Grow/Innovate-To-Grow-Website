@@ -44,7 +44,7 @@ PROVIDER_ERROR = (
     "An active Microsoft Graph configuration whose mailbox scope lets the sender mailbox and the From address "
     "send is required before activation."
 )
-CHIP_COLOURS = {"success": "bg-green-50", "warning": "bg-yellow-50"}
+CHIP_COLOURS = {"success": "bg-green-50", "warning": "bg-orange-50"}
 
 
 def snapshot(instance):

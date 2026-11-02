@@ -2,14 +2,13 @@
 
 from django.contrib import admin, messages
 from django.contrib.admin.models import ADDITION, CHANGE, LogEntry
-from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
 from apps.core.admin.service_credentials.gmail_api_panel import key_panel
-from apps.core.admin.service_credentials.helpers import _normalize_phone_number, _send_test_email, _send_test_sms
 from apps.core.admin.service_credentials.microsoft_graph_panel import certificate_panel
 from apps.core.models import (
     AWSCredentialConfig,
@@ -21,33 +20,20 @@ from apps.core.models import (
 from apps.core.utils.access import user_can_access_app
 from apps.mail.services.campaign.pacing import email_send_rate_line, sms_send_rate_line
 
+from .access import _require_mail_access
 from .forms import AwsDeliveryForm, EmailDeliveryForm, SMTPDeliveryForm
+from .providers import get_provider_urls, provider_cards
 from .rate_cards import EMAIL_CHANNELS
+from .test_send import get_test_send_urls
 
 
 def get_mail_settings_urls():
     return [
         path("mail/settings/", admin.site.admin_view(mail_settings_view), name="mail_settings"),
         path("mail/settings/edit/", admin.site.admin_view(mail_settings_edit_view), name="mail_settings_edit"),
-        path(
-            "mail/settings/test-email/",
-            admin.site.admin_view(mail_settings_test_email_view),
-            name="mail_settings_test_email",
-        ),
-        path(
-            "mail/settings/test-sms/",
-            admin.site.admin_view(mail_settings_test_sms_view),
-            name="mail_settings_test_sms",
-        ),
+        *get_test_send_urls(),
+        *get_provider_urls(),
     ]
-
-
-def _require_mail_access(request):
-    # ``admin_view`` only enforces is_staff, so these custom URLs must re-check
-    # per-app access themselves — Django never runs the per-app model permissions
-    # for a standalone admin view.
-    if not user_can_access_app(request.user, "mail"):
-        raise PermissionDenied("You do not have permission to access mail settings.")
 
 
 def mail_settings_view(request):
@@ -62,6 +48,7 @@ def mail_settings_view(request):
     graph_config = MicrosoftGraphProviderConfig.load()
     context = _notification_delivery_context(request, email_config, aws_config, smtp_config, graph_config)
     context["edit_url"] = reverse("admin:mail_settings_edit")
+    context["provider_cards"] = provider_cards(request, email_config, aws_config, smtp_config)
     return TemplateResponse(request, "admin/mail/settings.html", context)
 
 
@@ -244,70 +231,6 @@ def _mask_key(value):
     if not value:
         return "Not configured"
     return f"...{value[-4:]}"
-
-
-def mail_settings_test_email_view(request):
-    _require_mail_access(request)
-    config = EmailServiceConfig.load()
-    settings_url = reverse("admin:mail_settings")
-
-    if request.method == "POST":
-        recipient = request.POST.get("recipient", "").strip()
-        if not recipient:
-            messages.error(request, "Please provide a recipient email address.")
-            return HttpResponseRedirect(reverse("admin:mail_settings_test_email"))
-        try:
-            provider = _send_test_email(config=config, recipient=recipient)
-            messages.success(request, f"Test email sent to {recipient} via {provider} (config: {config.name}).")
-        except Exception as exc:
-            messages.error(request, f"Failed to send test email: {exc}")
-        return HttpResponseRedirect(settings_url)
-
-    context = {
-        **admin.site.each_context(request),
-        "title": "Send Test Email - Notification Delivery",
-        "input_label": "Recipient email address",
-        "input_type": "email",
-        "input_placeholder": "admin@example.com",
-        "input_help": f"A test email will be sent from {config.source_address} through {config.get_provider_display()}.",
-        "submit_label": "Send Test Email",
-        "cancel_url": settings_url,
-    }
-    return TemplateResponse(request, "admin/core/test_send_form.html", context)
-
-
-def mail_settings_test_sms_view(request):
-    _require_mail_access(request)
-    config = AWSCredentialConfig.load()
-    settings_url = reverse("admin:mail_settings")
-
-    if request.method == "POST":
-        country_code = request.POST.get("country_code", "+1")
-        recipient = request.POST.get("recipient", "").strip()
-        if not recipient:
-            messages.error(request, "Please provide a phone number.")
-            return HttpResponseRedirect(reverse("admin:mail_settings_test_sms"))
-        full_number = _normalize_phone_number(country_code, recipient)
-        try:
-            result = _send_test_sms(phone_number=full_number)
-            messages.success(request, f"Test SMS sent to {full_number}: {result} (AWS config: {config.name}).")
-        except Exception as exc:
-            messages.error(request, f"Failed to send test SMS: {exc}")
-        return HttpResponseRedirect(settings_url)
-
-    context = {
-        **admin.site.each_context(request),
-        "title": "Send Test SMS - Notification Delivery",
-        "input_label": "Recipient phone number",
-        "input_type": "tel",
-        "input_placeholder": "2345678901",
-        "input_help": (
-            "Select country code and enter the phone number. The message will be sent through AWS End User Messaging."
-        ),
-        "submit_label": "Send Test SMS",
-        "cancel_url": settings_url,
-    }
-    return TemplateResponse(request, "admin/core/test_send_form.html", context)
 
 
 def _email_provider_state(email_config, aws_config, smtp_config, graph_config):
