@@ -2,10 +2,10 @@ name: CodeQL
 
 on:
   push:
-    branches: [main, master]
+    branches: [main]
   schedule:
-    # Weekly full-repo scan Mondays 03:00 UTC — catches drift when no PRs
-    # touched the scanned paths.
+    # Weekly rescan of main (Mondays 03:00 UTC): new CodeQL queries surface
+    # alerts even in a week without pushes.
     - cron: "0 3 * * 1"
 
 permissions:
@@ -18,7 +18,7 @@ concurrency:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 30
     permissions:
       # Required for CodeQL to upload results to the Security tab.

@@ -2,21 +2,14 @@ name: Code Style Check
 
 on:
   workflow_call:
-    inputs:
-      run-python:
-        description: Run backend Python linting.
-        required: true
-        type: boolean
 
 permissions:
   contents: read
 
 jobs:
-  # Python (Django Backend) Linting
   python-lint:
     name: Python Linting
     runs-on: ubuntu-latest
-    if: ${{ inputs.run-python }}
     timeout-minutes: 10
     defaults:
       run:
@@ -55,7 +48,7 @@ jobs:
 
       # Bandit SAST — config lives in pyproject.toml [tool.bandit]. The
       # baseline pins pre-existing findings so only *new* issues break CI.
-      # Update the baseline with `bandit -r src -c pyproject.toml -f json
-      # -o .bandit-baseline.json` after resolving findings intentionally.
+      # Regenerate it from src/ after resolving findings intentionally:
+      # cd src && bandit -r . -c ../pyproject.toml -f json -o ../.bandit-baseline.json
       - name: Run Bandit (with baseline)
         run: bandit -r . -c ../pyproject.toml --baseline ../.bandit-baseline.json
