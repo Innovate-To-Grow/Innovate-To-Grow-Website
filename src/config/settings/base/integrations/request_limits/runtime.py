@@ -68,10 +68,19 @@ CONTROLLER = {
     "max_latency_samples": 500,
     # Each process re-reads the policies and Smart factors at most this often (and at once after a local save).
     "state_refresh_seconds": 10,
+    # A scope's Smart factor changes at most once per this many seconds site-wide, however many processes assess
+    # their windows (each process would otherwise cut again on its own window).
+    "min_change_seconds": 15,
+    # The site-wide p95 and 5xx share are measured over these tiers only: P3 (AI, exports, full lists, scanners) is
+    # slow or failing by nature, and cutting it never makes its own calls faster. Its load still shows in the slots.
+    "signal_tiers": ("p0", "p1", "p2"),
+    # ...and without these scopes, whose latency and 5xx come from another service (the archive site's answers).
+    "signal_excluded_scopes": ("legacy-proxy",),
 }
 
 ADMISSION = {
-    # Concurrent requests one process accepts (uvicorn --limit-concurrency answers 503 beyond it).
+    # Requests one process serves at once. Uvicorn's own --limit-concurrency (entrypoint.sh) is set well above it,
+    # since it also counts idle keep-alive connections and answers 503 to every tier alike.
     "concurrency_limit": _env_int("UVICORN_LIMIT_CONCURRENCY", 20),
     # Slots only P0 may use, whatever the tier shares say.
     "p0_reserved_slots": 2,
@@ -80,7 +89,8 @@ ADMISSION = {
 }
 
 ABUSE = {
-    # Refusals (429, from this limiter or from the view's own limits) one caller collects within this window...
+    # Strikes: a refusal of the caller's own making (over its own limit or flood ceiling at full, unreduced size, or
+    # a 429 from the view's own limit for a caller that is not just an IP) one caller collects within this window...
     "strike_window_seconds": 300,
     # ...this many of them block the caller for the scope...
     "strikes_to_block": 10,
@@ -88,6 +98,10 @@ ABUSE = {
     "block_base_seconds": 30,
     "block_max_seconds": 900,
     "level_memory_seconds": 3_600,
+    # One solved anti-abuse proof promotes at most this many requests to P0 (a retry or two), within this memory
+    # (longer than a proof lives): a replayed proof is counted as unproven traffic after that.
+    "proof_promotions": 3,
+    "proof_memory_seconds": 600,
 }
 
 STORE = {

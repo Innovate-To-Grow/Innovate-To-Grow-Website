@@ -5,13 +5,17 @@
   neither drain another member's bucket nor dodge its own.
 - **Admin user**: the session user ``AuthenticationMiddleware`` resolves, only when a session cookie is sent.
 - **CLI token**: under the CLI prefix, a bearer that is not a JWT counts per SHA-256 of the token (the hash the CLI
-  stores). An unknown token is refused by the view; the scope's aggregate cap bounds a flood of made-up ones.
+  stores) in the ``cli`` scope. It is not verified here, so its caller still counts as a **source** (below), and every
+  other scope ignores it: a made-up token per request never buys a fresh bucket.
 - **Client IP**: ``apps.core.utils.client_ip`` with ``NUM_PROXIES`` (the trusted ALB hop in production).
 - **Destination**: a key an app registers for a scope with ``register_identity_resolver`` (for example the hashed
   phone number of a code request), falling back to the member.
 
 Each scope's ``identity`` picks one (see ``config/settings/base/integrations/request_limits/scopes.py``): sign-in
 and code flows never fall back to the IP, because most users share one campus address.
+
+A caller without a verified identity (no member token, no admin session) also has a **source**, its client IP. A
+scope with a ``source_cap`` counts such callers per source too, as a flood ceiling only (``source_key``).
 """
 
 import hashlib
@@ -58,8 +62,13 @@ class Identity:
         if kind == "destination":
             return f"d:{destination}" if destination else self.person
         if kind == "ip":
-            return self.person or (f"c:{self.cli}" if self.cli else None) or (f"ip:{self.ip}" if self.ip else None)
+            return self.person or self.source
         return None
+
+    @property
+    def source(self) -> str | None:
+        """The client IP of a caller without a verified identity, as a bucket key (None for a signed-in person)."""
+        return None if self.person or not self.ip else f"ip:{self.ip}"
 
 
 def register_identity_resolver(scope: str, resolver: Callable | str) -> None:
@@ -122,3 +131,9 @@ def bucket_key(request, scope: str, kind: str) -> str | None:
     """The bucket key a request of ``scope`` (counted per ``kind``) uses, or None for the aggregate only."""
     found = destination(scope, request) if kind == "destination" else None
     return resolve(request).key(kind, found)
+
+
+def source_key(request, key: str | None) -> str | None:
+    """The source bucket of a caller without a verified identity, unless ``key`` already is that bucket."""
+    source = resolve(request).source
+    return None if source == key else source

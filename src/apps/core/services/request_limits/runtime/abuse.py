@@ -1,10 +1,13 @@
 """Per-caller abuse escalation: priority is not an exemption from abuse protection.
 
-Every 429 one caller (an identity, never "everyone") collects in a scope is a strike — whether this limiter refused
-it or the view's own limit did (a code cooldown, an hourly cap, the SMS budget, the sign-in lockout). After
+A **strike** is a refusal of the caller's own making, never of everyone's: going over its own limit or its source's
+flood ceiling (at the scope's full size, not just a Smart cut), or a 429 from the view's own limit (a code cooldown,
+an hourly cap, the SMS budget, the sign-in lockout) for a caller with its own key, not a shared IP. Refusals for the
+aggregate cap, for want of a concurrency slot and during a block are no strikes (``limiter`` decides). After
 ``strikes_to_block`` strikes within ``strike_window_seconds`` the caller is blocked for the scope for
 ``block_base_seconds``, doubling with every further block within ``level_memory_seconds``, up to
-``block_max_seconds``. So a P0 caller pumping SMS or guessing codes ends up blocked like any other.
+``block_max_seconds``; a block always ends, however much the caller keeps sending. So a P0 caller pumping SMS or
+guessing codes ends up blocked like any other.
 """
 
 import math
@@ -29,8 +32,9 @@ def blocked_for(scope: str, identity: str | None, now: float) -> int | None:
 
 
 def strike(scope: str, identity: str | None, now: float) -> int | None:
-    """Count one refusal; return the block (seconds) it started, or None."""
-    if identity is None:
+    """Count one strike; return the block (seconds) it started, or None. A caller blocked already is not struck:
+    its refusals during the block never lengthen it."""
+    if identity is None or blocked_for(scope, identity, now) is not None:
         return None
     abuse = section("abuse")
     strikes, level, block = _names(scope, identity)

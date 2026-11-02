@@ -82,7 +82,7 @@ class PromotionTests(TestCase):
 
     def test_exemptions_and_preflights_are_untouched(self):
         register_priority_check("t-p0", has_proof)
-        request = self.factory.options("/p0/")
+        request = self.factory.options("/p0/", HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST")
         request.resolver_match = resolve("/p0/")
         self.assertEqual(scopes.classify(request, request.resolver_match.func).source, "preflight")
 
@@ -92,10 +92,11 @@ class PromotionTests(TestCase):
         found.clear()
         self.assertEqual(priority.registered_checks(), {"t-p0": has_proof})
 
-    def test_the_unproven_scope_is_p2_shared_and_never_per_ip(self):
+    def test_the_unproven_scope_is_p2_shared_with_a_flood_ceiling_per_source(self):
         spec = limits_with()["scopes"][UNPROVEN]
         self.assertEqual((spec["tier"], spec["identity"]), ("p2", "global"))
         self.assertIsNotNone(spec["global_cap"])
+        self.assertLess(spec["source_cap"], spec["global_cap"])
 
     @override_settings(REQUEST_RATE_LIMITS_ENABLED=True)
     def test_a_check_for_an_unknown_scope_is_a_system_check_error(self):

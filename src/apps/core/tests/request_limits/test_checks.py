@@ -32,7 +32,7 @@ class RequestLimitCheckTests(SimpleTestCase):
         with override_settings(MIDDLEWARE=middleware, REQUEST_RATE_LIMITS_ENABLED=False):
             self.assertEqual(check_request_limits(), [])
 
-    def test_the_middleware_before_cors_health_or_auth_is_an_error(self):
+    def test_the_middleware_before_cors_health_or_sessions_is_an_error(self):
         middleware = [
             REQUEST_LIMIT_MIDDLEWARE,
             *(name for name in settings.MIDDLEWARE if name != REQUEST_LIMIT_MIDDLEWARE),
@@ -40,8 +40,19 @@ class RequestLimitCheckTests(SimpleTestCase):
         with override_settings(MIDDLEWARE=middleware):
             problems = check_request_limits()
         self.assertEqual(ids(problems), ["core.E008"])
-        for name in ("CorsMiddleware", "HealthCheckMiddleware", "AuthenticationMiddleware"):
+        for name in ("CorsMiddleware", "HealthCheckMiddleware", "SessionMiddleware"):
             self.assertIn(name, problems[0].msg)
+
+    def test_the_middleware_after_csrf_is_an_error(self):
+        # m4: after CSRF, a request refused for its CSRF token is never counted.
+        middleware = [
+            *(name for name in settings.MIDDLEWARE if name != REQUEST_LIMIT_MIDDLEWARE),
+            REQUEST_LIMIT_MIDDLEWARE,
+        ]
+        with override_settings(MIDDLEWARE=middleware):
+            problems = check_request_limits()
+        self.assertEqual(ids(problems), ["core.E012"])
+        self.assertIn("CsrfViewMiddleware", problems[0].msg)
 
     def test_a_registration_naming_an_unknown_scope_is_an_error(self):
         register_scope("some:view", {"GET": "public-read", "POST": "nope"})

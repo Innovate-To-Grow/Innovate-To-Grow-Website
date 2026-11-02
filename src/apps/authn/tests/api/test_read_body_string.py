@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from django.core.cache import cache
 from django.http import QueryDict
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ImpersonationToken
@@ -96,6 +96,9 @@ class ReadBodyStringTests(SimpleTestCase):
         self.assertEqual(read({"token": login_link_token}), login_link_token)
 
 
+# The request limiter's heartbeat may write during any request once its interval has passed; these tests count the
+# view's own queries.
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
 class CredentialEndpointLengthLimitTests(APITestCase):
     """Every view that reads its credential through ``read_body_string`` answers an absurd one like a missing one."""
 

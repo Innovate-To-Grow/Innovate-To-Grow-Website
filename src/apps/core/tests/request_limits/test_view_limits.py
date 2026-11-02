@@ -262,6 +262,9 @@ class FailureLockoutTests(TestCase):
 
     @ON
     def test_per_process_counters_allow_each_process_its_share(self):
+        # The migrated row keeps the shipped period; the test seed is 3 per 60 s, so the row reads it at that period.
+        RequestRateLimitPolicy.for_scope("view-maintenance-bypass")
+        RequestRateLimitPolicy.objects.filter(scope="view-maintenance-bypass").update(period_seconds=60)
         with patch.object(view_limits, "live_processes", return_value=2):
             self.fail(2)
             self.assertIsNotNone(failure_lockout("view-maintenance-bypass"))

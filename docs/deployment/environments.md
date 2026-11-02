@@ -43,7 +43,8 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
-| `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap; the request limiter shares these slots between priority tiers ([Request limits](#request-limits)) | No (defaults to 20) |
+| `UVICORN_LIMIT_CONCURRENCY` | Requests one process serves at once; the request limiter shares these slots between priority tiers ([Request limits](#request-limits)) | No (defaults to 20) |
+| `UVICORN_CONNECTION_LIMIT` | Uvicorn's own `--limit-concurrency` (connections, idle keep-alives included; 503 beyond it), kept well above the request slots | No (defaults to 4 × `UVICORN_LIMIT_CONCURRENCY`) |
 | `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle and request-limit identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
 | `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | Enabled in production through `itg/backend/deploy-config`; code defaults to false |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
@@ -138,10 +139,10 @@ The Gmail API provider's service account, key facts and account allow-list live 
 |----------|---------|-----------------|
 | `REQUEST_RATE_LIMITS_ENABLED` | Turns the request limiter (`RequestRateLimitMiddleware`) on or off: `1`/`true`/`yes`/`on` or `0`/`false`/`no`/`off` | No (on in production and the local dev server; off in `config.settings.environments.test` / `unit`, local `manage.py test`, E2E and the CI container smoke unless this enables it) |
 | `REQUEST_RATE_LIMITS_OVERRIDES` | JSON object deep-merged into `REQUEST_RATE_LIMITS`, e.g. `{"scopes": {"public-read": {"global_cap": 20000}}}` or `{"exempt": {"<route name>": "reason"}}` | No (empty keeps the defaults) |
-| `CSP_REPORT_RATE_LIMIT` / `CSP_REPORT_RATE_WINDOW_SECONDS` | Seed of the `view-csp-report` policy (60 per 60 s) | No |
+| `CSP_REPORT_RATE_LIMIT` / `CSP_REPORT_RATE_WINDOW_SECONDS` | Seed of the `view-csp-report` policy (60 per 60 s). Read together as a rate: with Smart on, an existing row with another period gets the same rate per its own period | No |
 
 `REQUEST_RATE_LIMITS` (`config/settings/base/integrations/request_limits/`) holds every scope (tier, identity,
-baseline, period, Smart floor, fixed, enabled, per-caller ceiling, aggregate cap), the route table and exemptions, the
+baseline, period, Smart floor, fixed, enabled, per-caller ceiling, aggregate cap, per-source flood ceiling), the route table and exemptions, the
 tier shed / recovery factors and slot shares, the Smart controller thresholds, abuse escalation, the counter store and
 the fallback scopes. Each scope seeds a `RequestRateLimitPolicy` row staff edit on **Site Settings → Request Limits**.
 An override's scope `requests` (the Smart baseline), ceilings, routes, exemptions and runtime sections apply to a
@@ -154,9 +155,9 @@ bad value raises `ImproperlyConfigured` before any process serves a request. Ref
 | Section | Holds (defaults) |
 |---------|------------------|
 | `tiers.<p1/p2/p3>` | `decrease_factor` 0.85 / 0.7 / 0.5, `recovery_step` 0.15 / 0.10 / 0.10, `floor` 0.5 / 0.25 / 0.1, `admission_share` 0.9 / 0.7 / 0.5 (P0 has none: never shed, every slot) |
-| `controller` | `window_seconds` 15, `min_requests` 20, `latency_overload_ms` 1,500 / `latency_healthy_ms` 800, `error_overload_share` 0.05 / `error_healthy_share` 0.01, `inflight_overload_share` 0.75 / `inflight_healthy_share` 0.4, `recovery_hold_seconds` 30, `max_latency_samples` 500, `state_refresh_seconds` 10 |
+| `controller` | `window_seconds` 15, `min_requests` 20, `latency_overload_ms` 1,500 / `latency_healthy_ms` 800, `error_overload_share` 0.05 / `error_healthy_share` 0.01, `inflight_overload_share` 0.75 / `inflight_healthy_share` 0.4, `recovery_hold_seconds` 30, `max_latency_samples` 500, `state_refresh_seconds` 10, `min_change_seconds` 15 (one factor step per scope per interval site-wide), `signal_tiers` p0–p2 and `signal_excluded_scopes` `legacy-proxy` (what the site-wide p95 and 5xx share read) |
 | `admission` | `concurrency_limit` (`UVICORN_LIMIT_CONCURRENCY`, 20), `p0_reserved_slots` 2, `retry_after_seconds` 2 |
-| `abuse` | `strike_window_seconds` 300, `strikes_to_block` 10, `block_base_seconds` 30 doubling to `block_max_seconds` 900, `level_memory_seconds` 3,600 |
+| `abuse` | `strike_window_seconds` 300, `strikes_to_block` 10, `block_base_seconds` 30 doubling to `block_max_seconds` 900, `level_memory_seconds` 3,600, `proof_promotions` 3 per solved proof within `proof_memory_seconds` 600 |
 | `store` | `mode` `auto`, `shared_backends` (the Redis backends), `heartbeat_seconds` 30, `process_expiry_seconds` 90, `process_prune_seconds` 86,400, `refusal_history_minutes` 15 |
 | `fallback` | `cli_prefix` `/admin-api/`, `admin_prefix` `/admin/` and the fallback scope names, `not_found`, `unproven` |
 
@@ -294,13 +295,20 @@ a signed-in person does are never limited by it. The request limiter keys an
 `NUM_PROXIES`) only in scopes where one source flooding is the risk, each with a
 ceiling far above a whole campus's honest traffic: `public-read` 3,000/minute
 (12,000 site-wide), `public-write` 120, `public-background` 600, `telemetry` 300,
-`tokenized-link` 60, `legacy-proxy` 1,200, `public-heavy` 60 (the two full-list
-catalog endpoints), `ai` 60, `not-found` 120 and `webhook-ses` 600. Under
+`tokenized-link` 60, `legacy-proxy` 1,200, `public-heavy` 60 (the whole-catalog
+`/projects/past-all/`), `ai` 300 (a flood ceiling; the per-actor limits are the
+per-person ones), `not-found` 120 and `webhook-ses` 3,000. Under
 overload Smart lowers these for P3 first, never for P0. A signed-in caller of the
 same scopes counts as that person instead. Sign-in and code scopes
 (`auth-sign-in`, `auth-code-send`, `auth-code-verify`, `auth-email-link`,
-`auth-challenge`) count anonymous callers only in their site-wide caps, next to
-the destination cooldowns, lockout and challenge caps.
+`auth-challenge`, `auth-token-refresh`) and the other scopes not keyed on the IP
+count an anonymous caller in their site-wide cap and against a per-source
+**flood ceiling** (`source_cap`: for example sign-in 240/minute, code send 120,
+code check 360, about a fifth of the site-wide cap), next to the destination
+cooldowns, lockout and challenge caps. The flood ceiling is what keeps one
+client from filling the site-wide cap and refusing everyone; a whole campus
+stays far below it. A 429 the view answers itself (a cooldown, a per-actor
+limit) is never an abuse strike against a shared IP.
 
 Three per-view limiters also use the client IP, each for a stated reason:
 

@@ -118,8 +118,11 @@ def record(scope: str, status: int, latency_ms: float, now: float, *, served: bo
         stats.sample(latency_ms, keep)
 
 
-def take_if_due(now: float) -> Snapshot | None:
-    """The window that ended, once (to the first caller after it ends), and a fresh window; else None."""
+def take_if_due(now: float, site_scopes=None) -> Snapshot | None:
+    """The window that ended, once (to the first caller after it ends), and a fresh window; else None.
+
+    The site-wide request count, 5xx count and p95 cover only the scopes ``site_scopes(name)`` accepts (all when it
+    is None); every scope keeps its own signal."""
     with WINDOW.lock:
         if WINDOW.started is None or now - WINDOW.started < section("controller")["window_seconds"]:
             return None
@@ -128,7 +131,7 @@ def take_if_due(now: float) -> Snapshot | None:
         refused = WINDOW.refused
         WINDOW.started = now
         WINDOW._clear()
-    every_sample = [sample for stats in scopes.values() for sample in stats.samples]
+    site = [stats for name, stats in scopes.items() if site_scopes is None or site_scopes(name)]
     return Snapshot(
         started=started,
         ended=now,
@@ -136,9 +139,9 @@ def take_if_due(now: float) -> Snapshot | None:
             name: ScopeSignal(stats.requests, stats.errors, stats.limited, percentile(stats.samples))
             for name, stats in scopes.items()
         },
-        requests=sum(stats.requests for stats in scopes.values()),
-        errors=sum(stats.errors for stats in scopes.values()),
-        p95_ms=percentile(every_sample),
+        requests=sum(stats.requests for stats in site),
+        errors=sum(stats.errors for stats in site),
+        p95_ms=percentile([sample for stats in site for sample in stats.samples]),
         inflight_share=inflight,
         refused=refused,
     )

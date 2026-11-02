@@ -177,7 +177,7 @@ class AuditTests(RequestLimitsAdminTestCase):
                     "auth-code-send-smart_enabled": None,
                     "auth-code-send-manual_requests": "20",
                     "ai-smart_floor": "0.2",
-                    "ai-identity_ceiling": "70",
+                    "ai-identity_ceiling": "350",
                     "view-code-send-sms-enabled": None,
                 }
             ),
@@ -188,7 +188,7 @@ class AuditTests(RequestLimitsAdminTestCase):
         self.assertEqual(
             lines,
             [
-                "ai: Smart floor 0.1→0.2; per-caller ceiling blank→70",
+                "ai: Smart floor 0.1→0.2; per-caller ceiling blank→350",
                 "auth-code-send: priority P0→P1; Smart limit on→off; manual 10→20",
                 "view-code-send-sms: enabled on→off",
             ],
@@ -264,7 +264,7 @@ class CardFieldTests(RequestLimitsAdminTestCase):
     def test_floor_and_ceiling_help_show_the_numbers(self):
         form = RequestLimitPolicyForm(instance=self.policy("ai"), prefix="x")
         self.assertIn(
-            "A share of the baseline (60 requests per period, from REQUEST_RATE_LIMITS), so at most 1: now 6 per "
+            "A share of the baseline (300 requests per period, from REQUEST_RATE_LIMITS), so at most 1: now 30 per "
             "period at the floor (never below 1).",
             form["smart_floor"].help_text,
         )

@@ -45,6 +45,8 @@ class ScopeView:
     # The 429s of the last ``refusal_history_minutes`` by who refused them (None for a per-view limit: its view's
     # refusals are counted under the parent).
     refused: dict | None
+    # Requests per period from one source without a verified identity (None: no flood ceiling).
+    source_cap: int | None = None
 
     @property
     def sheddable(self) -> bool:
@@ -79,6 +81,7 @@ def _view(config, spec, parent, processes, decision, refused) -> ScopeView:
         per_process=None if parent is not None else effective_limits(config, processes).per_identity,
         decision=decision,
         refused=refused,
+        source_cap=limits.source_cap,
     )
 
 

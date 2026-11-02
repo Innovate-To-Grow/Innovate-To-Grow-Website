@@ -30,6 +30,7 @@ def runtime_status() -> dict:
                 "factor": limits.factor,
                 "per_identity": limits.per_identity,
                 "global_cap": limits.global_cap,
+                "source_cap": limits.source_cap,
                 "period_seconds": limits.period,
                 "per_process": effective_limits(config, processes).per_identity,
             }

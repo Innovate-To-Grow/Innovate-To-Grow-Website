@@ -2,14 +2,16 @@
 
 In order, a route is:
 
-1. **exempt** when it is a CORS preflight (OPTIONS), the view says so (``rate_limit_exempt = "reason"``), an app
+1. **exempt** when it is a CORS preflight (OPTIONS with ``Access-Control-Request-Method``; a bare OPTIONS runs the
+   view, so it is limited like any other request), the view says so (``rate_limit_exempt = "reason"``), an app
    registered it with ``register_exemption`` or ``REQUEST_RATE_LIMITS["exempt"]`` lists it;
 2. in the scope ``REQUEST_RATE_LIMITS["routes"]`` gives it (the deployment's table, so a
    ``REQUEST_RATE_LIMITS_OVERRIDES`` entry can move any route, its own views' included);
 3. in the scope its view names (``rate_limit_scope = "scope"`` or ``{"GET": "scope", "*": "scope"}``);
 4. in the scope an app registered for it from ``AppConfig.ready()`` (``register_scope``; for third-party views);
 5. else in a **fallback** scope: ``cli`` under the CLI prefix, ``staff-admin`` under the admin prefix, otherwise
-   ``public-read`` / ``member-read`` for GET and HEAD and ``public-write`` / ``member-write`` for the rest.
+   ``public-read`` / ``member-read`` for GET, HEAD and a bare OPTIONS and ``public-write`` / ``member-write`` for
+   the rest.
 
 A scope with a priority check (``priority.register_priority_check``) is then kept only for a request a person
 started; any other is counted in the unproven scope (``fallback.unproven``).
@@ -118,15 +120,20 @@ def fallback(path: str, method: str, signed_in: bool) -> str:
         return rules["cli"]
     if path.startswith(rules["admin_prefix"]):
         return rules["admin"]
-    if method in SAFE_METHODS:
+    if method in SAFE_METHODS or method == "OPTIONS":
         return rules["member_read"] if signed_in else rules["public_read"]
     return rules["member_write"] if signed_in else rules["public_write"]
+
+
+def is_preflight(request) -> bool:
+    """A CORS preflight (``CorsMiddleware`` answers it without running the view)."""
+    return request.method == "OPTIONS" and "HTTP_ACCESS_CONTROL_REQUEST_METHOD" in request.META
 
 
 def classify(request, view_func) -> Classification:
     """The scope (or exemption) of a resolved request."""
     method = request.method or "GET"
-    if method == "OPTIONS":
+    if is_preflight(request):
         return Classification(None, PREFLIGHT, "preflight")
     match = getattr(request, "resolver_match", None)
     found = classify_route(view_func, match.view_name if match else None, method)

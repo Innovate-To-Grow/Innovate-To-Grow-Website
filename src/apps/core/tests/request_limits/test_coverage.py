@@ -152,11 +152,25 @@ class RouteCoverageTests(SimpleTestCase):
                 self.assertIsNotNone(found)
                 self.assertEqual(scopes[found.scope]["tier"], "p0")
 
+    def test_the_paged_all_projects_list_is_an_interactive_read(self):
+        # M4: the All Projects page requests about ten pages at once; a P3 per-IP limit refused a campus.
+        by_name = {name: view for _route, name, view in self.routes}
+        found = classify_route(by_name["projects:projects-all"], "projects:projects-all", "GET")
+        self.assertEqual(found.scope, "public-read")
+
+    def test_every_route_scope_bounds_an_anonymous_flood(self):
+        # Minor 3: a scope whose key is missing for an anonymous caller needs an aggregate cap or a flood ceiling.
+        for name, spec in settings.REQUEST_RATE_LIMITS["scopes"].items():
+            if spec["identity"] in ("ip", "view"):
+                continue
+            with self.subTest(scope=name):
+                self.assertTrue(spec["global_cap"] or spec.get("source_cap"))
+                self.assertIsNotNone(spec.get("source_cap"))
+
     def test_heavy_and_ai_routes_are_p3(self):
         by_name = {name: view for _route, name, view in self.routes}
         scopes = settings.REQUEST_RATE_LIMITS["scopes"]
         for name in (
-            "projects:projects-all",
             "projects:projects-past-all",
             "system_intelligence:public-assistant-chat",
         ):

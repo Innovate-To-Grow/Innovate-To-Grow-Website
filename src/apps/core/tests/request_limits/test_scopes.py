@@ -31,8 +31,13 @@ class ClassifyTests(SimpleTestCase):
         return scopes.classify(request, view)
 
     def test_preflight_is_exempt(self):
-        found = self.classify("OPTIONS", "/p3/")
+        found = self.classify("OPTIONS", "/p3/", HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST")
         self.assertEqual((found.scope, found.exempt, found.source), (None, scopes.PREFLIGHT, "preflight"))
+
+    def test_a_bare_options_runs_the_view_so_it_is_limited(self):
+        # m1: CorsMiddleware answers only a real preflight; a bare OPTIONS reaches the view.
+        self.assertEqual(self.classify("OPTIONS", "/p3/"), scopes.Classification("t-p3", None, "view"))
+        self.assertEqual(self.classify("OPTIONS", "/unscoped/").scope, "public-read")
 
     def test_the_view_attribute_names_the_scope(self):
         self.assertEqual(self.classify("GET", "/p3/"), scopes.Classification("t-p3", None, "view"))

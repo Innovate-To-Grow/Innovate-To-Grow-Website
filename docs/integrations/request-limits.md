@@ -35,9 +35,9 @@ queued behind a campaign ([Delivery rates: lanes](delivery-rates.md#budgets-the-
 
 A request's scope is decided in `process_view`, after URL resolution (`apps/core/services/request_limits/scopes.py`):
 
-1. **Exempt**: a CORS preflight (`OPTIONS`), a view with `rate_limit_exempt = "reason"`, an app's
-   `register_exemption(...)` or `REQUEST_RATE_LIMITS["exempt"]`. Exempt today: `/livez/`, `/readyz/`, `/health/`
-   (answered by `HealthCheckMiddleware` before the limiter runs), `/layout/theme.css`, `/robots.txt`, one-click
+1. **Exempt**: a CORS preflight (`OPTIONS` with `Access-Control-Request-Method`; a bare `OPTIONS` runs the view and
+   is limited as a read), a view with `rate_limit_exempt = "reason"`, an app's `register_exemption(...)` or
+   `REQUEST_RATE_LIMITS["exempt"]`. Exempt today: `/livez/`, `/readyz/`, `/health/` (answered by `HealthCheckMiddleware` before the limiter runs), `/layout/theme.css`, `/robots.txt`, one-click
    unsubscribe (RFC 8058, a legal opt-out), the current-projects redirect and the development-only static views.
 2. The **route table** `REQUEST_RATE_LIMITS["routes"]` (Django-admin and third-party routes; it wins, so a deployment
    override can move any route).
@@ -61,12 +61,12 @@ Each scope's `identity` picks the bucket key (`apps/core/services/request_limits
 
 | Identity | Key |
 |----------|-----|
-| `member` | The verified member (the JWT's signature, expiry, type, audience and issuer checked offline with SimpleJWT, no query; a forged claim is never read) or the signed-in admin user. Anonymous callers count only toward the scope's aggregate cap |
+| `member` | The verified member (the JWT's signature, expiry, type, audience and issuer checked offline with SimpleJWT, no query; a forged claim is never read) or the signed-in admin user. Anonymous callers count toward the aggregate cap and the per-source flood ceiling |
 | `session` | The signed-in admin user |
-| `cli` | The SHA-256 of the CLI token, else the member |
-| `destination` | A key an app registers with `register_identity_resolver` (none today), else the member; anonymous callers count only toward the aggregate cap |
-| `ip` | The signed-in person if any, else the CLI token, else the client IP (`apps.core.utils.client_ip`, `NUM_PROXIES`) |
-| `global` | No per-caller bucket, only the aggregate cap |
+| `cli` | The SHA-256 of the CLI token, else the member. The token is not verified here, so its caller also counts against the flood ceiling of its source |
+| `destination` | A key an app registers with `register_identity_resolver` (none today), else the member; anonymous callers count toward the aggregate cap and the per-source flood ceiling |
+| `ip` | The signed-in person if any, else the client IP (`apps.core.utils.client_ip`, `NUM_PROXIES`); an unverified CLI token never buys its own bucket here |
+| `global` | No per-caller bucket, only the aggregate cap (required) and the per-source flood ceiling |
 | `view` | A per-view limit: the view keeps its own key (member, visitor token, challenge, …) |
 
 **Sign-in and code flows are never keyed on the client IP** (most users share one campus address). The IP is used
@@ -74,6 +74,15 @@ only for anonymous callers of scopes where a single source flooding is the risk:
 ceiling far above any honest browser, with 12,000/min site-wide), public writes, tokenized links, the legacy viewer,
 public background requests, telemetry, full-list catalog reads, AI, 404s and the SES webhook. See
 [Environments](../deployment/environments.md#what-still-keys-on-the-client-ip).
+
+**Per-source flood ceiling.** A caller without a verified identity (anonymous, or an unverified CLI token) in a scope
+not keyed on the IP has no key of its own, or one it picks (a destination). Such a scope's `source_cap` therefore
+also counts it per client IP: one source adds at most that many requests per period to the aggregate cap, so a
+single client can no longer fill a P0 cap such as sign-in's 1,200/min and refuse every user. The ceilings sit far
+above a campus's honest traffic (sign-in 240/min, code send 120, code check 360, challenge 600, token refresh 1,200,
+admin pages and the CLI 600; about a fifth of the aggregate cap), and Smart scales them like the aggregate cap. A
+signed-in person never counts against it. The check-in, polling and bulk admin scopes have one too, so an anonymous
+flood of them is bounded although they have no aggregate cap.
 
 ## Smart limit or manual limit
 
@@ -85,9 +94,13 @@ is turned off. The precedence (`rules/limits.py`):
 baseline B = the scope's REQUEST_RATE_LIMITS "requests", capped by the per-caller ceiling
 Smart on : factor f = 1 for P0 and fixed scopes, else clamp(Smart factor, Smart floor, 1)
            per caller = max(1, ⌊B × f⌋), everyone together = max(1, ⌊global cap × f⌋)   # manual not read
-Smart off: per caller = min(manual, ceiling), everyone together = global cap
+           per source (no verified identity) = max(1, ⌊source cap × f⌋)
+Smart off: per caller = min(manual, ceiling), everyone together = global cap, per source = source cap
 Per-process counters: each limit ÷ live processes, rounded up (never 0)
 ```
+
+The deployment's counts are rates per its `period_seconds`: a row whose period differs (an older seed, an admin
+edit) gets the same rate per its own period.
 
 The **per-caller ceiling** and the **aggregate cap** are deployer maximums from `REQUEST_RATE_LIMITS`: staff can lower
 them on the policy, never raise them; a deployment that lowers one applies to existing rows at once. A **fixed** scope
@@ -96,8 +109,9 @@ them on the policy, never raise them; a deployment that lowers one applies to ex
 ### How Smart limit reacts
 
 Each web process measures its own signals in 15-second windows (`controller` in `runtime.py`): p95 response time,
-the 5xx share (both once a window has 20 requests), the mean share of its concurrency slots in use, and requests
-refused for lack of a slot. The first request to finish after a window ends assesses it
+the 5xx share (both once a window has 20 requests, over P0–P2 scopes only, without `legacy-proxy`: AI, exports and
+full lists are slow by nature and the archive's errors are not this site's load), the mean share of its concurrency
+slots in use, and requests refused for lack of a slot. The first request to finish after a window ends assesses it
 (`apps/core/services/request_limits/runtime/smart.py`; no background worker):
 
 - **Overload** (any of: slots ≥ 75 % in use, a slot refusal, 5xx ≥ 5 %, p95 ≥ 1,500 ms): every sheddable scope of
@@ -109,20 +123,31 @@ refused for lack of a slot. The first request to finish after a window ends asse
 
 Factors are stored per scope in `RequestRateLimitState` (with the decision and its signal values), written
 compare-and-set so two processes never overwrite each other, and every process re-reads them at most every 10
-seconds. Turning Smart off for a scope resets its factor to 1, so turning it on again starts at full speed.
+seconds. A scope's factor changes at most once per `min_change_seconds` (15) site-wide, so more processes never cut
+or restore faster. Turning Smart off for a scope resets its factor to 1, so turning it on again starts at full speed.
 
 ### Reserved slots (admission control)
 
-A process accepts at most `UVICORN_LIMIT_CONCURRENCY` (default 20) requests at once. A request is admitted only while
+A process serves at most `UVICORN_LIMIT_CONCURRENCY` (default 20) requests at once (uvicorn's own 503 gate,
+`UVICORN_CONNECTION_LIMIT`, sits at 4× that, since it also counts idle keep-alive connections and would refuse P0
+first otherwise). A request is admitted only while
 the slots in use are below its tier's share: P1 90 %, P2 70 %, P3 50 %, and two slots are always left to P0. A lower
 tier over its share gets a 429 with `Retry-After: 2` while P0 still gets through.
 
 ### Abuse escalation
 
-Every 429 one caller collects in a scope is a strike, whoever refused it: this limiter or the view's own limit (a code
-cooldown, an hourly cap, the SMS budget, the sign-in lockout). Ten strikes in five minutes block the caller for that
-scope for 30 seconds, doubling with every block within an hour, up to 15 minutes. "Everyone together" is never
-blocked.
+A strike is a refusal of the caller's own making: going over its own limit or its source's flood ceiling at the
+scope's full size (going over only a Smart cut is not its fault), or a 429 the view's own limit answered (a code
+cooldown, an hourly cap, the SMS budget, the sign-in lockout) for a caller with its own key (a person, a CLI token,
+a destination), never for a shared IP. Refusals for the aggregate cap, for want of a slot and during a block are no
+strikes. Ten strikes in five minutes block the caller (or the source) for that scope for 30 seconds, doubling with
+every block within an hour, up to 15 minutes; a block always ends, however much the caller keeps sending, because
+its refusals during the block are not counted. "Everyone together" is never blocked.
+
+**Proof replay.** A code request is promoted to P0 by a valid anti-abuse proof; one solved proof promotes at most
+`abuse.proof_promotions` (3) requests within `abuse.proof_memory_seconds` (600), and replays after that are counted
+as unproven (P2) traffic. The proof check remembers each payload's verdict for 30 s per process, so a replayed body
+does not cost a settings query and a key derivation each time.
 
 ## Counters
 
@@ -217,7 +242,7 @@ The limiter never takes the site down with it: an error inside it is logged (`re
 |---------|-------|
 | Settings | `src/config/settings/base/integrations/request_limits/` (`scopes.py`, `view_scopes.py`, `routes.py`, `runtime.py`, `validation.py`) |
 | Models | `RequestRateLimitPolicy` (`apps/core/models/base/request_limits.py`), `RequestRateLimitState`, `RequestLimitProcess` (`apps/core/models/records/request_limit_state.py`); migrations `core.0039`, `core.0040` |
-| Middleware | `apps/core/middleware/request_limits.py` (after CORS, health checks and authentication; the `core` system checks refuse another order) |
+| Middleware | `apps/core/middleware/request_limits.py` (after CORS, health checks and sessions, before CSRF so CSRF failures are counted too; the `core` system checks refuse another order) |
 | Pure rules | `apps/core/services/request_limits/rules/` (`limits.py` precedence and slot shares, `controller.py`) |
 | Runtime | `apps/core/services/request_limits/` (`limiter.py`, `scopes.py`, `identity.py`, `priority.py`, `view_limits.py`), `runtime/` (`store.py`, `heartbeat.py`, `registry.py`, `signals.py`, `smart.py`, `abuse.py`, `refusals.py`) |
 | App hooks | `register_scope`, `register_exemption`, `register_identity_resolver`, `register_priority_check` from `AppConfig.ready()` (authn registers the code-send proof check) |

@@ -224,11 +224,21 @@ class AbuseTests(TestCase):
                 self.assertIsNone(abuse.strike("t-p0", "u:m", now))
             blocks.append(abuse.strike("t-p0", "u:m", now))
             self.assertEqual(abuse.blocked_for("t-p0", "u:m", now), blocks[-1])
-            now += 1
+            self.assertIsNone(abuse.blocked_for("t-p1", "u:m", now))
+            self.assertIsNone(abuse.blocked_for("t-p0", "u:other", now))
+            now += blocks[-1]
+            self.assertIsNone(abuse.blocked_for("t-p0", "u:m", now))
         self.assertEqual(blocks, [30, 60, 120, 240, 480, 900, 900])
-        self.assertIsNone(abuse.blocked_for("t-p1", "u:m", now))
-        self.assertIsNone(abuse.blocked_for("t-p0", "u:other", now))
-        self.assertIsNone(abuse.blocked_for("t-p0", "u:m", now + 900))
+
+    def test_strikes_during_a_block_never_lengthen_it(self):
+        # B1: a caller that keeps sending while blocked (here 1 refusal a second) is unblocked when the block ends.
+        for _ in range(10):
+            abuse.strike("t-p0", "ip:campus", START)
+        self.assertEqual(abuse.blocked_for("t-p0", "ip:campus", START), 30)
+        for second in range(1, 30):
+            self.assertIsNone(abuse.strike("t-p0", "ip:campus", START + second))
+        self.assertEqual(abuse.blocked_for("t-p0", "ip:campus", START + 29), 1)
+        self.assertIsNone(abuse.blocked_for("t-p0", "ip:campus", START + 30))
 
     def test_everyone_together_is_never_blocked(self):
         for _ in range(20):
@@ -236,8 +246,14 @@ class AbuseTests(TestCase):
         self.assertIsNone(abuse.blocked_for("t-p0", None, START))
 
 
-# The policy view is not refreshed on its own here, so each test decides what this process has seen.
-@override_settings(REQUEST_RATE_LIMITS=limits_with(controller={"state_refresh_seconds": 3_600}))
+# The policy view is not refreshed on its own here, so each test decides what this process has seen; every tier feeds
+# the site-wide signals, so a P3 window alone can call for a cut.
+ALL_TIERS = ("p0", "p1", "p2", "p3")
+
+
+@override_settings(
+    REQUEST_RATE_LIMITS=limits_with(controller={"state_refresh_seconds": 3_600, "signal_tiers": ALL_TIERS})
+)
 class SignalsAndSmartTests(TestCase):
     def setUp(self):
         cache.clear()
@@ -260,7 +276,9 @@ class SignalsAndSmartTests(TestCase):
 
     def test_latency_reservoir_is_bounded(self):
         with override_settings(
-            REQUEST_RATE_LIMITS=limits_with(controller={"max_latency_samples": 5, "state_refresh_seconds": 3_600})
+            REQUEST_RATE_LIMITS=limits_with(
+                controller={"max_latency_samples": 5, "state_refresh_seconds": 3_600, "signal_tiers": ALL_TIERS}
+            )
         ):
             for value in range(50):
                 signals.record("t-p1", 200, float(value), START)

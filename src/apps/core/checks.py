@@ -106,12 +106,14 @@ def check_microsoft_graph(app_configs=None, **kwargs):
 
 
 REQUEST_LIMIT_MIDDLEWARE = "apps.core.middleware.RequestRateLimitMiddleware"
-# The request limiter must come after each of these (see apps/core/middleware/request_limits.py).
+# The request limiter must come after each of these and before each of the successors (see
+# apps/core/middleware/request_limits.py).
 REQUEST_LIMIT_PREDECESSORS = (
     "corsheaders.middleware.CorsMiddleware",
     "apps.core.middleware.HealthCheckMiddleware",
-    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
 )
+REQUEST_LIMIT_SUCCESSORS = ("django.middleware.csrf.CsrfViewMiddleware",)
 
 
 def _middleware_problems(enabled: bool) -> list:
@@ -128,16 +130,26 @@ def _middleware_problems(enabled: bool) -> list:
         ]
     position = middleware.index(REQUEST_LIMIT_MIDDLEWARE)
     late = [name for name in REQUEST_LIMIT_PREDECESSORS if name in middleware and middleware.index(name) > position]
-    if not late:
-        return []
-    return [
-        Error(
-            f"The request limiter must come after {', '.join(late)} in MIDDLEWARE.",
-            hint="Before CORS its 429 has no CORS headers, before the health checks it would limit the ALB "
-            "probes, and before authentication it cannot see the admin user.",
-            id="core.E008",
+    early = [name for name in REQUEST_LIMIT_SUCCESSORS if name in middleware and middleware.index(name) < position]
+    problems = []
+    if late:
+        problems.append(
+            Error(
+                f"The request limiter must come after {', '.join(late)} in MIDDLEWARE.",
+                hint="Before CORS its 429 has no CORS headers, before the health checks it would limit the ALB "
+                "probes, and before sessions it cannot see the admin user.",
+                id="core.E008",
+            )
         )
-    ]
+    if early:
+        problems.append(
+            Error(
+                f"The request limiter must come before {', '.join(early)} in MIDDLEWARE.",
+                hint="After CSRF a request refused for its CSRF token is never counted, so such a flood is unlimited.",
+                id="core.E012",
+            )
+        )
+    return problems
 
 
 def _registration_problems() -> list:

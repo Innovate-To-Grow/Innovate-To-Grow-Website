@@ -32,6 +32,8 @@ class CarriesValidProofTests(TestCase):
         cache.clear()
         isolate(self)
         self.factory = RequestFactory()
+        proof_check.forget_verdicts()
+        self.addCleanup(proof_check.forget_verdicts)
         self.api = APIClient()
         self.proof = mint_send_verification(self.api, OP_EMAIL_AUTH_REQUEST_CODE, {"email": EMAIL})
 
@@ -41,6 +43,33 @@ class CarriesValidProofTests(TestCase):
 
     def test_a_valid_proof_is_promoted(self):
         self.assertTrue(carries_valid_proof(self.request({"email": EMAIL, **self.proof})))
+
+    def test_the_answer_is_the_challenge_id(self):
+        # The limiter counts promotions per solved proof by this id (M1).
+        found = carries_valid_proof(self.request({"email": EMAIL, **self.proof}))
+        self.assertEqual(found, str(self.proof[FIELD_CHALLENGE_ID]))
+
+    def test_a_replayed_body_is_verified_once(self):
+        # M1: a replay flood costs neither the settings query nor the key derivation again.
+        body = {"email": EMAIL, **self.proof}
+        with patch.object(proof_check, "verify_payload", wraps=proof_check.verify_payload) as verify:
+            results = {carries_valid_proof(self.request(body)) for _ in range(5)}
+        self.assertEqual(results, {str(self.proof[FIELD_CHALLENGE_ID])})
+        self.assertEqual(verify.call_count, 1)
+
+    def test_a_verdict_is_forgotten_after_its_time_and_the_memory_is_bounded(self):
+        body = {"email": EMAIL, **self.proof}
+        with (
+            patch.object(proof_check, "verify_payload", wraps=proof_check.verify_payload) as verify,
+            patch.object(proof_check, "_now", side_effect=[0.0, proof_check.VERDICT_SECONDS + 1.0]),
+        ):
+            carries_valid_proof(self.request(body))
+            carries_valid_proof(self.request(body))
+        self.assertEqual(verify.call_count, 2)
+        with patch.object(proof_check, "MAX_VERDICTS", 1):
+            tampered = {**body, FIELD_PAYLOAD: self.proof[FIELD_PAYLOAD][:-8] + "AAAAAAA="}
+            self.assertFalse(carries_valid_proof(self.request(tampered)))
+            self.assertEqual(len(proof_check._VERDICTS), 1)
 
     def test_a_form_body_is_read_too(self):
         request = self.factory.post(PATH, data={"email": EMAIL, **self.proof})
@@ -94,6 +123,8 @@ class CodeRequestClassificationTests(TestCase):
     def setUp(self):
         cache.clear()
         isolate(self)
+        proof_check.forget_verdicts()
+        self.addCleanup(proof_check.forget_verdicts)
         self.factory = RequestFactory()
 
     def classify(self, body):
@@ -111,3 +142,11 @@ class CodeRequestClassificationTests(TestCase):
         proof = mint_send_verification(APIClient(), OP_EMAIL_AUTH_REQUEST_CODE, {"email": EMAIL})
         self.assertEqual(self.classify({"email": EMAIL, **proof}).scope, "auth-code-send")
         self.assertEqual(self.classify({"email": EMAIL}), scopes.Classification("auth-code-unproven", None, "unproven"))
+
+    def test_one_solved_proof_promotes_only_a_few_requests(self):
+        # M1: replaying one solved ALTCHA body no longer lifts a whole flood into P0.
+        proof = mint_send_verification(APIClient(), OP_EMAIL_AUTH_REQUEST_CODE, {"email": EMAIL})
+        found = [self.classify({"email": EMAIL, **proof}).scope for _ in range(5)]
+        self.assertEqual(found, ["auth-code-send"] * 3 + ["auth-code-unproven"] * 2)
+        other = mint_send_verification(APIClient(), OP_EMAIL_AUTH_REQUEST_CODE, {"email": EMAIL})
+        self.assertEqual(self.classify({"email": EMAIL, **other}).scope, "auth-code-send")

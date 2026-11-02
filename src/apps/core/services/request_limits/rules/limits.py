@@ -6,12 +6,13 @@ their arguments only, so the middleware, the admin and the tests share one imple
     baseline B = the scope's REQUEST_RATE_LIMITS ``requests``, capped by the per-caller ceiling
     Smart on : f = 1 for P0 and fixed scopes, else clamp(factor, smart floor, 1)
                per caller = max(1, ⌊B × f⌋), everyone together = max(1, ⌊global cap × f⌋)   # manual never read
-    Smart off: per caller = min(manual, ceiling), everyone together = global cap
+               per source (callers without a verified identity) = max(1, ⌊source cap × f⌋)
+    Smart off: per caller = min(manual, ceiling), everyone together = global cap, per source = source cap
     Per-process counters (no shared store): each limit ÷ live processes, rounded up (never 0)
 """
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 P0 = "p0"
 SHED_ORDER = ("p3", "p2", "p1")
@@ -35,6 +36,8 @@ class ScopeConfig:
     enabled: bool
     ceiling: int | None
     global_cap: int | None
+    # The per-source flood ceiling (``source_cap``), or None.
+    source_cap: int | None = None
     factor: float = 1.0
     # Epoch seconds, or None.
     factor_changed_at: float | None = None
@@ -55,6 +58,8 @@ class Limits:
     period: int
     # The Smart factor applied (None while Smart is off).
     factor: float | None
+    # Requests per ``period`` from one source without a verified identity (None: no flood ceiling).
+    source_cap: int | None = None
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -74,18 +79,22 @@ def _per_process(limit: int | None, processes: int) -> int | None:
     return max(1, math.ceil(limit / processes))
 
 
+def _scaled(limit: int | None, factor: float) -> int | None:
+    return max(1, math.floor(limit * factor + 1e-9)) if limit else None
+
+
 def effective_limits(config: ScopeConfig, processes: int = 1) -> Limits:
     """The limits one request of ``config``'s scope is held to in a process that is one of ``processes``."""
     if config.smart:
         factor = smart_factor(config)
         baseline = min(config.baseline, config.ceiling) if config.ceiling else config.baseline
-        per_identity = max(1, math.floor(baseline * factor + 1e-9))
-        global_cap = max(1, math.floor(config.global_cap * factor + 1e-9)) if config.global_cap else None
+        per_identity = _scaled(baseline, factor)
+        global_cap, source_cap = _scaled(config.global_cap, factor), _scaled(config.source_cap, factor)
         mode = "smart"
     else:
         factor = None
         per_identity = min(config.manual, config.ceiling) if config.ceiling else config.manual
-        global_cap = config.global_cap
+        global_cap, source_cap = config.global_cap, config.source_cap
         mode = "manual"
     return Limits(
         mode=mode,
@@ -93,7 +102,14 @@ def effective_limits(config: ScopeConfig, processes: int = 1) -> Limits:
         global_cap=_per_process(global_cap, processes),
         period=config.period,
         factor=factor,
+        source_cap=_per_process(source_cap, processes),
     )
+
+
+def strike_limits(config: ScopeConfig, processes: int = 1) -> Limits:
+    """The limits a caller must exceed for a refusal to count as its own doing (an abuse strike): the scope's limits
+    at full size. A cut Smart made for load is not the caller's fault, so going over only the cut is no strike."""
+    return effective_limits(replace(config, factor=1.0), processes)
 
 
 def admission_limit(tier: str, concurrency: int, tiers: dict, reserved: int) -> int:

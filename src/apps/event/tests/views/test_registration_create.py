@@ -13,6 +13,9 @@ from apps.event.models import EventRegistration, Question, Ticket
 from apps.event.tests.helpers import make_event, make_member
 
 
+# force_authenticate is invisible to the request limiter (it reads the bearer token), so with it switched on every
+# request here would count as one anonymous source against member-send's flood ceiling, across the whole module.
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
 class EventRegistrationCreateViewTest(TestCase):
     def setUp(self):
         self.client = APIClient()

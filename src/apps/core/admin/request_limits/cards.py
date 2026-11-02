@@ -77,6 +77,8 @@ def _headline(view) -> str:
         parts.append(f"{per_period(view.per_identity, view.period)} per caller")
     if view.global_cap is not None:
         parts.append(f"everyone together {per_period(view.global_cap, view.period)}")
+    if view.source_cap is not None:
+        parts.append(f"per anonymous source {per_period(view.source_cap, view.period)}")
     parts.append(f"Smart ×{view.factor:.2f}" if view.factor is not None else "manual limit")
     return "Now: " + " · ".join(parts)
 

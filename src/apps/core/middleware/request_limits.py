@@ -1,7 +1,9 @@
 """The request limiter: every request the site answers is limited by scope (see
 ``apps.core.services.request_limits``). It must run after ``CorsMiddleware`` (a 429 carries CORS headers, so the
-browser can read it), after ``HealthCheckMiddleware`` (ALB probes are never limited) and after
-``AuthenticationMiddleware`` (it reads the admin user); the ``core`` system checks refuse any other order.
+browser can read it), after ``HealthCheckMiddleware`` (ALB probes are never limited), after ``SessionMiddleware``
+and before ``CsrfViewMiddleware`` (its ``process_view`` decides before CSRF's, so a request refused for its CSRF token
+is counted too); the ``core`` system checks refuse any other order. The admin user it reads is resolved by then:
+every middleware's request phase, ``AuthenticationMiddleware``'s included, runs before any ``process_view``.
 
 It decides in ``process_view``, after URL resolution, so it knows the route; requests for unmatched paths are
 limited after their 404. Off when ``REQUEST_RATE_LIMITS_ENABLED`` is false (the test settings). A failure inside

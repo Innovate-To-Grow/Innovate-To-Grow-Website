@@ -60,7 +60,7 @@ class ScopeLineTests(RequestLimitsAdminTestCase):
         self.assertEqual(
             self.lines("ai"),
             [
-                "Now: 30 / minute per caller · everyone together 300 / minute · Smart ×0.50",
+                "Now: 150 / minute per caller · everyone together 300 / minute · Smart ×0.50",
                 "Smart ×0.50 of the baseline: cut at 07:55:00 UTC because of p95 response time 1800 ms; 80% of "
                 "request slots in use.",
                 "429s in the last 15 min: 0 (0 by this limiter, 0 by the view's own limits)",
@@ -95,7 +95,7 @@ class ScopeLineTests(RequestLimitsAdminTestCase):
         self.assertEqual(
             self.lines("auth-code-send")[:2],
             [
-                "Now: 10 / minute per caller · everyone together 600 / minute · Smart ×1.00",
+                "Now: 10 / minute per caller · everyone together 600 / minute · per anonymous source 120 / minute · Smart ×1.00",
                 "P0: Smart limit never tightens it for load; only its abuse limits apply.",
             ],
         )
@@ -118,7 +118,10 @@ class ScopeLineTests(RequestLimitsAdminTestCase):
         self.assertEqual(self.lines("ai")[0], "Not limited: this scope is switched off.")
 
     def test_an_everyone_together_scope_has_no_per_caller_limit(self):
-        self.assertEqual(self.lines("auth-token-refresh")[0], "Now: everyone together 6,000 / minute · Smart ×1.00")
+        self.assertEqual(
+            self.lines("auth-token-refresh")[0],
+            "Now: everyone together 6,000 / minute · per anonymous source 1,200 / minute · Smart ×1.00",
+        )
 
     def test_recent_429s_are_shown_per_route_scope(self):
         refusals.count("ai", self.clock(), by_limiter=True)
@@ -261,10 +264,17 @@ class StatusJsonTests(RequestLimitsAdminTestCase):
         ai = next(item for item in data["scopes"] if item["scope"] == "ai")
         self.assertEqual(
             {key: ai[key] for key in ("tier", "mode", "factor", "per_identity", "global_cap", "period_seconds")},
-            {"tier": "p3", "mode": "smart", "factor": 0.5, "per_identity": 30, "global_cap": 300, "period_seconds": 60},
+            {
+                "tier": "p3",
+                "mode": "smart",
+                "factor": 0.5,
+                "per_identity": 150,
+                "global_cap": 300,
+                "period_seconds": 60,
+            },
         )
         self.assertEqual(ai["refused"], {"limiter": 1, "view": 0})
-        self.assertEqual(ai["lines"][0], "Now: 30 / minute per caller · everyone together 300 / minute · Smart ×0.50")
+        self.assertEqual(ai["lines"][0], "Now: 150 / minute per caller · everyone together 300 / minute · Smart ×0.50")
         view = next(item for item in data["scopes"] if item["scope"] == "view-ai-search")
         self.assertEqual((view["refused"], view["per_process"], view["per_identity"]), (None, None, 5))
         self.assertEqual(data["summary"]["shedding"], ["p3"])

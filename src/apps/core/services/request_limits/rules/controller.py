@@ -9,6 +9,9 @@ Each closed signal window is assessed once:
 - **healthy** (every signal below its healthy threshold): the highest-priority tier still below full is restored
   by its ``recovery_step`` — P1 first, then P2, then P3 — but not a scope cut within ``recovery_hold_seconds``.
 - otherwise **steady**: nothing changes.
+
+A scope whose factor changed within ``min_change_seconds`` (by any process) is not changed again yet, so the pace is
+one step per interval site-wide, not one per process.
 """
 
 from collections.abc import Iterable
@@ -97,9 +100,14 @@ def assess(snapshot: Snapshot, controller: dict) -> Pressure:
     return Pressure(HEALTHY if calm else STEADY, (), values)
 
 
-def _shed(configs, snapshot, tiers) -> Plan:
+def _settled(config: ScopeConfig, now, change_seconds) -> bool:
+    """Not changed within ``change_seconds`` (by any process, as far as this view knows)."""
+    return config.factor_changed_at is None or now - config.factor_changed_at >= change_seconds
+
+
+def _shed(configs, snapshot, tiers, now, change_seconds) -> Plan:
     for tier in SHED_ORDER:
-        candidates = [
+        room = [
             config
             for config in configs
             if config.tier == tier
@@ -107,10 +115,15 @@ def _shed(configs, snapshot, tiers) -> Plan:
             and snapshot.active(config.scope)
             and smart_factor(config) > config.floor + EPSILON
         ]
-        if candidates:
-            decrease = tiers[tier]["decrease_factor"]
-            factors = {config.scope: max(config.floor, smart_factor(config) * decrease) for config in candidates}
-            return Plan("shed", tier, factors)
+        if not room:
+            continue
+        # A tier with room is cut before the next one, even while its last cut is too recent to cut it again.
+        candidates = [config for config in room if _settled(config, now, change_seconds)]
+        if not candidates:
+            return Plan("hold", tier)
+        decrease = tiers[tier]["decrease_factor"]
+        factors = {config.scope: max(config.floor, smart_factor(config) * decrease) for config in candidates}
+        return Plan("shed", tier, factors)
     return Plan("hold")
 
 
@@ -119,7 +132,7 @@ def _restored(factor: float) -> float:
     return 1.0 if factor >= 1 - EPSILON else factor
 
 
-def _restore(configs, tiers, now, hold_seconds) -> Plan:
+def _restore(configs, tiers, now, hold_seconds, change_seconds) -> Plan:
     for tier in RECOVERY_ORDER:
         below = [
             config for config in configs if config.tier == tier and config.sheddable and config.factor < 1 - EPSILON
@@ -127,18 +140,33 @@ def _restore(configs, tiers, now, hold_seconds) -> Plan:
         if not below:
             continue
         # Strict order: a lower tier waits until this one is fully restored, even while this one is on hold.
-        ready = [config for config in below if config.last_cut_at is None or now - config.last_cut_at >= hold_seconds]
+        ready = [
+            config
+            for config in below
+            if (config.last_cut_at is None or now - config.last_cut_at >= hold_seconds)
+            and _settled(config, now, change_seconds)
+        ]
         step = tiers[tier]["recovery_step"]
         factors = {config.scope: _restored(smart_factor(config) + step) for config in ready}
         return Plan("restore", tier, factors) if factors else Plan("hold", tier)
     return Plan("hold")
 
 
-def plan(pressure: Pressure, configs: Iterable[ScopeConfig], snapshot: Snapshot, tiers: dict, *, now, hold_seconds):
-    """The factor changes ``pressure`` calls for."""
+def plan(
+    pressure: Pressure,
+    configs: Iterable[ScopeConfig],
+    snapshot: Snapshot,
+    tiers: dict,
+    *,
+    now,
+    hold_seconds,
+    change_seconds=0,
+):
+    """The factor changes ``pressure`` calls for. A scope changed within ``change_seconds`` waits (one step per
+    interval site-wide, however many processes assess)."""
     configs = list(configs)
     if pressure.level == OVERLOAD:
-        return _shed(configs, snapshot, tiers)
+        return _shed(configs, snapshot, tiers, now, change_seconds)
     if pressure.level == HEALTHY:
-        return _restore(configs, tiers, now, hold_seconds)
+        return _restore(configs, tiers, now, hold_seconds, change_seconds)
     return Plan("hold")

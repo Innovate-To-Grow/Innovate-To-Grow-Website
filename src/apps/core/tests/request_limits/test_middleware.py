@@ -73,7 +73,7 @@ class MiddlewareTests(TestCase):
         self.clock.advance(60)
         self.assertEqual(self.client.get("/p0/").status_code, 200)
 
-    def test_anonymous_callers_of_a_member_scope_share_only_the_aggregate_cap(self):
+    def test_anonymous_callers_of_a_member_scope_without_a_flood_ceiling_share_the_aggregate_cap(self):
         with scopes_with(**{"t-p0": {"global_cap": 7}}):
             statuses = [self.client.get("/p0/", REMOTE_ADDR=f"10.0.0.{index}").status_code for index in range(9)]
         self.assertEqual(statuses, [200] * 7 + [429, 429])
@@ -92,7 +92,12 @@ class MiddlewareTests(TestCase):
     def test_exemptions_and_preflights_are_never_limited(self):
         with scopes_with(**{"public-read": {"requests": 1}, "t-p1": {"requests": 1}}):
             self.assertEqual({self.client.get("/exempt/").status_code for _ in range(5)}, {200})
-            self.assertEqual({self.client.options("/p1/").status_code for _ in range(5)}, {200})
+            preflights = {
+                self.client.options("/p1/", HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET").status_code for _ in range(5)
+            }
+            self.assertEqual(preflights, {200})
+            # A bare OPTIONS runs the view, so it is counted like any request (m1).
+            self.assertEqual([self.client.options("/p1/").status_code for _ in range(2)], [200, 429])
 
     def test_a_disabled_policy_is_not_limited(self):
         with scopes_with(**{"t-p1": {"requests": 1}}):
@@ -116,13 +121,14 @@ class MiddlewareTests(TestCase):
     def test_unmatched_paths_are_limited_after_their_404(self):
         with scopes_with(**{"not-found": {**TEST_SCOPES["t-p3"], "requests": 3, "global_cap": None}}):
             statuses = [self.client.get(f"/missing-{index}/").status_code for index in range(5)]
-            self.assertEqual(self.client.options("/missing/").status_code, 404)
+            # A bare OPTIONS to a missing path is a 404 like any other, so it is counted too (m1).
+            self.assertEqual(self.client.options("/missing/").status_code, 429)
             disabled = RequestRateLimitPolicy.objects.filter(scope="not-found")
             disabled.update(enabled=False)
             limiter.registry.invalidate()
             self.assertEqual(self.client.get("/missing-x/").status_code, 404)
         self.assertEqual(statuses, [404, 404, 404, 429, 429])
-        self.assertEqual(signals.WINDOW.scopes["not-found"].limited, 2)
+        self.assertEqual(signals.WINDOW.scopes["not-found"].limited, 3)
 
     def test_repeated_refusals_by_the_view_block_the_caller(self):
         self.as_member()

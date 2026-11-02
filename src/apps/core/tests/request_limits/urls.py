@@ -15,6 +15,13 @@ def _view(scope, status=200):
     return view
 
 
+def csrf_protected(request):
+    return HttpResponse("written")
+
+
+csrf_protected.rate_limit_scope = "t-p1"
+
+
 @csrf_exempt
 def broken(request):
     raise RuntimeError("view failed")
@@ -50,6 +57,10 @@ urlpatterns = [
     path("fixed/", _view("t-fixed"), name="fixed"),
     path("p0-refused/", _view("t-p0", status=429), name="p0-refused"),
     path("p1-error/", _view("t-p1", status=503), name="p1-error"),
+    path("p1-refused/", _view("t-p1", status=429), name="p1-refused"),
+    path("p0-anonymous/", _view("t-p0-anon"), name="p0-anonymous"),
+    path("cli/", _view("t-cli"), name="cli"),
+    path("csrf/", csrf_protected, name="csrf"),
     path("broken/", broken, name="broken"),
     path("exempt/", exempt_view, name="exempt"),
     path("methods/", csrf_exempt(MethodScopedView.as_view()), name="methods"),

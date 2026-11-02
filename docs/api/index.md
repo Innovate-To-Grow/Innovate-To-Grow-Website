@@ -71,8 +71,8 @@ Two layers limit requests (design and runbook: [Request limits](../integrations/
    with a priority tier: P0 critical (sign-in, verification codes a person asked for, token refresh, session check,
    check-in, the SES webhook), P1 interactive (`public-read`, `public-write`, `member-read`, `member-write`,
    `member-send`, `staff-admin`, `cli`, `tokenized-link`, `legacy-proxy`), P2 background (`public-background`,
-   `telemetry`, `staff-polling`, `checkin-status`, `auth-code-unproven`) and P3 heavy (`public-heavy` for
-   `/projects/all/` and `/projects/past-all/`, `ai`, `staff-bulk`, `not-found`). A view names its scope with
+   `telemetry`, `staff-polling`, `checkin-status`, `auth-code-unproven`) and P3 heavy (`public-heavy` for the
+   unpaged `/projects/past-all/`, `ai`, `staff-bulk`, `not-found`; the paged `/projects/all/` is `public-read`). A view names its scope with
    `rate_limit_scope`; unnamed routes fall back by path, method and sign-in. Under overload Smart limit sheds P3,
    then P2, then P1, never P0. Exempt: `/livez/`, `/readyz/`, `/health/`, `/layout/theme.css`, `/robots.txt`,
    one-click unsubscribe and CORS preflights. Seeds: `src/config/settings/base/integrations/request_limits/scopes.py`.

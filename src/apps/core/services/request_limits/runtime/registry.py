@@ -9,6 +9,7 @@ fails a request for want of its policy.
 """
 
 import logging
+import math
 import threading
 
 from django.db import DatabaseError
@@ -42,31 +43,46 @@ def _within(value: int | None, ceiling: int | None) -> int | None:
     return ceiling if value is None else min(value, ceiling)
 
 
+def _per_period(value: int | None, spec_period: int, period: int) -> int | None:
+    """A deployment count per ``spec_period`` seconds as the same rate per the row's ``period``."""
+    if value is None or period == spec_period:
+        return value
+    return max(1, math.floor(value * period / spec_period + 1e-9))
+
+
 def build(scope: str, spec: dict, policy=None, state=None) -> ScopeConfig:
     """``scope``'s config from its settings ``spec`` and, when given, its policy row and Smart state.
 
     The row's per-caller ceiling and aggregate cap never exceed the deployment's (``spec``): a
     ``REQUEST_RATE_LIMITS_OVERRIDES`` deploy that lowers one applies to existing rows at once, without an admin edit.
+    The deployment's counts are rates per its ``period_seconds``; a row with another period gets the same rate per
+    its own period, so a changed seed period never makes the baseline ten times looser or tighter.
     """
     values = (
         policy
         if policy is not None
         else RequestRateLimitPolicy(scope=scope, **RequestRateLimitPolicy.seed_values(scope))
     )
+    period = values.period_seconds
+
+    def deployed(name):
+        return _per_period(spec.get(name), spec["period_seconds"], period)
+
     return ScopeConfig(
         scope=scope,
         label=values.label,
         tier=values.tier,
         identity=values.identity,
-        baseline=spec["requests"],
+        baseline=deployed("requests"),
         manual=values.manual_requests,
-        period=values.period_seconds,
+        period=period,
         smart=values.smart_enabled,
         floor=float(values.smart_floor),
         fixed=values.fixed,
         enabled=values.enabled,
-        ceiling=_within(values.identity_ceiling, spec["identity_ceiling"]),
-        global_cap=_within(values.global_cap, spec["global_cap"]),
+        ceiling=_within(values.identity_ceiling, deployed("identity_ceiling")),
+        global_cap=_within(values.global_cap, deployed("global_cap")),
+        source_cap=deployed("source_cap"),
         factor=state.factor if state is not None else 1.0,
         factor_changed_at=as_seconds(state.factor_changed_at) if state is not None else None,
         last_cut_at=as_seconds(state.last_cut_at) if state is not None else None,

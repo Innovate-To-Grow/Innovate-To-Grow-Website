@@ -53,7 +53,9 @@ class DefaultsTests(SimpleTestCase):
 
     def test_todays_rates_seed_the_scopes_that_had_one(self):
         scopes = settings.REQUEST_RATE_LIMITS["scopes"]
-        self.assertEqual((scopes["webhook-ses"]["requests"], scopes["webhook-ses"]["period_seconds"]), (600, 60))
+        # The SES scope is a flood ceiling above the view's own 600/min per sender (m1): a campaign's events
+        # arrive from few SNS addresses, and the route limit is divided between processes.
+        self.assertEqual((scopes["webhook-ses"]["requests"], scopes["webhook-ses"]["period_seconds"]), (3_000, 60))
         self.assertEqual(scopes["auth-code-verify"]["requests"], 60)
         self.assertEqual(scopes["public-read"]["requests"], 3_000)
 
@@ -250,12 +252,13 @@ class SwitchTests(SimpleTestCase):
                 importlib.reload(runtime)
         importlib.reload(runtime)
 
-    def test_the_middleware_runs_after_cors_health_and_authentication(self):
+    def test_the_middleware_runs_after_cors_health_and_sessions_and_before_csrf(self):
         middleware = settings.MIDDLEWARE
         position = middleware.index("apps.core.middleware.RequestRateLimitMiddleware")
         for name in (
             "corsheaders.middleware.CorsMiddleware",
             "apps.core.middleware.HealthCheckMiddleware",
-            "django.contrib.auth.middleware.AuthenticationMiddleware",
+            "django.contrib.sessions.middleware.SessionMiddleware",
         ):
             self.assertLess(middleware.index(name), position)
+        self.assertGreater(middleware.index("django.middleware.csrf.CsrfViewMiddleware"), position)

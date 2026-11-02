@@ -19,7 +19,7 @@ TIER_ORDER = ("p0", "p1", "p2", "p3")
 IDENTITY_KINDS = ("member", "session", "cli", "ip", "destination", "global", "view")
 # A per-view limit (identity "view") names the route scope it sits under; it follows that scope's Smart factor.
 VIEW_IDENTITY = "view"
-OPTIONAL_SCOPE_KEYS = ("parent",)
+OPTIONAL_SCOPE_KEYS = ("parent", "source_cap")
 STORE_MODES = ("auto", "shared", "local")
 SCOPE_KEYS = (
     "label",
@@ -49,6 +49,9 @@ SECTION_KEYS = {
         "recovery_hold_seconds",
         "max_latency_samples",
         "state_refresh_seconds",
+        "min_change_seconds",
+        "signal_tiers",
+        "signal_excluded_scopes",
     ),
     "admission": ("concurrency_limit", "p0_reserved_slots", "retry_after_seconds"),
     "abuse": (
@@ -57,6 +60,8 @@ SECTION_KEYS = {
         "block_base_seconds",
         "block_max_seconds",
         "level_memory_seconds",
+        "proof_promotions",
+        "proof_memory_seconds",
     ),
     "store": (
         "mode",
@@ -160,9 +165,11 @@ def _check_scope(path, spec):
         _bool((*path, key), spec[key])
     if spec["smart_floor"] is not None:
         _fraction((*path, "smart_floor"), spec["smart_floor"])
-    for key in ("identity_ceiling", "global_cap"):
-        if spec[key] is not None:
+    for key in ("identity_ceiling", "global_cap", "source_cap"):
+        if spec.get(key) is not None:
             _count((*path, key), spec[key])
+    if spec["identity"] == "global" and spec["global_cap"] is None:
+        _fail((*path, "global_cap"), 'must be set for identity "global" (it is the only limit)')
     if spec["identity_ceiling"] is not None and spec["requests"] > spec["identity_ceiling"]:
         _fail((*path, "requests"), "must not be above identity_ceiling")
 
@@ -182,8 +189,9 @@ def _check_view_scopes(scopes):
         parent = spec.get("parent")
         if not isinstance(parent, str) or parent not in scopes or is_view_scope(scopes[parent]):
             _fail((*path, "parent"), "must name a route scope (not a per-view limit) in REQUEST_RATE_LIMITS.scopes")
-        if spec["global_cap"] is not None:
-            _fail((*path, "global_cap"), "must be null: a per-view limit keeps its own key")
+        for key in ("global_cap", "source_cap"):
+            if spec.get(key) is not None:
+                _fail((*path, key), "must be null: a per-view limit keeps its own key")
 
 
 def _check_scope_value(path, value, scopes):
@@ -229,7 +237,17 @@ def _check_tiers(tiers):
         _fail(("tiers",), "admission_share must not grow from p1 to p3 (a lower tier never gets more slots)")
 
 
+def _check_signal_scopes(values, scopes):
+    tiers = values["signal_tiers"]
+    if not isinstance(tiers, tuple) or not tiers or any(tier not in TIER_ORDER for tier in tiers):
+        _fail(("controller", "signal_tiers"), f"must be a non-empty list of tiers from {', '.join(TIER_ORDER)}")
+    excluded = values["signal_excluded_scopes"]
+    if not isinstance(excluded, tuple) or any(name not in scopes for name in excluded):
+        _fail(("controller", "signal_excluded_scopes"), "must be a list of scopes in REQUEST_RATE_LIMITS.scopes")
+
+
 def _check_controller(values):
+    _seconds(("controller", "min_change_seconds"), values["min_change_seconds"], low=-1)
     for key in ("window_seconds", "state_refresh_seconds"):
         _seconds(("controller", key), values[key])
     _seconds(("controller", "recovery_hold_seconds"), values["recovery_hold_seconds"], low=-1)
@@ -262,6 +280,8 @@ def _check_admission(admission, abuse):
     _count(("abuse", "strikes_to_block"), abuse["strikes_to_block"])
     for key in ("strike_window_seconds", "block_base_seconds", "block_max_seconds", "level_memory_seconds"):
         _seconds(("abuse", key), abuse[key])
+    _count(("abuse", "proof_promotions"), abuse["proof_promotions"])
+    _seconds(("abuse", "proof_memory_seconds"), abuse["proof_memory_seconds"])
     if abuse["block_base_seconds"] > abuse["block_max_seconds"]:
         _fail(("abuse", "block_base_seconds"), "must not be above block_max_seconds")
 
@@ -311,6 +331,7 @@ def validate_request_limits(config):
     for section, required in SECTION_KEYS.items():
         _keys((section,), config[section], required)
     _check_controller(config["controller"])
+    _check_signal_scopes(config["controller"], config["scopes"])
     _check_admission(config["admission"], config["abuse"])
     _check_store(config["store"], config["fallback"], config["scopes"])
 

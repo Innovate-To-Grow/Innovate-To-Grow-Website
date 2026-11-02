@@ -108,7 +108,8 @@ class KeyTests(TestCase):
             "member": ("u:m", "u:s", None, None, None),
             "session": (None, "u:s", None, None, None),
             "cli": ("u:m", "u:s", "c:h", None, None),
-            "ip": ("u:m", "u:s", "c:h", "ip:1.1.1.1", None),
+            # An unverified CLI token never buys its own bucket outside the cli scope.
+            "ip": ("u:m", "u:s", "ip:1.1.1.1", "ip:1.1.1.1", None),
             "destination": ("u:m", "u:s", None, None, None),
             "global": (None, None, None, None, None),
         }
@@ -116,6 +117,16 @@ class KeyTests(TestCase):
             with self.subTest(kind=kind):
                 self.assertEqual(tuple(who.key(kind) for who in (member, staff, cli, anonymous, nobody)), expected)
         self.assertEqual(anonymous.key("destination", "abc"), "d:abc")
+        self.assertEqual(
+            tuple(who.source for who in (member, staff, cli, anonymous, nobody)),
+            (None, None, "ip:1.1.1.1", "ip:1.1.1.1", None),
+        )
+
+    def test_the_source_key_is_left_out_when_it_is_the_bucket_key(self):
+        request = RequestFactory().get("/", REMOTE_ADDR="10.9.9.9")
+        self.assertIsNone(identity.source_key(request, "ip:10.9.9.9"))
+        self.assertEqual(identity.source_key(request, None), "ip:10.9.9.9")
+        self.assertEqual(identity.source_key(request, "d:abc"), "ip:10.9.9.9")
 
     def test_a_registered_destination_resolver_keys_the_scope(self):
         factory = RequestFactory()
