@@ -540,7 +540,10 @@ describe('EmbedBlockPage', () => {
     renderAtSlug('probe-widget');
     await screen.findByText('Sheet probe');
 
-    expect(sheetsSeenOnMount).toHaveLength(1);
+    // The probe records in its first passive effect, which can run just after the text appears. Waiting for it
+    // keeps the check: a child's passive effect runs before its parent's, so a sheet added by a parent's
+    // useEffect would still be missing here; only the layout effect puts it in place first.
+    await waitFor(() => expect(sheetsSeenOnMount).toHaveLength(1));
     expect(sheetsSeenOnMount[0]).toContain('.cms-embed-app-route');
   });
 
