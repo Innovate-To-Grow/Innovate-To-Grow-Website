@@ -128,6 +128,12 @@ updates:
     commit-message:
       prefix: "chore(deps)"
       include: scope
+    ignore:
+      # Python 3.15 waits on upstream (PR #675): no stable LiteLLM release allows
+      # 3.15 or has its sre_constants import fix, fastuuid has no cp315 wheel and
+      # Django 5.2 stops at 3.14. Move BACKEND_PYTHON_VERSION in ci.yml with the image.
+      - dependency-name: "python"
+        versions: [">=3.15"]
 
   # GitHub Actions used across workflows
   - package-ecosystem: github-actions
