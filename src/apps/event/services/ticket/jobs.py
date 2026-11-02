@@ -1,6 +1,7 @@
-"""Background-job handler that sends a registration's ticket email."""
+"""Background-job handler that sends a registration's ticket email (on the transactional lane; the email facade
+paces it, and a deferral reruns the job at its slot)."""
 
-from apps.core.services.background_jobs.delivery import provider_call_guard, provider_job_error, wait_for_email_slot
+from apps.core.services.background_jobs.delivery import provider_call_guard, provider_job_error
 
 
 def send_ticket_email_job(job) -> None:
@@ -23,7 +24,6 @@ def send_ticket_email_job(job) -> None:
         if not owns_claim.exists():
             raise JobClaimLost("Background job claim was lost before login-link issuance.")
 
-    wait_for_email_slot()
     try:
         send_ticket_email(
             registration,

@@ -157,7 +157,7 @@ const buildDocumentXml = (
   <w:body>
     ${logo ? wordLogoParagraph('rIdLogo') : ''}
     ${wordParagraph(exportContext.title, {alignment: 'center', bold: true, color: BRAND_BLUE, size: 32, spacingAfter: 80})}
-    ${wordParagraph('Innovate to Grow Past Projects', {
+    ${wordParagraph(exportContext.heading, {
       alignment: 'center',
       bold: true,
       color: MUTED_TEXT,

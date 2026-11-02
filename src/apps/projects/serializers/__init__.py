@@ -1,4 +1,4 @@
-from .ai_search import PastProjectAISearchSerializer
+from .ai_search import PastProjectAISearchResultSerializer, PastProjectAISearchSerializer
 from .past_project_share import (
     PastProjectShareListSerializer,
     PastProjectShareRowSerializer,
@@ -6,8 +6,10 @@ from .past_project_share import (
     StalePastProjectShareSnapshot,
 )
 from .project import (
+    AllProjectsArchiveRowSerializer,
     CompactPastProjectSerializer,
     PastProjectQuerySerializer,
+    PastSemesterPageQuerySerializer,
     ProjectDetailSerializer,
     ProjectListSerializer,
     ProjectTableSerializer,
@@ -15,13 +17,16 @@ from .project import (
 from .semester import SemesterWithFullProjectsSerializer, SemesterWithProjectsSerializer
 
 __all__ = [
+    "PastProjectAISearchResultSerializer",
     "PastProjectAISearchSerializer",
     "PastProjectShareListSerializer",
     "PastProjectShareRowSerializer",
     "PastProjectShareSerializer",
     "StalePastProjectShareSnapshot",
+    "AllProjectsArchiveRowSerializer",
     "CompactPastProjectSerializer",
     "PastProjectQuerySerializer",
+    "PastSemesterPageQuerySerializer",
     "ProjectDetailSerializer",
     "ProjectListSerializer",
     "ProjectTableSerializer",

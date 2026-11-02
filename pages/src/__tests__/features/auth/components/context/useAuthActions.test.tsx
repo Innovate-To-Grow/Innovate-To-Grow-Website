@@ -382,6 +382,25 @@ describe('useAuthActions', () => {
     expect(authApi.confirmPasswordChange).toHaveBeenCalledWith('token', 'newpw', 'newpw');
   });
 
+  it('exposes the password flows by name and keeps the actions object stable across renders', () => {
+    const setters = makeSetters();
+    const {result, rerender} = renderHook(() => useAuthActions(setters));
+    const first = result.current;
+
+    for (const name of [
+      'requestPasswordReset',
+      'verifyPasswordResetCode',
+      'confirmPasswordReset',
+      'requestPasswordChangeCode',
+      'verifyPasswordChangeCode',
+      'confirmPasswordChange',
+    ] as const) {
+      expect(first[name]).toBeTypeOf('function');
+    }
+    rerender();
+    expect(result.current).toBe(first);
+  });
+
   it('does not set the user when the profile refresh fails to persist', async () => {
     authApi.getStoredSession.mockReturnValue({user, generation: 'generation-1'});
     authApi.getProfile.mockResolvedValue({profile_image: '/media/new.png'});

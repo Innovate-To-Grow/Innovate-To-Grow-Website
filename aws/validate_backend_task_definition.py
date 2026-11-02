@@ -175,7 +175,7 @@ def validate_task_definition(taskdef: dict[str, Any], *, rendered: bool) -> None
     dependencies = worker.get("dependsOn") or []
     _require(
         {"containerName": WEB_CONTAINER, "condition": "HEALTHY"} in dependencies,
-        "Worker must wait for Web health so startup migrations finish first.",
+        "Worker must wait for Web health before processing background jobs.",
     )
     _require(int(worker.get("stopTimeout", 0)) >= 120, "Worker needs the Fargate maximum graceful stop window.")
 

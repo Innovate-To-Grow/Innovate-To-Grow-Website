@@ -83,6 +83,11 @@ def resolve_origination_number(*, refresh: bool = False) -> str | None:
     return number
 
 
+def cached_origination_number(region: str) -> str | None:
+    """The auto-detected number when it is cached, without calling AWS (for hints such as the worker's gates)."""
+    return cache.get(_cache_key(region)) or None
+
+
 def origination_number_available() -> bool:
     """True when an SMS origination number can be resolved for the account."""
     return bool(resolve_origination_number())

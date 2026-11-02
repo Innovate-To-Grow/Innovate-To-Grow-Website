@@ -150,7 +150,7 @@ test('a successful token refresh preserves saved merged projects', async ({page,
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
   await expectSignedInAs(page, email);
   const savedResults = page.locator('section').filter({
-    has: page.getByRole('heading', {name: 'Saved Merged Results', exact: true}),
+    has: page.getByRole('heading', {name: 'Curation Draft', exact: true}),
   });
   await expect(savedResults.getByText(row.project_title, {exact: true}).first()).toBeVisible();
   const originalDraft = await page.evaluate(() => localStorage.getItem('past-projects:builder:draft'));
@@ -158,7 +158,7 @@ test('a successful token refresh preserves saved merged projects', async ({page,
 
   await page.getByRole('button', {name: '+ AI Search Table'}).click();
   const searchForm = page.locator('.past-projects-ai-search');
-  await searchForm.getByPlaceholder('Ask AI to find relevant past projects...').fill('irrigation');
+  await searchForm.getByPlaceholder('Ask about past projects…').fill('irrigation');
   const sessionRevalidated = page.waitForResponse((response) =>
     new URL(response.url()).pathname.endsWith('/authn/session/') && response.status() === 200,
   );

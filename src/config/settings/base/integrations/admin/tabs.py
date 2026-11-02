@@ -1,5 +1,14 @@
 """Unfold tab groups for related models and custom admin pages."""
 
+_DELIVERY_RATES_PATH = "/admin/mail/settings/rates/"
+
+
+def _is_notification_delivery(request):
+    # Unfold marks a tab active when its link is a prefix of the path, and Delivery Rates lives under
+    # /admin/mail/settings/: without this both tabs would be highlighted there.
+    return request.path.startswith("/admin/mail/settings/") and not request.path.startswith(_DELIVERY_RATES_PATH)
+
+
 TABS = [
     {
         "models": [
@@ -110,7 +119,8 @@ TABS = [
         "page": "mail_delivery_operations",
         "items": [
             {"title": "Delivery Dashboard", "link": "/admin/mail/delivery-dashboard/"},
-            {"title": "Notification Delivery", "link": "/admin/mail/settings/"},
+            {"title": "Notification Delivery", "link": "/admin/mail/settings/", "active": _is_notification_delivery},
+            {"title": "Delivery Rates", "link": _DELIVERY_RATES_PATH},
         ],
     },
     {

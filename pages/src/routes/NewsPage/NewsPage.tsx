@@ -138,7 +138,7 @@ export const NewsPage = () => {
                 </li>
               ))}
             </ul>
-            <span className="news-pagination-info">
+            <span className="itg-pagination-info news-pagination-info">
               Page {page} of {totalPages}
             </span>
             <button

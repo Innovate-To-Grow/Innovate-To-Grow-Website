@@ -54,10 +54,16 @@ describe('ScheduleGrid', () => {
     cleanup();
   });
 
-  it('renders the loading state', () => {
+  it('renders the loading state as the shared loading indicator', () => {
     render(<ScheduleGrid classes={[]} rows={[]} trackInfos={[]} loading />);
 
-    expect(screen.getByText('Loading schedule...')).toBeInTheDocument();
+    // The same ring and label as the archive's project table below it (SheetsDataTable), inside the status box.
+    const label = screen.getByText('Loading schedule…');
+    expect(label).toHaveClass('loading-indicator-label');
+    expect(label.childNodes).toHaveLength(1);
+    const status = screen.getByRole('status');
+    expect(status).toHaveClass('sg-loading');
+    expect(status.querySelector('.loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('renders the error state', () => {
@@ -69,7 +75,7 @@ describe('ScheduleGrid', () => {
   it('prefers loading over error when both are set', () => {
     render(<ScheduleGrid classes={[]} rows={[]} trackInfos={[]} loading error="Failed to load" />);
 
-    expect(screen.getByText('Loading schedule...')).toBeInTheDocument();
+    expect(screen.getByText('Loading schedule…')).toBeInTheDocument();
     expect(screen.queryByText('Failed to load')).toBeNull();
   });
 
@@ -158,7 +164,7 @@ describe('ScheduleGrid', () => {
 
   it('announces loading and errors', () => {
     const {rerender} = render(<ScheduleGrid classes={[]} rows={[]} trackInfos={[]} loading />);
-    expect(screen.getByRole('status')).toHaveTextContent('Loading schedule...');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading schedule…');
 
     rerender(<ScheduleGrid classes={[]} rows={[]} trackInfos={[]} error="Failed to load" />);
     expect(screen.getByRole('alert')).toHaveTextContent('Failed to load');

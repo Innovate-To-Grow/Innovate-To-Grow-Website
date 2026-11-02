@@ -61,6 +61,11 @@ describe('Component barrel exports', () => {
     expect(mod.ScheduleGrid).toBeDefined();
   });
 
+  it('@/components/LoadingIndicator exports resolve', async () => {
+    const mod = await import('@/components/LoadingIndicator');
+    expect(mod.LoadingIndicator).toBeDefined();
+  });
+
   it('@/components/NotFoundPage exports resolve', async () => {
     const mod = await import('@/components/NotFoundPage');
     expect(mod.NotFoundPage).toBeDefined();
@@ -75,6 +80,7 @@ describe('Component barrel exports', () => {
 describe('Page barrel exports', () => {
   const pages = [
     ['AcknowledgementPage', 'AcknowledgementPage'],
+    ['AllProjectsPage', 'AllProjectsPage'],
     ['EventArchivePage', 'EventArchivePage'],
     ['EventRegistrationPage', 'EventRegistrationPage'],
     ['LoginLinkPage', 'LoginLinkPage'],
@@ -89,6 +95,7 @@ describe('Page barrel exports', () => {
   ] as const;
 
   it.each(pages)('pages/%s exports %s', async (dir, exportName) => {
+    // Vite expands this import to the routes/* folders that exist when it transforms this file.
     const mod = await import(`@/routes/${dir}/index.ts`);
     expect(mod[exportName]).toBeDefined();
   });

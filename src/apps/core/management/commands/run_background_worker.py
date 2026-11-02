@@ -11,18 +11,26 @@ from apps.authn.services.login_guard import purge_expired_failure_windows
 from apps.authn.services.security.rsa_manager import purge_retired_auth_keypairs
 from apps.authn.services.send_verification import cleanup_expired_records, clear_expired_sessions
 from apps.core.services.background_jobs import (
+    JobOutcome,
     claim_jobs,
-    process_claimed_job,
     publish_worker_metrics,
     recover_stale_jobs,
+    run_claimed_job,
     worker_metrics,
 )
+from apps.core.services.delivery_rates import run_maintenance as run_delivery_rate_maintenance
+from apps.core.services.delivery_rates.rules.defaults import section
+from apps.core.services.email.graph.credential import expiry
+from apps.core.services.email.graph.credential.expiry import active_certificate_expiry
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_MAINTENANCE_SECONDS = 3600
 MIN_MAINTENANCE_SECONDS = 300
+# One fixed line (a log metric filter can match its prefix); only the day count varies.
+GRAPH_EXPIRY_WARNING = "Microsoft Graph certificate expiry warning: %d days left; install the renewed certificate"
+GRAPH_EXPIRED_WARNING = "Microsoft Graph certificate expiry warning: expired; install the renewed certificate"
 
 
 def _purge_retired_keys(should_stop=None) -> None:
@@ -60,16 +68,41 @@ def _purge_login_failure_windows(should_stop=None) -> None:
         logger.info("Purged %d expired login failure windows", purged)
 
 
+def _delivery_rate_maintenance(should_stop=None) -> None:
+    # Re-read the provider limits that are due (SES, AWS SMS) and purge old usage buckets and idle state rows.
+    result = run_delivery_rate_maintenance()
+    if result.buckets_purged or result.states_purged:
+        logger.info(
+            "Delivery-rate maintenance: purged %d usage buckets and %d idle states",
+            result.buckets_purged,
+            result.states_purged,
+        )
+
+
+def _check_graph_certificate_expiry(should_stop=None) -> None:
+    # The active Graph config's current certificate, from GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS before expiry on.
+    status = active_certificate_expiry()
+    if status is None or status.level in (expiry.OK, expiry.NOT_YET_VALID):
+        return
+    if status.level == expiry.EXPIRED:
+        logger.warning(GRAPH_EXPIRED_WARNING)
+    else:
+        logger.warning(GRAPH_EXPIRY_WARNING, status.days_left)
+
+
 # Periodic maintenance, run in this order every ``--maintenance-seconds`` (hourly by default). Each entry is
 # ``(name, callable)``; ``run_maintenance`` isolates every call, so one failure never stops the worker or the rest.
 # Every callable takes the stop check: the three batched tasks hand it to their batch loops, so a stop request ends
-# them after the batch in flight; the two single-statement purges ignore it.
+# them after the batch in flight; the two single-statement purges, the delivery-rate upkeep and the certificate
+# expiry check ignore it.
 MAINTENANCE_TASKS = (
     ("Retired RSA key purge", _purge_retired_keys),
     ("Public assistant budget purge", _purge_public_assistant_budgets),
     ("Send verification cleanup", _cleanup_send_verification),
     ("Expired session cleanup", _clear_expired_sessions),
     ("Login failure window purge", _purge_login_failure_windows),
+    ("Delivery-rate maintenance", _delivery_rate_maintenance),
+    ("Microsoft Graph certificate expiry check", _check_graph_certificate_expiry),
 )
 
 
@@ -120,7 +153,12 @@ class Command(BaseCommand):
         parser.add_argument("--once", action="store_true", help="Claim one batch and exit.")
         parser.add_argument("--batch-size", type=int, default=10)
         parser.add_argument("--poll-seconds", type=float, default=5.0)
-        parser.add_argument("--stale-minutes", type=int, default=10)
+        parser.add_argument(
+            "--stale-minutes",
+            type=int,
+            default=None,
+            help='Minutes after which a claimed job is recovered (default: DELIVERY_RATES["jobs"]["stale_claim_seconds"]).',
+        )
         parser.add_argument(
             "--maintenance-seconds",
             "--key-purge-seconds",  # the original name, kept for existing invocations
@@ -143,7 +181,11 @@ class Command(BaseCommand):
         maintenance_seconds = max(
             MIN_MAINTENANCE_SECONDS, options.get("key_purge_seconds", DEFAULT_MAINTENANCE_SECONDS)
         )
-        stale_after = timedelta(minutes=max(1, options["stale_minutes"]))
+        stale_minutes = options["stale_minutes"]
+        if stale_minutes is None:
+            stale_after = timedelta(seconds=section("jobs")["stale_claim_seconds"])
+        else:
+            stale_after = timedelta(minutes=max(1, stale_minutes))
         next_maintenance_at = 0.0
         schedule_startup_reconciliation()
 
@@ -160,12 +202,14 @@ class Command(BaseCommand):
 
             if options["once"]:
                 return
-            # No idle wait once a stop was requested: the loop condition ends the worker right away.
+            # No idle wait once a stop was requested: the loop condition ends the worker right away. A round in which
+            # every job was only deferred by its delivery rate also waits, so a paced lane never makes it spin.
             if not processed_jobs and not self._stopping:
                 time.sleep(poll_seconds)
 
     def _process_jobs(self, *, batch_size: int, stale_after) -> int:
-        """Recover stale jobs, then claim and run up to ``batch_size`` jobs one at a time; how many ran."""
+        """Recover stale jobs, then claim and run up to ``batch_size`` jobs one at a time; how many ran (a job its
+        delivery rate deferred did not)."""
         try:
             recover_stale_jobs(stale_after=stale_after)
         except Exception:  # noqa: BLE001 - one maintenance failure must not terminate the worker.
@@ -187,11 +231,13 @@ class Command(BaseCommand):
             if not jobs:
                 break
             job = jobs[0]
-            processed_jobs += 1
             try:
-                process_claimed_job(job)
+                outcome = run_claimed_job(job)
             except Exception:  # noqa: BLE001 - final per-job containment boundary.
                 logger.exception("Unhandled background job boundary failure for %s", job.pk)
+                outcome = JobOutcome.FAILED
+            if outcome != JobOutcome.DEFERRED:
+                processed_jobs += 1
         return processed_jobs
 
     def _publish_metrics(self) -> None:

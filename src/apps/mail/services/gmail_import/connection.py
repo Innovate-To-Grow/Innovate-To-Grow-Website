@@ -6,6 +6,10 @@ from email.utils import parseaddr
 
 from django.db.utils import OperationalError, ProgrammingError
 
+from apps.core.services.delivery_rates import RateDeferred
+
+from .session import busy_text, gmail_imap_session
+
 logger = logging.getLogger(__name__)
 
 DEFAULT_GMAIL_MAILBOX = "i2g@g.ucmerced.edu"
@@ -21,6 +25,15 @@ SENT_FOLDER_CANDIDATES = (
 
 class GmailImportError(RuntimeError):
     """Raised when Gmail message import cannot be completed."""
+
+
+class GmailImportBusy(GmailImportError):
+    """The read was held back by the delivery rate (Gmail asked to wait, or a breaker holds the account): nothing
+    was read; ``retry_after`` is the wait in seconds."""
+
+    def __init__(self, message: str, retry_after: int):
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 def normalize_mailbox(value: str) -> str:
@@ -64,13 +77,11 @@ def _open_mailbox(mailbox: str | None = None):
     try:
         import apps.mail.services.gmail_import as gmail_api
 
-        with gmail_api.MailBox(config.imap_host).login(
-            resolved_mailbox,
-            config.gmail_password,
-            initial_folder=None,
-        ) as client:
+        with gmail_imap_session(gmail_api.MailBox, config, resolved_mailbox, initial_folder=None) as client:
             select_sent_folder(client)
             yield client
+    except RateDeferred as exc:
+        raise GmailImportBusy(busy_text(exc), exc.retry_after) from None
     except GmailImportError:
         raise
     except Exception as exc:  # pragma: no cover - exercised in tests with mocks
