@@ -1,6 +1,7 @@
 import {PastProjectsDialog} from '../../builder/dialog/PastProjectsDialog';
+import {softDisabled} from '../../shared/utils/softDisabled';
 
-export type PendingBulkAction = 'reset-builder' | 'remove-all-shared';
+export type PendingBulkAction = 'reset-builder';
 
 interface MergedEditButtonsProps {
   /** Builder: check rows, then "Remove Selected". */
@@ -17,7 +18,10 @@ interface MergedEditButtonsProps {
   onRequestBulkAction: (action: PendingBulkAction) => void;
 }
 
-/** The "Edit list" toolbar group; renders nothing when no edit applies. */
+/**
+ * The "Edit list" toolbar group; renders nothing when no edit applies. Each of its buttons can leave itself with
+ * nothing to do, so they stay focusable while unavailable (see softDisabled).
+ */
 export const MergedEditButtons = ({
   bulkRemove,
   undo,
@@ -36,75 +40,54 @@ export const MergedEditButtons = ({
         <button
           type="button"
           className="itg-btn itg-btn-text"
-          onClick={bulkRemove.onRemove}
-          disabled={!bulkRemove.hasSelection || isSharing}
+          {...softDisabled(!bulkRemove.hasSelection || isSharing, bulkRemove.onRemove)}
         >
           Remove Selected
         </button>
       ) : null}
       {undo ? (
-        <button type="button" className="itg-btn itg-btn-text" onClick={undo.onUndo} disabled={!undo.canUndo || isSharing}>
-          Undo Merged Change
+        <button type="button" className="itg-btn itg-btn-text" {...softDisabled(!undo.canUndo || isSharing, undo.onUndo)}>
+          Undo
         </button>
       ) : null}
       {canReset ? (
         <button
           type="button"
           className="itg-btn itg-btn-text itg-btn-danger"
-          onClick={() => onRequestBulkAction('reset-builder')}
-          disabled={!hasRows || isSharing}
+          {...softDisabled(!hasRows || isSharing, () => onRequestBulkAction('reset-builder'))}
         >
-          Reset Merged Results
+          Clear Draft
         </button>
       ) : null}
+      {/* A curation keeps at least one project (the API refuses an empty one), so it has no "remove all";
+          deleting a whole curation is done from My Curations. */}
       {shared ? (
-        <>
-          <button
-            type="button"
-            className="itg-btn itg-btn-text"
-            onClick={() => void shared.onUndo()}
-            disabled={!shared.canUndo || shared.isSaving}
-          >
-            Undo Shared Change
-          </button>
-          <button
-            type="button"
-            className="itg-btn itg-btn-text itg-btn-danger"
-            onClick={() => onRequestBulkAction('remove-all-shared')}
-            disabled={shared.isSaving}
-          >
-            Remove All
-          </button>
-        </>
+        <button
+          type="button"
+          className="itg-btn itg-btn-text"
+          {...softDisabled(!shared.canUndo || shared.isSaving, () => void shared.onUndo())}
+        >
+          Undo
+        </button>
       ) : null}
     </div>
   );
 };
 
 interface BulkActionDialogProps {
-  action: PendingBulkAction;
   onCancel: () => void;
   onConfirm: () => void;
 }
 
-export const BulkActionDialog = ({action, onCancel, onConfirm}: BulkActionDialogProps) => {
-  const isReset = action === 'reset-builder';
-  return (
-    <PastProjectsDialog
-      title={isReset ? 'Reset merged results?' : 'Remove all projects?'}
-      confirmLabel={isReset ? 'Reset Merged Results' : 'Close'}
-      showCancel={isReset}
-      onCancel={onCancel}
-      onConfirm={onConfirm}
-    >
-      {isReset ? (
-        <p>Clear every project from the saved merged results? You can undo this immediately afterward.</p>
-      ) : (
-        <p>
-          This shared page cannot be saved with zero projects because the API requires at least one row. Remove
-          rows individually, or delete the shared page if it is no longer needed.
-        </p>
-      )}
-    </PastProjectsDialog>
-  );
-};
+/** Confirms clearing the builder's draft. */
+export const BulkActionDialog = ({onCancel, onConfirm}: BulkActionDialogProps) => (
+  <PastProjectsDialog
+    title="Clear the curation draft?"
+    confirmLabel="Clear Draft"
+    destructive
+    onCancel={onCancel}
+    onConfirm={onConfirm}
+  >
+    <p>Remove every project from the curation draft? You can undo this right afterward.</p>
+  </PastProjectsDialog>
+);

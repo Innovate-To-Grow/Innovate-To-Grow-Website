@@ -1,8 +1,9 @@
 """Optional AI second opinion for borderline scam emails (Amazon Bedrock / Claude).
 
 Reuses the project's Bedrock client. Designed to be best-effort: any failure
-(unconfigured AWS, disabled flag, API error, unparseable output) returns ``None``
-so the caller falls back to the deterministic rule result. Never raises.
+(unconfigured AWS or System Intelligence, API error, unparseable output) returns
+``None`` so the caller falls back to the deterministic rule result. Never raises.
+``assess_email`` never calls it for Sent mail.
 """
 
 from __future__ import annotations

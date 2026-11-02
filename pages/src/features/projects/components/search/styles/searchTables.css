@@ -28,6 +28,16 @@
   margin: 0;
 }
 
+/* The failure holds the loading line's room too (ArchiveLoadState gives it the builder's loading class), its
+   message and Try Again packed at the top of it. */
+.past-projects-archive-failed {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
 .past-projects-action-bar-group {
   display: flex;
   flex-wrap: wrap;
@@ -110,6 +120,12 @@
   gap: 1.5rem;
 }
 
+/* The builder while the archive loads: hold about the first search table's room (about 843px on wide screens, a
+   screen or more on phones), so the footer is not in the first screen only to be pushed out when it arrives. */
+.past-projects-builder-loading {
+  min-height: min(100vh, 53rem);
+}
+
 .project-grid-empty-shell {
   border-top: 0;
 }
@@ -148,6 +164,12 @@
 
 .project-grid-card-copy {
   margin: 0;
+}
+
+/* Framed like the draft's table (mergedResults.css): every table inside a builder card has the same edge. */
+.search-table-card .project-grid-table-wrap {
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-page);
 }
 
 .search-table-card .search-table-remove-button {
@@ -235,24 +257,17 @@
   gap: 0.375rem;
 }
 
+/* No icons: the words and their colour carry the outcome (errors are also alerts). */
+.past-projects-ai-search-message.is-success {
+  color: var(--itg-color-success);
+}
+
 .past-projects-ai-search-message.is-error {
   color: var(--itg-color-error);
 }
 
 .past-projects-ai-search-message.is-loading {
   color: var(--itg-color-text-secondary);
-}
-
-.past-projects-status-icon {
-  flex: none;
-  width: 1.125rem;
-  height: 1.125rem;
-  margin-top: 0.125rem;
-  fill: none;
-  stroke: var(--itg-color-success);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .search-table-save-status {
@@ -286,21 +301,13 @@
   color: var(--itg-color-text-secondary);
 }
 
-/* A plain spinner beside the progress text. */
-.past-projects-ai-search-status::before {
-  content: '';
-  flex: none;
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 2px solid var(--itg-color-border);
-  border-top-color: var(--itg-color-primary);
-  border-radius: 50%;
-  animation: past-projects-spin 0.9s linear infinite;
-}
-
-@keyframes past-projects-spin {
-  to {
-    transform: rotate(360deg);
+/* Forced colours drop the tint that marks a checked row, leaving only its checkbox: outline the row (or phone
+   card) in the system's selection colour, which forced colours keep. An outline does not move the layout. */
+@media (forced-colors: active) {
+  .search-table-card tr.project-grid-row.is-selected,
+  .search-table-card .project-grid-mobile-card.is-selected {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }
 }

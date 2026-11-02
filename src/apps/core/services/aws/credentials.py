@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+from django.conf import settings
+
+from .secret_store import read_credentials
 
 
 @dataclass(frozen=True)
 class AwsCredentials:
-    access_key_id: str
-    secret_access_key: str
+    access_key_id: str = field(repr=False)
+    secret_access_key: str = field(repr=False)
     region: str
 
 
@@ -25,7 +29,7 @@ def aws_credentials_available() -> bool:
     return True
 
 
-def resolve_aws_credentials(service: str = "default") -> AwsCredentials:
+def resolve_aws_credentials(service: str = "default", *, config=None) -> AwsCredentials:
     """Resolve AWS credentials from the active AWSCredentialConfig.
 
     The ``service`` argument is kept for call-site readability (SES, SNS,
@@ -33,12 +37,17 @@ def resolve_aws_credentials(service: str = "default") -> AwsCredentials:
     """
     from apps.core.models import AWSCredentialConfig
 
-    aws = AWSCredentialConfig.load()
+    aws = config if config is not None else AWSCredentialConfig.load()
     if not aws.is_configured:
         raise AwsCredentialsError("AWS credentials are not configured.")
 
-    return AwsCredentials(
-        access_key_id=aws.access_key_id,
-        secret_access_key=aws.secret_access_key,
-        region=aws.region,
-    )
+    if getattr(aws, "credentials_secret_arn", ""):
+        try:
+            access_key, secret_key = read_credentials(aws.credentials_secret_arn)
+        except Exception:
+            raise AwsCredentialsError("AWS credentials could not be read from Secrets Manager.") from None
+    elif getattr(settings, "AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER", False):
+        raise AwsCredentialsError("Production AWS credentials must use Secrets Manager.")
+    else:
+        access_key, secret_key = aws.access_key_id, aws.secret_access_key
+    return AwsCredentials(access_key_id=access_key, secret_access_key=secret_key, region=aws.region)

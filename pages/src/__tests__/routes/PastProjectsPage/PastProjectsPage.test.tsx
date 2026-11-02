@@ -12,6 +12,10 @@ import {
 
 const {
     addedRow,
+    allGridState,
+    authState,
+    currentRow,
+    gridState,
     mockNavigate,
     mockRetryShare,
     sampleRow,
@@ -42,7 +46,25 @@ const {
         mockNavigate: vi.fn(),
         mockRetryShare: vi.fn(),
         sharedState: {share: null as unknown, shareError: null as string | null, shareNotFound: false},
+        currentRow: {
+            ...sample,
+            id: '33333333-3333-4333-8333-333333333333',
+            semester_label: '2026 Fall',
+            team_number: '303',
+            team_name: 'Team Gamma',
+            project_title: 'This Semester Project',
+            catalog: 'current' as const,
+        },
+        authState: {user: null as {member_uuid: string} | null},
+        // Each hook call's `enabled`, so a test can tell which list the page asked for.
+        gridState: {loading: false, rows: [sample] as Array<typeof sample>, enabled: [] as boolean[]},
+        allGridState: {rows: [] as Array<Record<string, unknown>>, enabled: [] as boolean[]},
     };
+});
+
+vi.mock('@/features/auth', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/features/auth')>();
+    return {...actual, useAuth: () => ({...actual.useAuth(), user: authState.user})};
 });
 
 vi.mock('react-router', async (importOriginal) => {
@@ -69,12 +91,14 @@ vi.mock('@/features/projects/api', () => ({
 }));
 
 vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
-    usePastProjectGridData: () => ({
-        error: null,
-        loading: false,
-        rows: [sampleRow],
-        refetch: vi.fn(),
-    }),
+    usePastProjectGridData: (enabled = true) => {
+        gridState.enabled.push(enabled);
+        return {error: null, loading: gridState.loading, rows: gridState.rows, refetch: vi.fn()};
+    },
+    useAllProjectGridData: (enabled = true) => {
+        allGridState.enabled.push(enabled);
+        return {error: null, loading: false, rows: allGridState.rows, refetch: vi.fn()};
+    },
     usePastProjectShareData: () => ({
         error: sharedState.shareError,
         loading: false,
@@ -90,6 +114,16 @@ vi.mock('@/features/projects', async () =>
         addedRow,
     ),
 );
+
+// The builder page's body (CatalogBuilderView) imports these two directly.
+vi.mock('@/features/projects/components/builder/composition/PastProjectsBuilder', async () => ({
+    PastProjectsBuilder: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
+        .pastProjectsModuleStub(sampleRow, addedRow).PastProjectsBuilder,
+}));
+vi.mock('@/features/projects/components/curations/panel/MyCurationsPanel', async () => ({
+    MyCurationsPanel: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
+        .pastProjectsModuleStub(sampleRow, addedRow).MyCurationsPanel,
+}));
 
 const shareFixture = (
     overrides: Partial<PastProjectShare> = {},
@@ -118,6 +152,12 @@ describe('PastProjectsPage', () => {
         sharedState.share = null;
         sharedState.shareError = null;
         sharedState.shareNotFound = false;
+        authState.user = null;
+        gridState.loading = false;
+        gridState.rows = [sampleRow];
+        gridState.enabled = [];
+        allGridState.rows = [currentRow, sampleRow];
+        allGridState.enabled = [];
         mockNavigate.mockReset();
         mockRetryShare.mockReset();
         vi.mocked(createPastProjectShare).mockReset();
@@ -174,6 +214,35 @@ describe('PastProjectsPage', () => {
         );
     });
 
+    it("asks again whether the viewer may edit a curation once they sign out or switch accounts", () => {
+        // can_edit is the server's answer for whoever was signed in when the curation loaded.
+        authState.user = {member_uuid: 'owner-1'};
+        sharedState.share = shareFixture();
+        const {rerender} = renderPage();
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).not.toHaveBeenCalled();
+
+        authState.user = null;
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).toHaveBeenCalledTimes(1);
+
+        authState.user = {member_uuid: 'someone-else'};
+        rerender(
+            <MemoryRouter initialEntries={['/past-projects']}>
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+        expect(mockRetryShare).toHaveBeenCalledTimes(2);
+    });
+
     it('titles a share stored without a name with the default curation title', async () => {
         sharedState.share = shareFixture({name: '  '});
 
@@ -182,12 +251,42 @@ describe('PastProjectsPage', () => {
         expect(await screen.findByTestId('share-title')).toHaveTextContent('Past Project Curation');
     });
 
+    it('titles a share of current-semester projects stored without a name as the server would name it', async () => {
+        sharedState.share = shareFixture({name: '', rows: [sampleRow, currentRow]});
+
+        renderPage();
+
+        expect(await screen.findByTestId('share-title')).toHaveTextContent(/^Project Curation$/);
+        expect(document.title).toBe('Project Curation | Innovate to Grow');
+        expect(screen.getByRole('link', {name: 'Search all projects'})).toHaveAttribute('href', '/all-projects');
+    });
+
+    it('names the tab Past Projects even after a curation page named it', () => {
+        // Both routes share the route title, so the route alone would not set it again.
+        document.title = 'Spring finalists | Innovate to Grow';
+        renderPage();
+
+        expect(document.title).toBe('Past Projects | Innovate to Grow');
+    });
+
     it('heads the builder with the archive size, the years it spans and a lede', () => {
         renderPage();
 
         expect(screen.getByRole('heading', {level: 1, name: 'Past Projects'})).toBeInTheDocument();
         expect(screen.getByText('1 project since 2025')).toHaveClass('itg-page-meta');
         expect(screen.getByText(/^Search past Innovate to Grow projects, check the ones you want/)).toHaveClass('itg-lead');
+    });
+
+    it('keeps the meta line in place while the archive loads, so the lede and builder do not move down', () => {
+        gridState.loading = true;
+        gridState.rows = [];
+        const {container} = renderPage();
+
+        const header = container.querySelector('.past-projects-header') as HTMLElement;
+        const meta = header.querySelector('.itg-page-meta') as HTMLElement;
+        expect(meta.textContent).toBe('\u00a0');
+        expect(meta).toHaveAttribute('aria-hidden', 'true');
+        expect(meta.nextElementSibling).toHaveClass('itg-lead');
     });
 
     it("lists the member's saved curations above the builder", () => {
@@ -205,7 +304,8 @@ describe('PastProjectsPage', () => {
                 <PastProjectsPage/>
             </MemoryRouter>,
         );
-        expect(screen.getByRole('status')).toHaveTextContent(
+        expect(screen.getByText(/^Curation saved\./)).toHaveAttribute('role', 'status');
+        expect(screen.getByText(/^Curation saved\./)).toHaveTextContent(
             'Curation saved. It is listed under My Curations on the Past Projects page, and you can keep editing it here.',
         );
         expect(screen.getByRole('link', {name: 'Past Projects'})).toHaveAttribute('href', '/past-projects');
@@ -226,6 +326,73 @@ describe('PastProjectsPage', () => {
             </MemoryRouter>,
         );
         expect(screen.queryByText(/Curation saved/)).toBeNull();
+    });
+
+    it('names All Projects in the saved notice of a curation All Projects saved', () => {
+        sharedState.share = shareFixture();
+        render(
+            <MemoryRouter
+                initialEntries={[
+                    {pathname: '/past-projects/share-abc', state: {curationSaved: true, builtOn: '/all-projects'}},
+                ]}
+            >
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByText(/^Curation saved\./)).toHaveTextContent(
+            'Curation saved. It is listed under My Curations on the All Projects page, and you can keep editing it here.',
+        );
+        expect(screen.getByRole('link', {name: 'All Projects'})).toHaveAttribute('href', '/all-projects');
+    });
+
+    it('names Past Projects in the saved notice when the save names no other builder', () => {
+        sharedState.share = shareFixture();
+        render(
+            <MemoryRouter
+                initialEntries={[
+                    {pathname: '/past-projects/share-abc', state: {curationSaved: true, builtOn: '/somewhere-else'}},
+                ]}
+            >
+                <PastProjectsPage/>
+            </MemoryRouter>,
+        );
+
+        expect(screen.getByRole('link', {name: 'Past Projects'})).toHaveAttribute('href', '/past-projects');
+        expect(screen.queryByRole('link', {name: 'All Projects'})).toBeNull();
+    });
+
+    it('builds on the archive under the Past Projects words, without loading every project', () => {
+        renderPage();
+
+        const builder = screen.getByRole('button', {name: 'Create mocked share'});
+        expect(builder).toHaveAttribute('data-catalog', 'past');
+        expect(builder).toHaveAttribute('data-rows', 'Shared Project');
+        expect(gridState.enabled).toContain(true);
+        expect(allGridState.enabled).not.toContain(true);
+    });
+
+    it("lets a curation's owner add from every project, worded as All Projects", () => {
+        sharedState.share = shareFixture();
+
+        renderPage();
+
+        // Every project holds whatever either builder saved, this semester's teams too.
+        const search = screen.getByRole('button', {name: 'Add mocked row'});
+        expect(search).toHaveAttribute('data-catalog', 'all');
+        expect(search).toHaveAttribute('data-rows', 'This Semester Project|Shared Project');
+        expect(allGridState.enabled).toContain(true);
+        expect(gridState.enabled).not.toContain(true);
+    });
+
+    it('loads no list for a visitor who cannot edit the curation', () => {
+        sharedState.share = shareFixture({can_edit: false});
+
+        renderPage();
+
+        expect(screen.queryByRole('button', {name: 'Add mocked row'})).toBeNull();
+        expect(gridState.enabled).not.toContain(true);
+        expect(allGridState.enabled).not.toContain(true);
     });
 
     it('passes the ?value= search on to the builder', () => {
@@ -258,11 +425,18 @@ describe('PastProjectsPage', () => {
 
         renderPage();
 
-        expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
-        expect(screen.getByRole('heading', {level: 1, name: "This shared list isn't available"})).toBeInTheDocument();
-        expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
+        // The curation did not load, so the page cannot say which list it came from: a neutral eyebrow, and All
+        // Projects, which searches both lists.
+        expect(screen.getByText('Curation', {selector: '.itg-eyebrow'})).toBeInTheDocument();
+        expect(screen.queryByText(/Curation · /)).toBeNull();
+        expect(screen.getByRole('heading', {level: 1, name: "This curation isn't available"})).toBeInTheDocument();
+        expect(screen.getByText(/or search all projects yourself\.$/)).toBeInTheDocument();
+        const search = screen.getByRole('link', {name: 'Search All Projects'});
+        expect(search).toHaveAttribute('href', '/all-projects');
+        expect(search).toHaveClass('itg-btn', 'itg-btn-primary');
         expect(screen.getByRole('link', {name: 'Go to Projects'})).toHaveAttribute('href', '/projects');
-        expect(screen.queryByRole('button', {name: 'Try again'})).toBeNull();
+        expect(screen.queryByRole('link', {name: /past projects/i})).toBeNull();
+        expect(screen.queryByRole('button', {name: 'Try Again'})).toBeNull();
         expect(screen.queryByTestId('share-title')).toBeNull();
     });
 
@@ -272,14 +446,19 @@ describe('PastProjectsPage', () => {
 
         renderPage();
 
-        expect(screen.getByText('Shared list · Past Projects')).toHaveClass('itg-eyebrow');
-        expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this shared list"})).toBeInTheDocument();
-        expect(screen.queryByRole('heading', {name: "This shared list isn't available"})).toBeNull();
+        expect(screen.getByText('Curation', {selector: '.itg-eyebrow'})).toBeInTheDocument();
+        expect(screen.getByRole('heading', {level: 1, name: "We couldn't load this curation"})).toBeInTheDocument();
+        expect(screen.queryByRole('heading', {name: "This curation isn't available"})).toBeNull();
         expect(screen.queryByText(/deleted the list/)).toBeNull();
-        expect(screen.getByRole('link', {name: 'Search past projects'})).toHaveAttribute('href', '/past-projects');
+        // Try Again is the page's one primary action; the way on is a text link.
+        expect(screen.getByRole('button', {name: 'Try Again'})).toHaveClass('itg-btn', 'itg-btn-primary');
+        const search = screen.getByRole('link', {name: 'Search All Projects'});
+        expect(search).toHaveAttribute('href', '/all-projects');
+        expect(search).toHaveClass('itg-link');
+        expect(search).not.toHaveClass('itg-btn');
         expect(screen.queryByTestId('share-title')).toBeNull();
 
-        fireEvent.click(screen.getByRole('button', {name: 'Try again'}));
+        fireEvent.click(screen.getByRole('button', {name: 'Try Again'}));
         expect(mockRetryShare).toHaveBeenCalledTimes(1);
     });
 });

@@ -6,7 +6,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 
 | App | Purpose | Key models |
 |-----|---------|------------|
-| `core` | Base models, reusable DRF building blocks, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `TimeStampedModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `GoogleCredentialConfig`, `AWSCredentialConfig`, `BackgroundJob`, `DeliveryRateLimit` |
+| `core` | Base models, reusable DRF building blocks, middleware, settings, management commands, shared utilities | `ProjectControlModel`, `TimeStampedModel`, `SiteMaintenanceControl`, `EmailServiceConfig`, `SMTPProviderConfig`, `MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`, `MicrosoftGraphAccessCheck`, `GmailApiProviderConfig`, `GmailApiSubject`, `GoogleCredentialConfig`, `AWSCredentialConfig`, `BackgroundJob`, `DeliveryRatePolicy`, `DeliveryRateState`, `DeliveryUsageBucket`, `DeliveryRateLimit` (retired; dropped in a follow-up release) |
 | `authn` | Authentication, member management, contacts, admin invitations | `Member`, `ContactEmail`, `ContactPhone`, `EmailAuthChallenge`, `PhoneVerificationChallenge`, `RSAKeypair`, `AdminInvitation` |
 | `cms` | CMS pages and blocks, news, analytics, menus, footer, site settings | `CMSPage`, `CMSBlock`, `CMSAsset`, `NewsArticle`, `NewsFeedSource`, `PageView`, `Menu`, `FooterContent`, `SiteSettings` |
 | `event` | Event registration, ticketing, schedule, check-in | `Event`, `EventRegistration`, `Ticket`, `Question`, `CheckIn`, `CheckInRecord`, `CurrentProjectSchedule`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` |
@@ -63,8 +63,12 @@ config/settings/
 │       │   ├── theme.py              # Branding, colors, styles, and scripts
 │       │   ├── tabs.py               # Model and custom-page tab groups
 │       │   └── navigation.py         # Sidebar links and permission callbacks
-│       └── editor/
-│           └── __init__.py           # CKEditor 5 toolbar and uploads
+│       ├── editor/
+│       │   └── __init__.py           # CKEditor 5 toolbar and uploads
+│       ├── credential_store/         # Private-key store backend and secret names
+│       ├── microsoft_graph/          # Graph certificate and request limits
+│       ├── gmail_api/                # GMAIL_API: request limits, token lifetimes, key entry (+ validation)
+│       └── delivery_rates/           # DELIVERY_RATES: channel seeds, controller, waits, lanes, signals (+ validation)
 ├── production/                       # Production-only overrides
 │   ├── __init__.py                   # Side-effect-free package initializer
 │   ├── env.py                        # Environment parsing helpers
@@ -80,7 +84,7 @@ config/settings/
     └── production.py                 # Loads base and production overrides
 ```
 
-**Import order matters:** `config.settings.base` installs the legacy import shim from `base/framework/legacy_imports.py`, then imports `environment` → `django` → `cache` → `admin` → `api` → `editor`. `config.settings.environments.production` loads base before applying `config/settings/production/` in `django` → `security` → `storage` → `verification` → `cache` order. The production and environment package initializers stay side-effect-free because unittest discovery imports packages.
+**Import order matters:** `config.settings.base` installs the legacy import shim from `base/framework/legacy_imports.py`, then imports `environment` → `django` → `cache` → `admin` → `api` → `editor` → `credential_store` → `microsoft_graph` → `gmail_api` → `delivery_rates`. `config.settings.environments.production` loads base before applying `config/settings/production/` in `django` → `security` → `storage` → `verification` → `cache` order. The production and environment package initializers stay side-effect-free because unittest discovery imports packages.
 
 ### Environment differences
 
@@ -88,7 +92,7 @@ config/settings/
 |---------|-----|-----|------|
 | Database | SQLite | PostgreSQL (GH Actions service) | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis when `REDIS_URL` is set, else a per-container file cache (production today; see [Environments](../deployment/environments.md#production-cache-today)). Send quotas and the login lockout are in PostgreSQL either way; the assistant / AI-search token budgets use Redis when set, else PostgreSQL rows. Every environment also has the in-process `throttle` alias for throttles keyed on a caller-chosen value |
-| Email | Console backend | Console backend | Application services use AWS SES |
+| Email | Console backend | Console backend | Application services use the provider selected under Notification Delivery: AWS SES, SMTP, Microsoft Graph or the Gmail API (see [Integrations](integrations.md#email-delivery-aws-ses-smtp-microsoft-graph-or-the-gmail-api)), paced by the delivery-rate limiter ([Delivery rates](../integrations/delivery-rates.md)) |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Password transport | Plain text accepted | Plain text accepted | RSA encryption required |
 | Debug | True | False | False |
@@ -150,6 +154,9 @@ The following configuration selectors enforce their single-active invariant in b
 |-------|-------|--------------------|
 | `AWSCredentialConfig` | One active globally | Unsaved defaults; AWS-backed operations remain unconfigured |
 | `EmailServiceConfig` | One active globally | Unsaved sender defaults; no inactive row is reused |
+| `SMTPProviderConfig` | One active globally | Unsaved defaults; SMTP delivery remains unconfigured |
+| `MicrosoftGraphProviderConfig` | One active globally | Unsaved defaults; Microsoft Graph delivery remains unconfigured |
+| `GmailApiProviderConfig` | One active globally | Unsaved defaults; Gmail API delivery remains unconfigured |
 | `GoogleCredentialConfig` | One active globally | Unsaved defaults; Sheets operations remain unconfigured |
 | `GmailAccessAccount` | One active globally | Unsaved defaults; Gmail import remains unconfigured |
 | `SystemIntelligenceConfig` | One active globally | Unsaved defaults |
@@ -166,9 +173,12 @@ The following configuration selectors enforce their single-active invariant in b
 |---------|----------|---------|
 | `resetdb` | `core/management/commands/resetdb.py` | Dev-only: drops DB, regenerates migrations, seeds admin user |
 | `seed_service_configs` | `core/management/commands/seed_service_configs.py` | Creates skeleton EmailServiceConfig row and optional AWSCredentialConfig from local env |
+| `migrate_aws_credentials` | `core/management/commands/migrate_aws_credentials.py` | Copies and verifies application AWS keys in Secrets Manager; `--clear-legacy` retires database plaintext after rollout |
 | `verify_service_configs` | `core/management/commands/verify_service_configs.py` | Verifies active service configs exist before removing env vars |
+| `verify_graph_access` | `core/management/commands/verify_graph_access.py` | Asks Microsoft what the Graph app may do (token roles, allowed and denied mailbox probes), records a `MicrosoftGraphAccessCheck` row and exits non-zero unless it matches the approval; the evidence the production go-live gate needs |
+| `verify_gmail_access` | `core/management/commands/verify_gmail_access.py` | Runs the Gmail API access check (the pinned key, a token per allow-listed account, an unlisted address refused with no request to Google, every broader scope refused by Google, optional probe sends; `--deny-subject`, `--no-send`, `--skip-breadth`) and records the evidence that switching email to the Gmail API needs |
 | `migrate_locked` | `authn/management/commands/migrate_locked.py` | Runs migrations on PostgreSQL while holding the repository advisory lock |
-| `run_background_worker` | `core/management/commands/run_background_worker.py` | Claims and processes durable background jobs (`--once` processes one batch) and runs the hourly maintenance list (`MAINTENANCE_TASKS`: retired RSA keys, public-assistant budgets, send-verification cleanup, expired sessions, login failure windows; `--maintenance-seconds`, minimum 300) |
+| `run_background_worker` | `core/management/commands/run_background_worker.py` | Claims and processes durable background jobs (`--once` processes one batch) and runs the hourly maintenance list (`MAINTENANCE_TASKS`: retired RSA keys, public-assistant budgets, send-verification cleanup, expired sessions, login failure windows, delivery-rate maintenance (provider limit reads, usage-bucket and idle-state purge), Microsoft Graph certificate expiry warning; `--maintenance-seconds`, minimum 300). Jobs are claimed by priority, and a job held back by its delivery rate goes back to the queue without using an attempt |
 | `cleanup_send_verification` | `authn/management/commands/cleanup_send_verification.py` | On-demand run of the send-verification retention cleanup (`--batch-size`, default 1000); the worker already runs it hourly |
 | `createsuperuser` | `authn/management/commands/createsuperuser.py` | Custom: prompts for email, not username |
 | `sync_news` | `cms/management/commands/sync_news.py` | Fetches and parses RSS feeds into NewsArticle records |

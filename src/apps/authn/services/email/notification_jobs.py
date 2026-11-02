@@ -3,7 +3,7 @@
 import uuid
 
 from apps.core.services.background_jobs import enqueue_job
-from apps.core.services.background_jobs.delivery import provider_call_guard, provider_job_error, wait_for_email_slot
+from apps.core.services.background_jobs.delivery import provider_call_guard, provider_job_error
 
 NOTIFICATION_EMAIL_JOB_KIND = "authn.notification_email"
 
@@ -37,7 +37,6 @@ def send_notification_email_job(job) -> None:
     from apps.authn.services.email.send_email import send_notification_email
     from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
 
-    wait_for_email_slot()
     try:
         sent = send_notification_email(
             **job.payload,

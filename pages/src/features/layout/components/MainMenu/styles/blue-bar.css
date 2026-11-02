@@ -73,4 +73,19 @@
 .site-header-mobile-toggle {
   display: none;
 }
+
+/* Forced colours (Windows Contrast themes) repaint the navy bar in the
+   theme's Canvas, and the wordmark's white "MERCED" vanished on a light one,
+   leaving only "UC". The image keeps its own navy tile (content-box, so it
+   keeps its drawing size: 150 x 42 with the tile on desktop). Only the image
+   opts out: the link around it is still forced, so its focus ring keeps a
+   system colour instead of the bar's white ring on a forced white bar. */
+@media (forced-colors: active) {
+  .ucm-wordmark img {
+    forced-color-adjust: none;
+    box-sizing: content-box;
+    padding: 4px 6px;
+    background: var(--itg-color-primary);
+  }
+}
 }

@@ -219,10 +219,12 @@ class AdminSidebarNavigationTest(SimpleTestCase):
 
         dashboard_request = factory.get("/admin/mail/delivery-dashboard/")
         settings_request = factory.get("/admin/mail/settings/")
+        rates_request = factory.get("/admin/mail/settings/rates/")
         inbox_request = factory.get("/admin/mail/inbox/")
 
         self.assertTrue(items_by_title["Delivery Operations"]["active"](dashboard_request))
         self.assertTrue(items_by_title["Delivery Operations"]["active"](settings_request))
+        self.assertTrue(items_by_title["Delivery Operations"]["active"](rates_request))
         self.assertFalse(items_by_title["Delivery Operations"]["active"](inbox_request))
 
     def test_mail_delivery_operations_pages_are_grouped_under_tabs(self):
@@ -230,10 +232,11 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         delivery_tab = next(tab for tab in tabs if tab.get("page") == "mail_delivery_operations")
 
         self.assertEqual(
-            delivery_tab["items"],
+            [{key: item[key] for key in ("title", "link")} for item in delivery_tab["items"]],
             [
                 {"title": "Delivery Dashboard", "link": "/admin/mail/delivery-dashboard/"},
                 {"title": "Notification Delivery", "link": "/admin/mail/settings/"},
+                {"title": "Delivery Rates", "link": "/admin/mail/settings/rates/"},
             ],
         )
 
@@ -339,6 +342,7 @@ class AdminIndexNavigationTest(TestCase):
         for url, active_href in (
             (reverse("admin:mail_delivery_dashboard"), "/admin/mail/delivery-dashboard/"),
             (reverse("admin:mail_settings"), "/admin/mail/settings/"),
+            (reverse("admin:mail_delivery_rates"), "/admin/mail/settings/rates/"),
         ):
             with self.subTest(url=url):
                 response = self.client.get(url)
@@ -347,7 +351,9 @@ class AdminIndexNavigationTest(TestCase):
                 self.assertContains(response, 'id="tabs-items"')
                 self.assertContains(response, 'href="/admin/mail/delivery-dashboard/"')
                 self.assertContains(response, 'href="/admin/mail/settings/"')
+                self.assertContains(response, 'href="/admin/mail/settings/rates/"')
                 self.assertContains(response, f'href="{active_href}" class="active"')
+                self.assertContains(response, 'class="active"', count=1)
 
         response = self.client.get(reverse("admin:mail_delivery_dashboard"))
         html = response.content.decode()

@@ -79,18 +79,23 @@ class AWSCredentialConfigAdminTests(TestCase):
     @patch("boto3.client")
     def test_bedrock_test_action_uses_runtime_without_catalog_precheck(self, mock_boto_client):
         mock_runtime = MagicMock()
-        mock_runtime.converse.return_value = {"output": {"message": {"content": [{"text": "OK"}]}}}
+        mock_runtime.converse.return_value = {
+            "output": {"message": {"content": [{"reasoningContent": {}}, {"text": "OK"}]}}
+        }
         mock_boto_client.return_value = mock_runtime
         model_admin = AWSCredentialConfigAdmin(AWSCredentialConfig, AdminSite())
+        request = self._request()
 
         with patch(
             "apps.system_intelligence.services.bedrock.models.catalog.fetch_models_from_aws", side_effect=AssertionError
         ):
-            response = model_admin.test_bedrock_api(self._request(), str(self.config.pk))
+            response = model_admin.test_bedrock_api(request, str(self.config.pk))
 
         self.assertEqual(response.status_code, 302)
         mock_runtime.converse.assert_called_once()
         self.assertEqual(mock_runtime.converse.call_args.kwargs["modelId"], "new.runtime-model-v1:0")
+        self.assertEqual(mock_runtime.converse.call_args.kwargs["inferenceConfig"], {"maxTokens": 1024})
+        self.assertTrue(any("test passed" in str(message) for message in request._messages))
 
     def test_default_model_is_managed_on_system_intelligence_config(self):
         aws_response = self.client.get(reverse("admin:core_awscredentialconfig_change", args=[self.config.pk]))
@@ -108,7 +113,9 @@ class AWSCredentialConfigAdminTests(TestCase):
         response = self.client.get(reverse("admin:core_awscredentialconfig_change", args=[self.config.pk]))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Access Key ID")
+        self.assertContains(response, 'name="credentials_secret_arn"')
+        self.assertNotContains(response, 'name="access_key_id"')
+        self.assertNotContains(response, 'name="secret_access_key"')
         self.assertContains(response, "AWS Region")
         self.assertNotContains(response, "SNS SMS")
         self.assertNotContains(response, 'name="sms_from_number"')

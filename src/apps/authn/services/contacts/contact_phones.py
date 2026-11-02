@@ -139,7 +139,7 @@ def delete_contact_phone(*, member, contact_phone_id):
 
 
 def request_phone_verification(*, member, contact_phone_id):
-    """Start SMS OTP verification for a contact phone."""
+    """Start SMS OTP verification for a contact phone (``PhoneVerificationBusy`` when SMS delivery is held back)."""
     from apps.authn.services.sms import start_phone_verification
 
     contact_phone = ContactPhone.objects.filter(pk=contact_phone_id, member=member).first()

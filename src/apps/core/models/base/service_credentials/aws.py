@@ -1,11 +1,16 @@
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import RegexValidator
 from django.db import models, transaction
+
+from apps.core.services.aws.secret_store import APPLICATION_ARN_PATTERN, validate_secret_arn
 
 
 class AWSCredentialConfig(models.Model):
     """
     Unified AWS configuration.
 
-    Stores the IAM access key, AWS region, and the SNS SMS origination
+    Stores a Secrets Manager reference, AWS region, and the SNS SMS origination
     phone number used by SES (email), SNS (SMS phone verification), and
     Bedrock (System Intelligence). All three services share the same
     region. Multiple configs can exist but only one may be active at a
@@ -22,6 +27,14 @@ class AWSCredentialConfig(models.Model):
         default=False,
         verbose_name="Active",
         help_text="Only one config can be active. Activating this will deactivate others.",
+    )
+
+    credentials_secret_arn = models.CharField(
+        max_length=512,
+        blank=True,
+        default="",
+        validators=[RegexValidator(APPLICATION_ARN_PATTERN, "Use an I2G AWS credential secret ARN.")],
+        help_text="AWS Secrets Manager reference containing access_key_id and secret_access_key.",
     )
 
     access_key_id = models.CharField(
@@ -74,10 +87,31 @@ class AWSCredentialConfig(models.Model):
 
     def __str__(self):
         status = " (active)" if self.is_active else ""
-        key_hint = f"...{self.access_key_id[-4:]}" if self.access_key_id else "empty"
+        key_hint = (
+            "Secrets Manager"
+            if self.credentials_secret_arn
+            else (f"...{self.access_key_id[-4:]}" if self.access_key_id else "empty")
+        )
         return f"{self.name}: {key_hint}{status}"
 
+    def clean(self):
+        super().clean()
+        if self.credentials_secret_arn:
+            try:
+                validate_secret_arn(self.credentials_secret_arn)
+            except ValueError as exc:
+                raise ValidationError({"credentials_secret_arn": str(exc)}) from None
+        if getattr(settings, "AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER", False):
+            if self.is_active and not self.credentials_secret_arn:
+                raise ValidationError(
+                    {"credentials_secret_arn": "Active production AWS credentials require a Secrets Manager reference."}
+                )
+            if self.access_key_id or self.secret_access_key:
+                raise ValidationError("Store AWS keys in Secrets Manager; database credential fields must be empty.")
+
     def save(self, *args, **kwargs):
+        self.clean()
+        # Historical fields remain only for staged migration and local tests.
         # Serialize concurrent activations so only one config is ever active:
         # lock the active rows, deactivate them, then activate self atomically.
         # select_for_update is a no-op on SQLite (dev), effective on PostgreSQL.
@@ -109,6 +143,10 @@ class AWSCredentialConfig(models.Model):
 
     @property
     def is_configured(self) -> bool:
+        if self.credentials_secret_arn:
+            return True
+        if getattr(settings, "AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER", False):
+            return False
         return bool(self.access_key_id and self.secret_access_key)
 
     @property

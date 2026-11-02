@@ -116,6 +116,7 @@ class ClientsTest(TestCase):
         cfg.region = "us-west-2"
         cfg.access_key_id = "AKIA"
         cfg.secret_access_key = "sek"
+        cfg.credentials_secret_arn = ""
         with patch("apps.system_intelligence.services.bedrock.clients._aws.boto3.client", return_value="RT") as boto:
             self.assertEqual(get_client(cfg), "RT")
         boto.assert_called_once_with(
@@ -133,6 +134,7 @@ class ClientsTest(TestCase):
         cfg.region = "eu-west-1"
         cfg.access_key_id = "AKIA"
         cfg.secret_access_key = "sek"
+        cfg.credentials_secret_arn = ""
         with patch("apps.system_intelligence.services.bedrock.clients._aws.boto3.client", return_value="MGMT") as boto:
             self.assertEqual(get_management_client(cfg), "MGMT")
         boto.assert_called_once_with(
@@ -150,6 +152,7 @@ class ClientsTest(TestCase):
         cfg.region = "us-west-2"
         cfg.access_key_id = "AKIA"
         cfg.secret_access_key = "sek"
+        cfg.credentials_secret_arn = ""
         with patch("apps.system_intelligence.services.bedrock.clients._aws.boto3.client", return_value="CW") as boto:
             self.assertEqual(get_cloudwatch_client(cfg), "CW")
         # Never Cost Explorer ("ce") -- CloudWatch reads only.

@@ -37,15 +37,17 @@ class AdminInvitationAdminTests(TestCase):
 
     @patch("apps.authn.services.email.send_admin_invitation_email")
     def test_admin_add_sends_invitation_email(self, mock_send):
-        response = self.client.post(
-            reverse("admin:authn_admininvitation_add"),
-            {
-                "email": "New.Admin@Example.COM ",
-                "role": AdminInvitation.Role.ADMIN,
-                "message": "Welcome.",
-                "_save": "Save",
-            },
-        )
+        # Sent once the admin's transaction commits (no lock is held across the provider call).
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                reverse("admin:authn_admininvitation_add"),
+                {
+                    "email": "New.Admin@Example.COM ",
+                    "role": AdminInvitation.Role.ADMIN,
+                    "message": "Welcome.",
+                    "_save": "Save",
+                },
+            )
 
         self.assertEqual(response.status_code, 302)
         invitation = AdminInvitation.objects.get(email="new.admin@example.com")
@@ -59,15 +61,16 @@ class AdminInvitationAdminTests(TestCase):
     def test_admin_add_cancels_previous_pending_invitation_for_email(self, mock_send):
         old = self._create_invitation(email="invite@example.com")
 
-        response = self.client.post(
-            reverse("admin:authn_admininvitation_add"),
-            {
-                "email": "INVITE@example.com",
-                "role": AdminInvitation.Role.ADMIN,
-                "message": "",
-                "_save": "Save",
-            },
-        )
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(
+                reverse("admin:authn_admininvitation_add"),
+                {
+                    "email": "INVITE@example.com",
+                    "role": AdminInvitation.Role.ADMIN,
+                    "message": "",
+                    "_save": "Save",
+                },
+            )
 
         self.assertEqual(response.status_code, 302)
         old.refresh_from_db()

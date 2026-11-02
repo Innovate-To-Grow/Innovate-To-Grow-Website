@@ -1,34 +1,58 @@
-import {useId, useMemo, useState} from 'react';
+import {useCallback, useId, useMemo, useState} from 'react';
 import {stripProjectGridItem, type ProjectGridItem} from '../../grid/contracts/projectGrid';
 import {useProjectGridTable} from '../../grid/state/useProjectGridTable';
 import type {PendingBulkAction} from './MergedEditButtons';
+import {useRemovalFocus} from './useRemovalFocus';
 
-/** State both list modes share: the paged table, the status line and the pending bulk-action dialog. */
-export function useMergedList(rows: ProjectGridItem[], sharedMode: boolean) {
+/** A message the page reports for the list; each report is a new object, so it replaces the line again. */
+export interface ListMessage {
+  text: string;
+}
+
+/**
+ * State both list modes share: the paged table, the status line, the pending bulk-action dialog, and where focus
+ * goes after a row's Remove (call `rememberRemoval` as one is pressed). `message` is what the page reports about
+ * the list (the builder's draft edits); it takes the status line as the list's own messages do. Rows start
+ * collapsed in both modes, as in every other list; View All Details opens them all.
+ */
+export function useMergedList(rows: ProjectGridItem[], message: ListMessage | null = null) {
   const table = useProjectGridTable({
     rows,
     pageSize: 5,
     defaultSortField: 'semester_label',
     defaultSortDirection: 'desc',
-    expandAllByDefault: sharedMode,
   });
-  const [statusMessage, setStatusMessage] = useState('');
+  // Every report is counted, one that repeats the line's text too (a second row removed), so it can be shown again.
+  const [status, setStatus] = useState({text: '', reports: 0});
+  const setStatusMessage = useCallback(
+    (text: string) => setStatus((current) => ({text, reports: current.reports + 1})),
+    [],
+  );
+  const [appliedMessage, setAppliedMessage] = useState<ListMessage | null>(null);
+  if (message && message !== appliedMessage) {
+    setAppliedMessage(message);
+    setStatusMessage(message.text);
+  }
   const [pendingBulkAction, setPendingBulkAction] = useState<PendingBulkAction | null>(null);
   const headingId = useId();
   // The full saved snapshot — used by title/note/delete saves and by the shared-mode export.
   const allRows = useMemo(() => rows.map(stripProjectGridItem), [rows]);
   // The visible (filtered/sorted) rows — used for builder share-create and builder export.
   const visibleRows = useMemo(() => table.sortedRows.map(stripProjectGridItem), [table.sortedRows]);
+  const rememberRemoval = useRemovalFocus(rows, headingId);
 
   return {
     table,
     allRows,
     visibleRows,
     headingId,
-    statusMessage,
+    statusMessage: status.text,
+    /** How many reports the status line has had; changes with each one. */
+    statusReports: status.reports,
     setStatusMessage,
     pendingBulkAction,
     setPendingBulkAction,
+    rememberRemoval,
   };
 }
 

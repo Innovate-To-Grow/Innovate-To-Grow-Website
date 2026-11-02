@@ -25,7 +25,7 @@ test('AI search form submits query and shows results', async ({page}) => {
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
   await page.getByRole('button', {name: '+ AI Search Table'}).click();
   const aiSearchForm = page.locator('.past-projects-ai-search');
-  await aiSearchForm.getByPlaceholder('Ask AI to find relevant past projects...').fill('irrigation');
+  await aiSearchForm.getByPlaceholder('Ask about past projects…').fill('irrigation');
   await aiSearchForm.getByRole('button', {name: 'Search'}).click();
 
   await expect.poll(() => queries.length).toBe(1);
@@ -43,11 +43,12 @@ test('AI search unavailable state shows message', async ({page}) => {
   await page.goto('/past-projects', {waitUntil: 'domcontentloaded'});
   await page.getByRole('button', {name: '+ AI Search Table'}).click();
   const aiSearchForm = page.locator('.past-projects-ai-search');
-  await aiSearchForm.getByPlaceholder('Ask AI to find relevant past projects...').fill('test');
+  await aiSearchForm.getByPlaceholder('Ask about past projects…').fill('test');
   await aiSearchForm.getByRole('button', {name: 'Search'}).click();
 
   await expect.poll(() => queries.length).toBe(1);
-  await expect(page.getByRole('alert')).toContainText('AI search is unavailable.');
+  // The API's own text is for the site's administrators; members get their own.
+  await expect(page.getByRole('alert')).toContainText('AI search is not available on this site right now.');
 });
 
 test('"Sign in required" dialog shown for unauthenticated AI search', async ({page}) => {
