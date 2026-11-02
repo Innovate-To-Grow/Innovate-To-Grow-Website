@@ -1,8 +1,9 @@
 """Admin pages that install, roll back and remove the Microsoft Graph certificate, and download it as a .cer file.
 
 Each is its own URL (``get_urls``) wrapped by ``admin_site.admin_view``, which only checks ``is_staff``: the views
-re-check access themselves. Changing the certificate is for superusers only; downloading the public certificate
-is open to whoever can view the config. Successful POSTs redirect to the change page (POST-redirect-GET), and
+re-check access themselves. Installing a certificate requires permission to change the config; rollback and
+removal remain superuser-only. Downloading the public certificate is open to whoever can view the config.
+Successful POSTs redirect to the change page (POST-redirect-GET), and
 nothing submitted goes to the session or cache. ``sensitive_post_parameters`` and ``sensitive_variables`` keep the
 key and password out of error reports.
 """
@@ -33,7 +34,7 @@ from .microsoft_graph_panel import (
 )
 
 TEMPLATE_DIR = "admin/core/microsoftgraphproviderconfig"
-SUPERUSER_ONLY = "Only a superuser can change the Microsoft Graph certificate."
+SUPERUSER_ONLY = "Only a superuser can roll back or remove Microsoft Graph certificates."
 EMAIL_STOPPED = (
     "Email is still set to Microsoft Graph and will fail until a certificate is installed. Switch Mail → "
     "Notification Delivery to another provider if this was not intended."
@@ -60,7 +61,9 @@ class GraphCertificateViewsMixin:
     @method_decorator(sensitive_post_parameters())
     @sensitive_variables()
     def install_certificate_view(self, request, object_id):
-        config = self._certificate_config(request, object_id)
+        config = self._config(request, object_id)
+        if not self.has_change_permission(request, config):
+            raise PermissionDenied
         posted = request.method == "POST"
         form = InstallCertificateForm(request.POST, request.FILES) if posted else InstallCertificateForm()
         if posted and form.is_valid():

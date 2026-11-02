@@ -24,7 +24,7 @@ fi
 LC_ALL=C sort -t $'\t' -k1,1 -k3,3r -k2,2nr "$temporary/artifacts.tsv" \
   | awk -F '\t' '!seen[$1]++' > "$temporary/latest.tsv"
 
-while IFS=$'\t' read -r name artifact_id created_at digest; do
+while IFS=$'\t' read -r name artifact_id _ digest; do
   if [[ ! "$name" =~ ^blob-[a-z0-9-]+$ ]] || [[ ! "$artifact_id" =~ ^[0-9]+$ ]] \
     || [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
     echo "::error::Unexpected Playwright artifact metadata for $name."

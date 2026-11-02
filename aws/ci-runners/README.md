@@ -35,13 +35,17 @@ and the serverless control plane are additional usage charges.
    always-on controller. The FIFO queue's three-minute visibility window is six
    times the launch function's timeout, following AWS retry guidance.
 
-Heavy CI jobs, CodeQL, dependency audits, and production deployment jobs use
-the fleet when repository variable `AWS_RUNNERS_ENABLED` is `true`. Small
-planning, approval, lint, and aggregation jobs remain on GitHub-hosted runners
-to avoid adding an EC2 cold start to every dependency edge. Fork PRs use the
-GitHub-hosted fallback, and the webhook guard independently enforces that
-boundary even if a fork edits its workflow. Existing production approval and
-OIDC policies remain in effect.
+CPU-bound CI jobs (the Django test matrix, the E2E matrix, frontend unit
+coverage, the backend Docker build and scan), CodeQL, and production deployment
+jobs use the fleet when repository variable `AWS_RUNNERS_ENABLED` is `true`.
+Everything shorter than a cold boot stays on GitHub-hosted runners: planning,
+approval, lint, static frontend checks, dependency audits, Semgrep, the CLI and
+archive suites, and aggregation jobs. In a burst of runs those short jobs used
+to queue behind the 32-machine cap for longer than they ran.
+`RoutingTests` in `scripts/ci/tests/test_ci_workflow_invariants.py` pins the
+list of fleet jobs. Fork PRs use the GitHub-hosted fallback, and the webhook
+guard independently enforces that boundary even if a fork edits its workflow.
+Existing production approval and OIDC policies remain in effect.
 
 Django unit coverage jobs select `config.settings.environments.unit`, using
 the fast password hasher recommended by Django for isolated tests. Default

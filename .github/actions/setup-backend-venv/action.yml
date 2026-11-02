@@ -1,0 +1,80 @@
+name: Set up backend virtualenv
+description: >-
+  Resolve the backend Python, restore src/.venv from the Actions cache, probe
+  it, and rebuild it from src/requirements.txt when the probe fails. Run
+  actions/checkout first.
+
+inputs:
+  python-version:
+    description: Python version for actions/setup-python (the backend minor, BACKEND_PYTHON_VERSION).
+    required: true
+  coverage-version:
+    description: coverage.py version installed next to the requirements.
+    required: true
+  cache-label:
+    description: >-
+      Cache-key segment for a filesystem layout that differs from the host
+      runner's, such as a job container (the E2E jobs pass the Playwright image
+      release). A venv from one layout must never be restored into another.
+    required: false
+    default: host
+
+outputs:
+  python-version:
+    description: The exact Python version setup-python resolved.
+    value: ${{ steps.setup-python.outputs.python-version }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      id: setup-python
+      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    # The key pins the exact interpreter the venv was built against
+    # (steps.setup-python.outputs.python-version, not just the minor): a cached
+    # venv hard-codes that interpreter, so a runner image that moved to another
+    # patch release left `.venv/bin/python` dangling and every call exited 127
+    # (run 32223964754).
+    - name: Cache backend virtualenv
+      id: backend-venv-cache
+      uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: src/.venv
+        key: backend-venv-${{ runner.environment }}-${{ inputs.cache-label }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ inputs.coverage-version }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
+
+    - name: Validate cached virtualenv
+      id: backend-venv-check
+      shell: bash
+      working-directory: src
+      run: |
+        # A cached venv hard-codes the interpreter it was built against. If
+        # that interpreter is gone (a hosted-runner Python patch bump) or the
+        # archive is partial, every `.venv/bin/...` call dies with exit 127
+        # instead of falling back to a reinstall. A venv can also start but be
+        # unable to import what the backend needs: on 2026-10-29 restored E2E
+        # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
+        # Probe those imports, and discard the venv when they fail so the install
+        # step below rebuilds it.
+        if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
+          echo "usable=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
+          rm -rf .venv
+          echo "usable=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Rebuild on a failed probe, not merely on a cache miss: a cache hit whose
+    # interpreter has vanished must still rebuild.
+    - name: Install backend dependencies
+      if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
+      shell: bash
+      working-directory: src
+      env:
+        COVERAGE_VERSION: ${{ inputs.coverage-version }}
+      run: |
+        python -m venv .venv
+        .venv/bin/python -m pip install --upgrade pip
+        .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"

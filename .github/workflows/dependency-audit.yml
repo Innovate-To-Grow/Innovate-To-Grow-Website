@@ -7,10 +7,10 @@ name: Dependency Audit
 # only runs on push/pull_request, so a newly published advisory stays invisible
 # until the next merge — and then turns main red on an unrelated commit.
 #
-# This cannot be solved by adding `schedule:` to ci.yml: deploy-production.yml
-# triggers on `workflow_run` for workflows named "CI" completing on main, so a
-# cron-triggered CI run would fire a production deployment. Hence a separate
-# workflow with a distinct name.
+# This is not a `schedule:` on ci.yml: a scheduled CI run would fail `CI Result`
+# on whatever commit main happens to be at, and Deploy Production (which reacts
+# to CI completing on main) would have to tell those runs apart. A separate
+# workflow with a distinct name keeps both concerns out of CI.
 on:
   schedule:
     # Mondays 04:00 UTC, an hour after the CodeQL scan.
@@ -31,17 +31,18 @@ env:
 jobs:
   frontend-audit:
     name: Frontend npm Audit (scheduled)
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -55,17 +56,18 @@ jobs:
 
   backend-audit:
     name: Python Security Audit (scheduled)
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
         working-directory: src
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -74,7 +76,7 @@ jobs:
       - name: Install pip-audit
         run: pip install "pip-audit[cyclonedx]==2.7.3"
 
-      # Keep the --ignore-vuln list in sync with the `python-security-audit` job
+      # Keep the --ignore-vuln list in sync with the `python-dependency-audit` job
       # in ci.yml; these are the same accepted advisories.
       - name: Audit Python dependencies
         run: |

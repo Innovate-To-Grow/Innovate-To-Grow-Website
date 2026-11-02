@@ -44,7 +44,7 @@ PROVIDER_ERROR = (
     "An active Microsoft Graph configuration whose mailbox scope lets the sender mailbox and the From address "
     "send is required before activation."
 )
-CHIP_COLOURS = {"success": "bg-green-50", "warning": "bg-yellow-50"}
+CHIP_COLOURS = {"success": "bg-green-50", "warning": "bg-orange-50"}
 
 
 def snapshot(instance):
@@ -266,7 +266,9 @@ class EditPageRenderingTests(GraphSettingsTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, graph.current_certificate.sha1_thumbprint)
         self.assertNotContains(response, "/admin/core/microsoftgraphproviderconfig/")
-        self.assertContains(response, "Changing the Microsoft Graph configuration needs the Core app")
+        self.assertContains(
+            response, "Changing the Microsoft Graph configuration or installing its certificate needs the Core app"
+        )
 
     def test_without_a_graph_config_the_panel_says_so_and_links_to_the_add_page(self):
         self.use_provider("graph")
