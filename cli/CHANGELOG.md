@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `csv-raw` output for explicitly trusted machine consumers.
+- A read (GET/HEAD/OPTIONS) or the OAuth token exchange refused with `429 Too Many
+  Requests` waits as long as the server asks (`Retry-After`, else the body's
+  `retry_after`, plus up to 0.5 s of jitter) and is sent again, at most 3 times,
+  whatever `--max-attempts` says. A wait over 60 s (20 s for the token exchange,
+  whose authorization code lives 60 s) is not waited out: the command fails at
+  once and says when to try again. Writes are still never resent.
 
 ### Changed
 

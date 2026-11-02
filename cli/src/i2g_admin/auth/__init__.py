@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 import requests
 
 from .. import config
+from ..client.rate_limit import send_with_rate_limit_retries, wait_hint
 from ..core.errors import AuthError
 from .callback_server import CallbackServer
 from .pkce import challenge_s256, generate_verifier
@@ -17,6 +18,8 @@ TOKEN_PATH = "/admin-api/oauth/token/"
 EXPIRY_SKEW_SECONDS = 60
 # (connect, read) timeout for the token exchange.
 EXCHANGE_TIMEOUT = (5, 30)
+# The longest Retry-After the token exchange waits out: the authorization code it carries lives only 60 seconds.
+EXCHANGE_MAX_RATE_LIMIT_WAIT = 20.0
 
 
 def login(base_url, *, open_browser=webbrowser.open, server_factory=CallbackServer, timeout=300, profile=None):
@@ -70,16 +73,25 @@ def _exchange(base_url, code, verifier, redirect_uri):
         # Match ApiClient: the OAuth code/token exchange must not inherit
         # ambient proxy or CA-bundle variables from the caller's environment.
         session.trust_env = False
-        response = session.post(
-            base_url.rstrip("/") + TOKEN_PATH,
-            json={
-                "grant_type": "authorization_code",
-                "code": code,
-                "code_verifier": verifier,
-                "redirect_uri": redirect_uri,
-                "client_id": CLIENT_ID,
-            },
-            timeout=EXCHANGE_TIMEOUT,
+
+        def send():
+            return session.post(
+                base_url.rstrip("/") + TOKEN_PATH,
+                json={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "code_verifier": verifier,
+                    "redirect_uri": redirect_uri,
+                    "client_id": CLIENT_ID,
+                },
+                timeout=EXCHANGE_TIMEOUT,
+            )
+
+        # A 429 is answered before the exchange runs, so the code is still unused and can be sent again.
+        response = send_with_rate_limit_retries(send, max_wait=EXCHANGE_MAX_RATE_LIMIT_WAIT)
+    if response.status_code == 429:
+        raise AuthError(
+            "Token exchange was rate limited (429)." + wait_hint(response) + " Run `i2g-admin login` again."
         )
     if response.status_code != 200:
         raise AuthError(f"Token exchange failed ({response.status_code}).")
