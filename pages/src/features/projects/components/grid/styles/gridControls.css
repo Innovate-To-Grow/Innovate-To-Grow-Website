@@ -22,14 +22,11 @@
   min-width: 0;
 }
 
-/* Current projects: Search spans two columns, Class and Industry share the rest. */
+/* Current projects: Search takes half the row, Class and Industry a quarter each. Fixed tracks: an auto-fit grid
+   had only three tracks at 769-807px, where Search took two and Industry was left alone on a second row. */
 .project-grid-controls-row.has-filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(10.625rem, 100%), 1fr));
-}
-
-.project-grid-controls-row.has-filters > .project-grid-search-field {
-  grid-column: span 2;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
 }
 
 .project-grid-search-input,
@@ -66,6 +63,15 @@
   color: var(--itg-color-text-dark);
 }
 
+.project-grid-count-note {
+  display: block;
+}
+
+/* "· showing 11–20" never breaks: at 390px it was split over two lines. */
+.project-grid-count-range {
+  white-space: nowrap;
+}
+
 .project-grid-results-controls {
   display: flex;
   flex-wrap: wrap;
@@ -88,10 +94,11 @@
   color: var(--itg-color-text);
 }
 
+/* The fields' 40px (44px on touch screens, projectsResponsive.css): this rule outranks forms.css. */
 .project-grid-results-controls .project-grid-select {
   width: auto;
-  min-height: 2.125rem;
-  height: 2.125rem;
+  min-height: 2.5rem;
+  height: 2.5rem;
 }
 
 /* ---- Toolbars -------------------------------------------------------------- */
@@ -102,6 +109,28 @@
 
 .project-grid-toolbar--bottom {
   margin-top: 1.25rem;
+}
+
+/* The Class and Industry filters in use, as removable chips (ActiveFilterChips), between the filter well and the
+   results bar. They are outline buttons, so they take .itg-btn's 40px (44px on touch screens) and square corners; a
+   long value wraps inside its chip. */
+.project-grid-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.itg-btn.project-grid-filter-chip {
+  max-width: 100%;
+  padding: 6px 12px;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.project-grid-filter-chip-remove {
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .project-grid-inline-actions {

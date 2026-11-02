@@ -5,6 +5,10 @@ from django.utils import timezone
 
 from ..base import ProjectControlModel
 
+# Lower runs first. Delivery job kinds register their own priority (login codes and tickets before campaigns);
+# every other kind keeps this one. It is the column's database default, so it is part of the schema, not a setting.
+DEFAULT_JOB_PRIORITY = 50
+
 
 class BackgroundJob(ProjectControlModel):
     """Durable PostgreSQL outbox entry processed by the background worker."""
@@ -30,6 +34,11 @@ class BackgroundJob(ProjectControlModel):
     attempts = models.PositiveSmallIntegerField(default=0)
     max_attempts = models.PositiveSmallIntegerField(default=5)
     available_at = models.DateTimeField(default=timezone.now, db_index=True)
+    priority = models.PositiveSmallIntegerField(
+        default=DEFAULT_JOB_PRIORITY,
+        db_default=DEFAULT_JOB_PRIORITY,
+        help_text="Lower runs first among the jobs that are due.",
+    )
     claim_token = models.UUIDField(null=True, blank=True, editable=False)
     claimed_at = models.DateTimeField(null=True, blank=True, editable=False)
     provider_call_started_at = models.DateTimeField(null=True, blank=True, editable=False)
@@ -53,8 +62,8 @@ class BackgroundJob(ProjectControlModel):
         ]
         indexes = [
             models.Index(
-                fields=["status", "available_at", "created_at"],
-                name="core_job_claim_idx",
+                fields=["status", "priority", "available_at", "created_at"],
+                name="core_job_claim_priority_idx",
             ),
             models.Index(
                 fields=["status", "claimed_at"],

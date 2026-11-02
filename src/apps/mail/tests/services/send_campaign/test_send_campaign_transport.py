@@ -145,6 +145,16 @@ class SendViaSesTests(TestCase):
         self.assertEqual(result.message_id, "SES-1")
         self.assertEqual(result.error, "")
         self.assertEqual(deliver.call_args.kwargs["configuration_set"], "cfg")
+        # A campaign message without a login link keeps List-Unsubscribe, the MIME path and its Sent Items copy
+        # (see docs/integrations/microsoft-graph-email.md, "Sent Items").
+        self.assertIs(deliver.call_args.args[0].keep_sent_copy, True)
+
+    def test_a_login_link_message_through_ses_keeps_list_unsubscribe(self):
+        _, deliver = self._send(unsubscribe_url="https://example.com/u", keep_sent_copy=False)
+
+        message = deliver.call_args.args[0]
+        self.assertIs(message.keep_sent_copy, False)
+        self.assertEqual(message.headers["List-Unsubscribe"], "<https://example.com/u>")
 
     def test_failure_returns_error(self):
         result, _ = self._send(side_effect=UncertainEmailDeliveryError("could not be confirmed"))

@@ -1,0 +1,62 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block extrahead %}{{ block.super }}{{ form.media }}{% endblock %}
+{% block content_title %}<h1>{{ title }} &mdash; {{ original.name }}</h1>{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl">
+    <div class="mb-6 rounded-default border border-base-200 bg-white p-4 text-sm dark:border-base-700 dark:bg-base-800">
+        <p>
+            Upload the <strong>.p12 / .pfx</strong> file with its password, <em>or</em> enter the certificate and its
+            private key. Everything is checked in memory: the key must belong to the certificate, use RSA of at least
+            the required size, and the certificate must be valid now. The site then asks Microsoft Entra for a token
+            with the new key, stores the key in the credential store (AWS Secrets Manager in production) and only then
+            makes the certificate current. The certificate it replaces is kept as the previous one, for rollback.
+        </p>
+        <p class="mt-2">
+            Tenant <span class="font-mono">{{ original.tenant_id }}</span>, client <span class="font-mono">{{ original.client_id }}</span>.
+            {% if original.is_active %}This configuration is active, so only a certificate Entra already accepts is installed.{% endif %}
+        </p>
+    </div>
+
+    {% if current %}
+        <div class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
+            {% include "admin/core/microsoftgraphproviderconfig/certificate_card.html" with card=current heading="Current certificate" %}
+        </div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="mb-4 rounded-default bg-red-100 px-3 py-2.5 text-sm text-red-700 dark:bg-red-500/20 dark:text-red-400">
+                {% for error in form.non_field_errors %}<p>{{ error }}</p>{% endfor %}
+            </div>
+        {% endif %}
+        <fieldset class="mb-6 rounded-default border border-base-200 p-4 dark:border-base-700">
+            <legend class="px-1 text-sm font-semibold">A .p12 / .pfx file</legend>
+            {% include "unfold/helpers/field.html" with field=form.bundle %}
+        </fieldset>
+        <fieldset class="mb-6 rounded-default border border-base-200 p-4 dark:border-base-700">
+            <legend class="px-1 text-sm font-semibold">Or the certificate and its private key</legend>
+            {% include "unfold/helpers/field.html" with field=form.certificate_text %}
+            {% include "unfold/helpers/field.html" with field=form.certificate_file %}
+            {% include "unfold/helpers/field.html" with field=form.private_key_text %}
+            {% include "unfold/helpers/field.html" with field=form.private_key_file %}
+        </fieldset>
+        <fieldset class="mb-6 rounded-default border border-base-200 p-4 dark:border-base-700">
+            {% include "unfold/helpers/field.html" with field=form.password %}
+            {% include "unfold/helpers/field.html" with field=form.expected_sha1 %}
+        </fieldset>
+        <div class="flex gap-3">
+            <button type="submit" class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+                Test and install certificate
+            </button>
+            <a href="{{ cancel_url }}" class="rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

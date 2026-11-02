@@ -17,6 +17,9 @@ def patch_sms_provider(test_case, *, code: str = SMS_CODE) -> MagicMock:
     """Patch the provider for the rest of ``test_case``; returns the mock standing in for the provider call."""
     aws_config = MagicMock()
     aws_config.render_sms_otp_message.side_effect = lambda value: f"Your code is {value}"
+    # The OTP's delivery-rate slot is taken for this sender before the (replaced) provider call.
+    aws_config.region = "us-west-2"
+    aws_config.resolved_sms_from_number.return_value = "+12065550000"
     mocks = {}
     for name, kwargs in (
         ("_assert_configured", {"return_value": aws_config}),

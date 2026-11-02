@@ -1,9 +1,10 @@
 """Default names for past-project shares (curations) whose owner leaves the name blank.
 
 The original request was "is the name necessary? … or just a default e.g. the first N characters of the
-curation". The default is therefore the first line the owner wrote in the curation note. It is never a
-project's title: the old fallback to the first row's project title made a whole curation look like it was
-about one project, on the shared page and in its PDF/Word/Excel exports.
+curation". The default is therefore the first line the owner wrote in the curation note, and without one a
+generic title for the list the rows come from. It is never a project's title: the old fallback to the first row's
+project title made a whole curation look like it was about one project, on the shared page and in its PDF/Word/Excel
+exports.
 """
 
 import re
@@ -12,6 +13,9 @@ import unicodedata
 from bs4 import BeautifulSoup, CData, NavigableString, Tag
 
 DEFAULT_SHARE_NAME = "Past Project Curation"
+# A curation holding a current-semester project is not a list of past projects; the shared page's eyebrow names it as
+# All Projects does (the frontend's curationBranding), and so does this title.
+DEFAULT_PROJECT_SHARE_NAME = "Project Curation"
 DEFAULT_NAME_MAX_CHARS = 60
 
 # "Insert projects into note" (pastProjectsDetailText.ts) writes every project as one line per field, such as
@@ -172,10 +176,19 @@ def _truncate(text: str) -> str:
     return text
 
 
-def default_share_name(note: str) -> str:
-    """The first line of the owner's own note text (truncated), else ``DEFAULT_SHARE_NAME``."""
+def _generic_share_name(rows) -> str:
+    """``DEFAULT_PROJECT_SHARE_NAME`` when a stored row is a current-semester project, else ``DEFAULT_SHARE_NAME``.
+
+    Rows saved before rows carried a ``catalog`` are archive rows.
+    """
+    holds_current = any(isinstance(row, dict) and row.get("catalog") == "current" for row in rows or ())
+    return DEFAULT_PROJECT_SHARE_NAME if holds_current else DEFAULT_SHARE_NAME
+
+
+def default_share_name(note: str, rows=()) -> str:
+    """The first line of the owner's own note text (truncated), else a generic title for the stored ``rows``."""
     for line in _owner_note_lines(note):
         visible = _visible_text(line)
         if visible and not _SEPARATOR_LINE.fullmatch(visible):
             return _truncate(line)
-    return DEFAULT_SHARE_NAME
+    return _generic_share_name(rows)

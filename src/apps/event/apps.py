@@ -15,10 +15,17 @@ class EventConfig(AppConfig):
 
 def register_background_jobs():
     from apps.core.services.background_jobs import register_job_kind
+    from apps.core.services.delivery_rates import Family, Lane
 
     register_job_kind(
         "event.registration_sheet_sync",
         handler="apps.event.services.registration_sheet_sync.jobs.sync_registration_sheet_job",
         state_handler="apps.event.services.registration_sheet_sync.jobs.sync_registration_sheet_job_state",
     )
-    register_job_kind("event.ticket_email", handler="apps.event.services.ticket.jobs.send_ticket_email_job")
+    # A ticket carries the attendee's login link: transactional mail, claimed before campaign jobs.
+    register_job_kind(
+        "event.ticket_email",
+        handler="apps.event.services.ticket.jobs.send_ticket_email_job",
+        family=Family.EMAIL,
+        lane=Lane.TRANSACTIONAL,
+    )

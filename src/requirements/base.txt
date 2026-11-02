@@ -44,6 +44,10 @@ imap-tools>=1.16.0
 # in CVE fixes to the Rust bindings.
 cryptography>=50.0.2
 
+# JWT signing: Microsoft Graph client assertions (PS256) and Gmail API service-account assertions (RS256)
+# are signed with PyJWT directly, not only through SimpleJWT.
+PyJWT>=2.10.1
+
 # Self-hosted ALTCHA proof-of-work (open-source widget protocol, PoW v2).
 # Pin 2.1.0+: 2.1.0 patches the PoW v2 keyPrefix fallback verification issue
 # (altcha.org security advisory, 2026-07-30). Do not mix with widget v1/v2.

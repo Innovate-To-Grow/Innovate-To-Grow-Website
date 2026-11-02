@@ -61,7 +61,7 @@ Defined in `pages/src/app/router/router.tsx`. All page components are lazy-loade
 | `/` | `HomepageResolver` | Dynamically loads homepage from `SiteSettings.homepage_route` |
 | `/login`, `/register`, `/account`, etc. | Auth pages | Under `features/auth/components/pages/` |
 | `/news`, `/news/:id` | News list and detail | |
-| `/current-projects`, `/past-projects`, `/projects/:id` | Project pages | |
+| `/current-projects`, `/past-projects`, `/all-projects`, `/projects/:id` | Project pages | `/all-projects` is the Past Projects builder over every project (`/projects/all/`); both pages share the curation draft, My Curations and the `/past-projects/:shareId` pages |
 | `/event-registration`, `/events/:eventSlug`, `/schedule` | Event pages | |
 | `/login-link` (legacy aliases `/magic-login`, `/ticket-login`) | Auto-login from email links | |
 | `/unsubscribe-login` | Retired: `<Navigate to="/account" replace/>` | Old unsubscribe emails. Drops the token (query and fragment) and calls no API; newsletter unsubscribe links point at the backend page `/mail/unsubscribe/{token}/` |
@@ -148,7 +148,10 @@ concern. For example:
   search) and `builder/selection/useSaveSelectedRows`. Each `SearchTableCard` composes `search/state/useSearchTableRows`,
   `search/state/useSearchTableSelection` and `search/state/useSearchTableSave`. `useProjectGridTable` builds on
   `grid/state/useRowKeySet` and `grid/state/useGridPagination`. The rich-text editor's DOM work is in
-  `richText/dom/richTextEditorDom.ts` and `richText/dom/editorSelection.ts`.
+  `richText/dom/richTextEditorDom.ts` and `richText/dom/editorSelection.ts`. Which list the builder searches (its
+  rows, server search, AI search scope and wording) comes from `ProjectCatalogContext`
+  (`features/projects/catalog/`): Past Projects by default, All Projects under `ALL_PROJECTS_CATALOG`'s provider.
+  Both pages render `components/views/pages/CatalogBuilderView`.
 - **Event registration** (`routes/EventRegistrationPage/registration/`). `useRegistrationEvents` (which
   event and step) loads options through `useEventOptionsLoader`. The phone and secondary-email hooks
   share `contactChallenge.ts`: a challenge's state, and `runLatestRequest`, which lets only the newest

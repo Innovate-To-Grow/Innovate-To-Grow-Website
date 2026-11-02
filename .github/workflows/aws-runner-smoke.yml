@@ -1,0 +1,91 @@
+name: AWS Runner Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      parallelism:
+        description: Number of simultaneous disposable runners to verify
+        type: choice
+        options: ["4", "16", "32"]
+        default: "4"
+  pull_request:
+    paths:
+      - "aws/ci-runners/**"
+      - ".github/workflows/aws-runner-smoke.yml"
+      - "scripts/ci/wait_for_postgres.sh"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-runner-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    if: >-
+      vars.AWS_RUNNERS_ENABLED == 'true' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+    steps:
+      - id: plan
+        env:
+          PARALLELISM: ${{ inputs.parallelism || '4' }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          count = int(os.environ["PARALLELISM"])
+          assert count in (4, 16, 32)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              print("matrix=" + json.dumps({"slot": list(range(1, count + 1))}), file=out)
+          PY
+
+  verify:
+    name: Runner ${{ matrix.slot }}
+    needs: plan
+    runs-on: [self-hosted, Linux, X64, i2g-aws]
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: ephemeral-smoke-only
+        ports:
+          - 5432:5432
+        # Probe TCP: the image's init-only first-start server is socket-only.
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Verify default Python before tool setup
+        run: python --version
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22.22.2"
+      - name: Verify baked tools and parallel capacity
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          test "$(id -u)" = 1001
+          test "$(nproc)" -eq 8
+          python --version
+          node --version
+          docker info >/dev/null
+          bash scripts/ci/wait_for_postgres.sh "$POSTGRES_CONTAINER" postgres postgres 60
+          docker image inspect mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f >/dev/null
+          printf 'Runner %s ready with %s CPUs\n' "$RUNNER_NAME" "$(nproc)"
+          # Long enough to observe concurrent runners and their subsequent termination.
+          sleep 120

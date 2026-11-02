@@ -13,10 +13,10 @@ from apps.authn.services.sms.sns_verify import (
     MAX_SENDS_PER_HOUR,
     MAX_VERIFY_ATTEMPTS,
     VERIFIED_GRANT_TTL_SECONDS,
+    PhoneVerificationBusy,
     PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
-    _get_smsvoice_client,
     _random_code,
     check_phone_verification,
     consume_verified_phone_challenge,
@@ -90,7 +90,7 @@ class SnsVerifyServiceTest(TestCase):
         mock_boto_client.return_value = mock_client
         return mock_client
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_sends_sns_message(self, _mock_code, mock_boto_client):
         mock_client = self._mock_publish(mock_boto_client)
@@ -110,7 +110,7 @@ class SnsVerifyServiceTest(TestCase):
         self.assertEqual(send_kwargs["MessageType"], "TRANSACTIONAL")
         self.assertEqual(send_kwargs["OriginationIdentity"], self.origination_number)
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_check_phone_verification_accepts_valid_code(self, _mock_code, mock_boto_client):
         self._mock_publish(mock_boto_client)
@@ -151,7 +151,7 @@ class SnsVerifyServiceTest(TestCase):
         self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.PENDING)
         self.assertEqual(member_model.objects.count(), initial_member_count)
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_verified_grant_is_consumed_once_with_matching_context(self, _mock_code, mock_boto_client):
         self._mock_publish(mock_boto_client)
@@ -361,7 +361,7 @@ class SnsVerifyServiceTest(TestCase):
         )
         self.assertEqual(consumed.pk, challenge.pk)
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_throttles_send_count(self, _mock_code, mock_boto_client):
         self._mock_publish(mock_boto_client)
@@ -386,7 +386,7 @@ class SnsVerifyServiceTest(TestCase):
         "apps.authn.services.sms.sns_verify._mark_challenge_sent",
         side_effect=RuntimeError("database unavailable after provider success"),
     )
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_provider_success_finalization_failure_preserves_reservation_and_usable_code(
         self,
@@ -432,7 +432,7 @@ class SnsVerifyServiceTest(TestCase):
             start_phone_verification(self.phone)
 
     @patch("apps.core.services.aws.sms.resolve_origination_number", return_value="+18005550000")
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_uses_auto_resolved_origination_number(
         self, _mock_code, mock_boto_client, _mock_resolve
@@ -446,7 +446,7 @@ class SnsVerifyServiceTest(TestCase):
         send_kwargs = mock_client.send_text_message.call_args.kwargs
         self.assertEqual(send_kwargs["OriginationIdentity"], "+18005550000")
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_maps_invalid_phone_error(self, _mock_code, mock_boto_client):
         mock_client = MagicMock()
@@ -459,7 +459,7 @@ class SnsVerifyServiceTest(TestCase):
         with self.assertRaises(PhoneVerificationInvalid):
             start_phone_verification(self.phone)
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_maps_throttling_error(self, _mock_code, mock_boto_client):
         mock_client = MagicMock()
@@ -469,10 +469,14 @@ class SnsVerifyServiceTest(TestCase):
         )
         mock_boto_client.return_value = mock_client
 
-        with self.assertRaises(PhoneVerificationThrottled):
+        # AWS throttling is "SMS delivery is busy" (nothing was sent), not the per-number cap.
+        with self.assertRaises(PhoneVerificationBusy) as caught:
             start_phone_verification(self.phone)
+        self.assertEqual(caught.exception.outcome, "transient")
+        self.assertGreaterEqual(caught.exception.retry_after, 1)
+        self.assertIn("SMS delivery is busy right now", str(caught.exception))
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_start_phone_verification_maps_conflict_to_delivery_error(self, _mock_code, mock_boto_client):
         # ConflictException is an origination-identity/account-state problem, not a bad recipient.
@@ -508,13 +512,18 @@ class SnsVerifyExtraCoverageTest(TestCase):
         self.assertEqual(len(code), 6)
         self.assertTrue(code.isdigit())
 
-    @patch("apps.authn.services.sms.sns_verify.resolve_aws_credentials")
-    def test_get_smsvoice_client_raises_delivery_error_when_no_credentials(self, mock_resolve):
+    @patch("apps.core.services.aws.sms_send.boto3.client")
+    @patch("apps.core.services.aws.sms_send.resolve_aws_credentials")
+    def test_missing_credentials_raise_a_permanent_delivery_error(self, mock_resolve, mock_boto_client):
         mock_resolve.side_effect = AwsCredentialsError("missing")
-        with self.assertRaises(PhoneVerificationDeliveryError):
-            _get_smsvoice_client()
+        with self.assertRaises(PhoneVerificationDeliveryError) as caught:
+            publish_plain_sms(phone_number=self.phone, message="hello")
+        self.assertEqual(
+            (str(caught.exception), caught.exception.outcome), ("AWS credentials are not configured.", "permanent")
+        )
+        mock_boto_client.assert_not_called()
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_publish_maps_botocore_error_to_delivery_error(self, _mock_code, mock_boto_client):
         from botocore.exceptions import BotoCoreError
@@ -526,7 +535,7 @@ class SnsVerifyExtraCoverageTest(TestCase):
         with self.assertRaises(PhoneVerificationDeliveryError):
             start_phone_verification(self.phone)
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     @patch("apps.authn.services.sms.sns_verify._random_code", return_value="123456")
     def test_publish_maps_unknown_client_error_to_delivery_error(self, _mock_code, mock_boto_client):
         mock_client = MagicMock()
@@ -539,7 +548,7 @@ class SnsVerifyExtraCoverageTest(TestCase):
         with self.assertRaises(PhoneVerificationDeliveryError):
             start_phone_verification(self.phone)
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     def test_start_phone_verification_raises_on_invalid_template(self, mock_boto_client):
         self.aws_config.sms_message_template = "No placeholder here"
         self.aws_config.save(update_fields=["sms_message_template"])
@@ -572,7 +581,7 @@ class SnsVerifyExtraCoverageTest(TestCase):
         challenge.refresh_from_db()
         self.assertEqual(challenge.status, PhoneVerificationChallenge.Status.EXPIRED)
 
-    @patch("apps.authn.services.sms.sns_verify.boto3.client")
+    @patch("apps.core.services.aws.sms_send.boto3.client")
     def test_publish_plain_sms_sends_message(self, mock_boto_client):
         mock_client = MagicMock()
         mock_client.send_text_message.return_value = {"MessageId": "plain-1"}
