@@ -131,6 +131,7 @@ SIDEBAR = {
                     "link": "/admin/core/awscredentialconfig/",
                     "permission": _can("core"),
                 },
+                {"title": "Request Limits", "link": "/admin/core/request-limits/", "permission": _can("core")},
                 {
                     "title": "Legacy Viewer",
                     "link": "/admin/legacy-view/",

@@ -13,8 +13,9 @@
 ``view_limits`` gives the apps' finer per-view limits (DRF throttles, failure counters) their live policy rate.
 
 ``rules/`` is pure (the limit precedence and the priority-ordered Smart controller); ``runtime/`` holds the
-counters, heartbeats, the policy cache, signal windows, abuse escalation and the Smart state writes; ``status``
-describes the live state for the admin.
+counters, heartbeats, the policy cache, signal windows, abuse escalation, the recent-429 counts and the Smart state
+writes; ``status`` describes this process's live state and ``overview`` what Site Settings → Request Limits shows
+(``apps.core.admin.request_limits``).
 """
 
 from .identity import register_identity_resolver
