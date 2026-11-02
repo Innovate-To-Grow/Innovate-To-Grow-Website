@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { fetchCMSEmbed, type CMSEmbedResponse } from '@/features/cms/api';
 import {inComponentsLayer} from '@/lib/css';
 
@@ -62,9 +62,13 @@ export function useEmbedData(slug: string | undefined) {
   return { data, notFound };
 }
 
-/** A `<style id={id}>` in the document head while ``css`` is non-empty. */
+/**
+ * A `<style id={id}>` in the document head while ``css`` is non-empty. A layout effect, so the sheet
+ * changes in the same commit as the content it styles: an app-route widget never paints a frame with
+ * the block widget's transparent background and no padding.
+ */
 export function useHeadStyle(id: string, css: string | null | undefined) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!css) return;
     const style = document.createElement('style');
     style.id = id;
