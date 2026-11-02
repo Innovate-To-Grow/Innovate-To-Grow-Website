@@ -984,6 +984,14 @@ jobs:
       - name: Check built CSS for range-syntax media queries
         run: npm run check:built-css
 
+      # vite.config.ts's route-chunk preload table and API preconnect come from
+      # the bundle graph, so a Vite/Rolldown upgrade can change them without
+      # failing the build. Same URL as the frontend-build job's build step.
+      - name: Check built HTML preload table and API preconnect
+        run: npm run check:built-html
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:8000
+
   frontend-chromium-smoke:
     name: Required Chromium Smoke
     runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
@@ -1455,7 +1463,7 @@ jobs:
       - name: Upload Trivy SARIF to GitHub Security tab
         if: ${{ github.event_name == 'push' && steps.trivy-sarif.outcome == 'success' }}
         continue-on-error: true
-        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: trivy-results.sarif
           category: trivy-backend-image
