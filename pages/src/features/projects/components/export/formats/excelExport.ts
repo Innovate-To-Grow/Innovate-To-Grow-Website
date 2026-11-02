@@ -59,11 +59,11 @@ const estimateLineCount = (text: string, charsPerLine: number) =>
 
 const solidFill = (argb: string) => ({type: 'pattern' as const, pattern: 'solid' as const, fgColor: {argb}});
 
-/** Rows 1–3: the logo beside the title, the site name and the project count, on a panel fill. */
+/** Rows 1–3: the logo beside the title, the heading (the list's name) and the project count, on a panel fill. */
 const addTitleBlock = (
   workbook: Workbook,
   worksheet: Worksheet,
-  title: string,
+  {title, heading}: {title: string; heading: string},
   rowCount: number,
   logo: ExportLogoAsset | null,
 ) => {
@@ -93,7 +93,7 @@ const addTitleBlock = (
   worksheet.getCell(1, 2).font = {bold: true, color: {argb: BRAND_BLUE}, size: 18};
   worksheet.getCell(1, 2).alignment = {vertical: 'bottom'};
 
-  worksheet.getCell(2, 2).value = 'Innovate to Grow Past Projects';
+  worksheet.getCell(2, 2).value = heading;
   worksheet.getCell(2, 2).font = {bold: true, color: {argb: BRAND_BLUE}, size: 11};
   worksheet.getCell(2, 2).alignment = {vertical: 'middle'};
 
@@ -205,7 +205,7 @@ export const buildProjectsWorksheet = (
   const exportContext = normalizeProjectRowsExportContext(context);
   worksheet.columns = COLUMN_WIDTHS.map((width) => ({width}));
 
-  addTitleBlock(workbook, worksheet, exportContext.title, rows.length, logo);
+  addTitleBlock(workbook, worksheet, exportContext, rows.length, logo);
   worksheet.addRow([]);
   addNoteSection(worksheet, exportContext.note);
   addProjectsTable(worksheet, rows);

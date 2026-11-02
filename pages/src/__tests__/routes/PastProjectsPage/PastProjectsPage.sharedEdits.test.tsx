@@ -83,6 +83,13 @@ vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
         rows: [sampleRow],
         refetch: vi.fn(),
     }),
+    // The owner's add-more search lists every project.
+    useAllProjectGridData: () => ({
+        error: null,
+        loading: false,
+        rows: [sampleRow],
+        refetch: vi.fn(),
+    }),
     usePastProjectShareData: () => ({
         error: sharedState.shareError,
         loading: false,
@@ -98,6 +105,16 @@ vi.mock('@/features/projects', async () =>
         addedRow,
     ),
 );
+
+// The builder page's body (CatalogBuilderView) imports these two directly.
+vi.mock('@/features/projects/components/builder/composition/PastProjectsBuilder', async () => ({
+    PastProjectsBuilder: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
+        .pastProjectsModuleStub(sampleRow, addedRow).PastProjectsBuilder,
+}));
+vi.mock('@/features/projects/components/curations/panel/MyCurationsPanel', async () => ({
+    MyCurationsPanel: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
+        .pastProjectsModuleStub(sampleRow, addedRow).MyCurationsPanel,
+}));
 
 const shareFixture = (
     overrides: Partial<PastProjectShare> = {},

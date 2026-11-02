@@ -9,7 +9,7 @@ import type {
   SearchTableSaveResult,
 } from './types';
 
-const SAVE_FAILED_MESSAGE = 'Could not save the selected projects. They are still selected, so you can try again.';
+const SAVE_FAILED_MESSAGE = 'Could not add the selected projects. They are still selected, so you can try again.';
 // Saving this many rows at once is almost always an accidental "select everything"; ask first.
 const LARGE_SAVE_THRESHOLD = 100;
 // Progress is shown for saves that load this many details, updated in tenths so it does not flood.

@@ -130,4 +130,4 @@ class FooterContentAdminViewTests(TestCase):
         # The frame runs the SPA, so it is not sandboxed; it starts loading from preview.js.
         self.assertNotIn("sandbox", iframe)
         self.assertNotIn(" src=", iframe)
-        self.assertIn("layout/js/footer/editor/preview.js?v=2", content)
+        self.assertIn("layout/js/footer/editor/preview.js?v=3", content)

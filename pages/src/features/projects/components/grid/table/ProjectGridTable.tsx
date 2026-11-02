@@ -1,15 +1,31 @@
 import '../../styles/cascade/projects.css';
+import {useEffect, useRef, type RefObject} from 'react';
+import {LoadingIndicator} from '@/components/LoadingIndicator';
+import {useMediaQuery} from '@/features/layout';
 import {ProjectGridControls, PageSizeField} from '../controls/ProjectGridControls';
 import {ProjectGridDesktopTable} from './ProjectGridDesktopTable';
 import {ProjectGridMobileCards} from './ProjectGridMobileCards';
 import {ProjectGridPager} from '../controls/ProjectGridPager';
-import {ProjectGridNoResults, ProjectGridResultsBar} from './ProjectGridResults';
-import type {ProjectGridTableProps} from '../contracts/gridTableProps';
+import {
+  ProjectGridEmpty,
+  ProjectGridNoResults,
+  ProjectGridResultsBar,
+  type AbstractsSkipped,
+} from './ProjectGridResults';
+import {useDetailsAnnouncements} from '../state/useDetailsAnnouncements';
+import {showResultsStart, useResultsFocus} from '../state/useResultsFocus';
+import {useRetryFocus} from '../state/useRetryFocus';
+import type {ProjectGridServerSearch, ProjectGridTableProps} from '../contracts/gridTableProps';
 
 export type {ProjectGridSortOption} from '../contracts/gridTableProps';
 
+/** Where the table gives way to the phone list; the phone styles in projectsResponsive.css start at the same width. */
+const PHONE_LAYOUT_QUERY = '(max-width: 768px)';
+
+const NO_ACTIVE_FILTERS: string[] = [];
+
 function withGridDefaults({
-  searchPlaceholder = 'Search projects...',
+  searchPlaceholder = 'Search projects…',
   searchLabel = 'Search',
   noResultsHeadingLevel = 2,
   allDetailsExpanded = false,
@@ -17,6 +33,7 @@ function withGridDefaults({
   countLabel = 'projects',
   toolbarPlacement = 'top',
   linkScope = 'current',
+  activeFilters = NO_ACTIVE_FILTERS,
   selectable = false,
   selectedKeys = new Set<string>(),
   deleteDisabled = false,
@@ -33,6 +50,7 @@ function withGridDefaults({
     countLabel,
     toolbarPlacement,
     linkScope,
+    activeFilters,
     selectable,
     selectedKeys,
     deleteDisabled,
@@ -42,15 +60,28 @@ function withGridDefaults({
 
 type ResolvedGridProps = ReturnType<typeof withGridDefaults>;
 
-/** Per page and View All Details: in the filter well, or beside the sort select when there is one. */
-const PageControls = ({grid}: {grid: ResolvedGridProps}) => (
+type DetailsAnnouncements = ReturnType<typeof useDetailsAnnouncements>;
+
+interface PageControlsProps {
+  grid: ResolvedGridProps;
+  /** Opens or closes every row's details and says so (useDetailsAnnouncements). */
+  onToggleAllDetails: () => void;
+}
+
+/**
+ * Per page and View All Details: in the filter well, or beside the sort select when there is one. The toggle is
+ * the same outlined button in both places.
+ */
+const PageControls = ({grid, onToggleAllDetails}: PageControlsProps) => (
   <>
     <PageSizeField value={grid.pageSize} options={grid.pageSizeOptions} onChange={grid.onPageSizeChange} />
     {grid.onToggleAllDetails ? (
       <button
         type="button"
-        className={`itg-btn ${grid.sortOptions ? 'itg-btn-text' : 'itg-btn-outline'} project-grid-toggle-details`}
-        onClick={grid.onToggleAllDetails}
+        className="itg-btn itg-btn-outline project-grid-toggle-details"
+        onClick={onToggleAllDetails}
+        // With no rows shown it would only change its own label.
+        disabled={grid.filteredCount === 0}
       >
         {grid.allDetailsExpanded ? 'Hide All Details' : 'View All Details'}
       </button>
@@ -58,25 +89,61 @@ const PageControls = ({grid}: {grid: ResolvedGridProps}) => (
   </>
 );
 
+interface ResultsProps {
+  grid: ResolvedGridProps;
+  details: DetailsAnnouncements;
+  /** The filter well's search field, focused when "Clear Search" removes itself. */
+  searchInputRef: RefObject<HTMLInputElement | null>;
+  /** The count line: focus goes there after a page change, and after Try Again (see useRetryFocus). */
+  countRef: RefObject<HTMLParagraphElement | null>;
+  /** The empty state's heading (or message), which takes focus after Try Again when no rows came back. */
+  emptyRef: RefObject<HTMLElement | null>;
+}
+
+/** What the table and the phone list both take to show the page's rows. */
+const rowPropsFor = (grid: ResolvedGridProps, details: DetailsAnnouncements) => ({
+  columns: grid.columns,
+  pagedRows: grid.pagedRows,
+  linkScope: grid.linkScope,
+  selectable: grid.selectable,
+  selectedKeys: grid.selectedKeys,
+  onToggleSelected: grid.onToggleSelected,
+  expandedKeys: grid.expandedKeys,
+  onToggleExpanded: details.toggleRow,
+  onDeleteRow: grid.onDeleteRow,
+  deleteDisabled: grid.deleteDisabled,
+  loadMissingDetails: grid.loadMissingDetails,
+  isRowSaved: grid.isRowSaved,
+  savedRowLabel: grid.savedRowLabel,
+  highlightedKeys: grid.highlightedKeys,
+  announceDetails: details.announceRows,
+});
+
+/** Why the abstracts were not searched for the current search, or null when they were (or need not be). */
+const abstractsSkippedBy = (serverSearch: ProjectGridServerSearch | undefined): AbstractsSkipped | null => {
+  if (serverSearch?.tooBroad) return 'too-broad';
+  return serverSearch?.failed ? 'failed' : null;
+};
+
 /** Everything below the filter well once the rows are loaded: counts, empty states, the rows and the pager. */
-const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
+const ProjectGridResults = ({grid, details, searchInputRef, countRef, emptyRef}: ResultsProps) => {
+  // Only the layout the screen shows is rendered: mounting both and hiding one with CSS doubled the rows (and their
+  // opened details) that every sort, page change and "View All Details" had to render.
+  const isPhone = useMediaQuery(PHONE_LAYOUT_QUERY);
+  const pagerTarget = useRef<number | null>(null);
   const query = grid.search.trim();
   const noResults = grid.totalCount > 0 && grid.filteredCount === 0;
-  const rowProps = {
-    columns: grid.columns,
-    pagedRows: grid.pagedRows,
-    linkScope: grid.linkScope,
-    selectable: grid.selectable,
-    selectedKeys: grid.selectedKeys,
-    onToggleSelected: grid.onToggleSelected,
-    expandedKeys: grid.expandedKeys,
-    onToggleExpanded: grid.onToggleExpanded,
-    onDeleteRow: grid.onDeleteRow,
-    deleteDisabled: grid.deleteDisabled,
-    loadMissingDetails: grid.loadMissingDetails,
-    isRowSaved: grid.isRowSaved,
-    savedRowLabel: grid.savedRowLabel,
-    highlightedKeys: grid.highlightedKeys,
+  const rowProps = rowPropsFor(grid, details);
+
+  // Only a page the pager asked for moves focus and scroll; a search or sort that starts over at page 1 does not.
+  useEffect(() => {
+    const requested = pagerTarget.current;
+    pagerTarget.current = null;
+    if (requested === grid.page && countRef.current) showResultsStart(countRef.current);
+  }, [countRef, grid.page]);
+  const changePage = (page: number) => {
+    pagerTarget.current = page;
+    grid.onPageChange(page);
   };
 
   return (
@@ -90,23 +157,41 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
           pageSize={grid.pageSize}
           sortOptions={grid.sortOptions}
           sortField={grid.sortField}
+          sortDirection={grid.sortDirection}
           onSortChange={grid.onSortChange}
+          onSortSelect={grid.onSortSelect}
           query={query}
           countLabel={grid.countLabel}
-          pageControls={<PageControls grid={grid} />}
+          activeFilters={grid.activeFilters}
+          abstractsSkipped={abstractsSkippedBy(grid.serverSearch)}
+          pageControls={<PageControls grid={grid} onToggleAllDetails={details.toggleAllDetails} />}
+          countRef={countRef}
         />
       ) : null}
 
-      {grid.totalCount === 0 ? <p className="project-grid-empty">{grid.emptyMessage}</p> : null}
+      {grid.totalCount === 0 ? (
+        <ProjectGridEmpty
+          emptyTitle={grid.emptyTitle}
+          emptyMessage={grid.emptyMessage}
+          emptyActions={grid.emptyActions}
+          headingLevel={grid.noResultsHeadingLevel}
+          emptyRef={emptyRef}
+        />
+      ) : null}
 
       {noResults ? (
         <ProjectGridNoResults
           query={query}
           countLabel={grid.countLabel}
+          activeFilters={grid.activeFilters}
           headingLevel={grid.noResultsHeadingLevel}
+          searching={grid.serverSearch?.pending}
           noResultsHint={grid.noResultsHint}
           noResultsActions={grid.noResultsActions}
           onClear={() => {
+            // The button leaves with the empty state: move focus first, to the search field (or, when the well
+            // holds another search control, the count line), so it does not fall to the page.
+            (searchInputRef.current ?? countRef.current)?.focus();
             grid.onSearchChange('');
             grid.onClearFilters?.();
           }}
@@ -114,9 +199,12 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
       ) : null}
 
       {grid.totalCount > 0 && !noResults ? (
-        <>
+        isPhone ? (
+          <ProjectGridMobileCards {...rowProps} />
+        ) : (
           <ProjectGridDesktopTable
             {...rowProps}
+            tableLabel={grid.tableLabel}
             rows={grid.rows}
             selectAllStateRows={grid.selectAllStateRows}
             onToggleSelectAll={grid.onToggleSelectAll}
@@ -124,23 +212,34 @@ const ProjectGridResults = ({grid}: {grid: ResolvedGridProps}) => {
             sortDirection={grid.sortDirection}
             onSortChange={grid.onSortChange}
           />
-          <ProjectGridMobileCards {...rowProps} />
-        </>
+        )
       ) : null}
 
       {grid.totalPages > 1 ? (
-        <ProjectGridPager page={grid.page} totalPages={grid.totalPages} onPageChange={grid.onPageChange} />
+        <ProjectGridPager
+          page={grid.page}
+          totalPages={grid.totalPages}
+          onPageChange={changePage}
+          label={grid.tableLabel ? `${grid.tableLabel} pages` : undefined}
+        />
       ) : null}
     </>
   );
 };
 
 /**
- * The projects grid: a filter well, an optional toolbar, the results (a table on wide screens, cards on
+ * The projects grid: a filter well, an optional toolbar, the results (a table on wide screens, a list on
  * phones) and the pager. Paging, sorting and selection state come from `useProjectGridTable`.
  */
 export const ProjectGridTable = (props: ProjectGridTableProps) => {
   const grid = withGridDefaults(props);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const details = useDetailsAnnouncements(grid);
+  const countRef = useRef<HTMLParagraphElement>(null);
+  const emptyRef = useRef<HTMLElement>(null);
+  const {loadingRef, retryRef, retry} = useRetryFocus(Boolean(grid.loading), grid.error, countRef, emptyRef);
+  const resultsFocus = useResultsFocus(countRef, emptyRef, grid.serverSearch?.addedRowsKey ?? null);
+  const {onRetry} = grid;
   const toolbarElement = grid.toolbar ? (
     <div className={`project-grid-toolbar${grid.toolbarPlacement === 'bottom' ? ' project-grid-toolbar--bottom' : ''}`}>
       {grid.toolbar}
@@ -148,7 +247,12 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
   ) : null;
 
   return (
-    <div className="project-grid-table-shell">
+    <div className="project-grid-table-shell" onFocus={resultsFocus.onFocus} onBlur={resultsFocus.onBlur}>
+      {/* Always in the page, so each new message is read out (a polite live region, like the count line). */}
+      <p className="sr-only" aria-live="polite">
+        {details.message}
+      </p>
+
       <ProjectGridControls
         search={grid.search}
         searchControl={grid.searchControl}
@@ -157,19 +261,47 @@ export const ProjectGridTable = (props: ProjectGridTableProps) => {
         searchLabel={grid.searchLabel}
         filterControls={grid.filterControls}
         onSearchChange={grid.onSearchChange}
-        pageControls={grid.sortOptions ? null : <PageControls grid={grid} />}
+        pageControls={
+          grid.sortOptions ? null : <PageControls grid={grid} onToggleAllDetails={details.toggleAllDetails} />
+        }
+        searchInputRef={searchInputRef}
       />
 
       {grid.toolbarPlacement === 'top' ? toolbarElement : null}
 
-      {grid.loading ? <p className="project-grid-state">Loading project data...</p> : null}
-      {grid.error ? (
-        <p className="project-grid-state project-grid-state-error itg-error" role="alert">
-          {grid.error}
+      {grid.loading ? (
+        // Focusable from script: it holds focus while Try Again loads the rows (useRetryFocus).
+        <p ref={loadingRef} className="project-grid-state project-grid-state-loading" role="status" tabIndex={-1}>
+          <LoadingIndicator label="Loading project data…" />
         </p>
       ) : null}
+      {grid.error ? (
+        <div className="project-grid-load-error">
+          <p className="project-grid-state project-grid-state-error itg-error" role="alert">
+            {grid.error}
+          </p>
+          {onRetry ? (
+            <button
+              ref={retryRef}
+              type="button"
+              className="itg-btn itg-btn-outline"
+              onClick={() => retry(onRetry)}
+            >
+              Try Again
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
-      {!grid.loading && !grid.error ? <ProjectGridResults grid={grid} /> : null}
+      {!grid.loading && !grid.error ? (
+        <ProjectGridResults
+          grid={grid}
+          details={details}
+          searchInputRef={searchInputRef}
+          countRef={countRef}
+          emptyRef={emptyRef}
+        />
+      ) : null}
 
       {grid.toolbarPlacement === 'bottom' ? toolbarElement : null}
     </div>

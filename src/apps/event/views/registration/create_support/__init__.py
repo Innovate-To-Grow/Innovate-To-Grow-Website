@@ -103,7 +103,7 @@ def create_registration(request, event, ticket, question_answers, data):
     try:
         create_kwargs.update(registration_contact_fields(request.user, event, data))
     except RegistrationContactError as exc:
-        raise RegistrationRequestError(str(exc), code=exc.code) from exc
+        raise RegistrationRequestError(exc.detail, code=exc.code) from exc
     return EventRegistration.objects.create(**create_kwargs)
 
 

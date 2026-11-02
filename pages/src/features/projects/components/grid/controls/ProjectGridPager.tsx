@@ -8,8 +8,9 @@ interface ProjectGridPagerProps {
 }
 
 /**
- * The reference's DataTables pager, right-aligned under the table: Previous / page numbers / Next on wide screens;
- * Previous / "Page x of y" / Next on phones.
+ * The pager, right-aligned under the table: Previous / page numbers / Next on wide screens, Previous / "Page x of y" /
+ * Next on phones. Each page and step is a square outline button, the current page filled navy: the site pager
+ * (styles/contract/global/pagination.css); gridList.css only lays it out.
  */
 export const ProjectGridPager = ({page, totalPages, onPageChange, label = 'Pages'}: ProjectGridPagerProps) => (
   <nav className="itg-pagination project-grid-pagination" aria-label={label}>
@@ -44,9 +45,8 @@ export const ProjectGridPager = ({page, totalPages, onPageChange, label = 'Pages
         ),
       )}
     </ul>
-    <span className="project-grid-pager-status">
-      Page {page + 1} of {totalPages}
-    </span>
+    {/* One string: page translation left a text node per number behind, still reading "Page 1". */}
+    <span className="project-grid-pager-status">{`Page ${page + 1} of ${totalPages}`}</span>
     <button
       type="button"
       className="itg-pagination-link project-grid-pager-step"

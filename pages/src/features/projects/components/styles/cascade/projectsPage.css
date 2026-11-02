@@ -42,6 +42,32 @@
   color: var(--itg-color-error);
 }
 
+/* Current Projects / Presenting Teams while the schedule loads: hold about the room the first page of rows
+   takes (10 rows are ~850px on wide screens and longer on phones), so the footer is not in the first screen
+   only to be pushed out when the rows arrive. */
+.projects-page .project-grid-state-loading {
+  min-height: min(100vh, 850px);
+}
+
+/* A list that could not load: the message, then "Try Again" beside it (under it on narrow screens). */
+.project-grid-load-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 1rem 0;
+}
+
+/* It holds the same room as the loading line above, so the footer does not jump up when the load fails. */
+.projects-page .project-grid-load-error {
+  min-height: min(100vh, 850px);
+  align-content: flex-start;
+}
+
+.project-grid-load-error .project-grid-state {
+  padding: 0;
+}
+
 .past-projects-shared-closing {
   margin: 0;
   padding-top: 1rem;

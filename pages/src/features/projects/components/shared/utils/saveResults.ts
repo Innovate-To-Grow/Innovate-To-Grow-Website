@@ -1,5 +1,5 @@
-// Wording for the outcome of saving a search table's checked rows, shared by the builder (Save Selected) and
-// the shared page (Add Selected).
+// Wording for the outcome of saving a search table's checked rows, shared by the builder and the shared page (both
+// Add to Curation).
 import type {SearchTableSaveResult} from '../../search/cards/SearchTableCard';
 
 export const pluralize = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`;
@@ -12,13 +12,13 @@ interface SaveCounts {
 }
 
 interface SaveWording {
-  /** Follows "N projects", e.g. "added to Saved Merged Results (12 in total)." */
+  /** Follows "N projects", e.g. "added to the curation draft (12 in total)." */
   added: string;
-  /** Follows "N projects were already", next to other outcomes, e.g. "saved". */
+  /** Follows "N projects were already", next to other outcomes, e.g. "in the curation draft". */
   already: string;
-  /** Where saved projects live, when that is the whole outcome, e.g. "in Saved Merged Results". */
+  /** Where saved projects live, when that is the whole outcome, e.g. "in the curation draft". */
   place: string;
-  /** The button that saves, e.g. "Save Selected". */
+  /** The button that saves, e.g. "Add to Curation". */
   retryLabel: string;
 }
 

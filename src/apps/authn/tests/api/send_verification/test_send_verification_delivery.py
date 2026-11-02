@@ -33,7 +33,11 @@ class SendVerificationDeliveryTests(APITestCase):
         ContactPhone.objects.create(member=self.member, phone_number="2025550100", region="1-US", verified=True)
 
     def sms_config(self):
-        return SimpleNamespace(render_sms_otp_message=lambda code: f"Code: {code}")
+        return SimpleNamespace(
+            render_sms_otp_message=lambda code: f"Code: {code}",
+            region="us-west-2",
+            resolved_sms_from_number=lambda: "+12065550000",
+        )
 
     def test_uncertain_email_keeps_verifiable_otp(self):
         with (

@@ -1,5 +1,6 @@
 @layer itg.components {
-/* Moved verbatim from the CMS "page-home" stylesheet. */
+/* Moved from the CMS "page-home" stylesheet; .home-loading has since been
+   redrawn as the shared LoadingIndicator (components/LoadingIndicator). */
 
 /* ==========================================================================
    Home page: classes for home-page body_html blocks (.home-*)
@@ -10,22 +11,27 @@
    by the cms-blocks sheet.
    ========================================================================== */
 
+/* Loading line: the site's one loading look (components/LoadingIndicator), a
+   24px ring beside the text in secondary 16px / 24px type, centred in the
+   40vh the line reserves. The ring is the line's ::before, so a body_html
+   <p class="home-loading">Loading…</p> needs no extra markup. */
 .home-loading {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
+  gap: 0.75rem;
   min-height: 40vh;
   color: var(--itg-color-text-secondary);
   font-size: var(--itg-font-size-body);
-  font-style: italic;
+  line-height: 24px;
 }
 
 .home-loading::before {
   content: '';
-  width: 36px;
-  height: 36px;
+  box-sizing: border-box;
+  flex: none;
+  width: 24px;
+  height: 24px;
   border: 3px solid var(--itg-color-border);
   border-top-color: var(--itg-color-primary);
   border-radius: 50%;
@@ -127,6 +133,24 @@
 @media (prefers-reduced-motion: reduce) {
   .home-loading::before {
     animation: none;
+  }
+}
+
+/* Forced colours (Windows Contrast themes) would paint the whole ring one
+   colour, so it keeps a GrayText ring with a CanvasText top, as
+   LoadingIndicator does. */
+@media (forced-colors: active) {
+  .home-loading::before {
+    forced-color-adjust: none;
+    border-color: GrayText;
+    border-top-color: CanvasText;
+  }
+}
+
+/* A spinner means nothing on paper: print keeps the text only. */
+@media print {
+  .home-loading::before {
+    display: none;
   }
 }
 }

@@ -1,4 +1,5 @@
 import {useId} from 'react';
+import {useProjectCatalog, type ProjectCatalogCopy} from '@/features/projects/catalog/projectCatalog';
 
 interface PastProjectsActionBarProps {
   aiSearchDisabled?: boolean;
@@ -8,7 +9,7 @@ interface PastProjectsActionBarProps {
   loading: boolean;
   showHelp?: boolean;
   title?: string;
-  /** Id for the heading, so the section holding the tables can be labelled by it. */
+  /** Id for the heading, so the section holding the tables can be labelled by it (and focus moved to it). */
   headingId?: string;
   /** How the help text names each table's save button, where it saves to, and the saved-row tag. */
   saveLabel?: string;
@@ -63,12 +64,15 @@ const AISearchTableButton = ({loginRequired, disabled, loginNoteId, onClick}: AI
   </button>
 );
 
-type HelpProps = Required<Pick<PastProjectsActionBarProps, 'saveLabel' | 'saveTarget' | 'savedLabel'>>;
+type HelpProps = Required<Pick<PastProjectsActionBarProps, 'saveLabel' | 'saveTarget' | 'savedLabel'>> & {
+  /** How the help names the list the page searches (ProjectCatalog). */
+  copy: Pick<ProjectCatalogCopy, 'helpSearchSource' | 'helpAIResults' | 'helpRefreshSource'>;
+};
 
 /** What each button does, folded away under a summary. */
-const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
+const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel, copy}: HelpProps) => (
   <details className="past-projects-help-details">
-    <summary className="past-projects-help-summary">Help: buttons, saving and tables</summary>
+    <summary className="past-projects-help-summary">Help: Buttons, Saving and Tables</summary>
     <p className="past-projects-help-intro">
       Add one or more search tables, then work inside each table to choose the projects you want.
     </p>
@@ -76,15 +80,16 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
       <div className="project-grid-help-card">
         <dt>+ Search Table</dt>
         <dd>
-          Adds another search table. Each table loads the full past-project archive on its own, so you can try
-          different searches side by side (for example, one for a class code and another for an organization).
+          Adds another search table over {copy.helpSearchSource}, so you can try different searches side by side
+          (for example, one for a class code and another for an organization). Each table keeps its own search,
+          checked rows and tidy edits.
         </dd>
       </div>
       <div className="project-grid-help-card">
         <dt>+ AI Search Table</dt>
         <dd>
           Adds a separate AI search table (sign-in required). Describe what you are looking for inside that table to
-          load matching past projects, then use the same checkboxes and buttons as a regular search table.
+          load {copy.helpAIResults}, then use the same checkboxes and buttons as a regular search table.
         </dd>
       </div>
       <div className="project-grid-help-card">
@@ -104,10 +109,10 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
         </dd>
       </div>
       <div className="project-grid-help-card">
-        <dt>Delete table</dt>
+        <dt>Delete Table</dt>
         <dd>
-          When more than one search table is open, each one has a Delete table button in its header. It removes
-          that table only, so the last table always stays.
+          When more than one search table is open, each one has a <strong>Delete Table</strong> button in its header.
+          It removes that table only, so the last table always stays.
         </dd>
       </div>
       <div className="project-grid-help-card project-grid-help-card--wide">
@@ -116,8 +121,9 @@ const PastProjectsHelp = ({saveLabel, saveTarget, savedLabel}: HelpProps) => (
           Search, click a column heading to sort, and change <strong>Per page</strong> to see more rows at once.
           Open <strong>Details</strong> on a row to read its abstract and team members.{' '}
           <strong>Select All</strong> and the header checkbox select the rows that match the current search, and
-          the table shows how many rows are selected. <strong>Deselect</strong> clears the selection and{' '}
-          <strong>Refresh Search Table</strong> reloads the archive.
+          the table shows how many rows are selected. <strong>Deselect</strong> clears the selection.{' '}
+          <strong>Refresh Search Table</strong> reloads {copy.helpRefreshSource} and starts that table over: its
+          search, sort, Per page, checked rows and tidy edits are cleared. Other tables keep theirs.
         </dd>
       </div>
     </dl>
@@ -134,19 +140,26 @@ export const PastProjectsActionBar = ({
   showHelp = true,
   title = 'Search Tables',
   headingId,
-  saveLabel = 'Save Selected',
-  saveTarget = 'your saved results at the top of the page',
-  savedLabel = 'Saved',
+  saveLabel = 'Add to Curation',
+  saveTarget = 'the curation draft at the top of the page',
+  savedLabel = 'Added',
   onAddAISearchTable,
   onAddSearchTable,
 }: PastProjectsActionBarProps) => {
   const loginNoteId = useId();
+  const {copy} = useProjectCatalog();
   const tablesUnavailable = loading || Boolean(error);
 
   return (
     <div className="past-projects-action-bar">
       <div className="past-projects-action-bar-header">
-        <h2 id={headingId} className="project-grid-card-title past-projects-action-bar-title">
+        {/* Hidden visually (not from the outline) by the embed's "Section titles" option: a retry focuses it. */}
+        <h2
+          id={headingId}
+          className="project-grid-card-title past-projects-action-bar-title"
+          tabIndex={-1}
+          data-embed-section="section-title"
+        >
           {title}
         </h2>
         <div className="past-projects-action-bar-group" role="group" aria-label="Add a table">
@@ -176,9 +189,14 @@ export const PastProjectsActionBar = ({
         </p>
       ) : null}
 
-      {showHelp ? <PastProjectsHelp saveLabel={saveLabel} saveTarget={saveTarget} savedLabel={savedLabel} /> : null}
+      {showHelp ? (
+        <PastProjectsHelp saveLabel={saveLabel} saveTarget={saveTarget} savedLabel={savedLabel} copy={copy} />
+      ) : null}
 
-      {builderMessage ? <p className="project-grid-status past-projects-builder-message">{builderMessage}</p> : null}
+      {/* What the search tables did (a refresh, …). A live region kept in the page, so each message is announced. */}
+      <p className="project-grid-status past-projects-builder-message" role="status">
+        {builderMessage}
+      </p>
     </div>
   );
 };

@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import math
+
 from apps.authn.models import PhoneVerificationChallenge
-from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_UNCERTAIN
+from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_TRANSIENT, PROVIDER_OUTCOME_UNCERTAIN
 
 OTP_TTL_SECONDS = 600
 VERIFIED_GRANT_TTL_SECONDS = 900
@@ -47,3 +49,19 @@ class PhoneVerificationDeliveryError(PhoneVerificationError):
         super().__init__(message)
         self.outcome = outcome
         self.challenge_id = challenge_id
+
+
+BUSY_MESSAGE = "SMS delivery is busy right now; please try again in about {seconds} seconds."
+
+
+class PhoneVerificationBusy(PhoneVerificationDeliveryError):
+    """SMS delivery is held back (the delivery-rate limiter, or AWS throttling): nothing was sent, so asking again
+    in ``retry_after`` seconds is safe. The per-number cap stays ``PhoneVerificationThrottled``."""
+
+    def __init__(self, retry_after: float | None = None, *, challenge_id: str = ""):
+        self.retry_after = max(1, math.ceil(retry_after or 0))
+        super().__init__(
+            BUSY_MESSAGE.format(seconds=self.retry_after),
+            outcome=PROVIDER_OUTCOME_TRANSIENT,
+            challenge_id=challenge_id,
+        )

@@ -1,13 +1,12 @@
 import {useCallback, useMemo, useState} from 'react';
-import type {ProjectGridItem} from '@/features/projects/components/grid/contracts/projectGrid';
+import {compareText, type ProjectGridItem} from '@/features/projects/components/grid/contracts/projectGrid';
 
 export interface ProjectGridFilterOption {
   value: string;
   label: string;
 }
 
-const byLabel = (left: ProjectGridFilterOption, right: ProjectGridFilterOption) =>
-  left.label.localeCompare(right.label, undefined, {numeric: true, sensitivity: 'base'});
+const byLabel = (left: ProjectGridFilterOption, right: ProjectGridFilterOption) => compareText(left.label, right.label);
 
 const distinctValues = (rows: ProjectGridItem[], pick: (row: ProjectGridItem) => string) => {
   const values = new Set<string>();
@@ -18,13 +17,31 @@ const distinctValues = (rows: ProjectGridItem[], pick: (row: ProjectGridItem) =>
   return [...values];
 };
 
+/** A filter in use, as a removable chip names it: "Class: Engineering Capstone (CAP)". */
+export interface ProjectGridFilterChip {
+  key: 'class' | 'industry';
+  name: 'Class' | 'Industry';
+  /** The chosen option's label, as its select shows it. */
+  valueLabel: string;
+}
+
+/** The filters to start with, e.g. restored from the URL. */
+export interface ProjectGridFilterValues {
+  classCode?: string;
+  industry?: string;
+}
+
 /**
  * Class and Industry filters for the current-projects table, with options built from the loaded rows.
  * Class options read "Engineering Capstone (CAP)" when the schedule names the class, else the code.
  */
-export function useProjectGridFilters(rows: ProjectGridItem[], classLabels: Record<string, string> = {}) {
-  const [classCode, setClassCode] = useState('');
-  const [industry, setIndustry] = useState('');
+export function useProjectGridFilters(
+  rows: ProjectGridItem[],
+  classLabels: Record<string, string> = {},
+  initial: ProjectGridFilterValues = {},
+) {
+  const [classCode, setClassCode] = useState(initial.classCode ?? '');
+  const [industry, setIndustry] = useState(initial.industry ?? '');
 
   const classOptions = useMemo(
     () =>
@@ -60,6 +77,22 @@ export function useProjectGridFilters(rows: ProjectGridItem[], classLabels: Reco
     setIndustry('');
   }, []);
 
+  // The filters in use, Class first, each with the option label its select shows.
+  const filterChips = useMemo(() => {
+    const chips: ProjectGridFilterChip[] = [
+      {key: 'class', name: 'Class', valueLabel: classOptions.find((option) => option.value === activeClass)?.label ?? ''},
+      {
+        key: 'industry',
+        name: 'Industry',
+        valueLabel: industryOptions.find((option) => option.value === activeIndustry)?.label ?? '',
+      },
+    ];
+    return chips.filter((chip) => chip.valueLabel);
+  }, [activeClass, activeIndustry, classOptions, industryOptions]);
+
+  // How the count line and the no-results state name the filters in use: the option labels the selects show.
+  const activeLabels = useMemo(() => filterChips.map((chip) => chip.valueLabel), [filterChips]);
+
   return {
     classCode: activeClass,
     setClassCode,
@@ -68,6 +101,8 @@ export function useProjectGridFilters(rows: ProjectGridItem[], classLabels: Reco
     classOptions,
     industryOptions,
     filterRow,
+    activeLabels,
+    filterChips,
     clear,
   };
 }

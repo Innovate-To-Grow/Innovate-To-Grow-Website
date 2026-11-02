@@ -5,6 +5,12 @@ from html import escape
 from . import services as inbox_api
 
 
+def message_load_error(exc) -> str:
+    """What staff see when a message cannot be shown: when to try again while reads are held back, else the generic
+    message (other errors may name hosts or accounts)."""
+    return str(exc) if isinstance(exc, inbox_api.InboxBusy) else inbox_api.INBOX_MESSAGE_ERROR_MESSAGE
+
+
 def parse_limit(request) -> int:
     """Parse and validate the requested inbox limit."""
     try:
@@ -18,6 +24,41 @@ def parse_folder(request) -> str:
     """Parse and validate the requested inbox folder (INBOX or SENT)."""
     folder = str(request.GET.get("folder", inbox_api.INBOX_FOLDER)).upper()
     return folder if folder in inbox_api.INBOX_FOLDER_CHOICES else inbox_api.INBOX_FOLDER
+
+
+def sent_mail_restricted(user) -> bool:
+    """Whether *user* may not read Sent mail: only superusers may while the inbox reads the Graph mailbox, or while
+    the Gmail account it reads is one the site sends as through the Gmail API.
+
+    That folder holds what the site sends: Graph keeps what carries no credential flag there (campaigns, replies),
+    and Gmail keeps a copy of everything, sign-in codes included (the list and the import leave tagged credential mail out, which is
+    a second line of defence, not this one). Mail-app staff could otherwise read other people's links and codes.
+    When the backend cannot be resolved, the answer is "restricted".
+    """
+    if user.is_superuser:
+        return False
+    try:
+        return inbox_api.graph_inbox_active() or inbox_api.gmail_sent_copies_kept()
+    except Exception:
+        inbox_api.logger.exception("Could not resolve the inbox backend; Sent mail stays restricted.")
+        return True
+
+
+def sent_mail_denied(request, folder: str, msg: dict | None = None) -> bool:
+    """Whether the request reaches Sent mail (the folder, or a message from the site's own address) it may not read."""
+    is_sent_mail = folder == inbox_api.SENT_FOLDER or bool(msg and msg.get("from_own_mailbox"))
+    return is_sent_mail and sent_mail_restricted(request.user)
+
+
+OWN_MAIL_SUBJECT = "(Sent from the site's own address: shown to superusers only)"
+
+
+def hide_own_mail(messages: list[dict]) -> list[dict]:
+    """List rows for a user who may not read Sent mail: a message from the site's own address keeps its row, sender
+    and date, but not its subject or opening text (opening it is refused as well)."""
+    return [
+        {**msg, "subject": OWN_MAIL_SUBJECT, "snippet": ""} if msg.get("from_own_mailbox") else msg for msg in messages
+    ]
 
 
 def message_body_html(msg: dict) -> str:

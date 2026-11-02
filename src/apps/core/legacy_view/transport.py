@@ -11,9 +11,23 @@ from urllib.parse import quote
 from django.http import HttpRequest
 
 from .config import LegacyGatewayConfig
-from .policies import filter_query_string
+from .policies import (
+    InvalidLegacyPath,
+    PathDecision,
+    canonicalize_legacy_path,
+    classify_legacy_path,
+    filter_query_string,
+)
 
 _RANGE_PATTERN = re.compile(r"^bytes=(?:\d+-\d*|\d*-\d+)(?:,\s*(?:\d+-\d*|\d*-\d+)){0,4}$")
+
+_FORWARDED_METHODS = frozenset({"GET", "HEAD"})
+
+# Origin-form request target: one leading slash, then only unreserved or percent-encoded
+# characters, plus an optional urlencoded query. Absolute- or authority-form targets, a
+# second leading slash, whitespace, CR/LF and fragments cannot match, so a target that
+# passes can only address the pinned origin's own paths.
+_ORIGIN_FORM_TARGET_PATTERN = re.compile(r"/(?!/)[A-Za-z0-9%/._~-]*(?:\?[A-Za-z0-9%&=+._~-]*)?")
 
 _FORWARDED_REQUEST_HEADERS = {
     "Accept": ("Accept", 1024),
@@ -95,10 +109,29 @@ def build_origin_headers(request: HttpRequest) -> dict[str, str]:
     return headers
 
 
+def _is_audited_canonical_path(path: str) -> bool:
+    try:
+        is_canonical = canonicalize_legacy_path(path) == path
+    except InvalidLegacyPath:
+        return False
+    return is_canonical and classify_legacy_path(path) is PathDecision.ALLOW
+
+
 def build_origin_target(canonical_path: str, raw_query_string: str) -> str:
+    """Return the origin-form target for an audited read-only path, refusing anything else.
+
+    The view applies the same path policy first; re-checking it here keeps the transport
+    from ever addressing an unaudited Legacy route whatever the caller passes in.
+    """
+
+    if not _is_audited_canonical_path(canonical_path):
+        raise LegacyOriginUnavailable("Legacy path is not an audited read-only route.")
     encoded_path = quote(canonical_path, safe="/-._~")
     filtered_query = filter_query_string(raw_query_string)
-    return f"{encoded_path}?{filtered_query}" if filtered_query else encoded_path
+    target = f"{encoded_path}?{filtered_query}" if filtered_query else encoded_path
+    if _ORIGIN_FORM_TARGET_PATTERN.fullmatch(target):
+        return target
+    raise LegacyOriginUnavailable("Legacy request target is not origin-form.")
 
 
 def open_legacy_origin(
@@ -106,8 +139,14 @@ def open_legacy_origin(
     canonical_path: str,
     config: LegacyGatewayConfig,
 ) -> LegacyOriginHandle:
-    """Open one request to the hard-pinned private IP without following redirects."""
+    """Open one GET/HEAD request to the hard-pinned private IP without following redirects.
 
+    Unsafe methods and unaudited paths are refused before any socket is opened.
+    """
+
+    if request.method not in _FORWARDED_METHODS:
+        raise LegacyOriginUnavailable("Only GET and HEAD requests may reach the Legacy origin.")
+    target = build_origin_target(canonical_path, request.META.get("QUERY_STRING", ""))
     connection = http.client.HTTPConnection(
         config.origin.hostname,
         config.origin.port,
@@ -117,12 +156,7 @@ def open_legacy_origin(
         connection.connect()
         if connection.sock is not None:
             connection.sock.settimeout(config.read_timeout_seconds)
-        connection.request(
-            request.method,
-            build_origin_target(canonical_path, request.META.get("QUERY_STRING", "")),
-            body=None,
-            headers=build_origin_headers(request),
-        )
+        connection.request(request.method, target, body=None, headers=build_origin_headers(request))
         response = connection.getresponse()
     except (http.client.HTTPException, OSError) as exc:
         connection.close()

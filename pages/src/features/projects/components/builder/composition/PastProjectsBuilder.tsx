@@ -1,17 +1,23 @@
-import {useCallback, useId, useMemo, useState} from 'react';
+import {useCallback, useEffect, useId, useMemo, useState} from 'react';
 import {useAuth} from '@/features/auth';
+import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 import {AISearchLoginDialog} from '../search/AISearchLoginDialog';
 import {PastProjectsActionBar} from '../search/PastProjectsActionBar';
-import {clearPersistedDraft} from '../draft/curationDraftStorage';
 import {MERGED_RESULTS_ID, scrollToMergedResults, useKeepScrollAnchor} from '../selection/scrollAnchor';
 import {useCurationDraft} from '../draft/useCurationDraft';
+import {useDraftHandover} from '../draft/useDraftHandover';
 import {useSaveSelectedRows} from '../selection/useSaveSelectedRows';
-import {SearchTableStack} from '../../search/cards/SearchTableStack';
+import {ArchiveLoadState} from '../../search/cards/ArchiveLoadState';
+import {SearchTableStack, type SharedCardProps} from '../../search/cards/SearchTableStack';
 import {useSearchTables} from '../../search/state/useSearchTables';
 import {MergedResultsTable, type PastProjectShareCreationResult} from '../../merged/composition/MergedResultsTable';
+import type {ListMessage} from '../../merged/list/useMergedList';
 import {createProjectGridRowMatcher, type ProjectGridRow} from '../../grid/contracts/projectGrid';
+import {askPartnerPageToScroll} from '../../shared/utils/partnerFrame';
 
 const TABLE_ID_PREFIX = 'search-table';
+// What the handed-over projects are added as, in place of a search table's id.
+const HANDOVER_SOURCE_ID = 'widget-handover';
 
 interface PastProjectsBuilderProps {
     error: string | null;
@@ -30,44 +36,80 @@ interface PastProjectsBuilderProps {
 type CreateShare = PastProjectsBuilderProps['onCreateShare'];
 
 /**
- * Wraps the parent's share creator so a *successful* share drops the persisted draft — the share
- * now owns this snapshot, and returning to the builder should start clean. A failed attempt keeps
- * the draft so the user does not lose their merged rows. While a shareable link is being created,
- * saving waits: the link is made from the rows shown at the click, and the draft is dropped once it
- * exists, so rows saved meanwhile would be lost.
+ * Wraps the parent's share creator so a *successful* share takes its rows out of the draft — the curation
+ * now owns them, and returning to the builder should not offer them again. Rows a narrowed search left out
+ * of the curation stay in the draft. A failed attempt keeps the draft whole so the user does not lose their
+ * rows. While a curation is being saved, adding waits: the curation is made from the rows shown at the
+ * click, and those leave the draft once it exists.
  */
-function useDraftShareCreation(onCreateShare: CreateShare) {
+function useDraftShareCreation(onCreateShare: CreateShare, dropShared: (rows: ProjectGridRow[]) => void) {
     const [isCreatingShare, setIsCreatingShare] = useState(false);
     const handleCreateShare = useCallback(
         async (shareRows: ProjectGridRow[], name: string, note: string) => {
             setIsCreatingShare(true);
             try {
                 const result = await onCreateShare(shareRows, name, note);
-                clearPersistedDraft();
+                dropShared(shareRows);
                 return result;
             } finally {
                 setIsCreatingShare(false);
             }
         },
-        [onCreateShare],
+        [dropShared, onCreateShare],
     );
     return {isCreatingShare, handleCreateShare};
+}
+
+interface WidgetHandoverOptions {
+    rows: ProjectGridRow[];
+    loading: boolean;
+    addRows: ReturnType<typeof useSaveSelectedRows>['handleMergeSelected'];
+    /** Reports in the draft card, which shows once rows were added. */
+    reportDraftChange: (text: string) => void;
+    /** Reports under the Search Tables heading, when no draft card may be there to say it. */
+    reportElsewhere: (text: string) => void;
+}
+
+/**
+ * Adds the projects a Past Projects (or All Projects) widget on a partner's page handed over (see draftHandover.ts)
+ * to this draft, loading their details as Add to Curation does, and says what happened.
+ */
+function useWidgetHandover({rows, loading, addRows, reportDraftChange, reportElsewhere}: WidgetHandoverOptions) {
+    const {copy} = useProjectCatalog();
+    useDraftHandover({
+        rows,
+        loading,
+        onHandover: (found, missing) => {
+            const missingNote = missing ? copy.handoverMissing(missing) : '';
+            if (!found.length) {
+                reportElsewhere(missingNote);
+                return;
+            }
+            Promise.resolve(addRows(found, {tableId: HANDOVER_SOURCE_ID, reportProgress: () => {}})).then(
+                (result) => reportDraftChange(`From the ${copy.widgetName}: ${result.message} ${missingNote}`.trim()),
+                () =>
+                    reportElsewhere(`The projects from the ${copy.widgetName} could not be added to the curation draft.`),
+            );
+        },
+    });
 }
 
 interface BuilderSavedResultsProps {
     draft: ReturnType<typeof useCurationDraft>;
     pendingSaveCount: number;
+    message: ListMessage | null;
     onCreateShare: CreateShare;
 }
 
 /** The draft's merged list at the top of the page. */
-const BuilderSavedResults = ({draft, pendingSaveCount, onCreateShare}: BuilderSavedResultsProps) => (
+const BuilderSavedResults = ({draft, pendingSaveCount, message, onCreateShare}: BuilderSavedResultsProps) => (
     <MergedResultsTable
         id={MERGED_RESULTS_ID}
         className="past-projects-saved-results"
         rows={draft.mergedRows}
         recentlyAdded={draft.recentlyAdded}
         pendingSaveCount={pendingSaveCount}
+        message={message}
         onCreateShare={onCreateShare}
         nameDraft={draft.nameDraft}
         noteDraft={draft.noteDraft}
@@ -81,10 +123,93 @@ const BuilderSavedResults = ({draft, pendingSaveCount, onCreateShare}: BuilderSa
     />
 );
 
+interface BuilderSearchSectionProps {
+    tables: ReturnType<typeof useSearchTables>;
+    /** What the search tables did (a refresh, …), under their heading. */
+    tablesMessage: string;
+    rows: ProjectGridRow[];
+    loading: boolean;
+    error: string | null;
+    initialSearch: string;
+    isAuthenticated: boolean;
+    /** The draft, carried to the full page when AI search asks a widget visitor to sign in. */
+    draftRows: ProjectGridRow[];
+    cardProps: SharedCardProps;
+    onRefreshRows?: () => void;
+}
+
+/** The Search Tables section: its action bar, the archive's loading or failure, and the tables. */
+const BuilderSearchSection = ({
+                                  tables,
+                                  tablesMessage,
+                                  rows,
+                                  loading,
+                                  error,
+                                  initialSearch,
+                                  isAuthenticated,
+                                  draftRows,
+                                  cardProps,
+                                  onRefreshRows,
+                              }: BuilderSearchSectionProps) => {
+    const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
+    const headingId = useId();
+    const {copy} = useProjectCatalog();
+    // A failed refresh keeps the archive it had, and the table that asked reports it; only a first load that
+    // failed leaves nothing to search.
+    const archiveUnavailable = Boolean(error) && !rows.length;
+
+    return (
+        <section className="past-projects-search-tables" aria-labelledby={headingId}>
+            <PastProjectsActionBar
+                headingId={headingId}
+                builderMessage={tablesMessage}
+                error={archiveUnavailable ? error : null}
+                loading={loading}
+                aiSearchDisabled={tables.hasAISearchTable}
+                aiSearchLoginRequired={!isAuthenticated}
+                onAddAISearchTable={() => {
+                    if (!tables.addAISearchTable()) {
+                        setIsAISearchLoginDialogOpen(true);
+                    }
+                }}
+                onAddSearchTable={tables.addSearchTable}
+            />
+
+            {isAISearchLoginDialogOpen ? (
+                <AISearchLoginDialog draftRows={draftRows} onClose={() => setIsAISearchLoginDialogOpen(false)}/>
+            ) : null}
+
+            {/* While loading, holds about the first table's room (see searchTables.css), so nothing below it moves
+                in when the archive arrives. */}
+            <ArchiveLoadState
+                loading={loading}
+                failed={archiveUnavailable}
+                onRetry={onRefreshRows}
+                headingId={headingId}
+                loadingClassName="past-projects-builder-loading"
+            />
+
+            {!loading && !archiveUnavailable ? (
+                <SearchTableStack
+                    tables={tables}
+                    idPrefix={TABLE_ID_PREFIX}
+                    rows={rows}
+                    initialSearch={initialSearch}
+                    isAuthenticated={isAuthenticated}
+                    canRefresh={Boolean(onRefreshRows)}
+                    cardProps={cardProps}
+                    copy={{aiDescription: copy.aiDescription, noTablesMessage: copy.noTablesMessage}}
+                />
+            ) : null}
+        </section>
+    );
+};
+
 /**
  * The past-projects builder: search tables whose checked rows are saved into one merged list, which is a
  * draft (kept in localStorage) until it is saved as a curation. State lives in `builder/draft/useCurationDraft`,
- * `search/state/useSearchTables` and `builder/selection/useSaveSelectedRows`.
+ * `search/state/useSearchTables` and `builder/selection/useSaveSelectedRows`. The list it searches and the words
+ * naming it are the page's ProjectCatalog (Past Projects, or All Projects); both pages share the one draft.
  */
 export const PastProjectsBuilder = ({
                                         error,
@@ -95,91 +220,73 @@ export const PastProjectsBuilder = ({
                                         onCreateShare,
                                     }: PastProjectsBuilderProps) => {
     const {isAuthenticated} = useAuth();
-    const [builderMessage, setBuilderMessage] = useState('');
-    const [isAISearchLoginDialogOpen, setIsAISearchLoginDialogOpen] = useState(false);
-    const searchTablesHeadingId = useId();
+    // What the search tables did, under their heading; what happened to the draft, in the draft's own card.
+    const [tablesMessage, setTablesMessage] = useState('');
+    const [draftMessage, setDraftMessage] = useState<ListMessage | null>(null);
+    const reportDraftChange = useCallback((text: string) => setDraftMessage({text}), []);
 
-    const draft = useCurationDraft(setBuilderMessage);
+    const draft = useCurationDraft(reportDraftChange);
     // Keep the table that was saved from where it was on screen while the saved results change above it.
     const scrollAnchorRef = useKeepScrollAnchor(draft.mergedRows);
+    // In the partner widget, finds out whether the partner page scrolls for it when asked (see partnerFrame.ts).
+    useEffect(askPartnerPageToScroll, []);
     const tables = useSearchTables({
         idPrefix: TABLE_ID_PREFIX,
         isAuthenticated,
         rows,
+        rowsError: error,
         onRefreshRows,
-        onMessage: setBuilderMessage,
-        refreshingMessage: 'Refreshing this search table from the latest past-project archive...',
+        onMessage: setTablesMessage,
     });
-    const saving = useSaveSelectedRows({draft, scrollAnchorRef, onMessage: setBuilderMessage});
+    const saving = useSaveSelectedRows({draft, scrollAnchorRef, onMessage: reportDraftChange});
+    useWidgetHandover({
+        rows,
+        loading,
+        addRows: saving.handleMergeSelected,
+        reportDraftChange,
+        reportElsewhere: setTablesMessage,
+    });
 
-    const {isCreatingShare, handleCreateShare} = useDraftShareCreation(onCreateShare);
-
-    const handleAddAISearchTable = () => {
-        if (!tables.addAISearchTable()) {
-            setIsAISearchLoginDialogOpen(true);
-        }
-    };
+    const {isCreatingShare, handleCreateShare} = useDraftShareCreation(onCreateShare, draft.dropShared);
 
     // Lets a search table mark the projects that are already saved.
     const isRowSaved = useMemo(() => createProjectGridRowMatcher(draft.mergedRows).has, [draft.mergedRows]);
+    const showSavedResults = draft.mergedRows.length > 0 || draft.canUndo;
+    // A card shown again later starts with an empty status line, not with what it said before it went.
+    if (!showSavedResults && draftMessage) {
+        setDraftMessage(null);
+    }
 
     return (
         <div className="past-projects-builder">
-            {draft.mergedRows.length > 0 || draft.canUndo ? (
+            {showSavedResults ? (
                 <BuilderSavedResults
                     draft={draft}
                     pendingSaveCount={saving.savesInFlight}
+                    message={draftMessage}
                     onCreateShare={handleCreateShare}
                 />
             ) : null}
 
-            <section className="past-projects-search-tables" aria-labelledby={searchTablesHeadingId}>
-                <PastProjectsActionBar
-                    headingId={searchTablesHeadingId}
-                    builderMessage={builderMessage}
-                    error={error}
-                    loading={loading}
-                    aiSearchDisabled={tables.hasAISearchTable}
-                    aiSearchLoginRequired={!isAuthenticated}
-                    onAddAISearchTable={handleAddAISearchTable}
-                    onAddSearchTable={tables.addSearchTable}
-                />
-
-                {isAISearchLoginDialogOpen ? (
-                    <AISearchLoginDialog onClose={() => setIsAISearchLoginDialogOpen(false)}/>
-                ) : null}
-
-                {loading ? <p className="project-grid-state">Loading past projects...</p> : null}
-                {error ? (
-                    <p className="project-grid-state project-grid-state-error itg-error" role="alert">
-                        {error}
-                    </p>
-                ) : null}
-
-                {!loading && !error ? (
-                    <SearchTableStack
-                        tables={tables}
-                        idPrefix={TABLE_ID_PREFIX}
-                        rows={rows}
-                        initialSearch={initialSearch}
-                        isAuthenticated={isAuthenticated}
-                        canRefresh={Boolean(onRefreshRows)}
-                        cardProps={{
-                            mergeDisabled: isCreatingShare,
-                            isRowSaved,
-                            onViewMergedResults: scrollToMergedResults,
-                            onSelectionChange: saving.handleSelectionChange,
-                            onMergeSelected: saving.handleMergeSelected,
-                        }}
-                        copy={{
-                            aiDescription:
-                                'Use AI to load matching past projects into this table, then check the projects you want and click Save Selected.',
-                            noTablesMessage:
-                                'No search tables are open. Add a new table to start searching past projects.',
-                        }}
-                    />
-                ) : null}
-            </section>
+            <BuilderSearchSection
+                tables={tables}
+                tablesMessage={tablesMessage}
+                rows={rows}
+                loading={loading}
+                error={error}
+                initialSearch={initialSearch}
+                isAuthenticated={isAuthenticated}
+                draftRows={draft.mergedRows}
+                cardProps={{
+                    mergeDisabled: isCreatingShare,
+                    isRowSaved,
+                    savedRowLabel: 'Added',
+                    onViewMergedResults: scrollToMergedResults,
+                    onSelectionChange: saving.handleSelectionChange,
+                    onMergeSelected: saving.handleMergeSelected,
+                }}
+                onRefreshRows={onRefreshRows}
+            />
         </div>
     );
 };

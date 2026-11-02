@@ -1,5 +1,6 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
+import type {ReactNode} from 'react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {ProjectsPage} from '@/routes/ProjectsPage/ProjectsPage';
@@ -69,18 +70,42 @@ describe('ProjectsPage', () => {
       loading: false,
       error: null,
       namespace: 'current-projects',
-      emptyMessage: 'No current projects are available yet.',
+      emptyTitle: 'No current projects yet',
+      emptyMessage:
+        "This semester's projects appear here once the schedule is published. Older projects are in Past Projects.",
       countLabel: 'projects',
     });
     expect(String(viewProps.current?.lede)).toMatch(/^Browse this semester's Innovate to Grow projects\./);
   });
 
-  it('forwards the loading and error state', () => {
+  it('offers Past Projects as the one outline action of the empty state', () => {
+    vi.mocked(useCurrentProjectGridData).mockReturnValue({
+      rows: [],
+      loading: false,
+      error: null,
+      refetch: vi.fn(),
+      classLabels: {},
+    });
+    render(
+      <MemoryRouter>
+        <ProjectsPage />
+      </MemoryRouter>,
+    );
+    cleanup();
+
+    render(<MemoryRouter>{viewProps.current?.emptyActions as ReactNode}</MemoryRouter>);
+    const link = screen.getByRole('link', {name: 'Search Past Projects'});
+    expect(link).toHaveAttribute('href', '/past-projects');
+    expect(link).toHaveClass('itg-btn', 'itg-btn-outline');
+  });
+
+  it('forwards the loading and error state, and the reload for "Try Again"', () => {
+    const refetch = vi.fn();
     vi.mocked(useCurrentProjectGridData).mockReturnValue({
       rows: [],
       loading: true,
       error: 'Failed to load',
-      refetch: vi.fn(),
+      refetch,
       classLabels: {},
     });
 
@@ -90,6 +115,6 @@ describe('ProjectsPage', () => {
       </MemoryRouter>,
     );
 
-    expect(viewProps.current).toMatchObject({loading: true, error: 'Failed to load'});
+    expect(viewProps.current).toMatchObject({loading: true, error: 'Failed to load', onRetry: refetch});
   });
 });
