@@ -7,13 +7,9 @@ on:
         description: Full commit SHA from the successful CI run.
         required: true
         type: string
-      build_image:
-        description: Build and publish the backend image before deployment.
-        required: false
-        type: boolean
-        default: false
 
 permissions:
+  id-token: write
   contents: read
 
 concurrency:
@@ -21,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
+  AWS_REGION: us-west-2
   ECR_REPOSITORY: itg-backend
   ECS_CLUSTER: itg-backend-cluster
   ECS_SERVICE: itg-backend-service
@@ -31,20 +27,20 @@ env:
 jobs:
   deploy:
     name: Deploy Backend
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 45
     environment:
       name: AWS ECS - Prod
       url: https://api.i2g.ucmerced.edu
     env:
-      AWS_REGION: ${{ vars.AWS_REGION || secrets.AWS_REGION || 'us-west-2' }}
-      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'itg-backend' }}
-      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'itg-backend-cluster' }}
-      ECS_SERVICE: ${{ vars.ECS_SERVICE || 'itg-backend-service' }}
-      ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION || 'aws/task-definition.json' }}
-      CONTAINER_NAME: ${{ vars.CONTAINER_NAME || 'itg-backend' }}
-      ECS_TASK_FAMILY: ${{ vars.ECS_TASK_FAMILY || 'itg-backend' }}
-      ECS_LOG_GROUP: ${{ vars.ECS_LOG_GROUP || '/ecs/itg-backend' }}
+      AWS_REGION: us-west-2
+      ECR_REPOSITORY: itg-backend
+      ECS_CLUSTER: itg-backend-cluster
+      ECS_SERVICE: itg-backend-service
+      ECS_TASK_DEFINITION: aws/task-definition.json
+      CONTAINER_NAME: itg-backend
+      ECS_TASK_FAMILY: itg-backend
+      ECS_LOG_GROUP: /ecs/itg-backend
 
     steps:
       - name: Checkout code
@@ -52,24 +48,34 @@ jobs:
         with:
           ref: ${{ inputs.deploy_sha }}
 
+      - name: Set up deployment Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::394167325273:role/itg-prod-backend-deployer
+          allowed-account-ids: "394167325273"
+          role-session-name: deploy-${{ github.run_id }}
           aws-region: ${{ env.AWS_REGION }}
+
+      - name: Load deployment configuration from AWS
+        working-directory: .
+        run: python scripts/deploy/load_config.py backend
 
       - name: Validate required deployment configuration
         env:
-          DJANGO_SECRET_KEY_SECRET_ARN: ${{ vars.DJANGO_SECRET_KEY_SECRET_ARN || secrets.DJANGO_SECRET_KEY_SECRET_ARN }}
-          DB_HOST: ${{ vars.DB_HOST }}
-          DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://api.i2g.ucmerced.edu' }}
-          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
-          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+          DJANGO_SECRET_KEY_SECRET_ARN: ${{ env.DJANGO_SECRET_KEY_SECRET_ARN }}
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD_SECRET_ARN: ${{ env.DB_PASSWORD_SECRET_ARN }}
+          AWS_STORAGE_BUCKET_NAME: ${{ env.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
+          BACKEND_URL: ${{ env.BACKEND_URL || 'https://api.i2g.ucmerced.edu' }}
+          ECS_EXECUTION_ROLE_ARN: ${{ env.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ env.ECS_TASK_ROLE_ARN }}
         run: |
           missing=()
           for name in DJANGO_SECRET_KEY_SECRET_ARN DB_HOST DB_NAME DB_USER DB_PASSWORD_SECRET_ARN AWS_STORAGE_BUCKET_NAME BACKEND_URL ECS_EXECUTION_ROLE_ARN ECS_TASK_ROLE_ARN; do
@@ -86,22 +92,6 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Set up Docker Buildx
-        if: ${{ inputs.build_image }}
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Build and tag Docker image
-        if: ${{ inputs.build_image }}
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: src
-          load: true
-          tags: |
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ inputs.deploy_sha }}
-            ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Resolve Docker image URI
         id: image
         env:
@@ -109,23 +99,24 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           set -euo pipefail
-          echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}:${DEPLOY_SHA}" >> "$GITHUB_OUTPUT"
+          digest="$(aws ecr describe-images --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=$DEPLOY_SHA" --query 'imageDetails[0].imageDigest' --output text)"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}" >> "$GITHUB_OUTPUT"
 
       - name: Pull published Docker image
-        if: ${{ !inputs.build_image }}
         run: docker pull "${{ steps.image.outputs.image }}"
 
       # SECURITY: Production secret values must live in AWS Secrets Manager
       # or SSM Parameter Store. This workflow renders only valueFrom ARNs into
       # the ECS task definition so DescribeTaskDefinition cannot reveal secret
-      # material. Configure *_SECRET_ARN repository/environment variables or
-      # GitHub secrets with the AWS secret/parameter ARNs.
+      # material. Store *_SECRET_ARN references in the AWS deployment configuration.
 
       - name: Upload Django static assets to S3
         env:
           IMAGE_URI: ${{ steps.image.outputs.image }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
-          AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
+          AWS_STORAGE_BUCKET_NAME: ${{ env.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
+          AWS_S3_REGION_NAME: ${{ env.AWS_S3_REGION_NAME || 'us-west-2' }}
         run: |
           set -euo pipefail
 
@@ -142,61 +133,52 @@ jobs:
             --cache-control "max-age=86400" \
             --size-only
 
-      - name: Push Docker image to ECR
-        if: ${{ inputs.build_image }}
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ inputs.deploy_sha }}
-        run: |
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
-
       - name: Render ECS task definition from template
         id: task-def
         env:
           IMAGE_URI: ${{ steps.image.outputs.image }}
-          DJANGO_SECRET_KEY_SECRET_ARN: ${{ vars.DJANGO_SECRET_KEY_SECRET_ARN || secrets.DJANGO_SECRET_KEY_SECRET_ARN }}
-          DB_ENGINE: ${{ vars.DB_ENGINE }}
-          DB_NAME: ${{ vars.DB_NAME }}
-          DB_USER: ${{ vars.DB_USER }}
-          DB_PASSWORD_SECRET_ARN: ${{ vars.DB_PASSWORD_SECRET_ARN || secrets.DB_PASSWORD_SECRET_ARN }}
-          DB_HOST: ${{ vars.DB_HOST }}
-          DB_PORT: ${{ vars.DB_PORT }}
-          DB_CONN_MAX_AGE: ${{ vars.DB_CONN_MAX_AGE || '0' }}
-          DB_CONN_HEALTH_CHECKS: ${{ vars.DB_CONN_HEALTH_CHECKS || 'true' }}
-          REDIS_URL_SECRET_ARN: ${{ vars.REDIS_URL_SECRET_ARN || secrets.REDIS_URL_SECRET_ARN }}
-          WEB_CONCURRENCY: ${{ vars.WEB_CONCURRENCY || '2' }}
-          UVICORN_LIMIT_CONCURRENCY: ${{ vars.UVICORN_LIMIT_CONCURRENCY || '20' }}
-          NUM_PROXIES: ${{ vars.NUM_PROXIES || '1' }}
-          DJANGO_SUPERUSER_USERNAME: ${{ vars.DJANGO_SUPERUSER_USERNAME || secrets.DJANGO_SUPERUSER_USERNAME }}
-          DJANGO_SUPERUSER_EMAIL: ${{ vars.DJANGO_SUPERUSER_EMAIL || secrets.DJANGO_SUPERUSER_EMAIL }}
-          DJANGO_SUPERUSER_FIRST_NAME: ${{ vars.DJANGO_SUPERUSER_FIRST_NAME || 'I2G' }}
-          DJANGO_SUPERUSER_LAST_NAME: ${{ vars.DJANGO_SUPERUSER_LAST_NAME || 'Admin' }}
-          DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ vars.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN || secrets.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
-          ENSURE_DEFAULT_ADMIN: ${{ vars.ENSURE_DEFAULT_ADMIN || 'false' }}
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
-          BACKEND_URL: ${{ vars.BACKEND_URL || 'https://api.i2g.ucmerced.edu' }}
-          API_BASE_URL: ${{ vars.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
-          LEGACY_VIEW_ENABLED: ${{ vars.LEGACY_VIEW_ENABLED || 'false' }}
-          LEGACY_ORIGIN_URL: ${{ vars.LEGACY_ORIGIN_URL }}
-          LEGACY_VIEWER_URL: ${{ vars.LEGACY_VIEWER_URL }}
-          LEGACY_ORIGIN_HEADER_NAME: ${{ vars.LEGACY_ORIGIN_HEADER_NAME }}
-          LEGACY_CONNECT_TIMEOUT_SECONDS: ${{ vars.LEGACY_CONNECT_TIMEOUT_SECONDS || '3' }}
-          LEGACY_READ_TIMEOUT_SECONDS: ${{ vars.LEGACY_READ_TIMEOUT_SECONDS || '15' }}
-          LEGACY_ORIGIN_HEADER_SECRET_ARN: ${{ vars.LEGACY_ORIGIN_HEADER_SECRET_ARN }}
-          DJANGO_ALLOWED_HOSTS: ${{ vars.DJANGO_ALLOWED_HOSTS }}
-          CSRF_TRUSTED_ORIGINS: ${{ vars.CSRF_TRUSTED_ORIGINS }}
-          CORS_ALLOWED_ORIGINS: ${{ vars.CORS_ALLOWED_ORIGINS }}
-          AWS_STORAGE_BUCKET_NAME: ${{ vars.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
-          AWS_S3_REGION_NAME: ${{ vars.AWS_S3_REGION_NAME || 'us-west-2' }}
-          AMPLIFY_APP_ID: ${{ vars.AMPLIFY_APP_ID || secrets.AMPLIFY_APP_ID }}
-          AMPLIFY_BACKEND_PROXY_URL: ${{ vars.AMPLIFY_BACKEND_PROXY_URL || 'https://api.i2g.ucmerced.edu' }}
-          AMPLIFY_PROXY_ADMIN_PATHS: ${{ vars.AMPLIFY_PROXY_ADMIN_PATHS || 'false' }}
+          DJANGO_SECRET_KEY_SECRET_ARN: ${{ env.DJANGO_SECRET_KEY_SECRET_ARN }}
+          DB_ENGINE: ${{ env.DB_ENGINE }}
+          DB_NAME: ${{ env.DB_NAME }}
+          DB_USER: ${{ env.DB_USER }}
+          DB_PASSWORD_SECRET_ARN: ${{ env.DB_PASSWORD_SECRET_ARN }}
+          DB_HOST: ${{ env.DB_HOST }}
+          DB_PORT: ${{ env.DB_PORT }}
+          DB_CONN_MAX_AGE: ${{ env.DB_CONN_MAX_AGE || '0' }}
+          DB_CONN_HEALTH_CHECKS: ${{ env.DB_CONN_HEALTH_CHECKS || 'true' }}
+          REDIS_URL_SECRET_ARN: ${{ env.REDIS_URL_SECRET_ARN }}
+          WEB_CONCURRENCY: ${{ env.WEB_CONCURRENCY || '2' }}
+          UVICORN_LIMIT_CONCURRENCY: ${{ env.UVICORN_LIMIT_CONCURRENCY || '20' }}
+          NUM_PROXIES: ${{ env.NUM_PROXIES || '1' }}
+          DJANGO_SUPERUSER_USERNAME: ${{ env.DJANGO_SUPERUSER_USERNAME }}
+          DJANGO_SUPERUSER_EMAIL: ${{ env.DJANGO_SUPERUSER_EMAIL }}
+          DJANGO_SUPERUSER_FIRST_NAME: ${{ env.DJANGO_SUPERUSER_FIRST_NAME || 'I2G' }}
+          DJANGO_SUPERUSER_LAST_NAME: ${{ env.DJANGO_SUPERUSER_LAST_NAME || 'Admin' }}
+          DJANGO_SUPERUSER_PASSWORD_SECRET_ARN: ${{ env.DJANGO_SUPERUSER_PASSWORD_SECRET_ARN }}
+          ENSURE_DEFAULT_ADMIN: ${{ env.ENSURE_DEFAULT_ADMIN || 'false' }}
+          FRONTEND_URL: ${{ env.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
+          BACKEND_URL: ${{ env.BACKEND_URL || 'https://api.i2g.ucmerced.edu' }}
+          API_BASE_URL: ${{ env.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
+          LEGACY_VIEW_ENABLED: ${{ env.LEGACY_VIEW_ENABLED || 'false' }}
+          LEGACY_ORIGIN_URL: ${{ env.LEGACY_ORIGIN_URL }}
+          LEGACY_VIEWER_URL: ${{ env.LEGACY_VIEWER_URL }}
+          LEGACY_ORIGIN_HEADER_NAME: ${{ env.LEGACY_ORIGIN_HEADER_NAME }}
+          LEGACY_CONNECT_TIMEOUT_SECONDS: ${{ env.LEGACY_CONNECT_TIMEOUT_SECONDS || '3' }}
+          LEGACY_READ_TIMEOUT_SECONDS: ${{ env.LEGACY_READ_TIMEOUT_SECONDS || '15' }}
+          LEGACY_ORIGIN_HEADER_SECRET_ARN: ${{ env.LEGACY_ORIGIN_HEADER_SECRET_ARN }}
+          DJANGO_ALLOWED_HOSTS: ${{ env.DJANGO_ALLOWED_HOSTS }}
+          CSRF_TRUSTED_ORIGINS: ${{ env.CSRF_TRUSTED_ORIGINS }}
+          CORS_ALLOWED_ORIGINS: ${{ env.CORS_ALLOWED_ORIGINS }}
+          AWS_STORAGE_BUCKET_NAME: ${{ env.AWS_STORAGE_BUCKET_NAME || 'itg-static-assets' }}
+          AWS_S3_REGION_NAME: ${{ env.AWS_S3_REGION_NAME || 'us-west-2' }}
+          AMPLIFY_APP_ID: ${{ env.AMPLIFY_APP_ID }}
+          AMPLIFY_BACKEND_PROXY_URL: ${{ env.AMPLIFY_BACKEND_PROXY_URL || 'https://api.i2g.ucmerced.edu' }}
+          AMPLIFY_PROXY_ADMIN_PATHS: ${{ env.AMPLIFY_PROXY_ADMIN_PATHS || 'false' }}
           AMPLIFY_CONFIG_REVISION: ${{ github.run_id }}.${{ github.run_attempt }}
-          BACKGROUND_JOBS_ENABLED: ${{ vars.BACKGROUND_JOBS_ENABLED || 'false' }}
-          BACKGROUND_JOB_METRICS_NAMESPACE: ${{ vars.BACKGROUND_JOB_METRICS_NAMESPACE }}
-          ECS_EXECUTION_ROLE_ARN: ${{ vars.ECS_EXECUTION_ROLE_ARN || secrets.ECS_EXECUTION_ROLE_ARN }}
-          ECS_TASK_ROLE_ARN: ${{ vars.ECS_TASK_ROLE_ARN || secrets.ECS_TASK_ROLE_ARN }}
+          BACKGROUND_JOBS_ENABLED: ${{ env.BACKGROUND_JOBS_ENABLED || 'false' }}
+          BACKGROUND_JOB_METRICS_NAMESPACE: ${{ env.BACKGROUND_JOB_METRICS_NAMESPACE }}
+          ECS_EXECUTION_ROLE_ARN: ${{ env.ECS_EXECUTION_ROLE_ARN }}
+          ECS_TASK_ROLE_ARN: ${{ env.ECS_TASK_ROLE_ARN }}
           ECS_TASK_FAMILY: ${{ env.ECS_TASK_FAMILY }}
           ECS_LOG_GROUP: ${{ env.ECS_LOG_GROUP }}
         run: |
@@ -393,6 +375,9 @@ jobs:
           python aws/validate_backend_task_definition.py rendered-task-definition.json --rendered
           echo "task-definition=rendered-task-definition.json" >> "$GITHUB_OUTPUT"
 
+      - name: Run database migration before replacing the service
+        run: python scripts/deploy/migrate_ecs.py rendered-task-definition.json
+
       - name: Deploy to ECS
         id: deploy-ecs
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
@@ -435,8 +420,8 @@ jobs:
 
       - name: Smoke check deployed health endpoint and CORS
         env:
-          FRONTEND_URL: ${{ vars.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
-          API_BASE_URL: ${{ vars.BACKEND_SMOKE_URL || vars.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
+          FRONTEND_URL: ${{ env.FRONTEND_URL || 'https://i2g.ucmerced.edu' }}
+          API_BASE_URL: ${{ env.BACKEND_SMOKE_URL || env.VITE_API_BASE_URL || 'https://api.i2g.ucmerced.edu' }}
         run: |
           set -euo pipefail
 

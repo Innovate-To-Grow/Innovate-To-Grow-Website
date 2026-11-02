@@ -1,6 +1,7 @@
-import {act, cleanup, render, screen, waitFor} from '@testing-library/react';
+import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import {MemoryRouter, Route, Routes} from 'react-router';
+import {useEffect} from 'react';
+import {Link, RouterProvider, createMemoryRouter} from 'react-router';
 
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
 
@@ -10,7 +11,8 @@ import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
  * Contract:
  *   - Fetches /cms/embed/<slug>/ on mount via fetchCMSEmbed()
  *   - Renders the returned block inside a wrapper div using page_css_class
- *   - Injects <base target="_blank"> so internal links pop out of the iframe
+ *   - Injects <base target="_blank"> so internal links pop out of the iframe, and opens
+ *     router navigations to other pages in a new tab
  *   - Posts {type: 'i2g-embed-resize', slug, height} to parent on content resize
  *   - Shows "Embed not found." on 404 / fetch error
  */
@@ -34,26 +36,48 @@ vi.mock('@/features/cms/components/BlockRenderer', () => ({
   ),
 }));
 
+const EmbeddedSchedule = ({scheduleId}: {scheduleId?: string | null}) => (
+  <div data-testid="embedded-schedule-route">
+    {scheduleId === undefined ? 'no-prop' : scheduleId || 'active-schedule'}
+  </div>
+);
+
+// Like the project pages: a router link to a page outside the embed.
+const EmbeddedProjects = () => <Link to="/projects/abc">Project ABC</Link>;
+
+// Records the body sheet in place when its first effect runs, i.e. the one the widget first paints with.
+const sheetsSeenOnMount: Array<string | undefined> = [];
+const SheetProbe = () => {
+  useEffect(() => {
+    sheetsSeenOnMount.push(document.getElementById('itg-embed-body')?.textContent);
+  }, []);
+  return <p>Sheet probe</p>;
+};
+
 const appRoutes = {
   supportsSchedule: (route?: string | null) => route === '/schedule',
   resolve: (route?: string | null) =>
-    route === '/schedule'
-      ? ({scheduleId}: {scheduleId?: string | null}) => (
-          <div data-testid="embedded-schedule-route">
-            {scheduleId === undefined ? 'no-prop' : scheduleId || 'active-schedule'}
-          </div>
-        )
-      : null,
+    ({'/schedule': EmbeddedSchedule, '/current-projects': EmbeddedProjects, '/sheet-probe': SheetProbe})[
+      route ?? ''
+    ] ?? null,
 };
 
-const renderAtSlug = (slug: string) =>
+// A data router, as in the app: the page blocks navigations that would leave the embed.
+const renderAt = (url: string) =>
   render(
-    <MemoryRouter initialEntries={[`/_embed/${slug}`]}>
-      <Routes>
-        <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-      </Routes>
-    </MemoryRouter>,
+    <RouterProvider
+      router={createMemoryRouter(
+        [{path: '/_embed/:embedSlug', element: <EmbedBlockPage appRoutes={appRoutes} />}],
+        {initialEntries: [url]},
+      )}
+    />,
   );
+
+const renderAtSlug = (slug: string) => renderAt(`/_embed/${slug}`);
+
+// Whether the click behind a navigation may still open a tab (jsdom has no `navigator.userActivation`).
+const setUserActivation = (value: {isActive: boolean} | undefined) =>
+  Object.defineProperty(window.navigator, 'userActivation', {configurable: true, value});
 
 // jsdom does not implement ResizeObserver; the component uses it to watch
 // document height for the iframe-resize postMessage. A no-op stub is enough.
@@ -76,6 +100,7 @@ describe('EmbedBlockPage', () => {
     document
       .querySelectorAll('base, style#itg-embed-body, style#itg-embed-hide-sections')
       .forEach((n) => n.remove());
+    setUserActivation(undefined);
     vi.restoreAllMocks();
   });
 
@@ -160,6 +185,8 @@ describe('EmbedBlockPage', () => {
       configurable: true,
       value: {postMessage: postMessageSpy},
     });
+    // jsdom lays nothing out; the rendered widget measures 640px.
+    vi.spyOn(document.documentElement, 'getBoundingClientRect').mockReturnValue({height: 640} as DOMRect);
 
     fetchCMSEmbedMock.mockResolvedValue({
       blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}],
@@ -169,10 +196,7 @@ describe('EmbedBlockPage', () => {
     renderAtSlug('widget');
 
     await waitFor(() => {
-      expect(postMessageSpy).toHaveBeenCalledWith(
-        expect.objectContaining({type: 'i2g-embed-resize', slug: 'widget'}),
-        '*',
-      );
+      expect(postMessageSpy).toHaveBeenCalledWith({type: 'i2g-embed-resize', slug: 'widget', height: 640}, '*');
     });
 
     // Restore
@@ -227,13 +251,7 @@ describe('EmbedBlockPage', () => {
       hide_section_titles: false,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/widget?hide-titles=1']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/widget?hide-titles=1');
 
     await waitFor(() => {
       const tag = document.getElementById('itg-embed-hide-sections');
@@ -256,6 +274,10 @@ describe('EmbedBlockPage', () => {
       expect(tag).not.toBeNull();
       expect(tag?.textContent).toContain('[data-embed-section="schedule-projects"]');
       expect(tag?.textContent).toContain('.section-title');
+      // Builder section headings are clipped, not removed: they stay headings and focus targets.
+      expect(tag?.textContent).toContain(
+        '[data-embed-section="section-title"] { position: absolute !important; width: 1px !important;',
+      );
     });
   });
 
@@ -267,13 +289,7 @@ describe('EmbedBlockPage', () => {
       hide_section_titles: false,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/widget?hide-sections=schedule_header,schedule_awards']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/widget?hide-sections=schedule_header,schedule_awards');
 
     await waitFor(() => {
       const tag = document.getElementById('itg-embed-hide-sections');
@@ -291,13 +307,7 @@ describe('EmbedBlockPage', () => {
       hide_section_titles: false,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/widget?hide-sections=also-bad']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/widget?hide-sections=also-bad');
 
     await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
     expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
@@ -312,13 +322,7 @@ describe('EmbedBlockPage', () => {
         hide_section_titles: false,
       });
 
-      render(
-        <MemoryRouter initialEntries={[`/_embed/widget?hide-titles=${value}`]}>
-          <Routes>
-            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-          </Routes>
-        </MemoryRouter>,
-      );
+      renderAt(`/_embed/widget?hide-titles=${value}`);
 
       await waitFor(() => {
         expect(document.getElementById('itg-embed-hide-sections')).not.toBeNull();
@@ -335,13 +339,7 @@ describe('EmbedBlockPage', () => {
         hide_section_titles: false,
       });
 
-      render(
-        <MemoryRouter initialEntries={[`/_embed/widget?hide-titles=${value}`]}>
-          <Routes>
-            <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-          </Routes>
-        </MemoryRouter>,
-      );
+      renderAt(`/_embed/widget?hide-titles=${value}`);
 
       await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
       expect(document.getElementById('itg-embed-hide-sections')).toBeNull();
@@ -355,13 +353,7 @@ describe('EmbedBlockPage', () => {
       hide_section_titles: true,
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/widget?hide-titles=false']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/widget?hide-titles=false');
 
     await waitFor(() => {
       expect(document.getElementById('itg-embed-hide-sections')).not.toBeNull();
@@ -420,15 +412,7 @@ describe('EmbedBlockPage', () => {
       page_css_class: '',
     });
 
-    render(
-      <MemoryRouter
-        initialEntries={['/_embed/schedule-widget?schedule_id=6F1D2C3B-4A5E-4F60-8A9B-0C1D2E3F4A5B']}
-      >
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/schedule-widget?schedule_id=6F1D2C3B-4A5E-4F60-8A9B-0C1D2E3F4A5B');
 
     await waitFor(() =>
       expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent(
@@ -446,13 +430,7 @@ describe('EmbedBlockPage', () => {
       page_css_class: '',
     });
 
-    render(
-      <MemoryRouter initialEntries={['/_embed/schedule-widget?schedule_id=../../etc']}>
-        <Routes>
-          <Route path="/_embed/:embedSlug" element={<EmbedBlockPage appRoutes={appRoutes} />} />
-        </Routes>
-      </MemoryRouter>,
-    );
+    renderAt('/_embed/schedule-widget?schedule_id=../../etc');
 
     await waitFor(() =>
       expect(screen.getByTestId('embedded-schedule-route')).toHaveTextContent('schedule-123'),
@@ -490,5 +468,126 @@ describe('EmbedBlockPage', () => {
     unmount();
     expect(document.getElementById('itg-embed-body')).toBeNull();
     expect(document.head.querySelector('base')).toBeNull();
+  });
+
+  it('reports the content height, so the frame shrinks when the content does', async () => {
+    const postMessageSpy = vi.fn();
+    Object.defineProperty(window, 'parent', {configurable: true, value: {postMessage: postMessageSpy}});
+    let onResize: () => void = () => {};
+    (globalThis as unknown as {ResizeObserver: unknown}).ResizeObserver = class {
+      constructor(callback: () => void) {
+        onResize = callback;
+      }
+      observe() {}
+      disconnect() {}
+    };
+    // In a frame, scrollHeight never drops below the frame's own (last reported) height.
+    Object.defineProperty(document.documentElement, 'scrollHeight', {configurable: true, value: 1200});
+    let contentHeight = 1200;
+    vi.spyOn(document.documentElement, 'getBoundingClientRect').mockImplementation(
+      () => ({height: contentHeight}) as DOMRect,
+    );
+    fetchCMSEmbedMock.mockResolvedValue({blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}]});
+
+    renderAtSlug('widget');
+    await waitFor(() => expect(postMessageSpy).toHaveBeenCalledWith(expect.objectContaining({height: 1200}), '*'));
+
+    contentHeight = 400.4;
+    onResize();
+    expect(postMessageSpy).toHaveBeenLastCalledWith({type: 'i2g-embed-resize', slug: 'widget', height: 401}, '*');
+
+    // Nothing rendered (a lazy page still loading): the frame keeps its height instead of collapsing.
+    contentHeight = 0;
+    postMessageSpy.mockClear();
+    onResize();
+    expect(postMessageSpy).not.toHaveBeenCalled();
+
+    Object.defineProperty(window, 'parent', {configurable: true, value: window});
+    Reflect.deleteProperty(document.documentElement, 'scrollHeight');
+  });
+
+  it('keeps block widgets transparent but gives app-route widgets the page background', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({blocks: [{block_type: 'rich_text', sort_order: 0, data: {}}]});
+    renderAtSlug('blocks-widget');
+    await waitFor(() => expect(screen.getByTestId('blk-rich_text')).toBeInTheDocument());
+    expect(document.getElementById('itg-embed-body')?.textContent).toContain('background: transparent !important');
+    expect(document.getElementById('itg-embed-body')?.textContent).not.toContain('.cms-embed-app-route');
+    cleanup();
+
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+    await screen.findByRole('link', {name: 'Project ABC'});
+    const css = document.getElementById('itg-embed-body')?.textContent;
+    expect(css).toContain('background: var(--itg-color-bg-page, #fff) !important');
+    expect(css).not.toContain('transparent');
+  });
+
+  it('pads an app-route widget inside its frame: 16px, and the 20px phone gutter at 768px and below', async () => {
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+    await screen.findByRole('link', {name: 'Project ABC'});
+
+    expect(screen.getByRole('link', {name: 'Project ABC'}).closest('.cms-embed-app-route')).not.toBeNull();
+    const css = (document.getElementById('itg-embed-body')?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(css).toMatch(/^@layer itg\.components \{/);
+    expect(css).toContain('.cms-embed-app-route { box-sizing: border-box; padding: 16px; }');
+    expect(css).toContain('@media (max-width: 768px) { .cms-embed-app-route { padding: 20px; } }');
+  });
+
+  it('has the app-route sheet in place before the widget first paints', async () => {
+    sheetsSeenOnMount.length = 0;
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/sheet-probe', blocks: []});
+    renderAtSlug('probe-widget');
+    await screen.findByText('Sheet probe');
+
+    expect(sheetsSeenOnMount).toHaveLength(1);
+    expect(sheetsSeenOnMount[0]).toContain('.cms-embed-app-route');
+  });
+
+  it('opens app-route links to other pages in a new tab, keeping the widget', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+
+    fireEvent.click(await screen.findByRole('link', {name: 'Project ABC'}));
+
+    expect(open).toHaveBeenCalledWith(`${window.location.origin}/projects/abc`, '_blank');
+    expect(screen.getByRole('link', {name: 'Project ABC'})).toBeInTheDocument();
+    expect(document.head.querySelector('base')).not.toBeNull();
+  });
+
+  it('offers the page in a live region, brought into focus, when no click can open the tab', async () => {
+    setUserActivation({isActive: false});
+    vi.spyOn(document, 'hasFocus').mockReturnValue(true);
+    const open = vi.spyOn(window, 'open').mockReturnValue({} as Window);
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+
+    // Present while empty, so screen readers announce the link when it fills in.
+    const status = await screen.findByRole('status');
+    expect(status).toBeEmptyDOMElement();
+    fireEvent.click(await screen.findByRole('link', {name: 'Project ABC'}));
+
+    expect(open).not.toHaveBeenCalled();
+    const fallback = screen.getByRole('link', {name: 'Open the page in a new tab'});
+    expect(status).toContainElement(fallback);
+    expect(fallback).toHaveAttribute('href', '/projects/abc');
+    expect(fallback).toHaveFocus();
+
+    setUserActivation({isActive: true});
+    fireEvent.click(fallback);
+    expect(open).toHaveBeenCalledWith(`${window.location.origin}/projects/abc`, '_blank');
+    expect(screen.queryByRole('link', {name: 'Open the page in a new tab'})).toBeNull();
+  });
+
+  it('does not pull focus into the widget while the user is elsewhere on the page', async () => {
+    setUserActivation({isActive: false});
+    vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+    fetchCMSEmbedMock.mockResolvedValue({widget_type: 'app_route', app_route: '/current-projects', blocks: []});
+    renderAtSlug('projects-widget');
+
+    fireEvent.click(await screen.findByRole('link', {name: 'Project ABC'}));
+
+    expect(screen.getByRole('link', {name: 'Open the page in a new tab'})).not.toHaveFocus();
   });
 });

@@ -21,6 +21,8 @@ const mockIsDefinitiveAuthFailure = vi.hoisted(() =>
 );
 
 vi.mock('@/lib/api', () => ({api: apiMock}));
+// The shared test setup stubs the archive search; this file tests the real one.
+vi.unmock('@/features/projects/api/archive');
 vi.mock('@/features/auth', () => ({
   authApi: authApiMock,
   getAccessToken: mockGetAccessToken,
@@ -28,9 +30,11 @@ vi.mock('@/features/auth', () => ({
 }));
 
 import {
+  PROJECT_DETAIL_CONCURRENCY,
   compactProjectToGridRow,
   createPastProjectShare,
   deleteShare,
+  fetchAllPastProjectArchive,
   fetchCurrentProjects,
   fetchCurrentProjectsFull,
   fetchPastProjectArchive,
@@ -39,13 +43,17 @@ import {
   fetchProjectDetail,
   hydrateProjectGridRowsSettled,
   listMyShares,
+  needsProjectGridHydration,
+  rememberProjectDetail,
   scheduleProjectToGridRow,
+  searchPastProjectArchiveIds,
   searchPastProjectsWithAI,
   toProjectGridRow,
   updatePastProjectShare,
   type ProjectGridRow,
   type ProjectTableRow,
 } from '@/features/projects/api';
+import {MAX_ARCHIVE_SEARCH_MATCHES} from '@/features/projects/api/archive';
 
 const rows = [
   {
@@ -171,6 +179,22 @@ describe('past project share API', () => {
       '/projects/past-shares/share-1/',
     );
   });
+
+  it('keeps a share id inside its path segment, whatever the link holds', async () => {
+    // React Router decodes %2F and %3F in the route param, so a crafted link hands over "../mine" or "a?b".
+    mockGetAccessToken.mockReturnValue(null);
+    apiMock.get.mockResolvedValue({data: {id: 'x'}});
+    authApiMock.patch.mockResolvedValue({data: {id: 'x'}});
+    authApiMock.delete.mockResolvedValue({status: 204});
+
+    await fetchPastProjectShare('../mine');
+    await updatePastProjectShare('a?b=1', {version: 1});
+    await deleteShare('../../event/projects');
+
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/past-shares/..%2Fmine/');
+    expect(authApiMock.patch).toHaveBeenCalledWith('/projects/past-shares/a%3Fb%3D1/', {version: 1});
+    expect(authApiMock.delete).toHaveBeenCalledWith('/projects/past-shares/..%2F..%2Fevent%2Fprojects/');
+  });
 });
 
 const makeTableRow = (overrides: Partial<ProjectTableRow> = {}): ProjectTableRow => ({
@@ -223,6 +247,29 @@ describe('project grid row mappers', () => {
     });
     expect(scheduleProjectToGridRow(scheduleRow)).not.toHaveProperty('id');
     expect(scheduleProjectToGridRow({...scheduleRow, is_presenting: false}).is_presenting).toBe('No');
+  });
+
+  it('keeps the student names the archive sends, so a search finds a team by its members', () => {
+    const compact = {
+      id: 'project-1',
+      semester_label: '2025-1 Spring',
+      class_code: 'CAP',
+      team_number: '101',
+      team_name: 'Team A',
+      project_title: 'Project A',
+      organization: 'Org A',
+      industry: 'Energy',
+      student_names: 'Brian Arroyo, Joel Gonzalez',
+      track: null,
+      presentation_order: null,
+    };
+    const row = compactProjectToGridRow(compact);
+
+    expect(row).toMatchObject({abstract: '', student_names: 'Brian Arroyo, Joel Gonzalez'});
+    // The abstract still has to be loaded from the detail endpoint.
+    expect(needsProjectGridHydration(row)).toBe(true);
+    expect(needsProjectGridHydration({...row, abstract: 'Loaded'})).toBe(false);
+    expect(needsProjectGridHydration({...row, id: undefined})).toBe(false);
   });
 
   it('maps a compact archive row with empty detail fields', () => {
@@ -282,6 +329,7 @@ describe('project archive and detail fetch helpers', () => {
     expect(apiMock.get).toHaveBeenCalledWith('/projects/archive/', {
       params: {page: 2, page_size: 50, year: 2025, season: 1},
       signal,
+      timeout: 15_000,
     });
   });
 
@@ -291,7 +339,71 @@ describe('project archive and detail fetch helpers', () => {
     expect(apiMock.get).toHaveBeenCalledWith('/projects/archive/', {
       params: {},
       signal: undefined,
+      timeout: 15_000,
     });
+  });
+
+  it('requests every archive page after the first at once, not one after another', async () => {
+    const signal = new AbortController().signal;
+    const pending = new Map<number, (results: {id: string}[]) => void>();
+    apiMock.get.mockImplementation((_url: string, {params}: {params: {page: number}}) =>
+      params.page === 1
+        ? Promise.resolve({data: {count: 250, next: null, previous: null, results: [{id: 'p1'}]}})
+        : new Promise((resolve) => {
+            pending.set(params.page, (results) => resolve({data: {count: 250, next: null, previous: null, results}}));
+          }),
+    );
+
+    const loaded = fetchAllPastProjectArchive({year: 2025}, signal);
+    // Pages 2 and 3 are both requested before either answers.
+    await vi.waitFor(() => expect(pending.size).toBe(2));
+    expect(apiMock.get.mock.calls.map(([, config]) => config.params)).toEqual([
+      {year: 2025, page: 1, page_size: 100},
+      {year: 2025, page: 2, page_size: 100},
+      {year: 2025, page: 3, page_size: 100},
+    ]);
+    expect(apiMock.get.mock.calls.every(([, config]) => config.signal === signal)).toBe(true);
+
+    // The rows keep page order whichever page answers first.
+    pending.get(3)?.([{id: 'p3'}]);
+    pending.get(2)?.([{id: 'p2'}]);
+    await expect(loaded).resolves.toEqual([{id: 'p1'}, {id: 'p2'}, {id: 'p3'}]);
+  });
+
+  it('makes a single request for an archive that fits on one page', async () => {
+    apiMock.get.mockResolvedValue({data: {count: 2, next: null, previous: null, results: [{id: 'a'}, {id: 'b'}]}});
+
+    await expect(fetchAllPastProjectArchive()).resolves.toEqual([{id: 'a'}, {id: 'b'}]);
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
+  });
+
+  it("asks the archive for a search's matches on every page and returns their ids", async () => {
+    const signal = new AbortController().signal;
+    apiMock.get.mockImplementation((_url: string, {params}: {params: {page: number}}) =>
+      Promise.resolve({data: {count: 150, next: null, previous: null, results: [{id: `match-${params.page}`}]}}),
+    );
+
+    const ids = await searchPastProjectArchiveIds('EnergyPro', signal);
+
+    expect(ids).toEqual(new Set(['match-1', 'match-2']));
+    expect(apiMock.get.mock.calls.map(([url, config]) => [url, config.params, config.signal === signal])).toEqual([
+      ['/projects/archive/', {search: 'EnergyPro', page: 1, page_size: 100}, true],
+      ['/projects/archive/', {search: 'EnergyPro', page: 2, page_size: 100}, true],
+    ]);
+  });
+
+  it('declines, after one page, a search the archive matches in more projects than a list fetches', async () => {
+    // "the" is in 900 of 920 abstracts: its matches would be the whole archive again, and say nothing about it.
+    apiMock.get.mockResolvedValue({
+      data: {count: MAX_ARCHIVE_SEARCH_MATCHES + 1, next: null, previous: null, results: [{id: 'match-1'}]},
+    });
+
+    await expect(searchPastProjectArchiveIds('the')).resolves.toBeNull();
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
+
+    apiMock.get.mockResolvedValue({data: {count: MAX_ARCHIVE_SEARCH_MATCHES, next: null, previous: null, results: []}});
+    await expect(searchPastProjectArchiveIds('system')).resolves.toEqual(new Set());
+    expect(apiMock.get).toHaveBeenCalledTimes(1 + MAX_ARCHIVE_SEARCH_MATCHES / 100);
   });
 
   it('fetches the legacy past projects endpoint with page query params', async () => {
@@ -310,6 +422,7 @@ describe('project archive and detail fetch helpers', () => {
     expect(authApiMock.post).toHaveBeenCalledWith('/projects/past-ai-search/', {
       query: 'solar',
       limit: 10,
+      scope: 'past',
     });
   });
 
@@ -319,6 +432,7 @@ describe('project archive and detail fetch helpers', () => {
     expect(authApiMock.post).toHaveBeenCalledWith('/projects/past-ai-search/', {
       query: 'solar',
       limit: 25,
+      scope: 'past',
     });
   });
 
@@ -327,6 +441,33 @@ describe('project archive and detail fetch helpers', () => {
     apiMock.get.mockResolvedValue({data: {id: 'project-1'}});
     await expect(fetchProjectDetail('project-1', signal)).resolves.toEqual({id: 'project-1'});
     expect(apiMock.get).toHaveBeenCalledWith('/projects/project-1/', {signal});
+  });
+
+  it('requests a project id as one path segment, so a crafted link cannot reach another endpoint', async () => {
+    apiMock.get.mockResolvedValue({data: {id: 'x'}});
+
+    await fetchProjectDetail('../../event/projects');
+    await fetchProjectDetail('abc?x=1', undefined, 5000);
+
+    expect(apiMock.get).toHaveBeenNthCalledWith(1, '/projects/..%2F..%2Fevent%2Fprojects/', {signal: undefined});
+    expect(apiMock.get).toHaveBeenNthCalledWith(2, '/projects/abc%3Fx%3D1/', {signal: undefined, timeout: 5000});
+  });
+
+  it('does not request again the details a row already loaded', async () => {
+    rememberProjectDetail({...makeTableRow({id: 'cached-1', project_title: 'Cached'}), abstract: 'Cached abstract'});
+    apiMock.get.mockResolvedValue({data: makeTableRow({id: 'fresh-1', project_title: 'Fresh'})});
+
+    const {rows: result} = await hydrateProjectGridRowsSettled([
+      {id: 'cached-1', ...makeGridRowBase(), abstract: '', student_names: ''},
+      {id: 'fresh-1', ...makeGridRowBase(), abstract: '', student_names: ''},
+    ]);
+
+    expect(apiMock.get).toHaveBeenCalledTimes(1);
+    expect(apiMock.get).toHaveBeenCalledWith('/projects/fresh-1/', expect.anything());
+    expect(result.map((row) => [row.project_title, row.abstract])).toEqual([
+      ['Cached', 'Cached abstract'],
+      ['Fresh', 'An abstract'],
+    ]);
   });
 
   it('hydrates only the rows that need it and leaves the rest untouched', async () => {
@@ -385,7 +526,7 @@ describe('project archive and detail fetch helpers', () => {
     const {rows: result} = await hydrateProjectGridRowsSettled(rows);
 
     // Selecting a large page of archive rows must not open one request per row at once.
-    expect(peak).toBeLessThanOrEqual(4);
+    expect(peak).toBe(PROJECT_DETAIL_CONCURRENCY);
     expect(apiMock.get).toHaveBeenCalledTimes(20);
     expect(result).toHaveLength(20);
     expect(result[0].project_title).toBe('Fetched project-0');
@@ -483,9 +624,9 @@ describe('hydrateProjectGridRowsSettled retries and partial results', () => {
     const {failedIndexes} = await pending;
 
     expect(failedIndexes).toHaveLength(200);
-    // Each row takes 1.2 s of retries, so 4 at a time get through about 100 rows before failures have gone on
+    // Each row takes 1.2 s of retries, so 6 at a time get through about 150 rows before failures have gone on
     // for 30 s; the rest are never requested (every row tried 3 times would be 600 requests).
-    expect(apiMock.get.mock.calls.length).toBeLessThan(400);
+    expect(apiMock.get.mock.calls.length).toBeLessThan(500);
     expect(apiMock.get).not.toHaveBeenCalledWith('/projects/p-199/', expect.anything());
   });
 
@@ -506,8 +647,8 @@ describe('hydrateProjectGridRowsSettled retries and partial results', () => {
     await vi.runAllTimersAsync();
     const {failedIndexes} = await pending;
 
-    // Only the 4 rows in flight during the sleep failed; the others were requested once it was over, and loaded.
-    expect(failedIndexes).toEqual([0, 1, 2, 3]);
+    // Only the rows in flight during the sleep failed; the others were requested once it was over, and loaded.
+    expect(failedIndexes).toEqual(Array.from({length: PROJECT_DETAIL_CONCURRENCY}, (_, index) => index));
   });
 
   it('keeps going while other rows load, however long one broken project takes', async () => {

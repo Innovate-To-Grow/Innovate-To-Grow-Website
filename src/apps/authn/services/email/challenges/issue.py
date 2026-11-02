@@ -8,11 +8,14 @@ from django.utils import timezone
 
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email.auth_email import normalize_email
+from apps.core.services.background_jobs.delivery import deferral_of
 
 from .degradation import max_attempts_for, recent_email_failures
 from .queries import assert_within_limit, expire_queryset
 
 logger = logging.getLogger(__name__)
+# The delivery-rate limiter held the code back (the provider asked to wait, or a limit is reached): nothing was sent.
+BUSY_MESSAGE = "Email delivery is busy right now; please try again in about {seconds} seconds."
 
 
 @transaction.atomic
@@ -122,10 +125,14 @@ def issue_email_challenge(
         if outcome != PROVIDER_OUTCOME_UNCERTAIN:
             with transaction.atomic():
                 EmailAuthChallenge.objects.filter(pk=challenge.pk).delete()
+        deferred = deferral_of(exc)
         raise api.AuthChallengeDeliveryError(
-            "Failed to send verification email.",
+            BUSY_MESSAGE.format(seconds=max(1, deferred.retry_after))
+            if deferred
+            else "Failed to send verification email.",
             outcome=outcome,
             challenge_id=str(challenge.pk),
+            retry_after=deferred.retry_after if deferred else None,
         ) from exc
 
     return challenge

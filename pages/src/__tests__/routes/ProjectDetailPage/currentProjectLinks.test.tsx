@@ -93,14 +93,14 @@ describe('current project links', () => {
     expect(screen.getByText('Abstract-201')).toBeInTheDocument();
   });
 
-  it('opens a populated project page from the "Open the project page" link on Presenting Teams', async () => {
+  it('opens a populated project page from the "Open the Project Page" link on Presenting Teams', async () => {
     renderSite('/presenting-teams');
 
     await screen.findByRole('heading', {level: 1, name: 'Presenting Teams'});
     const table = desktopTable();
     const row = within(table).getByRole('link', {name: 'Sustainability Dashboard'}).closest('tr') as HTMLElement;
     fireEvent.click(within(row).getByRole('button', {name: /details/i}));
-    const openPage = within(table).getByRole('link', {name: 'Open the project page'});
+    const openPage = within(table).getByRole('link', {name: 'Open the Project Page for Sustainability Dashboard'});
     expect(openPage).toHaveAttribute('href', `/projects/${DASHBOARD_PROJECT_ID}`);
     fireEvent.click(openPage);
 

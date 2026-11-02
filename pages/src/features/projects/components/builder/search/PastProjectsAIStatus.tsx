@@ -1,3 +1,5 @@
+import {LoadingIndicator} from '@/components/LoadingIndicator';
+
 export type PastProjectsStatusTone = 'error' | 'info' | 'loading' | 'success';
 
 interface PastProjectsAIStatusProps {
@@ -10,15 +12,8 @@ interface PastProjectsAIStatusProps {
   announce?: boolean;
 }
 
-function StatusCheckIcon() {
-  return (
-    <svg className="past-projects-status-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M5 12l5 5L20 7" />
-    </svg>
-  );
-}
-
-// Status line for AI search and for per-table saves.
+// Status line for AI search and for per-table saves. No icons: the words and the tone's colour carry the outcome, and
+// an error is also an alert. While something loads, the line is the site's loading indicator.
 export const PastProjectsAIStatus = ({message, tone, announce = true}: PastProjectsAIStatusProps) => (
   <div
     className={`past-projects-ai-search-message is-${tone}`}
@@ -26,8 +21,7 @@ export const PastProjectsAIStatus = ({message, tone, announce = true}: PastProje
     aria-live={announce ? (tone === 'error' ? 'assertive' : 'polite') : undefined}
   >
     <div className="past-projects-ai-search-message-content">
-      {tone === 'success' ? <StatusCheckIcon /> : null}
-      <span>{message}</span>
+      {tone === 'loading' ? <LoadingIndicator label={message} /> : <span>{message}</span>}
     </div>
   </div>
 );

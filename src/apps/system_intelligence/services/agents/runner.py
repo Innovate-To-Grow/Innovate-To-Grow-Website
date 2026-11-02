@@ -5,6 +5,7 @@ from typing import Any
 
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.services.bedrock.clients.parameters import supports_temperature
 
 from .constants import (
     AGENT_NAME,
@@ -106,6 +107,7 @@ def build_agent(
             temperature=chat_config.temperature,
             include_temperature=include_temperature,
             extra_args=bedrock_litellm_credentials(aws_config),
+            model_id=model_id,
         ),
         tools=build_agent_tools(include_writes=tool_include_writes, include_exports=include_exports),
     )
@@ -132,11 +134,12 @@ def build_model_settings(
     temperature: float | None,
     include_temperature: bool,
     extra_args: dict[str, Any] | None = None,
+    model_id: str = "",
 ):
     from agents import ModelSettings
 
     kwargs: dict[str, Any] = {"max_tokens": max_tokens}
-    if include_temperature:
+    if include_temperature and supports_temperature(model_id):
         kwargs["temperature"] = temperature
     if extra_args:
         # Threaded into litellm.acompletion(**kwargs) by LitellmModel; carries the
@@ -204,6 +207,7 @@ async def run_tool_free_agent_async(
             temperature=temperature,
             include_temperature=include_temperature,
             extra_args=bedrock_litellm_credentials(aws_config),
+            model_id=model_id,
         ),
         tools=[],
     )

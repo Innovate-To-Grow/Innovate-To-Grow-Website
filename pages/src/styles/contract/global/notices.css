@@ -42,6 +42,11 @@
   color: var(--itg-color-error);
 }
 
+/* A line reporting that an action worked (Link copied.); pairs with .itg-error. */
+.itg-success {
+  color: var(--itg-color-success);
+}
+
 .itg-important {
   color: var(--itg-color-error);
   font-weight: 700;
@@ -69,6 +74,16 @@
 
 .itg-empty-state > h1 {
   font-size: var(--itg-font-size-h1);
+}
+
+/* A title nested lower in the outline (a search table's or the draft's no-results state) takes its own level's
+   size, so it never outranks the heading above it. */
+h3.itg-empty-state-title {
+  font-size: var(--itg-font-size-h3);
+}
+
+h4.itg-empty-state-title {
+  font-size: var(--itg-font-size-h4);
 }
 
 .itg-empty-state-text,
@@ -112,10 +127,12 @@
   font-size: var(--itg-font-size-body);
 }
 
+/* The same 24px spinner as the LoadingIndicator component (components/LoadingIndicator). */
 .itg-loading::before {
   content: '';
-  width: 36px;
-  height: 36px;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
   border: 3px solid var(--itg-color-border);
   border-top-color: var(--itg-color-primary);
   border-radius: 50%;

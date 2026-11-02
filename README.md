@@ -16,7 +16,7 @@ Official platform of **Innovate To Grow | University of California, Merced | Sch
 | API | [Index](docs/api/index.md) · [Auth & mail](docs/api/auth-and-mail.md) · [CMS & news](docs/api/cms-and-news.md) · [Events](docs/api/events.md) · [Projects](docs/api/projects.md) · [Routing](docs/api/routing-overview.md) |
 | CMS & Admin | [Index](docs/cms-admin/index.md) · [Content management](docs/cms-admin/content-management.md) · [Django admin](docs/cms-admin/django-admin.md) · [Members & mail](docs/cms-admin/member-and-mail-tools.md) · [Operations](docs/cms-admin/operations.md) |
 | Deployment | [Index](docs/deployment/index.md) · [Environments](docs/deployment/environments.md) · [Backend](docs/deployment/backend.md) · [Frontend](docs/deployment/frontend.md) · [CI/CD](docs/deployment/ci-cd.md) · [Local development](docs/deployment/local-development.md) |
-| Integrations | [Google Sheets](docs/integrations/google-sheets/) |
+| Integrations | [Google Sheets](docs/integrations/google-sheets/) · [Microsoft Graph email](docs/integrations/microsoft-graph-email.md) · [Gmail API email](docs/integrations/gmail-api-email.md) · [Delivery rates](docs/integrations/delivery-rates.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 
 ---

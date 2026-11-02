@@ -20,12 +20,14 @@ def _send_via_ses(
     html_body: str,
     before_provider_call=None,
     raise_provider_errors: bool = False,
+    keep_sent_copy: bool = True,
 ) -> bool:
+    """Deliver one HTML email; ``keep_sent_copy=False`` for mail that carries a code, link or invitation."""
     if not config.delivery_configured:
         return False
     try:
         deliver_email(
-            EmailMessage(subject=subject, to=(recipient,), html_body=html_body),
+            EmailMessage(subject=subject, to=(recipient,), html_body=html_body, keep_sent_copy=keep_sent_copy),
             config=config,
             before_provider_call=before_provider_call,
             retry_config=NO_PROVIDER_RETRIES,

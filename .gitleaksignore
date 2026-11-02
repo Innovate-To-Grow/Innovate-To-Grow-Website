@@ -1,0 +1,8 @@
+# Findings reviewed and accepted. Each line is a gitleaks fingerprint: <commit>:<file>:<rule>:<line>.
+# A fake PEM string in a test (the body is "not-real-key-material"); the test now assembles it at runtime.
+e06818c3e86688d03d78bf2e61e6c2b9ee2d1f73:src/apps/core/tests/services/test_graph_credential.py:private-key:99
+# Fake Gmail API service-account key ids in tests (fixed hex patterns); the tests now build them at runtime.
+089660672f5d3d0ea37f692df9a0adf4089ffc5b:src/apps/core/tests/gmail_api_helpers.py:generic-api-key:21
+d7f9460fa14f0e4191b394d4d581a42abb357fd2:src/apps/core/tests/services/gmail_api/test_gmail_key_install.py:generic-api-key:34
+# A fake PEM string in a test (the body is "not a key"); the test now assembles it at runtime.
+bb8e708f82dfb5520892e39d33862361d121e341:src/apps/core/tests/services/gmail_api/test_gmail_assertion.py:private-key:50

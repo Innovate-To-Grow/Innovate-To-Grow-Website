@@ -61,7 +61,7 @@ const ROWS: ProjectGridRow[] = [
 ];
 
 const getMergedSection = () => {
-  const heading = screen.queryByRole('heading', {name: /saved merged results/i});
+  const heading = screen.queryByRole('heading', {name: /curation draft/i});
   return heading ? (heading.closest('section') as HTMLElement) : null;
 };
 
@@ -117,7 +117,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
     expect(storedDraft()).toBeNull();
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
     const note = screen.getByRole('textbox', {name: /curation note/i});
     note.innerHTML = 'Why these';
@@ -128,6 +128,61 @@ describe('PastProjectsBuilder — the kept draft', () => {
     expect(draft?.rows.map((row) => row.project_title)).toEqual(['Bravo Project']);
     expect(draft?.name).toBe('My picks');
     expect(draft?.note).toBe('Why these');
+  });
+
+  it('takes only the member id from the auth context into the kept draft', () => {
+    // The auth context also carries the member's contact details and the password-flow actions; none of
+    // that may end up in localStorage with the draft.
+    mockUseAuth.mockReturnValue({
+      ...authenticatedAuth,
+      user: {
+        member_uuid: 'member-1',
+        email: 'draft-owner@example.com',
+        phone: '+12025550199',
+        first_name: 'Draftfirst',
+        last_name: 'Draftlast',
+      },
+      requestPasswordReset: vi.fn(),
+      confirmPasswordReset: vi.fn(),
+      confirmPasswordChange: vi.fn(),
+    });
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
+
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY) as string;
+    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['name', 'note', 'owner', 'rows']);
+    expect(storedDraft()?.owner).toBe('member-1');
+    for (const detail of ['draft-owner@example.com', '+12025550199', 'Draftfirst', 'Draftlast']) {
+      expect(raw).not.toContain(detail);
+    }
+  });
+
+  it('rewrites a kept draft without anything an earlier version stored beside it', () => {
+    localStorage.setItem(
+      DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        owner: 'member-1',
+        rows: [makeRow({team_number: 'T09', project_title: 'Persisted Project'})],
+        name: 'Water picks',
+        note: '',
+        password: 'not-a-real-password',
+        access: 'not-a-real-access-token',
+        user: {email: 'draft-owner@example.com'},
+      }),
+    );
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Persisted Project').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/curation name/i)).toHaveValue('Water picks');
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY) as string;
+    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['name', 'note', 'owner', 'rows']);
+    for (const leftover of ['not-a-real-password', 'not-a-real-access-token', 'draft-owner@example.com']) {
+      expect(raw).not.toContain(leftover);
+    }
   });
 
   it("does not restore another member's draft and drops it", () => {
@@ -152,12 +207,40 @@ describe('PastProjectsBuilder — the kept draft', () => {
     expect(storedDraft()?.rows.map((row) => row.project_title)).toEqual(['Persisted Project']);
   });
 
+  it('opens with a malformed kept draft: rows missing fields are completed, anything else is dropped', () => {
+    // Storage is not this page's to trust (an older version, an extension, a hand edit). A row without a
+    // semester used to crash the page on every visit, since the draft was never cleared.
+    localStorage.setItem(
+      DRAFT_STORAGE_KEY,
+      JSON.stringify({owner: null, rows: [{project_title: 'Half a row'}, null, 'text', 7, ['nested'], {}], name: 3}),
+    );
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(screen.getByRole('heading', {level: 2, name: 'Search Tables'})).toBeInTheDocument();
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Half a row').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/curation name/i)).toHaveValue('');
+    expect(storedDraft()?.rows).toEqual([makeRow({
+      semester_label: '', class_code: '', team_number: '', team_name: '', project_title: 'Half a row',
+      organization: '', industry: '',
+    })]);
+  });
+
+  it('drops malformed rows kept in sessionStorage by the earlier version', () => {
+    sessionStorage.setItem(LEGACY_MERGED_ROWS_STORAGE_KEY, JSON.stringify([{team_name: 'Team Legacy'}, null, 5]));
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Team Legacy').length).toBeGreaterThan(0);
+    expect(storedDraft()?.rows.map((row) => row.team_name)).toEqual(['Team Legacy']);
+  });
+
   it('clears the kept draft once the curation is saved', async () => {
     const onCreateShare = vi.fn().mockResolvedValue('https://example.test/past-projects/abc');
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     expect(storedDraft()).not.toBeNull();
 
     fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
@@ -168,6 +251,49 @@ describe('PastProjectsBuilder — the kept draft', () => {
     await waitFor(() => expect(storedDraft()).toBeNull());
   });
 
+  it('keeps the projects a narrowed search left out of the saved curation in the draft', async () => {
+    storeDraft(
+      [
+        makeRow({team_number: 'T01', project_title: 'Project 1', organization: 'Acme'}),
+        makeRow({team_number: 'T02', project_title: 'Project 2', organization: 'Globex'}),
+        makeRow({team_number: 'T03', project_title: 'Project 3', organization: 'Initech'}),
+      ],
+      {owner: 'member-1', name: 'Acme picks', note: 'For Acme'},
+    );
+    const onCreateShare = vi.fn().mockResolvedValue({id: 'share-acme'});
+    const {unmount} = render(
+      <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />,
+    );
+
+    const merged = within(getMergedSection() as HTMLElement);
+    fireEvent.change(merged.getByRole('searchbox', {name: 'Search this list'}), {target: {value: 'Acme'}});
+    expect(merged.getByText(/after saving, 2 other projects stay in this draft\./)).toBeInTheDocument();
+    fireEvent.click(merged.getAllByRole('button', {name: /save curation/i})[0]);
+
+    await waitFor(() => expect(onCreateShare).toHaveBeenCalledTimes(1));
+    expect((onCreateShare.mock.calls[0][0] as ProjectGridRow[]).map((row) => row.project_title)).toEqual(['Project 1']);
+    // The saved project and the name and note it took with it leave the draft; the hidden ones stay.
+    await waitFor(() =>
+      expect(storedDraft()).toEqual({
+        owner: 'member-1',
+        rows: [
+          expect.objectContaining({project_title: 'Project 2'}),
+          expect.objectContaining({project_title: 'Project 3'}),
+        ],
+        name: '',
+        note: '',
+      }),
+    );
+
+    // Coming back to the builder (the save opened the curation, unmounting it) offers the rest.
+    unmount();
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+    const restored = within(getMergedSection() as HTMLElement);
+    expect(restored.getAllByText('Project 2').length).toBeGreaterThan(0);
+    expect(restored.getAllByText('Project 3').length).toBeGreaterThan(0);
+    expect(restored.queryByText('Project 1')).toBeNull();
+  });
+
   it('keeps the draft when saving the curation fails', async () => {
     // The whole point of persistence is to not lose the user's merged rows; a failed save
     // (network error, 4xx/5xx) must leave the draft intact so they can retry.
@@ -175,7 +301,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
     render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={onCreateShare} />);
 
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     expect(storedDraft()).not.toBeNull();
 
     fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
@@ -207,7 +333,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
     const builder = <PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />;
     const {rerender} = render(builder);
     fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     const draft = localStorage.getItem(DRAFT_STORAGE_KEY);
 
     for (const isInitializing of [true, false]) {
@@ -270,7 +396,7 @@ describe('PastProjectsBuilder — the kept draft', () => {
       <PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />,
     );
     fireEvent.click(screen.getAllByLabelText('Select Alpha Project')[0]);
-    fireEvent.click(screen.getByRole('button', {name: /save selected/i}));
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
     expect(mockHydrateProjectGridRowsSettled).toHaveBeenCalledTimes(1);
     mockUseAuth.mockReturnValue({...authenticatedAuth, isAuthenticated: false, user: null});
     rerender(<PastProjectsBuilder rows={rows} loading={false} error={null} onCreateShare={vi.fn()} />);
@@ -280,6 +406,73 @@ describe('PastProjectsBuilder — the kept draft', () => {
     // The dropped save says so where it was started, and keeps the checkbox for a retry.
     expect(screen.getByRole('alert')).toHaveTextContent('Your sign-in changed while saving, so nothing was saved.');
     expect(screen.getAllByLabelText('Select Alpha Project')[0]).toBeChecked();
+  });
+
+  describe('with the builder open in another tab too', () => {
+    // The storage event fires only in the tabs that did not write, carrying the new value.
+    const writeFromOtherTab = (value: unknown) =>
+      act(() => {
+        const newValue = value === null ? null : JSON.stringify(value);
+        if (newValue === null) localStorage.removeItem(DRAFT_STORAGE_KEY);
+        else localStorage.setItem(DRAFT_STORAGE_KEY, newValue);
+        window.dispatchEvent(new StorageEvent('storage', {key: DRAFT_STORAGE_KEY, newValue, storageArea: localStorage}));
+      });
+
+    it("follows the other tab's changes, so its next save does not overwrite them", () => {
+      storeDraft([ROWS[0]], {owner: 'member-1'});
+      render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+      // The other tab adds Bravo and names the draft. This tab does not write it back (tabs answering each
+      // other's writes would never stop).
+      const fromTabB = {owner: 'member-1', rows: [ROWS[1], ROWS[0]], name: 'From tab B', note: ''};
+      const setItem = vi.spyOn(Storage.prototype, 'setItem');
+      writeFromOtherTab(fromTabB);
+      expect(setItem).toHaveBeenCalledTimes(1);
+      setItem.mockRestore();
+      const merged = within(getMergedSection() as HTMLElement);
+      expect(merged.getAllByText('Bravo Project').length).toBeGreaterThan(0);
+      expect(screen.getByLabelText(/curation name/i)).toHaveValue('From tab B');
+      expect(screen.getByText(/The curation draft was changed in another tab/)).toBeInTheDocument();
+
+      // This tab then adds Charlie: the stored draft has all three.
+      fireEvent.click(screen.getAllByLabelText('Select Charlie Project')[0]);
+      fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
+      expect(storedDraft()?.rows.map((row) => row.project_title)).toEqual([
+        'Bravo Project',
+        'Alpha Project',
+        'Charlie Project',
+      ]);
+      expect(storedDraft()?.name).toBe('From tab B');
+    });
+
+    it("keeps this tab's checked rows checked, and empties when the other tab clears the draft", () => {
+      storeDraft([ROWS[0], ROWS[1]], {owner: 'member-1'});
+      render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+      const merged = within(getMergedSection() as HTMLElement);
+      fireEvent.click(merged.getAllByLabelText('Select Alpha Project')[0]);
+
+      writeFromOtherTab({owner: 'member-1', rows: [ROWS[0], ROWS[1], ROWS[2]], name: '', note: ''});
+      expect(merged.getAllByLabelText('Select Alpha Project')[0]).toBeChecked();
+
+      writeFromOtherTab(null);
+      expect(getMergedSection()).toBeNull();
+      expect(storedDraft()).toBeNull();
+    });
+
+    it("ignores another member's draft and a value it cannot read", () => {
+      storeDraft([ROWS[0]], {owner: 'member-1'});
+      render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+      writeFromOtherTab({owner: 'member-2', rows: [ROWS[1]], name: 'Not yours', note: ''});
+      act(() => {
+        window.dispatchEvent(new StorageEvent('storage', {key: DRAFT_STORAGE_KEY, newValue: '{not json'}));
+      });
+
+      const merged = within(getMergedSection() as HTMLElement);
+      expect(merged.getAllByText('Alpha Project').length).toBeGreaterThan(0);
+      expect(merged.queryByText('Bravo Project')).toBeNull();
+      expect(screen.getByLabelText(/curation name/i)).toHaveValue('');
+    });
   });
 
   it('ignores a malformed kept draft', () => {

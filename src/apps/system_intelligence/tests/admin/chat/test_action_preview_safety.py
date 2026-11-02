@@ -94,7 +94,9 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
         self.assertEqual(data["pageCssClass"], "")
         # The script carries the page's CSP nonce, the same one as its inline <style>.
         style_nonce = re.search(r'<style nonce="([^"]*)">', html).group(1)
-        self.assertRegex(html, rf'<script src="[^"]*system_intelligence/js/action-preview\.js" nonce="{style_nonce}">')
+        self.assertRegex(
+            html, rf'<script src="[^"]*system_intelligence/js/action-preview\.js\?v=[^"]+" nonce="{style_nonce}">'
+        )
 
     def test_action_preview_rejects_unsafe_link_list_hrefs(self):
         page = CMSPage.objects.create(slug="links", route="/links", title="Links", status="draft")

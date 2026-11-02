@@ -13,17 +13,30 @@
 }
 
 /* ---- Launcher button --------------------------------------------------- */
-.itg-assistant__launcher {
+/* The launcher's spot in the viewport corner. It takes no clicks itself, so it
+   never hides what is under it once the launcher has tucked away. */
+.itg-assistant__dock {
   position: fixed;
   bottom: 1rem;
   right: 1rem;
   z-index: 1000;
+  width: 56px;
+  height: 56px;
+  pointer-events: none;
+}
+
+.itg-assistant__launcher {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 56px;
   height: 56px;
+  overflow: hidden;
   padding: 0;
+  pointer-events: auto;
   border: none;
   border-bottom: 4px solid var(--itg-color-accent-gold, #dbaa00);
   border-radius: 0;
@@ -44,9 +57,62 @@
 }
 
 .itg-assistant__launcher-icon {
+  flex: none;
   width: 26px;
   height: 26px;
   fill: currentColor;
+}
+
+/* Tucked (useLauncherYield): a page control, or a page region marked
+   data-launcher-avoid, is under the launcher's spot, so it shrinks to a tab
+   at the viewport edge, inside the page gutter, where no page content sits:
+   16px wide in the 24px gutter above 992px and 12px in the 20px gutter at
+   992px and below, so it keeps 8px clear of the content at both. The tab
+   opens the chat as before; keyboard focus brings the whole button back. */
+.itg-assistant__launcher.is-tucked {
+  right: -1rem;
+  width: 16px;
+}
+
+.itg-assistant__launcher.is-tucked .itg-assistant__launcher-icon {
+  visibility: hidden;
+}
+
+.itg-assistant__launcher.is-tucked::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 5px;
+  width: 6px;
+  height: 6px;
+  border-bottom: 2px solid currentColor;
+  border-left: 2px solid currentColor;
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.itg-assistant__launcher.is-tucked:focus-visible {
+  right: 0;
+  width: 56px;
+}
+
+.itg-assistant__launcher.is-tucked:focus-visible::before {
+  content: none;
+}
+
+.itg-assistant__launcher.is-tucked:focus-visible .itg-assistant__launcher-icon {
+  visibility: visible;
+}
+
+/* The 20px phone and tablet gutter: a 12px tab. The :focus-visible rule above
+   (0,3,0) still brings the whole 56px button back. */
+@media (max-width: 992px) {
+  .itg-assistant__launcher.is-tucked {
+    width: 12px;
+  }
+
+  .itg-assistant__launcher.is-tucked::before {
+    left: 3px;
+  }
 }
 
 /* ---- Panel ------------------------------------------------------------- */
@@ -478,6 +544,13 @@
 .itg-assistant__counter--over {
   color: var(--itg-color-error, #9b1c1c);
   font-weight: 700;
+}
+
+/* ---- Print: a floating widget has no place on paper -------------------- */
+@media print {
+  .itg-assistant {
+    display: none;
+  }
 }
 
 /* ---- Mobile: near-full-width bottom sheet ------------------------------ */

@@ -113,7 +113,7 @@ class ECSTaskDefinitionTopologyTests(SimpleTestCase):
     def test_backend_workflow_renders_num_proxies_defaulting_to_one_alb_hop(self):
         workflow = WORKFLOW_PATH.read_text(encoding="utf-8")
 
-        self.assertIn("NUM_PROXIES: ${{ vars.NUM_PROXIES || '1' }}", workflow)
+        self.assertIn("NUM_PROXIES: ${{ env.NUM_PROXIES || '1' }}", workflow)
         self.assertIn('"__NUM_PROXIES__": env_value("NUM_PROXIES", "1")', workflow)
 
     def test_backend_workflow_renders_and_validates_the_worker(self):
