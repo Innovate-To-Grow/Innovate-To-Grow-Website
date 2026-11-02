@@ -59,17 +59,18 @@ def window_key(bucket: str, period: int, now: float) -> str:
     return key("hit", bucket, str(period), str(math.floor(now / period)))
 
 
-def hit(bucket: str, period: int, now: float) -> int:
+def hit(bucket: str, period: int, now: float, *, keep: int | None = None) -> int:
     """Count one request in ``bucket``'s current window; return the window's count including it (0 on a cache
-    error, which therefore never refuses)."""
+    error, which therefore never refuses). The counter lives ``keep`` seconds (default: the window and one more)."""
     name = window_key(bucket, period, now)
+    timeout = period + 1 if keep is None else keep
     cache = _cache()
     try:
-        cache.add(name, 0, timeout=period + 1)
+        cache.add(name, 0, timeout=timeout)
         return cache.incr(name)
     except ValueError:
         # The entry expired or was culled between add and incr: this request opens it again.
-        cache.set(name, 1, timeout=period + 1)
+        cache.set(name, 1, timeout=timeout)
         return 1
     except Exception:
         logger.warning("request_limits.store_unavailable", exc_info=True)
@@ -82,6 +83,14 @@ def get(name: str):
     except Exception:
         logger.warning("request_limits.store_unavailable", exc_info=True)
         return None
+
+
+def get_many(names: list[str]) -> dict:
+    try:
+        return _cache().get_many(names)
+    except Exception:
+        logger.warning("request_limits.store_unavailable", exc_info=True)
+        return {}
 
 
 def put(name: str, value, timeout: float) -> None:

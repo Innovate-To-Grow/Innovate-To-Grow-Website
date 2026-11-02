@@ -3,8 +3,9 @@
 ``admit`` classifies the request, then refuses it (429 with Retry-After) when its caller is blocked for the scope
 (abuse escalation), over the per-caller limit, over the scope's aggregate cap, or — last, so a refused request never
 holds a slot — when its tier has no concurrency slot left. ``finish`` frees the slot, records the signals Smart
-limiting reads, counts a 429 as a strike against the caller (whoever refused it) and lets the controller assess a
-window that just ended. Requests for paths no route matches are limited afterwards in the ``not-found`` scope.
+limiting reads, counts a 429 as a strike against the caller (whoever refused it) and in the admin's recent
+refusals, and lets the controller assess a window that just ended. Requests for paths no route matches are limited
+afterwards in the ``not-found`` scope.
 """
 
 import math
@@ -14,7 +15,7 @@ from django.http import JsonResponse
 
 from . import identity, scopes
 from .rules.limits import effective_limits
-from .runtime import abuse, context, heartbeat, registry, signals, smart, store
+from .runtime import abuse, context, heartbeat, refusals, registry, signals, smart, store
 from .runtime.context import section
 
 RATE_LIMITED = "rate_limited"
@@ -99,6 +100,7 @@ def _not_found(request, response, now: float):
     if retry is None:
         return response
     signals.record(scope, 429, 0.0, now, served=False)
+    refusals.count(scope, now, by_limiter=True)
     abuse.strike(scope, key, now)
     return rejection(retry)
 
@@ -120,6 +122,7 @@ def finish(request, response):
     status = response.status_code
     signals.record(mark.scope, status, max(0.0, now - mark.started) * 1000, now, served=not mark.refused)
     if status == 429:
+        refusals.count(mark.scope, now, by_limiter=mark.refused)
         abuse.strike(mark.scope, mark.key, now)
     smart.evaluate(now)
     return response

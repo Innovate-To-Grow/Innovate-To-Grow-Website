@@ -101,6 +101,9 @@ STORE = {
     "process_expiry_seconds": 90,
     # ...and is deleted after this long.
     "process_prune_seconds": 86_400,
+    # The admin page shows each scope's 429 answers of the last this many minutes (counted per minute in the
+    # counter store: site-wide when it is shared, this process only otherwise).
+    "refusal_history_minutes": 15,
 }
 
 FALLBACK = {

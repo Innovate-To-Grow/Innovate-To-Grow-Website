@@ -58,7 +58,14 @@ SECTION_KEYS = {
         "block_max_seconds",
         "level_memory_seconds",
     ),
-    "store": ("mode", "shared_backends", "heartbeat_seconds", "process_expiry_seconds", "process_prune_seconds"),
+    "store": (
+        "mode",
+        "shared_backends",
+        "heartbeat_seconds",
+        "process_expiry_seconds",
+        "process_prune_seconds",
+        "refusal_history_minutes",
+    ),
     "fallback": (
         "cli_prefix",
         "admin_prefix",
@@ -86,6 +93,8 @@ FALLBACK_SCOPES = (
 MAX_COUNT = 2_147_483_647
 MAX_PERIOD = 86_400
 MAX_SECONDS = 366 * 86_400
+# The admin reads the recent 429s as one key per scope, kind and minute in one call: two hours at most.
+MAX_HISTORY_MINUTES = 120
 SCOPE_KEY = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
 METHOD = re.compile(r"^(\*|[A-Z]+)$")
 
@@ -273,6 +282,7 @@ def _check_store(store, fallback, scopes):
     )
     if store["process_prune_seconds"] < store["process_expiry_seconds"]:
         _fail(("store", "process_prune_seconds"), "must not be below process_expiry_seconds")
+    _count(("store", "refusal_history_minutes"), store["refusal_history_minutes"], high=MAX_HISTORY_MINUTES)
     for key in ("cli_prefix", "admin_prefix"):
         value = fallback[key]
         if not isinstance(value, str) or len(value) < 3 or not value.startswith("/") or not value.endswith("/"):

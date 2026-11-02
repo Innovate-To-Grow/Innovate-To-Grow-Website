@@ -165,6 +165,14 @@ INVALID = {
     "backends": (lambda c: c["store"].update(shared_backends=()), "store.shared_backends must be a non-empty"),
     "heartbeat": (lambda c: c["store"].update(heartbeat_seconds=90), "store.heartbeat_seconds must be below"),
     "prune": (lambda c: c["store"].update(process_prune_seconds=60), "store.process_prune_seconds must not be"),
+    "refusal history": (
+        lambda c: c["store"].update(refusal_history_minutes=0),
+        "store.refusal_history_minutes must be a whole number between 1 and 120",
+    ),
+    "refusal history size": (
+        lambda c: c["store"].update(refusal_history_minutes=121),
+        "store.refusal_history_minutes must be a whole number between 1 and 120",
+    ),
     "prefix": (lambda c: c["fallback"].update(admin_prefix="admin"), "fallback.admin_prefix must be a path"),
     "fallback scope": (lambda c: c["fallback"].update(cli="nope"), "fallback.cli must name a route scope"),
     "fallback view scope": (
