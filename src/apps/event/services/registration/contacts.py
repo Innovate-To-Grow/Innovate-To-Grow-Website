@@ -7,9 +7,14 @@ from apps.authn.services.email.challenges import AuthChallengeInvalid, consume_v
 
 
 class RegistrationContactError(ValueError):
-    """A submitted contact does not satisfy the selected event's policy."""
+    """A submitted contact does not satisfy the selected event's policy.
+
+    ``detail`` and ``code`` are the client-safe message and machine code. Callers
+    respond with those, never ``str(exc)``, so exception text stays server-side.
+    """
 
     def __init__(self, detail: str, *, code: str | None = None):
+        self.detail = detail
         self.code = code
         super().__init__(detail)
 
