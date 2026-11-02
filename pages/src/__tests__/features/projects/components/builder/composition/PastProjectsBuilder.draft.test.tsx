@@ -130,6 +130,61 @@ describe('PastProjectsBuilder — the kept draft', () => {
     expect(draft?.note).toBe('Why these');
   });
 
+  it('takes only the member id from the auth context into the kept draft', () => {
+    // The auth context also carries the member's contact details and the password-flow actions; none of
+    // that may end up in localStorage with the draft.
+    mockUseAuth.mockReturnValue({
+      ...authenticatedAuth,
+      user: {
+        member_uuid: 'member-1',
+        email: 'draft-owner@example.com',
+        phone: '+12025550199',
+        first_name: 'Draftfirst',
+        last_name: 'Draftlast',
+      },
+      requestPasswordReset: vi.fn(),
+      confirmPasswordReset: vi.fn(),
+      confirmPasswordChange: vi.fn(),
+    });
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    fireEvent.click(screen.getAllByLabelText('Select Bravo Project')[0]);
+    fireEvent.click(screen.getByRole('button', {name: /add to curation/i}));
+    fireEvent.change(screen.getByLabelText(/curation name/i), {target: {value: 'My picks'}});
+
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY) as string;
+    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['name', 'note', 'owner', 'rows']);
+    expect(storedDraft()?.owner).toBe('member-1');
+    for (const detail of ['draft-owner@example.com', '+12025550199', 'Draftfirst', 'Draftlast']) {
+      expect(raw).not.toContain(detail);
+    }
+  });
+
+  it('rewrites a kept draft without anything an earlier version stored beside it', () => {
+    localStorage.setItem(
+      DRAFT_STORAGE_KEY,
+      JSON.stringify({
+        owner: 'member-1',
+        rows: [makeRow({team_number: 'T09', project_title: 'Persisted Project'})],
+        name: 'Water picks',
+        note: '',
+        password: 'not-a-real-password',
+        access: 'not-a-real-access-token',
+        user: {email: 'draft-owner@example.com'},
+      }),
+    );
+
+    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
+
+    expect(within(getMergedSection() as HTMLElement).getAllByText('Persisted Project').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText(/curation name/i)).toHaveValue('Water picks');
+    const raw = localStorage.getItem(DRAFT_STORAGE_KEY) as string;
+    expect(Object.keys(JSON.parse(raw)).sort()).toEqual(['name', 'note', 'owner', 'rows']);
+    for (const leftover of ['not-a-real-password', 'not-a-real-access-token', 'draft-owner@example.com']) {
+      expect(raw).not.toContain(leftover);
+    }
+  });
+
   it("does not restore another member's draft and drops it", () => {
     storeDraft([makeRow({team_number: 'T09', project_title: 'Persisted Project'})], {owner: 'member-2'});
 
