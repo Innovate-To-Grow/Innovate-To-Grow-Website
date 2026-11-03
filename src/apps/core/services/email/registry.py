@@ -84,6 +84,7 @@ def _graph_factory(config: object, **provider_options) -> GraphProvider:
         mailbox=mailbox,
         from_email=config.from_email,
         from_name=config.from_name,
+        max_recipients=graph.max_recipients_per_message,
     )
 
 

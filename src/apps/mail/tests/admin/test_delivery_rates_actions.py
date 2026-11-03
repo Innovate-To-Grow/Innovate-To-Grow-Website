@@ -39,9 +39,10 @@ class HistoryTests(DeliveryRatesTestCase):
         sms, graph = self.policy(Channel.SMS_SEND), self.policy(Channel.GRAPH_SEND)
         self.assertEqual(set(messages), {str(sms.pk), str(graph.pk)})
         self.assertEqual(messages[str(sms.pk)].change_message, "sms_send: Smart rate on→off; manual 1→0.5")
+        # The Graph policy's ceilings start blank since migration 0043 (the Graph configuration's limits apply).
         self.assertEqual(
             messages[str(graph.pk)].change_message,
-            "graph_send: daily limit 10,000→9,000; tenant limits confirmed off→on",
+            "graph_send: daily limit blank→9,000; tenant limits confirmed off→on",
         )
         for entry in messages.values():
             self.assertEqual((entry.user_id, entry.action_flag), (self.staff.pk, CHANGE))

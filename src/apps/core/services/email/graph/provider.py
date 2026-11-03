@@ -54,6 +54,7 @@ class GraphProvider:
         from_email: str,
         from_name: str = "",
         timeout: float | None = None,
+        max_recipients: int | None = None,
     ):
         # Tenant and mailbox become URL path segments, so rows created outside the validated admin are re-checked.
         valid = (
@@ -67,6 +68,8 @@ class GraphProvider:
         self.credential = credential
         self.mailbox, self.from_email, self.from_name = mailbox, from_email, from_name
         self.timeout = auth.request_timeout(timeout)
+        # The mailbox's recipients-per-message limit (MicrosoftGraphProviderConfig); None leaves it to Exchange.
+        self.max_recipients = max_recipients
 
     def rate_identity(self) -> str:
         """Exchange limits each sender mailbox (and Outlook each app and mailbox): the URL mailbox."""
@@ -84,6 +87,13 @@ class GraphProvider:
         }
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
+        recipients = len(message.envelope_recipients)
+        if self.max_recipients is not None and recipients > self.max_recipients:
+            # Exchange would reject it as a whole (or send to none), so refuse it before anything is counted.
+            raise PermanentEmailDeliveryError(
+                f"The email has {recipients} recipients; Microsoft Graph allows at most {self.max_recipients} per "
+                "message for this mailbox."
+            )
         message_id, payload, content_type = self._encode(message)
         access_token, fresh = auth.obtain_access_token(self.credential, timeout=self.timeout)
         if before_provider_call is not None:

@@ -11,6 +11,7 @@ from django.db.models import F
 from django.urls import reverse
 
 from apps.core.models import DeliveryRatePolicy, DeliveryRateState, EmailServiceConfig
+from apps.core.models.base.delivery_rates import limits_from_configuration
 from apps.core.services.delivery_rates import Family, active_target, channel_info
 from apps.core.services.delivery_rates.rules.channels import smtp_host
 from apps.core.services.delivery_rates.rules.defaults import channel_settings, section
@@ -150,8 +151,12 @@ def _rate_placeholder(spec, state, provider: str, unit: str) -> str:
         when = f" ({_when(state)})" if state.discovered_at else ""
         return f"{provider} reports {number(state.discovered_rate)} {unit}{when}"
     if spec["provider_limit"] is not None:
-        return f"{number(spec['provider_limit'])} {unit} documented"
+        return f"{number(spec['provider_limit'])} {unit} {_ceiling_source(spec)}"
     return f"Unknown: Smart rate uses the {number(spec['fallback_rate'])} {unit} app default"
+
+
+def _ceiling_source(spec) -> str:
+    return "on the Microsoft Graph configuration" if limits_from_configuration(spec) else "documented"
 
 
 def _parts_placeholder(spec, state, provider: str) -> str:
@@ -176,7 +181,9 @@ def _count_placeholder(name: str, channel: str, state, provider: str, window: st
     if profile.get(name):
         return f"{profile[name]:,} per {window} documented for {host}"
     if spec.get(name) is not None:
-        return f"{spec[name]:,} per {window} documented"
+        return f"{spec[name]:,} per {window} {_ceiling_source(spec)}"
+    if limits_from_configuration(spec):
+        return "None: blank on the Microsoft Graph configuration"
     return "None documented"
 
 

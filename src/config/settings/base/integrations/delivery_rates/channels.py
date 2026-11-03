@@ -49,6 +49,9 @@ _GMAIL_API_ERRORS = "https://developers.google.com/workspace/gmail/api/guides/ha
 _SMS_QUOTAS = "https://docs.aws.amazon.com/sms-voice/latest/userguide/quotas.html"
 _SMS_MPS = "https://docs.aws.amazon.com/sms-voice/latest/userguide/sms-limitations-mps-view.html"
 
+# Microsoft Graph: provider_limit, daily_limit, the hourly limits and max_recipients_per_message seed the sending
+# limits of MicrosoftGraphProviderConfig (the Core admin page) and apply only while no active Graph configuration
+# exists; the values entered there are what the channel uses (apps.core.services.delivery_rates.rules.tenant).
 GRAPH_SEND = {
     "smart_enabled": True,
     # App default: 80 % of the provider limit (the PR #643 value), so login codes keep room during campaigns.
@@ -65,6 +68,9 @@ GRAPH_SEND = {
     "backoff_max_seconds": 120,
     # _EXCHANGE_LIMITS: "Recipient rate limit" 10,000 recipients per day.
     "daily_limit": 10_000,
+    # _EXCHANGE_LIMITS: "Recipient limit" 500 recipients per message (the tenant can set up to 1,000); OIT states
+    # 500 for i2g@ucmerced.edu (2026-11-03).
+    "max_recipients_per_message": 500,
     # _OUTBOUND_SPAM, Standard preset: RecipientLimitExternalPerHour 500, RecipientLimitInternalPerHour 1,000.
     "hourly_external_limit": 500,
     "hourly_internal_limit": 1_000,

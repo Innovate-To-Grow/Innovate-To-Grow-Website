@@ -219,6 +219,48 @@ class CampaignStatusViewTests(TestCase):
         self.assertEqual(recent_emails, {"sent@example.com", "failed@example.com"})
         self.assertEqual(payload["failed_logs"][0]["error"], "bounced hard")
 
+    def test_status_json_counts_queued_retrying_and_paused_recipients(self):
+        campaign = EmailCampaign.objects.create(
+            name="Counts", subject="s", body="b", status="sending", total_recipients=6
+        )
+        for index, status in enumerate(("pending", "processing", "retry", "paused", "paused", "sent")):
+            RecipientLog.objects.create(campaign=campaign, email_address=f"r{index}@example.com", status=status)
+
+        payload = self.client.get(reverse("admin:mail_emailcampaign_send_status_json", args=[campaign.pk])).json()
+
+        self.assertEqual((payload["queued"], payload["retrying"], payload["paused"]), (3, 1, 2))
+
+    def test_status_json_carries_the_email_channel_s_delivery_status(self):
+        _make_email_config()
+        campaign = EmailCampaign.objects.create(name="Limits", subject="s", body="b", status="sending")
+
+        payload = self.client.get(reverse("admin:mail_emailcampaign_send_status_json", args=[campaign.pk])).json()
+
+        delivery = payload["delivery"]
+        self.assertFalse(delivery["held"])
+        self.assertTrue(delivery["lines"][0].startswith("Now: "), delivery["lines"])
+        self.assertTrue(delivery["lines"][1].startswith("Provider limit: "), delivery["lines"])
+
+    def test_status_json_delivery_is_none_without_an_email_provider(self):
+        EmailServiceConfig.objects.all().delete()
+        campaign = EmailCampaign.objects.create(name="No mail", subject="s", body="b", status="sending")
+
+        payload = self.client.get(reverse("admin:mail_emailcampaign_send_status_json", args=[campaign.pk])).json()
+
+        self.assertIsNone(payload["delivery"])
+        self.assertEqual((payload["queued"], payload["paused"]), (0, 0))
+
+    def test_status_page_shows_the_paused_and_delivery_sections(self):
+        campaign = EmailCampaign.objects.create(name="Status", subject="s", body="b", status="sending")
+
+        response = self.client.get(reverse("admin:mail_emailcampaign_send_status", args=[campaign.pk]))
+
+        self.assertContains(response, 'id="count-paused"')
+        self.assertContains(response, "Paused by limits")
+        self.assertContains(response, 'id="delivery-section"')
+        self.assertContains(response, "Resume paused recipients")
+        self.assertContains(response, "paused by delivery limits")
+
     def test_status_json_keeps_curated_delivery_messages(self):
         campaign = EmailCampaign.objects.create(
             name="Needs review",

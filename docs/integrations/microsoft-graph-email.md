@@ -850,13 +850,22 @@ Microsoft's defaults for one sender mailbox and app, as published on Microsoft L
 
 | Limit | Value | Applies to |
 |-------|-------|------------|
-| Messages per minute | 30 | Each mailbox |
-| Recipients per day | 10,000 (24-hour sliding window) | Each mailbox |
-| Recipients per message | Up to 1,000 (the tenant can set fewer) | Each message |
+| Messages per minute | 30 (OIT, 2026-11-03: **Messages per Minute Limit** on the Graph configuration) | Each mailbox |
+| Recipients per day | 10,000 (24-hour sliding window; OIT: **Recipients per Day Limit** on the Graph configuration) | Each mailbox |
+| Recipients per message | 500 (Exchange's default; the tenant can set up to 1,000. OIT: **Recipients per Message Limit** on the Graph configuration; a message with more is refused before it is sent) | Each message |
 | External recipients per day | The tenant's external recipient rate limit (TERRL), set by its licences | All UC Merced mailboxes together |
 | Concurrent requests | 4 | Each app and mailbox |
 | Requests per 10 minutes | 10,000 | Each app and mailbox |
 
+- **The mailbox's limits are entered on the Graph configuration, not in code.** The **Sending limits** section of
+  the active `MicrosoftGraphProviderConfig` (Core → Microsoft Graph Provider Configs) holds the recipients per
+  message, messages per minute, recipients per day and the two hourly recipient limits as OIT states them.
+  `DELIVERY_RATES["channels"]["graph_send"]` only seeds those fields (500, 30, 10,000, 500 external and 1,000
+  internal per hour) and applies while no configuration is active. The **Email · Microsoft Graph** card under
+  Mail → Delivery Rates treats them as its ceilings: Smart rate uses a share of the messages per minute, the manual
+  rate and the Advanced limits there can be set below them, never above, and when OIT raises a limit it is raised
+  on the Graph configuration. The campaign status page shows how many recipients are queued or paused by these
+  limits and the channel's current state ("Now: 19.2 messages/min", "Paused until …", "Last 24 h: …").
 - **The tenant can set lower limits.** An outbound spam policy can limit the mailbox per hour and per day
   and restrict it from sending when it exceeds them; its messages then bounce with `550 5.1.8 Access denied,
   bad outbound sender`, which arrives only as non-delivery reports in the Inbox, and only a Microsoft 365
@@ -885,14 +894,17 @@ delivery-rate policies (Mail → Delivery Rates), seeded from `DELIVERY_RATES` (
 [Environments](../deployment/environments.md#delivery-rates)). How Smart rate, the manual rate, the budgets and
 the stops work for every channel: [Delivery rates](delivery-rates.md).
 
-- **Rate.** Smart rate is on by default: 80 % of Exchange's 30 messages per minute, that is 24 per minute,
-  slowing down when Graph throttles and speeding up again step by step. With Smart rate off the manual rate
-  applies (at most 30 per minute). A burst never lets more than 30 through in any minute.
+- **Rate.** Smart rate is on by default: 80 % of the mailbox's messages per minute (30 on the Graph configuration,
+  from OIT), that is 24 per minute, slowing down when Graph throttles and speeding up again step by step. With
+  Smart rate off the manual rate applies (at most the configured limit). A burst never lets more than the limit
+  through in any minute. The schedule is one `DeliveryRateState` row per mailbox, locked for each admission, so
+  every web process, worker and campaign thread shares it.
 - **Lanes.** Campaigns get at most 80 % of the rate (19.2 per minute at the default, so 1,000 recipients take
   about 52 minutes) and stop at 90 % of each daily limit, so login codes, tickets, invitations, replies and
-  test emails always have the rest. The limits are 10,000 recipients per rolling 24 hours, and 500 external
-  and 1,000 internal recipients per rolling hour (the Standard outbound spam preset); until **Tenant limits
-  confirmed** is set, campaigns also stay under 1,000 recipients a day.
+  test emails always have the rest. The limits are those on the Graph configuration: 10,000 recipients per
+  rolling 24 hours, and 500 external and 1,000 internal recipients per rolling hour (the Standard outbound spam
+  preset; blank means no hourly limit); until **Tenant limits confirmed** is set, campaigns also stay under
+  1,000 recipients a day. Usage is counted in `DeliveryUsageBucket` rows, shared by every process.
 - **`Retry-After`.** A `429`, `503` or `509` from Graph pauses every Graph request for that mailbox (sends
   and reads) for the `Retry-After` value (delta-seconds or an HTTP date, capped at
   `GRAPH_MAX_RETRY_AFTER_SECONDS`), or for a backoff when there is none. A busy token endpoint pauses Graph

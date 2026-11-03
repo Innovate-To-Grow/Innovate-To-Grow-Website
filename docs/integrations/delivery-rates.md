@@ -110,6 +110,16 @@ source URL), and re-created from the settings if it is deleted. Rates are in the
 | `gmail_api_send` | on | 20 | 60 (6,000 quota units per minute per user ÷ 100 per `messages.send`) | – | 0.5 / 3 | 2,000 messages, 3,000 recipients, 2,000 external recipients a day; budget headroom 0.9; reserve 0.25 | Gmail API quota; Workspace sending limits; Gmail API error handling |
 | `sms_send` | on | 1 | 1 (`SendTextMessage` quota per account and Region) | – | 1.0 / 1 | message parts/sec reported by `DescribePhoneNumbers` (fallback 1) | End User Messaging quotas; MPS per number type |
 
+**Microsoft Graph's limits are entered on the Graph configuration.** The `graph_send` ceilings above (provider limit,
+daily limit, hourly limits) and the recipients-per-message limit seed the **Sending limits** of
+`MicrosoftGraphProviderConfig` (Core → Microsoft Graph Provider Configs) and apply only while no configuration is
+active. Once one is, its values are what the channel uses everywhere: `rules/tenant.py` merges them into the channel
+spec that `channel_settings` returns, so the rate bound (source "tenant"), `budget.limits`, the policy's ceilings,
+the card's placeholders and the status lines all read them, and the policy row created for the channel leaves its
+ceiling fields blank so a limit raised on the configuration needs no second edit. When OIT raises a mailbox limit,
+raise it there; the Delivery Rates card can still lower it. `GraphProvider` refuses a message with more recipients
+than the configured recipients-per-message limit before it is sent.
+
 What Smart rate starts at with these seeds: Graph 24 messages/min (campaigns 19.2), Graph reads 500 requests/min,
 SES 90 % of its bound (9 recipients/sec when migration 0036 carried over the default campaign send rate of 10), SMTP
 27 messages/min climbing to 54 (no known limit, so it starts at half), Gmail IMAP 15 sessions/min climbing to 30,

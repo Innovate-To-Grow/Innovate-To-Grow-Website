@@ -180,6 +180,7 @@ _CHECKS = {
     "default_max_attempts": _check_count,
     "runner_refresh_recipients": _check_count,
     "unconfirmed_bulk_daily_limit": _check_count,
+    "max_recipients_per_message": _check_count,
     "daily_limit": _check_optional_count,
     "hourly_external_limit": _check_optional_count,
     "hourly_internal_limit": _check_optional_count,

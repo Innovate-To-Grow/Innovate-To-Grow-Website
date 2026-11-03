@@ -59,6 +59,17 @@ class GraphProviderFactoryTests(GraphFixtureMixin, TestCase):
         self.assertEqual((provider.credential.tenant_id, provider.credential.client_id), (TENANT_ID, CLIENT_ID))
         self.assertEqual(provider.credential.x5t_s256, MicrosoftGraphProviderConfig.load().current_certificate.x5t_s256)
         self.assertEqual((provider.from_email, provider.from_name), ("noreply@ucmerced.edu", "Innovate to Grow"))
+        self.assertEqual(provider.max_recipients, 500)
+
+    def test_the_configured_recipients_per_message_limit_reaches_the_provider(self):
+        create_graph_config(max_recipients_per_message=2)
+
+        provider = resolve_provider(self.service_config)
+
+        self.assertEqual(provider.max_recipients, 2)
+        too_many = simple_message(to=("a@example.com", "b@example.com", "c@example.com"))
+        with self.assertRaisesMessage(PermanentEmailDeliveryError, "allows at most 2 per message"):
+            provider.send(too_many)
 
     def test_mailbox_falls_back_to_the_from_email(self):
         create_graph_config(mailbox="")
