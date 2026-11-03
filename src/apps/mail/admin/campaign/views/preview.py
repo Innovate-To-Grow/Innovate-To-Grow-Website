@@ -9,7 +9,12 @@ from unfold.decorators import action
 from apps.core.utils.json_helpers import safe_json
 from apps.mail.models import EmailCampaign
 from apps.mail.services.campaign.personalize import personalize
-from apps.mail.services.campaign.preview import HTML_MARKER, SAMPLE_CONTEXT, build_email_render_context
+from apps.mail.services.campaign.preview import (
+    HTML_MARKER,
+    SAMPLE_CONTEXT,
+    build_email_render_context,
+    split_html_marker,
+)
 
 from .. import services as campaign_api
 
@@ -73,7 +78,8 @@ class CampaignPreviewMixin:
         if request.method != "POST":
             return HttpResponseRedirect(reverse("admin:mail_emailcampaign_changelist"))
 
-        body = request.POST.get("body", "")
+        # As in the form's save(): the radio decides the format, a pasted marker does not.
+        body = split_html_marker(request.POST.get("body", ""))[1]
         body_format = request.POST.get("body_format", "plain")
         include_unsubscribe = request.POST.get("include_unsubscribe_header") == "on"
         if body_format == "html":

@@ -237,6 +237,17 @@ class GraphProviderSendTests(GraphFixtureMixin, SimpleTestCase):
         self.assertNotIn(b"\n", request.body)
         self.assertEqual(sent_mime(request)["Subject"], "Greetings")
 
+    def test_mime_is_sent_with_crlf_line_endings(self):
+        # Exchange decodes a quoted-printable soft break only at CRLF; a bare LF there corrupted every long line.
+        long_line = '<p style="' + "x" * 200 + '">Innovate to Grow</p>'
+        self.send(simple_message(text_body=None, html_body=long_line))
+
+        raw = base64.b64decode(self.fake.send_requests[0].body, validate=True)
+        self.assertEqual(raw.count(b"\n"), raw.count(b"\r\n"), "a bare LF remains")
+        self.assertIn(b"=\r\n", raw)
+        content = sent_mime(self.fake.send_requests[0]).get_content()
+        self.assertEqual(content.replace("\r\n", "\n"), long_line + "\n")
+
     def test_result_message_id_is_the_mime_message_id(self):
         result = self.send()
 

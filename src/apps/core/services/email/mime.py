@@ -1,5 +1,6 @@
 """MIME generation shared by all email providers."""
 
+import email.policy
 import re
 from email.message import EmailMessage as MimeMessage
 from email.utils import formataddr, make_msgid
@@ -93,6 +94,17 @@ def build_mime_message(message: EmailMessage, *, from_email: str, from_name: str
             cid=attachment.content_id,
         )
     return mime
+
+
+def transport_bytes(mime: MimeMessage) -> bytes:
+    """*mime* serialized for transmission: every line ends with CRLF, as RFC 5322 requires on the wire.
+
+    ``as_bytes()`` with the default policy writes bare LF, which also makes every quoted-printable soft line
+    break ``=LF``. Exchange Online (Microsoft Graph ``sendMail``) recognises a soft break only as ``=CRLF``: after
+    a bare-LF one it keeps the ``=``, drops the LF and the next character, and so corrupts every long line of a
+    campaign's HTML (``cellspacing=3D"0"``, ``font-weight:7=0``, a broken logo URL). CRLF decodes everywhere.
+    """
+    return mime.as_bytes(policy=email.policy.SMTP)
 
 
 def attachment_content_type(content_type: str) -> tuple[str, str]:

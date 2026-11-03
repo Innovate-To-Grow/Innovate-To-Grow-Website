@@ -17,7 +17,7 @@ from .exceptions import (
     UncertainEmailDeliveryError,
     with_signal,
 )
-from .mime import build_mime_message
+from .mime import build_mime_message, transport_bytes
 
 _ERROR_TYPES = {
     "permanent": PermanentEmailDeliveryError,
@@ -73,7 +73,7 @@ class SESProvider:
             kwargs = {
                 "Source": self.from_email,
                 "Destinations": list(message.envelope_recipients),
-                "RawMessage": {"Data": mime.as_bytes()},
+                "RawMessage": {"Data": transport_bytes(mime)},
             }
             if self.configuration_set:
                 kwargs["ConfigurationSetName"] = self.configuration_set

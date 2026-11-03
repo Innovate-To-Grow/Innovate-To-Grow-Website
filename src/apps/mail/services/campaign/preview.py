@@ -7,7 +7,11 @@ from django.utils.html import escape
 
 from .personalize import personalize
 
+# Prefix of a stored campaign body that holds raw HTML (the form's "HTML" format); any other body is plain text.
 HTML_MARKER = "<!-- raw-html -->\n"
+# The marker as a stored body may actually start: repeated, followed by CRLF (a browser textarea round-trip),
+# LF, CR, trailing spaces or nothing. Older "Copy HTML" output carried the marker, so bodies with several exist.
+_LEADING_MARKERS_RE = re.compile(r"^(?:<!-- raw-html -->[ \t]*(?:\r\n|\n|\r)?)+")
 
 SAMPLE_CONTEXT = {
     "first_name": "Hongzhe",
@@ -63,17 +67,27 @@ def _text_to_html(text):
     return escaped.replace("\n", "<br>\n")
 
 
+def split_html_marker(body):
+    """``(is_html, text)``: whether *body* is marked as raw HTML, and the body without any leading marker.
+
+    Every leading marker is removed, however many and however it ends, so a body that collected duplicates is
+    still rendered as the HTML it holds rather than with the markers inside the message.
+    """
+    text = body or ""
+    match = _LEADING_MARKERS_RE.match(text)
+    if match is None:
+        return False, text
+    return True, text[match.end() :]
+
+
 def build_email_render_context(body_text, unsubscribe_url=""):
     """Build the trusted template context used by campaign email rendering.
 
-    If the body starts with ``HTML_MARKER`` it is treated as raw HTML
-    (marker stripped, no escaping/conversion).  Otherwise plain-text
-    conversion is applied.
+    A body that starts with ``HTML_MARKER`` is raw HTML (marker stripped, no escaping/conversion); any other
+    body is plain text and converted.
     """
-    if body_text.startswith(HTML_MARKER):
-        body_html = body_text[len(HTML_MARKER) :]
-    else:
-        body_html = _text_to_html(body_text)
+    is_html, text = split_html_marker(body_text)
+    body_html = text if is_html else _text_to_html(text)
     return {"body": body_html, "logo_url": _get_logo_url(), "unsubscribe_url": unsubscribe_url}
 
 
