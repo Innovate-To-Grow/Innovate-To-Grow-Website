@@ -69,7 +69,7 @@ jobs:
       image: "<image>"
   python-dependency-audit:
     steps:
-      - run: pip install "pip-audit[cyclonedx]==2.7.3"
+      - run: pip install "pip-audit==2.7.3"
       - run: pip-audit --ignore-vuln GHSA-aaaa-bbbb-cccc --ignore-vuln PYSEC-2026-1
   backend-docker-smoke:
     steps:
@@ -91,7 +91,7 @@ env:
   PYTHON_VERSION: "3.11"
   NODE_VERSION: "22.22.2"
 steps:
-  - run: pip install "pip-audit[cyclonedx]==2.7.3"
+  - run: pip install "pip-audit==2.7.3"
   # Keep the --ignore-vuln list in sync with the python-dependency-audit job in ci.yml.
   - run: pip-audit --ignore-vuln PYSEC-2026-1 --ignore-vuln GHSA-aaaa-bbbb-cccc
 """,
@@ -225,6 +225,20 @@ class CollectPinsTests(unittest.TestCase):
                 self.assertIn(f"{drifted} ({path}", problems[0])
                 self.assertIn(f"{aligned} (", problems[0])
 
+    def test_audits_may_accept_no_advisories_but_must_agree(self) -> None:
+        with fake_repository() as root:
+            replace_once(root, CI, " --ignore-vuln GHSA-aaaa-bbbb-cccc --ignore-vuln PYSEC-2026-1", "")
+            replace_once(root, DEPENDENCY_AUDIT, " --ignore-vuln PYSEC-2026-1 --ignore-vuln GHSA-aaaa-bbbb-cccc", "")
+            pins = collect_pins(root)
+            self.assertEqual([value for _, value in pins["pip-audit-ignores"]], ["none", "none"])
+            self.assertEqual(mismatches(pins), [])
+
+            # The likely slip: a new advisory accepted in ci.yml only.
+            replace_once(root, CI, "- run: pip-audit\n", "- run: pip-audit --ignore-vuln GHSA-dddd-eeee-ffff\n")
+            problems = mismatches(collect_pins(root))
+
+        self.assertEqual(problems, [f"pip-audit-ignores: GHSA-dddd-eeee-ffff ({CI}) vs none ({DEPENDENCY_AUDIT})"])
+
     def test_labels_name_the_lines_each_value_was_found_on(self) -> None:
         with fake_repository() as root:
             replace_once(root, CI, "postgres:16", "postgres:17")
@@ -267,7 +281,7 @@ class CollectPinsTests(unittest.TestCase):
         cases = (
             (CI, "image: postgres:16", "image: postgres:latest", "postgres", "found 3"),
             (CI, f'"{IMAGE}"', '"mcr.microsoft.com/playwright:v1.64.0-noble"', "sha256", "found 1"),
-            (CI, '"pip-audit[cyclonedx]==2.7.3"', "pip-audit", "pip-audit", "found 0"),
+            (CI, '"pip-audit==2.7.3"', "pip-audit", "pip-audit", "found 0"),
             (BAKE_IMAGE, "$RUNNER_TOOL_CACHE/node/22.22.2/x64/bin/", "$NODE_HOME/bin/", "node", "found 7"),
         )
         for path, old, new, looked_for, found in cases:

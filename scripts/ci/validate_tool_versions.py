@@ -43,7 +43,7 @@ RUFF_PRE_COMMIT = "https://github.com/astral-sh/ruff-pre-commit"
 VERSION = r"(\d+(?:\.\d+)*)"
 MINOR = r"(\d+\.\d+)"  # Python is compared by minor version; a patch component after it is ignored.
 BANDIT = rf"bandit(?:\[toml\])?=={VERSION}"
-PIP_AUDIT = rf"pip-audit(?:\[cyclonedx\])?=={VERSION}"
+PIP_AUDIT = rf"pip-audit=={VERSION}"
 PLAYWRIGHT_IMAGE = r"(mcr\.microsoft\.com/playwright:[\w.-]+@sha256:[0-9a-f]{64})"
 POSTGRES_IMAGE = r"\bpostgres:(\d+)"
 # Advisory IDs only (GHSA-..., PYSEC-..., CVE-...), so prose such as "the --ignore-vuln list" is not read as one.
@@ -78,7 +78,7 @@ class Regex:
     """Group 1 of every ``regex`` match in ``path``; fewer than ``minimum`` matches raise PinError.
 
     Each distinct value becomes one pin labelled with the lines it was found on. With ``as_set`` the file
-    yields a single pin instead: the sorted, comma-joined set of every matched value.
+    yields a single pin instead: the sorted, comma-joined set of every matched value, or ``none``.
     """
 
     path: str
@@ -94,7 +94,7 @@ class Regex:
                 f"{self.path}: expected at least {self.minimum} match(es) of /{self.regex}/, found {len(matches)}"
             )
         if self.as_set:
-            return [(self.path, ",".join(sorted({match.group(1) for match in matches})))]
+            return [(self.path, ",".join(sorted({match.group(1) for match in matches})) or "none")]
         lines: dict[str, set[int]] = {}
         for match in matches:
             lines.setdefault(match.group(1), set()).add(text.count("\n", 0, match.start(1)) + 1)
@@ -184,8 +184,12 @@ PIN_GROUPS: dict[str, tuple[Source, ...]] = {
         Regex(BAKE_IMAGE, POSTGRES_IMAGE),
     ),
     "pip-audit": (Regex(CI, PIP_AUDIT), Regex(DEPENDENCY_AUDIT, PIP_AUDIT)),
-    # dependency-audit.yml re-runs ci.yml's python-dependency-audit weekly with the same accepted advisories.
-    "pip-audit-ignores": (Regex(CI, IGNORE_VULN, as_set=True), Regex(DEPENDENCY_AUDIT, IGNORE_VULN, as_set=True)),
+    # dependency-audit.yml re-runs ci.yml's python-dependency-audit weekly with the same accepted advisories,
+    # which may be none.
+    "pip-audit-ignores": (
+        Regex(CI, IGNORE_VULN, minimum=0, as_set=True),
+        Regex(DEPENDENCY_AUDIT, IGNORE_VULN, minimum=0, as_set=True),
+    ),
 }
 
 

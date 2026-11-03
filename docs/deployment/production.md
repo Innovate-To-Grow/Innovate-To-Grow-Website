@@ -1,9 +1,5 @@
 # Production Deployment Approval
 
-> **Paused:** `Deploy Production` has been disabled since 2026-11-01. See
-> [CI/CD: Deployment pause](ci-cd.md#deployment-pause-since-2026-11-01) for what CI
-> still builds and how to resume.
-
 A successful `CI` run on `main` starts the `Deploy Production` workflow. An
 operator can also start that workflow manually on `main` to redeploy its
 current commit, provided that exact commit has a successful main CI image. Both
@@ -90,7 +86,7 @@ The loader validates setting names against `aws/cicd/deploy-config-keys.json`
 and rejects multiline values before exporting them to the job. Application
 passwords and signing keys remain separate secrets injected directly by ECS.
 
-Deployment requires no GitHub Actions secrets. Two non-secret repository variables remain: `AWS_RUNNERS_ENABLED` selects CI runners, and `DEPLOY_ARTIFACTS_ENABLED` must be `true` whenever `Deploy Production` is enabled, because CI publishes the backend release image only while it is set (see [CI/CD: Deployment pause](ci-cd.md#deployment-pause-since-2026-11-01)). Public OIDC role ARNs
+Deployment requires no GitHub Actions secrets. Two non-secret repository variables remain: `AWS_RUNNERS_ENABLED` selects CI runners, and `DEPLOY_ARTIFACTS_ENABLED` must be `true` whenever `Deploy Production` is enabled, because CI publishes the backend release image only while it is set (see [CI/CD: Pausing and resuming deployments](ci-cd.md#pausing-and-resuming-deployments)). Public OIDC role ARNs
 and the AWS region are bootstrap identifiers in workflow code; they cannot be
 fetched before authentication. CI's public API URL is a checked-in test/build
 default, while production frontend deployment reads its URL from AWS.

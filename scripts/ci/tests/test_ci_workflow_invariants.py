@@ -274,7 +274,6 @@ class RoutingTests(unittest.TestCase):
         "backend-image-publish",
         "django-test-coverage",
         "e2e",
-        "frontend-prod-build",
         "frontend-unit-coverage",
     }
 

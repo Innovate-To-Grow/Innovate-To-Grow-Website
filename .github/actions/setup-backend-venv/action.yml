@@ -19,11 +19,6 @@ inputs:
     required: false
     default: host
 
-outputs:
-  python-version:
-    description: The exact Python version setup-python resolved.
-    value: ${{ steps.setup-python.outputs.python-version }}
-
 runs:
   using: composite
   steps:

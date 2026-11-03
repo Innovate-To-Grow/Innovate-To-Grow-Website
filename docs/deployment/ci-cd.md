@@ -14,12 +14,12 @@ A `merge_group` run is routed like a push.
 
 | File | Purpose | Trigger |
 |------|---------|---------|
-| `.github/workflows/ci.yml` | Full lint, test, build, and security pipeline; reports the required `CI Result` check | Every pull request, merge-queue groups, and pushes to `main`/`master` that touch a CI path |
+| `.github/workflows/ci.yml` | Full lint, test, build, and security pipeline; reports the required `CI Result` check | Every pull request, merge-queue groups, and pushes to `main` that touch a CI path |
 | `.github/workflows/lint.yml` | Python style, Bandit, and code-structure checks | Reusable workflow, called by `ci.yml` |
-| `.github/workflows/codeql.yml` | CodeQL for Python and JavaScript/TypeScript | Push to `main`/`master`, weekly |
+| `.github/workflows/codeql.yml` | CodeQL for Python and JavaScript/TypeScript | Push to `main`, weekly |
 | `.github/workflows/dependency-audit.yml` | `npm audit` and `pip-audit` against the live advisory databases | Weekly, manual |
 | `.github/workflows/aws-runner-smoke.yml` | Smoke test of the AWS runner fleet | PRs touching `aws/ci-runners/`, manual |
-| `.github/workflows/deploy-production.yml` | Unified production approval and deployment orchestration | CI success on `main`, or manual on `main`. **Disabled since 2026-11-01**, see [Deployment pause](#deployment-pause-since-2026-11-01) |
+| `.github/workflows/deploy-production.yml` | Unified production approval and deployment orchestration | CI success on `main`, or manual on `main`; see [Pausing and resuming deployments](#pausing-and-resuming-deployments) |
 | `.github/workflows/deploy-backend.yml` | Backend deployment to ECS | Reusable workflow call |
 | `.github/workflows/deploy-frontend.yml` | Frontend deployment to Amplify | Reusable workflow call |
 | `.github/workflows/deploy-archive.yml` | Archive deployment to ECS | Reusable workflow call |
@@ -39,7 +39,7 @@ A `merge_group` run is routed like a push.
   published advisory can still turn such a run red.
 - **`merge_group`** is the merge queue's group commit, the tree that lands on
   `main`. It is planned from the group's diff exactly like a pull request.
-- **`push`** to `main`/`master` runs only when a CI path changed, and then always
+- **`push`** to `main` runs only when a CI path changed, and then always
   runs the full suite.
 
 ### What runs
@@ -109,14 +109,13 @@ keeps those lists equal to `src/apps/*`, `scripts/ci/backend_coverage_floors.jso
 and `pages/playwright.config.ts`. A green pull request check therefore implies a
 green main run for the same tree.
 
-Only these jobs are push-only, because they publish deploy artifacts and need
-repository credentials. While deployments are paused they are also gated off
-(see below):
+Only these jobs are push-only, because they publish from `main` and need write
+credentials:
 
 | Job | Pre-merge proxy |
 |-----|-----------------|
-| `Backend Image Publish` (pushes `itg-backend:<sha>` to ECR) | `Backend Docker Build and Scan` builds the same `context: src` on every pull request |
-| `Frontend Production Build Artifact` | `Frontend Lint, Build and Static Checks` builds the same frontend on every pull request |
+| `Backend Image Publish` (pushes `itg-backend:<sha>` to ECR; runs only while deployments are switched on, see below) | `Backend Docker Build and Scan` builds the same `context: src` on every pull request |
+| `Upload Semgrep SARIF` (sends findings to the Security tab) | `Semgrep SAST` scans the same tree on every pull request and fails on error-severity findings |
 
 CI used to scope pull request jobs by diff. PR #433 was backend-only, so the
 whole E2E matrix was skipped on the PR and ran for the first time after the
@@ -131,22 +130,28 @@ Reverting either half reopens it. Don't reintroduce diff-scoping:
 `test_pull_request_and_push_agree_whenever_ci_runs` in
 `scripts/ci/tests/test_plan_changed_areas.py` guards the parity half.
 
-## Deployment pause (since 2026-11-01)
+## Pausing and resuming deployments
 
-`Deploy Production` was disabled manually on 2026-11-01
-(`gh workflow list --all` shows `disabled_manually`). Nothing deploys while it
-is off, so CI stops producing the deploy artifacts as well: `Backend Image
-Publish`, `Frontend Production Build Artifact`, and the image export in
-`Backend Docker Build and Scan` run on pushes to `main` only when the
-repository variable `DEPLOY_ARTIFACTS_ENABLED` is `true`. `Deploy Artifact
-Result` passes when they are skipped.
+Two switches belong together: the `Deploy Production` workflow and the
+repository variable `DEPLOY_ARTIFACTS_ENABLED`. `Backend Image Publish` and the
+image export in `Backend Docker Build and Scan` run on pushes to `main` only
+while the variable is `true`, and `Deploy Artifact Result` passes when they are
+skipped. Deployments were paused from 2026-11-01 and are live again since
+2026-11-02.
+
+To pause deployments:
+
+1. `gh workflow disable deploy-production.yml`
+2. `gh variable delete DEPLOY_ARTIFACTS_ENABLED`, so `main` CI stops pushing
+   images that nothing deploys.
 
 To resume deployments:
 
 1. Wait until no CI run on `main` is queued or in progress
    (`gh run list --workflow ci.yml --branch main --status in_progress`, and the
    same with `--status queued`), or cancel those runs. A run that started
-   during the pause publishes no image even if it finishes after step 3.
+   while the variable was unset publishes no image even if it finishes after
+   step 3.
 2. `gh variable set DEPLOY_ARTIFACTS_ENABLED --body true`
 3. `gh workflow enable deploy-production.yml`
 4. Merge a change that touches a CI path. Its `main` CI run publishes
@@ -157,7 +162,8 @@ To resume deployments:
 succeeded; for any other run it stops before the approval step. A manual
 `Deploy Production` run therefore only works for a `main` commit whose CI run
 started with the variable set. Do not use "Re-run failed jobs" on a `main` run
-from the pause; merge a new change or use "Re-run all jobs" instead.
+that started while the variable was unset; merge a new change or use "Re-run
+all jobs" instead.
 
 ## Deploy pipelines
 
@@ -219,9 +225,9 @@ See [production authentication](production.md#aws-authentication-and-rollout).
 ## Branch strategy
 
 - **CI** runs on every pull request, on merge-queue groups, and on pushes to
-  `main`/`master` that touch a CI path
-- **Deployment** triggers only after successful CI completion on `main`, and is
-  currently paused
+  `main` that touch a CI path
+- **Deployment** triggers only after successful CI completion on `main`, and
+  waits for one approval
 - **Manual deployment** starts only from the unified workflow on `main`
 - Component workflows are reusable calls and cannot bypass the unified approval gate
 

@@ -13,7 +13,7 @@ updates:
       - dependencies
       - python
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
     groups:
       aws:
@@ -65,7 +65,7 @@ updates:
       - dependencies
       - frontend
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
     groups:
       react:
@@ -93,10 +93,6 @@ updates:
           - minor
           - patch
     ignore:
-      # The eslint 10 major must move together with eslint core and
-      # typescript-eslint; bundle that migration manually.
-      - dependency-name: "@eslint/js"
-        versions: [">=10"]
       # Pinned exactly: it must match the Playwright container image in
       # .github/workflows/ci.yml and aws-runner-smoke.yml, which the AWS runner
       # image pre-pulls (aws/ci-runners/bake-image.sh). Upgrade all of them,
@@ -117,7 +113,7 @@ updates:
       - archive
       - python
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
     # Archived app: bundle every update into one monthly PR.
     groups:
@@ -137,7 +133,7 @@ updates:
       - dependencies
       - docker
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
 
   # GitHub Actions used across workflows and the composite actions they call.
@@ -156,7 +152,7 @@ updates:
       - dependencies
       - ci
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
     # Action bumps are low-risk; bundle them into one monthly PR.
     groups:

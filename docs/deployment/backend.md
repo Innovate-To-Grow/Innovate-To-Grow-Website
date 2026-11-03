@@ -113,8 +113,8 @@ Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 ### Trigger conditions
 
 - Called by `Deploy Production` after successful CI completion on `main`, or by its manual run on `main`
-- `Deploy Production` is disabled since 2026-11-01; see
-  [CI/CD: Deployment pause](ci-cd.md#deployment-pause-since-2026-11-01)
+- [CI/CD: Pausing and resuming deployments](ci-cd.md#pausing-and-resuming-deployments) describes
+  the two switches that must agree
 
 ## Uvicorn configuration
 

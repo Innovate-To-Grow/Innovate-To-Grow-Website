@@ -87,7 +87,7 @@ def plan_changed_areas(event_name: str, changed_files: Iterable[str]) -> Changed
     files = _normalize_files(changed_files)
 
     if event_name not in DIFF_PLANNED_EVENTS:
-        # A push to main/master always validates every area: it is the run
+        # A push to main always validates every area: it is the run
         # Deploy Production consumes, and (while deployments are enabled)
         # `backend-image-publish` must run so deploy-backend.yml can pull
         # `itg-backend:<sha>`.

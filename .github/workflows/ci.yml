@@ -5,7 +5,7 @@ on:
   # this list: a pull request or merge group touching any of them runs the FULL
   # suite, exactly like the push that follows it (PR/push parity).
   push:
-    branches: [main, master]
+    branches: [main]
     paths:
       - "src/**"
       - "cli/**"
@@ -35,6 +35,10 @@ on:
   merge_group:
     types: [checks_requested]
 
+# Runners: CPU-bound jobs use the AWS fleet when vars.AWS_RUNNERS_ENABLED is
+# 'true'; every other job runs on a GitHub-hosted runner, which starts faster
+# than an AWS cold boot. RoutingTests in
+# scripts/ci/tests/test_ci_workflow_invariants.py pins the list of fleet jobs.
 permissions:
   contents: read
 
@@ -81,7 +85,6 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        id: setup-python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -156,25 +159,15 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           set -euo pipefail
-          # A push to a default branch (main/master) always runs the FULL suite:
-          # every area is validated on the branch that ships to production.
-          if [ "${EVENT_NAME}" != "pull_request" ] && [ "${EVENT_NAME}" != "merge_group" ]; then
-            echo "Push/non-PR event (${EVENT_NAME}); running the full suite."
-            {
-              echo "backend=true"
-              echo "frontend=true"
-              echo "cli=true"
-              echo "archive=true"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # A pull request or merge group runs the SAME areas the eventual push
-          # to main runs, so a green check cannot become a red main run for the
-          # same tree (see scripts/ci/plan_changed_areas.py). Fall back to the
-          # full suite if no usable base exists.
+          # A push to main has no base SHA, so it lands in the full-suite branch
+          # below: every area is validated on the branch that ships to
+          # production. A pull request or merge group runs the SAME areas the
+          # eventual push to main runs, so a green check cannot become a red
+          # main run for the same tree (see scripts/ci/plan_changed_areas.py).
+          # Any run without a usable base also runs the full suite.
           if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
             || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            echo "No usable base SHA; running the full suite."
+            echo "${EVENT_NAME} without a usable base SHA; running the full suite."
             {
               echo "backend=true"
               echo "frontend=true"
@@ -196,8 +189,6 @@ jobs:
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
     uses: ./.github/workflows/lint.yml
-    with:
-      run-python: true
 
   secrets-scan:
     name: Secrets Scan
@@ -324,7 +315,7 @@ jobs:
           .venv/bin/python manage.py check --deploy
 
       - name: Dry-run collectstatic with CI settings
-        run: .venv/bin/python manage.py collectstatic --dry-run --noinput --settings=config.settings.environments.test
+        run: .venv/bin/python manage.py collectstatic --dry-run --noinput
 
   django-test-coverage:
     name: Django Test and Coverage (${{ matrix.app }})
@@ -380,7 +371,6 @@ jobs:
             --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test "apps.${{ matrix.app }}"
-          .venv/bin/coverage xml -o "coverage-${{ matrix.app }}.xml"
           .venv/bin/coverage json --pretty-print -o "coverage-${{ matrix.app }}.json"
           .venv/bin/python ../scripts/ci/check_backend_coverage.py \
             "coverage-${{ matrix.app }}.json" \
@@ -418,7 +408,6 @@ jobs:
             --source="apps.cli_admin,apps.core.services.db_tools.safe_orm" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test apps.cli_admin apps.core.tests.services.test_safe_orm
-          .venv/bin/coverage xml -o coverage-cli-admin-safe-orm.xml
           .venv/bin/coverage json --pretty-print -o coverage-cli-admin-safe-orm.json
           .venv/bin/python - <<'PY'
           import json
@@ -445,27 +434,19 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cli-admin-safe-orm-coverage
-          path: |
-            src/coverage-cli-admin-safe-orm.xml
-            src/coverage-cli-admin-safe-orm.json
+          path: src/coverage-cli-admin-safe-orm.json
           if-no-files-found: warn
 
-      - name: Check Django configuration
-        run: .venv/bin/python manage.py check
-
-      - name: Upload backend coverage XML
+      - name: Upload backend coverage
         if: ${{ always() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-coverage-${{ matrix.app }}
-          path: |
-            src/coverage-${{ matrix.app }}.xml
-            src/coverage-${{ matrix.app }}.json
+          path: src/coverage-${{ matrix.app }}.json
           if-no-files-found: warn
 
   cli-coverage:
     name: CLI Test and Coverage
-    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     needs: [preflight, changes]
@@ -478,7 +459,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        id: setup-python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -495,8 +475,7 @@ jobs:
             --cov=i2g_admin \
             --cov-branch \
             --cov-report=term-missing \
-            --cov-report=json:coverage-cli.json \
-            --cov-fail-under=0
+            --cov-report=json:coverage-cli.json
           uv run python ../scripts/ci/check_coverage_totals.py coverage-cli.json \
             --line-floor "${CLI_COVERAGE_LINES}" \
             --branch-floor "${CLI_COVERAGE_BRANCHES}"
@@ -515,7 +494,6 @@ jobs:
     timeout-minutes: 5
     needs:
       - cli-coverage
-      - changes
     if: ${{ always() }}
     steps:
       - name: Checkout CI scripts
@@ -527,7 +505,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py --ignore changes
+          python scripts/ci/check_required_results.py
           --passed-message "CLI checks passed or were not required for this run."
 
   frontend-static:
@@ -629,7 +607,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up frontend
-        id: frontend-setup
         uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -706,7 +683,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up frontend
-        id: frontend-setup
         uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -731,7 +707,6 @@ jobs:
 
       - name: Run required Chromium smoke suite
         env:
-          CI: "true"
           PW_PROJECT: required-chromium-smoke
         run: npx playwright test e2e/smoke/required-smoke.spec.ts --project=chromium --workers=1 --retries=0
 
@@ -748,17 +723,10 @@ jobs:
 
   frontend-security-audit:
     name: Frontend npm Audit
-    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    # Deliberately NOT gated on `changes`. `npm audit` compares the committed
-    # lockfile against a live advisory database, so its result is a function of
-    # time, not of the diff — the same commit can pass today and fail tomorrow
-    # with no code change. Gating it on `frontend` meant a backend-only PR
-    # skipped it and then turned main red on merge (blocking the deploy chain,
-    # which fires on CI succeeding on main), pinning the failure on an unrelated
-    # commit. Runs on every CI invocation instead. Same reasoning as
-    # `secrets-scan`, which is likewise ungated.
+    # Ungated: `npm audit` checks the committed lockfile against a live advisory
+    # database, so its result depends on the day, not on the diff.
     needs: preflight
     defaults:
       run:
@@ -768,7 +736,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up frontend
-        id: frontend-setup
         uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -800,62 +767,12 @@ jobs:
           python scripts/ci/check_required_results.py --ignore changes --skipped-is-failure
           --passed-message "All frontend required checks passed."
 
-  frontend-prod-build:
-    name: Frontend Production Build Artifact
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    needs:
-      - frontend-required
-      - changes
-    # Deploy artifact: produced only while deployments are enabled (repository
-    # variable DEPLOY_ARTIFACTS_ENABLED, see docs/deployment/ci-cd.md).
-    if: >-
-      github.event_name == 'push' &&
-      (github.ref_name == 'main' || github.ref_name == 'master') &&
-      vars.DEPLOY_ARTIFACTS_ENABLED == 'true' &&
-      needs.changes.outputs.frontend == 'true'
-    defaults:
-      run:
-        working-directory: pages
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Validate production frontend configuration
-        env:
-          VITE_API_BASE_URL: https://api.i2g.ucmerced.edu
-        run: |
-          if [ -z "$VITE_API_BASE_URL" ]; then
-            echo "::error::VITE_API_BASE_URL is required for the production frontend build."
-            exit 1
-          fi
-
-      - name: Set up frontend
-        id: frontend-setup
-        uses: ./.github/actions/setup-frontend
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Build production frontend
-        run: npm run build
-        env:
-          VITE_API_BASE_URL: https://api.i2g.ucmerced.edu
-
-      - name: Upload production frontend dist
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: frontend-dist-prod
-          path: pages/dist
-          if-no-files-found: error
-
   python-dependency-audit:
     name: Python Dependency Audit and SBOM
-    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
-    # Ungated for the same reason as `frontend-security-audit` above: pip-audit
-    # resolves the committed requirements lock against a live advisory feed, so a
-    # frontend-only PR that skipped it could still turn main red on merge.
+    # Ungated, like `frontend-security-audit`: the result depends on the live
+    # advisory database, not on the diff.
     needs: preflight
     defaults:
       run:
@@ -865,7 +782,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        id: setup-python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -873,7 +789,7 @@ jobs:
           cache-dependency-path: src/requirements.txt
 
       - name: Install pip-audit
-        run: pip install "pip-audit[cyclonedx]==2.7.3"
+        run: pip install "pip-audit==2.7.3"
 
       - name: Audit Python dependencies
         run: |
@@ -882,19 +798,6 @@ jobs:
             --requirement requirements.txt \
             --progress-spinner off \
             --format columns \
-            --ignore-vuln GHSA-mf9w-mj56-hr94 \
-            --ignore-vuln GHSA-p998-jp59-783m \
-            --ignore-vuln GHSA-hcc4-c3v8-rx92 \
-            --ignore-vuln GHSA-m5qp-6w8w-w647 \
-            --ignore-vuln GHSA-3wq7-rqq7-wx6j \
-            --ignore-vuln GHSA-mwh4-6h8g-pg8w \
-            --ignore-vuln GHSA-966j-vmvw-g2g9 \
-            --ignore-vuln GHSA-63hf-3vf5-4wqf \
-            --ignore-vuln GHSA-c427-h43c-vf67 \
-            --ignore-vuln GHSA-w2fm-2cpv-w7v5 \
-            --ignore-vuln GHSA-2vrm-gr82-f7m5 \
-            --ignore-vuln PYSEC-2025-183 \
-            --ignore-vuln PYSEC-2026-161 \
             | tee "$GITHUB_STEP_SUMMARY"
 
       # A report, not a gate: pip-audit exits non-zero when it finds a
@@ -920,7 +823,6 @@ jobs:
 
   semgrep-sast:
     name: Semgrep SAST
-    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [preflight, changes]
@@ -938,7 +840,6 @@ jobs:
           persist-credentials: false
 
       - name: Set up Python
-        id: setup-python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -949,24 +850,14 @@ jobs:
 
       - name: Run Semgrep
         id: semgrep
-        env:
-          RUN_BACKEND: ${{ needs.changes.outputs.backend }}
-          RUN_FRONTEND: ${{ needs.changes.outputs.frontend }}
         run: |
           set -euo pipefail
-          targets=()
-          if [ "$RUN_BACKEND" = "true" ]; then
-            targets+=(src)
-          fi
-          if [ "$RUN_FRONTEND" = "true" ]; then
-            targets+=(pages)
-          fi
           # Without --error, findings never change the exit status: only a
           # Semgrep failure does (bad config, registry outage, crash), and that
           # must fail this job instead of passing with an empty or partial SARIF.
           # The gate on findings is the next step.
           semgrep scan --config p/default --config p/python --config p/javascript \
-            --metrics=off --sarif --output semgrep.sarif "${targets[@]}"
+            --metrics=off --sarif --output semgrep.sarif src pages
 
       # Error-severity findings block; warnings and notes are reported through
       # the Security tab (push runs) and the semgrep-sarif artifact. Suppress a
@@ -1337,7 +1228,6 @@ jobs:
       - python-dependency-audit
       - frontend-security-audit
       - semgrep-sast
-      - changes
     if: ${{ always() }}
     steps:
       - name: Checkout CI scripts
@@ -1349,7 +1239,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py --ignore changes
+          python scripts/ci/check_required_results.py
           --passed-message "All security checks passed."
 
   deploy-artifact-result:
@@ -1358,8 +1248,6 @@ jobs:
     timeout-minutes: 5
     needs:
       - backend-image-publish
-      - frontend-prod-build
-      - changes
     if: ${{ always() }}
     steps:
       - name: Checkout CI scripts
@@ -1371,7 +1259,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py --ignore changes
+          python scripts/ci/check_required_results.py
           --passed-message "Deploy artifacts passed or were not required for this run."
 
   e2e:
@@ -1444,7 +1332,6 @@ jobs:
       # Service containers share a Docker network with the E2E job container.
       DB_HOST: postgres
       DB_PORT: 5432
-      VITE_API_BASE_URL: http://127.0.0.1:8000
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
       PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:8000
       ADMIN_REQUIRE_CONFIRMATION: "true"
@@ -1466,7 +1353,6 @@ jobs:
           cache-label: pw-v1.64.0-noble
 
       - name: Set up frontend
-        id: frontend-setup
         uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -1553,7 +1439,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up frontend
-        id: frontend-setup
         uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -1660,7 +1545,6 @@ jobs:
 
   archive-tests:
     name: Archive Static Site Tests
-    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     needs: changes
@@ -1673,7 +1557,6 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        id: setup-python
         uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
@@ -1692,7 +1575,6 @@ jobs:
     timeout-minutes: 5
     needs:
       - archive-tests
-      - changes
     if: ${{ always() }}
     steps:
       - name: Checkout CI scripts
@@ -1704,7 +1586,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py --ignore changes
+          python scripts/ci/check_required_results.py
           --passed-message "Archive checks passed or were not required for this run."
 
   ci-result:
