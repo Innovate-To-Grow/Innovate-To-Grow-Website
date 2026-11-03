@@ -189,6 +189,15 @@ class EmailCampaignAdminAuthzTest(MailAdminAuthzTestBase):
         url = reverse("admin:mail_emailcampaign_import_gmail_html_confirm", args=[self.campaign.pk])
         self.assert_denied_for_grantless(url, method="post", data={"message_id": "abc"})
 
+    def test_duplicate_denied_for_grantless_allowed_for_superuser(self):
+        url = reverse("admin:mail_emailcampaign_duplicate_campaign_action", args=[self.campaign.pk])
+        self.assert_denied_for_grantless(url)
+        self.assert_denied_for_grantless(url, method="post", data={"name": "Copy", "audience": "same"})
+        self.assertEqual(EmailCampaign.objects.count(), 1)
+        self.assert_allowed_for_superuser(url)
+        self.assert_allowed_for_superuser(url, method="post", data={"name": "Copy", "audience": "same"})
+        self.assertEqual(EmailCampaign.objects.count(), 2)
+
 
 class InboxAdminAuthzTest(MailAdminAuthzTestBase):
     def test_inbox_list_denied_for_grantless_allowed_for_superuser(self):

@@ -10,6 +10,18 @@
       Please fill in the <strong>Audience</strong> and <strong>Subject</strong>, then <strong>save</strong> to see
       more options (Preview, Send, Import Gmail, and recipient tools).
     </div>
+  {% elif original and original.status != "draft" %}
+    <div
+      id="campaign-locked-banner"
+      class="mb-4 rounded-default border border-base-300 bg-base-50 px-4 py-3 text-sm text-base-700 shadow-xs dark:border-base-700 dark:bg-base-800 dark:text-base-200"
+      role="status"
+    >
+      <strong>This campaign is {{ original.get_status_display|lower }} and locked.</strong>
+      Its subject, content and audience are the record of what went out{% if original.sent_at %} on {{ original.sent_at|date:"DATETIME_FORMAT" }}{% endif %},
+      so they cannot be edited here; only <strong>Reusable login links</strong> can still be changed (turning it off stops the links that were already sent).
+      To send this email again, to change it, or to send it to more people,
+      <a class="font-semibold text-primary-700 underline dark:text-primary-300" href="{% url 'admin:mail_emailcampaign_duplicate_campaign_action' original.pk %}">duplicate it into a new draft</a>.
+    </div>
   {% endif %}
 {% endblock %}
 
