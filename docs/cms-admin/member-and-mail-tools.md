@@ -210,13 +210,25 @@ replacement, `{{name}}` or `{{ name }}`):
 | Variable | Replaced with |
 |----------|--------------|
 | `{{ first_name }}`, `{{ last_name }}`, `{{ full_name }}` | Recipient's name (for event-based audiences, the registration's attendee name when set) |
-| `{{ login_link }}` | The recipient's login link (see [Login link tokens](#login-link-tokens)); empty for manual addresses |
+| `{{ login_link }}` | The recipient's login link (see [Login link tokens](#login-link-tokens)); for a manual address that belongs to no active member, a link to the site's sign-in page (`FRONTEND_URL/login`) |
 
 There is no unsubscribe placeholder. With **Include one-click unsubscribe** on, every email to a member (any
 audience) gets an "Unsubscribe from newsletters" link in the footer and the RFC 8058 `List-Unsubscribe` /
 `List-Unsubscribe-Post` headers, both pointing at the backend page `/mail/unsubscribe/{token}/` (valid 365 days; see
-[Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe)). Manual addresses get neither, and
-nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeholder link.
+[Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe)). Manual addresses that belong to no
+active member get neither, and nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeholder
+link.
+
+**Manual Emails and members.** Each typed address is matched, ignoring letter case, to the active member whose
+contact email (primary, secondary or other) it is, in one query when the audience is resolved
+(`src/apps/mail/services/audience/resolvers.py`, `_manual`). A matched address is treated like a Selected Members
+recipient: the name tags, the personal `{{ login_link }}` and the unsubscribe link are that member's, and the message
+still goes to the address exactly as typed. An address no active member owns (or that two members hold in different
+letter case) gets empty name tags, and its `{{ login_link }}` becomes a link to the sign-in page. That link is not a
+credential, so the message keeps its Sent copy. Lines that repeat an address in another letter case are sent once.
+When the subject or body uses `{{ login_link }}`, the send confirmation page says how many recipients have no account
+and will get the sign-in page instead. Until 2026-11-03 manual addresses were never matched, so `{{ login_link }}`
+rendered as nothing for every manual address.
 
 ### Sending
 

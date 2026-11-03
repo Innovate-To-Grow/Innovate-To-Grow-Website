@@ -668,8 +668,8 @@ as JSON. These are marked:
 - **Ticket emails**: the ticket code is the check-in credential, and the member's login link signs in.
 - **Campaign messages that contain the recipient's login link** (`{{login_link}}` in the subject or body,
   for a recipient who is a member): the link signs in for `login_link_validity_days`, possibly more than
-  once. This is decided per message, so the same campaign's messages to manual addresses (no link) stay
-  MIME.
+  once. This is decided per message, so the same campaign's messages to manual addresses that belong to no
+  member stay MIME (their `{{login_link}}` is a link to the sign-in page, which is no credential).
 
 The JSON form carries the subject, one body (the HTML body when there is one, otherwise the text body), To,
 Cc, Bcc, Reply-To, attachments (inline ones keep their Content-ID, so the ticket barcode still displays) and

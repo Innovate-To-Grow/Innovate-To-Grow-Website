@@ -1,6 +1,7 @@
 """Services the campaign admin views use; tests patch names here."""
 
 from apps.mail.services.audience import get_recipients
+from apps.mail.services.campaign.personalize import recipients_without_login_link
 from apps.mail.services.campaign.preview import render_preview
 from apps.mail.services.gmail_import import (
     GMAIL_FOLDER_DISPLAY,
@@ -16,6 +17,7 @@ __all__ = [
     "get_recipients",
     "import_message_into_campaign",
     "list_recent_sent_messages",
+    "recipients_without_login_link",
     "render_preview",
     "resolve_gmail_mailbox",
 ]

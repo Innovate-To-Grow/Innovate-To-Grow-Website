@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from apps.mail.services.campaign.personalize import personalize
+from apps.mail.services.campaign.personalize import personalize, uses_placeholder
 
 
 class PersonalizeTest(TestCase):
@@ -56,3 +56,10 @@ class PersonalizeTest(TestCase):
         context = {"name": "<script>alert('xss')</script>"}
         result = personalize(template, context)
         self.assertIn("<script>", result)
+
+
+class UsesPlaceholderTest(TestCase):
+    def test_either_spelling_in_any_template_counts(self):
+        self.assertTrue(uses_placeholder("login_link", "", "Go: {{login_link}}"))
+        self.assertTrue(uses_placeholder("login_link", "{{ login_link }}"))
+        self.assertFalse(uses_placeholder("login_link", "{{ first_name }}", None, "login_link"))

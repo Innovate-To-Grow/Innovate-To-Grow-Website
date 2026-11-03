@@ -21,6 +21,18 @@
         </div>
     </div>
 
+    {% if without_login_link_count %}
+    <!-- Recipients without an account get the sign-in page for the login link -->
+    <div id="confirm-send-no-login-link" class="mb-6 rounded-default border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+        <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 !text-[22px] mt-0.5">link</span>
+            <p class="text-xs text-blue-800 dark:text-blue-300">
+                {{ without_login_link_count }} recipient{{ without_login_link_count|pluralize }} {{ without_login_link_count|pluralize:"has,have" }} no member account, so for {{ without_login_link_count|pluralize:"that address,those addresses" }} <code>{% templatetag openvariable %}login_link{% templatetag closevariable %}</code> becomes a link to the site's sign-in page, not a personal login link.
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
     {% if delivery_notice %}
     <!-- Delivery limits -->
     <div class="mb-6 rounded-default border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
