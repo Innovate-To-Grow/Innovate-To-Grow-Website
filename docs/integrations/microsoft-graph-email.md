@@ -447,12 +447,16 @@ row pins is never used.
 The access check asks Microsoft directly, bypassing the site's own scope check, what the Entra app may do
 and compares it with the approved roles (`GRAPH_APPROVED_APPLICATION_ROLES`: what OIT granted, `Mail.ReadWrite` and
 `Mail.Send`) and the mailbox scope. A superuser
-runs it with **Run access check** on the Graph configuration's page (production has no ECS Exec), or from a
-shell:
+runs it with **Run access check**, in the **Access check** section of the Graph configuration's page (production has
+no ECS Exec), or from a shell:
 
 ```bash
 cd src && python manage.py verify_graph_access
 ```
+
+"Superuser" means the account's superuser flag (`is_superuser`, the I2G Master account). The admin can't grant it:
+an admin granted the Core app is not a superuser, so they see the access check card and the go-live evidence but not
+the button. The card tells them a superuser has to run it, and the run page answers them with 403.
 
 Before the first run a superuser sets **Access Check Deny Mailbox**: an existing mailbox outside the scope,
 designated by OIT / InfoSec for the denial test (a plain email address, not another name of a scoped

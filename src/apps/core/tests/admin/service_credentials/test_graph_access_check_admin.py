@@ -6,6 +6,7 @@ from django.contrib.messages import get_messages
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.core.admin.service_credentials.microsoft_graph_panel import SUPERUSER_NEEDED
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.access_check.runner import NO_DENY_MAILBOX
 from apps.core.tests.admin.service_credentials.test_graph_provider_guard import change_data
@@ -28,6 +29,12 @@ class AccessCheckAdminFixture(ProbeFixtureMixin, TestCase):
 
     def login_staff(self, *apps):
         self.client.force_login(make_admin(apps=list(apps), email=f"staff-{'-'.join(apps) or 'none'}@example.com"))
+
+    def card(self, page) -> str:
+        """The access check card: it closes the certificate panel, so it runs up to the panel's end."""
+        html = page.content.decode()
+        start = html.index('id="graph-access-check"')
+        return html[start : html.index("</section>", start)]
 
 
 class RunAccessCheckPageTests(AccessCheckAdminFixture):
@@ -174,7 +181,44 @@ class AccessCheckCardTests(AccessCheckAdminFixture):
 
         self.assertContains(page, "No access check has been run with this configuration.")
         self.assertContains(page, "Go-live evidence (not required in this environment):")
-        self.assertContains(page, self.run_url)
+        self.assertContains(page, self.run_url, count=1)
+        self.assertIn(f'href="{self.run_url}"', self.card(page))
+        self.assertNotContains(page, SUPERUSER_NEEDED)
+
+    @override_settings(GRAPH_REQUIRE_ACCESS_EVIDENCE=True)
+    def test_in_production_the_missing_evidence_message_sits_next_to_the_button_it_names(self):
+        card = self.card(self.client.get(self.change_url))
+
+        self.assertIn("missing: no access check is recorded for the current certificate.", card)
+        self.assertIn("Run access check, in the Access check section", card)
+        self.assertIn(f'href="{self.run_url}" id="graph-run-access-check"', card)
+        self.assertIn("bg-primary-600", card)
+
+    def test_without_a_deny_mailbox_the_card_says_to_set_it_before_running(self):
+        ready = self.card(self.client.get(self.change_url))
+        MicrosoftGraphProviderConfig.objects.filter(pk=self.config.pk).update(access_check_deny_mailbox="")
+
+        card = self.card(self.client.get(self.change_url))
+
+        self.assertNotIn("graph-access-check-run-problem", ready)
+        self.assertIn(f"Before it can run: {NO_DENY_MAILBOX}", card)
+        self.assertIn(f'href="{self.run_url}"', card)
+
+    @override_settings(GRAPH_REQUIRE_ACCESS_EVIDENCE=True)
+    def test_core_staff_are_told_why_there_is_no_button_instead_of_being_sent_to_it(self):
+        # The production report: a Core admin (not a superuser) saw "Run the access check ... Run access check" and
+        # Install certificate / Download .cer, but no button, and nothing saying a superuser has to run it.
+        self.login_staff("core", "mail")
+
+        page = self.client.get(self.change_url)
+
+        self.assertContains(page, "Install certificate")
+        self.assertContains(page, "Download .cer")
+        self.assertNotContains(page, self.run_url)
+        card = self.card(page)
+        self.assertIn("missing: no access check is recorded", card)
+        self.assertIn(SUPERUSER_NEEDED, card)
+        self.assertEqual(self.client.get(self.run_url).status_code, 403)
 
     def test_after_a_run_the_card_links_the_result_and_shows_the_evidence(self):
         self.client.post(self.run_url)
@@ -206,3 +250,4 @@ class AccessCheckCardTests(AccessCheckAdminFixture):
 
         self.assertContains(page, 'data-verdict="compliant"')
         self.assertNotContains(page, self.run_url)
+        self.assertContains(page, SUPERUSER_NEEDED)

@@ -139,7 +139,7 @@ class ActivationGateTests(TestCase):
 
         message = error.exception.message_dict["provider"][0]
         self.assertTrue(message.startswith("Email cannot switch to Microsoft Graph yet: no access check is recorded"))
-        self.assertIn("Run access check", message)
+        self.assertIn("A superuser runs the access check with Run access check, in the Access check section", message)
 
     @override_settings(GRAPH_REQUIRE_ACCESS_EVIDENCE=True)
     def test_on_the_switch_is_allowed_with_evidence(self):
