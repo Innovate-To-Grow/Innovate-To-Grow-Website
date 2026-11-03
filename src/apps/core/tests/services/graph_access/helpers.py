@@ -22,9 +22,15 @@ SCOPED = "i2g@contoso.com"
 DENY = "intruder-test@contoso.com"
 MESSAGE_ID = "AAMkAGI2THVSAAA="
 REQUEST_ID = "8a1b2c3d-1111-2222-3333-444455556666"
-APPROVED = ("Mail.Read", "Mail.Send")
-# What OIT reportedly configured on the app: beyond the approval (Mail.Read).
+# GRAPH_APPROVED_APPLICATION_ROLES as ``approved_roles()`` returns it: what OIT granted, plus Mail.Read (which
+# Mail.ReadWrite includes).
+APPROVED = ("Mail.Read", "Mail.ReadWrite", "Mail.Send")
+# What OIT granted on the app; the fake token claims it unless a test says otherwise.
 OIT_ROLES = ("Mail.ReadWrite", "Mail.Send")
+# A narrower grant, still within the approved roles.
+NARROW_ROLES = ("Mail.Read", "Mail.Send")
+# A role beyond the approved ones: it needs a recorded exception reference.
+EXTRA_ROLES = ("Mail.Send", "User.Read.All")
 APA_MESSAGE = "Access to OData is disabled: [RAOP] : Blocked by tenant configured AppOnly AccessPolicy settings."
 
 ALLOW = {
@@ -47,7 +53,7 @@ def jwt(payload) -> str:
     return f"{part({'alg': 'RS256', 'typ': 'JWT'})}.{part(payload)}.c2lnbmF0dXJl"
 
 
-def token_with_roles(roles=APPROVED) -> str:
+def token_with_roles(roles=OIT_ROLES) -> str:
     claims = {"aud": "https://graph.microsoft.com", "tid": TENANT_ID, "appid": CLIENT_ID}
     if roles is not None:
         claims["roles"] = list(roles)
@@ -63,7 +69,7 @@ def kind_of(method: str, path: str) -> str:
 
 
 class ProbeFake:
-    def __init__(self, roles=APPROVED):
+    def __init__(self, roles=OIT_ROLES):
         self.token = token_response(token=token_with_roles(roles))
         self.answers = {}
         self.calls = []

@@ -1,55 +1,55 @@
 name: CI
 
 on:
+  # The paths a push to main validates. scripts/ci/plan_changed_areas.py mirrors
+  # this list: a pull request or merge group touching any of them runs the FULL
+  # suite, exactly like the push that follows it (PR/push parity).
   push:
-    branches: [main, master]
+    branches: [main]
     paths:
       - "src/**"
       - "cli/**"
       - "pages/**"
       - "aws/**"
       - "scripts/**"
+      - ".github/actionlint.yaml"
+      - ".github/actions/**"
+      - ".github/codeql/**"
       - ".github/dependabot.yml"
       - ".github/workflows/**"
+      - ".gitleaksignore"
       - "pyproject.toml"
       - ".pre-commit-config.yaml"
       - ".bandit-baseline.json"
-      # Archived legacy static site. An archive-only merge to main must run CI
-      # so the deploy-archive.yml chain (gated on CI completing on main) fires
-      # and ships the archive to ECS. Every push to main runs the FULL suite
-      # (see the `changes` job), so archive merges are validated end to end.
+      # Archived legacy static site. Every push to main runs the FULL suite (see
+      # the `changes` job), so archive merges are validated end to end.
       - "archive/**"
+  # No path filter: every pull request must report the required `CI Result`
+  # check, or a ruleset requiring it would block docs-only pull requests
+  # forever. `changes` runs nothing beyond the ungated checks when the diff
+  # touches none of the push paths above, so such a run is green in minutes.
   pull_request:
-    paths:
-      - "src/**"
-      - "cli/**"
-      - "pages/**"
-      - "aws/**"
-      - "scripts/**"
-      - ".github/dependabot.yml"
-      - ".github/workflows/**"
-      - "pyproject.toml"
-      - ".pre-commit-config.yaml"
-      - ".bandit-baseline.json"
-      # Validate Claude Code project config in PRs so a .claude/-only PR still
-      # produces the required `CI Result` check. Intentionally NOT in the push
-      # paths above: a .claude/-only merge to main should not run CI and so
-      # should not trigger the deploy-*.yml chain (which fires on CI completing
-      # on main).
-      - ".claude/**"
-      # Archived legacy static site. An archive-only PR now runs the FULL suite,
-      # exactly like the archive-only merge to main will (PR/push parity — see
-      # scripts/ci/plan_changed_areas.py). Still in the push paths above so an
-      # archive-only merge to main runs CI and triggers deploy-archive.yml.
-      - "archive/**"
+  # The merge queue's group commit: the exact tree that lands on main. It is
+  # planned from the group's diff exactly like a pull request (merge_group
+  # events accept no path filter).
+  merge_group:
+    types: [checks_requested]
 
+# Runners: CPU-bound jobs use the AWS fleet when vars.AWS_RUNNERS_ENABLED is
+# 'true'; every other job runs on a GitHub-hosted runner, which starts faster
+# than an AWS cold boot. RoutingTests in
+# scripts/ci/tests/test_ci_workflow_invariants.py pins the list of fleet jobs.
 permissions:
   contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # Cancel superseded runs only for pull requests; let every push to a default
-  # branch finish so main/master is always fully validated.
+  # Superseded pull request runs are cancelled. A running push or merge-group
+  # run is never cancelled, but GitHub keeps at most ONE pending run per group:
+  # when a third push to main arrives while one run is in progress and one is
+  # waiting, the waiting (older) run is cancelled. Only the newest main commit
+  # is then guaranteed a complete push run; with the merge queue every merged
+  # tree has already passed its own merge_group run (whose ref is unique).
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -80,13 +80,12 @@ jobs:
       issues: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -147,7 +146,7 @@ jobs:
       archive: ${{ steps.filter.outputs.archive }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -155,31 +154,20 @@ jobs:
         id: filter
         env:
           EVENT_NAME: ${{ github.event_name }}
-          # PR: GitHub gives both endpoints (used to scope the PR's diff).
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Pull requests and merge groups give both endpoints of their diff.
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
         run: |
           set -euo pipefail
-          # A push to a default branch (main/master) always runs the FULL suite:
-          # every area is validated on the branch that ships to production, and
-          # any push therefore completes CI so the deploy-*.yml chain fires.
-          if [ "${EVENT_NAME}" != "pull_request" ]; then
-            echo "Push/non-PR event (${EVENT_NAME}); running the full suite."
-            {
-              echo "backend=true"
-              echo "frontend=true"
-              echo "cli=true"
-              echo "archive=true"
-            } >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          # A pull request runs the SAME areas the eventual push to main runs,
-          # so a green PR check cannot become a red main run for the same tree
-          # (see scripts/ci/plan_changed_areas.py). Fall back to the full suite
-          # if no usable base exists.
+          # A push to main has no base SHA, so it lands in the full-suite branch
+          # below: every area is validated on the branch that ships to
+          # production. A pull request or merge group runs the SAME areas the
+          # eventual push to main runs, so a green check cannot become a red
+          # main run for the same tree (see scripts/ci/plan_changed_areas.py).
+          # Any run without a usable base also runs the full suite.
           if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
             || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
-            echo "No usable PR base SHA; running the full suite."
+            echo "${EVENT_NAME} without a usable base SHA; running the full suite."
             {
               echo "backend=true"
               echo "frontend=true"
@@ -191,7 +179,7 @@ jobs:
           echo "Changed files:"
           git diff --name-only "$BASE_SHA...$HEAD_SHA" | tee "$RUNNER_TEMP/changed-files.txt"
           # All-or-nothing: any path a push to main would validate runs the full
-          # suite; a PR touching only PR-only paths (.claude/**) runs none.
+          # suite; a diff touching none of them (docs, README) runs none.
           python scripts/ci/plan_changed_areas.py \
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
@@ -201,8 +189,6 @@ jobs:
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
     uses: ./.github/workflows/lint.yml
-    with:
-      run-python: true
 
   secrets-scan:
     name: Secrets Scan
@@ -211,7 +197,7 @@ jobs:
     needs: preflight
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -231,8 +217,11 @@ jobs:
 
       - name: Run gitleaks on PR/push diff
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          # Pull requests and merge groups: every commit between base and head.
+          # (HEAD^..HEAD alone would scan only a merge commit, whose diff git log
+          # does not show.)
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}
           PUSH_BEFORE: ${{ github.event.before }}
           PUSH_HEAD: ${{ github.sha }}
         run: |
@@ -254,10 +243,15 @@ jobs:
             --log-opts "$RANGE" \
             --exit-code 1
 
-  backend-db-migration:
-    name: Backend DB Migration Test (PostgreSQL)
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
+  backend-checks:
+    name: Backend Migration and Production Checks
+    # Migration drift on PostgreSQL plus the production-settings checks: a venv
+    # and a few manage.py calls, so a GitHub-hosted runner starts it faster than
+    # an AWS cold boot. Not a dependency of the Django matrix: every test leg
+    # applies all migrations to its own PostgreSQL test database anyway, and
+    # backend-required-result still requires this job.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs: [lint, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
     services:
@@ -286,46 +280,13 @@ jobs:
       DB_PORT: 5432
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
+      - name: Set up backend virtualenv
+        uses: ./.github/actions/setup-backend-venv
         with:
           python-version: ${{ env.BACKEND_PYTHON_VERSION }}
-
-      - name: Cache backend virtualenv
-        id: backend-venv-cache
-        uses: actions/cache@v6
-        with:
-          path: src/.venv
-          key: backend-venv-${{ runner.environment }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
-
-      - name: Validate cached virtualenv
-        id: backend-venv-check
-        run: |
-          # A cached venv hard-codes the interpreter it was built against. If
-          # that interpreter is gone (a hosted-runner Python patch bump) or the
-          # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. A venv can also start but be
-          # unable to import what the backend needs: on 2026-10-29 restored E2E
-          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
-          # Probe those imports, and discard the venv when they fail so the install
-          # step below rebuilds it.
-          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
-            echo "usable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
-            rm -rf .venv
-            echo "usable=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install dependencies
-        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
+          coverage-version: ${{ env.COVERAGE_VERSION }}
 
       - name: Check migration files are up to date
         run: .venv/bin/python manage.py makemigrations --check --dry-run
@@ -336,123 +297,39 @@ jobs:
       - name: Ensure no pending migrations remain
         run: .venv/bin/python manage.py migrate --check
 
-  backend-static-and-prod-check:
-    name: Backend Static and Production Checks
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    needs: [lint, changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    defaults:
-      run:
-        working-directory: src
-    env:
-      DJANGO_SECRET_KEY: ci-production-smoke-secret-key-with-enough-entropy-2026
-      DJANGO_ALLOWED_HOSTS: api.example.com
-      BACKEND_URL: https://api.example.com
-      FRONTEND_URL: https://i2g.example.com
-      DB_NAME: itg_ci
-      DB_USER: itg_ci_user
-      DB_PASSWORD: itg_ci_pass
-      DB_HOST: db.example.com
-      DB_PORT: 5432
-      AWS_STORAGE_BUCKET_NAME: itg-ci-static
-      CSRF_TRUSTED_ORIGINS: https://i2g.example.com
-      CORS_ALLOWED_ORIGINS: https://i2g.example.com
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
-
-      - name: Cache backend virtualenv
-        id: backend-venv-cache
-        uses: actions/cache@v6
-        with:
-          path: src/.venv
-          key: backend-venv-${{ runner.environment }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
-
-      - name: Validate cached virtualenv
-        id: backend-venv-check
+      # Placeholder production environment: the settings must import and pass
+      # `check --deploy` without reaching any real service.
+      - name: Import production settings and run Django deploy checks
+        env:
+          DJANGO_SETTINGS_MODULE: config.settings.environments.production
+          DJANGO_SECRET_KEY: ci-production-smoke-secret-key-with-enough-entropy-2026
+          DJANGO_ALLOWED_HOSTS: api.example.com
+          BACKEND_URL: https://api.example.com
+          FRONTEND_URL: https://i2g.example.com
+          DB_HOST: db.example.com
+          AWS_STORAGE_BUCKET_NAME: itg-ci-static
+          CSRF_TRUSTED_ORIGINS: https://i2g.example.com
+          CORS_ALLOWED_ORIGINS: https://i2g.example.com
         run: |
-          # A cached venv hard-codes the interpreter it was built against. If
-          # that interpreter is gone (a hosted-runner Python patch bump) or the
-          # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. A venv can also start but be
-          # unable to import what the backend needs: on 2026-10-29 restored E2E
-          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
-          # Probe those imports, and discard the venv when they fail so the install
-          # step below rebuilds it.
-          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
-            echo "usable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
-            rm -rf .venv
-            echo "usable=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install dependencies
-        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
-
-      - name: Import production settings
-        run: DJANGO_SETTINGS_MODULE=config.settings.environments.production .venv/bin/python -c "import django; django.setup()"
-
-      - name: Run Django deploy checks
-        run: DJANGO_SETTINGS_MODULE=config.settings.environments.production .venv/bin/python manage.py check --deploy
+          .venv/bin/python -c "import django; django.setup()"
+          .venv/bin/python manage.py check --deploy
 
       - name: Dry-run collectstatic with CI settings
-        run: .venv/bin/python manage.py collectstatic --dry-run --noinput --settings=config.settings.environments.test
-
-  django-test-plan:
-    name: Plan Django Test Matrix
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: [changes]
-    if: ${{ needs.changes.outputs.backend == 'true' }}
-    outputs:
-      apps: ${{ steps.plan.outputs.apps }}
-      cli_admin_coverage: ${{ steps.plan.outputs.cli_admin_coverage }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      # PR/push parity: plan_django_tests.py returns every app suite for every
-      # event, so there is no diff to compute (and no need for the full-history
-      # clone this step used to require). The empty file keeps the CLI contract.
-      - name: Capture changed files
-        run: ': > changed-files.txt'
-
-      - name: Select all Django apps
-        id: plan
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          python scripts/ci/plan_django_tests.py \
-            --event-name "$EVENT_NAME" \
-            --changed-files changed-files.txt \
-            >> "$GITHUB_OUTPUT"
+        run: .venv/bin/python manage.py collectstatic --dry-run --noinput
 
   django-test-coverage:
     name: Django Test and Coverage (${{ matrix.app }})
     runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 15
-    needs:
-      - backend-db-migration
-      - backend-static-and-prod-check
-      - django-test-plan
-      - changes
+    needs: [lint, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
-        app: ${{ fromJson(needs.django-test-plan.outputs.apps) }}
+        # Every app on every event (PR/push parity). MatrixParityTests in
+        # scripts/ci/tests/test_ci_workflow_invariants.py keeps this list equal
+        # to src/apps/* and scripts/ci/backend_coverage_floors.json.
+        app: [authn, core, system_intelligence, cms, event, projects, mail, cli_admin]
     services:
       postgres:
         image: postgres:16
@@ -480,46 +357,13 @@ jobs:
       DB_PORT: 5432
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
+      - name: Set up backend virtualenv
+        uses: ./.github/actions/setup-backend-venv
         with:
           python-version: ${{ env.BACKEND_PYTHON_VERSION }}
-
-      - name: Cache backend virtualenv
-        id: backend-venv-cache
-        uses: actions/cache@v6
-        with:
-          path: src/.venv
-          key: backend-venv-${{ runner.environment }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
-
-      - name: Validate cached virtualenv
-        id: backend-venv-check
-        run: |
-          # A cached venv hard-codes the interpreter it was built against. If
-          # that interpreter is gone (a hosted-runner Python patch bump) or the
-          # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. A venv can also start but be
-          # unable to import what the backend needs: on 2026-10-29 restored E2E
-          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
-          # Probe those imports, and discard the venv when they fail so the install
-          # step below rebuilds it.
-          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
-            echo "usable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
-            rm -rf .venv
-            echo "usable=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install dependencies
-        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
+          coverage-version: ${{ env.COVERAGE_VERSION }}
 
       - name: Run Django tests and enforce per-app coverage
         run: |
@@ -527,7 +371,6 @@ jobs:
             --source="apps.${{ matrix.app }}" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test "apps.${{ matrix.app }}"
-          .venv/bin/coverage xml -o "coverage-${{ matrix.app }}.xml"
           .venv/bin/coverage json --pretty-print -o "coverage-${{ matrix.app }}.json"
           .venv/bin/python ../scripts/ci/check_backend_coverage.py \
             "coverage-${{ matrix.app }}.json" \
@@ -557,104 +400,14 @@ jobs:
         env:
           APP_UNDER_TEST: ${{ matrix.app }}
 
-      - name: Check Django configuration
-        run: .venv/bin/python manage.py check
-
-      - name: Upload backend coverage XML
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: backend-coverage-${{ matrix.app }}
-          path: |
-            src/coverage-${{ matrix.app }}.xml
-            src/coverage-${{ matrix.app }}.json
-          if-no-files-found: warn
-
-  cli-admin-coverage:
-    name: CLI Admin Coverage
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 15
-    needs:
-      - backend-db-migration
-      - backend-static-and-prod-check
-      - django-test-plan
-      - changes
-    if: ${{ needs.changes.outputs.backend == 'true' && needs.django-test-plan.outputs.cli_admin_coverage == 'true' }}
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: itg_ci
-          POSTGRES_USER: itg_ci_user
-          POSTGRES_PASSWORD: itg_ci_pass
-        ports:
-          - 5432:5432
-        # Probe TCP: the image's init-only first-start server is socket-only.
-        options: >-
-          --health-cmd "pg_isready -h 127.0.0.1 -p 5432 -U itg_ci_user -d itg_ci"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    defaults:
-      run:
-        working-directory: src
-    env:
-      DJANGO_SETTINGS_MODULE: config.settings.environments.unit
-      DB_NAME: itg_ci
-      DB_USER: itg_ci_user
-      DB_PASSWORD: itg_ci_pass
-      DB_HOST: 127.0.0.1
-      DB_PORT: 5432
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.BACKEND_PYTHON_VERSION }}
-
-      - name: Cache backend virtualenv
-        id: backend-venv-cache
-        uses: actions/cache@v6
-        with:
-          path: src/.venv
-          key: backend-venv-${{ runner.environment }}-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
-
-      - name: Validate cached virtualenv
-        id: backend-venv-check
-        run: |
-          # A cached venv hard-codes the interpreter it was built against. If
-          # that interpreter is gone (a hosted-runner Python patch bump) or the
-          # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. A venv can also start but be
-          # unable to import what the backend needs: on 2026-10-29 restored E2E
-          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
-          # Probe those imports, and discard the venv when they fail so the install
-          # step below rebuilds it.
-          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
-            echo "usable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
-            rm -rf .venv
-            echo "usable=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install dependencies
-        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
-
+      # apps.cli_admin and the shared safe_orm service are held at 100%.
       - name: Enforce coverage for cli_admin and safe_orm
+        if: ${{ matrix.app == 'cli_admin' }}
         run: |
           .venv/bin/coverage run \
             --source="apps.cli_admin,apps.core.services.db_tools.safe_orm" \
             --omit="*/migrations/*,*/tests/*" \
             manage.py test apps.cli_admin apps.core.tests.services.test_safe_orm
-          .venv/bin/coverage xml -o coverage-cli-admin-safe-orm.xml
           .venv/bin/coverage json --pretty-print -o coverage-cli-admin-safe-orm.json
           .venv/bin/python - <<'PY'
           import json
@@ -677,18 +430,24 @@ jobs:
           .venv/bin/coverage report -m --fail-under=100
 
       - name: Upload CLI admin coverage
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        if: ${{ always() && matrix.app == 'cli_admin' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cli-admin-safe-orm-coverage
-          path: |
-            src/coverage-cli-admin-safe-orm.xml
-            src/coverage-cli-admin-safe-orm.json
+          path: src/coverage-cli-admin-safe-orm.json
+          if-no-files-found: warn
+
+      - name: Upload backend coverage
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-coverage-${{ matrix.app }}
+          path: src/coverage-${{ matrix.app }}.json
           if-no-files-found: warn
 
   cli-coverage:
     name: CLI Test and Coverage
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.cli == 'true' }}
@@ -697,11 +456,10 @@ jobs:
         working-directory: cli
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -717,15 +475,14 @@ jobs:
             --cov=i2g_admin \
             --cov-branch \
             --cov-report=term-missing \
-            --cov-report=json:coverage-cli.json \
-            --cov-fail-under=0
+            --cov-report=json:coverage-cli.json
           uv run python ../scripts/ci/check_coverage_totals.py coverage-cli.json \
             --line-floor "${CLI_COVERAGE_LINES}" \
             --branch-floor "${CLI_COVERAGE_BRANCHES}"
 
       - name: Upload CLI coverage
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cli-coverage
           path: cli/coverage-cli.json
@@ -737,36 +494,28 @@ jobs:
     timeout-minutes: 5
     needs:
       - cli-coverage
-      - changes
     if: ${{ always() }}
     steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+
       - name: Summarize CLI checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
+        run: >-
+          python scripts/ci/check_required_results.py
+          --passed-message "CLI checks passed or were not required for this run."
 
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          ok = {"success", "skipped"}
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if name != "changes" and data["result"] not in ok
-          }
-          if failed:
-              for name, result in failed.items():
-                  print(f"{name}: {result}")
-              sys.exit(1)
-          print("CLI checks passed or were not required for this run.")
-          PY
-
-  frontend-lint:
-    name: Frontend ESLint
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
+  frontend-static:
+    name: Frontend Lint, Build and Static Checks
+    # ESLint, structure, type check, build, bundle budgets and the npm SBOM in
+    # one GitHub-hosted job: each used to be a separate AWS job shorter than its
+    # own cold boot. Every check after setup runs even when an earlier one
+    # failed, so one run reports all of them.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
@@ -774,17 +523,13 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up frontend
+        id: frontend-setup
+        uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Run ESLint
         run: npm run lint
@@ -792,35 +537,61 @@ jobs:
       # Layer boundaries, import cycles and directory sizes (ESLint enforces the
       # per-file / per-function hard limits above). See docs/architecture/code-quality.md.
       - name: Check frontend structure
+        if: ${{ !cancelled() && steps.frontend-setup.outcome == 'success' }}
         run: npm run check:structure
 
-  frontend-typecheck:
-    name: Frontend TypeScript Type Check
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    needs: [preflight, changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    defaults:
-      run:
-        working-directory: pages
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
+      # `npm run build` is `tsc -b && vite build`, and tsc -b type-checks both
+      # projects referenced by pages/tsconfig.json (tsconfig.app.json and
+      # tsconfig.node.json), so this step is also the TypeScript check.
+      - name: Type-check and build frontend for CI and E2E
+        id: build
+        if: ${{ !cancelled() && steps.frontend-setup.outcome == 'success' }}
+        run: npm run build
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:8000
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Upload frontend dist for CI
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
+          name: frontend-dist-ci
+          path: pages/dist
+          if-no-files-found: error
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Enforce bundle budgets
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: npm run size
 
-      - name: Run TypeScript type check
-        run: |
-          npx tsc --noEmit --project tsconfig.app.json
-          npx tsc --noEmit --project tsconfig.node.json
+      - name: Check built CSS for range-syntax media queries
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: npm run check:built-css
+
+      # vite.config.ts's route-chunk preload table and API preconnect come from
+      # the bundle graph, so a Vite/Rolldown upgrade can change them without
+      # failing the build. Same URL as the build step above.
+      - name: Check built HTML preload table and API preconnect
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: npm run check:built-html
+        env:
+          VITE_API_BASE_URL: http://127.0.0.1:8000
+
+      - name: Generate npm SBOM
+        if: ${{ !cancelled() && steps.frontend-setup.outcome == 'success' }}
+        run: npm sbom --sbom-format cyclonedx --json > ../npm-sbom.cdx.json
+
+      - name: Check npm licenses
+        if: ${{ !cancelled() && steps.frontend-setup.outcome == 'success' }}
+        run: python3 ../scripts/ci/check_npm_licenses.py --package-lock package-lock.json --output ../npm-license-report.json
+
+      - name: Upload frontend supply chain artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-supply-chain-reports
+          path: |
+            npm-sbom.cdx.json
+            npm-license-report.json
+          if-no-files-found: warn
 
   frontend-unit-coverage:
     name: Frontend Unit Test Coverage
@@ -833,17 +604,12 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: Run tests with coverage
         run: npm run test:coverage
@@ -886,7 +652,7 @@ jobs:
 
       - name: Upload frontend coverage
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: frontend-coverage
           path: |
@@ -894,107 +660,10 @@ jobs:
             pages/coverage/coverage-summary.json
           if-no-files-found: warn
 
-  frontend-build:
-    name: Frontend CI Build Artifact
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    needs: [preflight, changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    defaults:
-      run:
-        working-directory: pages
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      # frontend-prod-build (push-only) hard-fails without this variable, so
-      # surface it pre-merge too: warn on a PR (forks have no access to repo
-      # vars/secrets), hard-fail on a push where the prod build will run.
-      - name: Check production frontend configuration is present
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          VITE_API_BASE_URL: https://api.i2g.ucmerced.edu
-        run: |
-          if [ -n "$VITE_API_BASE_URL" ]; then
-            echo "VITE_API_BASE_URL is configured."
-          elif [ "$EVENT_NAME" = "push" ]; then
-            echo "::error::VITE_API_BASE_URL is required for the production frontend build."
-            exit 1
-          else
-            echo "::warning::VITE_API_BASE_URL is empty; the push-to-main production build will fail."
-          fi
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build frontend for CI and E2E
-        run: npm run build
-        env:
-          VITE_API_BASE_URL: http://127.0.0.1:8000
-
-      - name: Upload frontend dist for CI
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: frontend-dist-ci
-          path: pages/dist
-          if-no-files-found: warn
-
-  frontend-bundle-size:
-    name: Frontend Bundle Size
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    needs:
-      - frontend-build
-      - changes
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    defaults:
-      run:
-        working-directory: pages
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Download CI frontend build
-        uses: actions/download-artifact@v8
-        with:
-          name: frontend-dist-ci
-          path: pages/dist
-
-      - name: Enforce bundle budgets
-        run: npm run size
-
-      - name: Check built CSS for range-syntax media queries
-        run: npm run check:built-css
-
-      # vite.config.ts's route-chunk preload table and API preconnect come from
-      # the bundle graph, so a Vite/Rolldown upgrade can change them without
-      # failing the build. Same URL as the frontend-build job's build step.
-      - name: Check built HTML preload table and API preconnect
-        run: npm run check:built-html
-        env:
-          VITE_API_BASE_URL: http://127.0.0.1:8000
-
   frontend-chromium-smoke:
     name: Required Chromium Smoke
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    # Short; the Playwright image pull on a hosted runner costs about one AWS cold boot.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     # Keep the browser and its OS dependencies out of the runner's live APT
     # path. The image version must stay aligned with pages/package-lock.json.
@@ -1002,7 +671,7 @@ jobs:
       image: "mcr.microsoft.com/playwright:v1.64.0-noble@sha256:06a9939e57531807f8d5fd76ce44b53165ffb7d7501d87ab10e285c20b1e971f"
       options: --user 1001
     needs:
-      - frontend-build
+      - frontend-static
       - changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
     defaults:
@@ -1011,20 +680,15 @@ jobs:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install frontend dependencies
-        run: npm ci
 
       - name: Download CI frontend build
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: frontend-dist-ci
           path: pages/dist
@@ -1043,13 +707,12 @@ jobs:
 
       - name: Run required Chromium smoke suite
         env:
-          CI: "true"
           PW_PROJECT: required-chromium-smoke
         run: npx playwright test e2e/smoke/required-smoke.spec.ts --project=chromium --workers=1 --retries=0
 
       - name: Upload required smoke diagnostics
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: required-chromium-smoke-diagnostics
           path: |
@@ -1060,188 +723,73 @@ jobs:
 
   frontend-security-audit:
     name: Frontend npm Audit
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
-    # Deliberately NOT gated on `changes`. `npm audit` compares the committed
-    # lockfile against a live advisory database, so its result is a function of
-    # time, not of the diff — the same commit can pass today and fail tomorrow
-    # with no code change. Gating it on `frontend` meant a backend-only PR
-    # skipped it and then turned main red on merge (blocking the deploy chain,
-    # which fires on CI succeeding on main), pinning the failure on an unrelated
-    # commit. Runs on every CI invocation instead. Same reasoning as
-    # `secrets-scan`, which is likewise ungated.
+    # Ungated: `npm audit` checks the committed lockfile against a live advisory
+    # database, so its result depends on the day, not on the diff.
     needs: preflight
     defaults:
       run:
         working-directory: pages
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
 
       - name: npm audit (moderate and above)
         run: npm audit --audit-level=moderate
-
-  frontend-supply-chain-report:
-    name: Frontend SBOM and License Report
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    needs: [preflight, changes]
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    defaults:
-      run:
-        working-directory: pages
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Generate npm SBOM
-        run: npm sbom --sbom-format cyclonedx --json > ../npm-sbom.cdx.json
-
-      - name: Check npm licenses
-        run: python3 ../scripts/ci/check_npm_licenses.py --package-lock package-lock.json --output ../npm-license-report.json
-
-      - name: Upload frontend supply chain artifacts
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: frontend-supply-chain-reports
-          path: |
-            npm-sbom.cdx.json
-            npm-license-report.json
-          if-no-files-found: warn
 
   frontend-required:
     name: Frontend Required Result
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
-      - frontend-lint
-      - frontend-typecheck
+      - frontend-static
       - frontend-unit-coverage
-      - frontend-build
-      - frontend-bundle-size
       - frontend-chromium-smoke
       - frontend-security-audit
-      - frontend-supply-chain-report
       - changes
     if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
     steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+
       - name: Summarize frontend required checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
+        run: >-
+          python scripts/ci/check_required_results.py --ignore changes --skipped-is-failure
+          --passed-message "All frontend required checks passed."
 
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if name != "changes" and data["result"] != "success"
-          }
-          if failed:
-              for name, result in failed.items():
-                  print(f"{name}: {result}")
-              sys.exit(1)
-          print("All frontend required checks passed.")
-          PY
-
-  frontend-prod-build:
-    name: Frontend Production Build Artifact
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+  python-dependency-audit:
+    name: Python Dependency Audit and SBOM
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
-    needs:
-      - frontend-required
-      - changes
-    if: >-
-      github.event_name == 'push' &&
-      (github.ref_name == 'main' || github.ref_name == 'master') &&
-      needs.changes.outputs.frontend == 'true'
-    defaults:
-      run:
-        working-directory: pages
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Validate production frontend configuration
-        env:
-          VITE_API_BASE_URL: https://api.i2g.ucmerced.edu
-        run: |
-          if [ -z "$VITE_API_BASE_URL" ]; then
-            echo "::error::VITE_API_BASE_URL is required for the production frontend build."
-            exit 1
-          fi
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build production frontend
-        run: npm run build
-        env:
-          VITE_API_BASE_URL: https://api.i2g.ucmerced.edu
-
-      - name: Upload production frontend dist
-        uses: actions/upload-artifact@v7
-        with:
-          name: frontend-dist-prod
-          path: pages/dist
-          if-no-files-found: error
-
-  python-security-audit:
-    name: Python Security Audit
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    # Ungated for the same reason as `frontend-security-audit` above: pip-audit
-    # resolves the committed requirements lock against a live advisory feed, so a
-    # frontend-only PR that skipped it could still turn main red on merge.
+    # Ungated, like `frontend-security-audit`: the result depends on the live
+    # advisory database, not on the diff.
     needs: preflight
     defaults:
       run:
         working-directory: src
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
           cache-dependency-path: src/requirements.txt
 
       - name: Install pip-audit
-        run: pip install "pip-audit[cyclonedx]==2.7.3"
+        run: pip install "pip-audit==2.7.3"
 
       - name: Audit Python dependencies
         run: |
@@ -1250,34 +798,49 @@ jobs:
             --requirement requirements.txt \
             --progress-spinner off \
             --format columns \
-            --ignore-vuln GHSA-mf9w-mj56-hr94 \
-            --ignore-vuln GHSA-p998-jp59-783m \
-            --ignore-vuln GHSA-hcc4-c3v8-rx92 \
-            --ignore-vuln GHSA-m5qp-6w8w-w647 \
-            --ignore-vuln GHSA-3wq7-rqq7-wx6j \
-            --ignore-vuln GHSA-mwh4-6h8g-pg8w \
-            --ignore-vuln GHSA-966j-vmvw-g2g9 \
-            --ignore-vuln GHSA-63hf-3vf5-4wqf \
-            --ignore-vuln GHSA-c427-h43c-vf67 \
-            --ignore-vuln GHSA-w2fm-2cpv-w7v5 \
-            --ignore-vuln GHSA-2vrm-gr82-f7m5 \
-            --ignore-vuln PYSEC-2025-183 \
-            --ignore-vuln PYSEC-2026-161 \
             | tee "$GITHUB_STEP_SUMMARY"
+
+      # A report, not a gate: pip-audit exits non-zero when it finds a
+      # vulnerability, and the audit step above already decided on those.
+      - name: Generate Python SBOM
+        if: ${{ !cancelled() }}
+        run: |
+          pip-audit \
+            --requirement requirements.txt \
+            --progress-spinner off \
+            --format cyclonedx-json \
+            --output ../python-sbom.cdx.json \
+            || true
+          test -s ../python-sbom.cdx.json
+
+      - name: Upload Python supply chain artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: python-supply-chain-report
+          path: python-sbom.cdx.json
+          if-no-files-found: warn
 
   semgrep-sast:
     name: Semgrep SAST
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' }}
+    # Read-only on purpose: `pip install semgrep` pulls ~45 range-resolved
+    # dependencies into this job, so it must not hold a token that can change
+    # code-scanning alerts. semgrep-sarif-upload below uploads the result.
+    outputs:
+      scanned: ${{ steps.semgrep.outcome == 'success' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Semgrep only needs the files; keep the job token off the disk.
+          persist-credentials: false
 
       - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: pip
@@ -1287,28 +850,89 @@ jobs:
 
       - name: Run Semgrep
         id: semgrep
-        env:
-          RUN_BACKEND: ${{ needs.changes.outputs.backend }}
-          RUN_FRONTEND: ${{ needs.changes.outputs.frontend }}
         run: |
           set -euo pipefail
-          targets=()
-          if [ "$RUN_BACKEND" = "true" ]; then
-            targets+=(src)
-          fi
-          if [ "$RUN_FRONTEND" = "true" ]; then
-            targets+=(pages)
-          fi
+          # Without --error, findings never change the exit status: only a
+          # Semgrep failure does (bad config, registry outage, crash), and that
+          # must fail this job instead of passing with an empty or partial SARIF.
+          # The gate on findings is the next step.
           semgrep scan --config p/default --config p/python --config p/javascript \
-            --metrics=off --sarif --output semgrep.sarif "${targets[@]}" || true
+            --metrics=off --sarif --output semgrep.sarif src pages
+
+      # Error-severity findings block; warnings and notes are reported through
+      # the Security tab (push runs) and the semgrep-sarif artifact. Suppress a
+      # reviewed false positive in place with `# nosemgrep: <rule id>` on the
+      # line the finding starts on.
+      - name: Fail on error-severity Semgrep findings
+        run: |
+          python - <<'PY'
+          import json
+          import sys
+
+          with open("semgrep.sarif", encoding="utf-8") as fh:
+              sarif = json.load(fh)
+
+          errors = []
+          for run in sarif.get("runs", []):
+              levels = {
+                  rule["id"]: rule.get("defaultConfiguration", {}).get("level", "warning")
+                  for rule in run.get("tool", {}).get("driver", {}).get("rules", [])
+              }
+              for result in run.get("results", []):
+                  if result.get("suppressions"):
+                      continue
+                  if (result.get("level") or levels.get(result.get("ruleId"), "warning")) != "error":
+                      continue
+                  location = result["locations"][0]["physicalLocation"]
+                  path = location["artifactLocation"]["uri"]
+                  line = location["region"]["startLine"]
+                  errors.append(f"::error file={path},line={line}::Semgrep {result['ruleId']}")
+
+          print("\n".join(errors) or "No error-severity Semgrep findings.")
+          sys.exit(1 if errors else 0)
+          PY
 
       - name: Upload Semgrep SARIF artifact
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: semgrep-sarif
           path: semgrep.sarif
           if-no-files-found: warn
+
+  # Push runs only. The only job that holds security-events: write for Semgrep,
+  # and it runs no third-party code beyond SHA-pinned actions. Runs whenever the
+  # scan itself succeeded, including when its error-severity gate failed: those
+  # are the findings the Security tab is for. It only reports, so it is not a
+  # need of any required-result job, and a code-scanning API hiccup cannot fail
+  # the run.
+  semgrep-sarif-upload:
+    name: Upload Semgrep SARIF
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    needs: [semgrep-sast]
+    if: ${{ !cancelled() && github.event_name == 'push' && needs.semgrep-sast.outputs.scanned == 'true' }}
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      # upload-sarif reads the sources to compute result fingerprints.
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Download Semgrep SARIF artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: semgrep-sarif
+
+      - name: Upload Semgrep SARIF to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
 
   backend-docker-build:
     name: Backend Docker Build and Scan
@@ -1321,9 +945,15 @@ jobs:
     permissions:
       contents: read
       security-events: write
+    outputs:
+      # Whether this run uploaded the image backend-image-publish pushes. The
+      # publish job keys off this, not off DEPLOY_ARTIFACTS_ENABLED again, so a
+      # variable flipped mid-run cannot make it look for an artifact that was
+      # never uploaded.
+      image_artifact: ${{ steps.upload-image.outcome == 'success' }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Lint Dockerfile (hadolint)
         uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
@@ -1341,7 +971,10 @@ jobs:
           load: true
           tags: itg-backend-ci:${{ github.sha }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # Only pushes write the build cache. Entries a pull request or merge
+          # group writes are scoped to its own ref, so no other run can read
+          # them, and they had pushed the repository past its 10 GB cache limit.
+          cache-to: ${{ github.event_name == 'push' && 'type=gha,mode=max' || '' }}
 
       - name: Smoke-test backend Docker runtime
         env:
@@ -1382,6 +1015,8 @@ jobs:
           # and then fail while it restarts; the script waits on TCP instead.
           bash scripts/ci/wait_for_postgres.sh "$postgres" itg_ci_user itg_ci 60
 
+          # The probes are answered before the request limiter runs; it stays off here (as in the test
+          # settings), stated explicitly so the smoke never depends on that default.
           docker run -d --name "$backend" --network "$network" -p 127.0.0.1:8000:8000 \
             -e DJANGO_SETTINGS_MODULE=config.settings.environments.test \
             -e DB_NAME=itg_ci \
@@ -1391,6 +1026,7 @@ jobs:
             -e DB_PORT=5432 \
             -e RUN_DATABASE_MIGRATIONS=true \
             -e WEB_CONCURRENCY=1 \
+            -e REQUEST_RATE_LIMITS_ENABLED=false \
             "$IMAGE"
 
           ready=false
@@ -1414,7 +1050,7 @@ jobs:
 
       - name: Upload backend runtime smoke logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-docker-smoke-logs
           path: backend-docker-smoke.log
@@ -1422,12 +1058,19 @@ jobs:
 
       # Persist Trivy's vulnerability DB across runs so the scan below doesn't
       # re-pull it from the registry on every CI run. Both Trivy steps point at
-      # this dir via TRIVY_CACHE_DIR.
+      # this dir via TRIVY_CACHE_DIR. The key changes once a day: a per-run key
+      # never hit exactly, so every run saved another ~90 MB entry and pushed
+      # the repository past its 10 GB Actions cache limit, evicting the venv
+      # and npm caches. Trivy still refreshes a stale DB itself.
+      - name: Pick the Trivy database cache key
+        id: trivy-cache-date
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
       - name: Cache Trivy vulnerability database
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ github.workspace }}/.cache/trivy
-          key: trivy-db-${{ github.run_id }}
+          key: trivy-db-${{ steps.trivy-cache-date.outputs.today }}
           restore-keys: |
             trivy-db-
 
@@ -1450,7 +1093,7 @@ jobs:
 
       - name: Upload Trivy SARIF artifact
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: trivy-sarif
           path: trivy-results.sarif
@@ -1459,9 +1102,11 @@ jobs:
       # Push-only (no PR-side equivalent), so a code-scanning API hiccup must not
       # be able to fail backend-docker-build -> backend-required-result ->
       # CI Result with zero pre-merge signal. The findings are already archived
-      # as the trivy-sarif artifact in the step above.
+      # as the trivy-sarif artifact in the step above. Runs whenever the scan
+      # ran: with exit-code 1 a scan that finds something reports `failure`,
+      # and those are exactly the results the Security tab must show.
       - name: Upload Trivy SARIF to GitHub Security tab
-        if: ${{ github.event_name == 'push' && steps.trivy-sarif.outcome == 'success' }}
+        if: ${{ always() && github.event_name == 'push' && steps.trivy-sarif.outcome != 'skipped' && hashFiles('trivy-results.sarif') != '' }}
         continue-on-error: true
         uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
@@ -1486,12 +1131,14 @@ jobs:
           exit-code: "1"
           ignore-unfixed: true
 
+      # Feeds backend-image-publish; skipped with it while deployments are paused.
       - name: Export tested and scanned backend image
-        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' && vars.DEPLOY_ARTIFACTS_ENABLED == 'true' }}
         run: docker save --output /tmp/backend-image.tar "itg-backend-ci:${{ github.sha }}"
       - name: Upload tested and scanned backend image
-        if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
-        uses: actions/upload-artifact@v7
+        id: upload-image
+        if: ${{ github.event_name == 'push' && github.ref_name == 'main' && vars.DEPLOY_ARTIFACTS_ENABLED == 'true' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-scanned-image
           path: /tmp/backend-image.tar
@@ -1504,45 +1151,36 @@ jobs:
     timeout-minutes: 5
     needs:
       - lint
-      - backend-db-migration
-      - backend-static-and-prod-check
-      - django-test-plan
+      - backend-checks
       - django-test-coverage
-      - cli-admin-coverage
       - backend-docker-build
       - changes
     if: ${{ always() && needs.changes.outputs.backend == 'true' }}
     steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+
       - name: Summarize backend required checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          ok = {"success", "skipped"}
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if name != "changes" and data["result"] not in ok
-          }
-          if failed:
-              for name, result in failed.items():
-                  print(f"{name}: {result}")
-              sys.exit(1)
-          print("All backend required checks passed.")
-          PY
+        run: >-
+          python scripts/ci/check_required_results.py --ignore changes
+          --passed-message "All backend required checks passed."
 
   backend-image-publish:
     name: Backend Image Publish
     runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
     timeout-minutes: 25
-    needs: [backend-required-result, changes]
+    needs: [backend-required-result, backend-docker-build, changes]
+    # Pushes itg-backend:<sha> for deploy-backend.yml. Off while deployments are
+    # paused (repository variable DEPLOY_ARTIFACTS_ENABLED, see
+    # docs/deployment/ci-cd.md): runs only when backend-docker-build uploaded
+    # the image in this same run. deploy-artifact-result passes when skipped.
     if: >-
       github.event_name == 'push' && github.ref_name == 'main' &&
+      needs.backend-docker-build.outputs.image_artifact == 'true' &&
       needs.changes.outputs.backend == 'true'
     permissions:
       contents: read
@@ -1552,20 +1190,20 @@ jobs:
       ECR_REPOSITORY: itg-backend
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up publisher Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.BACKEND_PYTHON_VERSION }}
       - name: Download tested and scanned image
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: backend-scanned-image
           path: /tmp/backend-image
       - name: Load tested image
         run: docker load --input /tmp/backend-image/backend-image.tar
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: arn:aws:iam::394167325273:role/itg-ci-image-publisher
           allowed-account-ids: "394167325273"
@@ -1573,7 +1211,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2.1.7
       - name: Publish tested image once
         env:
           REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -1587,34 +1225,22 @@ jobs:
     timeout-minutes: 5
     needs:
       - secrets-scan
-      - python-security-audit
+      - python-dependency-audit
       - frontend-security-audit
       - semgrep-sast
-      - changes
     if: ${{ always() }}
     steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+
       - name: Summarize security checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          ok = {"success", "skipped"}
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if name != "changes" and data["result"] not in ok
-          }
-          if failed:
-              for name, result in failed.items():
-                  print(f"{name}: {result}")
-              sys.exit(1)
-          print("All security checks passed.")
-          PY
+        run: >-
+          python scripts/ci/check_required_results.py
+          --passed-message "All security checks passed."
 
   deploy-artifact-result:
     name: Deploy Artifact Result
@@ -1622,140 +1248,19 @@ jobs:
     timeout-minutes: 5
     needs:
       - backend-image-publish
-      - frontend-prod-build
-      - changes
     if: ${{ always() }}
     steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+
       - name: Summarize deploy artifact checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          ok = {"success", "skipped"}
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if name != "changes" and data["result"] not in ok
-          }
-          if failed:
-              for name, result in failed.items():
-                  print(f"{name}: {result}")
-              sys.exit(1)
-          print("Deploy artifacts passed or were not required for this run.")
-          PY
-
-  python-supply-chain-report:
-    name: Python Supply Chain Report
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
-    timeout-minutes: 10
-    needs:
-      - python-security-audit
-      - changes
-    if: ${{ always() && needs.changes.outputs.backend == 'true' }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: src/requirements.txt
-
-      - name: Install Python SBOM tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install "pip-audit[cyclonedx]==2.7.3"
-
-      - name: Generate Python SBOM
-        run: |
-          pip-audit \
-            --requirement src/requirements.txt \
-            --progress-spinner off \
-            --format cyclonedx-json \
-            --output python-sbom.cdx.json \
-            || true
-          test -s python-sbom.cdx.json
-
-      - name: Upload Python supply chain artifacts
-        if: ${{ always() }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: python-supply-chain-report
-          path: python-sbom.cdx.json
-          if-no-files-found: warn
-
-  supply-chain-result:
-    name: Supply Chain Result
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs:
-      - python-supply-chain-report
-      - frontend-supply-chain-report
-      - changes
-    if: ${{ always() }}
-    steps:
-      - name: Summarize supply chain checks
-        env:
-          NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          ok = {"success", "skipped"}
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if name != "changes" and data["result"] not in ok
-          }
-          if failed:
-              for name, result in failed.items():
-                  print(f"{name}: {result}")
-              sys.exit(1)
-          print("All supply chain checks passed.")
-          PY
-
-  e2e-plan:
-    name: Plan E2E Matrix
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    needs: changes
-    if: ${{ needs.changes.outputs.frontend == 'true' }}
-    outputs:
-      projects: ${{ steps.plan.outputs.projects }}
-      spec_args: ${{ steps.plan.outputs.spec_args }}
-      matrix: ${{ steps.plan.outputs.matrix }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
-
-      # PR/push parity: plan_e2e_tests.py returns the full device matrix with no
-      # spec filter for every event, so there is no diff to compute (and no need
-      # for the full-history clone this step used to require). PRs used to run
-      # chromium-only with a diff-derived spec subset, which is what hid the
-      # iphone14 + ipad failure until after the merge (run 32107167026).
-      - name: Capture changed files
-        run: ': > changed-files.txt'
-
-      - name: Select browser/device/spec coverage
-        id: plan
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-        run: |
-          python scripts/ci/plan_e2e_tests.py \
-            --event-name "$EVENT_NAME" \
-            --changed-files changed-files.txt \
-            >> "$GITHUB_OUTPUT"
+        run: >-
+          python scripts/ci/check_required_results.py
+          --passed-message "Deploy artifacts passed or were not required for this run."
 
   e2e:
     name: E2E (${{ matrix.project }})
@@ -1785,13 +1290,26 @@ jobs:
       # entry, never the individual legs).
       fail-fast: false
       matrix:
-        include: ${{ fromJson(needs.e2e-plan.outputs.matrix) }}
+        # All 10 projects in pages/playwright.config.ts on every event
+        # (PR/push parity); MatrixParityTests keeps the two lists equal.
+        project:
+          - chromium
+          - firefox
+          - webkit
+          - pixel7
+          - iphone14
+          - iphone-se
+          - ipad
+          - iphone-17-pro-max
+          - galaxy-s26-ultra
+          - galaxy-tab-s9
     needs:
-      # backend-docker-build intentionally omitted: e2e runs the app via
-      # `manage.py runserver`, never the built image, so depending on it only
-      # serialized e2e behind the slowest job without adding coverage.
-      - e2e-plan
-      - frontend-required
+      # The ten AWS machines boot only for a tree that lints, type-checks and
+      # builds. Unit coverage, the Chromium smoke test and npm audit still gate
+      # CI Result through frontend-required, but E2E no longer waits for them.
+      # backend-docker-build is omitted too: e2e runs the app via
+      # `manage.py runserver`, never the built image.
+      - frontend-static
       - secrets-scan
       - changes
     services:
@@ -1814,71 +1332,33 @@ jobs:
       # Service containers share a Docker network with the E2E job container.
       DB_HOST: postgres
       DB_PORT: 5432
-      VITE_API_BASE_URL: http://127.0.0.1:8000
       PLAYWRIGHT_BASE_URL: http://127.0.0.1:4173
       PLAYWRIGHT_API_BASE_URL: http://127.0.0.1:8000
       ADMIN_REQUIRE_CONFIRMATION: "true"
+      # One browser and one IP drive every spec: the request limiter stays off here (the test settings' default,
+      # stated so a settings change cannot switch it on unnoticed); its own tests switch it on.
+      REQUEST_RATE_LIMITS_ENABLED: "false"
       PW_PROJECT: ${{ matrix.project }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
+      # The job container's filesystem differs from the host runner's, so its
+      # venv gets its own cache key (cache-label names the image release).
+      - name: Set up backend virtualenv
+        uses: ./.github/actions/setup-backend-venv
         with:
           python-version: ${{ env.BACKEND_PYTHON_VERSION }}
+          coverage-version: ${{ env.COVERAGE_VERSION }}
+          cache-label: pw-v1.64.0-noble
 
-      - name: Cache backend virtualenv
-        id: backend-venv-cache
-        uses: actions/cache@v6
-        with:
-          path: src/.venv
-          # Do not restore a host-runner venv inside the job container: scripts
-          # and interpreter links can contain environment-specific paths.
-          key: backend-venv-${{ runner.environment }}-pw-v1.62.1-noble-${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-coverage${{ env.COVERAGE_VERSION }}-${{ hashFiles('src/requirements*.txt', 'src/requirements/**/*.txt') }}
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Validate cached virtualenv
-        id: backend-venv-check
-        working-directory: src
-        run: |
-          # A cached venv hard-codes the interpreter it was built against. If
-          # that interpreter is gone (a hosted-runner Python patch bump) or the
-          # archive is partial, every `.venv/bin/...` call dies with exit 127
-          # instead of falling back to a reinstall. A venv can also start but be
-          # unable to import what the backend needs: on 2026-10-29 restored E2E
-          # venvs failed `import ssl`, so urllib3/botocore broke at Django start-up.
-          # Probe those imports, and discard the venv when they fail so the install
-          # step below rebuilds it.
-          if probe=$(.venv/bin/python -c "import ssl, django, botocore.httpsession" 2>&1); then
-            echo "usable=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::notice::Cached virtualenv is unusable (${probe##*$'\n'}); rebuilding."
-            rm -rf .venv
-            echo "usable=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Install backend dependencies
-        if: ${{ steps.backend-venv-check.outputs.usable != 'true' }}
-        working-directory: src
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt "coverage[toml]==${COVERAGE_VERSION}"
-
-      - name: Install frontend dependencies
-        working-directory: pages
-        run: npm ci
 
       - name: Download CI frontend build
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: frontend-dist-ci
           path: pages/dist
@@ -1923,18 +1403,11 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: pages
-        env:
-          PLAYWRIGHT_SPEC_ARGS: ${{ matrix.spec_args }}
-        run: |
-          args=()
-          if [ -n "$PLAYWRIGHT_SPEC_ARGS" ]; then
-            read -r -a args <<< "$PLAYWRIGHT_SPEC_ARGS"
-          fi
-          npx playwright test "${args[@]}" --project="$PW_PROJECT"
+        run: npx playwright test --project="$PW_PROJECT"
 
       - name: Upload blob report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: blob-${{ matrix.project }}
           path: pages/blob-report/
@@ -1942,7 +1415,7 @@ jobs:
 
       - name: Upload server logs
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-logs-${{ matrix.project }}
           path: |
@@ -1963,18 +1436,12 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
+      - name: Set up frontend
+        uses: ./.github/actions/setup-frontend
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: pages/package-lock.json
-
-      - name: Install frontend dependencies
-        working-directory: pages
-        run: npm ci
 
       - name: Download and validate blob reports
         env:
@@ -2025,7 +1492,7 @@ jobs:
 
       - name: Annotate test results on the PR
         if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
-        uses: mikepenz/action-junit-report@v6
+        uses: mikepenz/action-junit-report@8a133bfa3ecb0ea9024c1e2ae788b4c25f6cdb9d # v6.6.2
         with:
           report_paths: pages/results.xml
           detailed_summary: true
@@ -2037,7 +1504,7 @@ jobs:
 
       - name: Upload merged HTML report
         if: ${{ always() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-html-report
           path: |
@@ -2048,50 +1515,37 @@ jobs:
   # Gates `CI Result`. Depends on `e2e` directly rather than on `e2e-report`, so
   # a flaky blob-report download/merge (that job is `continue-on-error`) can
   # never block a merge — only a genuinely failing device leg can.
+  #
+  # This job only runs when `changes.frontend == 'true'`, and `e2e` gates on
+  # exactly that condition, so `e2e` cannot be legitimately skipped here: a
+  # "skipped" result means an upstream job (frontend-static, secrets-scan)
+  # failed and cascaded, and the device matrix never ran. Reporting that as a
+  # pass is how a required check went green with zero E2E coverage behind it
+  # (PR #439), so "skipped" is a FAILURE for this gate specifically.
   e2e-required-result:
     name: E2E Required Result
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
-      - e2e-plan
       - e2e
       - changes
     if: ${{ always() && needs.changes.outputs.frontend == 'true' }}
     steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+
       - name: Summarize E2E checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          # This job only runs when `changes.frontend == 'true'`, and both
-          # `e2e-plan` and `e2e` gate on exactly that same condition. So neither
-          # can be legitimately path-filtered here: a "skipped" result means an
-          # upstream job (frontend-required, secrets-scan) failed and cascaded,
-          # and the device matrix never ran. Reporting that as a pass is how a
-          # required check goes green with zero E2E coverage behind it, so
-          # "skipped" is a FAILURE for this gate specifically.
-          ok = {"success"}
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if name != "changes" and data["result"] not in ok
-          }
-          if failed:
-              for name, result in failed.items():
-                  detail = " (upstream failure cascaded; E2E never ran)" if result == "skipped" else ""
-                  print(f"{name}: {result}{detail}")
-              sys.exit(1)
-          print("All E2E legs passed.")
-          PY
+        run: >-
+          python scripts/ci/check_required_results.py --ignore changes --skipped-is-failure
+          --passed-message "All E2E legs passed."
 
   archive-tests:
     name: Archive Static Site Tests
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     needs: changes
     if: ${{ needs.changes.outputs.archive == 'true' }}
@@ -2100,11 +1554,10 @@ jobs:
         working-directory: archive/page
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Python
-        id: setup-python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -2122,31 +1575,19 @@ jobs:
     timeout-minutes: 5
     needs:
       - archive-tests
-      - changes
     if: ${{ always() }}
     steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+
       - name: Summarize archive checks
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          ok = {"success", "skipped"}
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if name != "changes" and data["result"] not in ok
-          }
-          if failed:
-              for name, result in failed.items():
-                  print(f"{name}: {result}")
-              sys.exit(1)
-          print("Archive checks passed or were not required for this run.")
-          PY
+        run: >-
+          python scripts/ci/check_required_results.py
+          --passed-message "Archive checks passed or were not required for this run."
 
   ci-result:
     name: CI Result
@@ -2159,36 +1600,22 @@ jobs:
       - frontend-required
       - e2e-required-result
       - security-required-result
-      - supply-chain-result
       - deploy-artifact-result
       - archive-required-result
       - cli-required-result
     if: ${{ always() }}
     steps:
+      - name: Checkout CI scripts
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          sparse-checkout: scripts/ci
+
       - name: Summarize required jobs
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
-        run: |
-          python - <<'PY'
-          import json
-          import os
-          import sys
-
-          needs = json.loads(os.environ["NEEDS_CONTEXT"])
-          # Path-filtered jobs that don't apply to this change report "skipped";
-          # that is a pass, not a failure. Only real failures/cancellations block.
-          ok = {"success", "skipped"}
-          failed = {
-              name: data["result"]
-              for name, data in needs.items()
-              if data["result"] not in ok
-          }
-          if failed:
-              for name, result in failed.items():
-                  print(f"{name}: {result}")
-              sys.exit(1)
-          print("All required CI jobs passed.")
-          PY
+        run: >-
+          python scripts/ci/check_required_results.py
+          --passed-message "All required CI jobs passed."
 
   ci-timing-report:
     name: CI Timing Report
@@ -2202,7 +1629,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Fetch current workflow jobs
         env:

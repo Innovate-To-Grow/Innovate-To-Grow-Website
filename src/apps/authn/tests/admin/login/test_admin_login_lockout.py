@@ -482,6 +482,9 @@ class RemoteLockoutOfTheRememberedFormTests(AdminLockoutTestCase):
         self.assertFalse(LoginFailureWindow.objects.exists())
         self.assertRememberedFormUntouched(self.alice)
 
+    # One client sends about 250 sign-ins in a moment: the request limiter's per-source flood ceiling for sign-in
+    # would refuse it first, and this test is about the lockout's counters only.
+    @override_settings(REQUEST_RATE_LIMITS_ENABLED=False)
     def test_no_typed_identifier_reaches_the_remembered_counter(self):
         key = remembered_admin_guard_key(self.alice)
         pk = self.alice.pk

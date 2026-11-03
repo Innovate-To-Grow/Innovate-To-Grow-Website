@@ -19,6 +19,7 @@ from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign.dispatch.email_job import _render_recipient_email
 from apps.mail.services.campaign.dispatch.failures import DEFERRED_LOG_MESSAGE
 from apps.mail.services.send_campaign import SesSendResult
+from apps.mail.services.send_campaign.runner import RecipientContext
 from apps.mail.services.send_campaign.transport import (
     SES_OUTCOME_PERMANENT,
     SES_OUTCOME_TRANSIENT,
@@ -299,8 +300,16 @@ class RenderRecipientEmailTests(DurableCampaignQueueTestCase):
         EmailCampaign.objects.filter(pk=campaign.pk).update(body='<p><a href="{{login_link}}">Sign in</a></p>')
         log = RecipientLog.objects.select_related("campaign", "member").get(pk=log.pk)
         context = "apps.mail.services.campaign.dispatch.email_job._recipient_context"
-        for link, keep in (("https://i2g.example/login-link#token=abc", False), ("", True)):
-            with self.subTest(link=link), patch(context, return_value={"login_link": link}):
+        token_link = "https://i2g.example/login-link#token=abc"
+        for values, issued, keep in (
+            ({"login_link": token_link}, token_link, False),
+            # The sign-in page that stands in when no link was issued is no credential.
+            ({"login_link": "https://i2g.example/login"}, "", True),
+        ):
+            with (
+                self.subTest(issued=issued),
+                patch(context, return_value=RecipientContext(values, issued_login_link=issued)),
+            ):
                 *_rendered, keep_sent_copy = _render_recipient_email(log)
 
                 self.assertIs(keep_sent_copy, keep)

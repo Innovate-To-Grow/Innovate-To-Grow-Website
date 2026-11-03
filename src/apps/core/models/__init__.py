@@ -13,6 +13,7 @@ from .base import (
     MicrosoftGraphMailboxScope,
     MicrosoftGraphProviderConfig,
     ProjectControlModel,
+    RequestRateLimitPolicy,
     SendVerificationConfig,
     SiteMaintenanceControl,
     SMTPProviderConfig,
@@ -20,7 +21,15 @@ from .base import (
 )
 from .managers import ProjectControlManager, ProjectControlQuerySet
 from .mixins import ActiveModel, AuthoredModel, OrderedModel
-from .records import BackgroundJob, DeliveryRateLimit, DeliveryRateState, DeliveryUsageBucket, LegacyAccessGrant
+from .records import (
+    BackgroundJob,
+    DeliveryRateLimit,
+    DeliveryRateState,
+    DeliveryUsageBucket,
+    LegacyAccessGrant,
+    RequestLimitProcess,
+    RequestRateLimitState,
+)
 
 __all__ = [
     "AWSCredentialConfig",
@@ -45,6 +54,9 @@ __all__ = [
     "ProjectControlManager",
     "ProjectControlModel",
     "ProjectControlQuerySet",
+    "RequestLimitProcess",
+    "RequestRateLimitPolicy",
+    "RequestRateLimitState",
     "SendVerificationConfig",
     "SMTPProviderConfig",
     "SiteMaintenanceControl",

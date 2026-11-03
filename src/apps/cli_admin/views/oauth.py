@@ -61,6 +61,8 @@ class OAuthAuthorizeView(View):
     """Authorization endpoint. Session-authenticated; bounces non-staff to the admin
     login with a same-host ``?next`` so the completed login redirects back here."""
 
+    rate_limit_scope = "cli"
+
     def get(self, request):
         user = request.user
         if not (user.is_authenticated and user.is_active and user.is_staff):
@@ -108,6 +110,8 @@ def _invalid_grant():
 @method_decorator(csrf_exempt, name="dispatch")
 class OAuthTokenView(APIView):
     """Token endpoint. Machine POST: no cookies/session; auth is code+verifier only."""
+
+    rate_limit_scope = "auth-sign-in"
 
     authentication_classes = []
     permission_classes = [AllowAny]

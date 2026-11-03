@@ -84,7 +84,15 @@ def make_test_credential(*, tenant_id=TENANT_ID, client_id=CLIENT_ID, fresh_key=
 
 
 def make_certificate(
-    *, days_valid=365, key_size=2048, not_before_days=-1, ec_key=False, fresh_key=False, key_index=0, key=None
+    *,
+    days_valid=365,
+    key_size=2048,
+    not_before_days=-1,
+    ec_key=False,
+    fresh_key=False,
+    key_index=0,
+    key=None,
+    serial_number=None,
 ):
     """A self-signed certificate object and its private key object.
 
@@ -99,7 +107,7 @@ def make_certificate(
         .subject_name(name)
         .issuer_name(name)
         .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
+        .serial_number(serial_number or x509.random_serial_number())
         .not_valid_before(now + datetime.timedelta(days=not_before_days))
         .not_valid_after(now + datetime.timedelta(days=days_valid))
         .sign(key, hashes.SHA256())

@@ -14,6 +14,7 @@ from apps.authn.models import ContactEmail, EmailAuthChallenge, SendVerification
 from apps.authn.services.email.challenges import AuthChallengeDeliveryError
 from apps.authn.services.send_verification.constants import OP_EVENT_SEND_SECONDARY_EMAIL_CODE
 from apps.authn.tests.send_verification import mint_send_verification
+from apps.core.tests.request_limits.helpers import view_limit
 from apps.event.tests.helpers import make_event, make_member
 
 SEND_PATH = "/event/send-secondary-email-code/"
@@ -178,9 +179,7 @@ class SecondaryEmailVerificationTests(TestCase):
 
     @patch("apps.authn.services.email.send_email.send_verification_email")
     def test_actor_throttle_bounds_rotating_destinations(self, send):
-        from apps.event.throttles import EmailCodeUserRequestThrottle
-
-        with patch.object(EmailCodeUserRequestThrottle, "THROTTLE_RATES", {"email_code_user_request": "2/hour"}):
+        with view_limit(**{"view-code-send-email": (2, 3600)}):
             for index in range(2):
                 response = self.client.post(
                     SEND_PATH, self._send_payload(email=f"address{index}@example.com"), format="json"

@@ -19,6 +19,7 @@ MAX_SHARES_PER_MEMBER = 100
 
 
 class PastProjectShareCreateAPIView(CreateAPIView):
+    rate_limit_scope = "member-write"
     permission_classes = [IsAuthenticated]
     serializer_class = PastProjectShareSerializer
     throttle_classes = [PastProjectShareRateThrottle]
@@ -41,6 +42,8 @@ class PastProjectShareCreateAPIView(CreateAPIView):
 class PastProjectShareMineAPIView(ListAPIView):
     """List the shares created by the current user, the most recently changed first."""
 
+    rate_limit_scope = "member-read"
+
     permission_classes = [IsAuthenticated]
     serializer_class = PastProjectShareListSerializer
 
@@ -56,6 +59,7 @@ _WRITE_METHODS = {"DELETE", "PATCH", "PUT"}
 
 
 class PastProjectShareDetailAPIView(RetrieveUpdateDestroyAPIView):
+    rate_limit_scope = {"GET": "public-read", "*": "member-write"}
     serializer_class = PastProjectShareSerializer
     queryset = PastProjectShare.objects.all()
     lookup_field = "pk"

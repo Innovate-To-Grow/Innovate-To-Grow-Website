@@ -1,4 +1,6 @@
-"""Check what Microsoft lets the Entra app do, against the InfoSec approval (Mail.Send + Mail.Read, scoped mailboxes).
+"""Check what Microsoft lets the Entra app do, against the approved roles and the scoped mailboxes.
+
+The approved roles are ``GRAPH_APPROVED_APPLICATION_ROLES``: what OIT granted (Mail.ReadWrite + Mail.Send).
 
 One run, from ``manage.py verify_graph_access`` or the admin's "Run access check", is recorded as a
 ``MicrosoftGraphAccessCheck`` row, which the production go-live gate requires. In order:

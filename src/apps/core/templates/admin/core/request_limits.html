@@ -1,0 +1,146 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'admin/css/request-limits.css' %}?v=20261102-request-limits">
+{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<p class="mb-4 max-w-3xl text-sm text-base-500 dark:text-base-400">
+    How many requests the site answers, per group of endpoints (scope). Smart limit follows the site's load, error
+    rate and abuse; the manual limit is a fixed limit for when Smart limit is off. The finer per-view limits (code
+    cooldowns, the sign-in lockout, the SMS budget) apply either way. The status refreshes on its own; every change
+    is kept in the <a class="underline" href="{{ history_url }}">admin log</a>.
+</p>
+
+{% if not summary.enabled %}
+    <div class="mb-4 max-w-3xl rounded-default bg-orange-100 px-3 py-2 text-sm text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" data-limits-off>
+        The request limiter is off in this deployment (REQUEST_RATE_LIMITS_ENABLED): route limits do not apply and the
+        per-view limits use their REQUEST_RATE_LIMITS seeds. Changes saved here apply once it is on.
+    </div>
+{% endif %}
+
+<section class="i2g-limits-summary mb-8 max-w-3xl rounded-default border border-base-200 bg-white p-4 text-sm dark:border-base-700 dark:bg-base-800" aria-labelledby="limits-summary-heading" data-limits-summary aria-live="polite">
+    <h2 id="limits-summary-heading" class="mb-2 text-base font-semibold text-font-important-light dark:text-font-important-dark">Now</h2>
+    <ul class="i2g-limit-lines">
+        {% for line in summary.tier_lines %}<li data-summary-tier>{{ line }}</li>{% endfor %}
+        <li data-summary-assessment>{{ summary.assessment_line }}</li>
+        <li data-summary-slots>{{ summary.slots_line }}</li>
+        <li data-summary-counter>{{ summary.counter_line }}</li>
+    </ul>
+</section>
+
+<form method="post" id="request-limits-form" class="i2g-limits" data-status-url="{{ status_url }}" data-refresh-ms="{{ status_refresh_ms }}" novalidate>
+    {% csrf_token %}
+    {% for group in groups %}
+        <section class="mb-8" aria-labelledby="limits-{{ group.tier }}-heading" data-limit-tier="{{ group.tier }}">
+            <h2 id="limits-{{ group.tier }}-heading" class="mb-1 text-base font-semibold text-font-important-light dark:text-font-important-dark">{{ group.label }}</h2>
+            <p class="mb-1 max-w-3xl text-xs text-base-500 dark:text-base-400">{{ group.copy }}</p>
+            <p class="mb-3 text-xs font-medium text-base-500 dark:text-base-400" data-tier-state="{{ group.tier }}">{{ group.state }}</p>
+            <div class="grid grid-cols-1 gap-4">
+                {% for card in group.routes %}
+                    {% include "admin/core/request_limit_card.html" with card=card %}
+                {% empty %}
+                    <p class="text-xs text-base-500 dark:text-base-400">No scope is in this tier.</p>
+                {% endfor %}
+            </div>
+            {% if group.views %}
+                <details class="i2g-limits-views mt-4"{% if group.views_open %} open{% endif %}>
+                    <summary class="cursor-pointer text-sm font-medium text-font-important-light dark:text-font-important-dark">Finer per-view limits ({{ group.views|length }})</summary>
+                    <p class="mt-2 text-xs text-base-500 dark:text-base-400">Limits a view keeps with its own key (the member, the code's destination, the challenge), under the scope it belongs to. They follow that scope's Smart factor.</p>
+                    <div class="mt-3 grid grid-cols-1 gap-4">
+                        {% for card in group.views %}
+                            {% include "admin/core/request_limit_card.html" with card=card %}
+                        {% endfor %}
+                    </div>
+                </details>
+            {% endif %}
+        </section>
+    {% endfor %}
+
+    <div class="mt-6 flex gap-3">
+        <button type="submit" class="rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
+            Save request limits
+        </button>
+    </div>
+</form>
+
+<script src="{% static 'admin/js/poll-backoff.js' %}"></script>
+<script nonce="{{ request.csp_nonce }}">
+    (() => {
+        const form = document.getElementById("request-limits-form");
+        if (!form) return;
+
+        // While Smart limit is on, the manual limit is read-only and dimmed; it is still posted and kept.
+        form.querySelectorAll("[data-limit-card]").forEach((card) => {
+            const smart = card.querySelector("[data-limit-smart] input[type=checkbox]");
+            const manualBox = card.querySelector("[data-limit-manual]");
+            const manual = manualBox ? manualBox.querySelector("input") : null;
+            const note = card.querySelector("[data-limit-manual-note]");
+            if (!smart || !manual) return;
+            const hasErrors = manualBox.dataset.hasErrors === "true";
+            const sync = () => {
+                manual.readOnly = smart.checked && !hasErrors;
+                manualBox.classList.toggle("is-locked", manual.readOnly);
+                if (note) note.hidden = !smart.checked;
+            };
+            smart.addEventListener("change", sync);
+            sync();
+        });
+
+        const lines = (box, values) => {
+            if (!box) return;
+            box.replaceChildren(...values.map((value, index) => {
+                const item = document.createElement("li");
+                if (index === 0 && box.dataset.limitStatus !== undefined) item.className = "i2g-limit-headline";
+                item.textContent = value;
+                return item;
+            }));
+        };
+
+        const render = (data) => {
+            const summary = data.summary || {};
+            const box = document.querySelector("[data-limits-summary] ul");
+            if (box) {
+                lines(box, [...(summary.tier_lines || []), summary.assessment_line, summary.slots_line, summary.counter_line].filter(Boolean));
+            }
+            document.querySelectorAll("[data-tier-state]").forEach((node) => {
+                const line = (summary.tier_states || {})[node.dataset.tierState];
+                if (line) node.textContent = line;
+            });
+            (data.scopes || []).forEach((scope) => {
+                const card = form.querySelector(`[data-limit-card="${CSS.escape(scope.scope)}"]`);
+                if (card) lines(card.querySelector("[data-limit-status]"), scope.lines || []);
+            });
+        };
+
+        const every = Number(form.dataset.refreshMs);
+        // admin/js/poll-backoff.js: refreshes pause while the server says it is busy (429).
+        const backoff = window.I2GPollBackoff;
+        const gate = backoff ? backoff.createGate({ baseMs: every }) : null;
+        const refresh = async () => {
+            if (document.hidden || (gate && gate.blocked())) return;
+            try {
+                const response = await fetch(form.dataset.statusUrl, {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+                if (response.status === 429 && gate) {
+                    const body = await response.json().catch(() => ({}));
+                    gate.refused(backoff.retryAfterMs(response, body));
+                    return;
+                }
+                if (gate) gate.succeeded();
+                if (!response.ok) return;
+                render(await response.json());
+            } catch (error) {
+                // Keep the last status shown; the next refresh tries again.
+            }
+        };
+        if (every > 0) window.setInterval(refresh, every);
+    })();
+</script>
+{% endblock %}

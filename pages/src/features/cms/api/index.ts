@@ -1,4 +1,5 @@
 import { api } from '@/lib/api';
+import {rateLimitRetryDelay} from '@/lib/api/rateLimit';
 import type {ContactInfoData} from '@/features/cms/components/blocks/content/ContactInfoBlock';
 import type {CtaGroupData} from '@/features/cms/components/blocks/content/CtaGroupBlock';
 import type {EmbedData} from '@/features/cms/components/blocks/content/EmbedBlock';
@@ -76,6 +77,7 @@ export interface CMSPageRedirectResponse {
 export type CMSPageFetchResponse = CMSPageResponse | CMSPageRedirectResponse;
 
 const RETRYABLE_GET_STATUSES = new Set([408, 429, 502, 503, 504]);
+/** The cap on a 408/5xx retry's wait. A 429 waits as long as the server asks, up to the shared client's limit. */
 const MAX_RETRY_DELAY_MS = 2000;
 
 /** Retry-After (seconds or an HTTP date) in milliseconds, capped; null when absent or unusable. */
@@ -100,6 +102,9 @@ function retryDelay(error: unknown): number | null {
   if (candidate.code === 'ERR_CANCELED') return null;
   const status = candidate.response?.status;
   if (status !== undefined && !RETRYABLE_GET_STATUSES.has(status)) return null;
+  // Retrying a 429 before its Retry-After only earns another 429. The shared client has normally spent the one
+  // retry already (null then), and a wait longer than it allows fails the page at once rather than early.
+  if (status === 429) return rateLimitRetryDelay(error);
 
   const requested = retryAfterDelay(candidate.response?.headers?.['retry-after']);
   return requested ?? 150 + Math.floor(Math.random() * 151);

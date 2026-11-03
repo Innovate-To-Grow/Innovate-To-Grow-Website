@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.authn.security.throttles import ChangePasswordThrottle
 from apps.authn.serializers import ChangePasswordSerializer
 
 logger = logging.getLogger(__name__)
@@ -24,7 +25,11 @@ class ChangePasswordView(APIView):
     Accepts optional `refresh` token in body to blacklist the old session.
     """
 
+    rate_limit_scope = "auth-sign-in"
+
     permission_classes = [IsAuthenticated]
+    # Each try checks the current password's hash: bound how fast one member can guess it.
+    throttle_classes = [ChangePasswordThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

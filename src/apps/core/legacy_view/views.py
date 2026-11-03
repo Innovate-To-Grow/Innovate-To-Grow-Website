@@ -108,6 +108,9 @@ def legacy_proxy_view(request: HttpRequest, legacy_path: str = "") -> HttpRespon
     )
 
 
+legacy_proxy_view.rate_limit_scope = "legacy-proxy"
+
+
 def _allowed_path(request: HttpRequest, legacy_path: str):
     """``(canonical_path, None)`` for a readable path, else ``(path, (response, outcome))`` refusing it."""
     try:
@@ -176,3 +179,6 @@ def legacy_access_exchange_gateway(request: HttpRequest) -> HttpResponse:
         round((time.monotonic() - started) * 1000),
     )
     return response
+
+
+legacy_access_exchange_gateway.rate_limit_scope = "auth-email-link"

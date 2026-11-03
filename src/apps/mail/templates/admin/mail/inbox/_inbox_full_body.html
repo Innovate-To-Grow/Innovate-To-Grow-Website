@@ -17,7 +17,7 @@
                 <span class="material-symbols-outlined !text-[16px]">inbox</span>
                 Inbox
             </button>
-            {% comment %}Sent Items of the Microsoft Graph mailbox is for superusers only (helpers.sent_mail_restricted).{% endcomment %}
+            {% comment %}Sent Items of the sending mailbox needs the Mail app (helpers.sent_mail_restricted).{% endcomment %}
             {% if sent_folder_allowed %}
             <button type="button" data-inbox-folder="SENT" role="tab"
                     aria-selected="{% if folder == 'SENT' %}true{% else %}false{% endif %}"

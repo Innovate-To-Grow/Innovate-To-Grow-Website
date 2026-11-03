@@ -25,6 +25,11 @@ DENIED_MODEL_LABELS = {
     "core.deliveryratestate",
     "core.deliveryusagebucket",
     "core.emailserviceconfig",
+    # Request limits: changing a policy, a Smart factor or the process heartbeats would loosen or tighten every
+    # caller's limits outside the admin's audited page. None of their names matches DENIED_MODEL_NAME_PARTS.
+    "core.requestlimitprocess",
+    "core.requestratelimitpolicy",
+    "core.requestratelimitstate",
     "core.gmailaccessaccount",
     # The Gmail API service account and its impersonation allow-list (the subject list matches no name part).
     "core.gmailapiproviderconfig",

@@ -1,7 +1,7 @@
 """Admin pages that install and remove the Gmail API service-account key and run its access check.
 
 Each is its own URL (``get_urls``) wrapped by ``admin_site.admin_view``, which only checks ``is_staff``: the views
-re-check that the user is a superuser themselves. Successful POSTs redirect to the change page (POST-redirect-GET),
+re-check Core app access (permission to change the config) themselves. Successful POSTs redirect to the change page (POST-redirect-GET),
 nothing submitted goes to the session or cache, and ``sensitive_post_parameters`` / ``sensitive_variables`` keep the
 key out of error reports.
 """
@@ -24,7 +24,7 @@ from .gmail_api_forms import KEY_FIELD, AccessCheckForm, InstallKeyForm, RemoveK
 from .gmail_api_panel import ACCESS_CHECK_URL_NAME, INSTALL_URL_NAME, REMOVE_URL_NAME, URL_NAME_PREFIX, key_panel
 
 TEMPLATE_DIR = "admin/core/gmailapiproviderconfig"
-SUPERUSER_ONLY = "Only a superuser can manage the Gmail API key or run its access check."
+CORE_APP_ONLY = "Managing the Gmail API key or running its access check needs the Core app."
 EMAIL_STOPPED = (
     "Email is still set to the Gmail API and will fail until a key is installed. Switch Mail → Notification "
     "Delivery to another provider if this was not intended."
@@ -101,8 +101,8 @@ class GmailApiKeyViewsMixin:
         return TemplateResponse(request, f"{TEMPLATE_DIR}/run_access_check.html", context)
 
     def _key_config(self, request, object_id):
-        if not request.user.is_superuser:
-            raise PermissionDenied(SUPERUSER_ONLY)
+        if not self.has_change_permission(request):
+            raise PermissionDenied(CORE_APP_ONLY)
         config = self.get_object(request, unquote(object_id))
         if config is None:
             raise Http404("No Gmail API config matches this ID.")

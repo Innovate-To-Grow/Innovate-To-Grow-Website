@@ -10,6 +10,7 @@ from .payloads import event_counts
 
 
 class CheckInUndoView(APIView):
+    rate_limit_scope = "checkin-scan"
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAdminUser]
 

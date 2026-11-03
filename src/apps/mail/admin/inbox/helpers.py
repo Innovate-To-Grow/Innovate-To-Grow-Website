@@ -2,6 +2,8 @@
 
 from html import escape
 
+from apps.core.utils.access import user_can_access_app
+
 from . import services as inbox_api
 
 
@@ -27,15 +29,16 @@ def parse_folder(request) -> str:
 
 
 def sent_mail_restricted(user) -> bool:
-    """Whether *user* may not read Sent mail: only superusers may while the inbox reads the Graph mailbox, or while
-    the Gmail account it reads is one the site sends as through the Gmail API.
+    """Whether *user* may not read Sent mail: staff granted the Mail app (and superusers) may; anyone else may not
+    while the inbox reads the Graph mailbox, or while the Gmail account it reads is one the site sends as through the
+    Gmail API.
 
     That folder holds what the site sends: Graph keeps what carries no credential flag there (campaigns, replies),
-    and Gmail keeps a copy of everything, sign-in codes included (the list and the import leave tagged credential mail out, which is
-    a second line of defence, not this one). Mail-app staff could otherwise read other people's links and codes.
-    When the backend cannot be resolved, the answer is "restricted".
+    and Gmail keeps a copy of everything, sign-in codes included. The list and the message view leave the site's
+    tagged credential mail out of Sent for every reader (``apps.mail.services.inbox.messages``), so links and codes
+    stay hidden. When the backend cannot be resolved, the answer is "restricted".
     """
-    if user.is_superuser:
+    if user_can_access_app(user, "mail"):
         return False
     try:
         return inbox_api.graph_inbox_active() or inbox_api.gmail_sent_copies_kept()
@@ -50,7 +53,7 @@ def sent_mail_denied(request, folder: str, msg: dict | None = None) -> bool:
     return is_sent_mail and sent_mail_restricted(request.user)
 
 
-OWN_MAIL_SUBJECT = "(Sent from the site's own address: shown to superusers only)"
+OWN_MAIL_SUBJECT = "(Sent from the site's own address: shown to staff with the Mail app only)"
 
 
 def hide_own_mail(messages: list[dict]) -> list[dict]:

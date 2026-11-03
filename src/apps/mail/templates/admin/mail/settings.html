@@ -16,12 +16,12 @@
                 {% if email_provider_color == "success" %}
                     <span class="inline-flex max-w-full rounded-md bg-green-50 px-3 py-2 text-sm font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-500/30">{{ email_provider }}</span>
                 {% else %}
-                    <span class="inline-flex max-w-full rounded-md bg-yellow-50 px-3 py-2 text-sm font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20 dark:bg-yellow-900/30 dark:text-yellow-400 dark:ring-yellow-500/30">{{ email_provider }}</span>
+                    <span class="inline-flex max-w-full rounded-md bg-orange-50 px-3 py-2 text-sm font-medium text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">{{ email_provider }}</span>
                 {% endif %}
                 {% if sms_provider_color == "success" %}
                     <span class="inline-flex max-w-full rounded-md bg-green-50 px-3 py-2 text-sm font-medium text-green-700 ring-1 ring-inset ring-green-600/20 dark:bg-green-900/30 dark:text-green-400 dark:ring-green-500/30">{{ sms_provider }}</span>
                 {% else %}
-                    <span class="inline-flex max-w-full rounded-md bg-yellow-50 px-3 py-2 text-sm font-medium text-yellow-700 ring-1 ring-inset ring-yellow-600/20 dark:bg-yellow-900/30 dark:text-yellow-400 dark:ring-yellow-500/30">{{ sms_provider }}</span>
+                    <span class="inline-flex max-w-full rounded-md bg-orange-50 px-3 py-2 text-sm font-medium text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">{{ sms_provider }}</span>
                 {% endif %}
             </div>
         </div>
@@ -36,6 +36,14 @@
             </a>
         </div>
     </div>
+</div>
+
+<div id="email-sending-method-summary" class="mb-6 flex flex-col gap-2 rounded-default border border-base-200 bg-white px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-base-700 dark:bg-base-800">
+    <div class="text-sm">
+        <span class="text-xs font-medium uppercase text-base-400">Email sending method</span>
+        <span class="ml-2 font-semibold text-font-important-light dark:text-font-important-dark">{{ sending_method }}</span>
+    </div>
+    <a href="{{ sending_method_url }}" class="text-sm font-medium text-primary-600 hover:underline dark:text-primary-400">Change it or test each method</a>
 </div>
 
 <div class="grid grid-cols-1 gap-6 xl:grid-cols-3">

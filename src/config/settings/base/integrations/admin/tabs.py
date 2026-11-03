@@ -2,6 +2,18 @@
 
 _DELIVERY_RATES_PATH = "/admin/mail/settings/rates/"
 
+# Site Settings → Service Credentials: every provider credential, in the order Notification Delivery lists them.
+SERVICE_CREDENTIAL_MODELS = (
+    "core.awscredentialconfig",
+    "core.smtpproviderconfig",
+    "core.microsoftgraphproviderconfig",
+    "core.microsoftgraphaccesscheck",
+    "core.gmailapiproviderconfig",
+    "core.gmailaccessaccount",
+    "core.googlecredentialconfig",
+    "core.sendverificationconfig",
+)
+
 
 def _is_notification_delivery(request):
     # Unfold marks a tab active when its link is a prefix of the path, and Delivery Rates lives under
@@ -11,15 +23,14 @@ def _is_notification_delivery(request):
 
 TABS = [
     {
-        "models": [
-            "core.awscredentialconfig",
-            "core.gmailaccessaccount",
-            "core.googlecredentialconfig",
-            "core.sendverificationconfig",
-        ],
+        "models": list(SERVICE_CREDENTIAL_MODELS),
         "items": [
             {"title": "AWS Credentials", "link": "/admin/core/awscredentialconfig/"},
-            {"title": "Gmail Access Account", "link": "/admin/core/gmailaccessaccount/"},
+            {"title": "SMTP", "link": "/admin/core/smtpproviderconfig/"},
+            {"title": "Microsoft Graph", "link": "/admin/core/microsoftgraphproviderconfig/"},
+            {"title": "Graph Access Checks", "link": "/admin/core/microsoftgraphaccesscheck/"},
+            {"title": "Gmail API", "link": "/admin/core/gmailapiproviderconfig/"},
+            {"title": "Gmail IMAP (Template Import)", "link": "/admin/core/gmailaccessaccount/"},
             {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
             {"title": "Send Verification", "link": "/admin/core/sendverificationconfig/"},
         ],

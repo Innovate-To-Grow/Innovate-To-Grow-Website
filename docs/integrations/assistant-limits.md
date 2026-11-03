@@ -65,8 +65,8 @@ the first request of its feature.
 
 | Throttle | Rate | Key |
 |----------|------|-----|
-| `PublicAssistantActorThrottle` (`POST /assistant/chat/`) | 6/minute (`public_assistant`) | Visitor or member |
-| same, legacy actor | 60/minute (`public_assistant_legacy` in `DEFAULT_THROTTLE_RATES` overrides the built-in default) | One shared bucket |
+| `PublicAssistantActorThrottle` (`POST /assistant/chat/`) | 6/minute (request-limit policy `view-assistant-chat`, editable in the admin) | Visitor or member |
+| same, legacy actor | 60/minute (request-limit policy `view-assistant-legacy`, editable in the admin) | One shared bucket |
 | `PastProjectAISearchRateThrottle` (`POST /projects/past-ai-search/`) | 10/minute (`past_project_ai_search`) | Member |
 
 These are fairness limits. The assistant throttle's history is in the bounded

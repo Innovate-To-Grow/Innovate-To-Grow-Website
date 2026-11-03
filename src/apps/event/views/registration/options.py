@@ -29,6 +29,7 @@ def registration_for_events(user, events):
 
 
 class EventRegistrationEventsView(APIView):
+    rate_limit_scope = "public-read"
     permission_classes = [AllowAny]
     # Reports the caller's own registration: a valid token is honoured, a stale one reads as anonymous.
     authentication_classes = [SoftJWTAuthentication]
@@ -50,6 +51,7 @@ class EventRegistrationEventsView(APIView):
 
 
 class EventRegistrationOptionsView(APIView):
+    rate_limit_scope = "public-read"
     permission_classes = [AllowAny]
     authentication_classes = [SoftJWTAuthentication]
 

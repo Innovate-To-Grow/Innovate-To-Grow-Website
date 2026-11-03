@@ -5,6 +5,21 @@
 {% block content_title %}<h1>{{ title }}</h1>{% endblock %}
 
 {% block content %}
+{% if method_links %}
+    <nav class="mb-6 flex flex-wrap items-center gap-2 text-sm" aria-label="Send through">
+        <span class="font-medium">Send through:</span>
+        {% for link in method_links %}
+            <a href="{{ link.url }}" class="rounded-md border px-3 py-1.5 text-xs font-medium {% if link.selected %}border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300{% else %}border-base-300 hover:bg-base-50 dark:border-base-600{% endif %}"{% if link.selected %} aria-current="page"{% endif %}>
+                {{ link.label }}{% if link.in_use %} (in use){% endif %}{% if not link.ready %} · not ready{% endif %}
+            </a>
+        {% endfor %}
+    </nav>
+{% endif %}
+{% if send_problem %}
+    <div class="mb-6 max-w-2xl rounded-default bg-orange-50 px-3 py-2.5 text-sm text-orange-700 dark:bg-orange-500/20 dark:text-orange-400" data-send-problem>
+        This method cannot send yet: {{ send_problem }}
+    </div>
+{% endif %}
 <form method="post">
     {% csrf_token %}
     <div style="max-width:480px">
@@ -47,7 +62,7 @@
             {% if input_help %}<p class="text-xs text-base-400 mt-1">{{ input_help }}</p>{% endif %}
         </div>
         <div class="flex gap-3">
-            <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700">
+            <button type="submit" class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700{% if send_problem %} cursor-not-allowed opacity-50{% endif %}"{% if send_problem %} disabled{% endif %}>
                 {{ submit_label }}
             </button>
             <a href="{{ cancel_url }}" class="border border-base-300 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50">

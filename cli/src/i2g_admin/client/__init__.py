@@ -1,11 +1,12 @@
 import random
 import time
-from email.utils import parsedate_to_datetime
 
 import requests
 
 from ..config import validate_base_url
 from ..core.errors import ApiError, AuthError
+from .rate_limit import RATE_LIMIT_RETRIES, send_with_rate_limit_retries, wait_hint
+from .rate_limit import parse_retry_after as _parse_retry_after
 
 # (connect, read) timeout so a hung server can never block the CLI indefinitely.
 REQUEST_TIMEOUT = (5, 30)
@@ -26,25 +27,7 @@ BACKOFF_MAX = 20.0
 # far-future date) and make the CLI block effectively forever.
 MAX_RETRY_SLEEP = 60.0
 
-
-def _parse_retry_after(value):
-    """Return a non-negative delay in seconds from a ``Retry-After`` header value.
-
-    Accepts either an integer number of seconds or an HTTP-date; returns ``None``
-    when the value is missing or unparseable so the caller falls back to backoff.
-    """
-    if not value:
-        return None
-    value = value.strip()
-    try:
-        return max(0.0, float(value))
-    except ValueError:
-        pass
-    try:
-        when = parsedate_to_datetime(value)
-    except (TypeError, ValueError):
-        return None
-    return max(0.0, when.timestamp() - time.time())
+__all__ = ["ApiClient", "_parse_retry_after"]
 
 
 class ApiClient:
@@ -63,6 +46,7 @@ class ApiClient:
         timeout=REQUEST_TIMEOUT,
         max_attempts: int = 1,
         retry_statuses=RETRY_STATUSES,
+        rate_limit_retries: int = RATE_LIMIT_RETRIES,
     ):
         validate_base_url(base_url)
         self.base_url = base_url.rstrip("/")
@@ -70,6 +54,8 @@ class ApiClient:
         # At least one attempt; a non-positive value would otherwise skip the request entirely.
         self.max_attempts = max(1, max_attempts)
         self.retry_statuses = tuple(retry_statuses)
+        # Resends of a read refused with 429 (client/rate_limit.py), on top of max_attempts.
+        self.rate_limit_retries = max(0, rate_limit_retries)
         self.session = requests.Session()
         # Bearer-token traffic must not silently inherit proxy or custom CA
         # settings from an untrusted process environment.
@@ -108,13 +94,19 @@ class ApiClient:
         Non-idempotent writes are sent exactly once regardless of ``max_attempts``
         so a 5xx/timeout after the server already committed can't duplicate the row.
         """
-        attempts = self.max_attempts if method.upper() in IDEMPOTENT_METHODS else 1
+        idempotent = method.upper() in IDEMPOTENT_METHODS
+        attempts = self.max_attempts if idempotent else 1
+
+        def send():
+            return self.session.request(
+                method, url, params=params, json=json_body, headers=headers, timeout=self.timeout
+            )
+
         for attempt in range(1, attempts + 1):
             last_attempt = attempt >= attempts
             try:
-                response = self.session.request(
-                    method, url, params=params, json=json_body, headers=headers, timeout=self.timeout
-                )
+                # A read refused with 429 waits out Retry-After and is resent (bounded) within this attempt.
+                response = send_with_rate_limit_retries(send, self.rate_limit_retries) if idempotent else send()
             except requests.RequestException:
                 if last_attempt:
                     raise
@@ -140,6 +132,8 @@ class ApiClient:
             payload = None
         if response.status_code >= 400:
             detail = payload.get("detail") if isinstance(payload, dict) else None
+            if not detail and response.status_code == 429:
+                detail = "Too many requests (429)." + wait_hint(response)
             raise ApiError(response.status_code, detail or f"Request failed ({response.status_code}).", payload)
         return payload
 

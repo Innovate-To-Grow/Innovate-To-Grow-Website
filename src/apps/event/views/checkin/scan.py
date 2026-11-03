@@ -11,6 +11,7 @@ from .payloads import attendee_payload, duplicate_response, parse_ticket_code
 
 
 class CheckInScanView(APIView):
+    rate_limit_scope = "checkin-scan"
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAdminUser]
 

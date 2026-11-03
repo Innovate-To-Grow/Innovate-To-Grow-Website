@@ -42,10 +42,16 @@ def robots_txt(request):
     return HttpResponse("\n".join(lines), content_type="text/plain")
 
 
+robots_txt.rate_limit_exempt = "A static text file crawlers fetch; refusing it would only make them guess."
+
+
 def root_index(request):
     """Static landing page"""
 
     return render(request, "index.html", status=200)
+
+
+root_index.rate_limit_scope = "public-read"
 
 
 # Paths whose 404 is a page a person reads in the browser; every other path is an API client's.

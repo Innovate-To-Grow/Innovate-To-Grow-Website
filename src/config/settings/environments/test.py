@@ -9,6 +9,7 @@ throwaway credentials.
 import os
 
 from ..base import *  # noqa: F403
+from ..base.integrations.request_limits import enabled_from_env
 
 SECRET_KEY = "ci-secret-key"
 DEBUG = False
@@ -52,3 +53,8 @@ SEND_VERIFICATION_TEST_AUTOSOLVE = True
 
 # Private keys stay in process memory: tests never touch Secrets Manager or the local key directory.
 CREDENTIAL_STORE_BACKEND = "memory"
+
+# The request limiter stays off for the test suites, browser E2E and the container smoke job (every test client is
+# one IP and one process); dedicated tests switch it on with override_settings, and REQUEST_RATE_LIMITS_ENABLED=true
+# turns it on for a run that should exercise it.
+REQUEST_RATE_LIMITS_ENABLED = enabled_from_env(False)

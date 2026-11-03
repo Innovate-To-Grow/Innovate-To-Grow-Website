@@ -56,6 +56,7 @@ def _verification_input(request, serializer_class):
 
 
 class SendSecondaryEmailCodeView(APIView):
+    rate_limit_scope = "auth-code-send"
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailCodeUserRequestThrottle]
 
@@ -87,6 +88,7 @@ class SendSecondaryEmailCodeView(APIView):
 
 
 class VerifySecondaryEmailCodeView(APIView):
+    rate_limit_scope = "auth-code-verify"
     permission_classes = [IsAuthenticated]
     throttle_classes = [SecondaryEmailCodeVerifyThrottle]
 

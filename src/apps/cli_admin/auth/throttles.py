@@ -6,16 +6,18 @@ that lives 60 seconds, is burned by the first attempt (even a failed one) and is
 exact redirect URI. Do not add an anonymous (per-IP) throttle here.
 """
 
-from rest_framework.throttling import UserRateThrottle
+from apps.core.services.request_limits.view_limits import MemberRateThrottle
 
 
-class CliReadThrottle(UserRateThrottle):
-    """Per-member throttle for read operations."""
+class CliReadThrottle(MemberRateThrottle):
+    """Per-member throttle for read operations (a live request-limit policy)."""
 
     scope = "cli_read"
+    policy_scope = "view-cli-read"
 
 
-class CliWriteThrottle(UserRateThrottle):
-    """Per-member throttle for write operations."""
+class CliWriteThrottle(MemberRateThrottle):
+    """Per-member throttle for write operations (a live request-limit policy)."""
 
     scope = "cli_write"
+    policy_scope = "view-cli-write"

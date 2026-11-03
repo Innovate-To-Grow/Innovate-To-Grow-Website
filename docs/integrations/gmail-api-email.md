@@ -71,7 +71,10 @@ was sent to Google (the tests use mocked HTTP).
    `DELIVERY_RATES` seed, so naming it cannot lift Google's external-recipient limit for unrelated domains.
    **[CONFIRM LIVE]** UC Merced's primary domain: Google counts aliases and alternate domains as external.
 
-### Site superuser
+### Site admin with the Core app
+
+The Gmail API configuration's page (`/admin/core/gmailapiproviderconfig/`, Site Settings → Service Credentials →
+Gmail API) needs the **Core** app; superusers always have it.
 
 1. **Core → Gmail API Provider Configs → Add**: a name, then add the From address to the **account allow-list**.
 2. **Install key**: paste or upload `key.json`. The site checks it in memory, asks Google for a gmail.send token as
@@ -157,13 +160,14 @@ Mail that carries a credential (sign-in codes, login links, admin invitations, t
   The header is not authenticated (anyone can add it to mail they send the account), so it is honoured only in Sent,
   which holds only the account's own outgoing mail; received mail is listed as before, tagged or not;
 - while email is sent through the Gmail API, or the Gmail import account is on an allow-list, the inbox's **Sent**
-  folder is shown to superusers only;
+  folder is shown to staff with the **Mail** app only (anyone who can open Mail → Inbox), with tagged mail left out
+  as above;
 - **Mail With Codes or Login Links = Refuse** on the config makes such mail fail with this provider instead (it then
   blocks sign-in codes if the Gmail API is the only provider).
 
-Only people trusted like superusers should be able to sign in to the sending account directly (2-Step Verification,
-no shared password). How long Sent copies are kept (for example a Vault retention rule) is a records-policy decision
-for UC Merced. **[CONFIRM LIVE]** that the header survives in the Sent copy.
+Only people trusted like Core-app admins should be able to sign in to the sending account directly (2-Step
+Verification, no shared password). How long Sent copies are kept (for example a Vault retention rule) is a
+records-policy decision for UC Merced. **[CONFIRM LIVE]** that the header survives in the Sent copy.
 
 ## Operations
 

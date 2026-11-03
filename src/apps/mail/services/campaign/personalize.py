@@ -15,3 +15,15 @@ def personalize(template, context):
         result = result.replace("{{" + key + "}}", replacement)
         result = result.replace("{{ " + key + " }}", replacement)
     return result
+
+
+def uses_placeholder(key, *templates) -> bool:
+    """Whether any of *templates* contains the ``{{key}}`` or ``{{ key }}`` placeholder."""
+    return any(f"{{{{{key}}}}}" in template or f"{{{{ {key} }}}}" in template for template in templates if template)
+
+
+def recipients_without_login_link(campaign, recipients) -> int:
+    """How many *recipients* get the sign-in page for ``{{login_link}}`` (no member account); 0 when it is unused."""
+    if not uses_placeholder("login_link", campaign.subject, campaign.body):
+        return 0
+    return sum(1 for recipient in recipients if not recipient["member_id"])

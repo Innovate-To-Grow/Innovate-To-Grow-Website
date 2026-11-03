@@ -11,6 +11,7 @@ from .models import _is_cli_denied
 
 
 class AppListView(AdminAPIView):
+    rate_limit_scope = "cli"
     throttle_classes = [CliReadThrottle]
 
     def get(self, request):

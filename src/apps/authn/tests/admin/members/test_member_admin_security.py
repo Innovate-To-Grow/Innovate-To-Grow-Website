@@ -164,6 +164,16 @@ class PrivilegeFieldEditTests(TestCase):
         self.assertIn("is_staff", form_class.base_fields)
         self.assertIn("admin_apps", form_class.base_fields)
 
+    def test_superuser_status_is_bound_by_no_admin_form(self):
+        # An app grant gives full control of that app's configuration, never superuser status: no Member form (add or
+        # change, superuser or not) offers ``is_superuser``.
+        for is_superuser in (False, True):
+            request = self._request(Member(is_superuser=is_superuser, is_staff=True, is_active=True))
+            for obj in (self.target, None):
+                with self.subTest(superuser=is_superuser, change=obj is not None):
+                    form_class = self.model_admin.get_form(request, obj=obj, change=obj is not None)
+                    self.assertNotIn("is_superuser", form_class.base_fields)
+
 
 @override_settings(ROOT_URLCONF="config.routing.urls", ADMIN_REQUIRE_CONFIRMATION=False)
 class PrivilegeFieldPostTests(TestCase):
@@ -210,6 +220,30 @@ class PrivilegeFieldPostTests(TestCase):
         self.client.post(url, data)
         self.attacker.refresh_from_db()
         # The injected escalation values were ignored: app grant unchanged.
+        self.assertEqual(self.attacker.admin_apps, ["authn"])
+
+    def test_post_cannot_grant_superuser_status(self):
+        url = f"/admin/authn/member/{self.attacker.pk}/change/"
+        data = {
+            "first_name": "Self",
+            "last_name": "Escalate",
+            "is_active": "on",
+            "is_superuser": "on",
+            "contact_emails-TOTAL_FORMS": "0",
+            "contact_emails-INITIAL_FORMS": "0",
+            "contact_emails-MIN_NUM_FORMS": "0",
+            "contact_emails-MAX_NUM_FORMS": "1000",
+            "contact_phones-TOTAL_FORMS": "0",
+            "contact_phones-INITIAL_FORMS": "0",
+            "contact_phones-MIN_NUM_FORMS": "0",
+            "contact_phones-MAX_NUM_FORMS": "1000",
+            "_save": "Save",
+        }
+
+        self.client.post(url, data)
+
+        self.attacker.refresh_from_db()
+        self.assertFalse(self.attacker.is_superuser)
         self.assertEqual(self.attacker.admin_apps, ["authn"])
 
 

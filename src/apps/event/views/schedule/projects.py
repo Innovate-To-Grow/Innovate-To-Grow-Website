@@ -9,6 +9,7 @@ from apps.event.services.current_projects import CURRENT_PROJECTS_CACHE_KEY
 
 
 class CurrentProjectsAPIView(APIView):
+    rate_limit_scope = "public-read"
     permission_classes = [AllowAny]
     authentication_classes = []
 

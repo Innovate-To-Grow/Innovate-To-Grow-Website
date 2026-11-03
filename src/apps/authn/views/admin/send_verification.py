@@ -13,4 +13,5 @@ from apps.authn.views.auth.send_verification import SendVerificationChallengeVie
 
 @method_decorator(csrf_protect, name="dispatch")
 class AdminSendVerificationChallengeView(SendVerificationChallengeView):
+    rate_limit_scope = "auth-challenge"
     allowed_operations = frozenset({OP_ADMIN_LOGIN_REQUEST_CODE, OP_ADMIN_LOGIN_REMEMBERED_CODE, OP_ADMIN_LOGIN_RESEND})

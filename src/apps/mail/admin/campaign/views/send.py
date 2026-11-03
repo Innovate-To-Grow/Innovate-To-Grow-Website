@@ -67,6 +67,7 @@ class CampaignSendMixin:
             "title": f"Confirm Send - {obj.name}",
             "campaign": obj,
             "recipient_count": len(recipients),
+            "without_login_link_count": campaign_api.recipients_without_login_link(obj, recipients),
             "delivery_notice": delivery_pacing_notice(EmailServiceConfig.load(), len(recipients)),
             "preview_url": reverse("admin:mail_emailcampaign_send_preview", args=[object_id]),
         }

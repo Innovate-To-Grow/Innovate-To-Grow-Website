@@ -10,6 +10,7 @@ from ..services.current_project_links import resolve_current_project_link
 
 
 class ProjectDetailAPIView(RetrieveAPIView):
+    rate_limit_scope = "public-read"
     permission_classes = [AllowAny]
     authentication_classes = []
     serializer_class = ProjectDetailSerializer

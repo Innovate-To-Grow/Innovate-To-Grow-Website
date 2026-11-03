@@ -11,6 +11,9 @@
     if (!config.statusUrl) return;
 
     const pollIntervalMs = Number(config.pollIntervalMs) || 2000;
+    // admin/js/poll-backoff.js (loaded first): polls pause while the server says it is busy (429).
+    const backoff = window.I2GPollBackoff;
+    const gate = backoff ? backoff.createGate({ baseMs: pollIntervalMs }) : null;
     const state = {
         loaded: false,
         loading: false,
@@ -241,6 +244,13 @@
             },
         });
         const data = await response.json().catch(() => ({}));
+        if (response.status === 429 && gate) {
+            const wait = gate.refused(backoff.retryAfterMs(response, data));
+            const busy = new Error("busy");
+            busy.busyWaitMs = wait;
+            throw busy;
+        }
+        if (gate) gate.succeeded();
         if (!response.ok) {
             throw new Error(data.detail || `HTTP ${response.status}`);
         }
@@ -253,6 +263,7 @@
             setSyncStatus("paused", "Paused");
             return null;
         }
+        if (!force && gate && gate.blocked()) return null;
 
         if (state.loading) {
             if (force) state.queued = true;
@@ -281,14 +292,16 @@
                 }
                 return data;
             } catch (error) {
-                setSyncStatus(
-                    document.hidden ? "paused" : "issue",
-                    document.hidden ? "Paused" : "Sync issue - retrying"
-                );
+                const issue = error.busyWaitMs ? `Busy - retrying ${backoff.waitText(error.busyWaitMs)}` : "Sync issue - retrying";
+                setSyncStatus(document.hidden ? "paused" : "issue", document.hidden ? "Paused" : issue);
                 if (!state.loaded) {
                     clear(elements.recentList);
                     elements.recentList.appendChild(
-                        node("div", "i2g-checkin-summary__empty", `Unable to load status: ${error.message}`)
+                        node(
+                            "div",
+                            "i2g-checkin-summary__empty",
+                            error.busyWaitMs ? "The server is busy; the status loads shortly." : `Unable to load status: ${error.message}`
+                        )
                     );
                 }
                 return null;

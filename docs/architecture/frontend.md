@@ -169,6 +169,24 @@ concern. For example:
 
 The auth-specific client tags each request with the session generation and access token it used. On a 401 it performs one generation-guarded refresh through `/authn/refresh/`, retries once with the fresh access token, and clears only the rejected generation if recovery fails. Session-bearing event and project requests use this client; public fallbacks remain explicit.
 
+**429 Too Many Requests (`lib/api/rateLimit.ts`).** Both clients answer a 429 the same way. An idempotent read
+(GET/HEAD/OPTIONS) waits as long as the server asks — the `Retry-After` header (readable cross-origin because
+`CORS_EXPOSE_HEADERS` lists it), else the body's `retry_after`, else 1 s — plus jitter (a fifth of the wait, 0.25–2 s),
+and is sent once more. A wait over `RATE_LIMIT_MAX_WAIT_MS` (10 s) is not waited out. A 429 that is finally passed on
+carries a visitor-facing `error.message` ("The site is busy right now. Please try again in N seconds."); the server's
+body is untouched. Writes are never resent, `skipAuth` requests pass their 429 straight through, and a request can opt
+out with `{rateLimitRetry: false}`. A 429 on `/authn/refresh/` is resent once the same way (the server refused it before
+the token was used) and otherwise stays a transient refresh failure: it never clears the session or tells the other
+React roots the member signed out. The CMS page fetch keeps its own one retry for 408/5xx but, for a 429, waits the full
+`Retry-After` (up to the same limit) and never retries one the shared client already retried. The catalog's whole-list
+load (`features/projects/api/archive.ts`) requests its pages together; a page that fails transiently (408, 429, 5xx,
+no answer) is asked for once more, alone, after the others answered, instead of failing the whole list.
+
+The admin pages that poll (check-in console and summary, campaign and SMS send status, Delivery Rates, Request Limits,
+the CMS live-preview sync) share `src/apps/core/static/admin/js/poll-backoff.js`: after a 429 they skip polls until the
+server's wait has passed, doubling the wait for each refusal in a row (capped), and the check-in scanner shows
+"Busy — retry" for a refused scan instead of "Unable to check in".
+
 **Opting out with `skipAuth`.** Endpoints that authenticate by a one-time credential in the request body (the emailed login link and impersonation tokens, and the emailed-code exchanges: email-auth-link, unified email-auth and login code verification) pass `{skipAuth: true}` as the axios request config. Such a request sends no `Authorization` header, is never tagged with a session, and a failure never refreshes, retries, or clears the stored session. Without it, an expired or deleted-member bearer left over from an earlier account is rejected before the backend reads the token, the emailed link is reported as invalid, and the failed refresh can destroy the stored session. Use it only for such credential exchanges, and only where the backend view ignores JWT authentication; every call that acts as the signed-in member keeps the default behaviour. The credential-less anonymous sends (the send-verification challenge and status lookups, and the code requests) are not `skipAuth`: they may carry a stale bearer, and they stay safe only because their backend views set `authentication_classes = []`.
 
 ### Auth helpers (`features/auth/api/`)

@@ -60,6 +60,11 @@
                         }
                         data._ok = response.ok;
                         data._statusCode = response.status;
+                        if (response.status === 429) {
+                            // admin/js/poll-backoff.js: the wait the server asked for, in ms (null if none).
+                            var backoff = window.I2GPollBackoff;
+                            data._retryAfterMs = backoff ? backoff.retryAfterMs(response, data) : null;
+                        }
                         return data;
                     });
             });
