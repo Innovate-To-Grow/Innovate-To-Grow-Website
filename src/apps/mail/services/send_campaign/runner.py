@@ -14,7 +14,7 @@ from apps.core.models import EmailServiceConfig
 from apps.core.services.delivery_rates import WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
 from apps.mail.models import RecipientLog
-from apps.mail.services.tokens.login_links import issue_login_link
+from apps.mail.services.tokens.login_links import issue_login_link, sign_in_page_url
 
 from ..audience import get_recipients
 from ..campaign.errors import unexpected_delivery_error_message
@@ -231,18 +231,35 @@ def _record_send_result(campaign, log, result):
         campaign.sent_count += 1
 
 
+class RecipientContext(dict):
+    """One recipient's personalization values, plus the login link issued for them (``""`` when none was).
+
+    ``{{login_link}}`` is that issued link for a member, and the sign-in page for a recipient with no member account
+    (a Manual Emails address no active member owns), so the tag never renders as nothing.
+    """
+
+    def __init__(self, values, *, issued_login_link=""):
+        super().__init__(values)
+        self.issued_login_link = issued_login_link
+
+
 def _recipient_context(recipient, campaign):
-    return {
-        "first_name": recipient["first_name"],
-        "last_name": recipient["last_name"],
-        "full_name": recipient["full_name"],
-        "login_link": _build_login_link(recipient["member_id"], campaign),
-    }
+    issued_login_link = _build_login_link(recipient["member_id"], campaign)
+    return RecipientContext(
+        {
+            "first_name": recipient["first_name"],
+            "last_name": recipient["last_name"],
+            "full_name": recipient["full_name"],
+            "login_link": issued_login_link or sign_in_page_url(),
+        },
+        issued_login_link=issued_login_link,
+    )
 
 
 def carries_login_link(context, *texts) -> bool:
-    """Whether the personalized message holds the recipient's login link, a credential (``keep_sent_copy=False``)."""
-    link = context.get("login_link")
+    """Whether the personalized message holds the login link issued to the recipient, a credential
+    (``keep_sent_copy=False``). The sign-in page that stands in for it when none was issued is not one."""
+    link = getattr(context, "issued_login_link", "")
     return bool(link) and any(link in text for text in texts)
 
 

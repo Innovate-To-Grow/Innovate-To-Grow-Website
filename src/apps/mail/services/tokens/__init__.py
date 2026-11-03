@@ -1,4 +1,4 @@
-from .login_links import create_login_link, issue_login_link, revoke_login_links
+from .login_links import create_login_link, issue_login_link, revoke_login_links, sign_in_page_url
 from .notifications import (
     send_subscription_confirmation,
     subscription_confirmation_dedupe_key,
@@ -23,5 +23,6 @@ __all__ = [
     "load_resubscribe_token",
     "revoke_login_links",
     "send_subscription_confirmation",
+    "sign_in_page_url",
     "subscription_confirmation_dedupe_key",
 ]
