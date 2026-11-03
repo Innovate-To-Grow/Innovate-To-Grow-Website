@@ -1,13 +1,12 @@
 """Gmail keeps a Sent copy of everything it sends, credential mail included: the admin inbox's Sent view and the Gmail
-import never list, open, snippet or cache a message tagged ``X-I2G-Mail-Class: credential``, and Sent mail is for
-superusers while the Gmail account is one the site sends as. The tag is not authenticated, so received mail carrying
+import never list, open, snippet or cache a message tagged ``X-I2G-Mail-Class: credential``, and Sent mail needs the
+Mail app while the Gmail account is one the site sends as. The tag is not authenticated, so received mail carrying
 it is still listed."""
 
 from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase
-from django.urls import reverse
 
 from apps.core.models import EmailServiceConfig, GmailAccessAccount
 from apps.core.tests.gmail_api_helpers import make_config
@@ -119,14 +118,11 @@ class SentCopiesKeptTests(CredentialCopyTestCase):
         EmailServiceConfig.objects.create(name="Mail", is_active=True, provider="gmail", from_email="x@example.edu")
         self.assertTrue(sent_copies_kept())
 
-    def test_sent_mail_is_superuser_only_while_copies_are_kept(self):
-        staff = make_admin(apps=["mail"], email="mail-only@example.com")
-        self.assertFalse(sent_mail_restricted(staff))
+    def test_sent_mail_needs_the_mail_app_while_copies_are_kept(self):
+        mail_staff = make_admin(apps=["mail"], email="mail-only@example.com")
+        core_staff = make_admin(apps=["core"], email="core-only@example.com")
+        self.assertFalse(sent_mail_restricted(core_staff))
         make_config(subjects=("i2g@example.edu",), active=False)
-        self.assertTrue(sent_mail_restricted(staff))
+        self.assertTrue(sent_mail_restricted(core_staff))
+        self.assertFalse(sent_mail_restricted(mail_staff))
         self.assertFalse(sent_mail_restricted(make_superuser()))
-        self.client.force_login(staff)
-        with patch(INBOX_MAILBOX, mailbox_factory(messages=[message()])) as factory:
-            detail = self.client.get(f"{reverse('admin:mail_inbox_detail', args=['7'])}?folder=SENT")
-        self.assertEqual(detail.status_code, 403)
-        factory.assert_not_called()

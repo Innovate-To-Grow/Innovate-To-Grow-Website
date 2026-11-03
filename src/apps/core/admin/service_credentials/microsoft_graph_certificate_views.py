@@ -1,8 +1,8 @@
 """Admin pages that install, roll back and remove the Microsoft Graph certificate, and download it as a .cer file.
 
 Each is its own URL (``get_urls``) wrapped by ``admin_site.admin_view``, which only checks ``is_staff``: the views
-re-check access themselves. Installing a certificate requires permission to change the config; rollback and
-removal remain superuser-only. Downloading the public certificate is open to whoever can view the config.
+re-check access themselves. Installing, rolling back and removing a certificate require permission to change the
+config (the Core app). Downloading the public certificate is open to whoever can view the config.
 Successful POSTs redirect to the change page (POST-redirect-GET), and
 nothing submitted goes to the session or cache. ``sensitive_post_parameters`` and ``sensitive_variables`` keep the
 key and password out of error reports.
@@ -34,7 +34,7 @@ from .microsoft_graph_panel import (
 )
 
 TEMPLATE_DIR = "admin/core/microsoftgraphproviderconfig"
-SUPERUSER_ONLY = "Only a superuser can roll back or remove Microsoft Graph certificates."
+CORE_APP_ONLY = "Rolling back or removing Microsoft Graph certificates needs the Core app."
 EMAIL_STOPPED = (
     "Email is still set to Microsoft Graph and will fail until a certificate is installed. Switch Mail → "
     "Notification Delivery to another provider if this was not intended."
@@ -138,8 +138,8 @@ class GraphCertificateViewsMixin:
         return config
 
     def _certificate_config(self, request, object_id):
-        if not request.user.is_superuser:
-            raise PermissionDenied(SUPERUSER_ONLY)
+        if not self.has_change_permission(request):
+            raise PermissionDenied(CORE_APP_ONLY)
         return self._config(request, object_id)
 
     def _page_context(self, request, config, title, **extra):

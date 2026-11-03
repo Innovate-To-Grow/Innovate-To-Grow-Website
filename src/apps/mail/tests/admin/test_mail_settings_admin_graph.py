@@ -267,7 +267,8 @@ class EditPageRenderingTests(GraphSettingsTestCase):
         self.assertContains(response, graph.current_certificate.sha1_thumbprint)
         self.assertNotContains(response, "/admin/core/microsoftgraphproviderconfig/")
         self.assertContains(
-            response, "Changing the Microsoft Graph configuration or installing its certificate needs the Core app"
+            response,
+            "Changing the Microsoft Graph configuration, its certificate or running its access check needs the Core app",
         )
 
     def test_without_a_graph_config_the_panel_says_so_and_links_to_the_add_page(self):

@@ -175,11 +175,11 @@ def _graph_context(request, graph_config) -> dict:
 
 def _gmail_context(request) -> dict:
     """The active Gmail API config, read-only and without any credential field: it is managed on its own admin
-    page, by superusers only, because it decides which Workspace users the site may send as."""
+    page, which needs the Core app (like the other provider configs)."""
     gmail_config = GmailApiProviderConfig.load()
     saved = not gmail_config._state.adding
     admin_url = ""
-    if request.user.is_superuser:
+    if user_can_access_app(request.user, "core"):
         admin_url = (
             reverse("admin:core_gmailapiproviderconfig_change", args=[gmail_config.pk])
             if saved

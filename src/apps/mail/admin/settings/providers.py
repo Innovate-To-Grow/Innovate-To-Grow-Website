@@ -146,7 +146,8 @@ def _configure_url(request, provider: str) -> str:
     if provider == Provider.GRAPH:
         can_manage = user_can_access_app(request.user, "core")
         return reverse("admin:core_microsoftgraphproviderconfig_changelist") if can_manage else ""
-    return reverse("admin:core_gmailapiproviderconfig_changelist") if request.user.is_superuser else ""
+    can_manage = user_can_access_app(request.user, "core")
+    return reverse("admin:core_gmailapiproviderconfig_changelist") if can_manage else ""
 
 
 def mail_sending_method_view(request):
