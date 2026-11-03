@@ -19,8 +19,8 @@ from apps.core.tests.services.graph_access.helpers import (
     DENIED,
     DENY,
     EMPTY_LIST,
+    EXTRA_ROLES,
     MESSAGE_ID,
-    OIT_ROLES,
     REQUEST_ID,
     SCOPED,
     ProbeFixtureMixin,
@@ -62,7 +62,7 @@ class AccessCheckRunTests(ProbeFixtureMixin, TestCase):
         self.assertEqual(report.verdict, Verdict.COMPLIANT)
         self.assertTrue(report.restriction_holds and report.complete)
         self.assertIs(report.roles_within_approval, True)
-        self.assertEqual(report.granted_roles, ("Mail.Read", "Mail.Send"))
+        self.assertEqual(report.granted_roles, ("Mail.ReadWrite", "Mail.Send"))
         self.assertEqual(report.certificate_sha1, self.config.current_certificate.sha1_thumbprint)
         self.assertIn("Verdict: MATCHES THE APPROVAL", report.summary())
         self.assertIn("matches the approval", report.conclusion())
@@ -119,9 +119,9 @@ class AccessCheckRunTests(ProbeFixtureMixin, TestCase):
             self.assertEqual(body["message"]["from"]["emailAddress"]["address"], DENY)
             self.assertEqual([r["emailAddress"]["address"] for r in body["message"]["toRecipients"]], [SCOPED])
 
-    def test_mail_readwrite_in_the_token_does_not_match_the_approval(self):
-        # The case OIT reportedly configured: every mailbox probe passes, yet the grant exceeds the approval.
-        self.use_roles(OIT_ROLES)
+    def test_a_role_beyond_the_approved_ones_does_not_match(self):
+        # Every mailbox probe passes, yet the token claims a role nobody approved.
+        self.use_roles(EXTRA_ROLES)
 
         report = self.run_check()
 
@@ -129,11 +129,11 @@ class AccessCheckRunTests(ProbeFixtureMixin, TestCase):
         self.assertTrue(report.restriction_holds)
         self.assertIs(report.roles_within_approval, False)
         self.assertEqual(report.verdict, Verdict.NOT_COMPLIANT)
-        self.assertIn("BEYOND the approval (Mail.ReadWrite)", report.summary())
+        self.assertIn("BEYOND the approval (User.Read.All)", report.summary())
         self.assertIn("does NOT match the approval", report.conclusion())
 
     def test_an_infosec_exception_reference_accepts_extra_roles_and_says_so(self):
-        self.use_roles(OIT_ROLES)
+        self.use_roles(EXTRA_ROLES)
         self.config.permission_exception_reference = "RITM0450999"
         self.config.save()
 

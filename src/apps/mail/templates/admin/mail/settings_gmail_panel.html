@@ -1,10 +1,10 @@
-{# The active Gmail API config, read-only: it is managed on its own admin page, by superusers only. #}
+{# The active Gmail API config, read-only: it is managed on its own admin page, which needs the Core app. #}
 <h3 class="mb-2 text-sm font-semibold text-font-important-light dark:text-font-important-dark">Gmail API Provider</h3>
 <p class="mb-4 text-xs text-base-500 dark:text-base-400">
     Sends as a Google Workspace account through a service account with domain-wide delegation (gmail.send only).
-    This page only selects it: the key and the account allow-list are managed on the Gmail API configuration's own page, by superusers.
+    This page only selects it: the key and the account allow-list are managed on the Gmail API configuration's own page, which needs the Core app.
     The From email must be on the allow-list, and email switches to the Gmail API only after a passed access check for the installed key.
-    Gmail keeps a copy of everything it sends in the account's Sent folder, so that folder is shown to superusers only.
+    Gmail keeps a copy of everything it sends in the account's Sent folder; Mail → Inbox leaves the site's sign-in mail out of it.
     How fast it sends and its daily limits are set under <a href="{% url 'admin:mail_delivery_rates' %}#rate-card-gmail_api_send" class="text-primary-600 hover:underline dark:text-primary-400">Mail &rarr; Delivery Rates</a>.
 </p>
 {% if gmail_saved %}
@@ -16,5 +16,5 @@
 {% if gmail_admin_url %}
     <a href="{{ gmail_admin_url }}" class="mt-2 inline-block text-sm text-primary-600 hover:underline">Manage the Gmail API configuration (key and account allow-list)</a>
 {% else %}
-    <p class="mt-2 text-xs text-base-500 dark:text-base-400">The Gmail API configuration is managed by a superuser.</p>
+    <p class="mt-2 text-xs text-base-500 dark:text-base-400">Managing the Gmail API configuration needs the Core app.</p>
 {% endif %}

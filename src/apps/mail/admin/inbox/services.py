@@ -26,7 +26,7 @@ INBOX_CONFIG_ERROR_MESSAGE = (
 INBOX_UNEXPECTED_ERROR_MESSAGE = "Inbox could not be loaded. Check server logs."
 INBOX_MESSAGE_ERROR_MESSAGE = "Message could not be loaded. Check server logs."
 INBOX_DEFAULT_LIMIT = 30
-SENT_MAIL_DENIED_MESSAGE = "Sent mail of the sending mailbox is shown to superusers only."
+SENT_MAIL_DENIED_MESSAGE = "Sent mail of the sending mailbox is shown to staff with the Mail app only."
 
 __all__ = [
     "INBOX_CONFIG_ERROR_MESSAGE",

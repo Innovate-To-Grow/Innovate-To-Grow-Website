@@ -91,7 +91,7 @@ def _graph_errors() -> list[Error]:
         errors.append(
             Error(
                 "GRAPH_APPROVED_APPLICATION_ROLES must be a non-empty list of Graph permission names.",
-                hint='For example ("Mail.Send", "Mail.Read"): the application permissions InfoSec approved.',
+                hint='For example ("Mail.Send", "Mail.ReadWrite", "Mail.Read"): the application permissions OIT granted.',
                 id="core.E006",
             )
         )

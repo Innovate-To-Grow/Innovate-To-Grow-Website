@@ -7,6 +7,7 @@ from apps.mail.models import LoginLinkToken
 from apps.mail.utils.redirects import is_safe_internal_redirect_path
 
 LOGIN_LINK_PATH = "/login-link"
+SIGN_IN_PAGE_PATH = "/login"
 
 
 def create_login_link(*, member_id, validity_days, campaign=None, registration=None, redirect_path=""):
@@ -39,6 +40,15 @@ def issue_login_link(*, member_id, validity_days, campaign=None, registration=No
         redirect_path=redirect_path,
     )
     return url
+
+
+def sign_in_page_url() -> str:
+    """The site's sign-in page: what ``{{login_link}}`` becomes for a recipient with no member account.
+
+    It is a plain link anyone may open, not a credential, so a message carrying it may keep its Sent copy.
+    """
+    frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").strip().rstrip("/")
+    return f"{frontend_url}{SIGN_IN_PAGE_PATH}"
 
 
 def revoke_login_links(queryset) -> int:

@@ -300,14 +300,14 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         for model in ("core.smtpproviderconfig", "core.microsoftgraphproviderconfig", "core.gmailapiproviderconfig"):
             self.assertIn(model, tab["models"])
 
-    def test_the_gmail_api_tab_is_for_superusers_only(self):
+    def test_the_gmail_api_tab_is_shown_like_the_other_service_credentials(self):
+        # The Gmail API config needs the Core app like its neighbours, so its tab has no extra permission.
         tab = next(tab for tab in settings.UNFOLD["TABS"] if "core.awscredentialconfig" in tab["models"])
         [gmail_api] = [item for item in tab["items"] if item["title"] == "Gmail API"]
-        core_staff = SimpleNamespace(user=SimpleNamespace(is_active=True, is_superuser=False))
-        superuser = SimpleNamespace(user=SimpleNamespace(is_active=True, is_superuser=True))
+        [graph] = [item for item in tab["items"] if item["title"] == "Microsoft Graph"]
 
-        self.assertFalse(gmail_api["permission"](core_staff))
-        self.assertTrue(gmail_api["permission"](superuser))
+        self.assertNotIn("permission", gmail_api)
+        self.assertEqual(gmail_api.keys(), graph.keys())
 
     def test_service_credentials_stays_highlighted_on_every_credential_tab(self):
         site_settings = next(

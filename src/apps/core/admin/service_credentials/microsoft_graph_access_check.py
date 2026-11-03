@@ -1,4 +1,4 @@
-"""The Microsoft Graph access check in the admin: the superuser-only "Run access check" page of a Graph config, and
+"""The Microsoft Graph access check in the admin: the "Run access check" page of a Graph config (Core app), and
 the read-only list of recorded runs (``MicrosoftGraphAccessCheck``) that the go-live gate reads as evidence.
 
 Production has no ECS Exec, so this page is how the check runs there (``manage.py verify_graph_access`` does the
@@ -22,7 +22,7 @@ from ..common.base import ReadOnlyModelAdmin
 from .microsoft_graph_panel import ACCESS_CHECK_URL_NAME, EVIDENCE_URL_NAME, URL_NAME_PREFIX, certificate_card
 
 Verdict = MicrosoftGraphAccessCheck.Verdict
-SUPERUSER_ONLY = "Only a superuser can run the Microsoft Graph access check."
+CORE_APP_ONLY = "Running the Microsoft Graph access check needs the Core app."
 VERDICT_LEVELS = {Verdict.COMPLIANT: messages.SUCCESS, Verdict.INCOMPLETE: messages.WARNING}
 VERDICT_LABELS = {Verdict.COMPLIANT: "success", Verdict.INCOMPLETE: "warning", Verdict.NOT_COMPLIANT: "danger"}
 RESULT_COLUMNS = ("Outcome", "Check", "Mailbox", "Expected", "Status", "Graph code", "Request ID", "Note")
@@ -36,8 +36,8 @@ class GraphAccessCheckViewMixin:
         return [path("<path:object_id>/access-check/", view, name=ACCESS_CHECK_URL_NAME)]
 
     def run_access_check_view(self, request, object_id):
-        if not request.user.is_superuser:
-            raise PermissionDenied(SUPERUSER_ONLY)
+        if not self.has_change_permission(request):
+            raise PermissionDenied(CORE_APP_ONLY)
         config = self._config(request, object_id)
         problem = precondition_problem(config, config.access_check_deny_mailbox)
         change_url = reverse(f"admin:{URL_NAME_PREFIX}_change", args=[config.pk])

@@ -2,8 +2,10 @@
 
 It shows public data only: thumbprints, subject, serial, validity and the key store version a certificate row pins,
 then the latest access check and whether it is go-live evidence. The private key is never read to build it.
-Core admins can install a certificate; rollback, removal and running the access check remain superuser-only.
-The views enforce these permissions too. Dates are in the site's time zone, with the zone named.
+Admins granted the Core app (and superusers) install, roll back and remove certificates and run the access check;
+the views enforce this too. The access check card carries its own control: the "Run access check" button, a link to
+the config's page where the panel has no actions, and for anyone without the Core app a note that it is needed.
+Dates are in the site's time zone, with the zone named.
 """
 
 from django.conf import settings
@@ -13,6 +15,7 @@ from apps.core.models import MicrosoftGraphAccessCheck
 from apps.core.models.base.service_credentials.microsoft_graph_access_check import go_live_problem
 from apps.core.services.credential_store.local_file import LocalFileStore
 from apps.core.services.credential_store.memory import MemoryStore
+from apps.core.services.email.graph.access_check import precondition_problem
 from apps.core.services.email.graph.credential import expiry
 from apps.core.services.email.graph.credential.expiry import local_time_text
 from apps.core.utils.access import user_can_access_app
@@ -24,6 +27,14 @@ REMOVE_URL_NAME = f"{URL_NAME_PREFIX}_remove_certificates"
 DOWNLOAD_URL_NAME = f"{URL_NAME_PREFIX}_download_certificate"
 ACCESS_CHECK_URL_NAME = f"{URL_NAME_PREFIX}_run_access_check"
 EVIDENCE_URL_NAME = "core_microsoftgraphaccesscheck_change"
+CHANGE_URL_NAME = f"{URL_NAME_PREFIX}_change"
+CARD_ANCHOR = "graph-access-check"
+# Shown in the access check card to anyone without the Core app (Mail-only staff on Notification Delivery), so the
+# go-live message never points at a button they cannot see.
+CORE_APP_NEEDED = (
+    "Running the access check (and setting the deny mailbox and InfoSec exception) needs the Core app, which this "
+    "account is not granted. Ask an admin with the Core app to run it."
+)
 
 STORE_NAMES = (
     ("arn:aws:secretsmanager:", "AWS Secrets Manager"),
@@ -111,9 +122,22 @@ def access_check_card(config, current, *, linked: bool) -> dict:
     return card
 
 
+def add_run_control(card: dict, request, config, *, actions: bool) -> dict:
+    """Give the access check card the control its go-live message refers to, as far as the viewer may use it."""
+    if not user_can_access_app(request.user, "core"):
+        card["core_app_needed"] = CORE_APP_NEEDED
+    elif actions:
+        card["run_url"] = reverse(f"admin:{ACCESS_CHECK_URL_NAME}", args=[config.pk])
+        # What the run page would refuse with, such as no deny mailbox yet: said here, before the click.
+        card["run_problem"] = precondition_problem(config, config.access_check_deny_mailbox)
+    else:
+        card["run_from_url"] = f"{reverse(f'admin:{CHANGE_URL_NAME}', args=[config.pk])}#{CARD_ANCHOR}"
+    return card
+
+
 def certificate_panel(request, config, *, actions=True) -> dict:
-    """Template context for ``certificate_panel.html``. ``actions=False`` leaves out the certificate actions and the
-    "Run access check" button."""
+    """Template context for ``certificate_panel.html``. ``actions=False`` leaves out the certificate actions, and the
+    access check card links to the config's page instead of showing the "Run access check" button."""
     saved = config is not None and not config._state.adding
     current = config.current_certificate if saved else None
     previous = config.previous_certificate if saved else None
@@ -121,7 +145,8 @@ def certificate_panel(request, config, *, actions=True) -> dict:
     if not saved:
         return panel
     core_staff = user_can_access_app(request.user, "core")
-    panel["access_check"] = access_check_card(config, current, linked=core_staff)
+    card = access_check_card(config, current, linked=core_staff)
+    panel["access_check"] = add_run_control(card, request, config, actions=actions)
     if not core_staff:
         return panel
     args = [config.pk]
@@ -129,8 +154,7 @@ def certificate_panel(request, config, *, actions=True) -> dict:
         panel["download_url"] = reverse(f"admin:{DOWNLOAD_URL_NAME}", args=args)
     if actions:
         panel["install_url"] = reverse(f"admin:{INSTALL_URL_NAME}", args=args)
-    if actions and request.user.is_superuser:
-        panel["access_check_url"] = reverse(f"admin:{ACCESS_CHECK_URL_NAME}", args=args)
+    if actions:
         if previous is not None:
             panel["rollback_url"] = reverse(f"admin:{ROLLBACK_URL_NAME}", args=args)
         if current is not None or previous is not None:

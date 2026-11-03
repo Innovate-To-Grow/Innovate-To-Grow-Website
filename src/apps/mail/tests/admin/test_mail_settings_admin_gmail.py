@@ -61,14 +61,16 @@ class GmailNotificationDeliveryTests(TestCase):
         self.assertContains(response, SERVICE_ACCOUNT)
         self.assertNotContains(response, "service_account_key")
         self.assertNotContains(response, reverse("admin:core_gmailapiproviderconfig_changelist"))
-        self.assertContains(response, "managed by a superuser")
+        self.assertContains(response, "Managing the Gmail API configuration needs the Core app.")
         self.assertContains(response, '<option value="gmail"')
 
-    def test_superusers_get_the_link_to_the_config(self):
+    def test_superusers_and_core_staff_get_the_link_to_the_config(self):
         config = make_config()
-        self.client.force_login(make_superuser())
-        response = self.client.get(self.edit_url)
-        self.assertContains(response, reverse("admin:core_gmailapiproviderconfig_change", args=[config.pk]))
+        for user in (make_superuser(), make_admin(apps=["mail", "core"], email="core-mail@example.com")):
+            with self.subTest(superuser=user.is_superuser):
+                self.client.force_login(user)
+                response = self.client.get(self.edit_url)
+                self.assertContains(response, reverse("admin:core_gmailapiproviderconfig_change", args=[config.pk]))
 
     def test_switching_needs_the_access_check_evidence(self):
         config = make_config(checked=False)
