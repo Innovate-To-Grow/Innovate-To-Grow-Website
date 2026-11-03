@@ -126,7 +126,7 @@ def display_number(value: Decimal) -> str:
 
 
 def allow_list_domains() -> set[str]:
-    """The domain of every account on a Gmail API allow-list (superusers keep those lists) and its parent domains of
+    """The domain of every account on a Gmail API allow-list (Core app staff keep those lists) and its parent domains of
     two labels or more: ``i2g@g.ucmerced.edu`` gives ``g.ucmerced.edu`` and ``ucmerced.edu``."""
     from .service_credentials.gmail_api import GmailApiSubject
 

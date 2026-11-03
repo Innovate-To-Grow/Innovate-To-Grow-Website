@@ -1,5 +1,5 @@
 {# The latest access check, the go-live gate and the control to run the check (microsoft_graph_panel.access_check_card #}
-{# and add_run_control): the button for a superuser, a link where the panel has no actions, otherwise who can run it. #}
+{# and add_run_control): the button (Core app), a link where the panel has no actions, otherwise what it needs. #}
 <div id="graph-access-check" class="mt-4 border-t border-base-200 pt-4 dark:border-base-700">
     <h4 class="mb-3 text-xs font-semibold uppercase text-base-500 dark:text-base-400">Access check</h4>
     {% if card.check %}
@@ -46,7 +46,7 @@
         <p class="mt-3 text-sm">
             <a href="{{ card.run_from_url }}" id="graph-run-access-check" class="text-primary-600 hover:underline dark:text-primary-500">Run access check on the Microsoft Graph configuration's page</a>
         </p>
-    {% elif card.superuser_needed %}
-        <p id="graph-access-check-superuser-needed" class="mt-3 text-sm text-yellow-700 dark:text-yellow-400">{{ card.superuser_needed }}</p>
+    {% elif card.core_app_needed %}
+        <p id="graph-access-check-core-app-needed" class="mt-3 text-sm text-yellow-700 dark:text-yellow-400">{{ card.core_app_needed }}</p>
     {% endif %}
 </div>

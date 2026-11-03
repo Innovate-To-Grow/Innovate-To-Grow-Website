@@ -1,12 +1,12 @@
-"""The access check in the admin: the superuser-only "Run access check" page, the read-only evidence list, the
-superuser-only evidence fields on the Graph config, and the access-check card on the certificate panel."""
+"""The access check in the admin: the "Run access check" page, the read-only evidence list, the evidence fields on the
+Graph config (all Core app, like the rest of the config), and the access-check card on the certificate panel."""
 
 from django.contrib.admin.models import LogEntry
 from django.contrib.messages import get_messages
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from apps.core.admin.service_credentials.microsoft_graph_panel import SUPERUSER_NEEDED
+from apps.core.admin.service_credentials.microsoft_graph_panel import CORE_APP_NEEDED
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.access_check.runner import NO_DENY_MAILBOX
 from apps.core.tests.admin.service_credentials.test_graph_provider_guard import change_data
@@ -87,8 +87,19 @@ class RunAccessCheckPageTests(AccessCheckAdminFixture):
         self.assertEqual(self.probe.calls, [])
         self.assertFalse(MicrosoftGraphAccessCheck.objects.exists())
 
-    def test_only_superusers_may_open_or_run_it(self):
-        for apps in (("core",), ("mail",), ()):
+    def test_core_staff_run_it_like_a_superuser(self):
+        staff = make_admin(apps=["core"], email="core@example.com")
+        self.client.force_login(staff)
+
+        self.assertEqual(self.client.get(self.run_url).status_code, 200)
+        response = self.client.post(self.run_url)
+
+        check = MicrosoftGraphAccessCheck.objects.get()
+        self.assertRedirects(response, reverse(f"{EVIDENCE}_change", args=[check.pk]))
+        self.assertEqual((check.run_by, check.verdict), (staff, Verdict.COMPLIANT))
+
+    def test_staff_without_the_core_app_may_not_open_or_run_it(self):
+        for apps in (("mail",), ("cms", "event"), ()):
             with self.subTest(apps=apps):
                 self.login_staff(*apps)
                 self.assertEqual(self.client.get(self.run_url).status_code, 403)
@@ -160,30 +171,47 @@ class EvidenceFieldsTests(AccessCheckAdminFixture):
                 self.assertEqual(response.status_code, 200)
                 self.assertIn("access_check_deny_mailbox", response.context["adminform"].form.errors)
 
-    def test_core_staff_see_the_evidence_fields_read_only_and_cannot_change_them(self):
+    def test_core_staff_set_the_evidence_fields_like_a_superuser(self):
         self.login_staff("core")
 
         page = self.client.get(self.change_url)
-        self.client.post(self.change_url, change_data(self.config, permission_exception_reference=REFERENCE))
+        response = self.client.post(
+            self.change_url,
+            change_data(
+                self.config,
+                access_check_deny_mailbox="other-test@contoso.com",
+                permission_exception_reference=REFERENCE,
+            ),
+        )
 
-        self.assertContains(page, DENY)
-        self.assertNotContains(page, 'name="permission_exception_reference"')
-        self.assertNotContains(page, 'name="access_check_deny_mailbox"')
+        self.assertContains(page, 'name="permission_exception_reference"')
+        self.assertContains(page, 'name="access_check_deny_mailbox"')
+        self.assertEqual(response.status_code, 302)
         self.config.refresh_from_db()
         self.assertEqual(
-            (self.config.permission_exception_reference, self.config.access_check_deny_mailbox), ("", DENY)
+            (self.config.permission_exception_reference, self.config.access_check_deny_mailbox),
+            (REFERENCE, "other-test@contoso.com"),
         )
+
+    def test_staff_without_the_core_app_cannot_change_them(self):
+        self.login_staff("mail")
+
+        response = self.client.post(self.change_url, change_data(self.config, permission_exception_reference=REFERENCE))
+
+        self.assertEqual(response.status_code, 403)
+        self.config.refresh_from_db()
+        self.assertEqual(self.config.permission_exception_reference, "")
 
 
 class AccessCheckCardTests(AccessCheckAdminFixture):
-    def test_before_any_run_the_card_says_so_and_superusers_get_the_button(self):
+    def test_before_any_run_the_card_says_so_and_offers_the_button(self):
         page = self.client.get(self.change_url)
 
         self.assertContains(page, "No access check has been run with this configuration.")
         self.assertContains(page, "Go-live evidence (not required in this environment):")
         self.assertContains(page, self.run_url, count=1)
         self.assertIn(f'href="{self.run_url}"', self.card(page))
-        self.assertNotContains(page, SUPERUSER_NEEDED)
+        self.assertNotContains(page, CORE_APP_NEEDED)
 
     @override_settings(GRAPH_REQUIRE_ACCESS_EVIDENCE=True)
     def test_in_production_the_missing_evidence_message_sits_next_to_the_button_it_names(self):
@@ -205,20 +233,19 @@ class AccessCheckCardTests(AccessCheckAdminFixture):
         self.assertIn(f'href="{self.run_url}"', card)
 
     @override_settings(GRAPH_REQUIRE_ACCESS_EVIDENCE=True)
-    def test_core_staff_are_told_why_there_is_no_button_instead_of_being_sent_to_it(self):
-        # The production report: a Core admin (not a superuser) saw "Run the access check ... Run access check" and
-        # Install certificate / Download .cer, but no button, and nothing saying a superuser has to run it.
+    def test_core_staff_get_every_control_a_superuser_gets(self):
+        # The production report: an admin granted the Core app saw "Run access check" in the go-live message but no
+        # button (it was superuser-only). The Core app grant now gives full control of the Graph configuration.
         self.login_staff("core", "mail")
 
         page = self.client.get(self.change_url)
 
-        self.assertContains(page, "Install certificate")
-        self.assertContains(page, "Download .cer")
-        self.assertNotContains(page, self.run_url)
+        for label in ("Install certificate", "Download .cer", "Remove (emergency)"):
+            self.assertContains(page, label)
         card = self.card(page)
         self.assertIn("missing: no access check is recorded", card)
-        self.assertIn(SUPERUSER_NEEDED, card)
-        self.assertEqual(self.client.get(self.run_url).status_code, 403)
+        self.assertIn(f'href="{self.run_url}" id="graph-run-access-check"', card)
+        self.assertNotIn(CORE_APP_NEEDED, card)
 
     def test_after_a_run_the_card_links_the_result_and_shows_the_evidence(self):
         self.client.post(self.run_url)
@@ -242,12 +269,12 @@ class AccessCheckCardTests(AccessCheckAdminFixture):
         self.assertContains(page, "(not the current certificate)")
         self.assertContains(page, "missing: no access check is recorded for the current certificate")
 
-    def test_core_staff_see_the_card_without_the_run_button(self):
+    def test_core_staff_see_the_result_and_the_button_to_run_it_again(self):
         self.client.post(self.run_url)
         self.login_staff("core")
 
         page = self.client.get(self.change_url)
 
         self.assertContains(page, 'data-verdict="compliant"')
-        self.assertNotContains(page, self.run_url)
-        self.assertContains(page, SUPERUSER_NEEDED)
+        self.assertIn(f'href="{self.run_url}"', self.card(page))
+        self.assertNotContains(page, CORE_APP_NEEDED)

@@ -15,11 +15,6 @@ SERVICE_CREDENTIAL_MODELS = (
 )
 
 
-def _is_superuser(request):
-    # The Gmail API configuration decides which Workspace users the site may send as: superusers only, as its admin.
-    return request.user.is_active and request.user.is_superuser
-
-
 def _is_notification_delivery(request):
     # Unfold marks a tab active when its link is a prefix of the path, and Delivery Rates lives under
     # /admin/mail/settings/: without this both tabs would be highlighted there.
@@ -34,7 +29,7 @@ TABS = [
             {"title": "SMTP", "link": "/admin/core/smtpproviderconfig/"},
             {"title": "Microsoft Graph", "link": "/admin/core/microsoftgraphproviderconfig/"},
             {"title": "Graph Access Checks", "link": "/admin/core/microsoftgraphaccesscheck/"},
-            {"title": "Gmail API", "link": "/admin/core/gmailapiproviderconfig/", "permission": _is_superuser},
+            {"title": "Gmail API", "link": "/admin/core/gmailapiproviderconfig/"},
             {"title": "Gmail IMAP (Template Import)", "link": "/admin/core/gmailaccessaccount/"},
             {"title": "Google Credentials", "link": "/admin/core/googlecredentialconfig/"},
             {"title": "Send Verification", "link": "/admin/core/sendverificationconfig/"},

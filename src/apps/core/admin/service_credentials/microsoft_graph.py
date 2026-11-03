@@ -25,7 +25,7 @@ GRAPH_FORM_FIELDS = (
 )
 # A certificate is tested for one tenant and app, so these are read-only while one is installed.
 APPLICATION_FIELDS = ("tenant_id", "client_id")
-# What the go-live gate accepts as evidence: superusers only, like running the access check itself.
+# What the go-live gate accepts as evidence: set by whoever runs the access check (the Core app).
 EVIDENCE_FIELDS = ("access_check_deny_mailbox", "permission_exception_reference")
 NO_CERTIFICATE = "None installed"
 
@@ -81,7 +81,7 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
             {
                 "fields": EVIDENCE_FIELDS,
                 "description": (
-                    "Superusers only. The access check (Run access check in the Access check section above, or "
+                    "The access check (Run access check in the Access check section above, or "
                     "manage.py verify_graph_access from a shell) "
                     "proves against Microsoft that the deny mailbox is refused and that the token's roles are within "
                     "the approval; where the go-live gate is on, email can switch to Microsoft Graph only with a "
@@ -116,8 +116,6 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
         readonly = list(super().get_readonly_fields(request, obj))
         if obj is not None and obj.certificates.filter(state__in=MicrosoftGraphCertificate.LIVE_STATES).exists():
             readonly.extend(name for name in APPLICATION_FIELDS if name not in readonly)
-        if not request.user.is_superuser:
-            readonly.extend(name for name in EVIDENCE_FIELDS if name not in readonly)
         return readonly
 
     def change_view(self, request, object_id, form_url="", extra_context=None):

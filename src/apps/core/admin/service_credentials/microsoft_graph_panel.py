@@ -2,11 +2,10 @@
 
 It shows public data only: thumbprints, subject, serial, validity and the key store version a certificate row pins,
 then the latest access check and whether it is go-live evidence. The private key is never read to build it.
-Core admins can install a certificate; rollback, removal and running the access check remain superuser-only
-(``is_superuser``: an admin granted the Core app is not one). The views enforce these permissions too. The access
-check card carries its own control: the "Run access check" button for a superuser, a link to the config's page where
-the panel has no actions, and for anyone else a note that a superuser has to run it. Dates are in the site's time zone,
-with the zone named.
+Admins granted the Core app (and superusers) install, roll back and remove certificates and run the access check;
+the views enforce this too. The access check card carries its own control: the "Run access check" button, a link to
+the config's page where the panel has no actions, and for anyone without the Core app a note that it is needed.
+Dates are in the site's time zone, with the zone named.
 """
 
 from django.conf import settings
@@ -30,12 +29,11 @@ ACCESS_CHECK_URL_NAME = f"{URL_NAME_PREFIX}_run_access_check"
 EVIDENCE_URL_NAME = "core_microsoftgraphaccesscheck_change"
 CHANGE_URL_NAME = f"{URL_NAME_PREFIX}_change"
 CARD_ANCHOR = "graph-access-check"
-# Shown in the access check card to anyone who is not a superuser, so the go-live message never points at a button
-# they cannot see. "Superuser" is the account flag, which the Core app grant does not give.
-SUPERUSER_NEEDED = (
-    "Only a superuser can run the access check (and set the deny mailbox and InfoSec exception). This account is "
-    "not a superuser: being granted the Core app does not make it one. Sign in as a superuser (the I2G Master "
-    "account), or ask one to run it."
+# Shown in the access check card to anyone without the Core app (Mail-only staff on Notification Delivery), so the
+# go-live message never points at a button they cannot see.
+CORE_APP_NEEDED = (
+    "Running the access check (and setting the deny mailbox and InfoSec exception) needs the Core app, which this "
+    "account is not granted. Ask an admin with the Core app to run it."
 )
 
 STORE_NAMES = (
@@ -126,8 +124,8 @@ def access_check_card(config, current, *, linked: bool) -> dict:
 
 def add_run_control(card: dict, request, config, *, actions: bool) -> dict:
     """Give the access check card the control its go-live message refers to, as far as the viewer may use it."""
-    if not request.user.is_superuser:
-        card["superuser_needed"] = SUPERUSER_NEEDED
+    if not user_can_access_app(request.user, "core"):
+        card["core_app_needed"] = CORE_APP_NEEDED
     elif actions:
         card["run_url"] = reverse(f"admin:{ACCESS_CHECK_URL_NAME}", args=[config.pk])
         # What the run page would refuse with, such as no deny mailbox yet: said here, before the click.
@@ -139,7 +137,7 @@ def add_run_control(card: dict, request, config, *, actions: bool) -> dict:
 
 def certificate_panel(request, config, *, actions=True) -> dict:
     """Template context for ``certificate_panel.html``. ``actions=False`` leaves out the certificate actions, and the
-    access check card links superusers to the config's page instead of showing the "Run access check" button."""
+    access check card links to the config's page instead of showing the "Run access check" button."""
     saved = config is not None and not config._state.adding
     current = config.current_certificate if saved else None
     previous = config.previous_certificate if saved else None
@@ -156,7 +154,7 @@ def certificate_panel(request, config, *, actions=True) -> dict:
         panel["download_url"] = reverse(f"admin:{DOWNLOAD_URL_NAME}", args=args)
     if actions:
         panel["install_url"] = reverse(f"admin:{INSTALL_URL_NAME}", args=args)
-    if actions and request.user.is_superuser:
+    if actions:
         if previous is not None:
             panel["rollback_url"] = reverse(f"admin:{ROLLBACK_URL_NAME}", args=args)
         if current is not None or previous is not None:

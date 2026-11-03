@@ -134,8 +134,8 @@ test recipient has been explicitly requested.
 
 ### Microsoft Graph certificate key
 
-The Microsoft Graph email provider signs with a private key that a superuser
-installs in Django admin. The key is stored in one Secrets Manager secret,
+The Microsoft Graph email provider signs with a private key that an admin with the
+Core app installs in Django admin. The key is stored in one Secrets Manager secret,
 `itg/backend/microsoft-graph/certificate-key`, outside the
 `itg/backend/aws-credentials/` namespace. Each install adds a version; the
 database keeps only the certificate's public data, the secret ARN and the pinned
@@ -183,8 +183,8 @@ itself.
 
 ### Gmail API service-account key
 
-The Gmail API email provider signs with a Google service-account key that a
-superuser installs in Django admin. It is stored in its own Secrets Manager
+The Gmail API email provider signs with a Google service-account key that an
+admin with the Core app installs in Django admin. It is stored in its own Secrets Manager
 secret, `itg/backend/gmail-api/service-account-key`, with exactly the same
 controls as the Graph key: `GmailApiKeySecret` (created empty, `Retain` on
 deletion and replacement), `ApplicationGmailApiKey` (the task role may read,

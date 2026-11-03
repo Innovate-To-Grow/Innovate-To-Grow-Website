@@ -28,6 +28,10 @@ In Django admin → Members & Auth → Members:
 - Inline contact emails and phones
 - Import/export members via Excel (openpyxl)
 
+Admin access is per Django app: staff granted an app in `admin_apps` have full control of that app's records and
+configuration, like a superuser (who has every app). Only the Member privilege fields stay with superusers:
+`is_staff` and `admin_apps` are edited by superusers only, and superuser status is not editable in the admin at all.
+
 ### Contact information
 
 Members can have multiple contact emails and phones:
@@ -69,7 +73,7 @@ their go-live checks), and has:
   mailbox (switching back later keeps it; change it on Edit Notification Delivery).
 - **Configure**: where that method is set up, when you have the access it needs (SES on Edit Notification
   Delivery; SMTP on its Service Credentials tab, or Edit Notification Delivery without the Core app; Microsoft
-  Graph with the Core app; the Gmail API for superusers).
+  Graph and the Gmail API with the Core app).
 
 **Edit Notification Delivery** sets the sender name and email address and the active configuration. Under
 **Email Sender**, **Provider** is the same switch as **Use for email**.
@@ -87,17 +91,17 @@ their go-live checks), and has:
   both). This page only selects Graph; the configuration, its scope and its
   certificate are managed on the Graph configuration's admin page (Core app,
   linked from the panel for staff who have it), and must be in place before
-  Graph can be selected. In production Graph can be selected only after a
-  superuser has run the access check with the current certificate and it
+  Graph can be selected. In production Graph can be selected only after an
+  admin with the Core app has run the access check with the current certificate and it
   matched the approval (the panel's **Go-live evidence** line says what is
   missing; see [Validate the access restriction](../integrations/microsoft-graph-email.md#validate-the-access-restriction)).
-  Graph authenticates with a certificate only; a
-  superuser installs it there, and its private key is kept in the credential
+  Graph authenticates with a certificate only; an
+  admin with the Core app installs it there, and its private key is kept in the credential
   store, never in the database. The sender mailbox
   defaults to the From email; both must be in the scope with send permission.
   With read permission, **Mail → Inbox** reads that mailbox through Graph
   instead of the Gmail import account; its **Sent** folder (and any message
-  from the site's own address) is then shown to superusers only, and Sent
+  from the site's own address) is then shown to staff with the Mail app only, and Sent
   mail is never sent to the AI scam review. Opening an Inbox message whose
   rule score is in the medium band still sends its sender, subject,
   authentication results and the first 4,000 characters of its body to
@@ -117,13 +121,13 @@ their go-live checks), and has:
   ID, service account, numeric client ID, project, when the key was installed
   and the access check last passed, and the **account allow-list** (the Google
   accounts the site may send as). There are no credential fields here: the key
-  and the list are managed by a superuser on the configuration's own page. The
+  and the list are managed on the configuration's own page (Core app). The
   From email must be on the list, and email can switch to the Gmail API (or
   change its From address there) only after the access check passed for the
   installed key. Gmail keeps a copy of everything it sends in the account's Sent
   folder: mail with sign-in codes or login links is tagged and never shown from
   that folder by **Mail → Inbox** or **Import from Gmail**, and the inbox's **Sent** folder is
-  shown to superusers only while the Gmail import account is one the site sends
+  shown to staff with the Mail app only while the Gmail import account is one the site sends
   as. Rates and daily limits are on **Mail → Delivery Rates**. Setup:
   [Gmail API email](../integrations/gmail-api-email.md).
 - AWS settings remain available for SMS even when email uses SMTP, Microsoft

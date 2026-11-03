@@ -1,5 +1,5 @@
-"""The Gmail API config admin: superusers only, the key pages (install, remove, access check), no echo of a submitted
-key anywhere, and the changelist lookup guard."""
+"""The Gmail API config admin: Core app (like the other provider configs), the key pages (install, remove, access
+check), no echo of a submitted key anywhere, and the changelist lookup guard."""
 
 import json
 
@@ -54,13 +54,11 @@ class GmailAdminTestCase(TestCase):
         return reverse(f"{PREFIX}_{name}", args=[(config or self.config).pk])
 
 
-class SuperuserOnlyTests(GmailAdminTestCase):
-    def test_core_and_mail_staff_get_403_everywhere(self):
-        staff = {
-            "core": make_admin(apps=["core"], email="core-staff@example.com"),
-            "mail": make_admin(apps=["mail"], email="mail-staff@example.com"),
-        }
-        pages = {
+class CoreAppAccessTests(GmailAdminTestCase):
+    """The Gmail API config needs the Core app, like the other provider configs: Core staff manage it fully."""
+
+    def pages(self):
+        return {
             "changelist": reverse(f"{PREFIX}_changelist"),
             "add": reverse(f"{PREFIX}_add"),
             "change": self.url("change"),
@@ -68,27 +66,39 @@ class SuperuserOnlyTests(GmailAdminTestCase):
             "remove": self.url("remove_key"),
             "access check": self.url("run_access_check"),
         }
-        for who, member in staff.items():
-            self.client.force_login(member)
-            for page, url in pages.items():
-                with self.subTest(who=who, page=page):
+
+    def test_staff_without_the_core_app_get_403_everywhere(self):
+        for apps in (["mail"], ["cms", "event"]):
+            self.client.force_login(make_admin(apps=apps, email=f"staff-{'-'.join(apps)}@example.com"))
+            for page, url in self.pages().items():
+                with self.subTest(apps=apps, page=page):
                     self.assertEqual(self.client.get(url).status_code, 403)
                     self.assertEqual(self.client.post(url, {}).status_code, 403)
         self.assertEqual(GmailApiSubject.objects.count(), 1)
 
-    def test_core_staff_cannot_widen_the_allow_list_through_the_change_form(self):
+    def test_core_staff_open_every_page_like_a_superuser(self):
+        self.client.force_login(make_admin(apps=["core"], email="core-staff@example.com"))
+        for page, url in self.pages().items():
+            with self.subTest(page=page):
+                self.assertEqual(self.client.get(url).status_code, 200)
+
+    def test_core_staff_add_an_account_through_the_change_form(self):
         self.client.force_login(make_admin(apps=["core"], email="core-staff@example.com"))
         data = {
             "name": "Gmail",
             "credential_mail": "send",
             "max_recipients_per_message": 500,
             "max_message_bytes": 25_000_000,
-            "subjects-TOTAL_FORMS": 1,
-            "subjects-INITIAL_FORMS": 0,
-            "subjects-0-subject": "dean@g.ucmerced.edu",
+            "subjects-TOTAL_FORMS": 2,
+            "subjects-INITIAL_FORMS": 1,
+            "subjects-0-id": self.config.subjects.get().pk,
+            "subjects-0-config": self.config.pk,
+            "subjects-0-subject": SUBJECT,
+            "subjects-1-subject": "dean@g.ucmerced.edu",
         }
-        self.assertEqual(self.client.post(self.url("change"), data).status_code, 403)
-        self.assertFalse(GmailApiSubject.objects.filter(subject="dean@g.ucmerced.edu").exists())
+        response = self.client.post(self.url("change"), data)
+        self.assertEqual(response.status_code, 302, response.content[:2000])
+        self.assertTrue(self.config.allows("dean@g.ucmerced.edu"))
 
     def test_a_superuser_sees_every_page(self):
         self.client.force_login(self.superuser)

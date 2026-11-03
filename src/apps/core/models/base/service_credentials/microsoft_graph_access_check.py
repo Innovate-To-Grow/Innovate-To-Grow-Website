@@ -8,10 +8,10 @@ from ..control import ProjectControlModel
 from .microsoft_graph_certificate import MicrosoftGraphCertificate
 
 # Names the control that exists in production (no ECS Exec there): the button in the Access check section of the Graph
-# config's page, which only superusers see; anyone else sees a note saying a superuser has to run it.
+# config's page, shown to staff granted the Core app; anyone else sees a note saying the Core app is needed.
 RUN_THE_CHECK = (
-    "A superuser runs the access check with Run access check, in the Access check section of the Microsoft Graph "
-    "configuration's page (or manage.py verify_graph_access from a shell); then try again."
+    "An admin with the Core app runs the access check with Run access check, in the Access check section of the "
+    "Microsoft Graph configuration's page (or manage.py verify_graph_access from a shell); then try again."
 )
 
 
