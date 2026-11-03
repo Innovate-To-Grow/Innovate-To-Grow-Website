@@ -161,6 +161,40 @@ class EmailCampaignFormTests(TestCase):
         self.assertTrue(instance.body.startswith(HTML_MARKER))
         self.assertIn("<p>Hi</p>", instance.body)
 
+    def test_save_stores_exactly_one_marker_however_many_the_editor_posts(self):
+        # A browser posts the textarea with CRLF line endings; a body copied from another campaign with the old
+        # "Copy HTML" button carried the marker. Both used to add one more marker on every save.
+        posted = f"{HTML_MARKER.strip()}\r\n{HTML_MARKER.strip()}\r\n<p>Hi</p>\r\n<p>Bye</p>"
+        form = self._form(data=self._base_data(body_format="html", body=posted))
+        self.assertTrue(form.is_valid(), form.errors)
+
+        instance = form.save(commit=True)
+
+        self.assertEqual(instance.body, HTML_MARKER + "<p>Hi</p>\n<p>Bye</p>")
+
+        # Round trip: what the editor shows is saved back unchanged.
+        again = self._form(instance=instance)
+        self.assertEqual(again.initial["body_format"], "html")
+        self.assertEqual(again.initial["body"], "<p>Hi</p>\n<p>Bye</p>")
+        again = self._form(data=self._base_data(body_format="html", body="<p>Hi</p>\r\n<p>Bye</p>"), instance=instance)
+        self.assertTrue(again.is_valid(), again.errors)
+        self.assertEqual(again.save(commit=True).body, HTML_MARKER + "<p>Hi</p>\n<p>Bye</p>")
+
+    def test_save_plain_format_drops_a_pasted_marker(self):
+        form = self._form(data=self._base_data(body_format="plain", body=f"{HTML_MARKER.strip()}\r\nHello"))
+        self.assertTrue(form.is_valid(), form.errors)
+
+        self.assertEqual(form.save(commit=True).body, "Hello")
+
+    def test_body_format_is_required(self):
+        data = self._base_data(body="<p>Hi</p>")
+        del data["body_format"]
+
+        form = self._form(data=data)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("body_format", form.errors)
+
     def test_init_restores_ticket_initial(self):
         campaign = EmailCampaign.objects.create(
             subject="Existing",
@@ -268,6 +302,29 @@ class EmailCampaignFormTests(TestCase):
         self.assertEqual(form.initial["body_format"], "html")
         self.assertEqual(form.initial["body"], "<p>Rich</p>")
 
+    def test_init_strips_every_leading_marker_whatever_follows_it(self):
+        marker = HTML_MARKER.strip()
+        campaign = EmailCampaign.objects.create(
+            subject="HTML",
+            body=f"{marker}\n{marker}\r\n{marker}\r\n{marker} <div>Rich</div>",
+            login_redirect_path="/account",
+        )
+
+        form = self._form(instance=campaign)
+
+        self.assertEqual(form.initial["body_format"], "html")
+        self.assertEqual(form.initial["body"], "<div>Rich</div>")
+
+    def test_init_selects_plain_text_for_an_unmarked_body(self):
+        campaign = EmailCampaign.objects.create(subject="Plain", body="Hello", login_redirect_path="/account")
+
+        form = self._form(instance=campaign)
+
+        self.assertEqual(form.initial["body_format"], "plain")
+        self.assertEqual(form.initial["body"], "Hello")
+        self.assertIn('value="plain"', str(form["body_format"]))
+        self.assertIn("checked", str(form["body_format"]).split('value="plain"')[1].split(">")[0])
+
 
 class CampaignDisplayMixinTests(TestCase):
     def setUp(self):
@@ -288,6 +345,20 @@ class CampaignDisplayMixinTests(TestCase):
         html = self.admin.body_readonly(campaign)
 
         self.assertIn("&lt;b&gt;Hi&lt;/b&gt;", html)
+        self.assertIn(base64.b64encode(b"<b>Hi</b>").decode("ascii"), html)
+        self.assertIn("Format: Plain text", html)
+        self.assertIn("Copy text", html)
+
+    def test_body_readonly_shows_and_copies_html_without_the_storage_marker(self):
+        import base64
+
+        marker = HTML_MARKER.strip()
+        campaign = EmailCampaign(subject="X", body=f"{HTML_MARKER}{marker}\r\n<b>Hi</b>")
+        html = self.admin.body_readonly(campaign)
+
+        self.assertIn("Format: HTML", html)
+        self.assertIn("Copy HTML", html)
+        self.assertNotIn("raw-html", html)
         self.assertIn(base64.b64encode(b"<b>Hi</b>").decode("ascii"), html)
 
     def test_get_fieldsets_swaps_body_for_readonly_on_sent(self):

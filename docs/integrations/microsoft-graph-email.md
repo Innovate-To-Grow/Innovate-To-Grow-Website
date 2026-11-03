@@ -12,7 +12,10 @@ permission, shows that mailbox in the admin inbox. The backend signs in as an En
 client-credentials flow with a **certificate**, no signed-in user, no client secret) and calls Graph
 `sendMail` once per message. The request body is usually the complete MIME message the app builds for
 every provider, base64-encoded, so every header (`List-Unsubscribe`, `In-Reply-To`, `References`), inline
-image, and attachment (such as the ticket calendar file) is sent as built. Graph always files a copy of a
+image, and attachment (such as the ticket calendar file) is sent as built. That MIME is serialized with CRLF
+line endings (`mime.transport_bytes`): Exchange recognises a quoted-printable soft line break only at CRLF,
+and with bare-LF ones it dropped the first character of every continuation line of a long HTML body
+(`cellspacing=3D"0"`, a broken logo URL), which is how a campaign arrived garbled in November 2026. Graph always files a copy of a
 MIME `sendMail` in the sender mailbox's Sent Items, so mail that carries a credential (sign-in codes and
 links, admin invitations, tickets, campaign messages with the recipient's login link) is sent in Graph's
 JSON format with `saveToSentItems: false` instead; see [Sent Items](#sent-items-and-credential-mail).

@@ -6,6 +6,7 @@ from django.utils.html import escape, format_html
 from unfold.decorators import display
 
 from apps.core.models import EmailServiceConfig, GmailAccessAccount
+from apps.mail.services.campaign.preview import split_html_marker
 
 from . import services as campaign_api
 
@@ -37,24 +38,30 @@ class CampaignDisplayMixin:
 
     @display(description="Email Content")
     def body_readonly(self, obj):
-        """Read-only full body with Copy HTML for non-draft campaigns."""
+        """Read-only full body of a non-draft campaign, with its format and a copy button.
+
+        The storage marker is left out of both the text shown and the text copied: copying it into another
+        campaign's editor used to add a marker on every save."""
         if not obj:
             return "-"
-        body = obj.body or ""
+        is_html, body = split_html_marker(obj.body)
         b64 = base64.b64encode(body.encode("utf-8")).decode("ascii")
         return format_html(
             '<div class="itg-campaign-body-readonly w-full max-w-3xl">'
-            '<div class="mb-2 flex flex-wrap items-center justify-end gap-2">'
+            '<div class="mb-2 flex flex-wrap items-center justify-between gap-2">'
+            '<span class="text-xs font-medium text-base-500 dark:text-base-400">Format: {format_label}</span>'
             '<button type="button" data-b64="{b64}" class="itg-copy-campaign-body '
             "rounded-default border-2 border-primary-600 bg-white px-3 py-1.5 text-xs font-semibold "
             "text-primary-700 shadow-sm hover:bg-primary-50 focus:outline focus:outline-2 "
             "focus:outline-offset-2 focus:outline-primary-600 dark:border-primary-500 dark:bg-base-900 "
             'dark:text-primary-300 dark:hover:bg-base-800">'
-            "Copy HTML</button></div>"
+            "{copy_label}</button></div>"
             '<pre class="max-h-[70vh] max-w-2xl overflow-auto whitespace-pre-wrap break-words '
             "rounded-default border border-base-200 bg-base-50 px-3 py-2 font-mono text-sm font-medium "
             "text-font-default-light shadow-xs dark:border-base-700 dark:bg-base-800 dark:text-font-default-dark"
             '">{body_escaped}</pre></div>',
+            format_label="HTML" if is_html else "Plain text",
+            copy_label="Copy HTML" if is_html else "Copy text",
             b64=b64,
             body_escaped=escape(body),
         )
