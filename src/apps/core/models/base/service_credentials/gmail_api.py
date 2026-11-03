@@ -27,7 +27,11 @@ TAKEOVER_REFUSED = (
     "Mail → Notification Delivery sends email through the Gmail API, so this configuration can become the active "
     "one only when email could switch to it: {problem}"
 )
-RUN_THE_CHECK = "run the access check (Run access check on this page, or manage.py verify_gmail_access)"
+# Also shown on Email Sending Method, so it names the page the button is on rather than "this page".
+RUN_THE_CHECK = (
+    "a superuser runs the access check (Run access check on the Gmail API configuration's page, or "
+    "manage.py verify_gmail_access from a shell)"
+)
 # The ceilings themselves are GMAIL_API settings (a deployment may override them); the admin form names the values.
 RECIPIENTS_HELP = "Recipients one message may have (To and Cc)."
 MESSAGE_BYTES_HELP = "Size of the encoded message."

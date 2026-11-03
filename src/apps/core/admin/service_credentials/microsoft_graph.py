@@ -81,7 +81,8 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
             {
                 "fields": EVIDENCE_FIELDS,
                 "description": (
-                    "Superusers only. The access check (Run access check above, or manage.py verify_graph_access) "
+                    "Superusers only. The access check (Run access check in the Access check section above, or "
+                    "manage.py verify_graph_access from a shell) "
                     "proves against Microsoft that the deny mailbox is refused and that the token's roles are within "
                     "the approval; where the go-live gate is on, email can switch to Microsoft Graph only with a "
                     "recent passing check for the current certificate."
