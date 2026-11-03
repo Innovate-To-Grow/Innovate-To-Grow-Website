@@ -48,7 +48,9 @@ def throttle_keys(alias: str) -> set[str]:
 
 
 # The database budget path is the production path (no Redis).
-@override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="")
+# REQUEST_RATE_LIMITS_ENABLED off: these count the assistant throttles' own cache entries and flood from one client,
+# which the request limiter (its own counters, the "ai" scope's per-IP ceiling) would add to and refuse first.
+@override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=False, REDIS_URL="", REQUEST_RATE_LIMITS_ENABLED=False)
 class AssistantThrottleCacheTests(TestCase):
     def setUp(self):
         cache.clear()

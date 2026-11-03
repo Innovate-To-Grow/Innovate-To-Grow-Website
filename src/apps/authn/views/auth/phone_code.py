@@ -32,6 +32,7 @@ from ..helpers import build_auth_success_payload
 
 
 class PhoneAuthRequestCodeView(APIView):
+    rate_limit_scope = "auth-code-send"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -61,6 +62,7 @@ class PhoneAuthRequestCodeView(APIView):
 
 
 class PhoneAuthVerifyCodeView(APIView):
+    rate_limit_scope = "auth-code-verify"
     authentication_classes = []
     permission_classes = [AllowAny]
     # Verify spends no SMS budget, and guesses are bounded per challenge (MAX_VERIFY_ATTEMPTS, cut to one per code

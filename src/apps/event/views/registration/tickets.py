@@ -5,9 +5,11 @@ from rest_framework.views import APIView
 
 from apps.event.models import EventRegistration
 from apps.event.serializers import build_registration_payload
+from apps.event.throttles import TicketEmailResendThrottle
 
 
 class MyTicketsView(APIView):
+    rate_limit_scope = "member-read"
     permission_classes = [IsAuthenticated]
 
     # noinspection PyMethodMayBeStatic
@@ -17,7 +19,9 @@ class MyTicketsView(APIView):
 
 
 class ResendTicketEmailView(APIView):
+    rate_limit_scope = "member-send"
     permission_classes = [IsAuthenticated]
+    throttle_classes = [TicketEmailResendThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request, pk):

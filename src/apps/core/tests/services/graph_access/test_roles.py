@@ -4,7 +4,14 @@ from django.test import SimpleTestCase, override_settings
 
 from apps.core.services.email.graph.access_check import FAIL, INCONCLUSIVE, PASS, WARN
 from apps.core.services.email.graph.access_check.roles import approved_roles, roles_result, token_roles
-from apps.core.tests.services.graph_access.helpers import APPROVED, OIT_ROLES, jwt, token_with_roles
+from apps.core.tests.services.graph_access.helpers import (
+    APPROVED,
+    EXTRA_ROLES,
+    NARROW_ROLES,
+    OIT_ROLES,
+    jwt,
+    token_with_roles,
+)
 
 
 class TokenRolesTests(SimpleTestCase):
@@ -39,31 +46,38 @@ class TokenRolesTests(SimpleTestCase):
             self.assertIsNone(token_roles(token))
         self.assertEqual(token_roles(token), ("Mail.Read", "Mail.Send"))
 
+    def test_the_approved_roles_are_what_oit_granted(self):
+        self.assertEqual(approved_roles(), APPROVED)
+
     @override_settings(GRAPH_APPROVED_APPLICATION_ROLES=("Mail.Send", "Mail.Read", "Mail.Send"))
     def test_the_approval_comes_from_settings(self):
-        self.assertEqual(approved_roles(), APPROVED)
+        self.assertEqual(approved_roles(), NARROW_ROLES)
 
 
 class RolesResultTests(SimpleTestCase):
-    def test_roles_within_the_approval_pass(self):
-        result = roles_result(APPROVED, APPROVED, "")
-
-        self.assertEqual((result.check, result.outcome), ("roles", PASS))
-        self.assertEqual(result.note, "granted Mail.Read, Mail.Send")
-
-    def test_mail_readwrite_beyond_the_approval_fails(self):
-        # What OIT reportedly configured; before this check existed the run printed a success line for it.
+    def test_what_oit_granted_passes_cleanly(self):
         result = roles_result(OIT_ROLES, APPROVED, "")
 
+        self.assertEqual((result.check, result.outcome), ("roles", PASS))
+        self.assertEqual(result.note, "granted Mail.ReadWrite, Mail.Send")
+
+    def test_a_narrower_grant_also_passes(self):
+        result = roles_result(NARROW_ROLES, APPROVED, "")
+
+        self.assertEqual((result.outcome, result.note), (PASS, "granted Mail.Read, Mail.Send"))
+
+    def test_a_role_beyond_the_approved_ones_fails(self):
+        result = roles_result(EXTRA_ROLES, APPROVED, "")
+
         self.assertEqual(result.outcome, FAIL)
-        self.assertIn("beyond the approval: Mail.ReadWrite", result.note)
+        self.assertIn("beyond the approval: User.Read.All", result.note)
         self.assertIn("needs OIT to remove them or an InfoSec review", result.note)
 
     def test_an_infosec_exception_turns_the_failure_into_a_warning_that_names_it(self):
-        result = roles_result(OIT_ROLES, APPROVED, "RITM0450999")
+        result = roles_result(EXTRA_ROLES, APPROVED, "RITM0450999")
 
         self.assertEqual(result.outcome, WARN)
-        self.assertIn("beyond the approval: Mail.ReadWrite; InfoSec exception RITM0450999", result.note)
+        self.assertIn("beyond the approval: User.Read.All; InfoSec exception RITM0450999", result.note)
 
     def test_no_roles_warn_that_rbac_grants_are_invisible(self):
         result = roles_result((), APPROVED, "")
@@ -75,4 +89,4 @@ class RolesResultTests(SimpleTestCase):
         result = roles_result(None, APPROVED, "RITM0450999")
 
         self.assertEqual(result.outcome, INCONCLUSIVE)
-        self.assertEqual(result.expected, "within Mail.Read, Mail.Send")
+        self.assertEqual(result.expected, "within Mail.Read, Mail.ReadWrite, Mail.Send")

@@ -28,6 +28,10 @@ In Django admin → Members & Auth → Members:
 - Inline contact emails and phones
 - Import/export members via Excel (openpyxl)
 
+Admin access is per Django app: staff granted an app in `admin_apps` have full control of that app's records and
+configuration, like a superuser (who has every app). Only the Member privilege fields stay with superusers:
+`is_staff` and `admin_apps` are edited by superusers only, and superuser status is not editable in the admin at all.
+
 ### Contact information
 
 Members can have multiple contact emails and phones:
@@ -54,9 +58,25 @@ The mail app (`src/apps/mail/`) provides email campaign functionality through Dj
 
 ### Choose the email sender
 
-Open **Mail → Notification Delivery → Edit Notification Delivery**. Under
-**Email Sender**, select **AWS SES**, **SMTP**, **Microsoft Graph**, or **Gmail API**, set the
-sender name and email address, and save the active configuration.
+**Broadcast Delivery → Email Sending Method** in the sidebar (`/admin/mail/sending-method/`) sets
+which API sends all site email. It names the method in use and has one card for each of **AWS SES**,
+**SMTP**, **Microsoft Graph** and **Gmail API**. Notification Delivery shows the method in use with a link
+here, and the campaign send confirmation links here too. Each card says whether that method is **In use**, **Ready**
+or **Not ready** (and why: the same check that switching to it runs, so Microsoft Graph and the Gmail API need
+their go-live checks), and has:
+
+- **Send test**: a test email through that method, to an address you enter, without switching to it. The test
+  page's **Send through** row moves between methods; one that is not ready cannot be sent through.
+- **Use for email**: switch all site email to that method (Mail app staff; the change is in the admin history).
+  Microsoft Graph can send only from a mailbox in its scope: when the From email is outside it but the Graph
+  **Sender Mailbox** is an address in it, the card says so and the switch also changes the From email to that
+  mailbox (switching back later keeps it; change it on Edit Notification Delivery).
+- **Configure**: where that method is set up, when you have the access it needs (SES on Edit Notification
+  Delivery; SMTP on its Service Credentials tab, or Edit Notification Delivery without the Core app; Microsoft
+  Graph and the Gmail API with the Core app).
+
+**Edit Notification Delivery** sets the sender name and email address and the active configuration. Under
+**Email Sender**, **Provider** is the same switch as **Use for email**.
 
 - **AWS SES** uses the active AWS credentials and region. SMTP and Microsoft
   Graph fields are not required, and any saved SMTP or Graph credentials are
@@ -71,17 +91,17 @@ sender name and email address, and save the active configuration.
   both). This page only selects Graph; the configuration, its scope and its
   certificate are managed on the Graph configuration's admin page (Core app,
   linked from the panel for staff who have it), and must be in place before
-  Graph can be selected. In production Graph can be selected only after a
-  superuser has run the access check with the current certificate and it
+  Graph can be selected. In production Graph can be selected only after an
+  admin with the Core app has run the access check with the current certificate and it
   matched the approval (the panel's **Go-live evidence** line says what is
   missing; see [Validate the access restriction](../integrations/microsoft-graph-email.md#validate-the-access-restriction)).
-  Graph authenticates with a certificate only; a
-  superuser installs it there, and its private key is kept in the credential
+  Graph authenticates with a certificate only; an
+  admin with the Core app installs it there, and its private key is kept in the credential
   store, never in the database. The sender mailbox
   defaults to the From email; both must be in the scope with send permission.
   With read permission, **Mail → Inbox** reads that mailbox through Graph
   instead of the Gmail import account; its **Sent** folder (and any message
-  from the site's own address) is then shown to superusers only, and Sent
+  from the site's own address) is then shown to staff with the Mail app only, and Sent
   mail is never sent to the AI scam review. Opening an Inbox message whose
   rule score is in the medium band still sends its sender, subject,
   authentication results and the first 4,000 characters of its body to
@@ -101,21 +121,21 @@ sender name and email address, and save the active configuration.
   ID, service account, numeric client ID, project, when the key was installed
   and the access check last passed, and the **account allow-list** (the Google
   accounts the site may send as). There are no credential fields here: the key
-  and the list are managed by a superuser on the configuration's own page. The
+  and the list are managed on the configuration's own page (Core app). The
   From email must be on the list, and email can switch to the Gmail API (or
   change its From address there) only after the access check passed for the
   installed key. Gmail keeps a copy of everything it sends in the account's Sent
   folder: mail with sign-in codes or login links is tagged and never shown from
   that folder by **Mail → Inbox** or **Import from Gmail**, and the inbox's **Sent** folder is
-  shown to superusers only while the Gmail import account is one the site sends
+  shown to staff with the Mail app only while the Gmail import account is one the site sends
   as. Rates and daily limits are on **Mail → Delivery Rates**. Setup:
   [Gmail API email](../integrations/gmail-api-email.md).
 - AWS settings remain available for SMS even when email uses SMTP, Microsoft
   Graph or the Gmail API. Changing the email provider does not switch the SMS provider.
 
 This selection applies to verification codes, admin invitations, tickets,
-campaigns, inbox replies, and the **Send Test Email** action. Saving settings
-does not send a message; use the test action to check delivery explicitly.
+campaigns, inbox replies, and the **Send Test Email** action (which tests the method in use; each card's
+**Send test** tests its own). Saving settings does not send a message; use a test to check delivery explicitly.
 
 ### Campaign model
 
@@ -190,13 +210,25 @@ replacement, `{{name}}` or `{{ name }}`):
 | Variable | Replaced with |
 |----------|--------------|
 | `{{ first_name }}`, `{{ last_name }}`, `{{ full_name }}` | Recipient's name (for event-based audiences, the registration's attendee name when set) |
-| `{{ login_link }}` | The recipient's login link (see [Login link tokens](#login-link-tokens)); empty for manual addresses |
+| `{{ login_link }}` | The recipient's login link (see [Login link tokens](#login-link-tokens)); for a manual address that belongs to no active member, a link to the site's sign-in page (`FRONTEND_URL/login`) |
 
 There is no unsubscribe placeholder. With **Include one-click unsubscribe** on, every email to a member (any
 audience) gets an "Unsubscribe from newsletters" link in the footer and the RFC 8058 `List-Unsubscribe` /
 `List-Unsubscribe-Post` headers, both pointing at the backend page `/mail/unsubscribe/{token}/` (valid 365 days; see
-[Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe)). Manual addresses get neither, and
-nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeholder link.
+[Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe)). Manual addresses that belong to no
+active member get neither, and nothing is added while `BACKEND_URL` is unset. The admin preview shows a placeholder
+link.
+
+**Manual Emails and members.** Each typed address is matched, ignoring letter case, to the active member whose
+contact email (primary, secondary or other) it is, in one query when the audience is resolved
+(`src/apps/mail/services/audience/resolvers.py`, `_manual`). A matched address is treated like a Selected Members
+recipient: the name tags, the personal `{{ login_link }}` and the unsubscribe link are that member's, and the message
+still goes to the address exactly as typed. An address no active member owns (or that two members hold in different
+letter case) gets empty name tags, and its `{{ login_link }}` becomes a link to the sign-in page. That link is not a
+credential, so the message keeps its Sent copy. Lines that repeat an address in another letter case are sent once.
+When the subject or body uses `{{ login_link }}`, the send confirmation page says how many recipients have no account
+and will get the sign-in page instead. Until 2026-11-03 manual addresses were never matched, so `{{ login_link }}`
+rendered as nothing for every manual address.
 
 ### Sending
 

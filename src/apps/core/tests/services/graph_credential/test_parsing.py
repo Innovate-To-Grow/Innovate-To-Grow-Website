@@ -104,6 +104,17 @@ class AcceptedFormatTests(SimpleTestCase):
             with self.subTest(label):
                 self.assert_parsed(parse_certificate_input(certificate=value, private_key=key_pem(self.key)))
 
+    def test_a_der_certificate_ending_in_a_whitespace_byte_is_read_whole(self):
+        # About 1 signature in 43 ends in a byte that bytes.strip() removes (space, \t, \n, \v, \f, \r).
+        certificates = (make_certificate(key=self.key, serial_number=serial)[0] for serial in range(1, 10_000))
+        certificate = next(c for c in certificates if c.public_bytes(serialization.Encoding.DER)[-1:].isspace())
+
+        parsed = parse_certificate_input(
+            certificate=certificate.public_bytes(serialization.Encoding.DER), private_key=key_pem(self.key)
+        )
+
+        self.assertEqual(parsed.facts.certificate_pem, pem(certificate))
+
     def test_byte_order_mark_crlf_and_bag_attributes_are_tolerated(self):
         certificate = "﻿" + "Bag Attributes\r\n    friendlyName: i2g\r\n" + pem(self.certificate).replace("\n", "\r\n")
 

@@ -115,7 +115,11 @@ class EmailCampaign(ProjectControlModel):
     manual_emails = models.TextField(
         blank=True,
         default="",
-        help_text="One email per line. Used when audience is 'Manual Emails'.",
+        help_text=(
+            "One email per line. Used when audience is 'Manual Emails'. An address that is an active member's "
+            "contact email gets that member's name and personal {{login_link}}; any other address gets empty name "
+            "tags and a link to the sign-in page for {{login_link}}."
+        ),
     )
 
     exclude_audience_type = models.CharField(

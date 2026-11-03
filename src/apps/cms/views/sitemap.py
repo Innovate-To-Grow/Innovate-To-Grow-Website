@@ -81,3 +81,6 @@ def sitemap_xml(request):
         lines.append("  </url>")
     lines.append("</urlset>")
     return HttpResponse("\n".join(lines), content_type="application/xml")
+
+
+sitemap_xml.rate_limit_scope = "public-background"

@@ -57,8 +57,8 @@ statements; nothing below has been checked against the tenant from the site's si
 
 | Item | On record | Status |
 |------|-----------|--------|
-| Approval (InfoSec, 2026-10-28) | Application `Mail.Send` and `Mail.Read` for `i2g@ucmerced.edu` only, certificate authentication, no further Graph permissions without a new InfoSec review, documented logging, monitoring, rotation, retention and revocation, and proof that access is allowed for the I2G mailbox and denied for an unrelated one | The conditions this runbook answers |
-| Microsoft-side configuration, as reported by Cloud Systems on 2026-10-30 (unverified) | Entra app "Innovate2Grow" (client ID `f50cd7bc-ab45-4698-ab42-ae737a4c8adc`, tenant `f4dfe9a3-ca78-4998-b7a7-e6d0692eace6`) with application permissions **`Mail.ReadWrite` and `Mail.Send`**, restricted to `i2g@ucmerced.edu` through an "Access Policy group" that must be updated if the mailbox changes. Cloud Systems' reason for `Mail.ReadWrite`: the approved set "cannot compose email" | **Exceeds the 10/28 approval.** No InfoSec review of `Mail.ReadWrite` is on record. The site does not need it: it only calls `sendMail` (`Mail.Send`) and reads messages (`Mail.Read`), and Microsoft's permission reference says `Mail.ReadWrite` allows creating, updating and deleting mail and "does not include permission to send mail". The wording suggests an Exchange Application Access Policy, not RBAC for Applications |
+| Approval (InfoSec, 2026-10-28) | Application `Mail.Send` and `Mail.Read` for `i2g@ucmerced.edu` only, certificate authentication, no further Graph permissions without a new InfoSec review, documented logging, monitoring, rotation, retention and revocation, and proof that access is allowed for the I2G mailbox and denied for an unrelated one | Superseded for the site by the grant OIT made (next row) |
+| Microsoft-side configuration, as reported by Cloud Systems on 2026-10-30 (unverified) | Entra app "Innovate2Grow" (client ID `f50cd7bc-ab45-4698-ab42-ae737a4c8adc`, tenant `f4dfe9a3-ca78-4998-b7a7-e6d0692eace6`) with application permissions **`Mail.ReadWrite` and `Mail.Send`**, restricted to `i2g@ucmerced.edu` through an "Access Policy group" that must be updated if the mailbox changes. Cloud Systems' reason for `Mail.ReadWrite`: the approved set "cannot compose email" | **The site's approved roles**: `GRAPH_APPROVED_APPLICATION_ROLES` is this grant (`Mail.ReadWrite`, `Mail.Send`) plus `Mail.Read`, which `Mail.ReadWrite` includes, so the access check passes it without an exception reference. The site itself only calls `sendMail` (`Mail.Send`) and reads messages. The wording suggests an Exchange Application Access Policy, not RBAC for Applications |
 | Allowed / denied test | None in the ticket | Not done. Nothing may say the tenant restriction is verified until the [access check](#validate-the-access-restriction) has passed against a designated unrelated test mailbox |
 | Certificate | Self-signed RSA 3072 / SHA-256, valid until 2027-10-29, SHA-1 thumbprint `6FC515A1F6013DA98CDDDB9461460BE8A4EE872E`; private key only in the developer's macOS Keychain | To be installed on the [Install certificate](#2-install-the-certificate) page (a Keychain export is a password-protected `.p12`, which the page accepts) |
 | Key storage | Intended for AWS Secrets Manager | Implemented ([Where the private key is kept](#where-the-private-key-is-kept)); the secret, its task-role write grant and its resource policy are not deployed or tested in AWS yet |
@@ -67,19 +67,17 @@ statements; nothing below has been checked against the tenant from the site's si
 ### Open items before go-live
 
 Production refuses to switch email to Microsoft Graph until the [go-live gate](#go-live-gate) is met, so
-items 1, 3 and 4 block it in code; the others need a decision, a confirmation or OIT's evidence before
+items 3 and 4 block it in code; the others need a decision, a confirmation or OIT's evidence before
 go-live.
 
-1. **Permissions.** Ask Cloud Systems to replace `Mail.ReadWrite` with `Mail.Read`. Under an access policy the
-   consented permissions appear in the token's `roles`, so the access check fails while `Mail.ReadWrite` is
-   granted, unless InfoSec approves it in writing and a superuser records the review's reference as
-   **InfoSec Exception Reference**.
+1. **Permissions.** Nothing to change: the approved roles are what OIT granted (`Mail.ReadWrite` and
+   `Mail.Send`), so the access check passes the token's `roles` as they are.
 2. **Restriction evidence from OIT.** Ask Cloud Systems for the `Get-ApplicationAccessPolicy` output for the
    app, and for `Test-ApplicationAccessPolicy` results for `i2g@ucmerced.edu` (`Granted`) and for the
    designated test mailbox (`Denied`), and to confirm whether the restriction is an Application Access Policy
    or RBAC for Applications.
-3. **Designated deny mailbox.** OIT / InfoSec name an existing mailbox unrelated to I2G for the denial test; a
-   superuser enters it as **Access Check Deny Mailbox**.
+3. **Designated deny mailbox.** OIT / InfoSec name an existing mailbox unrelated to I2G for the denial test; an
+   admin with the Core app enters it as **Access Check Deny Mailbox**.
 4. **A passing access check** with the installed certificate against that mailbox, after OIT's changes have
    had time to apply (more than an hour for an access policy).
 5. **Certificate only.** Ask Cloud Systems to confirm that the app registration has no client secret and no
@@ -115,9 +113,12 @@ request carries the admin assistant's tool definitions; there is no app-level bo
 |-----|------|
 | Cloud Systems (Entra / Exchange Online administrators) | Registers the app, adds and removes its certificates, grants its permissions and maintains the Exchange restriction |
 | AWS account administrator | Deploys the identity stack (the secret and its policies) and reviews CloudTrail |
-| Superuser on the site | Installs, rolls back and removes certificates, sets the deny mailbox and the InfoSec exception reference, and runs the access check |
-| Staff with the **Core** app | Edit the Graph configuration and its mailbox scope, see the certificate panel and the recorded access checks |
+| Staff with the **Core** app on the site | Edit the Graph configuration and its mailbox scope; install, roll back and remove certificates; set the deny mailbox and the InfoSec exception reference; run the access check and see the recorded access checks |
 | Staff with the **Mail** app | Select the provider under Mail → Notification Delivery, where the Graph configuration is read-only |
+
+Staff granted an app in `admin_apps` have full control of that app's configuration, like a superuser (who has every
+app). Only the Member privilege fields stay with superusers: `is_staff` and `admin_apps` are edited by superusers
+only, and superuser status is not editable in the admin at all.
 
 The sender mailbox must be an Exchange Online mailbox, user or shared. Graph cannot send as an on-premises
 mailbox or as an address that has no mailbox (`404`, see the [error reference](#error-reference)).
@@ -137,13 +138,14 @@ On the Overview page copy **Application (client) ID** and **Directory (tenant) I
 
 ### 2. Grant the approved permissions and restrict them to the I2G mailbox
 
-The approval is application `Mail.Send` and `Mail.Read` for `i2g@ucmerced.edu`. Never `Mail.ReadWrite`: it
-allows creating, updating and deleting mail and adds nothing the site uses. Microsoft offers two ways to
-restrict an app to some mailboxes; ask Cloud Systems which one is in place.
+The approved permissions are what OIT granted: application `Mail.ReadWrite` and `Mail.Send` for
+`i2g@ucmerced.edu` (`GRAPH_APPROVED_APPLICATION_ROLES`; `Mail.Read` passes too, since `Mail.ReadWrite`
+includes it). Microsoft offers two ways to restrict an app to some mailboxes; ask Cloud Systems which one is
+in place.
 
 **A. Application Access Policy (what Cloud Systems reported).** The permissions are granted in Entra
-(**API permissions** → Microsoft Graph → **Application permissions** → `Mail.Send`, `Mail.Read`, with admin
-consent), and an Exchange policy limits them to the members of a mail-enabled security group that contains
+(**API permissions** → Microsoft Graph → **Application permissions** → `Mail.Send` and `Mail.ReadWrite` (or
+`Mail.Read`), with admin consent), and an Exchange policy limits them to the members of a mail-enabled security group that contains
 only the I2G mailbox. In Exchange Online PowerShell:
 
 ```powershell
@@ -240,8 +242,9 @@ another provider still sends, then select Graph.
 
 ### 1. Create the Graph configuration
 
-Open `/admin/core/microsoftgraphproviderconfig/` (deliberately not in the sidebar; the Notification Delivery
-page links to it) and add a configuration:
+Open **Site Settings → Service Credentials → Microsoft Graph** (`/admin/core/microsoftgraphproviderconfig/`; the
+**Configure** link on the Microsoft Graph card under Broadcast Delivery → Email Sending Method also leads there) and add a
+configuration:
 
 | Field | Value |
 |-------|-------|
@@ -251,8 +254,8 @@ page links to it) and add a configuration:
 | **Client ID** | Application (client) ID of the Entra app registration (a GUID). |
 | **Sender Mailbox** | `i2g@ucmerced.edu`. Blank means the **From Email** address. The admin inbox reads this mailbox too. |
 | **Mailbox scope** (inline rows) | One row: mailbox `i2g@ucmerced.edu`, permission **Send and read (Mail.Send + Mail.Read)**. |
-| **Access Check Deny Mailbox** | Superusers only. The unrelated test mailbox OIT / InfoSec designated for the denial test ([Validate the access restriction](#validate-the-access-restriction)): a plain address, outside the scope, not the sender mailbox or **From Email**. |
-| **InfoSec Exception Reference** | Superusers only, and only after InfoSec has approved in writing Graph permissions beyond `Mail.Send` and `Mail.Read`: the reference of that review. Leave it blank otherwise. |
+| **Access Check Deny Mailbox** | Core app. The unrelated test mailbox OIT / InfoSec designated for the denial test ([Validate the access restriction](#validate-the-access-restriction)): a plain address, outside the scope, not the sender mailbox or **From Email**. |
+| **InfoSec Exception Reference** | Core app, and only after Graph permissions beyond the approved roles (`Mail.ReadWrite`, `Mail.Send`, `Mail.Read`) have been approved in writing: the reference of that review. Leave it blank otherwise. |
 
 Save, then use the panel above the form. It shows the **current certificate**: SHA-1 thumbprint (as Entra
 lists it), SHA-256 fingerprint, subject, serial, validity with an expiry badge (amber from
@@ -314,19 +317,21 @@ is refused.
 
 The panel also offers **Roll back to previous** (after a fresh token test with the previous key), **Remove
 (emergency)** ([Emergency revocation](#emergency-revocation)) and **Download .cer** (the public certificate,
-for OIT). Staff with the **Core** app can install or replace a certificate and download the public `.cer`.
-Rollback, emergency removal, access checks and approval-evidence fields remain superuser-only.
+for OIT). Staff with the **Core** app can install or replace a certificate, use all three, run the access check
+and edit the approval-evidence fields.
 
 ### 3. Validate, then select Graph
 
 1. Set **Access Check Deny Mailbox** and run the [access check](#validate-the-access-restriction)
    (**Run access check**). In production, Notification Delivery refuses Microsoft Graph until a run with the
    current certificate matches the approval ([go-live gate](#go-live-gate)).
-2. Open **Mail → Notification Delivery**: in the sidebar choose **Delivery Operations** (group
-   **Broadcast Delivery**), switch to the **Notification Delivery** tab (`/admin/mail/settings/`), and
-   select **Edit Notification Delivery**.
-3. Under **Email Sender**, set **Provider** to **Microsoft Graph**, tick **Active**, set **From Name** and
-   **From Email** (`i2g@ucmerced.edu`), and select **Save Notification Delivery**. The Graph panel shows the
+2. Open **Email Sending Method**: in the sidebar group **Broadcast Delivery**
+   (`/admin/mail/sending-method/`). The **Microsoft Graph** card says whether Graph could send now and, if not, why
+   (the same check as switching, so the go-live gate applies). Once it is **Ready**, select **Send test** on
+   that card to send a test email through Graph while another method still sends everything else.
+3. Select **Use for email** on the Microsoft Graph card. (The same switch is the **Provider** field under
+   **Email Sender** on **Edit Notification Delivery**, which also sets **Active**, **From Name** and
+   **From Email**, here `i2g@ucmerced.edu`.) The Graph panel shows the
    configuration read-only (with the certificate's SHA-1 thumbprint and expiry, the mailbox scope and the
    latest access check); this page cannot change it. Staff with the **Core** app get a link to the
    configuration page.
@@ -335,6 +340,12 @@ Rollback, emergency removal, access checks and approval-evidence fields remain s
 - The **From Email** and the sending mailbox must both be in the scope with send permission; otherwise
   saving stops under **Provider** with "An active Microsoft Graph configuration whose mailbox scope lets
   the sender mailbox and the From address send is required before activation."
+- **Use for email** handles a **From Email** outside the scope (for example `i2g@g.ucmerced.edu`, which AWS
+  SES sends from): when the **Sender Mailbox** is an email address in the scope with send permission, the
+  switch also changes **From Email** to it. The card says so before the switch, the confirmation names the new
+  address, the **Send test** on that card already sends from it, and the admin history records
+  "Changed Provider and From Email." Switching back to AWS SES or SMTP keeps the new **From Email**, so set it
+  back under **Edit Notification Delivery** if that provider has to send from the old address.
 - Choosing AWS SES or SMTP later hides the Graph panel and keeps the saved Graph settings. The AWS panel on
   the same page is always saved and is still used for SMS.
 - An active configuration cannot be deleted. An inactive one with recorded access checks cannot be deleted
@@ -437,16 +448,21 @@ row pins is never used.
 ## Validate the access restriction
 
 The access check asks Microsoft directly, bypassing the site's own scope check, what the Entra app may do
-and compares it with the InfoSec approval (`Mail.Send` and `Mail.Read` for the I2G mailbox). A superuser
-runs it with **Run access check** on the Graph configuration's page (production has no ECS Exec), or from a
-shell:
+and compares it with the approved roles (`GRAPH_APPROVED_APPLICATION_ROLES`: what OIT granted, `Mail.ReadWrite` and
+`Mail.Send`) and the mailbox scope. An admin with the Core app
+runs it with **Run access check**, in the **Access check** section of the Graph configuration's page (production has
+no ECS Exec), or from a shell:
 
 ```bash
 cd src && python manage.py verify_graph_access
 ```
 
-Before the first run a superuser sets **Access Check Deny Mailbox**: an existing mailbox outside the scope,
-designated by OIT / InfoSec for the denial test (a plain email address, not another name of a scoped
+Running the check, **Access Check Deny Mailbox** and **InfoSec Exception Reference** need the Core app (superusers
+always have it). Staff without it, such as Mail-only staff on Mail → Notification Delivery, see a note in the card
+that the Core app is needed instead of the button, and the run page answers them with 403.
+
+Before the first run an admin with the Core app sets **Access Check Deny Mailbox**: an existing mailbox outside
+the scope, designated by OIT / InfoSec for the denial test (a plain email address, not another name of a scoped
 mailbox). `--deny-mailbox <address>` tries another one, but only runs against the designated mailbox count
 as go-live evidence; `--no-send` skips the send probes and makes the run incomplete. Each run requests a
 fresh token with the current certificate and records one **Microsoft Graph Access Check** row (Core app,
@@ -458,7 +474,7 @@ any recorded exception.
 | Check | Mailbox | Expected |
 |-------|---------|----------|
 | `token` | | issued for the current certificate |
-| `roles` | | the token's `roles` claim within `GRAPH_APPROVED_APPLICATION_ROLES` (default `Mail.Send`, `Mail.Read`) |
+| `roles` | | the token's `roles` claim within `GRAPH_APPROVED_APPLICATION_ROLES` (default `Mail.Send`, `Mail.ReadWrite`, `Mail.Read`: what OIT granted, plus `Mail.Read`, which `Mail.ReadWrite` includes) |
 | `folder`, `list`, `value` | each scoped mailbox with read permission | `200`: the Inbox, the newest message with its preview (`$top=1&$select=id,bodyPreview`), and the first `GRAPH_ACCESS_CHECK_MIME_MAX_BYTES` (default 4096) bytes of its raw MIME, which are discarded. An empty Inbox makes `value` INCONCLUSIVE, so the run is not a complete validation: run it again once the Inbox holds a message (the `send` probe delivers one) |
 | `send` | each scoped mailbox with send permission, listed by address | `202`: a MIME probe email to itself (a copy stays in its Sent Items) |
 | `read+` | each scoped mailbox with send permission only | for the record: a `200` is a WARN, because an access policy limits mailboxes, not permissions, so only the site's scope stops reading it |
@@ -472,9 +488,9 @@ How to read the result:
   I2G mailbox. If Exchange wrongly accepts one, it files no Sent Items copy and reaches only the I2G
   mailbox, and the line reads `ACCESS WAS GRANTED` with a note that a probe email was sent.
 - The token's `roles` are decoded without verifying the token (Microsoft supports decoding only for
-  debugging). Any role beyond the approval, such as `Mail.ReadWrite`, is a FAIL, unless a superuser has
-  recorded **InfoSec Exception Reference** (the reference of InfoSec's written review; the site never
-  fills it in), which turns it into a WARN that names the reference. No roles is a WARN: RBAC for
+  debugging). Any role beyond the approved roles, such as `User.Read.All`, is a FAIL, unless an admin with the
+  Core app has recorded **InfoSec Exception Reference** (the reference of InfoSec's written review; the site
+  never fills it in), which turns it into a WARN that names the reference. No roles is a WARN: RBAC for
   Applications grants never appear in the token. Unreadable roles are INCONCLUSIVE.
 - A `403` for the deny mailbox counts only when the same kind of request succeeded for a scoped mailbox
   in the same run. Otherwise it is INCONCLUSIVE, because an app that may do nothing at all also gets `403`.
@@ -486,9 +502,11 @@ How to read the result:
 - A skipped check (`--no-send`, no mailbox with read or send permission, a sender listed only by object
   ID) is SKIP. A run with any SKIP or INCONCLUSIVE line ends with `NOT A COMPLETE VALIDATION`.
 
-The summary line reads, for example, `Mailbox restriction: HOLDS · Granted roles: BEYOND the approval
-(Mail.ReadWrite) · Verdict: DOES NOT MATCH THE APPROVAL`, which is what the configuration Cloud Systems
-reported would give. The command exits non-zero unless the verdict is **Matches the approval**: the
+For the grant Cloud Systems made, the summary line reads `Mailbox restriction: HOLDS · Granted roles:
+WITHIN the approval · Verdict: MATCHES THE APPROVAL`. A role beyond the approved ones gives, for example,
+`Granted roles: BEYOND the approval (User.Read.All) · Verdict: DOES NOT MATCH THE APPROVAL`. A check recorded
+before the approved roles became OIT's grant (2026-11-02) that failed only on `Mail.ReadWrite` keeps its
+**Does not match the approval** verdict: run the check again. The command exits non-zero unless the verdict is **Matches the approval**: the
 restriction holds, nothing failed or was skipped, and the roles are within the approval or covered by a
 recorded exception. It then prints `Go-live evidence: present` or what is missing. Run it after setup,
 after any Exchange or Entra change, and after rotation; wait at least an hour after OIT changes an access
@@ -528,7 +546,7 @@ any certificate Entra does not accept yet, so rotation needs no downtime when do
 3. **Admin (Core access):** once OIT confirms, **Install certificate** with the new pair and the expected
    SHA-1 thumbprint. The site writes a new key version, tests it with Entra, and switches the pin; the
    replaced certificate is kept as previous.
-4. **Admin (superuser):** **Run access check** and send a test email. Evidence recorded for the old certificate
+4. **Admin (Core access):** **Run access check** and send a test email. Evidence recorded for the old certificate
    does not count for the new one.
 5. **OIT:** after a day without problems, ask Cloud Systems to remove the old certificate (by its SHA-1
    thumbprint). From then on **Roll back to previous** fails its token test, as it should.
@@ -578,8 +596,8 @@ Email** prove the credentials.
   opening a connection, every request except the token request, `POST …/users/{mailbox}/sendMail`,
   `GET …/mailFolders/{inbox|sentitems}/messages`, `GET …/mailFolders/inbox` (the access-check probe) and
   `GET …/messages/{id}/$value`. No code path can create a draft, reply, move, flag, mark read or delete
-  mail, whatever permissions the Entra app holds. This keeps the site itself from using `Mail.ReadWrite`
-  if OIT leaves it granted, but it does not limit someone who obtains the key or a token. A refused request
+  mail, whatever permissions the Entra app holds. This keeps the site itself to sending and reading
+  although `Mail.ReadWrite` is granted, but it does not limit someone who obtains the key or a token. A refused request
   is the permanent error `The site does not make this Microsoft Graph request.`
 - **Message ID.** `sendMail` answers `202 Accepted` with no body and no message ID, so the app records
   the `Message-ID` header it generated as the provider message ID in the Email Log (`RecipientLog`,
@@ -608,9 +626,9 @@ Email** prove the credentials.
 - **No retry inside the provider.** One request is made per message. Retrying is left to the caller
   (see the [error reference](#error-reference)), and an uncertain outcome is never retried
   automatically.
-- **Admin access.** Staff granted the **Core** app can open the configuration and install or replace its
-  certificate. Only a superuser can roll back or remove a certificate or run the access check;
-  **Mail → Notification Delivery** shows the configuration read-only. Changelist filters on secret-looking field names (`?private_key__regex=…`)
+- **Admin access.** Staff granted the **Core** app can open the configuration, install, replace, roll back or
+  remove its certificate and run the access check; **Mail → Notification Delivery** shows the configuration
+  read-only. Changelist filters on secret-looking field names (`?private_key__regex=…`)
   are refused with `400` on every admin page. The configuration, its scope, its certificates and its access
   checks are on the safe-ORM denylist, so the `i2g-admin` CLI and the AI assistant cannot read or change
   them. Error messages and log lines carry no key, token, or response body.
@@ -650,8 +668,8 @@ as JSON. These are marked:
 - **Ticket emails**: the ticket code is the check-in credential, and the member's login link signs in.
 - **Campaign messages that contain the recipient's login link** (`{{login_link}}` in the subject or body,
   for a recipient who is a member): the link signs in for `login_link_validity_days`, possibly more than
-  once. This is decided per message, so the same campaign's messages to manual addresses (no link) stay
-  MIME.
+  once. This is decided per message, so the same campaign's messages to manual addresses that belong to no
+  member stay MIME (their `{{login_link}}` is a link to the sign-in page, which is no credential).
 
 The JSON form carries the subject, one body (the HTML body when there is one, otherwise the text body), To,
 Cc, Bcc, Reply-To, attachments (inline ones keep their Content-ID, so the ticket barcode still displays) and
@@ -666,7 +684,7 @@ read. Through SES or SMTP the same message keeps both headers.
 
 Everything else stays MIME and keeps a Sent Items copy: campaign messages without a login link (one copy
 per recipient, with `List-Unsubscribe`), inbox replies, security and subscription notices, the test email and
-access-check probes. Only superusers can open Sent mail in **Mail → Inbox** (see
+access-check probes. Staff with the **Mail** app can open Sent mail in **Mail → Inbox** (see
 [Admin inbox](#admin-inbox)); the M365 admins should keep human Full Access to the mailbox to a minimum.
 Set a retention policy for the folder (the period is a records-policy decision) and watch the mailbox size:
 a full mailbox makes Graph answer `507`, and sending stops until space is freed.
@@ -683,15 +701,18 @@ configured.
   (`GET /v1.0/users/{mailbox}/mailFolders/{inbox|sentitems}/messages`) and opens a message as its original
   MIME (`GET /v1.0/users/{mailbox}/messages/{id}/$value`), so the scam detector still sees
   `Authentication-Results`, `Reply-To`, and `Return-Path`, and replies keep `In-Reply-To` / `References`.
-- **Sent mail is for superusers only.** Sent Items holds what the site sends as MIME (campaigns, replies,
-  notices, and anything sent before credential mail went out as JSON), so other staff with the Mail app see
-  no **Sent** tab, a request for the Sent folder shows the
-  Inbox instead, and opening or replying to Sent mail answers `403`. A Graph message ID is unique in the
-  whole mailbox rather than per folder, so any message whose sender is the sending mailbox or the
-  **From Email** counts as Sent mail too, whichever folder the link names (a reply quotes the original, so
-  it is refused like opening it). In the Inbox list such a message keeps its row, sender and date, but shows
-  `(Sent from the site's own address: shown to superusers only)` instead of its subject and opening text. If
-  the inbox backend cannot be resolved, Sent mail stays hidden. The Gmail IMAP inbox is unchanged.
+- **Sent mail is for staff with the Mail app**, the same staff who can open Mail → Inbox at all. Sent Items
+  holds what the site sends as MIME (campaigns, replies, notices, and anything sent before credential mail
+  went out as JSON); the site's credential mail (sign-in codes and links, admin invitations, tickets) goes out
+  as JSON with no Sent Items copy ([Sent Items](#sent-items-and-credential-mail)), so it is not there to read.
+  The check is kept as a second gate: a reader without the Mail app sees no **Sent** tab, a request for the
+  Sent folder shows the Inbox instead, and opening or replying to Sent mail answers `403`. A Graph message ID
+  is unique in the whole mailbox rather than per folder, so any message whose sender is the sending mailbox or
+  the **From Email** counts as Sent mail too, whichever folder the link names (a reply quotes the original, so
+  it is refused like opening it). For such a reader a message of that kind keeps its row, sender and date in
+  the Inbox list, but shows `(Sent from the site's own address: shown to staff with the Mail app only)` instead
+  of its subject and opening text. If the inbox backend cannot be resolved, Sent mail stays hidden from them.
+  The Gmail IMAP inbox is unchanged.
 - **AI scam review (Amazon Bedrock).** Opening or previewing an Inbox message whose rule score falls in the
   medium band sends, for a second opinion, the sender's name and address, Reply-To, subject,
   `Authentication-Results` and the first 4,000 characters of the body (the text part, else the HTML) to
@@ -791,7 +812,7 @@ are done by different people: start both at once and do not wait for step 1 befo
    secrets**, by its SHA-1 thumbprint), or disable the enterprise application (**Properties** → **Enabled
    for users to sign in** = No). From then on Entra issues no new token with that key; this is the only step
    that stops whoever holds the key. Check that the app has no client secret or federated credential.
-2. **Site (superuser): stop using it, keep email working.** On the Graph configuration's page choose
+2. **Site (admin with the Core app): stop using it, keep email working.** On the Graph configuration's page choose
    **Remove (emergency)**, type `REMOVE`, give the reason and tick **Also switch email delivery to AWS SES**.
    The current and previous certificates are marked removed, so every process refuses Graph at its next
    send without contacting AWS or Microsoft, and email moves to SES in the same step when SES is ready
@@ -1035,8 +1056,9 @@ After a new setup or a credential change:
    attached, that a subject or name with accented characters displays correctly, and that no copy is in
    Sent Items. Confirm the received message shows a sent date (the app does not write a `Date` header;
    Exchange is expected to add one).
-5. Open the Inbox in **Mail → Inbox** as a superuser and as a Mail-only staff user; only the superuser sees
-   the **Sent** tab.
+5. Open **Mail → Inbox** as a staff user with the Mail app. The **Sent** tab lists the test email and the
+   campaign without `{{login_link}}`, but never the sign-in code, the ticket or the login-link campaign. A staff
+   user without the Mail app cannot open Mail → Inbox.
 6. In a non-production environment, install a throwaway certificate that is not registered on the app on an
    inactive configuration and confirm its Entra check reads not trusted (`AADSTS700027`).
 7. Confirm the small campaign completed without `429` responses.

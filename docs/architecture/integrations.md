@@ -48,7 +48,7 @@ selection. There is no per-message routing or automatic failover.
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
 | Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph.py`) — Entra tenant ID, client ID and optional sender mailbox; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
-| Gmail API credentials | Active `GmailApiProviderConfig` (`src/apps/core/models/base/service_credentials/gmail_api.py`) — the pinned version of the service-account key in the credential store (AWS Secrets Manager in production), its public facts, and the account allow-list (`GmailApiSubject`). Domain-wide delegation for gmail.send only; superusers only |
+| Gmail API credentials | Active `GmailApiProviderConfig` (`src/apps/core/models/base/service_credentials/gmail_api.py`) — the pinned version of the service-account key in the credential store (AWS Secrets Manager in production), its public facts, and the account allow-list (`GmailApiSubject`). Domain-wide delegation for gmail.send only; Core app |
 | Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`, the Gmail API in `gmail/`, the bounded HTTPS client both use in `transport.py`) |
 | Campaign sending | `src/apps/mail/services/send_campaign/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
@@ -62,9 +62,9 @@ codes, admin invitations, tickets, and campaign messages that contain the recipi
 so no copy stays in the mailbox's Sent Items (such a campaign message then has no
 `List-Unsubscribe` header, only the footer link).
 Tokens are cached in process memory only, never in the database or the shared cache.
-The private key is never in the database: a superuser installs the certificate on the
-Graph configuration's admin page, the key goes to the credential store
-(`apps.core.services.credential_store`; in production the Secrets Manager secret
+The private key is never in the database: an admin with the Core app installs the
+certificate on the Graph configuration's admin page, the key goes to the credential
+store (`apps.core.services.credential_store`; in production the Secrets Manager secret
 `itg/backend/microsoft-graph/certificate-key`, which the task role may write), and the
 `MicrosoftGraphCertificate` row pins its version. The Graph transport refuses every
 request except the token request, `sendMail` and three read-only GETs before
@@ -84,16 +84,16 @@ The Gmail API provider signs an RS256 service-account assertion for the From
 account (which must be on the config's account allow-list, checked before any key
 read or request), exchanges it at `oauth2.googleapis.com/token` for a gmail.send
 token kept in process memory only, and uploads the raw MIME to `messages.send`. Its
-key is installed by a superuser on the config's admin page and kept in the credential
-store (the Secrets Manager secret `itg/backend/gmail-api/service-account-key`, with the
-same narrow task-role grant and resource policy as the Graph key in
-`aws/cicd/identity-stack.json`). `verify_gmail_access` (or **Run access check**)
+key is installed by an admin with the Core app on the config's admin page and kept in
+the credential store (the Secrets Manager secret
+`itg/backend/gmail-api/service-account-key`, with the same narrow task-role grant and
+resource policy as the Graph key in `aws/cicd/identity-stack.json`). `verify_gmail_access` (or **Run access check**)
 records the evidence switching email to it needs. Gmail keeps a Sent copy of
 everything, so mail with a credential carries a protected `X-I2G-Mail-Class:
 credential` header that the admin inbox's Sent view and the Gmail import filter
 out (only in Sent: the header is not authenticated, so received mail is listed as
-before), and the inbox's Sent folder is superuser-only while the copies are kept. See
-[Gmail API email](../integrations/gmail-api-email.md).
+before), and the inbox's Sent folder is shown to staff with the Mail app only while
+the copies are kept. See [Gmail API email](../integrations/gmail-api-email.md).
 
 Delivery fails closed unless the selected provider and sender are structurally
 configured. A failed or uncertain request is never retried through the other

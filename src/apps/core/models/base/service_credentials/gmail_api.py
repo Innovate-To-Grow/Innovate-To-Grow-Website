@@ -27,7 +27,11 @@ TAKEOVER_REFUSED = (
     "Mail → Notification Delivery sends email through the Gmail API, so this configuration can become the active "
     "one only when email could switch to it: {problem}"
 )
-RUN_THE_CHECK = "run the access check (Run access check on this page, or manage.py verify_gmail_access)"
+# Also shown on Email Sending Method, so it names the page the button is on rather than "this page".
+RUN_THE_CHECK = (
+    "an admin with the Core app runs the access check (Run access check on the Gmail API configuration's page, or "
+    "manage.py verify_gmail_access from a shell)"
+)
 # The ceilings themselves are GMAIL_API settings (a deployment may override them); the admin form names the values.
 RECIPIENTS_HELP = "Recipients one message may have (To and Cc)."
 MESSAGE_BYTES_HELP = "Size of the encoded message."
@@ -59,7 +63,7 @@ class GmailApiProviderConfig(ProjectControlModel):
     The site impersonates only the accounts on the subject allow-list (``GmailApiSubject``), and always sends From
     the impersonated account. The service-account key lives in the credential store (AWS Secrets Manager in
     production); this row keeps only a pointer to the pinned stored version and the key's public facts. Keys are
-    installed and removed on their own admin pages, by superusers only.
+    installed and removed on their own admin pages, by staff granted the Core app.
     """
 
     class CredentialMail(models.TextChoices):

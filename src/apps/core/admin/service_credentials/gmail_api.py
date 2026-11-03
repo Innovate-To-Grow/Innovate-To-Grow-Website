@@ -1,7 +1,7 @@
-"""The Gmail API provider config in the admin: superusers only, change form, account allow-list and key pages.
+"""The Gmail API provider config in the admin: change form, account allow-list and key pages (Core app).
 
-Everything here defines the Gmail credential or how far it reaches (which Workspace users the site may impersonate),
-so every permission is superuser-only, unlike the Core app's other pages. The config holds no secret: the key is
+Everything here defines the Gmail credential or how far it reaches (which Workspace users the site may impersonate);
+like the Core app's other pages, staff granted the Core app manage it. The config holds no secret: the key is
 installed and removed on its own pages (``GmailApiKeyViewsMixin``), never through this form.
 """
 
@@ -18,7 +18,7 @@ from unfold.decorators import display
 from apps.core.models import EmailServiceConfig, GmailApiProviderConfig, GmailApiSubject
 from apps.core.models.base.service_credentials.gmail_api import MESSAGE_BYTES_HELP, RECIPIENTS_HELP, normalize_subject
 
-from ..common.base import BaseModelAdmin
+from ..common.base import AppAccessInlineMixin, BaseModelAdmin
 from .gmail_api_panel import key_panel
 from .gmail_api_views import GmailApiKeyViewsMixin
 
@@ -51,23 +51,6 @@ WOULD_STOP_EMAIL = (
 )
 
 
-class SuperuserOnlyMixin:
-    def has_module_permission(self, request):
-        return request.user.is_active and request.user.is_superuser
-
-    def has_view_permission(self, request, obj=None):
-        return request.user.is_active and request.user.is_superuser
-
-    def has_add_permission(self, request, obj=None):
-        return request.user.is_active and request.user.is_superuser
-
-    def has_change_permission(self, request, obj=None):
-        return request.user.is_active and request.user.is_superuser
-
-    def has_delete_permission(self, request, obj=None):
-        return request.user.is_active and request.user.is_superuser
-
-
 class SubjectInlineForm(forms.ModelForm):
     class Meta:
         model = GmailApiSubject
@@ -97,7 +80,7 @@ class SubjectFormSet(BaseInlineFormSet):
             raise forms.ValidationError(WOULD_STOP_EMAIL.format(from_email=email.from_email))
 
 
-class GmailApiSubjectInline(SuperuserOnlyMixin, TabularInline):
+class GmailApiSubjectInline(AppAccessInlineMixin, TabularInline):
     model = GmailApiSubject
     form = SubjectInlineForm
     formset = SubjectFormSet
@@ -131,7 +114,7 @@ class GmailApiProviderConfigForm(forms.ModelForm):
 
 
 @admin.register(GmailApiProviderConfig)
-class GmailApiProviderConfigAdmin(SuperuserOnlyMixin, GmailApiKeyViewsMixin, BaseModelAdmin):
+class GmailApiProviderConfigAdmin(GmailApiKeyViewsMixin, BaseModelAdmin):
     form = GmailApiProviderConfigForm
     inlines = (GmailApiSubjectInline,)
     change_form_outer_before_template = "admin/core/gmailapiproviderconfig/key_panel.html"

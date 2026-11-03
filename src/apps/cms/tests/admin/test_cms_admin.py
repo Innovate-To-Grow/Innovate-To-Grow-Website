@@ -129,6 +129,9 @@ class CMSPageChangeFormRenderTests(TestCase):
         url = reverse("admin:cms_cmspage_change", args=[self.page.pk])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
+        # The live-preview sync backs off on 429 with the shared admin helper, loaded before it.
+        html = response.content.decode()
+        self.assertLess(html.index("admin/js/poll-backoff.js"), html.index("cms-block-editor-parts/live-preview.js"))
 
     @override_settings(
         CSP_REPORT_ONLY=False,

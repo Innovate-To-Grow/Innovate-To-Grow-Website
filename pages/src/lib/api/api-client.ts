@@ -1,5 +1,7 @@
 import axios from 'axios';
 
+import {installRateLimitRetry} from './rateLimit';
+
 // In development, Vite proxy will handle this
 // In production, you may need to set this to your backend URL
 // Default to /api so local dev can proxy backend requests without colliding
@@ -12,5 +14,8 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// A 429 on a read waits out Retry-After and retries once; a final 429 carries a visitor-facing message.
+installRateLimitRetry(api);
 
 export { api };

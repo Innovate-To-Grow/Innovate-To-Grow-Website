@@ -37,27 +37,18 @@ class AccessTests(CertificatePagesMixin, TestCase):
             with self.subTest(name):
                 self.assertEqual(self.client.get(self.url(name)).status_code, 200)
 
-    def test_core_staff_can_open_install_but_cannot_roll_back_or_remove_certificates(self):
+    def test_core_staff_can_open_every_certificate_page_like_a_superuser(self):
         self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
-        before = list(MicrosoftGraphCertificate.objects.values_list("pk", "state"))
-        versions = stored_versions()
-        self.script()
 
-        self.assertEqual(self.client.get(self.url("install_certificate")).status_code, 200)
-        for name in ("rollback_certificate", "remove_certificates"):
+        for name in (*ACTIONS, "download_certificate"):
             with self.subTest(name):
-                self.assertEqual(self.client.get(self.url(name)).status_code, 403)
-                self.assertEqual(self.client.post(self.url(name), self.pem_data(reason="x")).status_code, 403)
-        self.assertEqual(self.client.get(self.url("download_certificate")).status_code, 200)
+                self.assertEqual(self.client.get(self.url(name)).status_code, 200)
         page = self.client.get(self.change_url)
         self.assertContains(page, 'id="graph-certificate-panel"')
-        self.assertContains(page, "Download .cer")
-        self.assertContains(page, self.url("install_certificate"))
-        for name in ("rollback_certificate", "remove_certificates", "run_access_check"):
-            self.assertNotContains(page, self.url(name))
-        self.assertEqual(list(MicrosoftGraphCertificate.objects.values_list("pk", "state")), before)
-        self.assertEqual(stored_versions(), versions)
-        self.assertEqual(self.fake.requests, [])
+        for label in ("Install certificate", "Roll back to previous", "Download .cer", "Remove (emergency)"):
+            self.assertContains(page, label)
+        for name in (*ACTIONS, "run_access_check"):
+            self.assertContains(page, self.url(name))
 
     def test_mail_only_and_other_staff_cannot_reach_any_certificate_page(self):
         before = list(MicrosoftGraphCertificate.objects.values_list("pk", "state"))
@@ -341,6 +332,14 @@ class RollbackTests(CertificatePagesMixin, TestCase):
         self.assertContains(response, "Rolled back to the previous certificate")
         self.assertEqual(self.config.current_certificate, self.first)
         self.assertEqual(self.config.previous_certificate, self.second)
+
+    def test_core_staff_roll_back_like_a_superuser(self):
+        self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
+
+        response = self.client.post(self.url("rollback_certificate"), follow=True)
+
+        self.assertContains(response, "Rolled back to the previous certificate")
+        self.assertEqual(self.config.current_certificate, self.first)
 
     def test_a_refused_rollback_changes_nothing_and_says_why(self):
         self.script(token=entra_rejection(700027))

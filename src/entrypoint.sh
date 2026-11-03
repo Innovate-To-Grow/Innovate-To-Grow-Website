@@ -44,11 +44,15 @@ if [ ! -d "staticfiles" ] || [ -z "$(ls -A staticfiles 2>/dev/null)" ]; then
 fi
 
 echo "Starting Uvicorn..."
-# Uvicorn's concurrency cap provides backpressure; hard per-request termination
-# remains an ALB/deployment timeout concern.
+# UVICORN_LIMIT_CONCURRENCY (default 20) is the requests one process serves at once: the request limiter shares
+# those slots between priority tiers, keeping some for sign-in and verification codes. Uvicorn's own cap counts idle
+# keep-alive connections too and answers 503 to every tier alike, so it is set well above that
+# (UVICORN_CONNECTION_LIMIT, default 4x) and only bounds connections. Hard per-request termination remains an
+# ALB/deployment timeout concern.
+REQUEST_SLOTS="${UVICORN_LIMIT_CONCURRENCY:-20}"
 exec uvicorn config.deploy.asgi:application \
   --host 0.0.0.0 \
   --port 8000 \
   --workers "${WEB_CONCURRENCY:-2}" \
   --timeout-graceful-shutdown "${UVICORN_TIMEOUT_GRACEFUL_SHUTDOWN:-120}" \
-  --limit-concurrency "${UVICORN_LIMIT_CONCURRENCY:-20}"
+  --limit-concurrency "${UVICORN_CONNECTION_LIMIT:-$((REQUEST_SLOTS * 4))}"

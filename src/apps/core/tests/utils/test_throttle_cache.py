@@ -101,6 +101,7 @@ class ThrottleCacheProxyTests(SimpleTestCase):
             self.assertEqual(list(caches["default"]._cache), [])
 
 
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)  # the seeded rates, no policy rows (no database here)
 class ForgeableKeyThrottleTests(SimpleTestCase):
     """Per-IP throttles key on the caller-supplied X-Forwarded-For string, so they must not use ``default``."""
 

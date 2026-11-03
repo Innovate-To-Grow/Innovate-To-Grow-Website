@@ -17,8 +17,9 @@ at once. So:
   with a phone identifier (5/minute, active only while no SMS daily budget is
   set). See
   [Send verification](send-verification.md#client-ip-policy-and-residual-risks).
-  The few per-IP keys elsewhere in the application (none of them limits a
-  campus user) are listed in
+  The few per-IP keys elsewhere in the application (the request limiter's
+  ceilings for anonymous public traffic, sized far above a whole campus's
+  honest requests, and three per-view limiters) are listed in
   [Environments](environments.md#what-still-keys-on-the-client-ip).
 - At the edge, per-IP rules apply **only to addresses outside the campus IP
   set**. Campus traffic is counted and alarmed, **never blocked per IP**.

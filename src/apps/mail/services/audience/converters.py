@@ -49,13 +49,17 @@ def members_to_recipients(members, *, send_all=False, subscribed_only=False):
 
 
 def manual_emails_from_body(body: str):
+    """One recipient per typed address, as typed; repeats differing only in case are dropped (first spelling kept).
+
+    No member is attached here: ``resolvers._manual`` matches the addresses to member accounts.
+    """
     recipients = []
     seen = set()
     for line in (body or "").strip().splitlines():
         email = line.strip()
-        if not email or email in seen:
+        if not email or email.lower() in seen:
             continue
-        seen.add(email)
+        seen.add(email.lower())
         recipients.append(
             {
                 "member_id": None,

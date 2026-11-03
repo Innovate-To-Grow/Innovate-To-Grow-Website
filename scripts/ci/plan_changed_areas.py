@@ -44,6 +44,7 @@ def _is_backend_path(path: str) -> bool:
         "pyproject.toml",
         ".pre-commit-config.yaml",
         ".bandit-baseline.json",
+        ".gitleaksignore",
     }
 
 
@@ -51,8 +52,8 @@ def _is_ci_relevant_path(path: str) -> bool:
     """True when `path` is an area a push to main validates.
 
     Mirrors `on.push.paths` in .github/workflows/ci.yml. `.github/` is matched a
-    little more broadly than that list (which names only `.github/dependabot.yml`
-    and `.github/workflows/**`); erring toward running is the safe direction.
+    little more broadly than that list (which names only the `.github/` files
+    that change CI outcomes); erring toward running is the safe direction.
     """
     return _is_backend_path(path) or path.startswith(("pages/", "cli/", "archive/"))
 
@@ -61,31 +62,35 @@ FULL_SUITE = ChangedAreasPlan(backend=True, frontend=True, cli=True, archive=Tru
 NO_SUITE = ChangedAreasPlan(backend=False, frontend=False, cli=False, archive=False)
 
 
+DIFF_PLANNED_EVENTS = frozenset({"pull_request", "merge_group"})
+
+
 def plan_changed_areas(event_name: str, changed_files: Iterable[str]) -> ChangedAreasPlan:
     """Return the areas CI must validate.
 
-    PR/push parity: a pull request runs the SAME areas a push to main runs
-    whenever it touches any path in `on.push.paths`, so a green PR check cannot
-    become a red main run for the same tree. Branch protection sets
-    `strict: true` and `pull_request` checks out `refs/pull/N/merge`, so the PR
-    already tests the merge-result tree; before this rule it additionally ran a
+    PR/push parity: a pull request, and a merge-queue group, runs the SAME areas
+    a push to main runs whenever it touches any path in `on.push.paths`, so a
+    green check cannot become a red main run for the same tree. `pull_request`
+    checks out `refs/pull/N/merge` and `merge_group` the queue's group commit,
+    so both already test the merged tree. Before this rule a PR ran a
     diff-scoped SUBSET of the jobs, which is what let backend-only PR #433 merge
     without ever running the E2E matrix. The post-merge run 32107167026 then
     failed the iphone14 + ipad legs (though it still reported `CI Result` green,
     because `e2e` was `continue-on-error` at the time — see `e2e-required-result`
     in ci.yml for the other half of the fix).
 
-    PRs that touch only PR-only paths still run nothing: `.claude/**` is in
-    `on.pull_request.paths` but deliberately NOT in `on.push.paths`, so merging
-    one starts no CI run and there is nothing to diverge from. `ci-result` is
-    `if: always()`, so the required `CI Result` check is still reported.
+    A diff that touches none of those paths (docs, README) runs nothing: merging
+    it starts no push run, so there is nothing to diverge from. `on.pull_request`
+    has no path filter and `ci-result` is `if: always()`, so the required
+    `CI Result` check is still reported, green.
     """
     files = _normalize_files(changed_files)
 
-    if event_name != "pull_request":
-        # A push to main/master always validates every area: it is the run the
-        # deploy-*.yml chain consumes, and `backend-image-publish` must run so
-        # deploy-backend.yml can pull `itg-backend:<sha>`.
+    if event_name not in DIFF_PLANNED_EVENTS:
+        # A push to main always validates every area: it is the run
+        # Deploy Production consumes, and (while deployments are enabled)
+        # `backend-image-publish` must run so deploy-backend.yml can pull
+        # `itg-backend:<sha>`.
         return FULL_SUITE
 
     if any(_is_ci_relevant_path(path) for path in files):

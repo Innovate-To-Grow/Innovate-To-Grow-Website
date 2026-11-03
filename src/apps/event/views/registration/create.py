@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.event.serializers import EventRegistrationCreateSerializer, build_registration_payload
+from apps.event.throttles import RegistrationCreateThrottle
 
 from .create_support import (
     RegistrationRequestError,
@@ -20,7 +21,9 @@ from .create_support import (
 
 
 class EventRegistrationCreateView(APIView):
+    rate_limit_scope = "member-send"
     permission_classes = [IsAuthenticated]
+    throttle_classes = [RegistrationCreateThrottle]
 
     # noinspection PyMethodMayBeStatic
     def post(self, request):

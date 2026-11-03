@@ -16,6 +16,9 @@ class AllProjectsAPIView(APIView):
     uncached request.
     """
 
+    # A paged list (the All Projects page requests about ten pages at once), not a whole-catalog response.
+    rate_limit_scope = "public-read"
+
     permission_classes = [AllowAny]
     authentication_classes = []
 

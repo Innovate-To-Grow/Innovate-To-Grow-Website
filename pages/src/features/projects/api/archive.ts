@@ -3,6 +3,13 @@
 // search over them. Its own module so unit tests can stub the searches a search table sends while a visitor types
 // (src/__tests__/core/setup.ts) without replacing the rest of the projects API.
 import {api} from '@/lib/api';
+import {
+    RATE_LIMIT_FALLBACK_WAIT_MS,
+    RATE_LIMIT_MAX_WAIT_MS,
+    isRateLimited,
+    retryAfterMs,
+    waitUnlessAborted,
+} from '@/lib/api/rateLimit';
 import type {PaginatedResponse} from '@/types/api';
 import {PROJECT_REQUEST_TIMEOUT_MS} from './constants';
 import type {CompactPastProjectRow, PastProjectArchiveQuery} from './types';
@@ -33,7 +40,35 @@ export const fetchPastProjectArchive = (
     signal?: AbortSignal,
 ): Promise<PaginatedResponse<CompactPastProjectRow>> => fetchCatalogPage('/projects/archive/', query, signal);
 
-/** The pages after `firstPage`, requested together. */
+/** A 408, 429 or 5xx answer, or no answer at all (a timeout, a dropped connection): worth asking once more. */
+const isTransientFailure = (reason: unknown): boolean => {
+    const failure = reason as {code?: unknown; response?: {status?: unknown}} | null;
+    if (!failure || typeof failure !== 'object' || failure.code === 'ERR_CANCELED') return false;
+    const status = failure.response?.status;
+    return typeof status !== 'number' || status === 408 || status === 429 || status >= 500;
+};
+
+/**
+ * Ask once more, alone, for a page that failed while the pages were requested together. A 429 first waits as long
+ * as the server asks (and fails the list at once when that is longer than RATE_LIMIT_MAX_WAIT_MS); anything that is
+ * not transient, or an aborted load, fails it straight away.
+ */
+const refetchFailedPage = async (reason: unknown, refetch: () => Promise<PaginatedResponse<CompactPastProjectRow>>,
+    signal?: AbortSignal) => {
+    if (signal?.aborted || !isTransientFailure(reason)) throw reason;
+    if (isRateLimited(reason)) {
+        const wait = retryAfterMs(reason) ?? RATE_LIMIT_FALLBACK_WAIT_MS;
+        if (wait > RATE_LIMIT_MAX_WAIT_MS) throw reason;
+        await waitUnlessAborted(wait, signal);
+    }
+    return refetch();
+};
+
+/**
+ * The pages after `firstPage`, requested together. One page refused under load (a 429 the shared client could not
+ * wait out, a timeout, a 5xx) does not fail the whole list: once the others answered, each failed page is asked
+ * for again, one at a time, and the list fails only if that fails too.
+ */
 const fetchLaterPages = async (
     endpoint: ProjectCatalogEndpoint,
     query: WholeListQuery,
@@ -41,11 +76,18 @@ const fetchLaterPages = async (
     signal?: AbortSignal,
 ): Promise<CompactPastProjectRow[]> => {
     const pageCount = Math.ceil(firstPage.count / CATALOG_PAGE_SIZE);
-    const laterPages = await Promise.all(
-        Array.from({length: Math.max(0, pageCount - 1)}, (_, index) =>
-            fetchCatalogPage(endpoint, {...query, page: index + 2, page_size: CATALOG_PAGE_SIZE}, signal),
-        ),
-    );
+    const requestPage = (page: number) =>
+        fetchCatalogPage(endpoint, {...query, page, page_size: CATALOG_PAGE_SIZE}, signal);
+    const numbers = Array.from({length: Math.max(0, pageCount - 1)}, (_, index) => index + 2);
+    const settled = await Promise.allSettled(numbers.map(requestPage));
+    const laterPages: PaginatedResponse<CompactPastProjectRow>[] = [];
+    for (const [index, outcome] of settled.entries()) {
+        laterPages.push(
+            outcome.status === 'fulfilled'
+                ? outcome.value
+                : await refetchFailedPage(outcome.reason, () => requestPage(numbers[index]), signal),
+        );
+    }
     return [firstPage, ...laterPages].flatMap((page) => page.results);
 };
 

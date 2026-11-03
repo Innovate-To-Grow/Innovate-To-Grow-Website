@@ -19,8 +19,8 @@ pre-push hooks run the same commands.
 Run both Python checks from the repository root with the dev virtualenv active: complexity comes from
 `ruff` on `PATH` (the version pinned in `src/requirements/local.txt`). Where they run:
 
-- **CI:** `lint.yml` (Python Linting job) runs both Python checks after Ruff. `ci.yml` (Frontend ESLint
-  job) runs `npm run lint` and then `npm run check:structure`. The checkers' own unit tests
+- **CI:** `lint.yml` (Python Linting job) runs both Python checks after Ruff. `ci.yml` (Frontend Lint,
+  Build and Static Checks job) runs `npm run lint` and then `npm run check:structure`. The checkers' own unit tests
   (`scripts/ci/tests/test_check_python_*.py`) run in the Preflight job with the other CI script tests.
 - **Pre-push hooks** (`.pre-commit-config.yaml`): `frontend-eslint`, `frontend-structure`, `python-quality`,
   `python-dependencies`.
@@ -206,11 +206,11 @@ Measured with the counting rules above at the start of the refactor (base `378df
 | directory-files | 4 / 2 | 0 / 0 |
 | app boundary violations / import cycles | 59 / 5 | 0 / 0 unlisted (5 exceptions, no cycles) |
 
-Every Python finding left in the "After" column is in in-progress status-page work that was untracked
-when these checks landed (`scripts/ci/validate_status_infrastructure.py`, `src/apps/core/services/status/`)
-and is not part of the committed tree. `python_quality.toml` has no exception for it, so the hard
-`function-lines` finding (`validate_observability_and_iam`, 121 lines) must be split, or given an
-exception, in the change that commits that work.
+Every Python finding left in the "After" column was in status-page files that were untracked in the
+working tree when these checks landed (`scripts/ci/validate_status_infrastructure.py`,
+`src/apps/core/services/status/`). The same work was committed to main in `c51a2e1f` and deleted in
+`ae208653`, and the untracked copy is gone too. The committed tree has no hard Python finding; only advisory
+`directory-files` counts remain.
 
 | TypeScript (advisory unless noted) | Before | After |
 |---|---|---|
@@ -219,7 +219,8 @@ exception, in the change that commits that work.
 | tests and E2E helpers: max-lines | 11 | 0 |
 | layer-boundary violations / import cycles | 17 / 1 | 0 / 0 |
 
-Advisory findings are the planned-cleanup backlog; it is empty apart from the in-progress work above. Print
+Advisory findings are the planned-cleanup backlog; on the Python side it holds only those advisory
+`directory-files` counts. Print
 the current list with `python scripts/ci/check_python_quality.py` and `npm run quality:report`.
 
 ### Splitting a long test file

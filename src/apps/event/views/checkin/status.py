@@ -12,6 +12,8 @@ from .payloads import attendee_payload, check_in_payload, event_counts, record_p
 class CheckInStatusView(APIView):
     """Returns check-in stats and a not-yet-checked-in list."""
 
+    rate_limit_scope = "checkin-status"
+
     authentication_classes = [SessionAuthentication]
     permission_classes = [IsAdminUser]
 

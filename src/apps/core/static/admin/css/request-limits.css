@@ -1,0 +1,25 @@
+/* Site Settings → Request Limits (admin/core/request_limits.html, request_limit_card.html). */
+
+.i2g-limits .i2g-limit-status,
+.i2g-limits-summary {
+    background: var(--md-sys-color-surface-container-low, transparent);
+}
+
+.i2g-limit-lines li + li {
+    margin-top: 0.125rem;
+    font-size: 0.8125rem;
+    opacity: 0.85;
+}
+
+.i2g-limits .i2g-limit-headline {
+    font-weight: 600;
+}
+
+.i2g-limits .i2g-limit-manual.is-locked input {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+.i2g-limits .i2g-limit-code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}

@@ -245,7 +245,8 @@
     border: 1px solid #75e0a7;
 }
 
-.i2g-checkin-result.is-duplicate {
+.i2g-checkin-result.is-duplicate,
+.i2g-checkin-result.is-busy {
     background: var(--checkin-warning-bg);
     border: 1px solid #fedf89;
 }
@@ -549,7 +550,8 @@
     border-color: color-mix(in srgb, var(--checkin-success) 48%, transparent);
 }
 
-.dark .i2g-checkin-result.is-duplicate {
+.dark .i2g-checkin-result.is-duplicate,
+.dark .i2g-checkin-result.is-busy {
     border-color: color-mix(in srgb, var(--checkin-warning) 48%, transparent);
 }
 

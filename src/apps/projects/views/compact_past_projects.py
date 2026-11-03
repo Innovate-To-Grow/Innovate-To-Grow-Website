@@ -11,6 +11,8 @@ from ..services.catalog_filters import archive_queryset
 class CompactPastProjectsAPIView(APIView):
     """Paginated, filterable project-level archive discovery endpoint."""
 
+    rate_limit_scope = "public-read"
+
     permission_classes = [AllowAny]
     authentication_classes = []
 

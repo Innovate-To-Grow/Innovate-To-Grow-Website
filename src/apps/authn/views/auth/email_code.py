@@ -45,6 +45,7 @@ Member = get_user_model()
 
 
 class LoginCodeRequestView(APIView):
+    rate_limit_scope = "auth-code-send"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -66,6 +67,7 @@ class LoginCodeRequestView(APIView):
 
 
 class EmailAuthRequestCodeView(APIView):
+    rate_limit_scope = "auth-code-send"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -91,6 +93,7 @@ class EmailAuthRequestCodeView(APIView):
 
 
 class LoginCodeVerifyView(APIView):
+    rate_limit_scope = "auth-code-verify"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -110,6 +113,7 @@ class LoginCodeVerifyView(APIView):
 
 
 class EmailAuthVerifyCodeView(APIView):
+    rate_limit_scope = "auth-code-verify"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -129,6 +133,7 @@ class EmailAuthVerifyCodeView(APIView):
 
 
 class RegisterVerifyCodeView(APIView):
+    rate_limit_scope = "auth-code-verify"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -148,6 +153,7 @@ class RegisterVerifyCodeView(APIView):
 
 
 class RegisterResendCodeView(APIView):
+    rate_limit_scope = "auth-code-send"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -169,6 +175,7 @@ class RegisterResendCodeView(APIView):
 
 
 class PasswordResetRequestView(APIView):
+    rate_limit_scope = "auth-code-send"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -206,6 +213,7 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetVerifyView(APIView):
+    rate_limit_scope = "auth-code-verify"
     authentication_classes = []
     permission_classes = [AllowAny]
 
@@ -215,6 +223,7 @@ class PasswordResetVerifyView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
+    rate_limit_scope = "auth-code-verify"
     authentication_classes = []
     permission_classes = [AllowAny]
 

@@ -20,7 +20,7 @@ from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import grant, private_key_lines
 from apps.core.tests.services.graph_access.helpers import (
     DENY,
-    OIT_ROLES,
+    EXTRA_ROLES,
     SCOPED,
     ProbeFixtureMixin,
     Verdict,
@@ -45,8 +45,8 @@ class RecordAccessCheckTests(ProbeFixtureMixin, TestCase):
         self.assertEqual(check.certificate_sha1, certificate.sha1_thumbprint)
         self.assertEqual((check.tenant_id, check.client_id), (self.config.tenant_id, self.config.client_id))
         self.assertEqual((check.deny_mailbox, check.source, check.run_by), (DENY, Source.COMMAND, None))
-        self.assertEqual(check.granted_roles, ["Mail.Read", "Mail.Send"])
-        self.assertEqual(check.approved_roles, ["Mail.Read", "Mail.Send"])
+        self.assertEqual(check.granted_roles, ["Mail.ReadWrite", "Mail.Send"])
+        self.assertEqual(check.approved_roles, ["Mail.Read", "Mail.ReadWrite", "Mail.Send"])
         self.assertTrue(check.mailbox_restriction_passed and check.complete and check.roles_within_approval)
         self.assertEqual(check.verdict, Verdict.COMPLIANT)
         self.assertEqual(check.results, [result.as_dict() for result in report.results])
@@ -58,11 +58,11 @@ class RecordAccessCheckTests(ProbeFixtureMixin, TestCase):
         self.assertEqual(check.deny_mailbox, DENY)
 
     def test_roles_beyond_the_approval_are_recorded_as_not_compliant(self):
-        self.use_roles(OIT_ROLES)
+        self.use_roles(EXTRA_ROLES)
 
         _report, check = self.record()
 
-        self.assertEqual(check.granted_roles, ["Mail.ReadWrite", "Mail.Send"])
+        self.assertEqual(check.granted_roles, ["Mail.Send", "User.Read.All"])
         self.assertIs(check.roles_within_approval, False)
         self.assertTrue(check.mailbox_restriction_passed)
         self.assertEqual(check.verdict, Verdict.NOT_COMPLIANT)

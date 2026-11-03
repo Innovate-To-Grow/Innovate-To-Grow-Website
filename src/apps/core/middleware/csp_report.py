@@ -19,10 +19,14 @@ _SENSITIVE_CSP_PATH_SEGMENT = re.compile(
 
 
 def _csp_report_rate_limited(request) -> bool:
-    """Return whether this client exceeded the bounded CSP report window."""
+    """Return whether this client exceeded the bounded CSP report window (the live "view-csp-report" policy)."""
 
-    limit = max(int(getattr(settings, "CSP_REPORT_RATE_LIMIT", 60)), 1)
-    window = max(int(getattr(settings, "CSP_REPORT_RATE_WINDOW_SECONDS", 60)), 1)
+    from apps.core.services.request_limits.view_limits import view_rate
+
+    rate = view_rate("view-csp-report")
+    if rate is None:
+        return False
+    limit, window = rate.requests, rate.period
     forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR", "")
     if getattr(settings, "NUM_PROXIES", None) and forwarded_for:
         parts = [part.strip() for part in forwarded_for.split(",") if part.strip()]
@@ -132,3 +136,6 @@ def csp_report(request):
     except Exception:
         logger.exception("Unexpected error processing CSP violation report")
     return HttpResponse(status=204)
+
+
+csp_report.rate_limit_scope = "telemetry"

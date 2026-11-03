@@ -8,14 +8,14 @@ Application Load Balancer.
 
 **Dockerfile:** `src/Dockerfile`
 
-- Base image: `python:3.11-slim`
+- Base image: `python:3.14-slim-trixie` (separate builder and production stages)
 - System dependencies: `libpq-dev` (PostgreSQL client library)
 - Python dependencies: installed from `src/requirements.txt`
 - Exposed port: 8000
 - Entry command: Uvicorn
 
 ```
-uvicorn config.deploy.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --limit-concurrency 20
+uvicorn config.deploy.asgi:application --host 0.0.0.0 --port 8000 --workers 2 --limit-concurrency 80
 ```
 
 ### Build
@@ -100,8 +100,8 @@ The deploy workflow (`deploy-backend.yml`) loads settings and secret ARN referen
 
 Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 
-1. **Build**: Docker image built from `src/Dockerfile`
-2. **Push**: Image pushed to AWS ECR
+1. **Build**: CI builds, tests, and scans the image from `src/Dockerfile` (`Backend Docker Build and Scan`)
+2. **Publish**: CI pushes it to AWS ECR as `itg-backend:<sha>` (`Backend Image Publish`); the deploy workflow pulls that tag by digest and never rebuilds
 3. **Task definition**: Template rendered with environment variables and secret ARNs; the same values are copied to the worker
 4. **Validation**: Deployment fails if the worker can run the Web entrypoint, exposes a port, loses shared configuration, or exceeds the task resource envelope
 5. **Deploy**: ECS task definition updated via `aws-actions/amazon-ecs-deploy-task-definition@v2`
@@ -112,15 +112,17 @@ Triggered by the `deploy-backend.yml` GitHub Actions workflow:
 
 ### Trigger conditions
 
-- Automatically on successful CI completion (main branch)
-- Manually via workflow dispatch
+- Called by `Deploy Production` after successful CI completion on `main`, or by its manual run on `main`
+- [CI/CD: Pausing and resuming deployments](ci-cd.md#pausing-and-resuming-deployments) describes
+  the two switches that must agree
 
 ## Uvicorn configuration
 
 | Setting | Value | Rationale |
 |---------|-------|-----------|
 | Workers | 2 by default (`WEB_CONCURRENCY`) | Keep PostgreSQL connection pressure below the `db.t4g.micro` ceiling |
-| Concurrency cap | 20 by default (`UVICORN_LIMIT_CONCURRENCY`) | Provide backpressure before the app exhausts DB connections |
+| Request slots | 20 by default (`UVICORN_LIMIT_CONCURRENCY`) | Requests one process serves at once: the request limiter's admission control shares them between priority tiers (P0 keeps reserved slots) and answers a lower tier over its share with a 429, before the app exhausts DB connections |
+| Connection cap | 4 × the request slots by default (`UVICORN_CONNECTION_LIMIT`, uvicorn `--limit-concurrency`) | Uvicorn counts idle keep-alive connections toward its cap and answers 503 to every tier alike, so it sits well above the request slots and only bounds connections |
 | Graceful shutdown | 120s | Accommodate long-running operations (sheet sync, email campaigns) |
 | Bind | `0.0.0.0:8000` | Listen on all interfaces (required for Fargate networking) |
 
@@ -200,7 +202,7 @@ Served from S3 via `django-storages`:
 | `/static/` | Collected static files (admin CSS, CKEditor assets) |
 | `/media/` | User uploads (CMS assets, profile images) |
 
-`collectstatic` is typically run during container startup or as a deploy step.
+`src/Dockerfile` collects the static files into the image at build time (`/app/static`), and `deploy-backend.yml` copies them out of the release image and syncs them to S3 (`--size-only`) before the rollout. `src/entrypoint.sh` also runs `collectstatic` at every Web container start, because its fallback checks `staticfiles/`, which the image never contains; under the production settings that pass writes to the bucket's `static/` prefix, and if it fails it logs `collectstatic failed (non-fatal)` and the container still starts.
 
 ## Related pages
 

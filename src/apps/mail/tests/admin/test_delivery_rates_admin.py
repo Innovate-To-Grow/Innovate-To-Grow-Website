@@ -68,6 +68,7 @@ class AccessTests(DeliveryRatesTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Save delivery rates")
         self.assertContains(response, 'href="/admin/mail/settings/rates/"')  # the Delivery Operations tab
+        self.assertContains(response, "admin/js/poll-backoff.js")  # status refreshes back off on 429
 
 
 class CardTests(DeliveryRatesTestCase):

@@ -40,10 +40,11 @@ GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS = 60
 # background worker's hourly maintenance logs a fixed WARNING line.
 GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS = 14
 
-# Application permissions (the access token's ``roles``) that InfoSec approved for the Entra app.
-# The access check fails when the token carries any other role, unless the Graph config records the reference of
-# an InfoSec review that approves it.
-GRAPH_APPROVED_APPLICATION_ROLES = ("Mail.Send", "Mail.Read")
+# Application permissions (the access token's ``roles``) approved for the Entra app: what OIT granted on it,
+# Mail.ReadWrite and Mail.Send. Mail.Read is listed too because Mail.ReadWrite includes it, so a narrower grant also
+# passes. The access check fails when the token carries any other role, unless the Graph config records the
+# reference of a written review that approves it.
+GRAPH_APPROVED_APPLICATION_ROLES = ("Mail.Send", "Mail.ReadWrite", "Mail.Read")
 # Timeout of each request the access check makes (the token request included).
 GRAPH_ACCESS_CHECK_TIMEOUT_SECONDS = 10
 # A token whose roles claim lists more entries than this counts as unreadable (and the run as incomplete).

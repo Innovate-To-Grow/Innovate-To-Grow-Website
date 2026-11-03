@@ -17,6 +17,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.core.models import AWSCredentialConfig
+from apps.core.tests.request_limits.helpers import view_limit
 from apps.system_intelligence.models import (
     AssistantConversationLog,
     AssistantMessageLog,
@@ -505,8 +506,15 @@ class RequestRateTests(ActorLimitsTestBase):
     def test_configured_rates(self):
         from apps.system_intelligence.views import PublicAssistantActorThrottle
 
-        self.assertEqual(settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]["public_assistant"], "6/minute")
-        self.assertEqual(PublicAssistantActorThrottle.legacy_default_rate, "60/minute")
+        scopes = settings.REQUEST_RATE_LIMITS["scopes"]
+        self.assertEqual(PublicAssistantActorThrottle.policy_scope, "view-assistant-chat")
+        self.assertEqual(PublicAssistantActorThrottle.legacy_policy_scope, "view-assistant-legacy")
+        self.assertEqual(
+            (scopes["view-assistant-chat"]["requests"], scopes["view-assistant-chat"]["period_seconds"]), (6, 60)
+        )
+        self.assertEqual(
+            (scopes["view-assistant-legacy"]["requests"], scopes["view-assistant-legacy"]["period_seconds"]), (60, 60)
+        )
 
     def test_a_visitor_gets_six_requests_a_minute(self):
         visitor = self.new_visitor()
@@ -534,8 +542,7 @@ class RequestRateTests(ActorLimitsTestBase):
     def test_throttled_legacy_caller_is_still_handed_an_identity_to_leave_the_bucket(self):
         # A saturated legacy bucket answers nothing but 429s. A browser whose
         # value lapsed must be able to get out of it from that 429 alone.
-        rates = {**settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], "public_assistant_legacy": "1/minute"}
-        with override_settings(REST_FRAMEWORK={**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates}):
+        with view_limit(**{"view-assistant-legacy": (1, 60)}):
             self.assertEqual(self.ask("someone-else-without-a-value").status_code, 200)
 
             throttled = self.ask("a-lapsed-value")
@@ -579,8 +586,7 @@ class RequestRateTests(ActorLimitsTestBase):
         self.assertEqual(self.ask(self.new_visitor()).status_code, 200)
 
     def test_self_made_values_share_the_legacy_rate_bucket(self):
-        rates = {**settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], "public_assistant_legacy": "3/minute"}
-        with override_settings(REST_FRAMEWORK={**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates}):
+        with view_limit(**{"view-assistant-legacy": (3, 60)}):
             statuses = [self.ask(f"made-up-{index}").status_code for index in range(4)]
             real_visitor = self.ask(self.new_visitor()).status_code
 
@@ -588,9 +594,8 @@ class RequestRateTests(ActorLimitsTestBase):
         self.assertEqual(real_visitor, 200)
 
     def test_visitor_rate_is_read_live_from_settings(self):
-        rates = {**settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"], "public_assistant": "2/minute"}
         visitor = self.new_visitor()
-        with override_settings(REST_FRAMEWORK={**settings.REST_FRAMEWORK, "DEFAULT_THROTTLE_RATES": rates}):
+        with view_limit(**{"view-assistant-chat": (2, 60)}):
             statuses = [self.ask(visitor).status_code for _ in range(3)]
 
         self.assertEqual(statuses, [200, 200, 429])

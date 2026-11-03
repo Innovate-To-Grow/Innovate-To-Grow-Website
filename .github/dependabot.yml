@@ -13,7 +13,7 @@ updates:
       - dependencies
       - python
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
     groups:
       aws:
@@ -34,8 +34,11 @@ updates:
           - minor
           - patch
     ignore:
-      # Python 3.12-only from these versions on; the project targets 3.11.
-      # Keep in sync with the comments in src/requirements/{base,production}.txt.
+      # 0.92+ requires Python >= 3.12. The runtime image is 3.14, but the
+      # pip-audit jobs (ci.yml python-dependency-audit, dependency-audit.yml)
+      # still resolve src/requirements.txt on PYTHON_VERSION 3.11, and
+      # src/requirements/base.txt holds the current minor until the upgrade is
+      # reviewed. Keep in sync with that pin.
       - dependency-name: "django-unfold"
         versions: [">=0.92"]
       # Agents 0.21+ needs openai 3, while LiteLLM still requires openai <3.
@@ -52,7 +55,9 @@ updates:
     directory: /pages
     schedule:
       interval: weekly
-      day: monday
+      # A day after pip: each update PR runs the full CI suite, and the two
+      # ecosystems landing together queued ten full runs on the AWS fleet.
+      day: tuesday
       time: "09:00"
       timezone: "Etc/UTC"
     open-pull-requests-limit: 5
@@ -60,7 +65,7 @@ updates:
       - dependencies
       - frontend
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
     groups:
       react:
@@ -88,10 +93,12 @@ updates:
           - minor
           - patch
     ignore:
-      # The eslint 10 major must move together with eslint core and
-      # typescript-eslint; bundle that migration manually.
-      - dependency-name: "@eslint/js"
-        versions: [">=10"]
+      # Pinned exactly: it must match the Playwright container image in
+      # .github/workflows/ci.yml and aws-runner-smoke.yml, which the AWS runner
+      # image pre-pulls (aws/ci-runners/bake-image.sh). Upgrade all of them,
+      # and the e2e venv cache label, together by hand;
+      # scripts/ci/validate_tool_versions.py fails CI if they drift.
+      - dependency-name: "@playwright/test"
 
   # Archived event-pages Flask app
   - package-ecosystem: pip
@@ -106,7 +113,7 @@ updates:
       - archive
       - python
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
     # Archived app: bundle every update into one monthly PR.
     groups:
@@ -126,12 +133,16 @@ updates:
       - dependencies
       - docker
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
 
-  # GitHub Actions used across workflows
+  # GitHub Actions used across workflows and the composite actions they call.
+  # "/" covers .github/workflows/ only; each .github/actions/<name>/action.yml
+  # needs its own directory entry (DependabotCoverageTests checks this).
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - /
+      - /.github/actions/*
     schedule:
       interval: monthly
       time: "09:00"
@@ -141,7 +152,7 @@ updates:
       - dependencies
       - ci
     commit-message:
-      prefix: "chore(deps)"
+      prefix: "chore"
       include: scope
     # Action bumps are low-risk; bundle them into one monthly PR.
     groups:

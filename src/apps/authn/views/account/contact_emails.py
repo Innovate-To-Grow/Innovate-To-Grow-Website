@@ -86,6 +86,7 @@ def _update_contact_email(member, pk, validated_data):
 
 
 class ContactEmailListCreateView(APIView):
+    rate_limit_scope = {"GET": "member-read", "*": "auth-code-send"}
     permission_classes = [IsAuthenticated]
 
     def get_throttles(self):
@@ -137,6 +138,7 @@ class ContactEmailListCreateView(APIView):
 
 
 class ContactEmailDetailView(APIView):
+    rate_limit_scope = {"GET": "member-read", "*": "member-write"}
     permission_classes = [IsAuthenticated]
 
     # noinspection PyMethodMayBeStatic
@@ -186,6 +188,7 @@ class ContactEmailDetailView(APIView):
 
 
 class ContactEmailRequestVerificationView(APIView):
+    rate_limit_scope = "auth-code-send"
     permission_classes = [IsAuthenticated]
     # Per-user cap: an anonymous (per-IP) throttle never fires for an
     # authenticated caller, leaving SES sends to an attacker-supplied address
@@ -217,6 +220,7 @@ class ContactEmailRequestVerificationView(APIView):
 
 
 class ContactEmailVerifyCodeView(APIView):
+    rate_limit_scope = "auth-code-verify"
     permission_classes = [IsAuthenticated]
     throttle_classes = [EmailCodeVerifyThrottle]
 
@@ -245,6 +249,7 @@ class ContactEmailVerifyCodeView(APIView):
 
 
 class ContactEmailMakePrimaryView(APIView):
+    rate_limit_scope = "member-write"
     permission_classes = [IsAuthenticated]
 
     # noinspection PyMethodMayBeStatic

@@ -19,6 +19,8 @@ class PublicKeyView(APIView):
     API endpoint to retrieve the current public key for password encryption.
     """
 
+    rate_limit_scope = "auth-challenge"
+
     authentication_classes = []
     permission_classes = [AllowAny]
 

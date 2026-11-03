@@ -9,6 +9,7 @@ import os
 import sys
 
 from ..base import *  # noqa: F403
+from ..base.integrations.request_limits import enabled_from_env
 
 # ---------------------------------------------------------------------------
 # Core overrides
@@ -88,6 +89,12 @@ if "test" in sys.argv:
     SEND_VERIFICATION_TEST_AUTOSOLVE = True
     SEND_VERIFICATION_COST = 10
     SEND_VERIFICATION_DESTINATION_COOLDOWN_SECONDS = 0
+
+# The request limiter is on for the dev server (as in production) and off for local test runs unless
+# REQUEST_RATE_LIMITS_ENABLED=true asks for it, like the test settings; dedicated tests switch it on with
+# override_settings.
+if "test" in sys.argv:
+    REQUEST_RATE_LIMITS_ENABLED = enabled_from_env(False)
 
 # Local test runs keep private keys in memory, never in the developer's src/data/ key files.
 if "test" in sys.argv:

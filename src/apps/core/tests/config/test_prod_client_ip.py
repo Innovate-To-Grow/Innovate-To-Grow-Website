@@ -99,6 +99,7 @@ class SmsRequestProbeView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@override_settings(REQUEST_RATE_LIMITS_ENABLED=False)  # the seeded rate, no policy rows (no database here)
 class ForgedForwardedForThrottleLimitTests(SimpleTestCase):
     """End to end through a real per-IP throttle: rotating a forged leading entry must not mint fresh buckets."""
 

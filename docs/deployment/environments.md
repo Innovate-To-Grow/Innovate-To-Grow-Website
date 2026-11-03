@@ -43,8 +43,9 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
 | `WEB_CONCURRENCY` | Uvicorn worker count | No (defaults to 2) |
-| `UVICORN_LIMIT_CONCURRENCY` | Uvicorn per-process concurrency cap | No (defaults to 20) |
-| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
+| `UVICORN_LIMIT_CONCURRENCY` | Requests one process serves at once; the request limiter shares these slots between priority tiers ([Request limits](#request-limits)) | No (defaults to 20) |
+| `UVICORN_CONNECTION_LIMIT` | Uvicorn's own `--limit-concurrency` (connections, idle keep-alives included; 503 beyond it), kept well above the request slots | No (defaults to 4 × `UVICORN_LIMIT_CONCURRENCY`) |
+| `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle and request-limit identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
 | `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | Enabled in production through `itg/backend/deploy-config`; code defaults to false |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
 
@@ -95,7 +96,7 @@ These Django settings (not environment variables) bound the certificate, the acc
 | `GRAPH_CERTIFICATE_CLOCK_SKEW_SECONDS` | `300` | same | How far in the future a certificate's validity may start and still count as valid |
 | `GRAPH_CERTIFICATE_CHECK_TIMEOUT_SECONDS` | `10` | same | Timeout of the Entra token test before an install or rollback |
 | `GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS`, `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS` | `60`, `14` | same | Expiry badge, worker warning and `verify_service_configs --strict` thresholds |
-| `GRAPH_APPROVED_APPLICATION_ROLES` | `("Mail.Send", "Mail.Read")` | same | Application permissions InfoSec approved; any other role in the token fails the access check (`core.E006` checks the list) |
+| `GRAPH_APPROVED_APPLICATION_ROLES` | `("Mail.Send", "Mail.ReadWrite", "Mail.Read")` | same | Application permissions approved for the Entra app: what OIT granted (`Mail.ReadWrite`, `Mail.Send`) plus `Mail.Read`, which `Mail.ReadWrite` includes. Any other role in the token fails the access check unless an exception reference is recorded (`core.E006` checks the list) |
 | `GRAPH_ACCESS_CHECK_TIMEOUT_SECONDS`, `GRAPH_ACCESS_CHECK_MIME_MAX_BYTES` | `10`, `4096` | same | Timeout of each access-check request, and how much raw MIME the `value` probe reads |
 | `GRAPH_ACCESS_CHECK_MAX_ROLES` | `64` | same | A token claiming more roles than this counts as unreadable, so the run is not a complete validation |
 | `GRAPH_REQUIRE_ACCESS_EVIDENCE` | `False` | `True` | Go-live gate: email can switch to Graph, or move to another Graph configuration once on it, only with a recorded, passing access check for that configuration's current certificate (`core.E007` checks it is a boolean) |
@@ -109,7 +110,7 @@ Every number above must be positive (`core.E005`), except the clock skew, which 
 |----------|---------|-----------------|
 | `GMAIL_API_OVERRIDES` | JSON object of `GMAIL_API` keys to replace, e.g. `{"request_timeout_seconds": 20}` | No (empty keeps the defaults) |
 
-The Gmail API provider's service account, key facts and account allow-list live in `GmailApiProviderConfig` and are managed on its admin page by superusers (`/admin/core/gmailapiproviderconfig/`); Mail → Notification Delivery only selects it. The service-account key is kept in the credential store (`CREDENTIAL_STORE_SECRETS["gmail_api_service_account_key"]`: the Secrets Manager secret `itg/backend/gmail-api/service-account-key` in production, created empty by `aws/cicd/identity-stack.json` and written by the task role), never in the database or the environment, and `seed_service_configs` never seeds it. The backend and worker need outbound HTTPS to `oauth2.googleapis.com` and `gmail.googleapis.com`; proxy variables are ignored.
+The Gmail API provider's service account, key facts and account allow-list live in `GmailApiProviderConfig` and are managed on its admin page by staff with the Core app (`/admin/core/gmailapiproviderconfig/`); Mail → Notification Delivery only selects it. The service-account key is kept in the credential store (`CREDENTIAL_STORE_SECRETS["gmail_api_service_account_key"]`: the Secrets Manager secret `itg/backend/gmail-api/service-account-key` in production, created empty by `aws/cicd/identity-stack.json` and written by the task role), never in the database or the environment, and `seed_service_configs` never seeds it. The backend and worker need outbound HTTPS to `oauth2.googleapis.com` and `gmail.googleapis.com`; proxy variables are ignored.
 
 `GMAIL_API` (`config/settings/base/integrations/gmail_api/`, each value with its source) holds: `request_timeout_seconds` (15), `max_response_bytes` (65536), `max_recipients_per_message` (500, Google's limit), `max_message_bytes` (25,000,000, Google's limit before encoding), `upload_max_bytes` (36,700,160, the upload endpoint's maximum), `assertion_lifetime_seconds` (300; Google allows at most 3600), `token_max_lifetime_seconds` (3600), `token_expiry_margin_seconds` (300), `key_max_input_bytes` (16384), `min_rsa_key_bits` (2048), `key_check_timeout_seconds` (10) and `access_check_timeout_seconds` (10). The recipients and size values seed the config's fields and are their ceilings. Only existing keys can be overridden, with whole numbers; an assertion lifetime above 3600, a token margin not below the token lifetime, or a size above the upload maximum raises `ImproperlyConfigured` when settings load.
 
@@ -131,6 +132,45 @@ The Gmail API provider's service account, key facts and account allow-list live 
 | `discovery` | `timeout_seconds` 5, `min_refresh_after_throttle_seconds` 60 |
 | `jobs` | `retry_base_seconds` 15, `retry_max_seconds` 3600, `default_max_attempts` 5, `stale_claim_seconds` 600 (also `run_background_worker --stale-minutes`), `defer_jitter_seconds` 1, `gate_cache_seconds` 1, `runner_refresh_recipients` 10 |
 | `signals.<adapter>` | The provider error codes, statuses and texts each adapter matches (graph, ses, smtp, imap, gmail_api, sms) |
+
+### Request limits
+
+| Variable | Purpose | Required in prod |
+|----------|---------|-----------------|
+| `REQUEST_RATE_LIMITS_ENABLED` | Turns the request limiter (`RequestRateLimitMiddleware`) on or off: `1`/`true`/`yes`/`on` or `0`/`false`/`no`/`off` | No (on in production and the local dev server; off in `config.settings.environments.test` / `unit`, local `manage.py test`, E2E and the CI container smoke unless this enables it) |
+| `REQUEST_RATE_LIMITS_OVERRIDES` | JSON object deep-merged into `REQUEST_RATE_LIMITS`, e.g. `{"scopes": {"public-read": {"global_cap": 20000}}}` or `{"exempt": {"<route name>": "reason"}}` | No (empty keeps the defaults) |
+| `CSP_REPORT_RATE_LIMIT` / `CSP_REPORT_RATE_WINDOW_SECONDS` | Seed of the `view-csp-report` policy (60 per 60 s). Read together as a rate: with Smart on, an existing row with another period gets the same rate per its own period | No |
+
+`REQUEST_RATE_LIMITS` (`config/settings/base/integrations/request_limits/`) holds every scope (tier, identity,
+baseline, period, Smart floor, fixed, enabled, per-caller ceiling, aggregate cap, per-source flood ceiling), the route table and exemptions, the
+tier shed / recovery factors and slot shares, the Smart controller thresholds, abuse escalation, the counter store and
+the fallback scopes. Each scope seeds a `RequestRateLimitPolicy` row staff edit on **Site Settings → Request Limits**.
+An override's scope `requests` (the Smart baseline), ceilings, routes, exemptions and runtime sections apply to a
+running site at once; its other scope keys only seed rows that do not exist yet. The merged result is validated at
+import (an unknown key, a share or count out of range, a baseline above its per-caller ceiling, a route to an unknown
+scope, a route both limited and exempt…), and a
+bad value raises `ImproperlyConfigured` before any process serves a request. Reference and runbook:
+[Request limits](../integrations/request-limits.md).
+
+| Section | Holds (defaults) |
+|---------|------------------|
+| `tiers.<p1/p2/p3>` | `decrease_factor` 0.85 / 0.7 / 0.5, `recovery_step` 0.15 / 0.10 / 0.10, `floor` 0.5 / 0.25 / 0.1, `admission_share` 0.9 / 0.7 / 0.5 (P0 has none: never shed, every slot) |
+| `controller` | `window_seconds` 15, `min_requests` 20, `latency_overload_ms` 1,500 / `latency_healthy_ms` 800, `error_overload_share` 0.05 / `error_healthy_share` 0.01, `inflight_overload_share` 0.75 / `inflight_healthy_share` 0.4, `recovery_hold_seconds` 30, `max_latency_samples` 500, `state_refresh_seconds` 10, `min_change_seconds` 15 (one factor step per scope per interval site-wide), `signal_tiers` p0–p2 and `signal_excluded_scopes` `legacy-proxy` (what the site-wide p95 and 5xx share read) |
+| `admission` | `concurrency_limit` (`UVICORN_LIMIT_CONCURRENCY`, 20), `p0_reserved_slots` 2, `retry_after_seconds` 2 |
+| `abuse` | `strike_window_seconds` 300, `strikes_to_block` 10, `block_base_seconds` 30 doubling to `block_max_seconds` 900, `level_memory_seconds` 3,600, `proof_promotions` 3 per solved proof within `proof_memory_seconds` 600 |
+| `store` | `mode` `auto`, `shared_backends` (the Redis backends), `heartbeat_seconds` 30, `process_expiry_seconds` 90, `process_prune_seconds` 86,400, `refusal_history_minutes` 15 |
+| `fallback` | `cli_prefix` `/admin-api/`, `admin_prefix` `/admin/` and the fallback scope names, `not_found`, `unproven` |
+
+**Counter modes.** With `REDIS_URL` set, the default cache is Redis and every limit is one atomic counter shared by all
+processes and tasks (**shared** mode). Without it (production today) each Uvicorn worker counts in its own in-process
+`throttle` cache (**per-process** mode) and enforces `limit ÷ live processes`, rounded up. The live process count
+comes from `RequestLimitProcess` heartbeat rows in PostgreSQL: each web process refreshes its row and recounts the
+live ones at most every 30 seconds, on the request path (no write per request, no background job); a row silent for
+90 seconds stops counting, and one silent for a day is deleted. So two tasks of two workers each allow a quarter of a
+limit per process, and the site-wide total stays close to the limit. A new process counts within 30 seconds; one that
+stopped is no longer counted after at most two minutes, so during a deploy the limits are briefly tighter, never
+looser. The admin page shows the active mode and the process count. A database error keeps the last count, and a
+cache error lets the request through.
 
 ### Cache
 
@@ -178,6 +218,11 @@ effort:
 - the CSP-report log limiter, the once-a-minute guard on the assistant
   budget-exhausted warning, and ordinary read caches (a miss only costs a query).
 
+The request limiter's counters are not here either: with no Redis they are in
+the in-process `throttle` alias, divided by the live process count
+([Request limits](#request-limits)), so they do **not** multiply with the task
+count.
+
 With more than one task, each of these limits is effectively multiplied by the
 task count (managed in AWS, not in this repository; see
 [Backend deployment](backend.md#ecs-service-scaling)). Setting `REDIS_URL`
@@ -200,6 +245,7 @@ total page-view cap:
 | `PublicAssistantActorThrottle` | `POST /assistant/chat/` | visitor token, member, or one shared legacy bucket |
 | `PhoneAuthCodeRequestThrottle` | SMS code requests, only while no SMS daily budget is configured | client address as DRF reads it: in production the `X-Forwarded-For` entry the ALB appended (`NUM_PROXIES`, see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)); with `NUM_PROXIES` unset (local, CI) the whole, forgeable header string. A speed bump only. While it applies, enforce mode sends no SMS and observe mode is bounded only per number, so configure `sms_daily_limit` |
 | `SesEventThrottle` | `POST /mail/ses/events/` | the same client address |
+| Request-limit counters, recent 429s and abuse blocks (per-process mode) | every limited request | a hash of the scope and bucket key (member, admin user, CLI token hash or client IP); `rl:<digest>` |
 
 While `BACKGROUND_JOBS_ENABLED` is off it also holds the one-hour marker that
 limits newsletter unsubscribe / resubscribe confirmation emails to one per
@@ -243,18 +289,38 @@ What that means for the limits:
 
 #### What still keys on the client IP
 
-Campus users share one public IP, so nothing a campus user does may be limited
-by it. Three limiters still use the client IP, each for a stated reason:
+Campus users share one public IP, so sign-in, verification codes and anything
+a signed-in person does are never limited by it. The request limiter keys an
+**anonymous** caller on the client IP (`apps.core.utils.client_ip` with
+`NUM_PROXIES`) only in scopes where one source flooding is the risk, each with a
+ceiling far above a whole campus's honest traffic: `public-read` 3,000/minute
+(12,000 site-wide), `public-write` 120, `public-background` 600, `telemetry` 300,
+`tokenized-link` 60, `legacy-proxy` 1,200, `public-heavy` 60 (the whole-catalog
+`/projects/past-all/`), `ai` 300 (a flood ceiling; the per-actor limits are the
+per-person ones), `not-found` 120 and `webhook-ses` 3,000. Under
+overload Smart lowers these for P3 first, never for P0. A signed-in caller of the
+same scopes counts as that person instead. Sign-in and code scopes
+(`auth-sign-in`, `auth-code-send`, `auth-code-verify`, `auth-email-link`,
+`auth-challenge`, `auth-token-refresh`) and the other scopes not keyed on the IP
+count an anonymous caller in their site-wide cap and against a per-source
+**flood ceiling** (`source_cap`: for example sign-in 240/minute, code send 120,
+code check 360, about a fifth of the site-wide cap), next to the destination
+cooldowns, lockout and challenge caps. The flood ceiling is what keeps one
+client from filling the site-wide cap and refusing everyone; a whole campus
+stays far below it. A 429 the view answers itself (a cooldown, a per-actor
+limit) is never an abuse strike against a shared IP.
+
+Three per-view limiters also use the client IP, each for a stated reason:
 
 | Limiter | Rate | Why it remains |
 |---------|------|----------------|
-| `SesEventThrottle` on `POST /mail/ses/events/` | 600/minute | Callers are AWS SNS delivery addresses, never users. Authenticity comes from the SNS signature and topic allowlist; the throttle only sheds junk |
+| `SesEventThrottle` / `SesRejectedThrottle` on `POST /mail/ses/events/` | 600/minute signed, 60/minute rejected | Callers are AWS SNS delivery addresses, never users. Authenticity comes from the SNS signature and topic allowlist; signed deliveries and rejected calls are counted apart, so junk never uses up the real deliveries' allowance |
 | CSP-report log limiter (`/csp-report/`) | 60 reports/minute | Detection only: the endpoint always answers `204` and only logging is skipped |
 | `PhoneAuthCodeRequestThrottle` (anonymous SMS code requests) | 5/minute | Fallback only, attached while **no** SMS daily budget is configured. Setting `sms_daily_limit` removes it with no deploy ([Send verification](send-verification.md#client-ip-policy-and-residual-risks)) |
 
-`EmailCodeVerifyThrottle` is also IP-based but is attached only to authenticated
-views, where an anonymous throttle never applies. The client IP is otherwise
-only recorded, never limited on: `PageView.ip_address`, the assistant log's
+Their rates are request-limit policies (`view-ses-events`, `view-ses-rejected`,
+`view-csp-report`, `view-code-send-sms-ip`), editable in the admin. Apart from these and the
+request limiter's anonymous flood ceilings above, the client IP is only recorded, never limited on: `PageView.ip_address`, the assistant log's
 `ip_hash` and the CLI audit rows. The two anonymous endpoints with no
 IP-independent bound on request count, `POST /analytics/pageview/` and
 `POST /assistant/chat/`, get an off-campus-only rate rule at the edge
@@ -317,7 +383,7 @@ These integrations read credentials from Django admin at runtime (Site Settings,
 | `MicrosoftGraphProviderConfig` | Entra tenant ID, client ID, optional sender mailbox, mailbox scope, access-check deny mailbox, InfoSec exception reference |
 | `MicrosoftGraphCertificate` | Installed Graph certificates (current, previous for rollback, removed): public data, thumbprints, validity, and the pinned credential-store version of the private key |
 | `MicrosoftGraphAccessCheck` | Recorded Graph access checks (probe results, token roles, verdict): the evidence the production go-live gate reads |
-| `GmailApiProviderConfig`, `GmailApiSubject` | Gmail API key facts and the pinned credential-store version of the service-account key (never the key), the account allow-list and its access-check evidence; superusers only |
+| `GmailApiProviderConfig`, `GmailApiSubject` | Gmail API key facts and the pinned credential-store version of the service-account key (never the key), the account allow-list and its access-check evidence; Core app |
 | `DeliveryRatePolicy` | Per delivery channel (Mail → Delivery Rates): the Smart rate switch, the manual rate and the provider limits, seeded from `DELIVERY_RATES`; no credentials |
 | `GoogleCredentialConfig` | Google service-account JSON for Sheets |
 
@@ -337,6 +403,7 @@ Before removing legacy env vars from a deployed environment, run `python manage.
 |---------|-----|-----|------|
 | Database | SQLite | PostgreSQL 16 | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis if `REDIS_URL` is set, else per-container file cache (production today); plus the in-process `throttle` alias in every environment |
+| Request limiter | On (dev server); off for `manage.py test` | Off (unit tests, E2E, container smoke) | On; shared counters with `REDIS_URL`, else per process ÷ heartbeat count |
 | Email | Console (stdout) | Console (stdout) | AWS SES / SMTP / Microsoft Graph |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Password hashers | Plain text OK | Plain text OK | Argon2/bcrypt required |

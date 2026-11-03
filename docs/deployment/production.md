@@ -86,7 +86,7 @@ The loader validates setting names against `aws/cicd/deploy-config-keys.json`
 and rejects multiline values before exporting them to the job. Application
 passwords and signing keys remain separate secrets injected directly by ECS.
 
-Deployment requires no GitHub Actions secrets or variables. CI runner selection may retain the non-secret `AWS_RUNNERS_ENABLED` bootstrap switch. Public OIDC role ARNs
+Deployment requires no GitHub Actions secrets. Two non-secret repository variables remain: `AWS_RUNNERS_ENABLED` selects CI runners, and `DEPLOY_ARTIFACTS_ENABLED` must be `true` whenever `Deploy Production` is enabled, because CI publishes the backend release image only while it is set (see [CI/CD: Pausing and resuming deployments](ci-cd.md#pausing-and-resuming-deployments)). Public OIDC role ARNs
 and the AWS region are bootstrap identifiers in workflow code; they cannot be
 fetched before authentication. CI's public API URL is a checked-in test/build
 default, while production frontend deployment reads its URL from AWS.
@@ -130,8 +130,8 @@ test recipient has been explicitly requested.
 
 ### Microsoft Graph certificate key
 
-The Microsoft Graph email provider signs with a private key that a superuser
-installs in Django admin. The key is stored in one Secrets Manager secret,
+The Microsoft Graph email provider signs with a private key that an admin with the
+Core app installs in Django admin. The key is stored in one Secrets Manager secret,
 `itg/backend/microsoft-graph/certificate-key`, outside the
 `itg/backend/aws-credentials/` namespace. Each install adds a version; the
 database keeps only the certificate's public data, the secret ARN and the pinned
@@ -179,8 +179,8 @@ itself.
 
 ### Gmail API service-account key
 
-The Gmail API email provider signs with a Google service-account key that a
-superuser installs in Django admin. It is stored in its own Secrets Manager
+The Gmail API email provider signs with a Google service-account key that an
+admin with the Core app installs in Django admin. It is stored in its own Secrets Manager
 secret, `itg/backend/gmail-api/service-account-key`, with exactly the same
 controls as the Graph key: `GmailApiKeySecret` (created empty, `Retain` on
 deletion and replacement), `ApplicationGmailApiKey` (the task role may read,
@@ -238,14 +238,12 @@ paces every email, SMS and inbox session. Before or with the release:
 
 ### GitHub feature prerequisites
 
-Required reviewers on private repositories depend on the GitHub plan. Free, Pro,
-and Team plans offer this protection only for public repositories; check the
+The repository is public, so environment required reviewers, rulesets, the merge
+queue, and code-scanning uploads (CodeQL, Semgrep, Trivy) are all available on the
+organization's Free plan. If the repository becomes private again, environment
+required reviewers and the merge queue need GitHub Enterprise Cloud (Free, Pro and
+Team plans offer them only on public repositories), rulesets need Team or higher,
+and code-scanning uploads need GitHub Code Security; check the
 [current environment requirements](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments)
-before relying on a release pause. Verify an actual pending review in a test
-release, including after repository visibility or plan changes.
-
-CodeQL result uploads for private repositories also require GitHub Code Security
-to be enabled. An Advanced Security/Code Security feature error is an account or
-repository configuration issue, not a failed application test. Resolve the
-[feature prerequisite](https://docs.github.com/en/code-security/reference/code-scanning/troubleshoot-analysis-errors/private-repository-enablement)
-before claiming code-scanning uploads work.
+and the [code-scanning prerequisite](https://docs.github.com/en/code-security/reference/code-scanning/troubleshoot-analysis-errors/private-repository-enablement).
+After any visibility or plan change, verify an actual pending review in a test release.

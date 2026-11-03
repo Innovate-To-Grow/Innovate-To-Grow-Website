@@ -2,11 +2,11 @@
 
 from unittest.mock import patch
 
-from django.conf import settings
 from django.test import override_settings
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.core.tests.request_limits.helpers import view_limit
 from apps.projects.models import PastProjectShare
 from apps.projects.serializers.past_project_share import (
     PastProjectShareListSerializer,
@@ -251,15 +251,7 @@ class PastProjectShareManageTests(PastProjectShareTestCase):
         share.refresh_from_db()
         self.assertEqual(share.note, "")
 
-    @override_settings(
-        REST_FRAMEWORK={
-            **settings.REST_FRAMEWORK,
-            "DEFAULT_THROTTLE_RATES": {
-                **settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"],
-                "past_project_share": "1/minute",
-            },
-        }
-    )
+    @view_limit(**{"view-past-project-share": (1, 60)})
     def test_create_share_is_throttled_for_authenticated_user(self):
         first = self.client.post("/projects/past-shares/", sample_payload(), format="json")
         second = self.client.post(
@@ -269,15 +261,7 @@ class PastProjectShareManageTests(PastProjectShareTestCase):
         self.assertEqual(first.status_code, 201)
         self.assertEqual(second.status_code, 429)
 
-    @override_settings(
-        REST_FRAMEWORK={
-            **settings.REST_FRAMEWORK,
-            "DEFAULT_THROTTLE_RATES": {
-                **settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"],
-                "past_project_share": "1/minute",
-            },
-        }
-    )
+    @view_limit(**{"view-past-project-share": (1, 60)})
     def test_create_share_throttle_is_isolated_per_user(self):
         other = Member.objects.create_user(password="OtherPass123!", is_active=True)
         other_client = APIClient()

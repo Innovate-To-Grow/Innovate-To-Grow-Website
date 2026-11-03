@@ -15,6 +15,7 @@ def _is_cli_denied(model, *, write):
 
 
 class ModelListView(AdminAPIView):
+    rate_limit_scope = "cli"
     throttle_classes = [CliReadThrottle]
 
     def get(self, request):
@@ -38,6 +39,7 @@ class ModelListView(AdminAPIView):
 
 
 class ModelSchemaView(AdminAPIView):
+    rate_limit_scope = "cli"
     throttle_classes = [CliReadThrottle]
 
     def get(self, request, app_label, model_name):
