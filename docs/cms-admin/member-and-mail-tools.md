@@ -270,6 +270,23 @@ explained in the
 Delivery Dashboard under **Delivery Operations** charts SES CloudWatch metrics
 only and shows a notice while another provider is active.
 
+### Sent campaigns are locked; duplicate to send again
+
+Once a campaign leaves **Draft** (queued, sending, partially sent, sent or failed) its subject, content, audience
+and login-link validity are read-only: the row is the record of what went out, its recipient logs and login links
+belong to that send, and its counters are aggregated from those logs. A banner on the change page says so.
+**Reusable login links** stays editable because it is read at login time and works as a kill switch for links
+already sent. The **Send Campaign** and **Import Gmail HTML** actions are not offered on a locked campaign.
+
+To send the email again, to send a changed version, or to send it to more people, use **Duplicate campaign** (a
+detail action; **Duplicate as new draft** does the same from the list). It asks for a name and an audience, then
+creates a new draft with the same subject, content and settings and either the same audience or an empty **Manual
+Emails** list for further addresses, and opens it. Nothing is sent until that draft is previewed and sent.
+Additional recipients are a new campaign on purpose: every send issues its own login links and recipient logs, and
+one campaign cannot send to the same address twice. Addresses that already received the original are not excluded
+automatically; list only the new addresses, or add an **Exclude audience** when the new list overlaps a member
+group (`services/campaign/duplicate.py`).
+
 ### Delivery rates
 
 **Mail → Delivery Operations → Delivery Rates** (`/admin/mail/settings/rates/`, staff with the Mail app) sets how
