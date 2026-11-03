@@ -15,7 +15,7 @@ from ..exceptions import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
-from ..mime import build_mime_message
+from ..mime import build_mime_message, transport_bytes
 from . import auth, json_message, transport
 from .errors import graph_error_code, request_id, send_mail_error
 
@@ -32,7 +32,8 @@ class GraphProvider:
 
     A message is sent as base64 MIME, which keeps every header but always leaves a copy in the sender mailbox's Sent
     Items. A message marked ``keep_sent_copy=False`` (one that carries a credential) is sent as JSON with
-    ``saveToSentItems`` false instead; see ``json_message`` for what that form cannot carry.
+    ``saveToSentItems`` false instead; see ``json_message`` for what that form cannot carry. The MIME form uses
+    CRLF line endings (``mime.transport_bytes``): Exchange mis-decodes quoted-printable soft breaks at a bare LF.
 
     The caller (the registry) has already checked that *mailbox* and the From address are inside the configured
     mailbox scope with send permission; this class only re-checks that the values are well formed.
@@ -124,7 +125,7 @@ class GraphProvider:
             raise PermanentEmailDeliveryError("Microsoft Graph does not support Bcc recipients.")
         try:
             mime = build_mime_message(message, from_email=self.from_email, from_name=self.from_name)
-            return str(mime["Message-ID"]), base64.b64encode(mime.as_bytes()), MIME_CONTENT_TYPE
+            return str(mime["Message-ID"]), base64.b64encode(transport_bytes(mime)), MIME_CONTENT_TYPE
         except (ValueError, UnicodeError) as exc:
             raise PermanentEmailDeliveryError("The email could not be composed for Microsoft Graph.") from exc
 

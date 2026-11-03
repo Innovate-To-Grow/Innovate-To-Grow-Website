@@ -144,7 +144,7 @@ campaigns, inbox replies, and the **Send Test Email** action (which tests the me
 | Field | Purpose |
 |-------|---------|
 | `subject` | Email subject line |
-| `body` | HTML body (CKEditor 5) |
+| `body` | The message. **Email format** on the form is not a model field: *HTML* stores the body behind the `<!-- raw-html -->` marker line (`services/campaign/preview.py`, `HTML_MARKER`) and sends it as written in the CodeMirror editor; *Plain Text* stores it bare and sends it escaped, with line breaks and auto-linked URLs. The form strips the marker for editing, drops any marker pasted into the editor, and stores exactly one on save; the read-only view of a sent campaign names the format and its copy button copies the body without the marker |
 | `audience_type` | Target audience selector |
 | `member_email_scope` | **Send to**: each member's primary contact email only, or every contact email (member-based audiences) |
 | `include_unsubscribe_header` | **Include one-click unsubscribe** (default on): the footer unsubscribe link and the RFC 8058 `List-Unsubscribe` headers |
