@@ -10,7 +10,7 @@ from unfold.widgets import (
 from apps.event.models import Ticket
 from apps.mail.models import EmailCampaign
 from apps.mail.models.campaign import ALL_AUDIENCE_CHOICES, EXCLUDE_AUDIENCE_CHOICES
-from apps.mail.services.campaign.preview import HTML_MARKER
+from apps.mail.services.campaign.preview import HTML_MARKER, split_html_marker
 from apps.mail.utils.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
 
 from .widgets import BODY_FORMAT_CHOICES, ManualEmailsWidget, PersonalizationTextInput, TicketSelectWidget
@@ -34,10 +34,11 @@ class EmailCampaignForm(forms.ModelForm):
         label="Exclude ticket type",
         widget=TicketSelectWidget,
     )
+    # Not a model field: the chosen format is stored as the HTML_MARKER prefix of ``body`` (see __init__/save).
+    # Required, so a submission that somehow carries no choice cannot silently turn an HTML body into plain text.
     body_format = forms.ChoiceField(
         choices=BODY_FORMAT_CHOICES,
         initial="plain",
-        required=False,
         label="Email format",
         widget=UnfoldAdminRadioSelectWidget,
     )
@@ -87,10 +88,11 @@ class EmailCampaignForm(forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.exclude_audience_type == "ticket_type":
             self._restore_exclude_ticket_initial()
 
+        # The editor shows the body without its storage marker and the format radio that the marker stands for.
         body_val = self.initial.get("body") or (self.instance.body if self.instance and self.instance.pk else "")
-        if body_val.startswith(HTML_MARKER):
-            self.initial["body_format"] = "html"
-            self.initial["body"] = body_val[len(HTML_MARKER) :]
+        is_html, body_text = split_html_marker(body_val)
+        self.initial["body_format"] = "html" if is_html else "plain"
+        self.initial["body"] = body_text
 
     def clean(self):
         cleaned = super().clean()
@@ -118,8 +120,11 @@ class EmailCampaignForm(forms.ModelForm):
         else:
             instance.exclude_ticket_id = (self.cleaned_data.get("exclude_ticket_id") or "").strip()
 
-        if self.cleaned_data.get("body_format") == "html" and not instance.body.startswith(HTML_MARKER):
-            instance.body = HTML_MARKER + instance.body
+        # The radio is the only source of the format: a marker pasted into the editor (old "Copy HTML" output
+        # carried it) is dropped, line endings from the browser's textarea are normalised, and an HTML body is
+        # stored behind exactly one marker.
+        body_text = split_html_marker(instance.body)[1].replace("\r\n", "\n").replace("\r", "\n")
+        instance.body = HTML_MARKER + body_text if self.cleaned_data.get("body_format") == "html" else body_text
 
         if commit:
             instance.save()

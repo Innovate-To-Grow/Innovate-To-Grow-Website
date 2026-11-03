@@ -1,0 +1,65 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block content %}
+<div style="max-width:560px">
+    <div class="mb-6 rounded-default border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+        <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 !text-[22px] mt-0.5">content_copy</span>
+            <div class="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                <p class="text-sm font-semibold">A copy is a new, editable draft.</p>
+                <p>
+                    It takes the subject, content, login-link settings and audience of “{{ campaign.name }}”.
+                    Nothing is sent until you preview and send the draft.
+                    {% if campaign.status != "draft" %}
+                    The original stays as the record of what went out ({{ campaign.get_status_display|lower }}{% if campaign.sent_at %} on {{ campaign.sent_at|date:"DATETIME_FORMAT" }}{% endif %}).
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-6 text-sm space-y-1">
+        <p><span class="text-base-400">Original:</span> <strong>{{ campaign.name }}</strong></p>
+        <p><span class="text-base-400">Subject:</span> {{ campaign.subject }}</p>
+        <p><span class="text-base-400">Audience:</span> {{ campaign.get_audience_type_display }}{% if campaign.event %} &mdash; {{ campaign.event.name }}{% endif %}</p>
+    </div>
+
+    <form method="post" id="duplicate-campaign-form">
+        {% csrf_token %}
+        <div class="mb-4">
+            <label for="duplicate-name" class="block text-sm font-medium text-base-700 dark:text-base-300 mb-2">
+                Name of the new draft
+            </label>
+            <input type="text" id="duplicate-name" name="name" value="{{ suggested_name }}" maxlength="{{ name_max_length }}" autocomplete="off"
+                   class="w-full border border-base-300 dark:border-base-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-base-800 text-base-900 dark:text-base-100 focus:outline-none focus:ring-2 focus:ring-primary-500">
+        </div>
+        <fieldset class="mb-6">
+            <legend class="block text-sm font-medium text-base-700 dark:text-base-300 mb-2">Audience of the new draft</legend>
+            <label class="flex items-start gap-2 text-sm mb-2">
+                <input type="radio" name="audience" value="same" checked class="mt-1">
+                <span><strong>Same audience</strong> as the original: to send the email again, or after changing it.</span>
+            </label>
+            <label class="flex items-start gap-2 text-sm">
+                <input type="radio" name="audience" value="manual" class="mt-1">
+                <span><strong>New, empty Manual Emails list</strong>: to send the same email to more people. Enter their addresses in the draft; addresses that already received the original are not excluded automatically.</span>
+            </label>
+        </fieldset>
+        <div class="flex gap-3">
+            <button type="submit" id="duplicate-campaign-btn"
+                    class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">content_copy</span>
+                Create draft copy
+            </button>
+            <a href="{{ cancel_url }}"
+               class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 dark:hover:bg-base-900 inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">arrow_back</span>
+                Cancel
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

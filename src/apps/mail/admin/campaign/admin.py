@@ -10,6 +10,7 @@ from .display import CampaignDisplayMixin
 from .forms import EmailCampaignForm
 from .inlines import AudienceTypeFilter
 from .views import (
+    CampaignDuplicateMixin,
     CampaignGmailMixin,
     CampaignPreviewMixin,
     CampaignSendMixin,
@@ -22,6 +23,7 @@ from .views import (
 class EmailCampaignAdmin(
     CampaignUrlsMixin,
     CampaignPreviewMixin,
+    CampaignDuplicateMixin,
     CampaignGmailMixin,
     CampaignSendMixin,
     CampaignStatusMixin,
@@ -45,10 +47,12 @@ class EmailCampaignAdmin(
     list_filter = ("status", AudienceTypeFilter)
     search_fields = ("subject",)
     ordering = ("-created_at",)
-    actions = ["revoke_login_links_action", "resume_paused_recipients_action"]
+    actions = ["duplicate_campaigns_action", "revoke_login_links_action", "resume_paused_recipients_action"]
+    # Import and Send are draft-only; CampaignDuplicateMixin.get_actions_detail leaves them off a locked campaign.
     actions_detail = [
         "preview_email_action",
         "preview_recipients_action",
+        "duplicate_campaign_action",
         "import_gmail_html_action",
         "send_campaign_action",
     ]

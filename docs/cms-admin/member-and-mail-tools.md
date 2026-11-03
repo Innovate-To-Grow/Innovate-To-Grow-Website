@@ -144,7 +144,7 @@ campaigns, inbox replies, and the **Send Test Email** action (which tests the me
 | Field | Purpose |
 |-------|---------|
 | `subject` | Email subject line |
-| `body` | HTML body (CKEditor 5) |
+| `body` | The message. **Email format** on the form is not a model field: *HTML* stores the body behind the `<!-- raw-html -->` marker line (`services/campaign/preview.py`, `HTML_MARKER`) and sends it as written in the CodeMirror editor; *Plain Text* stores it bare and sends it escaped, with line breaks and auto-linked URLs. The form strips the marker for editing, drops any marker pasted into the editor, and stores exactly one on save; the read-only view of a sent campaign names the format and its copy button copies the body without the marker |
 | `audience_type` | Target audience selector |
 | `member_email_scope` | **Send to**: each member's primary contact email only, or every contact email (member-based audiences) |
 | `include_unsubscribe_header` | **Include one-click unsubscribe** (default on): the footer unsubscribe link and the RFC 8058 `List-Unsubscribe` headers |
@@ -269,6 +269,23 @@ explained in the
 [error reference](../integrations/microsoft-graph-email.md#error-reference). The
 Delivery Dashboard under **Delivery Operations** charts SES CloudWatch metrics
 only and shows a notice while another provider is active.
+
+### Sent campaigns are locked; duplicate to send again
+
+Once a campaign leaves **Draft** (queued, sending, partially sent, sent or failed) its subject, content, audience
+and login-link validity are read-only: the row is the record of what went out, its recipient logs and login links
+belong to that send, and its counters are aggregated from those logs. A banner on the change page says so.
+**Reusable login links** stays editable because it is read at login time and works as a kill switch for links
+already sent. The **Send Campaign** and **Import Gmail HTML** actions are not offered on a locked campaign.
+
+To send the email again, to send a changed version, or to send it to more people, use **Duplicate campaign** (a
+detail action; **Duplicate as new draft** does the same from the list). It asks for a name and an audience, then
+creates a new draft with the same subject, content and settings and either the same audience or an empty **Manual
+Emails** list for further addresses, and opens it. Nothing is sent until that draft is previewed and sent.
+Additional recipients are a new campaign on purpose: every send issues its own login links and recipient logs, and
+one campaign cannot send to the same address twice. Addresses that already received the original are not excluded
+automatically; list only the new addresses, or add an **Exclude audience** when the new list overlaps a member
+group (`services/campaign/duplicate.py`).
 
 ### Delivery rates
 

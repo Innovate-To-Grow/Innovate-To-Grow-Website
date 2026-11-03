@@ -74,7 +74,7 @@ class RequestShapeTests(GmailProviderTestCase):
         self.assertEqual((send_call["host"], send_call["path"]), SEND)
         self.assertEqual(send_call["headers"]["Content-Type"], "message/rfc822")
         self.assertEqual(send_call["headers"]["Authorization"], f"Bearer {TOKEN}")
-        self.assertEqual(send_call["body"], built[0].as_bytes())
+        self.assertEqual(send_call["body"], compose.transport_bytes(built[0]))
         parsed = email.message_from_bytes(send_call["body"])
         self.assertEqual(parsed["From"], f"Innovate to Grow <{SUBJECT}>")
         self.assertEqual((result.provider, result.message_id), ("gmail", parsed["Message-ID"]))

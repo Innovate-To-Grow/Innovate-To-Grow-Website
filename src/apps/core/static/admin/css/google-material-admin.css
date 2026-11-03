@@ -189,11 +189,14 @@ textarea:focus {
     border-radius: var(--md-sys-shape-corner-large) !important;
 }
 
+/* Panels and cards. Unfold's radio and checkbox inputs carry the same bg-white / dark:bg-base-900 classes
+   and paint their checked state with checked:bg-primary-600, so they are left out: with the !important
+   surface colour on them a selected radio looked exactly like an unselected one. */
 #tabs-items,
 .module,
 .card,
-[class*="bg-white"],
-.dark [class*="dark:bg-base-900"] {
+[class*="bg-white"]:not([type="radio"]):not([type="checkbox"]),
+.dark [class*="dark:bg-base-900"]:not([type="radio"]):not([type="checkbox"]) {
     background-color: var(--md-sys-color-surface-container-lowest) !important;
     border-color: var(--md-sys-color-outline-variant) !important;
 }
@@ -201,8 +204,8 @@ textarea:focus {
 .dark #tabs-items,
 .dark .module,
 .dark .card,
-.dark [class*="bg-white"],
-.dark [class*="dark:bg-base-900"] {
+.dark [class*="bg-white"]:not([type="radio"]):not([type="checkbox"]),
+.dark [class*="dark:bg-base-900"]:not([type="radio"]):not([type="checkbox"]) {
     background-color: var(--md-sys-color-surface-container) !important;
     border-color: var(--md-sys-color-outline-variant) !important;
 }

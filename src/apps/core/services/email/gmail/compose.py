@@ -4,7 +4,7 @@ from apps.core.models.base.service_credentials.gmail_api import GmailApiProvider
 
 from ..contracts import EmailMessage
 from ..exceptions import PermanentEmailDeliveryError
-from ..mime import build_mime_message
+from ..mime import build_mime_message, transport_bytes
 
 # Headers that would name another sender than the impersonated account; no feature sets them.
 _SENDER_HEADERS = ("sender", "return-path")
@@ -41,7 +41,7 @@ def encode(
         raise PermanentEmailDeliveryError("The email has too many recipients for the Gmail API.")
     try:
         mime = build_mime_message(message, from_email=from_email, from_name=from_name)
-        payload = mime.as_bytes()
+        payload = transport_bytes(mime)
     except (ValueError, UnicodeError) as exc:
         raise PermanentEmailDeliveryError("The email could not be composed for the Gmail API.") from exc
     if len(payload) > max_message_bytes:
