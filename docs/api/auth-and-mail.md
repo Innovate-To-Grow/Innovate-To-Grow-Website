@@ -573,7 +573,7 @@ Updates profile fields. JSON supports `first_name`, `last_name`, `middle_name`, 
 ## Contact emails
 
 Every contact email has its own `subscribe` flag, and that flag alone decides whether the address receives newsletters
-(the *All Email Subscribers* campaign audience; see
+(the *All subscribers* campaign audience; see
 [Member & Mail Tools](../cms-admin/member-and-mail-tools.md#audience-types)). There is no member-level subscription
 setting: the account page and the Subscribe page edit these per-address flags, and the
 [one-click unsubscribe link](#one-click-unsubscribe-and-resubscribe) turns off all of them at once.

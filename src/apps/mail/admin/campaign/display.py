@@ -19,12 +19,12 @@ class CampaignDisplayMixin:
     @display(description="Audience", label=True)
     def audience_badge(self, obj):
         badge_colors = {
-            "subscribers": ("Subscribers", "info"),
+            "subscribers": ("All subscribers", "info"),
             "event_registrants": ("Event", "warning"),
             "ticket_type": ("Ticket Type", "warning"),
             "checked_in": ("Checked In", "success"),
             "not_checked_in": ("No-Shows", "danger"),
-            "all_members": ("All Members", "info"),
+            "all_members": ("All active members", "info"),
             "staff": ("Staff", "info"),
             "selected_members": ("Selected", "info"),
             "manual": ("Manual", "info"),

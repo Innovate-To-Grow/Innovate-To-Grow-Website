@@ -156,21 +156,23 @@ campaigns, inbox replies, and the **Send Test Email** action (which tests the me
 
 | Type | Recipients |
 |------|-----------|
-| `subscribers` | All Email Subscribers: active members, at their subscribed addresses only (below) |
+| `subscribers` | **All subscribers (subscribed email addresses only)**: active members, at their subscribed addresses only (below) |
 | `event_registrants` | Members registered for a specific event |
 | `selected_members` | Manually selected members (ManyToMany) |
 | `manual` | Comma-separated email addresses |
 | `ticket_type` | Registrants with a specific ticket type |
 | `checked_in` | Registrants who checked in to an event |
 | `not_checked_in` | Registrants who did not check in |
-| `all_members` | All active members |
-| `staff` | Staff users only |
+| `all_members` | **All active members (subscribed or not)**: every active member, including people who unsubscribed, at the primary address (members without one get nothing) or, with **Send to: all emails**, at every saved address |
+| `staff` | Staff users only (active members marked as staff, addressed like All active members) |
 
 Audience resolution is handled by `src/apps/mail/services/audience/` (`resolvers.py`). The recipient list is resolved
 once, when sending starts (with the background worker, when the campaign is queued), so an address unsubscribed after
-that still receives that campaign.
+that still receives that campaign. The labels of the two member-wide audiences name their one difference, the
+`subscribe` flag, and the **Audience type** help text on the campaign form spells out who each one reaches
+(`models/campaign.py`, `AUDIENCE_HELP_TEXT`).
 
-**All Email Subscribers.** The per-address `subscribe` flag is authoritative. Only members with `is_active` set are
+**All subscribers.** The per-address `subscribe` flag is authoritative. Only members with `is_active` set are
 included, and each is mailed only at addresses whose own flag is on:
 
 - **Send to: primary only** — the primary address, and only if it is subscribed. A subscribed secondary address
@@ -181,7 +183,7 @@ included, and each is mailed only at addresses whose own flag is on:
 otherwise, so requiring verification would drop most of the mailing list. The one-click unsubscribe link turns off
 every address of the member at once (see
 [Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe)); members change single addresses on
-`/account`. When **Exclude audience** is All Email Subscribers, the same rules build the exclusion list with the
+`/account`. When **Exclude audience** is All subscribers, the same rules build the exclusion list with the
 exclude **Send to** setting. The campaign form's **Send to** help text states these rules too.
 
 **Change from the old primary-only rule.** The audience used to take every member whose primary address was
@@ -194,8 +196,8 @@ and grows by members who have no primary address at all, a legacy gap: they are 
 addresses with **Send to: all emails**. An address an event registration adds to an account is subscribed only while
 another address of the member is.
 
-**Open product question: the other audiences ignore the flag.** Only All Email Subscribers reads `subscribe`. All
-Active Members, Staff Members and Selected Members mail the primary (or every) address of each member, and the
+**Open product question: the other audiences ignore the flag.** Only All subscribers reads `subscribe`. All
+active members, Staff Members and Selected Members mail the primary (or every) address of each member, and the
 event-based audiences mail the attendee or primary address, whether or not it is subscribed. Those emails still carry
 the unsubscribe link and header when **Include one-click unsubscribe** is on, so a person who unsubscribed keeps
 receiving them, and clicking that link does not stop them. The unsubscribe pages and confirmation email say only
@@ -281,7 +283,11 @@ already sent. The **Send Campaign** and **Import Gmail HTML** actions are not of
 To send the email again, to send a changed version, or to send it to more people, use **Duplicate campaign** (a
 detail action; **Duplicate as new draft** does the same from the list). It asks for a name and an audience, then
 creates a new draft with the same subject, content and settings and either the same audience or an empty **Manual
-Emails** list for further addresses, and opens it. Nothing is sent until that draft is previewed and sent.
+Emails** list for further addresses, and opens it. The suggested name is numbered the way a file system numbers
+copies: the original's name with the lowest number no campaign uses, `Spring invitation (1)`, then `(2)`; any
+leading `Copy of` (the former naming, in any letter case) and a trailing `(N)` come off first, so a copy of
+`Copy of Spring invitation (2)` is `Spring invitation (3)` when `(1)` and `(2)` exist. Names are compared ignoring
+letter case. Nothing is sent until that draft is previewed and sent.
 Additional recipients are a new campaign on purpose: every send issues its own login links and recipient logs, and
 one campaign cannot send to the same address twice. Addresses that already received the original are not excluded
 automatically; list only the new addresses, or add an **Exclude audience** when the new list overlaps a member

@@ -42,9 +42,17 @@ class CampaignDuplicateViewTests(TestCase):
         response = self.client.get(self.duplicate_url(campaign))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'value="Copy of Spring invitation"')
+        self.assertContains(response, 'value="Spring invitation (1)"')
         self.assertContains(response, "record of what went out (sent on")
         self.assertContains(response, "Manual Emails")
+
+    def test_suggested_name_takes_the_next_free_number_whichever_copy_is_duplicated(self):
+        make_campaign(name="Spring invitation (1)")
+        campaign = make_campaign(name="Copy of Spring invitation (3)")
+
+        response = self.client.get(self.duplicate_url(campaign))
+
+        self.assertContains(response, 'value="Spring invitation (2)"')
 
     def test_post_creates_a_draft_with_the_same_audience_and_opens_it(self):
         campaign = make_campaign()
@@ -65,7 +73,7 @@ class CampaignDuplicateViewTests(TestCase):
 
         copy = EmailCampaign.objects.exclude(pk=campaign.pk).get()
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(copy.name, "Copy of Spring invitation")
+        self.assertEqual(copy.name, "Spring invitation (1)")
         self.assertEqual((copy.audience_type, copy.manual_emails), ("manual", ""))
 
     def test_unknown_audience_choice_keeps_the_same_audience(self):
@@ -91,7 +99,7 @@ class CampaignDuplicateViewTests(TestCase):
 
         self.assertEqual(response.status_code, 302)
         names = set(EmailCampaign.objects.filter(status="draft").values_list("name", flat=True))
-        self.assertEqual(names, {"Second", "Copy of First", "Copy of Second"})
+        self.assertEqual(names, {"Second", "First (1)", "Second (1)"})
 
     def test_list_action_opens_the_copy_when_one_campaign_is_selected(self):
         campaign = make_campaign()
