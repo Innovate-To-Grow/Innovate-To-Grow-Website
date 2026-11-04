@@ -1,12 +1,21 @@
 """Campaign send status views."""
 
+import logging
+
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
+from django.db.models import Count
 from django.http import JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
+from apps.core.services.delivery_rates import Family, active_target, channel_status
 from apps.mail.models import EmailCampaign, RecipientLog
+
+logger = logging.getLogger(__name__)
+
+# Recipients still to be sent: not started, being sent, or waiting for the slot the delivery limits give them.
+QUEUED_STATUSES = ("pending", "processing", "retry")
 
 
 class CampaignStatusMixin:
@@ -63,11 +72,18 @@ class CampaignStatusMixin:
             .values_list("sent_at", flat=True)
             .first()
         )
+        counts = _status_counts(obj)
         payload = {
             "status": obj.status,
             "total": obj.total_recipients,
             "sent": obj.sent_count,
             "failed": obj.failed_count,
+            # Still to go: queued for their turn (``retrying``: held back by the delivery limits, sent again at
+            # their slot) or paused by a longer hold, which "Resume paused recipients" sends later.
+            "queued": sum(counts.get(status, 0) for status in QUEUED_STATUSES),
+            "retrying": counts.get("retry", 0),
+            "paused": counts.get("paused", 0),
+            "delivery": _delivery_status(),
             "error_message": _short_error(obj.error_message),
             "started_at": first_sent_at.isoformat() if first_sent_at else None,
             "recent_logs": recent_logs,
@@ -75,6 +91,30 @@ class CampaignStatusMixin:
         }
         cache.set(status_cache_key, payload, 2)
         return JsonResponse(payload)
+
+
+def _status_counts(campaign) -> dict:
+    rows = RecipientLog.objects.filter(campaign=campaign).values("status").annotate(count=Count("id"))
+    return {row["status"]: row["count"] for row in rows}
+
+
+def _delivery_status() -> dict | None:
+    """The active email channel as the delivery limiter sees it now: its headline ("Now: 19.2 messages/min …",
+    "Paused until …", "Stopped: …"), whether a pause or stop holds it, and its budget lines. None when email is not
+    configured or the limiter cannot be read (the campaign's own progress still shows)."""
+    try:
+        target = active_target(Family.EMAIL)
+        if target is None:
+            return None
+        status = channel_status(target.channel)
+        identity = next((item for item in status.identities if item.identity == target.identity), status.identities[0])
+    except Exception:  # noqa: BLE001 - a broken limiter read must not take the status page down with it.
+        logger.warning("The delivery status could not be read for the campaign status page", exc_info=True)
+        return None
+    return {
+        "lines": list(identity.lines),
+        "held": bool(identity.cooldown_until or identity.breaker_open),
+    }
 
 
 def _short_error(msg: object) -> str:

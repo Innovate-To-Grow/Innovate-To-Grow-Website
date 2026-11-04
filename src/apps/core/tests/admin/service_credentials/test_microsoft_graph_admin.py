@@ -50,6 +50,12 @@ def form_data(**overrides):
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
         "mailbox": MAILBOX,
+        # The mailbox's sending limits, as the form shows them prefilled.
+        "max_recipients_per_message": "500",
+        "messages_per_minute_limit": "30",
+        "recipients_per_day_limit": "10000",
+        "external_recipients_per_hour_limit": "500",
+        "internal_recipients_per_hour_limit": "1000",
         # The mailbox scope inline's management form, submitted with no rows.
         "mailbox_scopes-TOTAL_FORMS": "0",
         "mailbox_scopes-INITIAL_FORMS": "0",
@@ -73,6 +79,40 @@ class MicrosoftGraphProviderConfigFormTest(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertEqual(sorted(form.errors), ["client_id", "mailbox", "tenant_id"])
+
+    def test_the_sending_limits_are_entered_on_the_form(self):
+        data = form_data(
+            max_recipients_per_message="400",
+            messages_per_minute_limit="25",
+            recipients_per_day_limit="8000",
+            external_recipients_per_hour_limit="",
+            internal_recipients_per_hour_limit="900",
+        )
+        form = MicrosoftGraphProviderConfigForm(data=data)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        config = form.save()
+
+        config.refresh_from_db()
+        self.assertEqual(
+            (
+                config.max_recipients_per_message,
+                config.messages_per_minute_limit,
+                config.recipients_per_day_limit,
+                config.external_recipients_per_hour_limit,
+                config.internal_recipients_per_hour_limit,
+            ),
+            (400, 25, 8000, None, 900),
+        )
+
+    def test_a_limit_that_does_not_fit_the_day_is_refused_on_its_field(self):
+        form = MicrosoftGraphProviderConfigForm(data=form_data(recipients_per_day_limit="300"))
+
+        self.assertFalse(form.is_valid())
+        self.assertEqual(
+            sorted(form.errors),
+            ["external_recipients_per_hour_limit", "internal_recipients_per_hour_limit", "max_recipients_per_message"],
+        )
 
     def test_standby_can_replace_the_active_config_without_disabling_it_first(self):
         create_graph_config(**config_values(name="Active", is_active=True))

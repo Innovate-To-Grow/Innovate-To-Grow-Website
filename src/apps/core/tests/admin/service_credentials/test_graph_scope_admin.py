@@ -21,6 +21,12 @@ def form_data(**overrides):
         "tenant_id": TENANT_ID,
         "client_id": CLIENT_ID,
         "mailbox": MAILBOX,
+        # The sending-limit inputs, prefilled on the form.
+        "max_recipients_per_message": "500",
+        "messages_per_minute_limit": "30",
+        "recipients_per_day_limit": "10000",
+        "external_recipients_per_hour_limit": "500",
+        "internal_recipients_per_hour_limit": "1000",
     }
     return data | overrides
 

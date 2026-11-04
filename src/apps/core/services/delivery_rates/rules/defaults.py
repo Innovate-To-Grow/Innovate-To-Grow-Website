@@ -11,14 +11,23 @@ from django.conf import settings
 
 from apps.core.models.base.delivery_rates import CHANNEL_UNITS
 
+from . import tenant
+
 
 def delivery_rates() -> dict:
     return settings.DELIVERY_RATES
 
 
-def channel_settings(channel: str) -> dict:
-    """The channel's seeds, ceilings and channel-specific values (pauses, discovery intervals, ...)."""
-    return delivery_rates()["channels"][channel]
+def channel_settings(channel: str, *, configured: bool = True) -> dict:
+    """The channel's seeds, ceilings and channel-specific values (pauses, discovery intervals, ...).
+
+    Ceilings the operator entered on the channel's provider configuration (Microsoft Graph's mailbox limits) replace
+    the documented ones, so every rule, status line and form reads the same numbers (``rules.tenant``). That is a
+    database read; ``configured=False`` gives the settings alone (the pure-rule tests, which never touch a database).
+    """
+    spec = delivery_rates()["channels"][channel]
+    limits = tenant.configured_limits(channel) if configured else {}
+    return {**spec, **limits} if limits else spec
 
 
 def section(name: str) -> dict:
@@ -65,15 +74,18 @@ class RateSpec:
     has_parts: bool = False
     parts_limit: float | None = None
     parts_fallback_rate: float | None = None
+    # True when ``provider_limit`` is the limit entered on the provider configuration, not the documented one.
+    tenant_limits: bool = False
 
 
-def rate_spec(channel: str) -> RateSpec:
-    spec = channel_settings(channel)
+def rate_spec(channel: str, *, configured: bool = True) -> RateSpec:
+    spec = channel_settings(channel, configured=configured)
     controller = section("controller")
     return RateSpec(
         channel=channel,
         window=CHANNEL_UNITS[channel].per_seconds,
         provider_limit=spec["provider_limit"],
+        tenant_limits=tenant.from_tenant(spec),
         fallback_rate=spec["fallback_rate"],
         headroom=spec["headroom"],
         burst=spec["burst"],

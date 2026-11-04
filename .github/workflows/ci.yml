@@ -1074,6 +1074,33 @@ jobs:
           restore-keys: |
             trivy-db-
 
+      # trivy-action's installer fetches the binary through get.trivy.dev, which
+      # the AWS runners could not reach on 2026-11-03 (curl exit 6 on six
+      # different instances within an hour, while github.com and Docker Hub
+      # worked). Install the pinned release from GitHub releases instead, with
+      # its checksum verified, and let both Trivy steps skip their own setup.
+      - name: Install Trivy from GitHub releases
+        env:
+          TRIVY_VERSION: "0.70.0"
+        run: |
+          set -euo pipefail
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          dir="${RUNNER_TEMP}/trivy-bin"
+          mkdir -p "$dir"
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL --retry 3 --retry-all-errors -o "${dir}/${tarball}" "${base}/${tarball}" \
+                && curl -fsSL --retry 3 --retry-all-errors -o "${dir}/checksums.txt" "${base}/trivy_${TRIVY_VERSION}_checksums.txt"; then
+              break
+            fi
+            echo "Trivy download attempt ${attempt} failed; retrying" >&2
+            sleep $((attempt * 10))
+          done
+          (cd "$dir" && grep " ${tarball}\$" checksums.txt | sha256sum -c -)
+          tar -xzf "${dir}/${tarball}" -C "$dir" trivy
+          echo "$dir" >> "$GITHUB_PATH"
+          "${dir}/trivy" --version
+
       - name: Scan image (Trivy CRITICAL/HIGH)
         id: trivy-sarif
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -1081,9 +1108,10 @@ jobs:
           TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
         with:
           image-ref: itg-backend-ci:${{ github.sha }}
-          # The action's binary cache contains absolute hosted-runner paths.
-          # Install locally; the vulnerability database is cached above.
+          # The binary is installed above (the action's binary cache contains
+          # absolute hosted-runner paths); the vulnerability database is cached above.
           cache: false
+          skip-setup-trivy: true
           format: sarif
           limit-severities-for-sarif: true
           output: trivy-results.sarif

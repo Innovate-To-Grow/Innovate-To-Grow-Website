@@ -35,6 +35,8 @@ class BoundSource(StrEnum):
     # The previous release's campaign send rate, standing in until the provider reports its limit.
     CARRIED_OVER = "carried_over"
     DOCUMENTED = "documented"
+    # The limit entered on the provider configuration (Microsoft Graph's mailbox limits from OIT).
+    TENANT = "tenant"
     FALLBACK = "fallback"
 
 
@@ -101,10 +103,11 @@ def _operator_limit(policy, reported: float | None) -> tuple[float | None, Bound
 
 def rate_bound(policy, state, spec: RateSpec) -> Bound:
     reported = _positive(state.discovered_rate)
+    ceiling_source = BoundSource.TENANT if spec.tenant_limits else BoundSource.DOCUMENTED
     hard = _smallest(
         (
             (reported, BoundSource.REPORTED),
-            (_positive(spec.provider_limit), BoundSource.DOCUMENTED),
+            (_positive(spec.provider_limit), ceiling_source),
             _operator_limit(policy, reported),
         )
     )

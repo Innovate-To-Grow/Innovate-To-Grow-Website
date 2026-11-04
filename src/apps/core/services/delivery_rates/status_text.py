@@ -80,6 +80,8 @@ def _source(rate: EffectiveRate, provider: str, state, now: datetime) -> str:
         return f"the old campaign send rate, until {provider} reports the account's limit"
     if source == BoundSource.DOCUMENTED:
         return "documented"
+    if source == BoundSource.TENANT:
+        return "the mailbox limit on the Microsoft Graph configuration"
     return "unknown: Smart rate starts from the app default; enter the real limit under Advanced"
 
 

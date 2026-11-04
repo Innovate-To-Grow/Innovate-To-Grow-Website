@@ -84,6 +84,9 @@ def _graph_factory(config: object, **provider_options) -> GraphProvider:
         mailbox=mailbox,
         from_email=config.from_email,
         from_name=config.from_name,
+        # A stored row always has the limit; a stand-in configuration (tests, a probe) may not, and then Exchange's
+        # own limit applies.
+        max_recipients=getattr(graph, "max_recipients_per_message", None),
     )
 
 

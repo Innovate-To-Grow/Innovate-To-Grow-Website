@@ -1,4 +1,6 @@
+from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator
 from django.db import models, transaction
 from django.utils import timezone
 
@@ -25,6 +27,42 @@ SENDING_APP_CHANGE = (
 def normalize_mailbox(value: str) -> str:
     """Exchange addresses, UPNs and object IDs compare case-insensitively."""
     return str(value or "").strip().lower()
+
+
+# The sending-limit fields start from the DELIVERY_RATES seeds of the Graph send channel (documented Exchange Online
+# limits, with their sources); once a configuration is active, the values entered on it are what the channel uses.
+def _graph_seed(key: str):
+    return settings.DELIVERY_RATES["channels"]["graph_send"][key]
+
+
+def default_max_recipients_per_message() -> int:
+    return _graph_seed("max_recipients_per_message")
+
+
+def default_messages_per_minute_limit() -> int:
+    return _graph_seed("provider_limit")
+
+
+def default_recipients_per_day_limit() -> int:
+    return _graph_seed("daily_limit")
+
+
+def default_external_recipients_per_hour_limit():
+    return _graph_seed("hourly_external_limit")
+
+
+def default_internal_recipients_per_hour_limit():
+    return _graph_seed("hourly_internal_limit")
+
+
+SENDING_LIMIT_FIELDS = (
+    "max_recipients_per_message",
+    "messages_per_minute_limit",
+    "recipients_per_day_limit",
+    "external_recipients_per_hour_limit",
+    "internal_recipients_per_hour_limit",
+)
+_LIMITS_WHERE = "Mail → Delivery Rates (Email · Microsoft Graph)"
 
 
 def is_deny_mailbox(value: str) -> bool:
@@ -77,6 +115,62 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
         editable=False,
         verbose_name="Messages per Minute",
         help_text="No longer used: rates are set under Mail → Delivery Rates.",
+    )
+    # The sender mailbox's sending limits as OIT states them. They bound the Graph delivery channel: the rate never
+    # exceeds the messages per minute, the rolling budgets never the recipients per day or hour, and a message with
+    # more recipients than allowed is refused before it is sent. Nothing here is a code constant: the seeds in
+    # DELIVERY_RATES are only the initial values.
+    max_recipients_per_message = models.PositiveIntegerField(
+        default=default_max_recipients_per_message,
+        validators=[MinValueValidator(1)],
+        verbose_name="Recipients per Message Limit",
+        help_text=(
+            "Most recipients (To, Cc and Bcc together) one message may have, as OIT states it for the mailbox. "
+            "A message with more is refused before it is sent. Campaign messages go to one recipient each."
+        ),
+    )
+    messages_per_minute_limit = models.PositiveIntegerField(
+        default=default_messages_per_minute_limit,
+        validators=[MinValueValidator(1)],
+        verbose_name="Messages per Minute Limit",
+        help_text=(
+            f"Most messages the mailbox may send per minute, as OIT states it. The rate under {_LIMITS_WHERE} never "
+            "exceeds it: Smart rate uses a share of it, and the manual rate and the Advanced provider rate limit "
+            "there can only be set below it."
+        ),
+    )
+    recipients_per_day_limit = models.PositiveIntegerField(
+        default=default_recipients_per_day_limit,
+        validators=[MinValueValidator(1)],
+        verbose_name="Recipients per Day Limit",
+        help_text=(
+            "Most recipients the mailbox may send to per rolling 24 hours, as OIT states it. Every email the site "
+            "sends counts; campaigns stop before it (the transactional reserve) and their remaining recipients wait "
+            f"until usage ages out. Until Tenant limits confirmed is ticked under {_LIMITS_WHERE}, campaigns also "
+            "stay under the Standard outbound spam preset's daily limit."
+        ),
+    )
+    external_recipients_per_hour_limit = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=default_external_recipients_per_hour_limit,
+        validators=[MinValueValidator(1)],
+        verbose_name="External Recipients per Hour Limit",
+        help_text=(
+            "The outbound spam policy's limit on recipients outside the sender's domain per rolling hour "
+            "(Microsoft's Standard preset: 500). Blank: no hourly limit. Confirm the tenant's value with OIT."
+        ),
+    )
+    internal_recipients_per_hour_limit = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        default=default_internal_recipients_per_hour_limit,
+        validators=[MinValueValidator(1)],
+        verbose_name="Internal Recipients per Hour Limit",
+        help_text=(
+            "The outbound spam policy's limit on recipients in the sender's domain per rolling hour (Microsoft's "
+            "Standard preset: 1,000). Blank: no hourly limit. Confirm the tenant's value with OIT."
+        ),
     )
     access_check_deny_mailbox = models.CharField(
         max_length=254,
@@ -141,8 +235,26 @@ class MicrosoftGraphProviderConfig(ProjectControlModel):
             )
         for field, message in self._sending_change_errors().items():
             errors.setdefault(field, message)
+        for field, message in self._sending_limit_errors().items():
+            errors.setdefault(field, message)
         if errors:
             raise ValidationError(errors)
+
+    def _sending_limit_errors(self) -> dict:
+        """The limits must fit together: no message, and no hour, may hold more recipients than the day allows."""
+        day = self.recipients_per_day_limit
+        if not isinstance(day, int) or isinstance(day, bool):
+            return {}  # the field's own validation reports it
+        checks = (
+            ("max_recipients_per_message", "One message cannot have more recipients than the day's limit allows."),
+            ("external_recipients_per_hour_limit", "An hourly limit cannot be above the recipients per day limit."),
+            ("internal_recipients_per_hour_limit", "An hourly limit cannot be above the recipients per day limit."),
+        )
+        return {
+            field: message
+            for field, message in checks
+            if isinstance(getattr(self, field), int) and getattr(self, field) > day
+        }
 
     def _application_field_changed_under_a_certificate(self) -> str:
         """A certificate is tested for one tenant and app, so it never silently follows a change of either.

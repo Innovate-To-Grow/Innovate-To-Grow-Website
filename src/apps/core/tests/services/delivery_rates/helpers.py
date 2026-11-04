@@ -44,12 +44,13 @@ class FakeClock:
 
 
 def spec_for(channel, **overrides):
-    return replace(rate_spec(channel), **overrides)
+    """The channel's spec from the settings alone (pure tests never read a database, so no configuration applies)."""
+    return replace(rate_spec(channel, configured=False), **overrides)
 
 
 def policy_for(channel, **values):
     """An in-memory policy row with the channel's seeds (pure tests never save it)."""
-    seeds = DeliveryRatePolicy.seed_values(channel)
+    seeds = DeliveryRatePolicy.seed_values(channel, configured=False)
     fields = {"provider_limit": None, "parts_limit": None, "provider_limit_carried_over": False, **seeds, **values}
     for name in ("manual_rate", "provider_limit", "parts_limit"):
         if fields[name] is not None:

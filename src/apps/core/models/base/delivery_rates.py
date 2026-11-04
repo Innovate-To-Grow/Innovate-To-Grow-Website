@@ -4,7 +4,6 @@ and the provider limits."""
 from decimal import Decimal
 from typing import NamedTuple
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import DomainNameValidator, MaxValueValidator, MinValueValidator
 from django.db import models
@@ -94,6 +93,14 @@ CEILING_FIELDS = (
     "daily_external_limit",
 )
 DECIMAL_FIELDS = frozenset({"manual_rate", "provider_limit", "parts_limit", "budget_headroom", "transactional_reserve"})
+# A channel spec whose ceilings were entered on the provider's configuration (Microsoft Graph's mailbox limits from
+# OIT) carries this marker; ``services.delivery_rates.rules.tenant`` sets it.
+LIMITS_SOURCE_KEY = "limits_source"
+TENANT_LIMITS = "tenant"
+
+
+def limits_from_configuration(spec: dict) -> bool:
+    return spec.get(LIMITS_SOURCE_KEY) == TENANT_LIMITS
 
 
 def _rate_field(verbose_name, help_text, **options):
@@ -236,14 +243,23 @@ class DeliveryRatePolicy(ProjectControlModel):
         return f"{self.get_channel_display()}: {mode}"
 
     @staticmethod
-    def channel_settings(channel: str) -> dict:
-        """The channel's ``DELIVERY_RATES`` seeds and ceilings."""
-        return settings.DELIVERY_RATES["channels"][channel]
+    def channel_settings(channel: str, *, configured: bool = True) -> dict:
+        """The channel's ``DELIVERY_RATES`` seeds and ceilings, with the limits entered on the channel's provider
+        configuration in place of the documented ones (Microsoft Graph); ``configured=False`` reads no database."""
+        # Imported here: the rules import this module.
+        from apps.core.services.delivery_rates.rules.defaults import channel_settings
+
+        return channel_settings(channel, configured=configured)
 
     @classmethod
-    def seed_values(cls, channel: str) -> dict:
-        spec = cls.channel_settings(channel)
-        return {field: seed_value(field, spec[field]) for field in SEED_FIELDS if field in spec}
+    def seed_values(cls, channel: str, *, configured: bool = True) -> dict:
+        spec = cls.channel_settings(channel, configured=configured)
+        seeds = {field: seed_value(field, spec[field]) for field in SEED_FIELDS if field in spec}
+        if limits_from_configuration(spec):
+            # Blank: the configuration's limits apply, and raising them there needs no second edit here.
+            for field in CEILING_FIELDS:
+                seeds.pop(field, None)
+        return seeds
 
     @classmethod
     def for_channel(cls, channel: str) -> "DeliveryRatePolicy":
@@ -302,13 +318,17 @@ class DeliveryRatePolicy(ProjectControlModel):
         }[name]
 
     def _check_ceilings(self, spec, errors):
+        source = (
+            "The limit on the Microsoft Graph configuration"
+            if limits_from_configuration(spec)
+            else "The documented limit"
+        )
         for name in CEILING_FIELDS:
             ceiling, value = _as_number(spec.get(name)), _as_number(getattr(self, name))
             if ceiling is not None and value is not None and value > ceiling:
                 errors.setdefault(
                     name,
-                    f"The documented limit is {display_number(ceiling)} {self._limit_unit(name)}. It can be lowered here, "
-                    "not raised.",
+                    f"{source} is {display_number(ceiling)} {self._limit_unit(name)}. It can be lowered here, not raised.",
                 )
 
     def _check_manual_rate(self, spec, errors):

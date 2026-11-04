@@ -387,3 +387,40 @@ class MessageIdDomainTests(GraphFixtureMixin, SimpleTestCase):
 
     def test_a_sender_without_a_domain_still_gets_a_message_id(self):
         self.assertTrue(build_mime_message(simple_message(), from_email="not-an-address")["Message-ID"])
+
+
+class RecipientLimitTests(GraphFixtureMixin, SimpleTestCase):
+    """The mailbox's recipients-per-message limit (``MicrosoftGraphProviderConfig.max_recipients_per_message``)."""
+
+    def message(self, count):
+        return simple_message(to=tuple(f"to{i}@example.com" for i in range(count)))
+
+    def test_a_message_over_the_limit_is_refused_before_anything_is_sent(self):
+        provider = make_provider(max_recipients=3)
+
+        with self.assertRaisesMessage(
+            PermanentEmailDeliveryError, "has 4 recipients; Microsoft Graph allows at most 3"
+        ):
+            provider.send(self.message(4))
+
+        self.assertEqual(self.fake.requests, [])
+
+    def test_cc_and_bcc_count_towards_the_limit(self):
+        provider = make_provider(max_recipients=2)
+        message = simple_message(to=("a@example.com",), cc=("b@example.com",), bcc=("c@example.com",))
+
+        with self.assertRaises(PermanentEmailDeliveryError):
+            provider.send(message)
+
+    def test_a_message_at_the_limit_is_sent(self):
+        provider = make_provider(max_recipients=3)
+
+        result = provider.send(self.message(3))
+
+        self.assertTrue(result.accepted)
+
+    def test_without_a_limit_the_count_is_left_to_exchange(self):
+        provider = make_provider()
+
+        self.assertIsNone(provider.max_recipients)
+        self.assertTrue(provider.send(self.message(12)).accepted)

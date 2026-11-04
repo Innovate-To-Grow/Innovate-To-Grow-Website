@@ -18,6 +18,21 @@ MAILBOX = "i2g@contoso.com"
 STOPS = WOULD_STOP_EMAIL.format(from_email=MAILBOX)
 
 
+def sending_limit_data(config=None) -> dict:
+    """The sending-limit inputs as the browser posts them (prefilled with the row's values, or the defaults)."""
+    config = config or MicrosoftGraphProviderConfig()
+    return {
+        name: "" if getattr(config, name) is None else str(getattr(config, name))
+        for name in (
+            "max_recipients_per_message",
+            "messages_per_minute_limit",
+            "recipients_per_day_limit",
+            "external_recipients_per_hour_limit",
+            "internal_recipients_per_hour_limit",
+        )
+    }
+
+
 def change_data(config, *, scopes=None, new_scopes=(), **overrides):
     """The change form as the browser posts it: config fields, every existing scope row, then new rows."""
     scopes = list(config.mailbox_scopes.all()) if scopes is None else scopes
@@ -25,6 +40,7 @@ def change_data(config, *, scopes=None, new_scopes=(), **overrides):
         "name": config.name,
         "is_active": "on" if config.is_active else "",
         "mailbox": config.mailbox,
+        **sending_limit_data(config),
         "_save": "Save",
         "mailbox_scopes-TOTAL_FORMS": str(len(scopes) + len(new_scopes)),
         "mailbox_scopes-INITIAL_FORMS": str(len(scopes)),
@@ -146,6 +162,7 @@ class SendingConfigGuardTests(GuardFixture):
             "tenant_id": TENANT_ID,
             "client_id": CLIENT_ID,
             "mailbox": MAILBOX,
+            **sending_limit_data(),
             "_save": "Save",
             "mailbox_scopes-TOTAL_FORMS": "1",
             "mailbox_scopes-INITIAL_FORMS": "0",

@@ -45,6 +45,8 @@ class DeliveryRatesDefaultsTests(SimpleTestCase):
         channels = settings.DELIVERY_RATES["channels"]
         graph, gmail, sms = channels["graph_send"], channels["gmail_api_send"], channels["sms_send"]
         self.assertEqual((graph["manual_rate"], graph["provider_limit"], graph["daily_limit"]), (24, 30, 10_000))
+        # OIT's recipients-per-message limit; seeds MicrosoftGraphProviderConfig.max_recipients_per_message.
+        self.assertEqual(graph["max_recipients_per_message"], 500)
         self.assertEqual((graph["hourly_external_limit"], graph["hourly_internal_limit"]), (500, 1_000))
         self.assertEqual(graph["unconfirmed_bulk_daily_limit"], 1_000)
         self.assertEqual(channels["graph_read"]["provider_limit"], 1_000)

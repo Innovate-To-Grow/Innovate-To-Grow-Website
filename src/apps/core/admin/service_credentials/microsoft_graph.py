@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from unfold.decorators import display
 
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
+from apps.core.models.base.service_credentials.microsoft_graph import SENDING_LIMIT_FIELDS
 
 from ..common.base import BaseModelAdmin
 from .microsoft_graph_access_check import GraphAccessCheckViewMixin
@@ -20,6 +21,7 @@ GRAPH_FORM_FIELDS = (
     "tenant_id",
     "client_id",
     "mailbox",
+    *SENDING_LIMIT_FIELDS,
     "access_check_deny_mailbox",
     "permission_exception_reference",
 )
@@ -74,6 +76,18 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
             {
                 "fields": ("mailbox",),
                 "description": "How fast this mailbox sends and reads is set under Mail → Delivery Rates.",
+            },
+        ),
+        (
+            _("Sending limits"),
+            {
+                "fields": SENDING_LIMIT_FIELDS,
+                "description": (
+                    "The mailbox's limits as OIT states them. They are the bounds of the Email · Microsoft Graph "
+                    "delivery rate (Mail → Delivery Rates): the rate, the Advanced provider rate limit and the daily "
+                    "and hourly limits there can be set below these, never above. Raise them here when OIT raises "
+                    "the mailbox's limits. Every email the site sends from the mailbox counts against them."
+                ),
             },
         ),
         (

@@ -13,7 +13,12 @@ from django.utils.translation import gettext_lazy as _
 from unfold.widgets import UnfoldAdminTextInputWidget, UnfoldBooleanSwitchWidget
 
 from apps.core.models import DeliveryRatePolicy
-from apps.core.models.base.delivery_rates import CEILING_FIELDS, DECIMAL_FIELDS, display_number
+from apps.core.models.base.delivery_rates import (
+    CEILING_FIELDS,
+    DECIMAL_FIELDS,
+    display_number,
+    limits_from_configuration,
+)
 from apps.core.services.delivery_rates import channel_info
 
 MANUAL_RATE_NOTE = _("Not used while Smart rate is on. Kept for when you turn Smart rate off.")
@@ -150,13 +155,14 @@ class DeliveryRatePolicyForm(forms.ModelForm):
         }
 
     def _add_ceiling_help(self, spec) -> None:
+        source = "on the Microsoft Graph configuration" if limits_from_configuration(spec) else "documented"
         for name in CEILING_FIELDS:
             ceiling = spec.get(name)
             if name in self.fields and ceiling is not None:
                 suffix = self.fields[name].widget.attrs.get("suffix", "")
                 field = self.fields[name]
                 field.help_text = (
-                    f"{field.help_text} At most {display_number(Decimal(str(ceiling)))} {suffix} (documented): "
+                    f"{field.help_text} At most {display_number(Decimal(str(ceiling)))} {suffix} ({source}): "
                     "it can be lowered here, not raised."
                 )
 
