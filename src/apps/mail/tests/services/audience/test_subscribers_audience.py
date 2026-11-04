@@ -13,7 +13,7 @@ from apps.authn.models import ContactEmail, Member
 from apps.authn.services.contacts.contact_emails import delete_contact_email, make_contact_email_primary
 from apps.event.services.registration.sync_email import sync_secondary_email_to_account
 from apps.event.tests.helpers import make_member
-from apps.mail.admin.campaign.forms import SUBSCRIBERS_SCOPE_NOTE, EmailCampaignForm
+from apps.mail.admin.campaign.forms import EmailCampaignForm
 from apps.mail.models import EmailCampaign
 from apps.mail.services.audience import get_recipients
 from apps.mail.services.audience.resolvers import recipients_for_audience
@@ -304,6 +304,8 @@ class CampaignFormScopeHelpTests(TestCase):
     def test_send_to_help_explains_subscriber_addresses(self):
         form = EmailCampaignForm()
 
-        self.assertTrue(form.fields["member_email_scope"].help_text.endswith(SUBSCRIBERS_SCOPE_NOTE))
-        # The model's help text (and so the migration state) is untouched.
-        self.assertNotIn(SUBSCRIBERS_SCOPE_NOTE, EmailCampaign._meta.get_field("member_email_scope").help_text)
+        help_text = form.fields["member_email_scope"].help_text
+        self.assertIn(
+            "For All subscribers, only the addresses that are themselves subscribed receive the email", help_text
+        )
+        self.assertEqual(help_text, EmailCampaign._meta.get_field("member_email_scope").help_text)

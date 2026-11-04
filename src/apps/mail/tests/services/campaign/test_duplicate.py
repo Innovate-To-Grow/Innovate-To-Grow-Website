@@ -6,7 +6,7 @@ from django.utils import timezone
 from apps.authn.models import Member
 from apps.event.tests.helpers import make_event, make_superuser, make_ticket
 from apps.mail.models import EmailCampaign, LoginLinkToken, RecipientLog
-from apps.mail.services.campaign.duplicate import NAME_MAX_LENGTH, copy_name, duplicate_campaign
+from apps.mail.services.campaign.duplicate import NAME_MAX_LENGTH, base_name, copy_name, duplicate_campaign
 
 
 def sent_campaign(**overrides):
@@ -53,7 +53,7 @@ class DuplicateCampaignTests(TestCase):
         copy = duplicate_campaign(original)
 
         self.assertNotEqual(copy.pk, original.pk)
-        self.assertEqual(copy.name, "Copy of Spring invitation")
+        self.assertEqual(copy.name, "Spring invitation (1)")
         for field in (
             "subject",
             "body",
@@ -106,7 +106,72 @@ class DuplicateCampaignTests(TestCase):
     def test_names_are_cut_to_the_field_length(self):
         original = sent_campaign(name="n" * NAME_MAX_LENGTH)
 
-        self.assertEqual(len(copy_name(original.name)), NAME_MAX_LENGTH)
-        self.assertTrue(copy_name(original.name).startswith("Copy of nnn"))
-        self.assertEqual(copy_name(""), "Copy of Untitled")
+        suggested = copy_name(original.name)
+        self.assertLessEqual(len(suggested), NAME_MAX_LENGTH)
+        self.assertTrue(suggested.startswith("nnn"))
+        self.assertTrue(suggested.endswith(" (1)"))
         self.assertEqual(len(duplicate_campaign(original, name="x" * 300).name), NAME_MAX_LENGTH)
+
+
+class CopyNameTests(TestCase):
+    """Copies are numbered like a file system numbers them: ``Name (1)``, ``Name (2)``, lowest free number first."""
+
+    def names(self, *names):
+        for name in names:
+            EmailCampaign.objects.create(
+                name=name, subject="s", body="b", audience_type="manual", manual_emails="a@b.c"
+            )
+
+    def test_first_copy_gets_number_one(self):
+        self.names("Spring invitation")
+
+        self.assertEqual(copy_name("Spring invitation"), "Spring invitation (1)")
+
+    def test_lowest_free_number_is_used_even_below_higher_copies(self):
+        self.names("Spring invitation", "Spring invitation (1)", "Spring invitation (3)")
+
+        self.assertEqual(copy_name("Spring invitation"), "Spring invitation (2)")
+        self.names("Spring invitation (2)")
+        self.assertEqual(copy_name("Spring invitation"), "Spring invitation (4)")
+
+    def test_copy_of_a_copy_restarts_from_the_base_name(self):
+        self.names("Spring invitation", "Spring invitation (1)", "Spring invitation (2)")
+
+        # The copy's own "(2)" comes off; (3) is the lowest free number for the base.
+        self.assertEqual(copy_name("Spring invitation (2)"), "Spring invitation (3)")
+        self.assertEqual(copy_name("Spring invitation(2)"), "Spring invitation (3)")
+
+    def test_old_copy_of_prefixes_come_off_whatever_their_case_or_number(self):
+        for name in (
+            "Copy of Spring invitation",
+            "copy of Spring invitation",
+            "COPY  OF Copy of Spring invitation (7)",
+        ):
+            with self.subTest(name=name):
+                self.assertEqual(copy_name(name), "Spring invitation (1)")
+
+    def test_copy_of_inside_a_name_and_numbers_before_the_end_stay(self):
+        self.assertEqual(copy_name("Copy office hours"), "Copy office hours (1)")
+        self.assertEqual(copy_name("A copy of the agenda"), "A copy of the agenda (1)")
+        self.assertEqual(copy_name("Fall (2) reminder"), "Fall (2) reminder (1)")
+
+    def test_existing_names_match_regardless_of_letter_case_and_an_empty_name_is_untitled(self):
+        self.names("spring INVITATION (1)")
+
+        self.assertEqual(copy_name("Spring Invitation"), "Spring Invitation (2)")
+        self.assertEqual(copy_name(""), "Untitled (1)")
+        self.assertEqual(copy_name("Copy of (3)"), "Untitled (1)")
+
+    def test_base_name(self):
+        self.assertEqual(base_name("  Copy of Copy of Name (12)  "), "Name")
+        self.assertEqual(base_name("Name"), "Name")
+        self.assertEqual(base_name(None), "Untitled")
+
+    def test_duplicates_in_a_row_count_up(self):
+        original = sent_campaign(name="Spring invitation")
+
+        first = duplicate_campaign(original)
+        second = duplicate_campaign(original)
+        third = duplicate_campaign(first)
+
+        self.assertEqual([first.name, second.name, third.name], [f"Spring invitation ({n})" for n in (1, 2, 3)])
