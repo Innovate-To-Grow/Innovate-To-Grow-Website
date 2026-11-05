@@ -55,6 +55,9 @@ const SCROLL_READY = 'i2g-embed-scroll-ready';
 const SCROLL_INTO_VIEW = 'i2g-embed-scroll-into-view';
 
 let partnerPageScrolls = false;
+// The origin of the partner page that answered, so later scroll requests go to it alone. '*' until it answers,
+// and for an opaque origin ("null": a sandboxed or file: page), which postMessage would reject as a target.
+let partnerPageOrigin = '*';
 
 /** The widget's slug, from its address (`/_embed/<slug>`), as its resize messages carry it; null outside one. */
 const widgetSlug = () => {
@@ -74,6 +77,7 @@ export function askPartnerPageToScroll(): () => void {
   const handleMessage = (event: MessageEvent) => {
     if (event.source === window.parent && (event.data as {type?: unknown} | null)?.type === SCROLL_READY) {
       partnerPageScrolls = true;
+      partnerPageOrigin = /^https?:\/\//.test(event.origin) ? event.origin : '*';
     }
   };
   window.addEventListener('message', handleMessage);
@@ -82,6 +86,7 @@ export function askPartnerPageToScroll(): () => void {
   return () => {
     window.removeEventListener('message', handleMessage);
     partnerPageScrolls = false;
+    partnerPageOrigin = '*';
   };
 }
 
@@ -96,7 +101,7 @@ export function scrollFrameBoxIntoView(top: number, height: number, block: 'star
   if (partnerPageScrolls) {
     window.parent.postMessage(
       {type: SCROLL_INTO_VIEW, slug: widgetSlug(), top: boxTop, height: boxHeight, block, smooth},
-      '*',
+      partnerPageOrigin,
     );
     return;
   }
