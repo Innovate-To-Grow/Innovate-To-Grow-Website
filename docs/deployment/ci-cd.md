@@ -235,7 +235,7 @@ See [production authentication](production.md#aws-authentication-and-rollout).
 
 - All workflow runs visible at the repository's Actions tab
 - `CI Timing Report` adds a per-job duration table to each run's summary
-- Semgrep and Trivy findings from `main` appear in the Security tab
+- Semgrep and Trivy findings from `main` appear in the Security tab ([Code scanning](code-scanning.md) says how alerts are triaged)
 - Deploy smoke tests catch basic runtime issues (readiness, CORS)
 - CloudWatch logs capture runtime errors after deployment
 
