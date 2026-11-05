@@ -216,7 +216,7 @@ server's wait has passed, doubling the wait for each refusal in a row (capped), 
 
 The frontend uses plain CSS with a design token system.
 
-### Token system (`src/assets/tokens.css`)
+### Token system (`src/styles/tokens.css`)
 
 CSS custom properties define the design vocabulary:
 - **Colors**: `--itg-color-primary` (#0f2d52), accent-gold, error, success, etc.
@@ -227,7 +227,7 @@ CSS custom properties define the design vocabulary:
 ### CSS organization
 
 - `src/components/` — Shared presentational components (SafeHtml, SheetsDataTable)
-- `src/assets/` — `tokens.css` (fallback design tokens) and `shared.css` (auth legal notice and phone-consent rules)
+- `src/styles/` — every global stylesheet: `tokens.css` (fallback design tokens), `shared.css` (auth legal notice and phone-consent rules), `layers.css` and the `contract/` tree (both below)
 - `src/index.css` — Imports shared styles, sets up body and app-layout
 - `src/styles/contract/` — the content contract: the design system (`global/`), CMS block styles (`cms-blocks/`), the page classes editors store in content HTML (`cms-pages.css`, `page-home.css`, `legacy-content.css`) and `contract-classes.json`. `index.css` imports `contract/index.css` first, so these rules come before every other stylesheet; `css-contract.test.ts` keeps a rule for every listed class ([CSS contract](../cms-admin/css-contract.md))
 - Component-scoped `.css` files alongside each component. The shell (`features/layout/components/{Container,MainMenu,Footer}`, `app/MaintenanceMode`, `app/ErrorBoundary`) lands in the entry bundle; route CSS (`routes/*`, `features/auth/components/auth.css`) loads with its lazy route chunk. A file that every renderer of a class imports is the rule: a lazy route's CSS is not there when a visitor lands on another route first.

@@ -1,6 +1,6 @@
 import {useEffect} from 'react';
 import {useLocation, useMatches} from 'react-router';
-import {setCanonicalUrl} from '@/hooks/documentHead';
+import {setCanonicalUrl} from '@/lib/documentHead';
 import {useDocumentHead} from '@/hooks/usePageTitle';
 
 export interface RouteHandle {
