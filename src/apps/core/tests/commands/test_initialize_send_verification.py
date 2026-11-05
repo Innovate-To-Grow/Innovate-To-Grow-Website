@@ -149,7 +149,7 @@ class ConcurrentSendVerificationInitializationTests(TransactionTestCase):
 
 class SendVerificationStartupTests(SimpleTestCase):
     def _boot(self, *, fail_command="", migrate=False):
-        entrypoint = Path(__file__).resolve().parents[4] / "entrypoint.sh"
+        entrypoint = Path(__file__).resolve().parents[4] / "docker" / "entrypoint.sh"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             calls = root / "calls"
