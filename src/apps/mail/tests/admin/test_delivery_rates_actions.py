@@ -168,7 +168,7 @@ class OtherPagesTests(DeliveryRatesTestCase):
     def test_the_delivery_dashboard_shows_the_send_rate_with_a_link(self):
         line = email_send_rate_line()
         with patch(
-            "apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data",
+            "apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data",
             return_value={"aws": {"send_rate": line}},
         ):
             response = self.client.get(reverse("admin:mail_delivery_dashboard"))

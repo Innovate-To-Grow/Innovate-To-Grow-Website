@@ -4,7 +4,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from apps.core.models import ProjectControlModel
-from apps.mail.utils.redirects import is_safe_internal_redirect_path
+from apps.mail.redirects import is_safe_internal_redirect_path
 
 # The two member-wide audiences differ only in the subscribe flag (services/audience/resolvers.py), so their labels
 # say so; which of a member's addresses are used is the "Send to" field's business, explained in the help texts.

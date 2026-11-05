@@ -11,9 +11,9 @@ from unfold.decorators import display
 
 from apps.core.admin import BaseModelAdmin, ReadOnlyModelAdmin
 from apps.core.utils.access import user_can_access_app
-from apps.event.services.checkin.export import build_checkin_export
+from apps.event.services.checkin import build_checkin_export
 
-from ...models import CheckIn, CheckInRecord
+from ..models import CheckIn, CheckInRecord
 
 
 @admin.register(CheckIn)

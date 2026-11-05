@@ -33,7 +33,7 @@ ProjectControlModel (abstract)
 
 ### Model mixins
 
-Additional abstract mixins in `src/apps/core/models/mixins/`:
+Additional abstract mixins in `src/apps/core/models/mixins.py`:
 
 | Mixin | Fields |
 |-------|--------|

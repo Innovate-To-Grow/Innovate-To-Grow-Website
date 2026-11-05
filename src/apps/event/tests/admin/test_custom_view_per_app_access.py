@@ -59,7 +59,7 @@ class EventCustomViewPerAppAccessTest(TestCase):
         self.assertEqual(self.client.post(url).status_code, 403)
         self.assertEqual(self.client.get(url).status_code, 403)
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_pull_view_allowed_for_event_staff(self, _mock_sync):
         self.client.force_login(self.event_staff)
         resp = self.client.post(reverse("admin:event_currentprojectschedule_pull"))
@@ -79,7 +79,7 @@ class EventCustomViewPerAppAccessTest(TestCase):
         url = reverse("admin:event_currentprojectschedule_sync_from_google_sheets_detail", args=[config.pk])
         self.assertEqual(self.client.get(url).status_code, 403)
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_sync_from_google_sheets_action_allowed_for_event_staff(self, _mock_sync):
         config = CurrentProjectSchedule.objects.create(name="Demo Day")
         self.client.force_login(self.event_staff)
