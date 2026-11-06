@@ -3,7 +3,7 @@ from unfold.decorators import display
 
 from apps.core.admin import ReadOnlyModelAdmin
 
-from ...models import ScheduleSyncLog
+from ..models import ScheduleSyncLog
 
 
 @admin.register(ScheduleSyncLog)
