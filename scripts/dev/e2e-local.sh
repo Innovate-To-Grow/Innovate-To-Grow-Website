@@ -19,11 +19,11 @@
 # service container CI uses.
 #
 # Usage:
-#   scripts/e2e-local.sh [--fresh] [playwright test args...]
+#   scripts/dev/e2e-local.sh [--fresh] [playwright test args...]
 #
-#   scripts/e2e-local.sh                            # full 10-project matrix
-#   scripts/e2e-local.sh e2e/smoke/live.spec.ts     # a single spec file
-#   scripts/e2e-local.sh --project=chromium         # one project
+#   scripts/dev/e2e-local.sh                            # full 10-project matrix
+#   scripts/dev/e2e-local.sh e2e/smoke/live.spec.ts     # a single spec file
+#   scripts/dev/e2e-local.sh --project=chromium         # one project
 #
 # Environment overrides:
 #   PYTHON   Python interpreter with the Django deps installed
@@ -34,7 +34,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC_DIR="$REPO_ROOT/src"
 PAGES_DIR="$REPO_ROOT/pages"
 BACKEND_URL="http://127.0.0.1:8000"
