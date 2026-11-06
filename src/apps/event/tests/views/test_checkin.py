@@ -143,6 +143,31 @@ class CheckInApiTest(TestCase):
         self.assertTrue(response.data["registrations"][0]["checked_in"])
         self.assertEqual(response.data["registrations"][0]["check_in_record_id"], str(record.pk))
 
+    def test_status_counts_match_event_counts_without_extra_queries(self):
+        from apps.event.views.checkin.payloads import event_counts
+
+        second = make_registration(
+            make_member(email="second@example.com", first_name="Grace", last_name="Hopper"), self.event, self.ticket
+        )
+        make_registration(
+            make_member(email="third@example.com", first_name="Alan", last_name="Turing"), self.event, self.ticket
+        )
+        CheckInRecord.objects.create(check_in=self.check_in, registration=self.registration)
+        CheckInRecord.objects.create(check_in=self.other_check_in, registration=second)
+
+        # Check-in lookup, event records, registrations, recent scans. The counts come from the
+        # rows already loaded; event_counts() used to add three COUNT queries.
+        with self.assertNumQueries(4):
+            response = self.client.get(self.status_url())
+
+        self.assertEqual(response.status_code, 200)
+        expected = event_counts(self.check_in)
+        self.assertEqual(
+            {key: response.data[key] for key in ("total", "scanned", "station_scanned")},
+            expected,
+        )
+        self.assertEqual(expected, {"total": 3, "scanned": 2, "station_scanned": 1})
+
     def test_undo_removes_current_station_record(self):
         record = CheckInRecord.objects.create(check_in=self.check_in, registration=self.registration)
 
