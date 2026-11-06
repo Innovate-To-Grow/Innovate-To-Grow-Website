@@ -34,7 +34,7 @@ The server also leaves out any stored token that could break the sheet, with a w
 lowercase letters, digits and underscores, and values must be at most 200 characters with no `;`, braces,
 `<`, `>`, backslashes or comments, and only functions from an allowlist (colour, math, gradient, easing,
 transform and grid functions). A token that is missing or left out
-falls back to the value in `pages/src/assets/tokens.css`.
+falls back to the value in `pages/src/styles/tokens.css`.
 
 ## Custom CSS
 

@@ -5,7 +5,7 @@
 // Layers, lowest first. A module may import its own layer and anything below
 // it, never upward:
 //
-//   types, assets  <  lib  <  hooks, components  <  features  <  routes  <  app, main.tsx
+//   types, styles  <  lib  <  hooks, components  <  features  <  routes  <  app, main.tsx
 //
 // A feature imports another feature only through that feature's public entry
 // points: `features/<name>/index.ts` or its data layer `features/<name>/api/**`.
@@ -32,7 +32,7 @@ const pagesDir = resolve(fileURLToPath(import.meta.url), '../..')
 const srcDir = join(pagesDir, 'src')
 const EXTENSIONS = ['.ts', '.tsx', '/index.ts', '/index.tsx']
 
-const LAYER_RANK = { types: 0, assets: 0, lib: 1, hooks: 2, components: 2, features: 3, routes: 4, app: 5 }
+const LAYER_RANK = { types: 0, styles: 0, lib: 1, hooks: 2, components: 2, features: 3, routes: 4, app: 5 }
 
 // Each entry: sorted module paths (relative to src/) and why it is tolerated.
 const KNOWN_CYCLES = []
@@ -60,7 +60,7 @@ function resolveSpecifier(fromFile, specifier) {
   for (const extension of EXTENSIONS) {
     if (existsSync(base + extension)) return base + extension
   }
-  return null // assets, CSS, JSON
+  return null // CSS, JSON, static assets
 }
 
 function collectImports(file) {

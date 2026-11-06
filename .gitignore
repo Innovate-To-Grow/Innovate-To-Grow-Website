@@ -18,8 +18,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# Anchored to the repo root: the unanchored form of these rules hid pages/src/lib/.
+/lib/
+/lib64/
 /parts/
 sdist/
 var/
@@ -27,11 +28,6 @@ wheels/
 pip-wheel-metadata/
 share/python-wheels/
 *.egg-info/
-# The Python-build-artifact `lib/` rule above also matches the SPA's pages/src/lib
-# directory; re-include it so its source and tests (e.g. pages/src/lib/__tests__/)
-# are tracked and run in CI, not silently ignored.
-!pages/src/lib/
-!pages/src/lib/**
 .installed.cfg
 *.egg
 MANIFEST
@@ -261,11 +257,10 @@ Thumbs.db
 /archive/challenge/
 
 # =====================================
-# AWS Keys
+# AWS Keys (never track downloaded access-key files)
 # =====================================
 
-!/aws/aws_keys/
-!/aws/aws_keys/github-actions-deploy_accessKeys (1).csv
+/aws/aws_keys/
 
 # =====================================
 # Member Import Spreadsheet
