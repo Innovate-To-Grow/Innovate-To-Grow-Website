@@ -123,6 +123,20 @@ npm test             # Vitest
 npm run build        # Production build (tsc -b + vite build)
 ```
 
+### End-to-end tests (Playwright)
+
+Most specs mock the API, but the live specs (`pages/e2e/smoke/live.spec.ts` and the Django-admin flow in
+`pages/e2e/admin/`) talk to a real backend configured the way CI configures it. `scripts/dev/e2e-local.sh` sets
+that up without Docker or PostgreSQL: it migrates and seeds a throwaway SQLite database under `src/` with
+`config.settings.environments.test` (`seed_admin_e2e`), starts `runserver --insecure` on port 8000, and runs
+`npx playwright test` with any arguments you pass. Ports 8000 and 4173 must be free.
+
+```bash
+cd pages && npm run e2e:install                            # once: install the browsers
+scripts/dev/e2e-local.sh                                   # the full 10-project matrix
+scripts/dev/e2e-local.sh --fresh e2e/smoke/live.spec.ts    # one spec against a fresh database
+```
+
 ## Development workflow
 
 1. Start Django from `src/`
