@@ -21,7 +21,7 @@ env:
   ECR_REPOSITORY: itg-backend
   ECS_CLUSTER: itg-backend-cluster
   ECS_SERVICE: itg-backend-service
-  ECS_TASK_DEFINITION: aws/task-definition.json
+  ECS_TASK_DEFINITION: aws/ecs/backend-task-definition.json
   CONTAINER_NAME: itg-backend
 
 jobs:
@@ -37,7 +37,7 @@ jobs:
       ECR_REPOSITORY: itg-backend
       ECS_CLUSTER: itg-backend-cluster
       ECS_SERVICE: itg-backend-service
-      ECS_TASK_DEFINITION: aws/task-definition.json
+      ECS_TASK_DEFINITION: aws/ecs/backend-task-definition.json
       CONTAINER_NAME: itg-backend
       ECS_TASK_FAMILY: itg-backend
       ECS_LOG_GROUP: /ecs/itg-backend
@@ -187,7 +187,7 @@ jobs:
           import os
           from urllib.parse import urlparse
 
-          template_path = "aws/task-definition.json"
+          template_path = "aws/ecs/backend-task-definition.json"
           output_path = "rendered-task-definition.json"
           empty_sentinels = {"__EMPTY__", "__UNSET__", "null", "None"}
 
@@ -372,7 +372,7 @@ jobs:
           with open(output_path, "w", encoding="utf-8") as f:
               json.dump(taskdef, f, indent=2)
           PY
-          python aws/validate_backend_task_definition.py rendered-task-definition.json --rendered
+          python scripts/deploy/validate_backend_task_definition.py rendered-task-definition.json --rendered
           echo "task-definition=rendered-task-definition.json" >> "$GITHUB_OUTPUT"
 
       - name: Run database migration before replacing the service
