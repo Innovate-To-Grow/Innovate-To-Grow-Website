@@ -142,8 +142,8 @@ describe('a partner page whose snippet scrolls the page for the widget (WebKit c
   let partnerPage: {postMessage: ReturnType<typeof vi.fn>};
   let stopAsking: () => void;
 
-  const answer = (data: unknown, source: unknown = partnerPage) => {
-    const event = new MessageEvent('message', {data});
+  const answer = (data: unknown, source: unknown = partnerPage, origin = 'https://partner.example') => {
+    const event = new MessageEvent('message', {data, origin});
     Object.defineProperty(event, 'source', {value: source});
     window.dispatchEvent(event);
   };
@@ -178,6 +178,22 @@ describe('a partner page whose snippet scrolls the page for the widget (WebKit c
     expect(scrollRequests()).toEqual([
       {type: 'i2g-embed-scroll-into-view', slug: 'past widget', top: 3628, height: 900, block: 'start', smooth: false},
     ]);
+    expect(partnerPage.postMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({type: 'i2g-embed-scroll-into-view'}),
+      'https://partner.example',
+    );
+  });
+
+  it('sends scroll requests to any origin when the partner page has an opaque one', () => {
+    answer({type: 'i2g-embed-scroll-ready'}, partnerPage, 'null');
+    scrollPartnerPageBy(628);
+    window.dispatchEvent(new Event('resize'));
+    observe?.({top: 3000, height: 900});
+
+    expect(partnerPage.postMessage).toHaveBeenLastCalledWith(
+      expect.objectContaining({type: 'i2g-embed-scroll-into-view'}),
+      '*',
+    );
   });
 
   it('keeps scrolling into view while the partner page has not answered, or someone else did', () => {

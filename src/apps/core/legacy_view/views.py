@@ -173,9 +173,9 @@ def legacy_access_exchange_gateway(request: HttpRequest) -> HttpResponse:
 
     response = _apply_gateway_headers(legacy_access_exchange_view(request))
     logger.info(
-        "legacy_view_exchange status=%s method=%s outcome=dispatched duration_ms=%s",
+        # The method is a literal: the branch above has already refused everything but POST.
+        "legacy_view_exchange status=%s method=POST outcome=dispatched duration_ms=%s",
         response.status_code,
-        request.method,
         round((time.monotonic() - started) * 1000),
     )
     return response
