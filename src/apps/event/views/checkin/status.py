@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 
 from apps.event.models import CheckIn, CheckInRecord, EventRegistration
 
-from .payloads import attendee_payload, check_in_payload, event_counts, record_payload, registration_status_payload
+from .payloads import attendee_payload, check_in_payload, record_payload, registration_status_payload
 
 
 class CheckInStatusView(APIView):
@@ -33,7 +33,7 @@ class CheckInStatusView(APIView):
             .order_by("-created_at")
         )
         record_by_registration = {record.registration_id: record for record in check_in_records}
-        all_registrations = (
+        all_registrations = list(
             EventRegistration.objects.filter(event=check_in.event)
             .select_related("ticket", "member")
             .order_by("attendee_first_name", "attendee_last_name")
@@ -53,13 +53,17 @@ class CheckInStatusView(APIView):
             )
             .order_by("-created_at")[:25]
         )
-        counts = event_counts(check_in)
+        # Both querysets above already hold every registration and record for the
+        # event (a registration has at most one record), so count them in memory
+        # instead of issuing three more COUNT queries through event_counts().
         return Response(
             {
                 "check_in": check_in_payload(check_in),
-                "total": counts["total"],
-                "scanned": counts["scanned"],
-                "station_scanned": counts["station_scanned"],
+                "total": len(all_registrations),
+                "scanned": len(record_by_registration),
+                "station_scanned": sum(
+                    1 for record in record_by_registration.values() if record.check_in_id == check_in.pk
+                ),
                 "not_checked_in": [
                     attendee_payload(registration)
                     for registration in all_registrations
