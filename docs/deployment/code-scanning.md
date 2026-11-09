@@ -26,7 +26,7 @@ gh api -X PATCH repos/Innovate-To-Grow/Innovate-To-Grow-Website/code-scanning/al
   -f state=dismissed -f dismissed_reason='false positive' -f dismissed_comment='<why, 280 chars max>'
 ```
 
-Trivy findings in the backend image are fixed with a Debian package floor under `src/security/debian/`
+Trivy findings in the backend image are fixed with a Debian package floor under `src/docker/security/debian/`
 (one package per file; the Dockerfile installs and verifies them).
 
 ## Triage of 2026-11-05 (62 open alerts)
