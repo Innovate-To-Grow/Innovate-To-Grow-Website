@@ -29,7 +29,7 @@ The CI pipeline builds and validates the Docker image on every push.
 
 ## ECS task definition
 
-**Template:** `aws/task-definition.json`
+**Template:** `aws/ecs/backend-task-definition.json`
 
 | Setting | Value |
 |---------|-------|
@@ -145,7 +145,7 @@ right is the client.
 |---|---|
 | Env var | `NUM_PROXIES` (integer ≥ 1, default `1`; startup fails on anything else). Not a secret. |
 | Where it is applied | `settings.NUM_PROXIES` (used by `apps.core.utils.client_ip`) **and** `REST_FRAMEWORK["NUM_PROXIES"]` (used by DRF's throttle `get_ident()`, which ignores the top-level setting). Both are set once in `config/settings/environments/production.py`. |
-| Deployment | `aws/task-definition.json` carries `__NUM_PROXIES__`; `deploy-backend.yml` renders it from the `NUM_PROXIES` AWS deployment setting (default `1`) and `aws/validate_backend_task_definition.py` rejects a rendered value that is not a positive integer. |
+| Deployment | `aws/ecs/backend-task-definition.json` carries `__NUM_PROXIES__`; `deploy-backend.yml` renders it from the `NUM_PROXIES` AWS deployment setting (default `1`) and `scripts/deploy/validate_backend_task_definition.py` rejects a rendered value that is not a positive integer. |
 | Local / CI | Unset (no proxy): DRF falls back to the full header / `REMOTE_ADDR`. |
 
 ALB requirements (both are the AWS defaults; do not change them): `routing.http.xff_header_processing.mode = append`
@@ -202,7 +202,7 @@ Served from S3 via `django-storages`:
 | `/static/` | Collected static files (admin CSS, CKEditor assets) |
 | `/media/` | User uploads (CMS assets, profile images) |
 
-`src/Dockerfile` collects the static files into the image at build time (`/app/static`), and `deploy-backend.yml` copies them out of the release image and syncs them to S3 (`--size-only`) before the rollout. `src/entrypoint.sh` also runs `collectstatic` at every Web container start, because its fallback checks `staticfiles/`, which the image never contains; under the production settings that pass writes to the bucket's `static/` prefix, and if it fails it logs `collectstatic failed (non-fatal)` and the container still starts.
+`src/Dockerfile` collects the static files into the image at build time (`/app/static`), and `deploy-backend.yml` copies them out of the release image and syncs them to S3 (`--size-only`) before the rollout. `src/docker/entrypoint.sh` also runs `collectstatic` at every Web container start, because its fallback checks `staticfiles/`, which the image never contains; under the production settings that pass writes to the bucket's `static/` prefix, and if it fails it logs `collectstatic failed (non-fatal)` and the container still starts.
 
 ## Related pages
 
