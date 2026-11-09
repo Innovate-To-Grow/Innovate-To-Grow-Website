@@ -143,9 +143,9 @@ class PastProjectAISearchBudgetTests(TestCase):
         self.client.force_authenticate(user=None)
 
         with (
-            patch("apps.system_intelligence.views.public_assistant.build_public_context", return_value="ctx"),
+            patch("apps.system_intelligence.views.build_public_context", return_value="ctx"),
             patch(
-                "apps.system_intelligence.views.public_assistant.answer_public_question",
+                "apps.system_intelligence.views.answer_public_question",
                 return_value={"text": "hello", "usage": {"totalTokens": 5}},
             ),
         ):
@@ -243,9 +243,9 @@ class PastProjectAISearchBudgetTests(TestCase):
         self.client.force_authenticate(user=None)
         statuses = []
         with (
-            patch("apps.system_intelligence.views.public_assistant.build_public_context", return_value="ctx"),
+            patch("apps.system_intelligence.views.build_public_context", return_value="ctx"),
             patch(
-                "apps.system_intelligence.views.public_assistant.answer_public_question",
+                "apps.system_intelligence.views.answer_public_question",
                 return_value={"text": "hello", "usage": {"totalTokens": 5}},
             ) as mock_answer,
         ):

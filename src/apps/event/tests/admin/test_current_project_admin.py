@@ -51,7 +51,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = list(response.wsgi_request._messages)
         self.assertTrue(any("No configuration found" in str(m) for m in messages))
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_pull_view_success_reports_stats(self, mock_sync):
         config = CurrentProjectSchedule.objects.create(name="Demo Day")
         mock_sync.return_value = ScheduleSyncStats(
@@ -68,7 +68,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("2 sections" in m and "3 tracks" in m and "4 slots" in m for m in messages))
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule", side_effect=ScheduleSyncError("kaboom"))
+    @patch("apps.event.admin.current_project.sync_schedule", side_effect=ScheduleSyncError("kaboom"))
     def test_pull_view_failure_shows_error(self, mock_sync):
         CurrentProjectSchedule.objects.create(name="Demo Day")
 
@@ -78,7 +78,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("Sync failed for 'Demo Day': kaboom" in m for m in messages))
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_row_action_syncs_a_non_active_schedule(self, mock_sync):
         # Any schedule row (e.g. a previous year's) can be pulled from its own
         # sheet — not only the active one that the changelist "Pull" tool uses.
@@ -95,7 +95,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("Synced 'Innovate to Grow 2025'" in m and "3 slots" in m for m in messages))
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule", side_effect=ScheduleSyncError("kaboom"))
+    @patch("apps.event.admin.current_project.sync_schedule", side_effect=ScheduleSyncError("kaboom"))
     def test_row_action_failure_names_the_schedule(self, mock_sync):
         archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
 
@@ -107,7 +107,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("Sync failed for 'Innovate to Grow 2025': kaboom" in m for m in messages))
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_row_action_unknown_schedule_shows_error(self, mock_sync):
         response = self.client.get(
             reverse(
@@ -121,7 +121,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("Schedule not found" in m for m in messages))
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_row_action_malformed_object_id_shows_error(self, mock_sync):
         response = self.client.get(
             reverse("admin:event_currentprojectschedule_sync_from_google_sheets", args=["not-a-uuid"])
@@ -186,7 +186,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
             reverse("admin:event_currentprojectschedule_sync_from_google_sheets_detail", args=[archived.pk]),
         )
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_detail_action_syncs_and_returns_to_the_change_form(self, mock_sync):
         archived = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)
         mock_sync.return_value = ScheduleSyncStats(sections_created=1)
@@ -200,7 +200,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("Synced 'Innovate to Grow 2025'" in m for m in messages))
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_detail_action_unknown_schedule_returns_to_changelist(self, mock_sync):
         response = self.client.get(
             reverse("admin:event_currentprojectschedule_sync_from_google_sheets_detail", args=["not-a-uuid"])
@@ -348,7 +348,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         self.assertEqual(list(response.context["current_projects"]), [])
         self.assertContains(response, "No active schedule configured.")
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_pull_view_syncs_the_only_schedule_even_when_inactive(self, mock_sync):
         config = CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
         mock_sync.return_value = ScheduleSyncStats(sections_created=1)
@@ -360,7 +360,7 @@ class CurrentProjectScheduleAdminTest(TestCase):
         messages = [str(m) for m in response.wsgi_request._messages]
         self.assertTrue(any("Synced 'Innovate to Grow 2026'" in m for m in messages))
 
-    @patch("apps.event.admin.current_project.admin.sync_schedule")
+    @patch("apps.event.admin.current_project.sync_schedule")
     def test_pull_view_with_several_inactive_schedules_shows_error(self, mock_sync):
         CurrentProjectSchedule.objects.create(name="Innovate to Grow 2026", is_active=False)
         CurrentProjectSchedule.objects.create(name="Innovate to Grow 2025", is_active=False)

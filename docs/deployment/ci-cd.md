@@ -186,7 +186,7 @@ the `itg-backend:<sha>` image that `deploy-backend.yml` pulls only while it is
 
 1. Pull the SHA-tagged Docker image published by the successful CI run
 2. Extract and upload Django static assets
-3. Render both the Web and no-port background-worker containers from `aws/task-definition.json`
+3. Render both the Web and no-port background-worker containers from `aws/ecs/backend-task-definition.json`
 4. Validate shared image/env/secrets, worker entrypoint isolation, health dependency, and the task CPU/memory envelope
 5. Run the release migrations in a standalone ECS task; stop on failure, then deploy the two-container task via `aws-actions/amazon-ecs-deploy-task-definition`
 6. Run smoke tests:
@@ -235,7 +235,7 @@ See [production authentication](production.md#aws-authentication-and-rollout).
 
 - All workflow runs visible at the repository's Actions tab
 - `CI Timing Report` adds a per-job duration table to each run's summary
-- Semgrep and Trivy findings from `main` appear in the Security tab
+- Semgrep and Trivy findings from `main` appear in the Security tab ([Code scanning](code-scanning.md) says how alerts are triaged)
 - Deploy smoke tests catch basic runtime issues (readiness, CORS)
 - CloudWatch logs capture runtime errors after deployment
 

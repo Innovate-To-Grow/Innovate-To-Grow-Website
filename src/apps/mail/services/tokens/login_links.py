@@ -4,7 +4,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.mail.models import LoginLinkToken
-from apps.mail.utils.redirects import is_safe_internal_redirect_path
+from apps.mail.redirects import is_safe_internal_redirect_path
 
 LOGIN_LINK_PATH = "/login-link"
 SIGN_IN_PAGE_PATH = "/login"

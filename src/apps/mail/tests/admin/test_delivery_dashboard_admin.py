@@ -127,7 +127,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
             ],
         }
 
-    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
     def test_delivery_dashboard_renders_aws_metrics_and_problem_recipients(self, mock_dashboard_data):
         mock_dashboard_data.return_value = self._aws_dashboard_payload()
 
@@ -163,7 +163,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertContains(response, "/admin/mail/delivery-dashboard/data/")
         mock_dashboard_data.assert_called_once_with(days=183)
 
-    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
     def test_delivery_dashboard_renders_selected_window(self, mock_dashboard_data):
         mock_dashboard_data.return_value = self._aws_dashboard_payload(window_days=365)
 
@@ -173,7 +173,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertContains(response, '<option value="365" selected>Last 12 months</option>', html=True)
         mock_dashboard_data.assert_called_once_with(days=365)
 
-    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
     def test_delivery_dashboard_data_returns_aws_payload(self, mock_dashboard_data):
         mock_dashboard_data.return_value = self._aws_dashboard_payload()
 
@@ -204,7 +204,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertIn("Complained", status_labels)
         mock_dashboard_data.assert_called_once_with(days=183)
 
-    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
     def test_delivery_dashboard_data_accepts_allowed_window(self, mock_dashboard_data):
         mock_dashboard_data.side_effect = lambda *, days=183: self._aws_dashboard_payload(window_days=days)
 
@@ -214,7 +214,7 @@ class MailDeliveryDashboardAdminTest(TestCase):
         self.assertEqual(response.json()["window_days"], 90)
         mock_dashboard_data.assert_called_once_with(days=90)
 
-    @patch("apps.mail.admin.delivery_dashboard.admin.get_delivery_dashboard_data")
+    @patch("apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data")
     def test_delivery_dashboard_data_rejects_unlisted_window(self, mock_dashboard_data):
         mock_dashboard_data.side_effect = lambda *, days=183: self._aws_dashboard_payload(window_days=days)
 

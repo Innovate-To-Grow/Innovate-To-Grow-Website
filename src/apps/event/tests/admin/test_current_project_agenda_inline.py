@@ -467,7 +467,7 @@ class CurrentProjectScheduleAgendaInlineTest(TestCase):
         self.assertEqual(self._titles(), ["Registration and Coffee", "Added by another editor", "Mine"])
 
     def test_inline_follows_the_event_app_access_rule(self):
-        from apps.event.admin.current_project.admin import EventAgendaItemInline
+        from apps.event.admin.current_project import EventAgendaItemInline
 
         inline = EventAgendaItemInline(CurrentProjectSchedule, admin.site)
         request = RequestFactory().get("/admin/")

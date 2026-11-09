@@ -346,6 +346,8 @@ Google Sheet):
   just one)
 - **Sync from Google Sheets** (per-row action and change-form button) syncs *that* row — previous years can be
   refreshed without activating them
+- **Open Google Sheet** (change-form button under the Sheet ID) opens that row's sheet in a new tab; it appears
+  once the row is saved with a Sheet ID
 - `python manage.py sync_schedule` syncs every row whose auto-sync is enabled and due; `--schedule <uuid>` syncs
   one row now regardless of its auto-sync settings; `--force` syncs the active row now regardless of its interval
 - A sync replaces that row's `CurrentProject` and schedule sections/tracks/slots only. Agenda items (the Expo and
