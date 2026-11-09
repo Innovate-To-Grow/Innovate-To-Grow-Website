@@ -1,7 +1,7 @@
 @layer itg.components {
 /* ==========================================================================
    Public AI assistant chat widget — floating launcher + chat panel.
-   Uses --itg-* design tokens (see assets/tokens.css).
+   Uses --itg-* design tokens (see styles/tokens.css).
    ========================================================================== */
 
 .itg-assistant {

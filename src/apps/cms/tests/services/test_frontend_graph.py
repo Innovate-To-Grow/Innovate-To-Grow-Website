@@ -552,8 +552,8 @@ class RealFrontendEntryTests(SimpleTestCase):
         self.assertIsNotNone(entry)
         self.assertIn("app/MaintenanceMode/MaintenanceMode.css", entry)
         self.assertIn("index.css", entry)
-        # index.css -> assets/shared.css -> assets/tokens.css through CSS @import.
-        self.assertIn("assets/tokens.css", entry)
+        # index.css -> styles/shared.css -> styles/tokens.css through CSS @import.
+        self.assertIn("styles/tokens.css", entry)
         self.assertNotIn("features/projects/components/styles/cascade/projects.css", entry)
         for relative in entry:
             with self.subTest(file=relative):

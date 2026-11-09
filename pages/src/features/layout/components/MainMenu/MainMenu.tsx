@@ -1,6 +1,6 @@
 import './MainMenu.css';
 import {useCallback, useMemo, useRef, useState, type MouseEvent} from 'react';
-import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
+import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage/ResponsiveBrandImage';
 import {useCurrentPathname} from '@/features/layout/hooks/useCurrentPathname';
 import {resolveSection} from '@/features/layout/sections';
 import {DesktopMenuNav} from './parts/DesktopMenuNav';
