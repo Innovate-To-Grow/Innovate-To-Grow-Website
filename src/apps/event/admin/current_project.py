@@ -14,8 +14,8 @@ from unfold.decorators import action
 from apps.core.admin import AppAccessInlineMixin, BaseModelAdmin
 from apps.core.models import GoogleCredentialConfig
 
-from ...models import CurrentProject, CurrentProjectSchedule, EventAgendaItem, EventScheduleTrack
-from ...services import ScheduleSyncError, sync_schedule
+from ..models import CurrentProject, CurrentProjectSchedule, EventAgendaItem, EventScheduleTrack
+from ..services import ScheduleSyncError, sync_schedule
 
 
 @admin.register(CurrentProject)

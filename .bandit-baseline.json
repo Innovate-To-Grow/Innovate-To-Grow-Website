@@ -5826,7 +5826,7 @@
       "nosec": 0,
       "skipped_tests": 0
     },
-    "./apps/mail/utils/redirects.py": {
+    "./apps/mail/redirects.py": {
       "CONFIDENCE.HIGH": 1,
       "CONFIDENCE.LOW": 0,
       "CONFIDENCE.MEDIUM": 0,
@@ -8202,7 +8202,7 @@
       "code": "38             seen.add(path)\n39     except Exception:\n40         pass\n41 \n",
       "col_offset": 4,
       "end_col_offset": 12,
-      "filename": "./apps/mail/utils/redirects.py",
+      "filename": "./apps/mail/redirects.py",
       "issue_confidence": "HIGH",
       "issue_cwe": {
         "id": 703,

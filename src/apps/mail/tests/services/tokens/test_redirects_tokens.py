@@ -7,15 +7,15 @@ from django.test import TestCase, override_settings
 
 from apps.cms.models import CMSPage
 from apps.event.tests.helpers import make_event, make_member
+from apps.mail.redirects import (
+    DEFAULT_LOGIN_REDIRECT_PATH,
+    get_login_redirect_choices,
+)
 from apps.mail.services.audience.converters import members_to_recipients
 from apps.mail.services.tokens.unsubscribe import (
     build_oneclick_unsubscribe_url,
     build_resubscribe_token,
     get_member_from_resubscribe_token,
-)
-from apps.mail.utils.redirects import (
-    DEFAULT_LOGIN_REDIRECT_PATH,
-    get_login_redirect_choices,
 )
 
 
@@ -49,7 +49,7 @@ class LoginRedirectChoiceTests(TestCase):
 
     def test_cms_query_failure_is_swallowed(self):
         with patch(
-            "apps.mail.utils.redirects.CMSPage.objects.filter",
+            "apps.mail.redirects.CMSPage.objects.filter",
             side_effect=RuntimeError("db down"),
         ):
             choices = dict(get_login_redirect_choices())
@@ -97,7 +97,7 @@ class LoginRedirectChoiceTests(TestCase):
             {"url": DEFAULT_LOGIN_REDIRECT_PATH, "title": "Dup Account"},  # already seen -> skipped
             {"url": "/unique-route", "title": "Unique"},  # included
         ]
-        with patch("apps.mail.utils.redirects.APP_ROUTES", fake_routes):
+        with patch("apps.mail.redirects.APP_ROUTES", fake_routes):
             choices = dict(get_login_redirect_choices())
 
         self.assertNotIn("not-internal", choices)

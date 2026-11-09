@@ -79,7 +79,7 @@ CONTROLLER = {
 }
 
 ADMISSION = {
-    # Requests one process serves at once. Uvicorn's own --limit-concurrency (entrypoint.sh) is set well above it,
+    # Requests one process serves at once. Uvicorn's own --limit-concurrency (docker/entrypoint.sh) is set well above it,
     # since it also counts idle keep-alive connections and answers 503 to every tier alike.
     "concurrency_limit": _env_int("UVICORN_LIMIT_CONCURRENCY", 20),
     # Slots only P0 may use, whatever the tier shares say.

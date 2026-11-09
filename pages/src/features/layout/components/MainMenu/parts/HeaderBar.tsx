@@ -1,5 +1,5 @@
 import type {RefObject} from 'react';
-import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage';
+import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage/ResponsiveBrandImage';
 import {PHONE_MAX_WIDTH, UNIVERSITY_LINKS} from './shared';
 
 interface HeaderBarProps {

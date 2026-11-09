@@ -23,7 +23,7 @@ MOCK_RESULT = {
 
 # Mocks that must NOT be called still return MOCK_RESULT: a bare MagicMock reaching
 # the JSON renderer makes a regression hang the run instead of failing an assertion.
-INVOKE_PATH = "apps.system_intelligence.views.public_assistant.answer_public_question"
+INVOKE_PATH = "apps.system_intelligence.views.answer_public_question"
 
 
 @override_settings(PUBLIC_ASSISTANT_ALLOW_LOCAL_BUDGET=True)

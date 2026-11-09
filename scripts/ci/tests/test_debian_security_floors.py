@@ -8,8 +8,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
-INSTALLER = ROOT / "src/security/install-debian-floors.sh"
-FLOORS = ROOT / "src/security/debian"
+INSTALLER = ROOT / "src/docker/security/install-debian-floors.sh"
+FLOORS = ROOT / "src/docker/security/debian"
 
 
 class DebianSecurityFloorTests(unittest.TestCase):

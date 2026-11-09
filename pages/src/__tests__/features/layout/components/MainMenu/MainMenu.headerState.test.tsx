@@ -24,7 +24,7 @@ vi.mock('@/features/layout/components/MainMenu/parts/MobileMenuPanel', () => ({
   MobileMenuPanel: () => null,
 }));
 
-vi.mock('@/components/ResponsiveBrandImage', () => ({
+vi.mock('@/components/ResponsiveBrandImage/ResponsiveBrandImage', () => ({
   ResponsiveBrandImage: ({brand, alt, sizes}: {brand: string; alt: string; sizes?: string}) => (
     <img alt={alt} data-brand={brand} data-sizes={sizes} />
   ),
