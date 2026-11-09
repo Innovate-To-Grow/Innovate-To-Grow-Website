@@ -13,7 +13,7 @@ from apps.cms.models import (
 )
 from apps.cms.models.content.cms.block_types import DEFAULT_SANDBOX
 from apps.cms.models.media import ALLOWED_ASSET_EXTENSIONS, IMAGE_ASSET_EXTENSIONS, MAX_ASSET_UPLOAD_BYTES
-from apps.cms.services.embed.embed_sections import hidden_section_presets_payload
+from apps.cms.services.embed import hidden_section_presets_payload
 from apps.event.models import CurrentProjectSchedule
 
 from .json_utils import _safe_json

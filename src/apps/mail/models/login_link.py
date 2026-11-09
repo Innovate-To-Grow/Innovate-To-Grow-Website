@@ -75,8 +75,8 @@ class LoginLinkToken(models.Model):
     @property
     def effective_redirect_path(self):
         """Post-login destination: campaign setting first, then the per-token path."""
-        # Imported lazily: utils.redirects pulls in cms models at import time.
-        from apps.mail.utils.redirects import (
+        # Imported lazily: redirects pulls in cms models at import time.
+        from apps.mail.redirects import (
             DEFAULT_LOGIN_REDIRECT_PATH,
             get_login_link_redirect_path,
             is_safe_internal_redirect_path,

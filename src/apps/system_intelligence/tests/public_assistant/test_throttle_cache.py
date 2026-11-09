@@ -19,7 +19,7 @@ from apps.core.models import AWSCredentialConfig
 from apps.core.utils.throttle_cache import throttle_cache
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.public_assistant import actors
-from apps.system_intelligence.views.public_assistant import PublicAssistantActorThrottle
+from apps.system_intelligence.views import PublicAssistantActorThrottle
 from config.settings.base.framework.cache import THROTTLE_CACHE
 
 Member = get_user_model()
@@ -28,8 +28,8 @@ MOCK_RESULT = {
     "text": "Innovate to Grow connects student teams with industry partners.",
     "usage": {"inputTokens": 120, "outputTokens": 40, "totalTokens": 160},
 }
-INVOKE_PATH = "apps.system_intelligence.views.public_assistant.answer_public_question"
-CONTEXT_PATH = "apps.system_intelligence.views.public_assistant.build_public_context"
+INVOKE_PATH = "apps.system_intelligence.views.answer_public_question"
+CONTEXT_PATH = "apps.system_intelligence.views.build_public_context"
 CAMPUS_IP = "169.236.10.10"
 
 

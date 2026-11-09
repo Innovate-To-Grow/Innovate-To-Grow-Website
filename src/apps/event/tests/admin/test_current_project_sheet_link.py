@@ -3,7 +3,7 @@ from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from apps.event.admin.current_project.admin import SHEET_LINK_FIELD, CurrentProjectScheduleAdmin, google_sheet_url
+from apps.event.admin.current_project import SHEET_LINK_FIELD, CurrentProjectScheduleAdmin, google_sheet_url
 from apps.event.models import CurrentProjectSchedule
 from apps.event.tests.helpers import make_superuser
 

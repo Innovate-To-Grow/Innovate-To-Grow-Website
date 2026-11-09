@@ -154,7 +154,7 @@ def normalized_embed_widget_schedule_id(data, widget):
 
 
 def normalized_embed_widget_hidden_sections(data, widget):
-    from apps.cms.services.embed.embed_sections import normalize_hidden_sections
+    from apps.cms.services.embed import normalize_hidden_sections
 
     if "hidden_sections" in data:
         return normalize_hidden_sections(data.get("hidden_sections"), widget.widget_type, widget.app_route)
