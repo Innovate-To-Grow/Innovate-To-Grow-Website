@@ -7,8 +7,8 @@ from pathlib import Path
 from django.test import SimpleTestCase
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[5]
-TASK_DEFINITION_PATH = REPOSITORY_ROOT / "aws" / "task-definition.json"
-VALIDATOR_PATH = REPOSITORY_ROOT / "aws" / "validate_backend_task_definition.py"
+TASK_DEFINITION_PATH = REPOSITORY_ROOT / "aws" / "ecs" / "backend-task-definition.json"
+VALIDATOR_PATH = REPOSITORY_ROOT / "scripts" / "deploy" / "validate_backend_task_definition.py"
 WORKFLOW_PATH = REPOSITORY_ROOT / ".github" / "workflows" / "deploy-backend.yml"
 
 spec = importlib.util.spec_from_file_location("validate_backend_task_definition", VALIDATOR_PATH)
@@ -132,7 +132,7 @@ class ECSTaskDefinitionTopologyTests(SimpleTestCase):
             workflow,
         )
         self.assertIn(
-            "python aws/validate_backend_task_definition.py rendered-task-definition.json --rendered",
+            "python scripts/deploy/validate_backend_task_definition.py rendered-task-definition.json --rendered",
             workflow,
         )
 

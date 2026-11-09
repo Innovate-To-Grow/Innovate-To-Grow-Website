@@ -9,6 +9,7 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 - [Backend Deployment](backend.md) — Docker, ECS Fargate, and Uvicorn
 - [Frontend Deployment](frontend.md) — Vite build and AWS Amplify
 - [CI/CD](ci-cd.md) — GitHub Actions pipelines
+- [Code scanning](code-scanning.md) — How CodeQL, Semgrep and Trivy alerts are fixed or dismissed, and the triage of the backlog
 - [Production Deployment Approval](production.md) — One protected approval gate for all production targets
 - [Send verification](send-verification.md) — Self-hosted ALTCHA + destination quotas for email/SMS codes
 - [Legacy read-only viewer](legacy-view.md) — Private CloudFront gateway to the retired Flask site, launched from Admin

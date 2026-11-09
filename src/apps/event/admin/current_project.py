@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from django import forms
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
@@ -5,6 +7,7 @@ from django.db.models import F, Max
 from django.forms import BaseInlineFormSet
 from django.shortcuts import redirect
 from django.urls import path, reverse
+from django.utils.html import format_html
 from unfold.admin import TabularInline
 from unfold.decorators import action
 
@@ -172,12 +175,29 @@ class EventAgendaItemInline(AppAccessInlineMixin, TabularInline):
     verbose_name_plural = "Agenda items (Expo and Awards tables on the schedule page)"
 
 
+SHEET_LINK_FIELD = "google_sheet_link"
+
+
+def google_sheet_url(sheet_id):
+    """The sheet's edit page, as the registration sheet-sync page links its spreadsheet (the id is URL-quoted)."""
+    return f"https://docs.google.com/spreadsheets/d/{quote(sheet_id, safe='')}/edit"
+
+
+def _with_sheet_link(options):
+    """A copy of a fieldset's options with the sheet button right after ``sheet_id``; other fieldsets unchanged."""
+    fields = list(options.get("fields", ()))
+    if "sheet_id" not in fields:
+        return options
+    fields.insert(fields.index("sheet_id") + 1, SHEET_LINK_FIELD)
+    return {**options, "fields": tuple(fields)}
+
+
 @admin.register(CurrentProjectSchedule)
 class CurrentProjectScheduleAdmin(BaseModelAdmin):
     list_display = ("name", "is_active", "last_synced_at", "sync_error_short", "created_at")
     list_filter = ("is_active",)
     search_fields = ("name", "sheet_id")
-    readonly_fields = ("last_synced_at", "sync_error", "created_at", "updated_at")
+    readonly_fields = (SHEET_LINK_FIELD, "last_synced_at", "sync_error", "created_at", "updated_at")
     change_list_template = "admin/event/currentprojectschedule/change_list.html"
     # Each schedule row (e.g. one per event year) has its own Google Sheet, so
     # every row — not only the active one — can be pulled from the changelist
@@ -225,6 +245,21 @@ class CurrentProjectScheduleAdmin(BaseModelAdmin):
             },
         ),
     )
+
+    def get_fieldsets(self, request, obj=None):
+        """Show the Open Google Sheet button under the Sheet ID of a saved row that has one; otherwise nothing."""
+        fieldsets = super().get_fieldsets(request, obj)
+        if obj is None or obj._state.adding or not (obj.sheet_id or "").strip():
+            return fieldsets
+        return tuple((name, _with_sheet_link(options)) for name, options in fieldsets)
+
+    @admin.display(description="Google Sheet")
+    def google_sheet_link(self, obj):
+        return format_html(
+            '<a class="i2g-admin-action" href="{}" target="_blank" rel="noopener noreferrer">'
+            '<span class="material-symbols-outlined">open_in_new</span>Open Google Sheet</a>',
+            google_sheet_url(obj.sheet_id.strip()),
+        )
 
     @admin.display(description="Sync Error")
     def sync_error_short(self, obj):

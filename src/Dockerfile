@@ -13,7 +13,7 @@ WORKDIR /build
 
 # Keep distro-specific security floors tied to Debian trixie. Their own COPY
 # layer invalidates cached package installation whenever a requirement changes.
-COPY security/ /opt/itg-security/
+COPY docker/security/ /opt/itg-security/
 
 # Build-time dependencies, pinned to a major version to satisfy DL3008.
 #
@@ -47,7 +47,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-COPY security/ /opt/itg-security/
+COPY docker/security/ /opt/itg-security/
 
 # Runtime libs only. libpq5 is the runtime sibling of libpq-dev used by
 # psycopg2. Major-version pinned for the same reason as libpq-dev above — the two
@@ -75,10 +75,10 @@ COPY --chown=app:app . .
 
 # Bake static assets into the image instead of running collectstatic at boot.
 # config.settings.environments.local points at SQLite + local FS, which is enough for the
-# build-time staticfiles pass (no DB or S3 credentials needed). entrypoint.sh
+# build-time staticfiles pass (no DB or S3 credentials needed). docker/entrypoint.sh
 # is made executable in the same layer so there's one RUN for app setup.
 ENV DJANGO_SETTINGS_MODULE=config.settings.environments.local
-RUN chmod +x entrypoint.sh \
+RUN chmod +x docker/entrypoint.sh \
  && mkdir -p data \
  && chown app:app data \
  && python manage.py collectstatic --noinput
@@ -92,4 +92,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/livez/')" || exit 1
 
-ENTRYPOINT ["./entrypoint.sh"]
+ENTRYPOINT ["./docker/entrypoint.sh"]

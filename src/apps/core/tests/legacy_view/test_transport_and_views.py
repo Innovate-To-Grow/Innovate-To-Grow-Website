@@ -428,11 +428,14 @@ class LegacyExchangeGatewayTest(SimpleTestCase):
             headers={HEADER_NAME: SECRET},
         )
 
-        response = legacy_access_exchange_gateway(request)
+        with self.assertLogs("apps.core.legacy_view.views", level="INFO") as logs:
+            response = legacy_access_exchange_gateway(request)
 
         self.assertEqual(response.status_code, 303)
         self.assertTrue(request._i2g_legacy_origin_verified)
         exchange_view.assert_called_once_with(request)
+        # The dispatched line names the method as a literal: nothing from the request reaches the log.
+        self.assertTrue(any("status=303 method=POST outcome=dispatched" in line for line in logs.output), logs.output)
 
     @patch("apps.core.views.legacy_access.legacy_access_exchange_view")
     def test_missing_origin_header_never_dispatches_exchange(self, exchange_view):
