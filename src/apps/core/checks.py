@@ -1,6 +1,6 @@
 """System checks for settings that must hold before the site starts.
 
-Every management command runs them, including the startup commands in ``entrypoint.sh`` and the background worker,
+Every management command runs them, including the startup commands in ``docker/entrypoint.sh`` and the background worker,
 so a production task whose key store is not Secrets Manager stops before it serves a request.
 """
 

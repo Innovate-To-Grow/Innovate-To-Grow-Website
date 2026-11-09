@@ -5,7 +5,7 @@
    that same backend serves the theme sheet (/api/layout/theme.css). Every
    rule the page needs ships in the bundle: these rules (moved verbatim from
    the former CMS "maintenance" sheet) and the design system in
-   styles/contract/; the --itg-* values fall back to src/assets/tokens.css
+   styles/contract/; the --itg-* values fall back to src/styles/tokens.css
    when the theme sheet is missing. The rules sit in itg.components, like
    every other component stylesheet.
    ========================================================================== */

@@ -27,7 +27,7 @@ env:
   ECR_REPOSITORY: itg-archive
   ECS_CLUSTER: itg-backend-cluster
   ECS_SERVICE: itg-archive-service
-  ECS_TASK_DEFINITION: aws/archive-task-definition.json
+  ECS_TASK_DEFINITION: aws/ecs/archive-task-definition.json
   CONTAINER_NAME: itg-archive
 
 jobs:
@@ -121,7 +121,7 @@ jobs:
           import json
           import os
 
-          with open("aws/archive-task-definition.json", encoding="utf-8") as f:
+          with open("aws/ecs/archive-task-definition.json", encoding="utf-8") as f:
               taskdef = json.load(f)
 
           exec_role = os.environ.get("ECS_EXECUTION_ROLE_ARN", "").strip()

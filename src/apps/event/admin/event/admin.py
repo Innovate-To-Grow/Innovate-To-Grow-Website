@@ -8,7 +8,7 @@ from apps.core.admin.mixins.confirm_on_save_utils import compute_formsets_diff
 from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from ...models import Event, Question, Ticket
-from ...services.template.copy import EventCopyTemplate, build_event_copy_template
+from ...services.template import EventCopyTemplate, build_event_copy_template
 from ...services.ticket.date_ranges import format_event_date_range
 from ..registration.sheet_sync import RegistrationSheetSyncAdminMixin
 from .forms import EventAdminForm

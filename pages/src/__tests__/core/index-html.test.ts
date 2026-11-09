@@ -15,7 +15,7 @@ const shell = new DOMParser().parseFromString(indexHtml, 'text/html');
 const inline = Array.from(shell.head.querySelectorAll('style'), (node) => node.textContent).join('\n');
 const indicatorCss = readSource('components/LoadingIndicator/LoadingIndicator.css');
 const containerCss = readSource('features/layout/components/Container/Container.css');
-const tokensCss = readSource('assets/tokens.css');
+const tokensCss = readSource('styles/tokens.css');
 
 /** The declarations of the first rule written exactly `selector {`. */
 const declarations = (css: string, selector: string): Record<string, string> => {
@@ -134,7 +134,7 @@ describe('index.html page shell', () => {
     }
   });
 
-  it("falls back to each token's default in assets/tokens.css, so the boot ring paints the colours the page will", () => {
+  it("falls back to each token's default in styles/tokens.css, so the boot ring paints the colours the page will", () => {
     // The defaults: the custom properties of tokens.css's top-level :root, outside any media query.
     const defaults = new Map<string, string>();
     postcss.parse(tokensCss).walkRules(':root', (rule) => {

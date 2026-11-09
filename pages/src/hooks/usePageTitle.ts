@@ -1,5 +1,5 @@
 import {useEffect} from 'react';
-import {claimDocumentHead, setOpenGraphTitle, type HeadClaimLevel} from './documentHead';
+import {claimDocumentHead, setOpenGraphTitle, type HeadClaimLevel} from '@/lib/documentHead';
 
 /** The site name every page title ends with, after the page's own name. */
 export const SITE_NAME = 'Innovate to Grow';

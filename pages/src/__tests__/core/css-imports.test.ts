@@ -112,7 +112,7 @@ describe('CSS import scanner', () => {
   it('resolves ./, ../ and @/ specifiers to absolute paths and skips package CSS', () => {
     expect(resolveCssSpecifier(importer, './Demo.css')).toBe(join(SRC_DIR, 'features', 'demo', 'Demo.css'));
     expect(resolveCssSpecifier(importer, '../shared/x.css')).toBe(join(SRC_DIR, 'features', 'shared', 'x.css'));
-    expect(resolveCssSpecifier(importer, '@/assets/tokens.css')).toBe(join(SRC_DIR, 'assets', 'tokens.css'));
+    expect(resolveCssSpecifier(importer, '@/styles/tokens.css')).toBe(join(SRC_DIR, 'styles', 'tokens.css'));
     expect(resolveCssSpecifier(importer, 'some-package/dist/style.css')).toBeNull();
   });
 });
@@ -120,7 +120,7 @@ describe('CSS import scanner', () => {
 describe('every stylesheet is used', () => {
   it('finds the stylesheets it checks', () => {
     expect(CSS_FILES.map(fromPages)).toEqual(
-      expect.arrayContaining(['src/index.css', 'src/assets/tokens.css', 'src/app/MaintenanceMode/MaintenanceMode.css']),
+      expect.arrayContaining(['src/index.css', 'src/styles/tokens.css', 'src/app/MaintenanceMode/MaintenanceMode.css']),
     );
   });
 
@@ -164,7 +164,7 @@ describe('maintenance page styles are bundled with the app', () => {
   });
 
   it('every --itg- token it reads without a fallback is defined in the bundled tokens.css', () => {
-    const tokensCss = readFileSync(join(SRC_DIR, 'assets', 'tokens.css'), 'utf8');
+    const tokensCss = readFileSync(join(SRC_DIR, 'styles', 'tokens.css'), 'utf8');
     const defined = new Set(Array.from(tokensCss.matchAll(/(--itg-[\w-]+)\s*:/g), (match) => match[1]));
     const required = new Set(Array.from(maintenanceCss.matchAll(/var\(\s*(--itg-[\w-]+)\s*\)/g), (match) => match[1]));
 

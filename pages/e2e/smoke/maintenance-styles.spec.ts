@@ -1,6 +1,6 @@
 // The maintenance page and the degraded-service banner show when the backend is down, and that
 // backend also serves /api/layout/theme.css. Both must stay styled from what ships in the bundle:
-// src/app/MaintenanceMode/MaintenanceMode.css plus the fallback tokens in src/assets/tokens.css.
+// src/app/MaintenanceMode/MaintenanceMode.css plus the fallback tokens in src/styles/tokens.css.
 import type {Page} from '@playwright/test';
 import {test, expect} from '../helpers/fixtures';
 import {cmsPageResponse, mockCmsPage} from '../helpers';

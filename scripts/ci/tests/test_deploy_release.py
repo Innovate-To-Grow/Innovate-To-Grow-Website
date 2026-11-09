@@ -12,7 +12,7 @@ from scripts.deploy import migrate_ecs, publish_image
 
 class MigrationTests(unittest.TestCase):
     def setUp(self):
-        self.definition = json.loads((Path(__file__).resolve().parents[3] / "aws/task-definition.json").read_text())
+        self.definition = json.loads((Path(__file__).resolve().parents[3] / "aws/ecs/backend-task-definition.json").read_text())
         self.definition["family"] = "itg-backend"
 
     def test_migration_is_isolated_and_preserves_release_credentials(self):
