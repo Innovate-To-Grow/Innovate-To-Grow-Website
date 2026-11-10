@@ -2,8 +2,10 @@ import logging
 
 from django.template.loader import render_to_string
 
+from apps.core.services.email import email_tracking
+
 from .actions import render_email_body
-from .config import PURPOSE_SUBJECTS
+from .config import PURPOSE_CATEGORIES, PURPOSE_SUBJECTS
 
 logger = logging.getLogger(__name__)
 SES_DELIVERY_ERROR = "Email delivery failed or is not configured."
@@ -34,9 +36,9 @@ def send_notification_email(
     if raise_provider_errors:
         send_kwargs["raise_provider_errors"] = True
 
-    if email_api._send_via_ses(
-        **send_kwargs,
-    ):
+    with email_tracking(category="notification", subcategory=template):
+        sent = email_api._send_via_ses(**send_kwargs)
+    if sent:
         logger.info("Notification email accepted by the configured provider")
         return True
 
@@ -61,13 +63,18 @@ def send_admin_invitation_email(*, invitation, request=None):
     )
 
     # The acceptance URL creates a staff account for whoever holds it, so no copy may stay in Sent Items.
-    if email_api._send_via_ses(
-        config=config,
-        recipient=invitation.email,
-        subject=subject,
-        html_body=html_body,
-        keep_sent_copy=False,
+    source_id = getattr(invitation, "pk", None)  # telemetry only: never let it stop the invitation
+    with email_tracking(
+        category="invitation", source_type="authn.admininvitation" if source_id else "", source_id=source_id
     ):
+        sent = email_api._send_via_ses(
+            config=config,
+            recipient=invitation.email,
+            subject=subject,
+            html_body=html_body,
+            keep_sent_copy=False,
+        )
+    if sent:
         logger.info("Admin invitation email accepted by the configured provider")
         return
 
@@ -101,14 +108,16 @@ def send_verification_email(
     )
 
     # Every purpose's code (and its sign-in link) is a live credential, so no copy may stay in Sent Items.
-    if email_api._send_via_ses(
-        config=config,
-        recipient=recipient,
-        subject=subject,
-        html_body=html_body,
-        raise_provider_errors=True,
-        keep_sent_copy=False,
-    ):
+    with email_tracking(category=PURPOSE_CATEGORIES.get(purpose, "verification"), subcategory=purpose):
+        sent = email_api._send_via_ses(
+            config=config,
+            recipient=recipient,
+            subject=subject,
+            html_body=html_body,
+            raise_provider_errors=True,
+            keep_sent_copy=False,
+        )
+    if sent:
         logger.info("Verification email accepted by the configured provider")
         return
 

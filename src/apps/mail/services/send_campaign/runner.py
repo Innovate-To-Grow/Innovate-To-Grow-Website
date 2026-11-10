@@ -138,6 +138,7 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
                 recipient_log_id=log.pk,
                 delivery_attempt=log.attempts,
                 keep_sent_copy=not carries_login_link(context, subject, body_html),
+                campaign_id=campaign.pk,
             )
         )
         if result is None:
@@ -188,6 +189,7 @@ def _send_with_configured_provider(
     recipient_log_id=None,
     delivery_attempt=0,
     keep_sent_copy=True,
+    campaign_id=None,
 ):
     if ses_client is not None:
         return _send_via_ses(
@@ -201,6 +203,7 @@ def _send_with_configured_provider(
             recipient_log_id=recipient_log_id,
             delivery_attempt=delivery_attempt,
             keep_sent_copy=keep_sent_copy,
+            campaign_id=campaign_id,
         )
     return SesSendResult(provider="", error="Email delivery is not configured.")
 

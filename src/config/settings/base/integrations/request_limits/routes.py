@@ -21,6 +21,7 @@ ROUTES = {
     "admin:mail_delivery_rates_status": "staff-polling",
     "admin:core_request_limits_status": "staff-polling",
     "admin:mail_delivery_dashboard_data": "staff-polling",
+    "admin:mail_email_monitoring_data": "staff-polling",
     "admin:system_intelligence_usage_data": "staff-polling",
     "admin:jsi18n": "staff-polling",
     # --- P3: admin heavy, bulk, AI, external calls -----------------------------------------------------------------

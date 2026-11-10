@@ -1,0 +1,40 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block extra_filters %}
+<label class="i2g-monitor-field i2g-monitor-field--wide">
+  <span>Search</span>
+  <input type="search" name="q" value="{{ listing.filters.q }}" placeholder="Recipient, status code, reason, subject or id">
+</label>
+<label class="i2g-monitor-field">
+  <span>Classification</span>
+  <select name="classification">
+    <option value="">Any</option>
+    {% for value, label in classifications %}<option value="{{ value }}" {% if listing.filters.classification == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</label>
+<label class="i2g-monitor-field">
+  <span>Match</span>
+  <select name="match">
+    <option value="">Any</option>
+    {% for value, label in match_methods %}<option value="{{ value }}" {% if listing.filters.match == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</label>
+<label class="i2g-monitor-field">
+  <span>Per page</span>
+  <select name="page_size">{% for size in page_sizes %}<option value="{{ size }}" {% if listing.page_size == size %}selected{% endif %}>{{ size }}</option>{% endfor %}</select>
+</label>
+<input type="hidden" name="sort" value="{{ listing.sort }}">
+<input type="hidden" name="dir" value="{% if listing.descending %}desc{% else %}asc{% endif %}">
+{% endblock %}
+
+{% block monitoring_content %}
+<div class="i2g-monitor-card">
+  <p class="i2g-monitor-muted">
+    {{ page.paginator.count }} bounce record{{ page.paginator.count|pluralize }} from reports received {{ scope.label|lower }}, one per failed or delayed recipient.
+    A report is matched exactly when it quotes the original Message-ID; otherwise only when exactly one email went to that
+    recipient with that subject shortly before (inferred). Anything else stays unmatched rather than guessed.
+  </p>
+  {% include "admin/mail/email_monitoring/_bounce_table.html" with bounces=page.object_list show_email=True sortable=True empty="No bounce reports match these filters." %}
+  {% include "admin/mail/email_monitoring/_pagination.html" %}
+</div>
+{% endblock %}

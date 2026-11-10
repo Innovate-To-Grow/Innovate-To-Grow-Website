@@ -10,6 +10,7 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 from apps.core.services.delivery_rates import WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
+from apps.core.services.email.telemetry.context import job_tracking
 
 from .errors import (
     DeferredJobError,
@@ -181,7 +182,7 @@ def _fail(job: BackgroundJob, exc: BaseException) -> JobOutcome:
 def run_claimed_job(job: BackgroundJob) -> JobOutcome:
     """Run one claimed job. Delivery handlers wait for their slot as the worker does (``WaitMode.WORKER``)."""
     try:
-        with wait_mode(WaitMode.WORKER):
+        with wait_mode(WaitMode.WORKER), job_tracking(job):
             get_handler(job.kind)(job)
     except Exception as exc:  # noqa: BLE001 - job boundary must persist every failure.
         if any(isinstance(item, DeferredJobError) for item in exception_chain(exc)):

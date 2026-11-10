@@ -10,6 +10,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 - [Request Flow](request-flow.md) — How requests move from browser through Vite/CDN to Django and back
 - [Integrations](integrations.md) — External services: Google Sheets, AWS SES/End User Messaging/Bedrock, Microsoft Graph email, Gmail API email, S3; every send paced by the [delivery-rate limiter](../integrations/delivery-rates.md)
 - [Request limits](../integrations/request-limits.md) — Inbound limits by scope and priority tier, Smart limit, counters and the operator runbook
+- [Email monitoring](../integrations/email-monitoring.md) — Telemetry of every outgoing email and attempt, Microsoft Graph bounce processing, and the dashboard
 - [Code Quality Rules](code-quality.md) — Size, complexity and nesting limits, dependency directions, check commands, exceptions
 
 ## Who this is for

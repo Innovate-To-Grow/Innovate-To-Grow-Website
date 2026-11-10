@@ -86,6 +86,7 @@ def send_email_recipient_job(job) -> None:
             recipient_log_id=log.pk,
             delivery_attempt=job.attempts,
             keep_sent_copy=keep_sent_copy,
+            campaign_id=log.campaign_id,
         )
         _record_email_job_result(log, job, result)
     except JobClaimLost:

@@ -38,6 +38,9 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
             patch.object(run_background_worker, "purge_expired_failure_windows", return_value=0),
             patch.object(run_background_worker, "run_delivery_rate_maintenance", return_value=NOTHING_MAINTAINED),
             patch.object(run_background_worker, "active_certificate_expiry", return_value=None),
+            patch.object(run_background_worker, "ensure_bounce_scan_scheduled", return_value=False),
+            patch.object(run_background_worker, "purge_expired_email_telemetry", return_value={"emails": 0}),
+            patch.object(run_background_worker, "purge_finished_bounce_scans", return_value=0),
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
         ):
             command.handle(
@@ -276,11 +279,14 @@ MAINTENANCE_SERVICES = {
     "purge_expired_failure_windows": 0,
     "run_delivery_rate_maintenance": NOTHING_MAINTAINED,
     "active_certificate_expiry": None,
+    "ensure_bounce_scan_scheduled": False,
+    "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
+    "purge_finished_bounce_scans": 0,
 }
 
 
 def patch_maintenance(**side_effects):
-    """Patch the six maintenance services; ``side_effects`` maps a service name to a side effect."""
+    """Patch the maintenance services; ``side_effects`` maps a service name to a side effect."""
     patchers = []
     for name, return_value in MAINTENANCE_SERVICES.items():
         if name in side_effects:
@@ -290,8 +296,13 @@ def patch_maintenance(**side_effects):
     return patchers
 
 
-# The three batched services are called with the stop check; the others take no argument.
-BATCHED_SERVICES = ("cleanup_expired_records", "clear_expired_sessions", "purge_expired_failure_windows")
+# The batched services are called with the stop check; the others take no argument.
+BATCHED_SERVICES = (
+    "cleanup_expired_records",
+    "clear_expired_sessions",
+    "purge_expired_failure_windows",
+    "purge_expired_email_telemetry",
+)
 
 
 def assert_each_service_ran_once(test_case, mocks, should_stop=None):
@@ -326,6 +337,9 @@ class MaintenanceTaskTests(SimpleTestCase):
             purge_expired_failure_windows=record("login failure windows", 0),
             run_delivery_rate_maintenance=record("delivery rates", NOTHING_MAINTAINED),
             active_certificate_expiry=record("graph certificate", None),
+            ensure_bounce_scan_scheduled=record("bounce scans", False),
+            purge_expired_email_telemetry=record("email telemetry", {"emails": 0, "bounces": 0}),
+            purge_finished_bounce_scans=record("bounce scan jobs", 0),
         )
 
         self.assertEqual(
@@ -338,6 +352,9 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "login failure windows",
                 "delivery rates",
                 "graph certificate",
+                "bounce scans",
+                "email telemetry",
+                "bounce scan jobs",
             ],
         )
         self.assertEqual(
@@ -350,6 +367,8 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Login failure window purge",
                 "Delivery-rate maintenance",
                 "Microsoft Graph certificate expiry check",
+                "Email bounce scan scheduling",
+                "Email telemetry retention",
             ],
         )
 
@@ -470,6 +489,8 @@ class MaintenanceTaskTests(SimpleTestCase):
             purge_expired_failure_windows=RuntimeError("e"),
             run_delivery_rate_maintenance=RuntimeError("g"),
             active_certificate_expiry=RuntimeError("f"),
+            ensure_bounce_scan_scheduled=RuntimeError("h"),
+            purge_expired_email_telemetry=RuntimeError("i"),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)
