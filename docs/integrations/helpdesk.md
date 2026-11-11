@@ -9,8 +9,9 @@ never reopens.
 The helpdesk ships in **shadow mode**: it reads the mailbox and writes tickets, and **sends nothing**. There is no
 reply composer, no acknowledgement and no notification, and nothing in Outlook changes (no mail is marked read,
 moved, flagged or forwarded). Staff keep answering from Outlook. The design and the open questions are in the
-Item 2 plan (`item2-helpdesk-bounces-plan-2026-11-10.md`, §2), which predates two decisions recorded here:
-automated mail *is* a ticket (closed and hidden), and only phase H1 plus merge/spam of H2 is built.
+Item 2 plan (`item2-helpdesk-bounces-plan-2026-11-10.md`, §2, kept with the project notes, not in this
+repository), which predates two decisions recorded here: automated mail *is* a ticket (closed and hidden), and
+only phase H1 plus merge and spam from H2 is built.
 
 ## For staff
 
