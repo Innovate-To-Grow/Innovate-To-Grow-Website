@@ -49,6 +49,9 @@ class BouncedAddress(ProjectControlModel):
     rejected_count = models.PositiveIntegerField(default=0)
     delayed_count = models.PositiveIntegerField(default=0)
     unknown_count = models.PositiveIntegerField(default=0)
+    # Of those, the reports matched to an email the site sent (exactly, or inferred from recipient and subject). Anyone
+    # can mail the mailbox a report-shaped message, so an address with only unmatched reports is shown as such.
+    matched_count = models.PositiveIntegerField(default=0)
     graph_first_at = models.DateTimeField(null=True, blank=True)
     graph_last_at = models.DateTimeField(null=True, blank=True)
     last_classification = models.CharField(max_length=16, blank=True, default="")
@@ -120,6 +123,17 @@ class BouncedAddress(ProjectControlModel):
     @property
     def unknown_total(self) -> int:
         return self.unknown_count + self.ses_undetermined_count
+
+    @property
+    def has_matched_evidence(self) -> bool:
+        """Whether a report matched an email the site sent, or an Amazon SES event (signed by AWS) names the address."""
+        return bool(
+            self.matched_count
+            or self.ses_permanent_count
+            or self.ses_transient_count
+            or self.ses_undetermined_count
+            or self.complaint_count
+        )
 
     @property
     def graph_is_latest(self) -> bool:

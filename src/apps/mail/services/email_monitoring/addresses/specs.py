@@ -81,7 +81,8 @@ SPECS = {
     ),
     Action.DELETE_ACCOUNT: Spec(
         "Delete account",
-        "Permanently deletes the member and everything that belongs to them (listed on the confirmation page).",
+        "Permanently deletes the member and everything that belongs to them (listed on the confirmation page). "
+        "I2G Master only.",
         "No.",
         typed="primary",
         danger=True,

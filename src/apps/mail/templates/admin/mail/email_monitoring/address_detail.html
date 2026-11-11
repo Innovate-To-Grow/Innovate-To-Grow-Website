@@ -8,10 +8,10 @@
   <dl class="i2g-monitor-facts">
     <div><dt>Status</dt><dd>{% include "admin/mail/email_monitoring/_address_status.html" %}{% if row.reviewed_at %}<br><span class="i2g-monitor-muted">{{ row.reviewed_at|date:"M j, Y H:i" }}{% if row.reviewed_by %} by {{ row.reviewed_by }}{% endif %}{% if row.review_note %}: {{ row.review_note }}{% endif %}</span>{% endif %}</dd></div>
     <div><dt>Campaign mail</dt><dd>{% if row.suppressed_at %}<strong>{{ row.get_suppression_display }}</strong> {{ row.suppressed_at|date:"M j, Y H:i" }}{% if row.suppressed_by %} by {{ row.suppressed_by }}{% endif %}{% if row.suppressed_reason %}<br><span class="i2g-monitor-muted">{{ row.suppressed_reason }}</span>{% endif %}<br><span class="i2g-monitor-muted">Every campaign skips this address; sign-in codes, tickets and notifications still go.</span>{% else %}Not suppressed{% endif %}</dd></div>
-    <div><dt>Suggestion</dt><dd>{{ row.get_suggestion_display|default:"None" }}<br><span class="i2g-monitor-muted">Text only: nothing is applied automatically.</span></dd></div>
+    <div><dt>Suggestion</dt><dd>{{ row.get_suggestion_display|default:"None" }}<br><span class="i2g-monitor-muted">Text only: nothing is applied automatically.{% if row.suggestion and row.suggestion != "policy" and not row.has_matched_evidence %} No report matched an email the site sent (anyone can mail a report-shaped message): check the reports first.{% endif %}</span></dd></div>
     <div><dt>First / last report</dt><dd>{{ row.first_bounce_at|date:"M j, Y H:i"|default:"–" }} / {{ row.last_bounce_at|date:"M j, Y H:i"|default:"–" }}</dd></div>
     <div><dt>Last reason</dt><dd>{% include "admin/mail/email_monitoring/_address_reason.html" %}{% if row.graph_is_latest and row.last_diagnostic %}<br><span class="i2g-monitor-muted">{{ row.last_diagnostic|truncatechars:300 }}</span>{% endif %}</dd></div>
-    <div><dt>Microsoft Graph reports</dt><dd>hard {{ row.hard_count }} · soft {{ row.soft_count }} · rejected {{ row.rejected_count }} · delayed {{ row.delayed_count }} · unknown {{ row.unknown_count }}</dd></div>
+    <div><dt>Microsoft Graph reports</dt><dd>hard {{ row.hard_count }} · soft {{ row.soft_count }} · rejected {{ row.rejected_count }} · delayed {{ row.delayed_count }} · unknown {{ row.unknown_count }}<br><span class="i2g-monitor-muted">{{ row.matched_count }} matched to an email the site sent</span></dd></div>
     <div><dt>Amazon SES events</dt><dd>permanent {{ row.ses_permanent_count }} · transient {{ row.ses_transient_count }} · undetermined {{ row.ses_undetermined_count }} · complaints {{ row.complaint_count }}</dd></div>
   </dl>
 </section>
@@ -33,7 +33,10 @@
       <h3>{% if card.link %}<a href="{{ card.link }}">{{ card.member.get_full_name|default:card.member.pk }}</a>{% else %}{{ card.member.get_full_name|default:card.member.pk }}{% endif %}
         <span class="i2g-monitor-badges">{% if card.member.is_active %}<span class="i2g-monitor-badge i2g-monitor-badge--good">Active</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Inactive</span>{% endif %}{% if card.member.is_superuser %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">I2G Master</span>{% elif card.member.is_staff %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">Staff</span>{% endif %}</span>
       </h3>
-      <p class="i2g-monitor-muted">{% if card.member.organization %}{{ card.member.organization }} · {% endif %}{{ card.registrations }} event registration{{ card.registrations|pluralize }} · {{ card.verified_phones }} of {{ card.phones }} phone{{ card.phones|pluralize }} verified</p>
+      <p class="i2g-monitor-muted">{% if card.member.organization %}{{ card.member.organization }} · {% endif %}{{ card.registrations }} event registration{{ card.registrations|pluralize }}{% if card.contacts is not None %} · {{ card.verified_phones }} of {{ card.phones }} phone{{ card.phones|pluralize }} verified{% endif %}</p>
+      {% if card.contacts is None %}
+      <p class="i2g-monitor-muted">The member's other addresses and phones are shown to staff who also hold the Members app.</p>
+      {% else %}
       <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
         <thead><tr><th scope="col">Email address</th><th scope="col">Role</th><th scope="col">Flags</th></tr></thead>
         <tbody>{% for item in card.contacts %}
@@ -44,6 +47,7 @@
           </tr>
         {% endfor %}</tbody>
       </table></div>
+      {% endif %}
     </div>
   {% endfor %}
 </section>

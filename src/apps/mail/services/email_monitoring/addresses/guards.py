@@ -2,7 +2,9 @@
 
 Seeing the page needs the Mail app. Anything that changes a contact email or a member also needs the Members
 (``authn``) app and ``user_can_manage_member`` for every member involved: only an I2G Master may change a staff or
-superuser account. Deleting an account needs the Member admin's own delete permission. Each guard reads the address,
+superuser account. Deleting an account is for an I2G Master only: the hard delete also removes the member's records
+in apps the admin may not hold (event registrations, check-ins, assistant chats, admin history), which no other admin
+path deletes today. Each guard reads the address,
 its contact emails and the member live (``load_target``); ``fingerprint`` summarises what they read, so applying an
 action refuses when anything changed after the confirmation page was shown.
 
@@ -33,6 +35,10 @@ Status = BouncedAddress.Status
 
 NEEDS_AUTHN = "Needs the Members (authn) app as well as Mail."
 PRIVILEGED = "Only an I2G Master may change a staff or superuser account."
+MASTER_DELETES = (
+    "Only an I2G Master may delete an account (it also deletes the member's records in other apps, such as event "
+    "registrations and check-ins): deactivate it instead."
+)
 ROLE_REASONS = {
     Role.NONE: "The address belongs to no contact email.",
     Role.UNLINKED: "The contact email belongs to no member.",
@@ -229,6 +235,7 @@ def _delete_account(request, target):
     return _first_refusal(
         lambda: _member_role(target),
         lambda: refused("You cannot delete your own account.") if _is_self(request, target) else ALLOWED,
+        lambda: ALLOWED if request.user.is_superuser else refused(MASTER_DELETES),
         lambda: _member_change(request, [target.member]),
         lambda: ALLOWED if member_admin().has_delete_permission(request, target.member) else refused(PRIVILEGED),
     )

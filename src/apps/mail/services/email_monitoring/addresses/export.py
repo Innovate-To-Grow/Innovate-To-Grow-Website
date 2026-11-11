@@ -9,6 +9,7 @@ from django.conf import settings
 from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.cell import WriteOnlyCell
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 from openpyxl.styles import Font
 from openpyxl.utils import get_column_letter
 
@@ -114,6 +115,14 @@ def _values(row, match: AddressMatch, campaigns: str) -> list:
     ]
 
 
+def _cell(value):
+    """Numbers as numbers; text without the control characters a workbook cannot hold (a member's name may carry
+    one), then neutralised so a spreadsheet never evaluates it as a formula."""
+    if isinstance(value, int):
+        return value
+    return safe_sheet_value(ILLEGAL_CHARACTERS_RE.sub("", str(value or "")))
+
+
 def export_rows(rows) -> bytes:
     rows = list(rows[: int(settings.EMAIL_MONITORING["address_export_max_rows"])])
     matches = match_addresses(row.address for row in rows)
@@ -131,7 +140,7 @@ def export_rows(rows) -> bytes:
     sheet.append(header)
     for row in rows:
         values = _values(row, matches.get(row.address) or AddressMatch(row.address), campaigns.get(row.pk, ""))
-        sheet.append([value if isinstance(value, int) else safe_sheet_value(value) for value in values])
+        sheet.append([_cell(value) for value in values])
     buffer = BytesIO()
     workbook.save(buffer)
     return buffer.getvalue()

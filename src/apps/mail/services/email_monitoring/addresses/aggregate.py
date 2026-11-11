@@ -27,12 +27,15 @@ from .matching import match_addresses, refresh_cached_links
 from .suggestions import suggest
 
 GRAPH, SES = "graph", "ses"
+# The state row whose cursor says where the hourly re-check of cached links continues.
+LINKS = "links"
 COUNTED_FIELDS = [
     "hard_count",
     "soft_count",
     "rejected_count",
     "delayed_count",
     "unknown_count",
+    "matched_count",
     "graph_first_at",
     "graph_last_at",
     "last_classification",
@@ -165,25 +168,34 @@ def pending() -> int:
     return total
 
 
+def _refresh_rows(rows) -> int:
+    changed = refresh_cached_links(rows)
+    for row in rows:
+        suggestion = suggest(row)
+        if suggestion != row.suggestion:
+            BouncedAddress.objects.filter(pk=row.pk).update(suggestion=suggestion)
+            changed += 1
+    return changed
+
+
 def refresh_all(*, should_stop=None) -> int:
-    """Re-check every address's cached links and suggestion (members and contacts change outside this page)."""
-    changed = 0
-    last_pk = None
-    size = _batch_size()
-    while not (should_stop is not None and should_stop()):
+    """Re-check cached links and suggestions (members and contacts change outside this page), at most
+    ``address_refresh_rows_per_run`` addresses per run, continuing where the last run stopped."""
+    limit = max(1, int(_config()["address_refresh_rows_per_run"]))
+    state, _created = BounceAggregationState.objects.get_or_create(source=LINKS)
+    last_pk, done, changed = state.cursor_id, 0, 0
+    while done < limit and not (should_stop is not None and should_stop()):
         rows = BouncedAddress.objects.order_by("pk")
         if last_pk is not None:
             rows = rows.filter(pk__gt=last_pk)
-        batch = list(rows[:size])
+        batch = list(rows[: min(_batch_size(), limit - done)])
         if not batch:
+            last_pk = None  # the end of the list: the next run starts again from the first address
             break
-        changed += refresh_cached_links(batch)
-        for row in batch:
-            suggestion = suggest(row)
-            if suggestion != row.suggestion:
-                BouncedAddress.objects.filter(pk=row.pk).update(suggestion=suggestion)
-                changed += 1
+        changed += _refresh_rows(batch)
+        done += len(batch)
         last_pk = batch[-1].pk
+    BounceAggregationState.objects.filter(pk=state.pk).update(cursor_id=last_pk, last_run_at=timezone.now())
     return changed
 
 

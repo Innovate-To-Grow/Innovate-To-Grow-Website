@@ -8,8 +8,9 @@
   is kept as one ``BouncedAddressCampaign`` row (an upsert, so seeing it again changes nothing) and the address's SES
   counts are recounted from those rows.
 
-A hard or rejected bounce, or a complaint, that arrives after an address was dismissed sets it back to open (queue
-state only).
+A hard or rejected bounce matched to an email the site sent, or an SES permanent bounce or complaint, that arrives
+after an address was dismissed sets it back to open (queue state only). An unmatched report never does: anyone can
+mail the mailbox a report-shaped message.
 """
 
 from collections import defaultdict
@@ -45,6 +46,7 @@ GRAPH_FIELDS = (
     "diagnostic_code",
     "remote_mta",
     "campaign_id",
+    "match_method",
 )
 SES_FIELDS = (
     "pk",
@@ -141,7 +143,11 @@ def _add_graph_bounce(row: BouncedAddress, bounce: dict) -> None:
         row.last_reason = text.clean(bounce["reason"], 255)
         row.last_diagnostic = text.scrub(bounce["diagnostic_code"], 1000)
         row.last_remote_mta = text.clean(bounce["remote_mta"], 255)
-    if bounce["classification"] in GRAPH_REOPEN:
+    matched = bounce["match_method"] != EmailBounce.MatchMethod.UNMATCHED
+    if matched:
+        row.matched_count += 1
+    # Only a report matched to an email the site sent reopens: anyone can mail a report-shaped message.
+    if matched and bounce["classification"] in GRAPH_REOPEN:
         code = bounce["status_code"] or "no status code"
         _reopen(row, f"New {bounce['classification']} bounce report ({code}).", at)
 

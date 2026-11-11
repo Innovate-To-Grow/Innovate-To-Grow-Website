@@ -140,10 +140,17 @@ subscription, and every change is a staff action with a confirmation page and an
 - **Campaigns.** A matched report gives its email's campaign (exact). For an unmatched one (the blast predates
   telemetry), the one campaign that mailed the address in the matching window before the report is shown as
   *likely*; when several did, none is guessed.
-- **Reopening.** A hard or rejected bounce (or an SES permanent bounce or complaint) that arrives after an address was
-  dismissed sets it back to *Open*: queue state only.
-- **Rebuild counts…** starts every count again from the records still stored (review state, suppressions and the
-  history stay). Counts of purged reports cannot be rebuilt; the confirmation page says so.
+- **Matched reports.** Anyone can mail the mailbox a report-shaped message, so each address also counts the Graph
+  reports matched to an email the site sent (exactly or inferred). An address whose reports are all unmatched (and
+  with no SES event, which AWS signs) is marked "unmatched", its suggestion says to check the reports first, and the
+  **Evidence** filter separates the two.
+- **Reopening.** A matched hard or rejected bounce (or an SES permanent bounce or complaint) that arrives after an
+  address was dismissed sets it back to *Open*: queue state only. An unmatched report never reopens anything.
+- **Rebuild counts…** (I2G Master only) starts every count again from the records still stored (review state,
+  suppressions and the history stay). Counts of purged reports cannot be rebuilt; the confirmation page says so. It
+  leaves an audit row and an admin history line.
+- **Member links** are re-checked hourly for at most `address_refresh_rows_per_run` addresses per run, continuing
+  where the last run stopped, so a very long list is covered over several runs.
 
 ### The list and one address
 
@@ -152,12 +159,14 @@ subscription, and every change is a staff action with a confirmation page and an
   (primary, secondary, other, unlinked contact, not a contact, or **ambiguous** when one address is saved in several
   letter cases), verified / subscribed / suppression flags, campaigns, review status and a text-only suggestion.
 - **Filters:** status tabs (Open by default), type, role, member (has a member, none, active, inactive, staff),
-  suppressed, suggestion, campaign, last-report date range and a search on the address or member name; sortable
+  suppressed, evidence (matched to the site's mail, or unmatched reports only), suggestion, campaign, last-report date
+  range and a search on the address or member name; sortable
   columns; **Export these rows (.xlsx)** writes the filtered list (every cell formula-safe, at most
   `address_export_max_rows` rows). Roles and members are read live on every page; the filters use the values last
   refreshed (on each page, after each count and hourly).
-- **One address** shows the Graph reports still stored, the SES events, the campaigns, the member card (every
-  address with its flags, phones, registrations), every action with why it is unavailable, and the history.
+- **One address** shows the Graph reports still stored, the SES events, the campaigns, the member card (name,
+  status, registrations; their other addresses with their flags, and their phones, only for staff who also hold the
+  Members app, as on the Member admin), every action with why it is unavailable, and the history.
 - **Suggestions** (never applied): a complaint → unsubscribe; a hard bounce → mark undeliverable or replace; at
   least `address_soft_bounce_repeats` soft bounces over `address_soft_bounce_days` days → consider undeliverable;
   rejections only (5.7.x) → probably our reputation or policy, no action.
@@ -177,10 +186,10 @@ on the address when it belongs to no member).
 | Mark undeliverable (a member's address) | Every campaign skips it; sign-in codes, tickets and notifications still go | Clear suppression | page | Mail + Members, and the member is manageable |
 | Unsubscribe this address | `subscribe` off for this address only | Re-subscribe on the member page | page | Mail + Members |
 | Use another address as primary | `make_contact_email_primary` on a verified address the admin picks; the old primary becomes secondary | Swap back once verified | page | Mail + Members |
-| Replace email | Adds the new address (valid, unused in any letter case; primary only when attested verified, which needs an I2G Master on a staff account), then marks the old one undeliverable or deletes it. Sends nothing | Partly | page; typed old address when it is deleted | Mail + Members |
+| Replace email | Adds the new address (valid, unused in any letter case, not an address with a pending admin invitation; primary only when attested verified, which needs an I2G Master on a staff account), then marks the old one undeliverable or deletes it. Sends nothing | Partly | page; typed old address when it is deleted | Mail + Members |
 | Delete this email address | `delete_contact_email` after the rules below | No | typed address | Mail + Members (an unlinked contact: I2G Master) |
 | Deactivate account | `is_active` off and an unfinished sign-up ended (as the Member admin does); never your own account | Activate on the Members page | page | Mail + Members |
-| Delete account | Hard delete of the member: the page lists the cascade (`get_deleted_objects`: event registrations, check-ins, contact emails, login links, …) and recommends Deactivate; never your own account | No | typed primary address | Mail + Members + the Member admin's delete permission |
+| Delete account | Hard delete of the member: the page lists the cascade (`get_deleted_objects`: event registrations, check-ins, contact emails, login links, …) and recommends Deactivate; never your own account; refused when other records protect it | No | typed primary address | **I2G Master** (the cascade reaches apps other staff may not hold; no other admin page deletes a member with a primary email) |
 
 "Manageable" is `user_can_manage_member`: only an I2G Master changes a staff or superuser account. Typed
 confirmations follow `ADMIN_REQUIRE_CONFIRMATION` (on in production). Deleting an address is refused when it is the
@@ -251,6 +260,7 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `address_settle_seconds` | `120` | A report is counted only once it is this old (a late-committing transaction is never skipped). |
 | `address_soft_bounce_repeats`, `address_soft_bounce_days` | `3`, `7` | When "consider marking undeliverable" is suggested for soft bounces. |
 | `address_export_max_rows`, `address_bulk_max_rows` | `10000`, `500` | Rows in one Bounced addresses export; addresses one bulk action may change. |
+| `address_refresh_rows_per_run` | `5000` | Addresses whose member links the hourly maintenance re-checks per run. |
 
 **Pause / resume** on the dashboard stops scans of the mailbox without a deploy (stored on its
 `EmailMonitorState`).

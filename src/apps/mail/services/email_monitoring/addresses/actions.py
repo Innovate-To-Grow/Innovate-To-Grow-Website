@@ -12,10 +12,8 @@ verified sign-in contact) and ``delete_member_account`` (a hard delete that casc
 """
 
 from django.contrib.admin.models import DELETION
-from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.utils import timezone
 
 from apps.authn.models import ContactEmail
 from apps.authn.services.account import delete_member_account
@@ -89,7 +87,9 @@ def _clear(request, target: Target, values: dict) -> str:
 
 def _unsubscribe(request, target: Target, values: dict) -> str:
     note = effects.note_of(values)
-    ContactEmail.objects.filter(pk=target.contact.pk).update(subscribe=False, updated_at=timezone.now())
+    contact = target.contact
+    contact.subscribe = False
+    contact.save(update_fields=["subscribe", "updated_at"])  # a save, so the member sheet sync sees it
     effects.review(request, target.row, Status.RESOLVED, Action.UNSUBSCRIBE, note)
     effects.save(target.row, effects.REVIEW_FIELDS)
     audit.record(request, target, Action.UNSUBSCRIBE, note=note, role_after=target.role)
@@ -119,7 +119,9 @@ def _make_primary(request, target: Target, values: dict) -> str:
 def _remove_contact(target: Target, values: dict) -> None:
     """Delete the bounced contact email (the guards and the primary-address rules already passed)."""
     if target.role == Role.UNLINKED:
-        ContactEmail.objects.select_for_update().filter(pk=target.contact.pk, member__isnull=True).delete()
+        deleted, _counts = ContactEmail.objects.filter(pk=target.contact.pk, member__isnull=True).delete()
+        if not deleted:
+            raise ActionRefused("The contact email changed meanwhile; reload the page and try again.")
         return
     try:
         if target.role == Role.PRIMARY:
@@ -151,7 +153,11 @@ def _delete_email(request, target: Target, values: dict) -> str:
 def _deactivate(request, target: Target, values: dict) -> str:
     note = effects.note_of(values)
     member = target.member
-    get_user_model().objects.filter(pk=member.pk).update(is_active=False, registration_pending=False)
+    # As the Member admin's deactivate action: an unfinished self-service sign-up ends too. A save, not an update,
+    # so the member sheet sync sees it.
+    member.is_active = False
+    member.registration_pending = False
+    member.save(update_fields=["is_active", "registration_pending", "updated_at"])
     effects.review(request, target.row, Status.RESOLVED, Action.DEACTIVATE, note)
     effects.save(target.row, effects.REVIEW_FIELDS)
     audit.record(request, target, Action.DEACTIVATE, note=note, role_after=target.role)

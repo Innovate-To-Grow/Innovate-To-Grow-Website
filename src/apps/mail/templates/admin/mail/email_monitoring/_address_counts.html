@@ -7,4 +7,4 @@
   {% if row.unknown_total %}<span title="No status code, or SES undetermined">unknown {{ row.unknown_total }}</span>{% endif %}
   {% if row.complaint_count %}<span title="Spam complaints (SES)"><strong>complaints {{ row.complaint_count }}</strong></span>{% endif %}
   {% if not row.report_total %}<span class="i2g-monitor-muted">none counted</span>{% endif %}
-</span>
+</span>{% if row.report_total and not row.has_matched_evidence %}<br><span class="i2g-monitor-muted" title="No report matched an email the site sent">unmatched</span>{% endif %}

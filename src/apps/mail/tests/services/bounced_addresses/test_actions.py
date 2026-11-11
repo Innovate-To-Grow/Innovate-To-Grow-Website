@@ -1,6 +1,8 @@
 """Bounced-address actions on queue state, suppression and contact emails: each effect, its audit row and history
 line, the reversible ones reversed, and every guard."""
 
+from unittest.mock import patch
+
 from django.contrib.admin.models import LogEntry
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -294,6 +296,19 @@ class DeleteEmailTests(ActionTestCase):
 
         self.assertFalse(ContactEmail.objects.filter(email_address="orphan@example.org").exists())
         self.assertIn("deleted the contact email orphan@example.org", history(row)[0])
+
+    def test_an_unlinked_contact_linked_meanwhile_is_not_reported_deleted(self):
+        ContactEmail.objects.create(member=None, email_address="orphan@example.org", email_type="other")
+        row = make_row("orphan@example.org")
+        nothing_deleted = patch("apps.mail.services.email_monitoring.addresses.actions.ContactEmail")
+
+        with nothing_deleted as contact_model:
+            contact_model.objects.filter.return_value.delete.return_value = (0, {})
+            with self.assertRaisesMessage(ActionRefused, "changed meanwhile"):
+                apply(self.master, row, Action.DELETE_EMAIL, confirm="orphan@example.org")
+
+        self.assertFalse(BouncedAddressAction.objects.filter(action=Action.DELETE_EMAIL).exists())
+        self.assertEqual(history(row), [])
 
     def test_an_address_of_no_contact_has_nothing_to_delete(self):
         self.assert_refused(self.master, make_row("nobody@example.org"), Action.DELETE_EMAIL, "no contact email")

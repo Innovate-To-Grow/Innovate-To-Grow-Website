@@ -13,7 +13,7 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
-from apps.authn.models import ContactEmail
+from apps.authn.models import AdminInvitation, ContactEmail
 from apps.authn.services.contacts.contact_emails import delete_contact_email, make_contact_email_primary
 from apps.authn.services.email.challenges import AuthChallengeError
 from apps.mail.models import BouncedAddress, BouncedAddressAction
@@ -53,6 +53,10 @@ def _new_address(target, values) -> str:
         raise ActionRefused("The new address is the bounced address itself.")
     if ContactEmail.objects.filter(email_address__iexact=new).exists():
         raise ActionRefused("That address already belongs to a contact email (in some letter case).")
+    # Accepting an admin invitation upgrades the member who holds a verified contact email for the invited address,
+    # so a pending invitation's address must never be added to another account here.
+    if AdminInvitation.objects.filter(email__iexact=new, status=AdminInvitation.Status.PENDING).exists():
+        raise ActionRefused("That address has a pending admin invitation; it cannot be added to another account.")
     return new
 
 
@@ -98,7 +102,8 @@ def _swap(target, plan: dict, subscribe: bool) -> None:
     except AuthChallengeError as exc:
         raise ActionRefused(str(exc)) from exc
     if wants_slot and created.email_type != "secondary":
-        ContactEmail.objects.filter(pk=created.pk).update(email_type="secondary")
+        created.email_type = "secondary"
+        created.save(update_fields=["email_type", "updated_at"])
 
 
 def apply_replace(request, target, values: dict) -> str:

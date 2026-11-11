@@ -12,6 +12,8 @@ from apps.authn.models import ContactEmail, ContactPhone
 from apps.core.tests.services.email_monitoring.helpers import make_bounce
 from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
 from apps.mail.services.email_monitoring.addresses import aggregate
+from apps.mail.services.email_monitoring.addresses.matching import refresh_cached_links
+from apps.mail.services.email_monitoring.addresses.suggestions import suggest
 
 Member = get_user_model()
 
@@ -90,8 +92,9 @@ def make_row(address="person@example.org", **values) -> BouncedAddress:
         "last_reason": "Recipient mailbox does not exist",
     }
     row = BouncedAddress.objects.create(address=address, **{**defaults, **values})
-    from apps.mail.services.email_monitoring.addresses.matching import refresh_cached_links
-
+    if "suggestion" not in values:
+        row.suggestion = suggest(row)
+        row.save(update_fields=["suggestion"])
     refresh_cached_links([row])
     return row
 

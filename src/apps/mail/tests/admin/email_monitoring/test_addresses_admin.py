@@ -207,6 +207,26 @@ class ListTests(TestCase):
         self.assertIsNotNone(complaint.pk)
         self.assertIsNotNone(member.pk)
 
+    def test_the_evidence_filter_separates_matched_reports_from_unmatched_ones(self):
+        make_bounce(recipient="matched@example.org", match_method="message_id")
+        make_bounce(recipient="unmatched@example.org")
+        count_now()
+
+        matched = self.client.get(reverse(LIST), {"evidence": "matched"})
+        unmatched = self.client.get(reverse(LIST), {"evidence": "unmatched"})
+
+        self.assertEqual([entry["row"].address for entry in matched.context["entries"]], ["matched@example.org"])
+        self.assertEqual([entry["row"].address for entry in unmatched.context["entries"]], ["unmatched@example.org"])
+        self.assertContains(unmatched, "unmatched reports only: check them first")
+
+    def test_dates_far_out_of_range_are_ignored_instead_of_failing(self):
+        make_row("a@example.org")
+
+        for params in ({"end": "9999-12-31"}, {"start": "0001-01-01"}):
+            with self.subTest(params=params):
+                for name in (LIST, EXPORT):
+                    self.assertEqual(self.client.get(reverse(name), params).status_code, 200)
+
     def test_invalid_filters_and_sorts_fall_back_quietly(self):
         make_row("a@example.org")
 
@@ -271,6 +291,20 @@ class DetailTests(TestCase):
         self.assertTrue(allowed["make_primary"])
         self.assertFalse(allowed["suppress"])
 
+    def test_a_members_other_addresses_are_shown_only_with_the_members_app(self):
+        member = make_person("card@example.org", first="Cara")
+        add_email(member, "hidden-alt@example.org", verified=True)
+        row = make_row("card@example.org")
+        self.client.force_login(make_admin(apps=["mail"], email="mailstaff@example.org"))
+
+        response = self.client.get(reverse(DETAIL, args=[row.pk]))
+
+        self.assertContains(response, "Cara Doe")
+        self.assertNotContains(response, "hidden-alt@example.org")
+        self.assertContains(response, "shown to staff who also hold the Members app")
+        self.client.force_login(make_admin(apps=["mail", "authn"], email="memberstaff@example.org"))
+        self.assertContains(self.client.get(reverse(DETAIL, args=[row.pk])), "hidden-alt@example.org")
+
     def test_disabled_actions_say_why(self):
         make_person("why@example.org")
         row = make_row("why@example.org")
@@ -314,6 +348,16 @@ class ExportTests(TestCase):
         self.assertEqual(rows[1][0], "formula@example.org")
         self.assertEqual(rows[1][4], "'=HYPERLINK(1) X")
         self.assertEqual(rows[1][3], "Primary")
+
+    def test_control_characters_in_a_name_never_break_the_export(self):
+        make_person("ctrl@example.org", first="Pat\x0b", last="\x01Doe")
+        make_row("ctrl@example.org")
+
+        response = self.client.get(reverse(EXPORT))
+
+        self.assertEqual(response.status_code, 200)
+        rows = list(load_workbook(BytesIO(response.content)).active.iter_rows(values_only=True))
+        self.assertEqual(rows[1][4], "Pat Doe")
 
     def test_the_export_is_capped(self):
         for index in range(3):

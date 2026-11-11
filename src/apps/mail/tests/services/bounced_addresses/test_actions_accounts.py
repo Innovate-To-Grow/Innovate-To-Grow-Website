@@ -1,9 +1,13 @@
 """Bounced-address actions on accounts (deactivate, delete) and Replace email."""
 
-from django.contrib.admin.models import DELETION, LogEntry
-from django.test import override_settings
+from datetime import timedelta
 
-from apps.authn.models import ContactEmail, Member
+from django.contrib.admin.models import DELETION, LogEntry
+from django.db.models.signals import post_save
+from django.test import override_settings
+from django.utils import timezone
+
+from apps.authn.models import AdminInvitation, ContactEmail, Member
 from apps.event.models import CheckIn, CheckInRecord, EventRegistration
 from apps.event.tests.helpers import make_event, make_registration, make_ticket
 from apps.mail.models import BouncedAddress, BouncedAddressAction, RecipientLog
@@ -37,6 +41,56 @@ class DeactivateTests(ActionTestCase):
         make_person("colleague@example.org", is_staff=True)
         self.assert_refused(self.mail_authn, make_row("colleague@example.org"), Action.DEACTIVATE, "I2G Master")
         self.assert_refused(self.mail_only, make_row("plain@example.org"), Action.DEACTIVATE, "no contact email")
+
+
+class SignalTests(ActionTestCase):
+    """Deactivate, Unsubscribe and Replace save the member or the contact (not a queryset update), so the
+    ``post_save`` receivers, such as the member Google Sheet sync, see the change."""
+
+    def setUp(self):
+        super().setUp()
+        self.received = []
+
+        def receiver(sender, instance, **_kwargs):
+            self.received.append((sender.__name__, instance.pk))
+
+        for model in (Member, ContactEmail):
+            uid = f"bounced-test-{model.__name__}"
+            post_save.connect(receiver, sender=model, dispatch_uid=uid, weak=False)
+            self.addCleanup(post_save.disconnect, sender=model, dispatch_uid=uid)
+
+    def saved(self, action, address, **values):
+        self.received.clear()
+        apply(self.master, make_row(address), action, **values)
+        return list(self.received)
+
+    def test_deactivating_saves_the_member(self):
+        member = make_person("deact@example.org")
+
+        self.assertIn(("Member", member.pk), self.saved(Action.DEACTIVATE, "deact@example.org"))
+
+    def test_unsubscribing_saves_the_contact_email(self):
+        make_person("unsub@example.org")
+        contact = ContactEmail.objects.get(email_address="unsub@example.org")
+
+        self.assertIn(("ContactEmail", contact.pk), self.saved(Action.UNSUBSCRIBE, "unsub@example.org"))
+
+    def test_replacing_saves_the_new_contact_email_in_its_final_role(self):
+        owner = make_person("old@example.org")
+        add_email(owner, "old-second@example.org", email_type="secondary")
+
+        received = self.saved(
+            Action.REPLACE,
+            "old-second@example.org",
+            new_address="next@example.org",
+            new_role="secondary",
+            old_address="delete",
+            confirm="old-second@example.org",
+        )
+
+        created = ContactEmail.objects.get(email_address="next@example.org")
+        self.assertEqual(created.email_type, "secondary")
+        self.assertEqual(received.count(("ContactEmail", created.pk)), 2)
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
@@ -90,16 +144,24 @@ class DeleteAccountTests(ActionTestCase):
         self.row.refresh_from_db()
         self.assertEqual((self.row.role, self.row.member_id, self.row.status), (Role.NONE, None, Status.RESOLVED))
 
-    def test_permissions_and_self_protection(self):
-        self.assert_refused(self.mail_only, self.row, Action.DELETE_ACCOUNT, "Members (authn) app")
+    def test_only_an_i2g_master_deletes_an_account(self):
+        # The hard delete also removes the member's records in apps the admin may not hold (registrations,
+        # check-ins, admin history), so holding Mail and Members is not enough.
+        for user in (self.mail_only, self.mail_authn):
+            with self.subTest(user=user.admin_apps):
+                self.assert_refused(
+                    user,
+                    self.row,
+                    Action.DELETE_ACCOUNT,
+                    "Only an I2G Master may delete an account",
+                    confirm="doomed@example.org",
+                )
+        self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
+        self.assertEqual(EventRegistration.objects.filter(member=self.member).count(), 1)
+
+    def test_nobody_deletes_their_own_account(self):
         self.assert_refused(self.mail_authn, make_row("memberstaff@example.org"), Action.DELETE_ACCOUNT, "your own")
-        make_person("other-staff@example.org", is_staff=True)
-        self.assert_refused(self.mail_authn, make_row("other-staff@example.org"), Action.DELETE_ACCOUNT, "I2G Master")
-
-    def test_staff_with_the_members_app_may_delete_an_ordinary_account(self):
-        apply(self.mail_authn, self.row, Action.DELETE_ACCOUNT, confirm="doomed@example.org")
-
-        self.assertFalse(Member.objects.filter(pk=self.member.pk).exists())
+        self.assert_refused(self.master, make_row("admin@example.com"), Action.DELETE_ACCOUNT, "your own")
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
@@ -192,6 +254,18 @@ class ReplaceTests(ActionTestCase):
         for values, reason in cases:
             with self.subTest(values=values):
                 self.assert_refused(self.mail_authn, self.row, Action.REPLACE, reason, **values)
+
+    def test_an_address_with_a_pending_admin_invitation_is_refused(self):
+        AdminInvitation.objects.create(
+            email="Invited@Example.org", token="t" * 40, expires_at=timezone.now() + timedelta(days=3)
+        )
+        values = {"new_address": "invited@example.org", "new_role": "primary", "attest_verified": "1"}
+
+        self.assert_refused(self.master, self.row, Action.REPLACE, "pending admin invitation", **values)
+
+        AdminInvitation.objects.update(status=AdminInvitation.Status.ACCEPTED)
+        apply(self.master, self.row, Action.REPLACE, new_address="invited@example.org", new_role="other")
+        self.assertTrue(ContactEmail.objects.filter(email_address="invited@example.org", member=self.member).exists())
 
     def test_only_an_i2g_master_attests_an_address_on_a_staff_account(self):
         self_row = make_row("memberstaff@example.org")

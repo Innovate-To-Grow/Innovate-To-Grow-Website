@@ -135,6 +135,8 @@ def address_list_view(request):
         pending=aggregate.pending(),
         counted=counted,
         suppressed_total=BouncedAddress.objects.filter(suppressed_at__isnull=False).count(),
+        evidence_choices=[(key, label) for key, (label, _q) in listing.EVIDENCE.items()],
+        can_rebuild=bool(request.user.is_superuser),
     )
     return TemplateResponse(request, f"{TEMPLATES}/addresses.html", context)
 
@@ -150,23 +152,31 @@ def addresses_export_view(request):
 
 
 def _member_card(request, member) -> dict:
+    """The member's card. Their other addresses (and which are verified) and their phones are shown only to staff
+    with the Members (``authn``) app, as the Member admin would: they are sign-in factors."""
+    card = {
+        "member": member,
+        "link": _member_link(request, member),
+        "registrations": EventRegistration.objects.filter(member=member).count(),
+        "contacts": None,
+    }
+    if not user_can_access_app(request.user, "authn"):
+        return card
     contacts = list(member.contact_emails.order_by("created_at", "pk"))
     suppressed = set(
         BouncedAddress.objects.filter(
             address__in=[normalize_address(contact.email_address) for contact in contacts], suppressed_at__isnull=False
         ).values_list("address", flat=True)
     )
-    return {
-        "member": member,
-        "link": _member_link(request, member),
-        "contacts": [
+    card.update(
+        contacts=[
             {"contact": contact, "suppressed": normalize_address(contact.email_address) in suppressed}
             for contact in contacts
         ],
-        "verified_phones": member.contact_phones.filter(verified=True).count(),
-        "phones": member.contact_phones.count(),
-        "registrations": EventRegistration.objects.filter(member=member).count(),
-    }
+        verified_phones=member.contact_phones.filter(verified=True).count(),
+        phones=member.contact_phones.count(),
+    )
+    return card
 
 
 def _detail_campaigns(row) -> list:

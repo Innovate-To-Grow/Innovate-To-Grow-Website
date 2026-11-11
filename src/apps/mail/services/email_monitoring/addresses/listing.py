@@ -36,6 +36,16 @@ MEMBER_STATES = {
     "staff": ("Member is staff", Q(member__is_staff=True) | Q(member__is_superuser=True)),
 }
 SUPPRESSED = {"yes": Q(suppressed_at__isnull=False), "no": Q(suppressed_at__isnull=True)}
+_SES_EVENTS = (
+    Q(ses_permanent_count__gt=0)
+    | Q(ses_transient_count__gt=0)
+    | Q(ses_undetermined_count__gt=0)
+    | Q(complaint_count__gt=0)
+)
+EVIDENCE = {
+    "matched": ("Matched to the site's mail (or SES)", Q(matched_count__gt=0) | _SES_EVENTS),
+    "unmatched": ("Unmatched reports only", Q(matched_count=0) & ~_SES_EVENTS),
+}
 SORTS = {
     "last": "last_bounce_at",
     "first": "first_bounce_at",
@@ -73,11 +83,12 @@ def _uuid(value) -> str:
 
 
 def _date(params, name: str) -> str:
+    """A ``YYYY-MM-DD`` filter value, or "" (not a real date, or a year so far off that a day bound would overflow)."""
     try:
         parsed = parse_date(str(params.get(name) or ""))
     except ValueError:
         return ""
-    return parsed.isoformat() if parsed else ""
+    return parsed.isoformat() if parsed and 1900 <= parsed.year <= 9998 else ""
 
 
 def parse_listing(params) -> Listing:
@@ -89,6 +100,7 @@ def parse_listing(params) -> Listing:
         "role": _choice(params, "role", BouncedAddress.Role.values),
         "member": _choice(params, "member", MEMBER_STATES),
         "suppressed": _choice(params, "suppressed", SUPPRESSED),
+        "evidence": _choice(params, "evidence", EVIDENCE),
         "suggestion": _choice(params, "suggestion", (*BouncedAddress.Suggestion.values, "none")),
         "campaign": _uuid(params.get("campaign")),
         "start": _date(params, "start"),
@@ -115,7 +127,7 @@ def _day_start(value: str):
 def _conditions(filters: dict) -> list:
     """The ``Q`` conditions of the chosen filters (each value already checked against its choices)."""
     conditions = []
-    for name, table in (("type", TYPES), ("member", MEMBER_STATES)):
+    for name, table in (("type", TYPES), ("member", MEMBER_STATES), ("evidence", EVIDENCE)):
         if filters[name]:
             conditions.append(table[filters[name]][1])
     if filters["suppressed"]:

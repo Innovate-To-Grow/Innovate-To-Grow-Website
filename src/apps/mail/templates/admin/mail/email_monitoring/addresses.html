@@ -16,10 +16,12 @@
     <a class="i2g-monitor-button" href="{% url 'admin:mail_email_monitoring_addresses_export' %}{% if filter_query %}?{{ filter_query }}&amp;{% else %}?{% endif %}sort={{ listing.sort }}&amp;dir={% if listing.descending %}desc{% else %}asc{% endif %}">
       <span class="material-symbols-outlined" aria-hidden="true">download</span>Export these rows (.xlsx)
     </a>
+    {% if can_rebuild %}
     <form method="post" action="{% url 'admin:mail_email_monitoring_addresses_rebuild' %}">
       {% csrf_token %}
       <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>Rebuild counts…</button>
     </form>
+    {% endif %}
   </div>
 </section>
 
@@ -51,6 +53,10 @@
   <label class="i2g-monitor-field">
     <span>Suppressed</span>
     <select name="suppressed"><option value="">Any</option><option value="yes" {% if listing.filters.suppressed == "yes" %}selected{% endif %}>Suppressed / undeliverable</option><option value="no" {% if listing.filters.suppressed == "no" %}selected{% endif %}>Not suppressed</option></select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Evidence</span>
+    <select name="evidence"><option value="">Any</option>{% for value, label in evidence_choices %}<option value="{{ value }}" {% if listing.filters.evidence == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
   </label>
   <label class="i2g-monitor-field">
     <span>Suggestion</span>
@@ -120,7 +126,7 @@
         <td>{% include "admin/mail/email_monitoring/_address_flags.html" with contact=entry.contact %}</td>
         <td>{% if entry.campaigns.count %}{{ entry.campaigns.count }}<br>{% if entry.campaigns.last.exists %}<a href="{% url 'admin:mail_email_monitoring_campaign' entry.campaigns.last.id %}">{{ entry.campaigns.last.name|truncatechars:40 }}</a>{% else %}<span class="i2g-monitor-muted">{{ entry.campaigns.last.name }}</span>{% endif %}{% if entry.campaigns.last.likely %} <span class="i2g-monitor-muted">(likely)</span>{% endif %}{% else %}–{% endif %}</td>
         <td>{% include "admin/mail/email_monitoring/_address_status.html" %}</td>
-        <td>{{ row.get_suggestion_display|default:"–" }}</td>
+        <td>{{ row.get_suggestion_display|default:"–" }}{% if row.suggestion and row.suggestion != "policy" and not row.has_matched_evidence %}<br><span class="i2g-monitor-muted">unmatched reports only: check them first</span>{% endif %}</td>
         <td>
           <details class="i2g-monitor-menu">
             <summary>Actions</summary>

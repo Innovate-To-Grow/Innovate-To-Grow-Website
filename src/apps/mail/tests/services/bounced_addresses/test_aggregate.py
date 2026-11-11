@@ -13,7 +13,7 @@ from apps.core.tests.services.email_monitoring.helpers import make_email, monito
 from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressAction, BouncedAddressCampaign
 from apps.mail.services.email_monitoring.addresses import aggregate
 
-from .helpers import add_email, count_now, make_bounce, make_campaign, make_person, make_ses_log, settled
+from .helpers import add_email, count_now, make_bounce, make_campaign, make_person, make_row, make_ses_log, settled
 
 Status = BouncedAddress.Status
 Match = BouncedAddressCampaign.Match
@@ -64,6 +64,16 @@ class GraphCountingTests(TestCase):
         self.assertEqual(row.first_bounce_at, now - timedelta(days=3))
         self.assertEqual(row.last_bounce_at, now)
         self.assertEqual(row.suggestion, BouncedAddress.Suggestion.UNDELIVERABLE)
+
+    def test_reports_matched_to_the_sites_mail_are_counted_apart(self):
+        for match in ("message_id", "recipient", "unmatched"):
+            make_bounce(recipient="m@example.org", match_method=match)
+
+        count_now()
+
+        row = BouncedAddress.objects.get(address="m@example.org")
+        self.assertEqual((row.hard_count, row.matched_count), (3, 2))
+        self.assertTrue(row.has_matched_evidence)
 
     def test_reports_naming_no_recipient_are_not_counted(self):
         make_bounce(recipient="")
@@ -158,11 +168,13 @@ class ReopenTests(TestCase):
             status=Status.DISMISSED, resolution="dismiss", reviewed_at=self.dismissed_at
         )
 
-    def test_a_new_hard_or_rejected_bounce_reopens_a_dismissed_address(self):
-        for classification in ("hard", "rejected"):
+    def test_a_new_matched_hard_or_rejected_bounce_reopens_a_dismissed_address(self):
+        for classification, match in (("hard", "message_id"), ("rejected", "recipient")):
             with self.subTest(classification=classification):
                 BouncedAddress.objects.filter(address="d@example.org").update(status=Status.DISMISSED)
-                make_bounce(recipient="d@example.org", classification=classification, status_code="5.1.1")
+                make_bounce(
+                    recipient="d@example.org", classification=classification, status_code="5.1.1", match_method=match
+                )
 
                 count_now()
 
@@ -172,8 +184,20 @@ class ReopenTests(TestCase):
                 self.assertEqual(entry.action, BouncedAddressAction.Action.REOPEN)
                 self.assertIsNone(entry.actor)
 
+    def test_an_unmatched_report_never_reopens_it(self):
+        # Anyone can mail the mailbox a report-shaped message: it is counted, but changes no queue state.
+        make_bounce(recipient="d@example.org", classification="hard", status_code="5.1.1", match_method="unmatched")
+
+        count_now()
+
+        row = BouncedAddress.objects.get(address="d@example.org")
+        self.assertEqual((row.status, row.hard_count, row.matched_count), (Status.DISMISSED, 1, 0))
+        self.assertFalse(row.has_matched_evidence)
+
     def test_a_report_received_before_the_dismissal_does_not_reopen_it(self):
-        make_bounce(recipient="d@example.org", received_at=self.dismissed_at - timedelta(hours=1))
+        make_bounce(
+            recipient="d@example.org", received_at=self.dismissed_at - timedelta(hours=1), match_method="message_id"
+        )
 
         count_now()
 
@@ -245,7 +269,7 @@ class RebuildAndRefreshTests(TestCase):
         cache.clear()
 
     def test_rebuild_recounts_stored_records_and_keeps_review_and_suppression(self):
-        make_bounce(recipient="r@example.org")
+        make_bounce(recipient="r@example.org", match_method="message_id")
         make_bounce(recipient="r@example.org", classification="soft", status_code="5.2.2")
         count_now()
         stamp = timezone.now()
@@ -257,7 +281,7 @@ class RebuildAndRefreshTests(TestCase):
         count_now()
 
         row = BouncedAddress.objects.get(address="r@example.org")
-        self.assertEqual((row.hard_count, row.soft_count), (1, 1))
+        self.assertEqual((row.hard_count, row.soft_count, row.matched_count), (1, 1, 1))
         self.assertEqual(row.status, Status.DISMISSED)
         self.assertEqual(row.suppressed_at, stamp)
 
@@ -272,6 +296,22 @@ class RebuildAndRefreshTests(TestCase):
         row = BouncedAddress.objects.get(address="moved@example.org")
         self.assertEqual(changed, 1)
         self.assertEqual((row.role, row.member_id), (BouncedAddress.Role.PRIMARY, member.pk))
+
+    def test_each_refresh_run_covers_at_most_its_share_and_continues_where_it_stopped(self):
+        rows = [make_row(f"r{index}@example.org") for index in range(3)]
+        for row in rows:
+            make_person(row.address)
+        order = [row.address for row in sorted(rows, key=lambda row: row.pk)]
+
+        with monitoring_settings(address_refresh_rows_per_run=2, address_batch_size=1):
+            first = aggregate.refresh_all()
+            refreshed_first = set(BouncedAddress.objects.filter(role="primary").values_list("address", flat=True))
+            second = aggregate.refresh_all()
+            third = aggregate.refresh_all()
+
+        self.assertEqual((first, second, third), (2, 1, 0))
+        self.assertEqual(refreshed_first, set(order[:2]))
+        self.assertEqual(BouncedAddress.objects.filter(role="primary").count(), 3)
 
     def test_a_stop_request_ends_the_runs(self):
         make_bounce(recipient="s@example.org")

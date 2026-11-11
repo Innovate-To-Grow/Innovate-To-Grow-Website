@@ -4,7 +4,7 @@ one, so it shows in the member's History; the bounced-address row otherwise)."""
 
 from django.contrib.admin.models import CHANGE, LogEntry
 
-from apps.mail.models import BouncedAddress, BouncedAddressAction
+from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressAction
 
 CLASSIFICATION_LABELS = {
     "hard": "hard bounce",
@@ -74,10 +74,15 @@ def history(request, objects, message: str, *, flag=CHANGE) -> None:
 
 
 def record_rebuild(request, details: dict) -> BouncedAddressAction:
-    """The audit row of a counts rebuild (it concerns every address, so it names none)."""
-    return BouncedAddressAction.objects.create(
+    """The audit row of a counts rebuild (it concerns every address, so it names none) and its history line on the
+    Graph counting state."""
+    entry = BouncedAddressAction.objects.create(
         action=BouncedAddressAction.Action.REBUILD,
         actor=request.user,
         actor_label=person_label(request.user),
         details=dict(details),
     )
+    state = BounceAggregationState.objects.filter(source="graph").first()
+    if state is not None:
+        history(request, [state], f"rebuilt the counts from the stored records ({details.get('counted', 0)} counted)")
+    return entry

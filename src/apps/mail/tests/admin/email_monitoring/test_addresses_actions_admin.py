@@ -1,6 +1,7 @@
 """Email Monitoring → Bounced addresses: the confirm → apply POSTs, bulk actions, the counts rebuild, and the
 skipped-recipient notice on campaign previews."""
 
+from django.contrib.admin.models import LogEntry
 from django.contrib.messages import get_messages
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -9,7 +10,7 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail, Member
 from apps.event.tests.helpers import make_admin, make_event, make_registration, make_superuser, make_ticket
-from apps.mail.models import BouncedAddress, BouncedAddressAction, EmailCampaign
+from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressAction, EmailCampaign
 from apps.mail.services.email_monitoring.addresses.guards import fingerprint, load_target
 from apps.mail.tests.services.bounced_addresses.helpers import add_email, make_bounce, make_person, make_row, settled
 
@@ -232,6 +233,22 @@ class RebuildTests(TestCase):
         self.assertEqual((row.hard_count, row.status), (1, Status.DISMISSED))
         audit = BouncedAddressAction.objects.get(action="rebuild")
         self.assertEqual(audit.details, {"counted": 1})
+        state = BounceAggregationState.objects.get(source="graph")
+        entry = LogEntry.objects.get(object_id=str(state.pk))
+        self.assertIn("Bounced addresses: rebuilt the counts from the stored records (1 counted)", entry.change_message)
+
+    def test_only_an_i2g_master_may_rebuild(self):
+        make_row("kept@example.org", hard_count=7)
+        self.client.force_login(make_admin(apps=["mail", "authn"], email="mailstaff@example.org"))
+
+        listing = self.client.get(reverse(LIST))
+        for data in ({}, {"step": "apply"}):
+            with self.subTest(data=data):
+                self.assertEqual(self.client.post(reverse(REBUILD), data).status_code, 403)
+
+        self.assertNotContains(listing, reverse(REBUILD))
+        self.assertEqual(BouncedAddress.objects.get(address="kept@example.org").hard_count, 7)
+        self.assertFalse(BouncedAddressAction.objects.filter(action="rebuild").exists())
 
 
 class CampaignPreviewNoticeTests(TestCase):
