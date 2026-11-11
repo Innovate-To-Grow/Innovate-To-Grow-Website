@@ -266,8 +266,9 @@ delivery, bounce, and complaint events remain available only for messages sent
 through SES. SMTP and Microsoft Graph campaigns record submission acceptance as
 `sent` (for Graph, an HTTP 202 from `sendMail`); no later delivery status is
 inferred without a feedback integration. Graph's non-delivery reports arrive in
-the sender mailbox, not in the application, and its uncertain outcomes are
-explained in the
+the sender mailbox, where bounce processing reads them for
+[Email monitoring](../integrations/email-monitoring.md) without changing the recipient log, and its
+uncertain outcomes are explained in the
 [error reference](../integrations/microsoft-graph-email.md#error-reference). The
 Delivery Dashboard under **Delivery Operations** charts SES CloudWatch metrics
 only and shows a notice while another provider is active.

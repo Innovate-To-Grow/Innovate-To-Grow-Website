@@ -112,7 +112,8 @@ continue to match by their saved provider message ID.
 SMTP, Microsoft Graph and the Gmail API record successful submission acceptance only
 (for Graph, an HTTP 202; for the Gmail API, a 200); they do not claim delivered, bounced, or complained status without a
 future feedback integration. Graph's later non-delivery reports arrive in the
-sender mailbox; the admin inbox can show them, but nothing parses them. The SES
+sender mailbox, where bounce processing reads and records them
+([Email monitoring](../integrations/email-monitoring.md)); nothing acts on them automatically. The SES
 account-level suppression list applies only to SES sends, and the application keeps
 no suppression list of its own, so under SMTP or Graph previously bounced or
 complaining addresses are mailed again.
