@@ -278,6 +278,20 @@ class ConsumeTests(TestCase):
         fresh.refresh_from_db()
         self.assertEqual((stale.status, fresh.status), (Status.PENDING, Status.PROCESSING))
 
+    def test_a_row_that_stopped_the_worker_on_every_attempt_fails_for_staff(self):
+        # Otherwise a message that kills the worker would be read again, and stop it again, every 15 minutes forever.
+        poison = row(status=Status.PROCESSING, attempts=5)
+        retried = row(status=Status.PROCESSING, attempts=4)
+        InboundMessage.objects.update(updated_at=timezone.now() - timedelta(hours=1))
+
+        self.assertEqual(consume.recover_stale(stale_after=timedelta(minutes=15), max_attempts=5), 2)
+
+        poison.refresh_from_db()
+        retried.refresh_from_db()
+        self.assertEqual((poison.status, poison.last_error), (Status.FAILED, consume.STOPPED_MID_MESSAGE))
+        self.assertIsNotNone(poison.processed_at)
+        self.assertEqual(retried.status, Status.PENDING)
+
 
 class RetentionTests(TestCase):
     def test_rows_go_retention_days_after_processing_or_recording(self):

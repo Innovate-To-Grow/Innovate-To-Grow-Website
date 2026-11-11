@@ -58,7 +58,8 @@ one; nothing is deleted) and **mark as spam**.
    reads its raw MIME through the site's Graph reader (GET only, paced on the `graph_read` channel, at most
    25 MB); parses it under the same hardening as bounce reports; classifies it; threads and stores it. A message
    gone from the mailbox is skipped with the reason; a failure is retried with backoff and, after 5 attempts,
-   listed under Ingest Problems. A throttle from Microsoft ends the run and the message waits as long as asked.
+   listed under Ingest Problems (so is a message the worker stopped on at every attempt, once it is found left
+   half-done). A throttle from Microsoft ends the run and the message waits as long as asked.
    While a campaign is sending, the job waits (`pause_while_campaign_sending`): reads and sends share Outlook's
    per-mailbox limits.
 3. **Classification** (`apps/core/services/email/inbound/classify.py`, pure): the site's own message (from its

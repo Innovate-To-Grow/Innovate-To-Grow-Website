@@ -159,6 +159,17 @@ class RunnerTests(TestCase):
         row.refresh_from_db()
         self.assertEqual(row.status, Status.DONE)
 
+    def test_a_message_that_stopped_the_worker_on_every_attempt_goes_to_ingest_problems(self):
+        settings = HelpdeskSettings(max_attempts=3)
+        row = queue(corpus.message(), reader=self.reader, status=Status.PROCESSING, attempts=3)
+        InboundMessage.objects.filter(pk=row.pk).update(updated_at=timezone.now() - timedelta(hours=2))
+
+        ingest(self.reader, settings)
+
+        row.refresh_from_db()
+        self.assertEqual((row.status, self.reader.fetched), (Status.FAILED, []))
+        self.assertIn("stopped part-way", row.last_error)
+
 
 class JobTests(TestCase):
     def setUp(self):

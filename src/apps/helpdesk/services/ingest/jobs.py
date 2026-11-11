@@ -94,7 +94,7 @@ def ensure_scheduled(*, now: datetime | None = None) -> bool:
     if not settings.enabled:
         return False
     now = now or timezone.now()
-    consume.recover_stale(stale_after=runner.stale_after(settings), now=now)
+    consume.recover_stale(stale_after=runner.stale_after(settings), max_attempts=int(settings.max_attempts), now=now)
     if BackgroundJob.objects.filter(
         kind=INGEST_JOB_KIND, status__in=(*_WAITING, BackgroundJob.Status.PROCESSING)
     ).exists():

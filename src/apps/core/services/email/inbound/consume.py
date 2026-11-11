@@ -4,7 +4,8 @@ A consumer claims one row at a time (``select_for_update(skip_locked=True)`` on 
 the same row), processes it outside the claim, and settles it: ``done`` with what it made of it, ``retry`` after a
 failure (backoff; ``failed`` after the last attempt, shown to staff with a Retry button), ``defer`` when Microsoft
 asked to wait (the attempt is given back), or ``skip`` when the message is gone from the mailbox. A row a stopped
-worker left ``processing`` goes back to the queue (``recover_stale``). Nothing is dropped silently.
+worker left ``processing`` goes back to the queue (``recover_stale``), or to ``failed`` once it has used its attempts.
+Nothing is dropped silently.
 """
 
 from datetime import datetime, timedelta
@@ -21,6 +22,7 @@ Status = InboundMessage.Status
 # The first retry waits this long; each later one twice as long, up to the cap.
 RETRY_BASE_SECONDS = 60
 RETRY_MAX_SECONDS = 6 * 3600
+STOPPED_MID_MESSAGE = "The import stopped part-way on every attempt (the worker stopped while reading this message)."
 
 
 def _due(now: datetime):
@@ -121,9 +123,15 @@ def requeue(queryset) -> int:
     )
 
 
-def recover_stale(*, stale_after: timedelta, now: datetime | None = None) -> int:
-    """Rows left ``processing`` longer than ``stale_after`` (a worker stopped mid-message) go back to the queue."""
+def recover_stale(*, stale_after: timedelta, max_attempts: int | None = None, now: datetime | None = None) -> int:
+    """Rows left ``processing`` longer than ``stale_after`` (a worker stopped mid-message) go back to the queue; one
+    that has used ``max_attempts`` (a message that stops the worker every time it is read) becomes ``failed`` for
+    staff instead, so it can never stop the worker again and again. How many rows were recovered."""
     now = now or timezone.now()
-    return InboundMessage.objects.filter(status=Status.PROCESSING, updated_at__lt=now - stale_after).update(
-        status=Status.PENDING, next_attempt_at=None, updated_at=now
-    )
+    stale = InboundMessage.objects.filter(status=Status.PROCESSING, updated_at__lt=now - stale_after)
+    failed = 0
+    if max_attempts is not None:
+        failed = stale.filter(attempts__gte=max(1, max_attempts)).update(
+            status=Status.FAILED, last_error=STOPPED_MID_MESSAGE, processed_at=now, updated_at=now
+        )
+    return failed + stale.update(status=Status.PENDING, next_attempt_at=None, updated_at=now)

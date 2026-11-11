@@ -50,7 +50,7 @@ def run(settings: HelpdeskSettings | None = None) -> RunOutcome:
     settings = settings or HelpdeskSettings.load()
     if not settings.enabled:
         return RunOutcome("disabled")
-    consume.recover_stale(stale_after=stale_after(settings))
+    consume.recover_stale(stale_after=stale_after(settings), max_attempts=int(settings.max_attempts))
     reader, mailbox, problem = active_reader()
     if reader is None:
         return RunOutcome("no_reader", problem=problem)
