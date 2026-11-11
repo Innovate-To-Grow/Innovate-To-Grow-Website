@@ -117,6 +117,10 @@ TABS = [
             "mail.loginlinktoken",
             "mail.smscampaign",
             "mail.smsrecipientlog",
+            "mail.smsoptout",
+            "mail.smslinktoken",
+            "mail.ticketsms",
+            "mail.smsconfig",
         ],
         "items": [
             {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
@@ -124,6 +128,10 @@ TABS = [
             {"title": "Login Links", "link": "/admin/mail/loginlinktoken/"},
             {"title": "Broadcast SMS", "link": "/admin/mail/smscampaign/"},
             {"title": "SMS Log", "link": "/admin/mail/smsrecipientlog/"},
+            {"title": "SMS Opt-outs", "link": "/admin/mail/smsoptout/"},
+            {"title": "SMS Links", "link": "/admin/mail/smslinktoken/"},
+            {"title": "Ticket SMS", "link": "/admin/mail/ticketsms/"},
+            {"title": "SMS Settings", "link": "/admin/mail/smsconfig/"},
         ],
     },
     {

@@ -27,6 +27,7 @@ from apps.core.services.email.graph.credential.expiry import active_certificate_
 from apps.core.services.email.telemetry.retention import purge_expired as purge_expired_email_telemetry
 from apps.mail.services.email_monitoring.addresses.aggregate import refresh_all as refresh_bounced_address_links
 from apps.mail.services.email_monitoring.addresses.aggregate import run as count_bounced_addresses
+from apps.mail.services.sms.opt_out_sync import run_scheduled as sync_sms_opt_outs
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)
@@ -115,6 +116,12 @@ def _count_bounced_addresses(should_stop=None) -> None:
         )
 
 
+def _sync_sms_opt_outs(should_stop=None) -> None:
+    # Read the sending number's opted-out list from AWS (read only) into Mail → SMS Opt-outs, when it is on in SMS
+    # Settings; the sync records its own outcome and log line.
+    sync_sms_opt_outs(should_stop=should_stop)
+
+
 def _purge_email_telemetry(should_stop=None) -> None:
     # Outgoing-email telemetry and bounce records past EMAIL_MONITORING's retention, and finished scan jobs.
     result = {**purge_expired_email_telemetry(should_stop=should_stop), "scan_jobs": purge_finished_bounce_scans()}
@@ -130,7 +137,7 @@ def _purge_email_telemetry(should_stop=None) -> None:
 # ``(name, callable)``; ``run_maintenance`` isolates every call, so one failure never stops the worker or the rest.
 # Every callable takes the stop check: the batched tasks (the three cleanups, the bounced-address counting and the
 # email telemetry retention) hand it to their batch loops, so a stop request ends them after the batch in flight; the two single-statement purges,
-# the delivery-rate upkeep, the certificate expiry check and the bounce scan scheduling ignore it.
+# the delivery-rate upkeep, the certificate expiry check, the bounce scan scheduling and the SMS opt-out sync ignore it.
 MAINTENANCE_TASKS = (
     ("Retired RSA key purge", _purge_retired_keys),
     ("Public assistant budget purge", _purge_public_assistant_budgets),
@@ -141,6 +148,7 @@ MAINTENANCE_TASKS = (
     ("Microsoft Graph certificate expiry check", _check_graph_certificate_expiry),
     ("Email bounce scan scheduling", _schedule_bounce_scans),
     ("Bounced address counting", _count_bounced_addresses),
+    ("SMS opt-out sync", _sync_sms_opt_outs),
     ("Email telemetry retention", _purge_email_telemetry),
 )
 

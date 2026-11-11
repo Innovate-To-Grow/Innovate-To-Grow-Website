@@ -13,6 +13,7 @@ from apps.authn.services import (
     AuthChallengeDeliveryError,
     AuthChallengeInvalid,
     AuthChallengeThrottled,
+    PhoneNumberOptedOut,
     PhoneVerificationBusy,
     PhoneVerificationDeliveryError,
     PhoneVerificationThrottled,
@@ -25,6 +26,8 @@ from apps.authn.services import (
 # of megabytes never reaches a query. Do not rely on Django's ``DATA_UPLOAD_MAX_MEMORY_SIZE`` for that: DRF before
 # 3.18 parsed a JSON body from the stream past it, and a body under the cap can still hold a megabyte-long value.
 MAX_CREDENTIAL_LENGTH = 2048
+# The ``code`` of the 400 a code request gets for a number on the SMS opt-out list.
+PHONE_OPTED_OUT_CODE = "phone_opted_out"
 
 
 def read_body_string(request, key: str) -> str:
@@ -106,6 +109,9 @@ def challenge_error_response(exc: Exception) -> Response:
         return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
     if isinstance(exc, PhoneVerificationBusy):
         return busy_response(exc)
+    if isinstance(exc, PhoneNumberOptedOut):
+        # Nothing was sent and asking again cannot help: say why (the number replied STOP), as a 400.
+        return Response({"detail": str(exc), "code": PHONE_OPTED_OUT_CODE}, status=status.HTTP_400_BAD_REQUEST)
     if isinstance(exc, PhoneVerificationDeliveryError):
         return Response({"detail": "Failed to send verification SMS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     raise exc

@@ -14,11 +14,13 @@
                     You are about to send this SMS campaign to {{ recipient_count }} recipient{{ recipient_count|pluralize }}.
                 </p>
                 <p class="mt-1 text-xs text-yellow-700 dark:text-yellow-400">
-                    This action cannot be undone. SMS messages will be delivered immediately.
+                    This action cannot be undone. {% if quiet_until and jobs_enabled %}SMS messages will be delivered when quiet hours end.{% else %}SMS messages will be delivered immediately.{% endif %}
                 </p>
             </div>
         </div>
     </div>
+
+    {% include "admin/mail/smscampaign/_sms_send_notices.html" %}
 
     <div class="mb-6 space-y-1 text-sm">
         <p><span class="text-base-400">Campaign:</span> <strong>{{ campaign.name }}</strong></p>
@@ -27,7 +29,7 @@
         <p><span class="text-base-400">Recipients:</span> {{ recipient_count }}</p>
     </div>
 
-    {% if recipient_count > 0 %}
+    {% if recipient_count > 0 and not links_blocked %}
     <form method="post" id="confirm-send-form">
         {% csrf_token %}
         <div class="mb-4">
@@ -63,7 +65,7 @@
     })();
     </script>
     {% else %}
-    <p class="mb-4 text-sm text-base-400">No recipients found for this audience. Cannot send.</p>
+    <p class="mb-4 text-sm text-base-400">{% if links_blocked %}Links in SMS are turned off. Cannot send.{% else %}No recipients found for this audience. Cannot send.{% endif %}</p>
     <a href="{{ preview_url }}"
        class="inline-flex items-center gap-2 rounded-md border border-base-300 px-4 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
         <span class="material-symbols-outlined !text-[18px]">arrow_back</span>

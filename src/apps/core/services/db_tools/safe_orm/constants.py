@@ -52,6 +52,12 @@ DENIED_MODEL_LABELS = {
     "mail.bouncedaddress",
     "mail.bouncedaddressaction",
     "mail.bouncedaddresscampaign",
+    # SMS policy: the opt-out list (a write would text a number that replied STOP, or stop texting one), its sync
+    # state, and the ticket-text log, written only by Mail → SMS Settings / SMS Opt-outs and the senders. SMS links
+    # and SMS settings match "token" / "config" in DENIED_MODEL_NAME_PARTS.
+    "mail.smsoptout",
+    "mail.smsoptoutsyncstate",
+    "mail.ticketsms",
     "system_intelligence.chatconversation",
     "system_intelligence.chatmessage",
     "system_intelligence.systemintelligenceactionrequest",

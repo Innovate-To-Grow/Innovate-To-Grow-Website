@@ -5,7 +5,11 @@ from __future__ import annotations
 import math
 
 from apps.authn.models import PhoneVerificationChallenge
-from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_TRANSIENT, PROVIDER_OUTCOME_UNCERTAIN
+from apps.core.services.aws.provider_outcomes import (
+    PROVIDER_OUTCOME_PERMANENT,
+    PROVIDER_OUTCOME_TRANSIENT,
+    PROVIDER_OUTCOME_UNCERTAIN,
+)
 
 OTP_TTL_SECONDS = 600
 VERIFIED_GRANT_TTL_SECONDS = 900
@@ -49,6 +53,20 @@ class PhoneVerificationDeliveryError(PhoneVerificationError):
         super().__init__(message)
         self.outcome = outcome
         self.challenge_id = challenge_id
+
+
+OPTED_OUT_MESSAGE = (
+    "This phone number has opted out of texts from Innovate to Grow (it replied STOP), so we can't text it a code. "
+    "Please use your email address instead."
+)
+
+
+class PhoneNumberOptedOut(PhoneVerificationDeliveryError):
+    """The number is on the SMS opt-out list (it replied STOP, or staff opted it out): nothing was sent, and nothing
+    is until it opts back in. Asking again does not help, so callers answer 400 with ``OPTED_OUT_MESSAGE``."""
+
+    def __init__(self, *, challenge_id: str = ""):
+        super().__init__(OPTED_OUT_MESSAGE, outcome=PROVIDER_OUTCOME_PERMANENT, challenge_id=challenge_id)
 
 
 BUSY_MESSAGE = "SMS delivery is busy right now; please try again in about {seconds} seconds."
