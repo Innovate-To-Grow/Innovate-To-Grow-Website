@@ -227,6 +227,8 @@ CHOICE_WORDS = {
     "skip": "skip",
 }
 LISTED_TITLES = {
+    "privileged_changes": "Changes to staff or superuser accounts",
+    "verified": "Marked verified (each becomes a sign-in factor)",
     "emails_deleted": "Contact emails deleted",
     "phones_deleted": "Phone numbers deleted",
     "resubscribed": "Re-subscribed",
@@ -254,3 +256,8 @@ def confirm_lines(summary: dict) -> dict:
         if summary["listed"].get(kind)
     ]
     return {"decision_lines": decisions, "listed_lines": listed, "rows_summary": summary["rows"]}
+
+
+def risky_lines(risky: dict) -> list[dict]:
+    """The result page's counts of risky changes, titled as on the confirm page."""
+    return [{"title": title, "count": risky[kind]} for kind, title in LISTED_TITLES.items() if risky.get(kind)]

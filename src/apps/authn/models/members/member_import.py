@@ -9,8 +9,9 @@ re-reads and re-hashes them, so a member or contact that changed after the revie
 instead of applying a plan nobody saw.
 
 Retention (``settings.MEMBER_IMPORT``): a batch that was not applied is deleted ``batch_lifetime_hours`` after the
-upload; an applied one loses its sheet values and snapshots after ``values_retention_days`` and is deleted after
-``rows_retention_days``. The admin's history (LogEntry) of every member change stays.
+upload; an applied one loses everything that names a person (sheet values, snapshots, analysis, outcome details)
+after ``values_retention_days`` and is deleted after ``rows_retention_days``. The admin's history (LogEntry) of every
+member change stays.
 """
 
 from django.db import models

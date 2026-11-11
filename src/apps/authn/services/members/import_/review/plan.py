@@ -35,6 +35,10 @@ ACTIVE_NOT_TICKED = (
     "Active is {sheet}, but the member is {state}; left {state} (activating or deactivating a member needs its tick)"
 )
 STAFF_IGNORED = "Staff column ignored (only an I2G Master may change staff status, with its tick)"
+PENDING_NOTE = (
+    "The member's self-service sign-up is unfinished; an import never activates it or verifies its contacts (only "
+    "the person can, by confirming their email)"
+)
 
 
 def plan_row(values: dict, action: Action, snapshot: Snapshot, *, ticks=(), drops: dict | None = None) -> RowPlan:
@@ -159,6 +163,9 @@ def _plan_update(values: dict, action: Action, snapshot: Snapshot, ticks: set[st
         plan.add(op, change)
         plan.listed[listed].append(label)
     _check_last_contact(plan, state, member)
+    if member.privileged and plan.writes:
+        # Spelled out on the confirm page: a staff or superuser account is a sign-in to the admin.
+        plan.listed["privileged_changes"].append(f"{member.label}: {'; '.join(plan.changes)}")
     return plan
 
 
@@ -218,11 +225,13 @@ def _not_owned_note(address: str, snapshot: Snapshot, member) -> str:
 
 def _plan_status(plan: RowPlan, values: dict, member, ticks: set[str]) -> None:
     active = values.get("is_active")
+    if active and not member.is_active and member.registration_pending:
+        # Only the person finishes their own sign-up (by confirming their email); never an import, tick or not.
+        plan.notes.append(PENDING_NOTE)
+        active = None
     if active is not None and active != member.is_active:
         if f"R7:{member.id}" in ticks:
             change = "Reactivates the member" if active else "Deactivates the member"
-            if active and member.registration_pending:
-                change += " (this ends their unfinished sign-up)"
             plan.add(Op("active", ref=member.id, data={"value": active}), change)
             plan.listed["active_changes"].append(f"{member.label}: {'reactivated' if active else 'deactivated'}")
         else:

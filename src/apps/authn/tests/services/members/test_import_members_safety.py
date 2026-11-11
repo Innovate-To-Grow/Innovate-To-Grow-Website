@@ -351,14 +351,18 @@ class PrimaryFlagsTests(_ImportCase):
         self.assertTrue(self.primary.verified)
         self.assertIn("Primary Verified is FALSE, but ada@example.com is verified; left verified", result.warnings[0])
 
-    def test_verified_true_verifies(self):
+    def test_verified_true_never_verifies_without_its_tick(self):
+        """A verified address is a sign-in factor: only a ticked review (R9) marks one verified."""
         self.primary.verified = False
         self.primary.save(update_fields=["verified"])
 
-        self._update({"Primary Verified": "Yes"})
+        result = self._update({"Primary Verified": "Yes"})
 
         self.primary.refresh_from_db()
-        self.assertTrue(self.primary.verified)
+        self.assertFalse(self.primary.verified)
+        self.assertIn(
+            "Primary Verified is TRUE, but ada@example.com is unverified; left unverified", result.warnings[0]
+        )
 
     def test_unrecognised_text_keeps_the_stored_flag(self):
         """ "N/A" used to read as FALSE and unsubscribe the address."""
@@ -393,7 +397,7 @@ class ActiveColumnTests(_ImportCase):
         self.member.refresh_from_db()
         self.assertFalse(self.member.is_active)
         self.assertTrue(self.member.registration_pending)
-        self.assertIn("Active is TRUE, but the member is inactive; left inactive", result.warnings[0])
+        self.assertIn("self-service sign-up is unfinished; an import never activates it", result.warnings[0])
 
     def test_unchanged_active_cell_is_silent(self):
         result = self._update({"Active": "Yes"})
@@ -463,10 +467,12 @@ class RoundTripTests(_ImportCase):
             result = import_members_from_excel(BytesIO(export), update_existing=True, allow_privilege_fields=False)
 
         self.assertEqual(self._snapshot(), before)
-        self.assertEqual(result.updated_count, 4)
+        # The staff member's row is skipped: without a permission check, only an I2G Master changes staff accounts.
+        self.assertEqual(result.updated_count, 3)
         self.assertEqual(result.created_count, 0)
-        self.assertEqual(len(result.errors), 1)
-        self.assertIn("Missing primary email", result.errors[0])
+        self.assertEqual(len(result.errors), 2)
+        self.assertTrue(any("Missing primary email" in error for error in result.errors))
+        self.assertTrue(any("You do not have permission to update Staff Er" in error for error in result.errors))
         self.assertEqual(result.warnings, [])
         self.assertEqual(mail.outbox, [])
         sms.assert_not_called()

@@ -55,8 +55,13 @@ class SheetRead:
     error: str = ""
 
 
-def read_upload(file, *, max_rows: int | None = None) -> SheetRead:
-    """Read ``file`` (an upload or any binary file object). ``error`` is set when nothing can be imported."""
+def read_upload(file, *, max_rows: int | None = None, max_rows_read: int | None = None) -> SheetRead:
+    """Read ``file`` (an upload or any binary file object). ``error`` is set when nothing can be imported.
+
+    ``max_rows`` caps the member rows (blank rows don't count); ``max_rows_read`` caps every row read, blank ones
+    included. Both stop the reading as soon as they are passed, so a small, highly compressed workbook can't expand
+    into millions of rows in a web worker.
+    """
     data = file.read()
     read = SheetRead(
         file_name=str(getattr(file, "name", "") or "upload.xlsx")[:255],
@@ -72,13 +77,13 @@ def read_upload(file, *, max_rows: int | None = None) -> SheetRead:
         read.error = UNREADABLE
         return read
     try:
-        _read_workbook(workbook, read, max_rows)
+        _read_workbook(workbook, read, max_rows, max_rows_read)
     finally:
         workbook.close()
     return read
 
 
-def _read_workbook(workbook, read: SheetRead, max_rows: int | None) -> None:
+def _read_workbook(workbook, read: SheetRead, max_rows: int | None, max_rows_read: int | None) -> None:
     sheets = list(workbook.worksheets)
     header_rows = [next(sheet.iter_rows(values_only=True), None) for sheet in sheets]
     if all(header is None for header in header_rows):
@@ -92,19 +97,36 @@ def _read_workbook(workbook, read: SheetRead, max_rows: int | None) -> None:
         return
     read.sheet_name = sheets[chosen].title
     read.warnings.extend(_sheet_warnings(sheets, chosen, active))
-    table = list(sheets[chosen].iter_rows(values_only=True))
-    raw_headers = table[0]
+    rows = sheets[chosen].iter_rows(values_only=True)
+    raw_headers = next(rows)
     headers = [normalize_header(header) for header in raw_headers]
     read.columns = _describe_columns(raw_headers, headers)
     read.warnings.extend(_duplicate_column_warnings(raw_headers, headers))
-    data_rows = [(number, row) for number, row in enumerate(table[1:], start=2) if any(_filled(row))]
-    if max_rows is not None and len(data_rows) > max_rows:
-        read.error = (
-            f"The sheet has {len(data_rows)} member rows; one import takes at most {max_rows}. Split the file and "
-            "import the parts one after another."
-        )
-        return
-    read.rows = [parse_row(number, dict(zip(headers, row, strict=False))) for number, row in data_rows]
+    data_rows = _data_rows(rows, read, max_rows, max_rows_read)
+    if not read.error:
+        read.rows = [parse_row(number, dict(zip(headers, row, strict=False))) for number, row in data_rows]
+
+
+def _data_rows(rows, read: SheetRead, max_rows: int | None, max_rows_read: int | None) -> list:
+    """The non-blank rows with their sheet row numbers; stops (setting ``read.error``) as soon as a cap is passed."""
+    data_rows = []
+    for number, row in enumerate(rows, start=2):
+        if max_rows_read is not None and number - 1 > max_rows_read:
+            read.error = (
+                f"The sheet has more than {max_rows_read} rows, counting blank ones. Copy the member rows into a new "
+                "workbook and upload that."
+            )
+            return []
+        if not any(_filled(row)):
+            continue
+        data_rows.append((number, row))
+        if max_rows is not None and len(data_rows) > max_rows:
+            read.error = (
+                f"The sheet has more than {max_rows} member rows; one import takes at most {max_rows}. Split the file "
+                "and import the parts one after another."
+            )
+            return []
+    return data_rows
 
 
 def _filled(row):

@@ -42,42 +42,80 @@ def role_of(record: EmailRecord, snapshot: Snapshot) -> str:
 
 def why(conflict: str, values: dict, snapshot: Snapshot, **facts) -> str:
     """One sentence saying why the row needs a decision."""
+    sentence = _WHY.get(conflict)
+    if sentence is None:
+        return ""
     address = values.get("primary_email") or ""
-    records = snapshot.email_records(address)
-    target = snapshot.member(facts.get("target"))
-    if conflict == "duplicate_in_sheet":
-        rows = ", ".join(str(number) for number in facts.get("group", []))
-        who = f"{target.label}" if target else address
-        return f"Rows {rows} all resolve to {who}. Only one of them can be applied."
-    if conflict == "privileged_target":
-        return (
-            f"You do not have permission to update {target.label} (only an I2G Master may change staff and superuser "
-            "accounts)."
-        )
-    if conflict == "ambiguous_address":
-        holders = "; ".join(f"{c.address} is {role_of(c, snapshot)}" for c in records)
-        return (
-            f"{address} matches {len(records)} contact emails that differ only in letter case ({holders}). Merge the "
-            "duplicates under Contact Emails, or choose one here."
-        )
-    if conflict == "uuid_email_mismatch":
-        by_uuid = snapshot.member(facts.get("uuid_member"))
-        return f"The Member UUID names {by_uuid.label}, but {address} is {role_of(records[0], snapshot)}."
-    if conflict == "uuid_not_found":
-        return _uuid_not_found(values)
-    if conflict in ("name_differs", "address_not_primary"):
-        sentence = f"{address} is {role_of(records[0], snapshot)}."
-        if conflict == "name_differs":
-            sheet = " ".join(part for part in (values.get("first_name"), values.get("last_name")) if part)
-            sentence += f" The sheet names {sheet!r}, but the member is {target.full_name!r}."
-        return sentence
-    if conflict == "unlinked_address":
-        created = records[0].created[:10] if records and records[0].created else "an unknown date"
-        return f"{address} is a contact email with no member (added {created})."
-    if conflict == "exists_but_skip_mode":
-        how = "The Member UUID names" if facts.get("matched_by") == "uuid" else f"{address} is the primary email of"
-        return f"{how} {target.label}, and the upload said to skip rows that match an existing member."
-    return ""
+    context = _Why(
+        values, snapshot, address, snapshot.email_records(address), snapshot.member(facts.get("target")), facts
+    )
+    return sentence(context)
+
+
+class _Why:
+    def __init__(self, values, snapshot, address, records, target, facts):
+        self.values, self.snapshot, self.address = values, snapshot, address
+        self.records, self.target, self.facts = records, target, facts
+
+
+def _duplicate(c: _Why) -> str:
+    rows = ", ".join(str(number) for number in c.facts.get("group", []))
+    who = c.target.label if c.target else c.address
+    return f"Rows {rows} all resolve to {who}. Only one of them can be applied."
+
+
+def _privileged(c: _Why) -> str:
+    return (
+        f"You do not have permission to update {c.target.label} (only an I2G Master may change staff and superuser "
+        "accounts)."
+    )
+
+
+def _ambiguous(c: _Why) -> str:
+    holders = "; ".join(f"{record.address} is {role_of(record, c.snapshot)}" for record in c.records)
+    return (
+        f"{c.address} matches {len(c.records)} contact emails that differ only in letter case ({holders}). Merge the "
+        "duplicates under Contact Emails, or choose one here."
+    )
+
+
+def _mismatch(c: _Why) -> str:
+    by_uuid = c.snapshot.member(c.facts.get("uuid_member"))
+    return f"The Member UUID names {by_uuid.label}, but {c.address} is {role_of(c.records[0], c.snapshot)}."
+
+
+def _found_elsewhere(c: _Why) -> str:
+    return f"{c.address} is {role_of(c.records[0], c.snapshot)}."
+
+
+def _name_differs(c: _Why) -> str:
+    sheet = " ".join(part for part in (c.values.get("first_name"), c.values.get("last_name")) if part)
+    return f"{_found_elsewhere(c)} The sheet names {sheet!r}, but the member is {c.target.full_name!r}."
+
+
+def _unlinked(c: _Why) -> str:
+    created = c.records[0].created[:10] if c.records and c.records[0].created else "an unknown date"
+    return f"{c.address} is a contact email with no member (added {created})."
+
+
+def _skip_mode(c: _Why) -> str:
+    how = "The Member UUID names" if c.facts.get("matched_by") == "uuid" else f"{c.address} is the primary email of"
+    if c.facts.get("no_permission"):
+        return f"{how} {c.target.label}, and you do not have permission to change members."
+    return f"{how} {c.target.label}, and the upload said to skip rows that match an existing member."
+
+
+_WHY = {
+    "duplicate_in_sheet": _duplicate,
+    "privileged_target": _privileged,
+    "ambiguous_address": _ambiguous,
+    "uuid_email_mismatch": _mismatch,
+    "uuid_not_found": lambda c: _uuid_not_found(c.values),
+    "name_differs": _name_differs,
+    "address_not_primary": _found_elsewhere,
+    "unlinked_address": _unlinked,
+    "exists_but_skip_mode": _skip_mode,
+}
 
 
 def _uuid_not_found(values: dict) -> str:

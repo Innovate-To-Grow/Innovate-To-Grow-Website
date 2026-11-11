@@ -13,6 +13,8 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.core.utils.access import user_can_access_app, user_can_manage_member
+
 from ...models import MemberImportBatch
 from ...services.members.import_.reader import read_upload
 from ...services.members.import_.review import (
@@ -31,10 +33,11 @@ from ...services.members.import_.review.batches import (
     repeat_uploads,
 )
 from ...services.members.import_.review.selection import ForgedSelection
-from .import_context import confirm_lines, review_sections
+from .import_context import confirm_lines, review_sections, risky_lines
 from .import_forms import ImportConfirmForm, MemberImportForm, parse_review_post
 
 Status = MemberImportBatch.Status
+APP_LABEL = "authn"
 
 
 def _require_access(admin_obj, request) -> None:
@@ -52,13 +55,27 @@ def _require_edit(admin_obj, request, batch) -> None:
         raise PermissionDenied("Only the admin who uploaded this import, or an I2G Master, may change it.")
 
 
-def analysis_context(admin_obj, request, mode: str) -> Context:
+def analysis_context(admin_obj, request, mode: str, uploader=None) -> Context:
+    """The rights a batch is analysed and applied with: the acting admin's, intersected with the uploader's.
+
+    So an I2G Master who applies another admin's import never lends it master rights: a staff or superuser row, a
+    staff-status tick or a verification on a privileged account stays out of reach unless the uploader had the right
+    too. An import whose uploader was deleted is never applied (``confirm_view``); it can be discarded or left to
+    expire.
+    """
+    user = request.user
+    actors = [user] if uploader is None or uploader.pk == user.pk else [user, uploader]
     return Context(
         mode=mode,
-        is_master=bool(request.user.is_superuser),
-        can_update=admin_obj.has_change_permission(request),
-        can_manage=lambda member: admin_obj.can_manage_target(request, member),
+        is_master=all(actor.is_superuser for actor in actors),
+        can_update=admin_obj.has_change_permission(request)
+        and all(user_can_access_app(actor, APP_LABEL) for actor in actors),
+        can_manage=lambda member: all(user_can_manage_member(actor, member) for actor in actors),
     )
+
+
+def batch_context(admin_obj, request, batch: MemberImportBatch) -> Context:
+    return analysis_context(admin_obj, request, batch.mode, uploader=batch.created_by)
 
 
 def _page(admin_obj, request, template: str, title: str, **context):
@@ -104,7 +121,11 @@ def upload_view(admin_obj, request):
 
 def _stage_upload(admin_obj, request, form):
     """``(batch, repeats)``: the staged batch, or None with the earlier uploads of the same file to warn about."""
-    read = read_upload(form.cleaned_data["excel_file"], max_rows=import_setting("max_rows"))
+    read = read_upload(
+        form.cleaned_data["excel_file"],
+        max_rows=import_setting("max_rows"),
+        max_rows_read=import_setting("max_rows_read"),
+    )
     if read.error or not read.rows:
         form.add_error("excel_file", read.error or "The sheet has no member rows below its header row.")
         return None, []
@@ -180,6 +201,11 @@ def confirm_view(admin_obj, request, batch_id):
     if batch.status != Status.REVIEW:
         return HttpResponseRedirect(_url("result", batch))
     _require_edit(admin_obj, request, batch)
+    if batch.created_by_id is None:
+        messages.error(
+            request, "The admin who uploaded this import no longer exists, so it can't be applied. Discard it."
+        )
+        return HttpResponseRedirect(_url("review", batch))
     require_text = getattr(settings, "ADMIN_REQUIRE_CONFIRMATION", True)
     sections = review_sections(batch)
     if sections["problems"]:
@@ -204,9 +230,7 @@ def confirm_view(admin_obj, request, batch_id):
 
 
 def _apply(admin_obj, request, batch, version: int):
-    result = apply_batch(
-        batch.pk, user=request.user, version=version, ctx=analysis_context(admin_obj, request, batch.mode)
-    )
+    result = apply_batch(batch.pk, user=request.user, version=version, ctx=batch_context(admin_obj, request, batch))
     if result.status == "applied":
         batch.refresh_from_db()
         counts = (batch.summary or {}).get("outcomes", {})
@@ -239,7 +263,8 @@ def result_view(admin_obj, request, batch_id):
         rows=rows,
         editable=can_edit(request, batch),
         counts=(batch.summary or {}).get("outcomes", {}),
-        risky=(batch.summary or {}).get("risky", {}),
+        risky=risky_lines((batch.summary or {}).get("risky", {})),
+        primary_changed=bool((batch.summary or {}).get("risky", {}).get("primary_changes")),
     )
 
 

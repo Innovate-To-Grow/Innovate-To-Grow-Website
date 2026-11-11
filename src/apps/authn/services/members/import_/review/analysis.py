@@ -13,6 +13,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from apps.authn.models import Member
+
 from ..contacts import valid_new_address
 from .actions import CREATE, CREATE_CLAIM, SKIP, UPDATE, Action, resolve_action
 from .choices import OptionContext, names_match, options_for, ready_options
@@ -25,6 +27,13 @@ from .risky import risky_items
 READY_CREATE, READY_UPDATE, NO_CHANGE = "ready_create", "ready_update", "no_change"
 NEEDS_DECISION, INVALID = "needs_decision", "invalid"
 UPDATE_EXISTING, SKIP_EXISTING = "update_existing", "skip_existing"
+_PROFILE_LIMITS = {
+    "first_name": "First Name",
+    "middle_name": "Middle Name",
+    "last_name": "Last Name",
+    "title": "Title",
+    "organization": "Organization",
+}
 # Conflicts that come before "the same person appears twice" (C1) in precedence: a row with one is never grouped.
 _BEFORE_C1 = frozenset({"privileged_target", "ambiguous_address", "uuid_email_mismatch", "uuid_not_found"})
 
@@ -94,6 +103,9 @@ def resolve_row(values: dict, snapshot: Snapshot, ctx: Context, *, use_uuid: boo
     """Resolve one row: Member UUID → Primary Email (any role) → contact with no member → new member."""
     if not values.get("primary_email"):
         return Resolution(INVALID, invalid="Missing primary email")
+    too_long = _too_long(values)
+    if too_long:
+        return Resolution(INVALID, invalid=too_long)
     uuid_member = None
     if use_uuid and (values.get("member_uuid") or values.get("member_uuid_text")):
         uuid_member = snapshot.member(snapshot.uuids.get(values.get("member_uuid") or ""))
@@ -106,6 +118,11 @@ def resolve_row(values: dict, snapshot: Snapshot, ctx: Context, *, use_uuid: boo
     owner = snapshot.member(record.member) if record and record.member else None
     if uuid_member and owner and owner.id != uuid_member.id:
         return Resolution(NEEDS_DECISION, "uuid_email_mismatch", uuid_member=uuid_member.id, email_member=owner.id)
+    if record is not None and record.member is None:
+        # A contact email with no member, whatever the Member UUID says: the address is not the UUID member's.
+        return Resolution(
+            NEEDS_DECISION, "unlinked_address", record=record.id, uuid_member=uuid_member.id if uuid_member else None
+        )
     target = uuid_member or owner
     if target is None:
         return _resolve_new(values, record)
@@ -116,9 +133,16 @@ def resolve_row(values: dict, snapshot: Snapshot, ctx: Context, *, use_uuid: boo
     return _resolve_existing(values, snapshot, ctx, base, record, by_uuid=uuid_member is not None)
 
 
+def _too_long(values: dict) -> str:
+    """Why a profile cell can't be stored (longer than its column), or ``""``."""
+    for name, label in _PROFILE_LIMITS.items():
+        limit = Member._meta.get_field(name).max_length
+        if len(values.get(name) or "") > limit:
+            return f"{label} is longer than {limit} characters"
+    return ""
+
+
 def _resolve_new(values: dict, record) -> Resolution:
-    if record is not None:
-        return Resolution(NEEDS_DECISION, "unlinked_address", record=record.id)
     if not valid_new_address(values["primary_email"]):
         return Resolution(INVALID, invalid=f"Primary Email {values['primary_email']!r} is not a valid email address")
     for name, label in (("first_name", "first name"), ("last_name", "last name")):
@@ -136,7 +160,8 @@ def _resolve_existing(values, snapshot: Snapshot, ctx: Context, base: dict, reco
         return Resolution(NEEDS_DECISION, "name_differs", **base)
     if base["record"] and record.type != "primary":
         return Resolution(NEEDS_DECISION, "address_not_primary", **base)
-    if ctx.mode == SKIP_EXISTING:
+    if ctx.mode == SKIP_EXISTING or not ctx.can_update:
+        # Without the change permission a matching row can only be skipped, whatever the upload's mode.
         return Resolution(NEEDS_DECISION, "exists_but_skip_mode", **base)
     return Resolution(READY_UPDATE, **base)
 
@@ -152,12 +177,17 @@ def suggested_action(resolution: Resolution, values: dict, ctx: Context) -> tupl
             return None, "The upload said to skip rows that match an existing member"
         return Action(UPDATE, target=resolution.target), ""
     if resolution.conflict == "unlinked_address":
+        if resolution.uuid_member:
+            return None, "The row's Member UUID names an existing member"
         if values.get("first_name") and values.get("last_name"):
             return Action(CREATE_CLAIM, claim=resolution.record), ""
         return None, "A new member needs a first and a last name"
+    skipped = "The upload said to skip rows that match an existing member"
+    if resolution.conflict == "exists_but_skip_mode" and ctx.mode == UPDATE_EXISTING:
+        skipped = "You do not have permission to change members"
     reasons = {
         "name_differs": "The sheet's name differs from the member's; decide on this row alone",
-        "exists_but_skip_mode": "The upload said to skip rows that match an existing member",
+        "exists_but_skip_mode": skipped,
         "privileged_target": "Only an I2G Master may change staff and superuser accounts",
     }
     return None, reasons.get(resolution.conflict, "This row needs its own decision")
@@ -199,6 +229,8 @@ def _finish(values, resolution: Resolution, snapshot: Snapshot, ctx: Context, *,
 def _decision(analysis: RowAnalysis, conflict: str, resolution: Resolution, oc: OptionContext, ctx: Context) -> None:
     analysis.status, analysis.conflict = NEEDS_DECISION, conflict
     facts, values, snapshot = analysis.facts, oc.values, oc.snapshot
+    if conflict == "exists_but_skip_mode" and ctx.mode == UPDATE_EXISTING and not ctx.can_update:
+        facts["no_permission"] = True
     if conflict == "duplicate_in_sheet":
         solo, reason = suggested_action(resolution, values, ctx)
         facts.update(solo=solo.as_dict() if solo else None, solo_reason=reason)

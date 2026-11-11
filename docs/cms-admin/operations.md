@@ -417,15 +417,18 @@ member data until you confirm.
 
 **Risky changes** are never made unless you tick them, one tick per change: removing a secondary email (the Secondary
 cell is blank, or names another address), removing a phone number (blank cell, or a new number), re-subscribing an
-address or number (only with the person's consent), marking one unverified, deactivating or reactivating a member, and
-staff status (I2G Master only). A tick is disabled for the address the row was matched on, and for a member's last
-verified sign-in contact.
+address or number (only with the person's consent), marking one unverified, **marking one verified** (a verified
+address or number is a working sign-in: email codes, SMS password resets), deactivating or reactivating a member, and
+staff status (I2G Master only). A tick is disabled for the address the row was matched on, for a member's last
+verified sign-in contact, and on staff and superuser accounts unless you are an I2G Master. A self-service sign-up
+the person never finished can't be activated or verified by an import: only the person can finish it. Confirm lists
+every risky change and every change to a staff or superuser account.
 
 **Always:**
 - A blank cell, or a missing column, keeps the stored value. Nothing is deleted, re-subscribed or un-verified without
   its tick, and Active and Staff never change without theirs.
 - The Primary/Secondary/Phone Verified and Subscribed cells apply only to the contact the cell names, and only when the
-  member owns it: TRUE verifies, FALSE unsubscribes.
+  member owns it: FALSE unsubscribes; verifying, un-verifying and re-subscribing need their ticks.
 - A new address or number on an existing member starts unverified; a new secondary becomes the secondary and the old
   one becomes "other"; a new number is added next to the old ones. A contact email that belongs to no member is
   attached (unverified); an address or number held by another member is never moved.
@@ -434,11 +437,13 @@ verified sign-in contact.
 - The apply is all or nothing. If a member or contact the review showed changed in the meantime, nothing is written
   and those rows go back to the review, marked "Changed since you reviewed it".
 - Only the admin who uploaded an import, or an I2G Master, can change, apply or discard it; other admins with the
-  Members app see it read-only.
+  Members app see it read-only. An import always runs with the uploader's rights: an I2G Master who applies someone
+  else's import doesn't widen it to staff or superuser accounts. An import whose uploader was deleted can only be
+  discarded.
 
 **History and retention** (Members → Member Imports, read-only, no export): an import that is not applied is deleted
-24 hours after the upload. An applied import keeps its sheet values for 30 days and its record (who chose what for
-each row, and the outcome) for a year. The members' History entries stay. The defaults are in
+24 hours after the upload. An applied import keeps its sheet values and change details for 30 days and its record (who
+chose what for each row, and the outcome) for a year. The members' History entries stay. The defaults are in
 `settings.MEMBER_IMPORT`; the background worker's hourly maintenance and each visit to the upload page apply them.
 
 The import without a review (`import_members_from_excel`) remains for scripts and tests: it applies the ready rows,

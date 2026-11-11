@@ -128,7 +128,10 @@ def _apply_instruction_sheet(workbook):
         ("", "A random password is generated unless a default is specified"),
         ("", "A blank cell or a missing column keeps the stored value; nothing is deleted unless you tick it"),
         ("", "A new Secondary Email or Phone Number is added next to the member's existing ones, unverified"),
-        ("", "Re-subscribing, un-verifying, (de)activating and staff changes each need their own tick in the review"),
+        (
+            "",
+            "Verifying, un-verifying, re-subscribing, (de)activating and staff changes each need a tick in the review",
+        ),
         ("", "TRUE/FALSE columns accept TRUE, FALSE, Yes or No; any other text is ignored"),
         ("", "'Last Updated' and 'Primary Expired' are informational only"),
     ]

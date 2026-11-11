@@ -1,9 +1,12 @@
-"""Risky changes: what a row may do to the member it updates only when the admin ticks it (R1–R8).
+"""Risky changes: what a row may do to the member it updates only when the admin ticks it (R1–R9).
 
-Each item is its own tick, off by default, so every deletion, re-subscription and un-verification is a separate
-decision. An item that may not be ticked stays visible with the reason: the address the row was matched on, the
-member's only verified sign-in contact (the rule of ``services/account/recovery.py``), or an account only an I2G
-Master may change. The planner re-checks the ticks together against the last-sign-in-contact rule.
+Each item is its own tick, off by default, so every deletion, re-subscription, un-verification and verification is a
+separate decision. Verifying (R9) is one too: a verified contact is a working sign-in factor (an email code, or an SMS
+password reset), so a sheet never creates one without a tick. An item that may not be ticked stays visible with the
+reason: the address the row was matched on, the member's only verified sign-in contact (the rule of
+``services/account/recovery.py``), an account only an I2G Master may change, or a self-service sign-up the person has
+not finished (only they can finish it, by confirming their email). The planner re-checks the ticks together against
+the last-sign-in-contact rule.
 """
 
 from __future__ import annotations
@@ -19,10 +22,15 @@ RISKY_TYPES = {
     "R6": "Mark contacts unverified",
     "R7": "Deactivate or reactivate members",
     "R8": "Grant or remove staff status (I2G Master only)",
+    "R9": "Mark contacts verified (each becomes a sign-in factor)",
 }
 MATCHED = "This is the address the row was matched on"
 PRIVILEGED = "Only an I2G Master may change staff and superuser accounts"
 MASTER_ONLY = "Only an I2G Master may change staff status"
+PENDING = (
+    "This member's self-service sign-up is unfinished; only they can finish it, by confirming their email. An import "
+    "can't activate the account or verify its contacts"
+)
 
 
 class _Items:
@@ -120,15 +128,26 @@ def _flags(items: _Items, values: dict, member: MemberRecord, snapshot: Snapshot
             if record.id == items.last_verified:
                 reason = f"It is the only verified sign-in contact of {member.full_name or 'this member'}"
             items.add("R6", record.id, f"Mark {label} unverified", reason)
+        if verified is True and not record.verified:
+            items.add("R9", record.id, f"Mark {label} verified (it becomes a sign-in factor)", _verify_reason(items))
+
+
+def _verify_reason(items: _Items) -> str:
+    if items.member.registration_pending:
+        return PENDING
+    if items.member.privileged and not items.may_change_privileged:
+        return PRIVILEGED
+    return ""
 
 
 def _status(items: _Items, values: dict, member: MemberRecord, is_master: bool) -> None:
     active = values.get("is_active")
     if active is not None and active != member.is_active:
         label = "Reactivate the member" if active else "Deactivate the member"
+        reason = "" if is_master or not member.privileged else PRIVILEGED
         if active and member.registration_pending:
-            label += " (ends their unfinished sign-up)"
-        items.add("R7", member.id, label, "" if is_master or not member.privileged else PRIVILEGED)
+            reason = PENDING
+        items.add("R7", member.id, label, reason)
     staff = values.get("is_staff")
     if staff is not None and staff != member.is_staff:
         label = "Grant staff status" if staff else "Remove staff status"

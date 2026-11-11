@@ -12,6 +12,9 @@ MEMBER_IMPORT = {
     # Most data rows one upload may have. The apply runs in one request and one transaction, so a bigger sheet is
     # refused at upload with "split the file".
     "max_rows": 2000,
+    # Most rows read from the sheet, blank ones included, before the upload is refused. Reading stops there, so a
+    # small but highly compressed workbook can't expand into millions of rows in a web worker.
+    "max_rows_read": 100_000,
     # Days an applied import keeps each row's sheet values and the member snapshot its review showed.
     "values_retention_days": 30,
     # Days an applied import is kept at all: who chose what for each row, and what happened.

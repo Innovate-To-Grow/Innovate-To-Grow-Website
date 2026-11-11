@@ -1,10 +1,10 @@
 """Plan what one row does to the contacts of the member it updates.
 
-Without a tick a row never deletes, re-subscribes or un-verifies anything: a blank cell keeps every stored contact, a
-new address or number is added next to the old ones (unverified), and an address or number another member holds is
-never moved. The flag cells apply only to the contact the cell names, and only when the member owns it: TRUE verifies
-and FALSE unsubscribes; FALSE un-verifies (R6) and TRUE re-subscribes (R5) only when ticked. Removals (R1–R4) are
-planned here and written last, after every addition.
+Without a tick a row never deletes, re-subscribes, un-verifies or verifies anything: a blank cell keeps every stored
+contact, a new address or number is added next to the old ones (unverified), and an address or number another member
+holds is never moved. The flag cells apply only to the contact the cell names, and only when the member owns it: FALSE
+unsubscribes (an opt-out); TRUE verifies (R9), FALSE un-verifies (R6) and TRUE re-subscribes (R5) only when ticked.
+Removals (R1–R4) are planned here and written last, after every addition.
 
 ``ContactState`` follows the member's contacts through the planned writes, so a later step sees an earlier one (a
 promotion demotes the old primary before the Secondary cell is read) and the last-sign-in-contact rule can be checked
@@ -76,9 +76,34 @@ def plan_flags(plan: RowPlan, state: ContactState, record, column: str, cells: t
     verified, subscribe = cells
     kind, label = ("phone_flags", record.e164) if hasattr(record, "e164") else ("email_flags", record.address)
     data, changes = {}, []
+    _verified_cell(plan, state, record, (column, label), verified, ticks, data, changes)
+    _subscribed_cell(plan, record, (column, label), subscribe, ticks, data, changes)
+    if data:
+        plan.ops.append(Op(kind, ref=record.id, data=data))
+        plan.changes.extend(changes)
+        if "verified" in data:
+            state.verified[record.id] = data["verified"]
+        if "subscribe" in data and kind == "email_flags":
+            state.subscribed[record.id] = data["subscribe"]
+
+
+def _verified_cell(plan, state, record, names: tuple, verified, ticks: set[str], data: dict, changes: list) -> None:
+    """TRUE verifies with the R9 tick (never on an unfinished sign-up); FALSE un-verifies with the R6 tick."""
+    column, label = names
     if verified is True and not record.verified:
-        data["verified"] = True
-        changes.append(f"Marks {label} verified")
+        if state.member.registration_pending:
+            plan.notes.append(
+                f"{column} Verified is TRUE, but {label} belongs to an unfinished sign-up; left unverified"
+            )
+        elif f"R9:{record.id}" in ticks:
+            data["verified"] = True
+            changes.append(f"Marks {label} verified")
+            plan.listed["verified"].append(label)
+        else:
+            plan.notes.append(
+                f"{column} Verified is TRUE, but {label} is unverified; left unverified (verifying makes it a sign-in "
+                "factor and needs its tick)"
+            )
     elif verified is False and record.verified:
         if f"R6:{record.id}" in ticks:
             data["verified"] = False
@@ -88,6 +113,11 @@ def plan_flags(plan: RowPlan, state: ContactState, record, column: str, cells: t
             plan.notes.append(
                 f"{column} Verified is FALSE, but {label} is verified; left verified (un-verifying needs its tick)"
             )
+
+
+def _subscribed_cell(plan, record, names: tuple, subscribe, ticks: set[str], data: dict, changes: list) -> None:
+    """FALSE unsubscribes (an opt-out); TRUE re-subscribes only with the R5 tick."""
+    column, label = names
     if subscribe is False and record.subscribe:
         data["subscribe"] = False
         changes.append(f"Unsubscribes {label}")
@@ -101,13 +131,6 @@ def plan_flags(plan: RowPlan, state: ContactState, record, column: str, cells: t
                 f"{column} Subscribed is TRUE, but {label} is unsubscribed; left unsubscribed (re-subscribing needs "
                 "the person's consent and its tick)"
             )
-    if data:
-        plan.ops.append(Op(kind, ref=record.id, data=data))
-        plan.changes.extend(changes)
-        if "verified" in data:
-            state.verified[record.id] = data["verified"]
-        if "subscribe" in data and kind == "email_flags":
-            state.subscribed[record.id] = data["subscribe"]
 
 
 def plan_promote(plan: RowPlan, state: ContactState, record: EmailRecord) -> None:

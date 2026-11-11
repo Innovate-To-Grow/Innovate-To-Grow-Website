@@ -2,8 +2,9 @@
 
 - A batch that was not applied (in review, discarded or expired) is deleted, with its rows, once it expires
   (``batch_lifetime_hours`` after the upload).
-- An applied batch keeps each row's sheet values and member snapshot for ``values_retention_days``; then they are
-  blanked, and the batch keeps only who chose what for each row and the outcome.
+- An applied batch keeps each row's sheet values and member snapshot for ``values_retention_days``; then everything
+  that names a person is blanked (values, snapshots, the analysis, warnings, the outcome details, the last error and
+  the activity details), and the batch keeps only who chose what for each row and the outcome.
 - An applied batch is deleted ``rows_retention_days`` after it was applied. The members' History (LogEntry) stays.
 
 It runs in bounded passes: on each visit to the upload page, and in the background worker's hourly maintenance.
@@ -70,6 +71,13 @@ def _delete(ids) -> int:
 
 def _blank(ids, now) -> int:
     with transaction.atomic():
-        MemberImportRow.objects.filter(batch_id__in=ids).update(values={}, candidates={}, risky={}, warnings=[])
-        MemberImportBatch.objects.filter(pk__in=ids).update(values_purged_at=now, updated_at=now)
+        MemberImportRow.objects.filter(batch_id__in=ids).update(
+            values={}, candidates={}, risky={}, warnings=[], analysis={}, outcome_detail="", updated_at=now
+        )
+        for batch in MemberImportBatch.objects.select_for_update().filter(pk__in=ids):
+            batch.activity = [
+                {key: value for key, value in event.items() if key != "detail"} for event in batch.activity
+            ]
+            batch.file_warnings, batch.last_error, batch.values_purged_at = [], "", now
+            batch.save(update_fields=["activity", "file_warnings", "last_error", "values_purged_at", "updated_at"])
     return len(ids)

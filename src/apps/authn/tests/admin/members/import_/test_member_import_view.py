@@ -1,5 +1,6 @@
 """Members → Import, step 1: the upload page stages a review and writes no member data."""
 
+from django.conf import settings
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
@@ -104,22 +105,13 @@ class MemberImportPageTests(TestCase):
         self.assertContains(response, "The file could not be read as an .xlsx workbook")
         self.assertFalse(MemberImportBatch.objects.exists())
 
-    @override_settings(
-        MEMBER_IMPORT={
-            "batch_lifetime_hours": 24,
-            "max_rows": 2,
-            "values_retention_days": 30,
-            "rows_retention_days": 365,
-            "repeat_warning_days": 30,
-            "purge_batch_size": 50,
-        }
-    )
+    @override_settings(MEMBER_IMPORT={**settings.MEMBER_IMPORT, "max_rows": 2})
     def test_a_sheet_over_the_row_cap_is_refused(self):
         rows = [[f"p{i}@example.com", "P", f"Person{i}", None] for i in range(3)]
 
         response = self.client.post(self.url, {"excel_file": _upload(rows), "mode": "update_existing"})
 
-        self.assertContains(response, "The sheet has 3 member rows; one import takes at most 2.")
+        self.assertContains(response, "The sheet has more than 2 member rows; one import takes at most 2.")
         self.assertFalse(MemberImportBatch.objects.exists())
 
     def test_the_same_file_twice_warns_before_a_second_batch_is_made(self):

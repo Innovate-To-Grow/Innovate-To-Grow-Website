@@ -217,7 +217,10 @@ def _counts_text(counts: Counter) -> str:
 
 
 def _send_back(batch_id, fresh, changed: list[int], user) -> None:
-    """Store the fresh analysis of the changed rows, reset their choices, and flag them for the review."""
+    """Store the fresh analysis of the changed rows, reset them to Skip, and flag them for the review.
+
+    Skip, not the row's default: a changed row is applied only after someone has looked at it again.
+    """
     by_number = {analysis.row_number: analysis for analysis in fresh}
     with transaction.atomic():
         batch = MemberImportBatch.objects.select_for_update().get(pk=batch_id)
@@ -225,6 +228,7 @@ def _send_back(batch_id, fresh, changed: list[int], user) -> None:
         for row in rows:
             for name, value in to_stored(by_number[row.row_number]).items():
                 setattr(row, name, value)
+            row.choice, row.ticks = SKIP, []
             row.changed_since_review = True
             row.chosen_by, row.chosen_at = None, None
             row.updated_at = timezone.now()

@@ -33,7 +33,8 @@ def import_members_from_excel(
     allow_privilege_fields: bool = False,
 ) -> ImportResult:
     """Import ``file`` without a review. With ``update_existing``, rows matching a member by primary email (or by
-    Member UUID) update that member; ``update_member_allowed`` may refuse a member (the row is then skipped)."""
+    Member UUID) update that member; ``update_member_allowed`` may refuse a member (the row is then skipped). Without
+    it, staff and superuser accounts are skipped unless ``allow_privilege_fields`` (the caller is an I2G Master)."""
     read = read_upload(file)
     if read.error:
         return ImportResult(success=False, errors=[read.error])
@@ -41,7 +42,7 @@ def import_members_from_excel(
         mode=UPDATE_EXISTING if update_existing else SKIP_EXISTING,
         is_master=allow_privilege_fields,
         can_update=update_existing,
-        can_manage=update_member_allowed or (lambda member: True),
+        can_manage=update_member_allowed or (lambda member: _ordinary_or_master(member, allow_privilege_fields)),
     )
     try:
         with transaction.atomic():
@@ -54,6 +55,11 @@ def import_members_from_excel(
     except Exception as exc:  # noqa: BLE001 - RowWriteError or a database error: either way nothing was written.
         return ImportResult(success=False, errors=[f"Error importing members: {exc}. Nothing was imported"])
     return _result(analyses, outcomes)
+
+
+def _ordinary_or_master(member, is_master: bool) -> bool:
+    """Without a permission check of its own, a caller changes staff and superuser accounts only as an I2G Master."""
+    return is_master or not (member.is_staff or member.is_superuser)
 
 
 def _result(analyses, outcomes) -> ImportResult:

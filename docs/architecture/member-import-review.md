@@ -22,7 +22,10 @@ analyse     saved per    "import"      all or nothing
 | History | `authn/memberimportbatch/` | `admin/members/import_batch.py` (read-only, no export) |
 
 Every view re-checks authn-app access (`admin_view` only checks `is_staff`). Only the uploader or an I2G Master may
-save choices, apply or discard; other authn admins get the review read-only.
+save choices, apply or discard; other authn admins get the review read-only. Rights are always the **uploader's and
+the actor's together** (`import_views.analysis_context`): an I2G Master applying another admin's import never lends it
+master rights, so the uploader can't use the master's apply to reach staff accounts or master-only ticks. An import
+whose uploader was deleted is never applied.
 
 ## Storage
 
@@ -38,8 +41,10 @@ keeps the parsed values, never the file. Each row stores:
 - `risky`: the R-items per member the row could update; `choice`, `ticks`, `chosen_by`, `chosen_at`; the `outcome`.
 
 Both tables are in `DENIED_MODEL_LABELS` (no AI action engine or `/admin-api/` access). `review/purge.py` enforces
-`settings.MEMBER_IMPORT` (24 h for unapplied batches, 30 days of sheet values, 1 year of records), from the worker's
-maintenance (`Member import purge`) and from each upload-page visit.
+`settings.MEMBER_IMPORT` (24 h for unapplied batches; after 30 days every field that names a person is blanked:
+values, snapshots, analysis, warnings, outcome details, last error and activity details; records kept 1 year), from the
+worker's maintenance (`Member import purge`) and from each upload-page visit. The reader stops at `max_rows` member rows
+and at `max_rows_read` rows read (blank ones included), so a compressed workbook can't expand without bound.
 
 ## Analysis (`services/members/import_/review/`)
 
@@ -49,7 +54,7 @@ maintenance (`Member import purge`) and from each upload-page visit.
 | `grouping.py` | Cross-row checks: V2/V4/V7/V8 cells set aside; C1 groups (same member, or same new address) |
 | `analysis.py` | Per row: Member UUID → Primary Email in any role → unlinked contact → new member; conflicts C2–C9 in precedence order; status |
 | `choices.py`, `describe.py` | Options per conflict, bulk-safe choices, and the sentences shown |
-| `risky.py` | R1–R8 items per target member, with the disabled reasons |
+| `risky.py` | R1–R9 items per target member, with the disabled reasons (R9 "mark verified": a verified contact is a sign-in factor) |
 | `plan.py`, `plan_contacts.py` | What a choice writes, in order, with one line per change; `ContactState` follows the member's contacts through the plan |
 | `selection.py` | Posted choices checked against the row's options (a forged POST fails); cross-row problems that block the apply |
 | `apply.py`, `execute.py` | The transaction and the writes; `contacts.py` holds the guarded contact writes |
@@ -63,7 +68,8 @@ only where it is allowed on each row.
 `apply_batch` locks the batch row (`select_for_update`), checks its status, expiry and `choices_version`, locks every
 member the review read in primary-key order, reloads the snapshot and re-runs the analysis. A row whose fingerprint,
 status or conflict differs, or whose choice or ticks are no longer allowed (a privilege change), sends the batch back to
-review: those rows get the new analysis, their choice reset to Skip and `changed_since_review`. Otherwise every row's
+review: those rows get the new analysis, their choice reset to Skip (not to their default) and `changed_since_review`.
+The planner itself never activates or verifies an unfinished self-service sign-up, whatever the ticks say. Otherwise every row's
 plan is written in row order; new members are bulk-created (one sheet sync is scheduled after commit), updates are
 saved op by op so the save signals fire. `make_contact_email_primary`, `delete_contact_email` and `delete_contact_phone`
 run as savepoints with their own guards; `create_contact_email` is never used, so no mail is sent. Any error rolls back

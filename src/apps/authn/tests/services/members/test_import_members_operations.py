@@ -24,8 +24,8 @@ def _parsed(**overrides):
         "is_active": None,
         "is_staff": None,
         "date_joined": None,
-        "primary_verified": True,
-        "primary_subscribed": True,
+        "primary_verified": None,
+        "primary_subscribed": None,
         "secondary_email": None,
         "secondary_verified": False,
         "secondary_subscribed": False,
@@ -142,14 +142,21 @@ class UpdateOneMemberTests(TestCase):
 
         self.assertEqual(self.member.contact_emails.filter(email_type="secondary").count(), 1)
 
-    def test_primary_flags_apply_in_the_safe_direction(self):
-        """TRUE verifies (as "Mark verified" does) and FALSE unsubscribes (an opt-out)."""
-        plan = update(self.member, _parsed(first_name="Old", primary_verified=True, primary_subscribed=False))
+    def test_primary_flags_unsubscribe_freely_and_verify_only_with_their_tick(self):
+        """FALSE unsubscribes (an opt-out); TRUE verifies only with the R9 tick (a verified address is a sign-in)."""
+        unticked = update(self.member, _parsed(first_name="Old", primary_verified=True, primary_subscribed=False))
+        self.primary.refresh_from_db()
+        self.assertEqual((self.primary.verified, self.primary.subscribe), (False, False))
+        self.assertIn(
+            "Primary Verified is TRUE, but user@example.com is unverified; left unverified", unticked.notes[0]
+        )
+
+        plan = update(self.member, _parsed(first_name="Old", primary_verified=True), ticks=[f"R9:{self.primary.pk}"])
 
         self.primary.refresh_from_db()
-        self.assertEqual((self.primary.verified, self.primary.subscribe), (True, False))
+        self.assertTrue(self.primary.verified)
         self.assertEqual(plan.notes, [])
-        self.assertEqual(plan.changes, ["Marks user@example.com verified", "Unsubscribes user@example.com"])
+        self.assertEqual(plan.changes, ["Marks user@example.com verified"])
 
     def test_primary_email_is_never_created_for_a_member_without_it(self):
         """A row matched by Member UUID never adds or re-types an address from its Primary Email cell."""
@@ -167,9 +174,12 @@ class UpdateOneMemberTests(TestCase):
             member=self.member, email_address="sec@example.com", email_type="other", verified=False
         )
 
-        plan = update(self.member, _parsed(secondary_email="sec@example.com", secondary_verified=True))
-
         sec = ContactEmail.objects.get(member=self.member, email_address="sec@example.com")
+        plan = update(
+            self.member, _parsed(secondary_email="sec@example.com", secondary_verified=True), ticks=[f"R9:{sec.pk}"]
+        )
+
+        sec.refresh_from_db()
         self.assertEqual((sec.email_type, sec.verified), ("other", True))
         self.assertEqual(
             plan.notes, ['Secondary Email sec@example.com is already this member\'s "other" email; left as it is']

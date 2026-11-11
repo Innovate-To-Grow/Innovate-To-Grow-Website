@@ -35,9 +35,9 @@
             <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold">{{ counts.not_imported|default:0 }}</div><div class="text-xs mt-1">Not imported</div></div>
         </div>
         {% if risky %}
-            <p class="text-sm mb-2">Risky changes applied: {% for kind, count in risky.items %}{{ kind|cut:"_" }} {{ count }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
-            {% if risky.primary_changes %}<p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-4">A new primary email does not change the address on event tickets already issued.</p>{% endif %}
+            <p class="text-sm mb-2">Risky changes applied: {% for line in risky %}{{ line.title }}: {{ line.count }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
         {% endif %}
+        {% if primary_changed %}<p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-4">A new primary email does not change the address on event tickets already issued.</p>{% endif %}
 
         <table class="w-full text-sm mb-6">
             <thead><tr class="text-left text-xs uppercase"><th class="py-1 pr-3">Row</th><th class="py-1 pr-3">Outcome</th><th class="py-1 pr-3">Member</th><th class="py-1 pr-3">Choice</th><th class="py-1">What changed</th></tr></thead>
