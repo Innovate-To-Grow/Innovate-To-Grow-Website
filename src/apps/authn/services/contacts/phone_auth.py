@@ -39,11 +39,26 @@ class PhoneAccountInactive(Exception):
     """
 
 
+class PhoneNotVerified(Exception):
+    """Raised when a phone sign-in resolves to a member whose number is not verified.
+
+    Only a verified number signs anyone in. A number staff or an import saved on an account was never proven to be
+    the member's (it may be mistyped or recycled), so whoever holds it must not get the account. The member verifies
+    it with a code from their account page first. The view answers the generic invalid-code 400.
+    """
+
+
+def _withholds_sign_in_code(national: str) -> bool:
+    """Whether ``national`` is saved on a member without being verified: such a number may not sign anyone in."""
+    return ContactPhone.objects.filter(phone_number=national, member__isnull=False, verified=False).exists()
+
+
 def request_phone_auth(phone_number: str, region: str = "1-US") -> dict:
     """Send an SMS verification code for passwordless phone auth.
 
     Returns a generic message that never reveals whether the number maps to an
-    existing account (prevents account enumeration). May raise
+    existing account (prevents account enumeration). A number saved on an account but not verified gets a withheld
+    code: the same answer, refusals and timing as a real send, but no SMS and no budget (``deliver=False``). May raise
     ``PhoneVerificationThrottled`` (the per-number cap), ``PhoneVerificationBusy``
     (SMS delivery held back; the view answers 503 with Retry-After) or
     ``PhoneVerificationDeliveryError``.
@@ -56,6 +71,7 @@ def request_phone_auth(phone_number: str, region: str = "1-US") -> dict:
         e164,
         purpose="phone_auth",
         context_identifier=region,
+        deliver=not _withholds_sign_in_code(national),
     )
     payload = {"message": "If this number can receive SMS, a verification code has been sent."}
     if isinstance(challenge, dict) and challenge.get("challenge_id"):
@@ -77,21 +93,20 @@ def _create_blank_active_member():
 
 
 def _login_existing(contact: ContactPhone):
-    """Return the member owning ``contact``, marking the phone verified if needed
-    (phone ownership was just proven this request).
+    """Return the member owning ``contact``.
 
     Raises :class:`PhoneAccountInactive` when the member is deactivated — a
-    disabled account must not be revived by a phone login. The guard runs before
-    any mutation so a rejected attempt leaves the member and contact untouched.
-    Only ever reached on the login path (register/orphan-claim create a fresh
-    active member), so there is no legitimate reactivation case here.
+    disabled account must not be revived by a phone login — and
+    :class:`PhoneNotVerified` when the number is not verified: holding a number
+    proves nothing about the account it was saved on, so a code no longer
+    verifies it here (that is the account page's job). Both guards run before any
+    mutation, so a rejected attempt leaves the member and contact untouched.
     """
     member = contact.member
     if not member.is_active:
         raise PhoneAccountInactive
     if not contact.verified:
-        contact.verified = True
-        contact.save(update_fields=["verified", "updated_at"])
+        raise PhoneNotVerified
     return member
 
 

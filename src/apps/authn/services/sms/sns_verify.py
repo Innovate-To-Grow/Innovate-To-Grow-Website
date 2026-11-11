@@ -16,6 +16,7 @@ import hashlib
 import logging
 import secrets
 import threading
+import time
 from contextlib import contextmanager
 from datetime import timedelta
 
@@ -37,6 +38,7 @@ from apps.core.services.aws.sms_send import (
 )
 from apps.core.services.delivery_rates import Lane, release
 
+from . import latency
 from .checks import (
     _check_phone_verification,
     check_phone_verification,
@@ -94,6 +96,12 @@ def _load_aws_config():
 
 def _random_code() -> str:
     return f"{secrets.randbelow(1_000_000):06d}"
+
+
+def _unmatchable_code() -> str:
+    """What a withheld challenge is hashed from: a secret that no 6-digit code can equal, so the challenge can never
+    be approved, while checking a guess against it costs exactly what it costs against a real code."""
+    return secrets.token_urlsafe(32)
 
 
 def _assert_configured():
@@ -229,12 +237,13 @@ def _render_otp_message(aws_config, code: str) -> str:
         ) from exc
 
 
-def _reserve_challenge(phone_number: str, *, purpose, member, context_identifier, code: str, now):
+def _reserve_challenge(phone_number: str, *, purpose, member, context_identifier, code: str, now, spend_budget=True):
     """Commit the new challenge (expiring earlier ones) before the external provider call.
 
-    A crash or database failure after delivery can no longer erase the hourly cap.
+    A crash or database failure after delivery can no longer erase the hourly cap. ``spend_budget=False`` (a withheld
+    code, which is never sent) refuses a spent SMS daily budget exactly as a send would, but takes no unit of it.
     """
-    from apps.authn.services.send_verification.quotas import reserve_sms_dispatch
+    from apps.authn.services.send_verification.quotas import check_sms_dispatch, reserve_sms_dispatch
 
     try:
         with transaction.atomic():
@@ -265,7 +274,10 @@ def _reserve_challenge(phone_number: str, *, purpose, member, context_identifier
             # this UPDATE and the commit) and in the same transaction as the challenge row: a spent budget
             # raises ``SendThrottled`` and rolls the whole reservation back (no challenge, earlier codes stay
             # valid); otherwise the unit is committed before the provider call below and is never released.
-            reserve_sms_dispatch(destination=phone_number, now=now)
+            if spend_budget:
+                reserve_sms_dispatch(destination=phone_number, now=now)
+            else:
+                check_sms_dispatch(destination=phone_number, now=now)
     except PhoneVerificationThrottled:
         raise
     except (IntegrityError, ValidationError, ValueError) as exc:
@@ -278,7 +290,13 @@ def _deliver_otp(challenge, *, phone_number: str, message: str, aws_config, admi
 
     try:
         record_otp_challenge(str(challenge.pk))
-        return _publish_sms(phone_number=phone_number, message=message, aws_config=aws_config, admission=admission)
+        started = time.monotonic()
+        message_id = _publish_sms(
+            phone_number=phone_number, message=message, aws_config=aws_config, admission=admission
+        )
+        # How long a delivered code took, so a withheld one can take as long (``latency``).
+        latency.observe_send(time.monotonic() - started)
+        return message_id
     except Exception as exc:
         # An uncertain provider call may have delivered this OTP. Keep it
         # verifiable and retain both durable reservations.
@@ -307,12 +325,26 @@ def _finalize_sent_challenge(challenge) -> None:
         raise PhoneVerificationDeliveryError("SMS challenge could not be finalized.", challenge_id=str(challenge.pk))
 
 
+def _withhold_otp(challenge) -> None:
+    """Record a withheld challenge like a sent one (its id on the send request, pending) without sending anything.
+
+    ``sent_at`` stays empty: that, and the log line, are what tell an operator that no SMS went out.
+    """
+    from apps.authn.services.send_verification.outcomes import record_otp_challenge
+
+    record_otp_challenge(str(challenge.pk))
+    PhoneVerificationChallenge.objects.filter(pk=challenge.pk, status=PhoneVerificationChallenge.Status.SENDING).update(
+        status=PhoneVerificationChallenge.Status.PENDING, updated_at=timezone.now()
+    )
+
+
 def start_phone_verification(
     phone_number: str,
     *,
     purpose: str = DEFAULT_PURPOSE,
     member=None,
     context_identifier: str = "",
+    deliver: bool = True,
 ) -> dict[str, str]:
     """
     Generate and durably store an OTP, then send it via AWS End User Messaging.
@@ -327,6 +359,12 @@ def start_phone_verification(
     ``PhoneVerificationBusy`` and spends neither the hourly cap nor the daily budget. A refusal after that (the cap
     reached meanwhile, the budget) gives the slot back.
 
+    ``deliver=False`` issues a *withheld* challenge (phone sign-in for a number saved on an account but not verified):
+    every refusal above applies in the same order, and the challenge is reserved and counted exactly as for a send,
+    but its code is never sent and never matches (hashed from ``_unmatchable_code``). No provider call, no unit of the
+    SMS daily budget (a spent one is still refused, ``check_sms_dispatch``), the delivery slot is given back, and the
+    answer comes after about as long as a real provider call takes (``latency``).
+
     Returns ``{"status": "pending", "challenge_id": "..."}``.
     """
     aws_config = _assert_configured()
@@ -338,16 +376,29 @@ def start_phone_verification(
         now = timezone.now()
         with _lock_phone(phone_number):
             challenge = _reserve_challenge(
-                phone_number, purpose=purpose, member=member, context_identifier=context_identifier, code=code, now=now
+                phone_number,
+                purpose=purpose,
+                member=member,
+                context_identifier=context_identifier,
+                code=code if deliver else _unmatchable_code(),
+                now=now,
+                spend_budget=deliver,
             )
-            message_id = _deliver_otp(
-                challenge, phone_number=phone_number, message=message, aws_config=aws_config, admission=admission
-            )
-            _finalize_sent_challenge(challenge)
+            if deliver:
+                message_id = _deliver_otp(
+                    challenge, phone_number=phone_number, message=message, aws_config=aws_config, admission=admission
+                )
+                _finalize_sent_challenge(challenge)
+            else:
+                _withhold_otp(challenge)
     finally:
         _release_unsent(admission)
 
-    logger.info("Phone verification started: message_id=%s", message_id)
+    if deliver:
+        logger.info("Phone verification started: message_id=%s", message_id)
+    else:
+        latency.wait_like_a_send()
+        logger.info("Phone verification withheld, nothing sent: challenge=%s", challenge.pk)
     return {"status": DEFAULT_STATUS, "challenge_id": str(challenge.pk)}
 
 

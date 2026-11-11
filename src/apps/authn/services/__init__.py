@@ -29,6 +29,7 @@ from .contacts.contact_phones import (
 )
 from .contacts.phone_auth import (
     PhoneAccountInactive,
+    PhoneNotVerified,
     request_phone_auth,
     resolve_or_create_member_by_phone,
 )
@@ -133,6 +134,7 @@ __all__ = [
     "request_phone_auth",
     "resolve_or_create_member_by_phone",
     "PhoneAccountInactive",
+    "PhoneNotVerified",
     # SMS exceptions
     "PhoneVerificationError",
     "PhoneVerificationInvalid",
