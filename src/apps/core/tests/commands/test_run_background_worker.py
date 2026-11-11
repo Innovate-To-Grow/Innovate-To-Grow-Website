@@ -1,4 +1,5 @@
 import signal
+from contextlib import ExitStack, contextmanager
 from datetime import timedelta
 from io import StringIO
 from types import SimpleNamespace
@@ -31,33 +32,14 @@ HELPDESK_NOTHING_PURGED = {
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
     def _run_once(self, *, purged_row_count=0, purged_budget_count=0, batch_size=10):
         command = run_background_worker.Command(stdout=StringIO())
-        with (
-            patch.object(
-                run_background_worker,
-                "purge_retired_auth_keypairs",
-                return_value=purged_row_count,
-            ) as purge,
-            patch.object(
-                run_background_worker,
-                "purge_expired_public_assistant_budgets",
-                return_value=purged_budget_count,
-            ) as budget_purge,
-            patch.object(run_background_worker, "cleanup_expired_records", return_value=NOTHING_CLEANED),
-            patch.object(run_background_worker, "clear_expired_sessions", return_value=0),
-            patch.object(run_background_worker, "purge_expired_failure_windows", return_value=0),
-            patch.object(run_background_worker, "run_delivery_rate_maintenance", return_value=NOTHING_MAINTAINED),
-            patch.object(run_background_worker, "active_certificate_expiry", return_value=None),
-            patch.object(run_background_worker, "ensure_bounce_scan_scheduled", return_value=False),
-            patch.object(run_background_worker, "purge_expired_email_telemetry", return_value={"emails": 0}),
-            patch.object(run_background_worker, "purge_expired_inbound_queue", return_value=0),
-            patch.object(run_background_worker, "purge_finished_bounce_scans", return_value=0),
-            patch.object(run_background_worker, "ensure_helpdesk_intake_scheduled", return_value=False),
-            patch.object(run_background_worker, "ensure_helpdesk_ingest_scheduled", return_value=False),
-            patch.object(run_background_worker, "purge_expired_helpdesk", return_value=HELPDESK_NOTHING_PURGED),
-            patch.object(run_background_worker, "purge_finished_helpdesk_ingests", return_value=0),
-            patch.object(run_background_worker, "purge_finished_helpdesk_intake_scans", return_value=0),
-            patch.object(run_background_worker, "schedule_startup_reconciliation"),
-        ):
+        # Every maintenance service in MAINTENANCE_SERVICES (below) is patched: a new service needs no change here.
+        returns = {
+            **MAINTENANCE_SERVICES,
+            "purge_retired_auth_keypairs": purged_row_count,
+            "purge_expired_public_assistant_budgets": purged_budget_count,
+            "schedule_startup_reconciliation": False,
+        }
+        with patch_worker(returns) as mocks:
             command.handle(
                 once=True,
                 batch_size=batch_size,
@@ -65,7 +47,7 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
                 stale_minutes=10,
                 key_purge_seconds=3600,
             )
-        return purge, budget_purge
+        return mocks["purge_retired_auth_keypairs"], mocks["purge_expired_public_assistant_budgets"]
 
     @patch.object(run_background_worker, "publish_worker_metrics")
     @patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1})
@@ -315,6 +297,19 @@ def patch_maintenance(**side_effects):
         else:
             patchers.append(patch.object(run_background_worker, name, return_value=return_value))
     return patchers
+
+
+@contextmanager
+def patch_worker(returns):
+    """Patch each ``run_background_worker`` name in ``returns`` to return its value; yield the mocks by name.
+
+    One ExitStack holds every patch, so the worker can gain any number of services: a single ``with`` statement of
+    more than 20 context managers does not compile on Python 3.11 ("too many statically nested blocks")."""
+    with ExitStack() as stack:
+        yield {
+            name: stack.enter_context(patch.object(run_background_worker, name, return_value=value))
+            for name, value in returns.items()
+        }
 
 
 # The batched services are called with the stop check; the others take no argument.
