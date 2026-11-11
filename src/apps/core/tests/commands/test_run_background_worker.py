@@ -42,6 +42,7 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
             patch.object(run_background_worker, "ensure_bounce_scan_scheduled", return_value=False),
             patch.object(run_background_worker, "count_bounced_addresses", return_value=NOTHING_COUNTED),
             patch.object(run_background_worker, "refresh_bounced_address_links", return_value=0),
+            patch.object(run_background_worker, "sync_sms_opt_outs", return_value=None),
             patch.object(run_background_worker, "purge_expired_email_telemetry", return_value={"emails": 0}),
             patch.object(run_background_worker, "purge_finished_bounce_scans", return_value=0),
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
@@ -285,6 +286,7 @@ MAINTENANCE_SERVICES = {
     "ensure_bounce_scan_scheduled": False,
     "count_bounced_addresses": NOTHING_COUNTED,
     "refresh_bounced_address_links": 0,
+    "sync_sms_opt_outs": None,
     "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
     "purge_finished_bounce_scans": 0,
 }
@@ -308,6 +310,7 @@ BATCHED_SERVICES = (
     "purge_expired_failure_windows",
     "count_bounced_addresses",
     "refresh_bounced_address_links",
+    "sync_sms_opt_outs",
     "purge_expired_email_telemetry",
 )
 
@@ -347,6 +350,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             ensure_bounce_scan_scheduled=record("bounce scans", False),
             count_bounced_addresses=record("bounced addresses", NOTHING_COUNTED),
             refresh_bounced_address_links=record("bounced address links", 0),
+            sync_sms_opt_outs=record("sms opt-outs", None),
             purge_expired_email_telemetry=record("email telemetry", {"emails": 0, "bounces": 0}),
             purge_finished_bounce_scans=record("bounce scan jobs", 0),
         )
@@ -364,6 +368,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "bounce scans",
                 "bounced addresses",
                 "bounced address links",
+                "sms opt-outs",
                 "email telemetry",
                 "bounce scan jobs",
             ],
@@ -380,6 +385,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Microsoft Graph certificate expiry check",
                 "Email bounce scan scheduling",
                 "Bounced address counting",
+                "SMS opt-out sync",
                 "Email telemetry retention",
             ],
         )
@@ -515,6 +521,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),
             count_bounced_addresses=RuntimeError("j"),
+            sync_sms_opt_outs=RuntimeError("k"),
             purge_expired_email_telemetry=RuntimeError("i"),
         ):
             patcher.start()

@@ -54,8 +54,10 @@ class SendSmsCampaignTests(TestCase):
         self.assertEqual(log.status, "sent")
         self.assertEqual(log.provider, "aws_sns")
         self.assertEqual(log.sns_message_id, "sns-msg-1")
-        # Campaign texts go on the bulk delivery lane.
-        mock_publish.assert_called_once_with(phone_number="+12095551001", message="Hello Ada", lane=Lane.BULK)
+        # Campaign texts go on the bulk delivery lane, with the opt-out footer (SMS Settings, on by default).
+        mock_publish.assert_called_once_with(
+            phone_number="+12095551001", message="Hello Ada\nReply STOP to opt out.", lane=Lane.BULK
+        )
 
     def test_send_sms_campaign_fails_when_sns_is_not_configured(self):
         member = make_member(email="recipient@example.com")

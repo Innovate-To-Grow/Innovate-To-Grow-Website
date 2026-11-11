@@ -24,6 +24,8 @@ EXPECTED_KINDS = {
     "event.ticket_email",
     "mail.email_recipient",
     "mail.sms_recipient",
+    # A phone-only registrant's ticket text (apps.mail.services.sms.ticket).
+    "mail.ticket_sms",
 }
 
 
