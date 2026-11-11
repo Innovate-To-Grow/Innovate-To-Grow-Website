@@ -42,6 +42,8 @@ class SmsLinkViewTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual((response.data["kind"], response.data["redirect_to"]), ("sign_in", "/subscribe"))
+        self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertEqual(again["Cache-Control"], "no-store")
         self.assertTrue(response.data["access"] and response.data["refresh"])
         self.assertEqual(response.data["user"]["email"], "ada@example.com")
         self.assertEqual(again.status_code, 400)

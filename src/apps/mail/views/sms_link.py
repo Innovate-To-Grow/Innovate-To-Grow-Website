@@ -32,13 +32,20 @@ _DETAILS = {
 }
 
 
+def _answer(body: dict, http_status: int) -> Response:
+    # A sign-in answer carries tokens: no answer of this endpoint may be stored by a browser or a proxy.
+    response = Response(body, status=http_status)
+    response["Cache-Control"] = "no-store"
+    return response
+
+
 def _reject(code: str, *, reason: str = "", redirect_to: str = "") -> Response:
     # The token is never logged.
     logger.info("SMS link rejected: reason=%s", reason or code)
     body = {"detail": _DETAILS.get(code, "Token is required."), "code": code}
     if redirect_to:
         body["redirect_to"] = redirect_to
-    return Response(body, status=status.HTTP_400_BAD_REQUEST)
+    return _answer(body, status.HTTP_400_BAD_REQUEST)
 
 
 class SmsLinkView(APIView):
@@ -61,10 +68,10 @@ class SmsLinkView(APIView):
         if opened.kind == "rejected":
             return _reject(opened.code, reason=opened.reason, redirect_to=opened.redirect_to)
         if opened.kind == "redirect":
-            return Response({"kind": "redirect", "redirect_to": opened.redirect_to}, status=status.HTTP_200_OK)
+            return _answer({"kind": "redirect", "redirect_to": opened.redirect_to}, status.HTTP_200_OK)
         payload = build_auth_success_payload(opened.member, "Login successful.")
         payload.update(kind="sign_in", redirect_to=opened.redirect_to)
-        return Response(payload, status=status.HTTP_200_OK)
+        return _answer(payload, status.HTTP_200_OK)
 
 
 class RegisterLinkView(APIView):
