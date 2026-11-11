@@ -121,11 +121,16 @@ def is_expired(batch: MemberImportBatch) -> bool:
 
 
 def mark_expired(batch: MemberImportBatch) -> None:
-    """An expired review keeps no password hash and can't be applied; the purge deletes it."""
-    if batch.status == Status.REVIEW and batch.expires_at <= timezone.now():
-        batch.status = Status.EXPIRED
-        forget_password(batch)
-        batch.save(update_fields=["status", "default_password_hash", "updated_at"])
+    """An expired review keeps no password hash and can't be applied; the purge deletes it.
+
+    ``batch`` is what a view read, maybe before an apply that started before ``expires_at`` committed. So this is an
+    UPDATE conditioned on the stored status, never a save of that copy: an import applied meanwhile stays applied.
+    """
+    now = timezone.now()
+    if batch.status == Status.REVIEW and batch.expires_at <= now:
+        stored = MemberImportBatch.objects.filter(pk=batch.pk, status=Status.REVIEW, expires_at__lte=now)
+        stored.update(status=Status.EXPIRED, default_password_hash="", updated_at=now)  # nosec B106 - clears a hash
+        batch.refresh_from_db(fields=["status", "default_password_hash", "updated_at"])
 
 
 def discard_batch(batch: MemberImportBatch, user) -> None:

@@ -39,7 +39,7 @@ def purge_member_imports(*, now=None, should_stop=None, max_passes: int | None =
                 values_purged_at__isnull=True,
                 applied_at__lte=now - timedelta(days=config["values_retention_days"]),
             ),
-            lambda ids: _blank(ids, now),
+            lambda _query, ids: _blank(ids, now),
         ),
         (
             "deleted",
@@ -58,15 +58,21 @@ def purge_member_imports(*, now=None, should_stop=None, max_passes: int | None =
             ids = list(query.order_by("created_at").values_list("pk", flat=True)[:size])
             if not ids:
                 break
-            counts[name] += action(ids)
+            counts[name] += action(query, ids)
             passes += 1
     return counts
 
 
-def _delete(ids) -> int:
+def _delete(query, ids) -> int:
+    """Delete the batches of ``ids`` that still match ``query`` once they are locked.
+
+    The ids were read without a lock. An apply that started just before ``expires_at`` holds its batch until it
+    commits, and its batch is applied by then: the locked re-read leaves it out instead of deleting a fresh import.
+    """
     with transaction.atomic():
-        MemberImportBatch.objects.filter(pk__in=ids).delete()
-    return len(ids)
+        due = list(query.filter(pk__in=ids).select_for_update().values_list("pk", flat=True))
+        MemberImportBatch.objects.filter(pk__in=due).delete()
+    return len(due)
 
 
 def _blank(ids, now) -> int:

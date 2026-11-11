@@ -13,7 +13,7 @@ from django.test import override_settings
 from django.utils import timezone
 
 from apps.authn.models import Member, MemberImportBatch, MemberImportRow
-from apps.authn.services.members.import_.review import discard_batch, purge_member_imports
+from apps.authn.services.members.import_.review import discard_batch, purge, purge_member_imports
 from apps.authn.services.members.import_.review.batches import is_expired, mark_expired, repeat_uploads
 from apps.authn.tests.services.members.import_.helpers import ImportTestCase, row
 
@@ -79,6 +79,23 @@ class UnappliedBatchTests(PurgeTestCase):
 
         self.assertEqual(purge_member_imports(), {**NOTHING, "expired": 1})
         self.assertFalse(MemberImportBatch.objects.exists())
+
+    def test_a_batch_applied_after_its_id_was_read_is_kept(self):
+        """The purge reads ids without a lock; an apply that started before ``expires_at`` may commit before the
+        delete, and the locked re-read keeps that import."""
+        applied = self.batch(expires_in=-timedelta(minutes=1))
+        expired = self.batch(expires_in=-timedelta(minutes=1))
+        query = MemberImportBatch.objects.filter(
+            status__in=(Status.REVIEW, Status.DISCARDED, Status.EXPIRED), expires_at__lte=self.now
+        )
+        ids = list(query.values_list("pk", flat=True))
+        MemberImportBatch.objects.filter(pk=applied.pk).update(status=Status.APPLIED, applied_at=self.now)
+
+        self.assertEqual(purge._delete(query, ids), 1)
+
+        self.assertEqual(list(MemberImportBatch.objects.all()), [applied])
+        self.assertFalse(MemberImportBatch.objects.filter(pk=expired.pk).exists())
+        self.assertEqual(applied.rows.count(), 1)
 
 
 class AppliedBatchTests(PurgeTestCase):
@@ -192,6 +209,16 @@ class EndOfReviewTests(PurgeTestCase):
         batch.refresh_from_db()
         self.assertEqual((batch.status, batch.default_password_hash), ("expired", ""))
         self.assertTrue(is_expired(batch))
+
+    def test_an_import_applied_after_the_page_read_it_is_not_marked_expired(self):
+        """A view read the batch in review past its lifetime; an apply that started before then committed since."""
+        read_by_the_view = self.batch(expires_in=-timedelta(minutes=1))
+        MemberImportBatch.objects.filter(pk=read_by_the_view.pk).update(status=Status.APPLIED, applied_at=self.now)
+
+        mark_expired(read_by_the_view)
+
+        self.assertEqual(MemberImportBatch.objects.get(pk=read_by_the_view.pk).status, "applied")
+        self.assertEqual(read_by_the_view.status, "applied")
 
     def test_repeat_uploads_of_the_same_file(self):
         sha = "a" * 64
