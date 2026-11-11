@@ -5,7 +5,7 @@ from .login_link import LoginLinkTokenAdmin
 from .recipient_log import RecipientLogAdmin
 from .settings import get_mail_settings_urls
 from .sms_campaign import SmsCampaignAdmin, SmsRecipientLogAdmin
-from .sms_settings import SmsConfigAdmin, SmsLinkTokenAdmin, SmsOptOutAdmin, TicketSmsAdmin
+from .sms_settings import SmsConfigAdmin, SmsLinkRevocationAdmin, SmsLinkTokenAdmin, SmsOptOutAdmin, TicketSmsAdmin
 
 __all__ = [
     "EmailCampaignAdmin",
@@ -13,6 +13,7 @@ __all__ = [
     "RecipientLogAdmin",
     "SmsCampaignAdmin",
     "SmsConfigAdmin",
+    "SmsLinkRevocationAdmin",
     "SmsLinkTokenAdmin",
     "SmsOptOutAdmin",
     "SmsRecipientLogAdmin",

@@ -94,7 +94,7 @@ class CampaignLinks:
         purpose = Purpose.TICKET if name == "ticket_link" else Purpose.LOGIN
         destination = self._destination(name)
         if member is not None:
-            return issue_personal_link(
+            url = issue_personal_link(
                 purpose=purpose,
                 member=member,
                 phone=phone,
@@ -102,6 +102,9 @@ class CampaignLinks:
                 validity_days=days,
                 campaign=self.campaign,
             )
+            if url is not None:
+                return url
+            # Personal sign-in links were turned off while this campaign was sending: the sign-in page link.
         return self._shared_link(purpose, sign_in_path(destination), days)
 
     def _shared_link(self, purpose: str, path: str, days: int) -> str:

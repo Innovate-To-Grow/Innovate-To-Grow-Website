@@ -4,7 +4,7 @@ from .login_link import LoginLinkToken
 from .recipient_log import RecipientLog
 from .sms_campaign import SmsCampaign, SmsRecipientLog
 from .sms_config import SmsConfig, SmsOptOutSyncState
-from .sms_link import SmsLinkToken, TicketSms
+from .sms_link import SmsLinkRevocation, SmsLinkToken, TicketSms
 from .sms_opt_out import SmsOptOut
 
 __all__ = [
@@ -17,6 +17,7 @@ __all__ = [
     "RecipientLog",
     "SmsCampaign",
     "SmsConfig",
+    "SmsLinkRevocation",
     "SmsLinkToken",
     "SmsOptOut",
     "SmsOptOutSyncState",

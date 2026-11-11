@@ -69,6 +69,23 @@ class SmsLinkViewTests(TestCase):
         self.assertEqual(response["Cache-Control"], "no-store")
         self.assertIsNone(SmsLinkToken.objects.get().first_used_at)
 
+    def test_a_revoked_link_lands_on_the_sign_in_page_without_a_session_even_once_they_are_on_again(self):
+        token = self.personal()
+        sms_settings(personal_links_enabled=False)
+        sms_settings(personal_links_enabled=True)
+
+        with self.assertLogs("apps.mail.views.sms_link", level="INFO") as logs:
+            response = self.client.post(LINK_URL, {"token": token}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        # Exactly the redirect: no access or refresh token, no user.
+        self.assertEqual(response.data, {"kind": "redirect", "redirect_to": "/login?returnTo=/subscribe"})
+        self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertIn("reason=revoked", "\n".join(logs.output))
+        self.assertNotIn(token, "\n".join(logs.output))
+        row = SmsLinkToken.objects.get()
+        self.assertEqual((row.first_used_at, row.use_count), (None, 0))
+
     def test_a_stale_bearer_header_never_turns_it_into_a_401(self):
         self.client.credentials(HTTP_AUTHORIZATION="Bearer not-a-real-token")
         response = self.client.post(LINK_URL, {"token": self.personal()}, format="json")

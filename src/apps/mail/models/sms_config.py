@@ -5,21 +5,37 @@ ticket texts, the AWS opt-out list sync and where the short ``/register`` link l
 conservative ones: footer on, quiet hours 20:00–09:00 Pacific, links (and with them ticket texts) off until the
 sending number's registration is confirmed to allow embedded links.
 
+Turning personal sign-in links off (the switch, or links in SMS) revokes them for good. Every write to the row, a
+save or a bulk ``update()``, locks it and ends in ``settle_personal_links`` in the same transaction: unless personal
+sign-in links were on before and are still on, ``personal_links_epoch`` moves on and every outstanding personal link
+is revoked, with a ``SmsLinkRevocation`` for the audit. A personal link carries the epoch it was issued in and signs
+in only while that is still the epoch, so it can't come back: not when the switch is turned on again, not when its
+own row is edited, and not when it was being issued while the switch went off.
+
 ``SmsOptOutSyncState`` is written only by the sync (``services.sms.opt_out_sync``), with UPDATEs, never by a form,
 so saving the settings can never overwrite what a running sync records.
 """
 
+import logging
 import uuid
 from datetime import time
 from decimal import Decimal
+from typing import NamedTuple
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-from django.db import models
+from django.db import DEFAULT_DB_ALIAS, models, router, transaction
+from django.db.models import Max
+from django.utils import timezone
 
 from apps.core.models import ProjectControlModel
+from apps.core.models.managers import ProjectControlQuerySet
+
+from .sms_link import SmsLinkRevocation, SmsLinkToken
+
+logger = logging.getLogger(__name__)
 
 SETTINGS_PK = uuid.UUID("00000000-0000-4000-8000-000000005301")
 SYNC_STATE_PK = uuid.UUID("00000000-0000-4000-8000-000000005302")
@@ -28,6 +44,31 @@ DEFAULT_FOOTER = "Reply STOP to opt out."
 DEFAULT_TICKET_TEMPLATE = "Innovate to Grow: you're registered for {{event_name}}. Your ticket: {{ticket_link}}"
 DEFAULT_REGISTER_PATH = "/login"
 REGISTER_PATH = "/register"
+STATE_FIELDS = ("links_enabled", "personal_links_enabled", "personal_links_epoch")
+Via = SmsLinkRevocation.Via
+
+
+class PersonalLinkState(NamedTuple):
+    """SMS Settings as personal sign-in links see them: both switches, and the epoch a link must carry."""
+
+    links_enabled: bool
+    personal_links_enabled: bool
+    epoch: int
+
+    @property
+    def on(self) -> bool:
+        return bool(self.links_enabled and self.personal_links_enabled)
+
+
+class SmsConfigQuerySet(ProjectControlQuerySet):
+    def update(self, **kwargs):
+        """A bulk update (a shell or a script) settles personal sign-in links as a save does."""
+        using = self._db or router.db_for_write(self.model)
+        with transaction.atomic(using=using):
+            before = locked_state(using)
+            rows = super().update(**kwargs)
+            settle_personal_links(before, via=Via.BULK_UPDATE, using=using)
+        return rows
 
 
 class SmsConfig(ProjectControlModel):
@@ -74,15 +115,23 @@ class SmsConfig(ProjectControlModel):
         help_text="Turns on {{login_link}}, {{ticket_link}} and {{event_link}} (short /l/… links) and ticket texts. "
         "Leave off until the sending number's 10DLC or toll-free registration is confirmed to declare embedded "
         "links with sample messages on this site's domain: carriers filter or suspend numbers whose texts don't "
-        "match their registration.",
+        "match their registration. Turning it off also revokes every personal sign-in link already texted, for good.",
     )
     personal_links_enabled = models.BooleanField(
         default=False,
         verbose_name="Personal sign-in links",
         help_text="On: {{login_link}} and {{ticket_link}} sign a member in with one tap (single use, never for "
         "staff, only when the text goes to the member's own verified phone). Off: they open the sign-in page and "
-        "land on the same page after a code sign-in. A recycled phone number could receive someone else's personal "
-        "link. Only the I2G Master can change this.",
+        "land on the same page after a code sign-in. Turning this off revokes every personal link already texted, "
+        "for good: turning it back on does not bring them back. A recycled phone number could receive someone "
+        "else's personal link. Only the I2G Master can change this.",
+    )
+    personal_links_epoch = models.PositiveIntegerField(
+        default=1,
+        editable=False,
+        verbose_name="Personal sign-in link epoch",
+        help_text="Moves on whenever personal sign-in links are turned off: a personal link issued in an earlier "
+        "epoch never signs anyone in. Only saving these settings changes it.",
     )
 
     ticket_sms_enabled = models.BooleanField(
@@ -125,6 +174,10 @@ class SmsConfig(ProjectControlModel):
         "address or a phone number and creates the account.",
     )
 
+    objects = SmsConfigQuerySet.as_manager()
+    # The SmsLinkRevocation the last save() recorded, if it revoked personal sign-in links.
+    revocation = None
+
     class Meta:
         verbose_name = "SMS settings"
         verbose_name_plural = "SMS settings"
@@ -132,20 +185,39 @@ class SmsConfig(ProjectControlModel):
     def __str__(self):
         return "SMS settings"
 
-    def save(self, *args, **kwargs):
-        # One row: a new instance saved while it exists replaces its values (keeping when it was created).
+    def save(self, *args, actor=None, via=Via.SAVE, **kwargs):
+        """Save the one row and settle personal sign-in links in the same transaction (``settle_personal_links``);
+        ``actor`` and ``via`` say who and how for the audit of a revocation (then ``self.revocation``)."""
         self.pk = SETTINGS_PK
-        if self._state.adding:
-            created_at = type(self).objects.filter(pk=SETTINGS_PK).values_list("created_at", flat=True).first()
-            if created_at is not None:
+        using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
+        with transaction.atomic(using=using):
+            before = locked_state(using)
+            if self._state.adding and before is not None:
+                # One row: a new instance saved while it exists replaces its values (keeping when it was created).
                 self._state.adding = False
-                self.created_at = created_at
-        super().save(*args, **kwargs)
+                rows = type(self)._base_manager.db_manager(using).filter(pk=SETTINGS_PK)
+                self.created_at = rows.values_list("created_at", flat=True).get()
+            if before is not None:
+                # The epoch only ever moves on: a stale instance must not write an older one back.
+                self.personal_links_epoch = before.epoch
+            super().save(*args, **kwargs)
+            self.personal_links_epoch, self.revocation = settle_personal_links(
+                before, actor=actor, via=via, using=using
+            )
 
     @classmethod
     def load(cls) -> "SmsConfig":
         obj, _created = cls.objects.get_or_create(pk=SETTINGS_PK)
         return obj
+
+    @property
+    def personal_link_state(self) -> PersonalLinkState:
+        return PersonalLinkState(self.links_enabled, self.personal_links_enabled, self.personal_links_epoch)
+
+    @property
+    def personal_sign_in_on(self) -> bool:
+        """Personal sign-in links may sign members in: links in SMS and personal sign-in links both on."""
+        return self.personal_link_state.on
 
     @property
     def zone(self) -> ZoneInfo:
@@ -172,6 +244,91 @@ class SmsConfig(ProjectControlModel):
         errors.update(register_path_errors(self.register_redirect_path))
         if errors:
             raise ValidationError(errors)
+
+
+class Settled(NamedTuple):
+    epoch: int
+    revocation: SmsLinkRevocation | None = None
+
+
+def locked_state(using=DEFAULT_DB_ALIAS) -> PersonalLinkState | None:
+    """The switches and the epoch, locking the row until the caller's transaction ends (None while there is no row)."""
+    rows = SmsConfig._base_manager.db_manager(using).select_for_update().filter(pk=SETTINGS_PK)
+    row = rows.values_list(*STATE_FIELDS).first()
+    return PersonalLinkState(*row) if row else None
+
+
+def revoke_personal_links(*, actor=None, via, using=DEFAULT_DB_ALIAS) -> Settled:
+    """Settle personal sign-in links as they stand, without a write: what to do on finding links still live while
+    they are off (turned off outside the app, by raw SQL)."""
+    with transaction.atomic(using=using):
+        return settle_personal_links(locked_state(using), actor=actor, via=via, using=using)
+
+
+def settle_personal_links(before: PersonalLinkState | None, *, actor=None, via, using=DEFAULT_DB_ALIAS) -> Settled:
+    """Run in the transaction of a write to SMS Settings, after it, with the row still locked; ``before`` is how the
+    row stood before the write. Unless personal sign-in links were on before and are still on, the epoch moves on,
+    so no personal link issued earlier ever signs in again, and every outstanding one is revoked. The revocation is
+    recorded when the write turned them off, or when it found links still live while they were off."""
+    after = locked_state(using)
+    if after is None:  # No row (a bulk update that matched none, the row deleted): nothing to settle.
+        return Settled(before.epoch if before is not None else 0)
+    if before is not None and before.on and after.on:
+        if after.epoch < before.epoch:  # A bulk update must not move the epoch back either.
+            _set_epoch(before.epoch, using)
+        return Settled(max(before.epoch, after.epoch))
+    floor = before.epoch if before is not None else _highest_issued_epoch(using)
+    epoch = max(floor, after.epoch) + 1
+    _set_epoch(epoch, using)
+    revoked = _revoke_outstanding(before, using)
+    reason = _revocation_reason(before, after, revoked)
+    if reason is None:
+        return Settled(epoch)
+    revocation = SmsLinkRevocation.objects.using(using).create(
+        reason=reason, via=via, actor=actor, actor_label=_who(actor), revoked_count=revoked, epoch=epoch
+    )
+    # Links found live while off mean the switch was changed outside the app: worth a warning.
+    log = logger.warning if reason == SmsLinkRevocation.Reason.FOUND_OFF else logger.info
+    log("Revoked %d personal SMS sign-in link(s): %s (%s); epoch now %d.", revoked, reason, via, epoch)
+    return Settled(epoch, revocation)
+
+
+def _revoke_outstanding(before: PersonalLinkState | None, using) -> int:
+    """Revoke every outstanding personal link; the number that still worked until now (issued in the epoch that was
+    current). One from an earlier epoch (stored while a switch-off committed) never worked: tidied, not counted."""
+    now = timezone.now()
+    values = {"revoked_at": now, "expires_at": now, "updated_at": now}
+    outstanding = SmsLinkToken.objects.using(using).outstanding_personal()
+    if before is None:  # No row to say which epoch was current: count them all.
+        return outstanding.update(**values)
+    revoked = outstanding.filter(epoch=before.epoch).update(**values)
+    outstanding.update(**values)
+    return revoked
+
+
+def _revocation_reason(before: PersonalLinkState | None, after: PersonalLinkState, revoked: int) -> str | None:
+    if before is not None and before.on:
+        if not after.personal_links_enabled:
+            return SmsLinkRevocation.Reason.PERSONAL_LINKS_OFF
+        return SmsLinkRevocation.Reason.LINKS_OFF
+    # They were already off, yet links were still live: they were turned off without going through a write here.
+    return SmsLinkRevocation.Reason.FOUND_OFF if revoked else None
+
+
+def _set_epoch(epoch: int, using) -> None:
+    SmsConfig._base_manager.db_manager(using).filter(pk=SETTINGS_PK).update(personal_links_epoch=epoch)
+
+
+def _highest_issued_epoch(using) -> int:
+    # The row is new (or was deleted): start past every link ever issued, so none can match it again.
+    return SmsLinkToken.objects.using(using).aggregate(top=Max("epoch"))["top"] or 0
+
+
+def _who(actor) -> str:
+    if actor is None:
+        return ""
+    name, email = actor.get_full_name(), actor.get_primary_email()
+    return (f"{name} <{email}>" if name and email else name or email or str(actor.pk))[:255]
 
 
 def register_path_errors(path: str) -> dict:

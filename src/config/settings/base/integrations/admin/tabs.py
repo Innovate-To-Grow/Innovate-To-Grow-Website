@@ -119,6 +119,7 @@ TABS = [
             "mail.smsrecipientlog",
             "mail.smsoptout",
             "mail.smslinktoken",
+            "mail.smslinkrevocation",
             "mail.ticketsms",
             "mail.smsconfig",
         ],

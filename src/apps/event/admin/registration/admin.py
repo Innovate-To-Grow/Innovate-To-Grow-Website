@@ -73,7 +73,7 @@ class EventRegistrationAdmin(
         revoked = revoke_login_links(LoginLinkToken.objects.filter(registration__in=queryset))
         now = timezone.now()
         revoked += SmsLinkToken.objects.filter(registration__in=queryset, expires_at__gt=now).update(
-            expires_at=now, updated_at=now
+            expires_at=now, revoked_at=now, updated_at=now
         )
         self.message_user(request, f"Revoked {revoked} login link(s).", messages.SUCCESS)
 

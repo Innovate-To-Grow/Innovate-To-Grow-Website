@@ -250,6 +250,7 @@ class SmsRecordsAdminTests(TestCase):
         self.client.login(username="admin@example.com", password="testpass123")
 
     def test_sms_links_are_listed_without_their_tokens_and_can_be_revoked(self):
+        sms_settings(links_enabled=True, personal_links_enabled=True)
         member = make_member(email="ada@example.com")
         add_phone(member, "2095550101")
         url = links.issue_personal_link(
@@ -264,7 +265,10 @@ class SmsRecordsAdminTests(TestCase):
             reverse("admin:mail_smslinktoken_changelist"),
             {"action": "revoke_selected_action", "_selected_action": [str(row.pk)]},
         )
-        self.assertEqual(links.open_link(token).code, "expired")
+        # Revoked, it opens the sign-in page (returning to its page) and signs nobody in.
+        opened = links.open_link(token)
+        self.assertEqual((opened.kind, opened.member, opened.redirect_to), ("redirect", None, "/login?returnTo=/"))
+        self.assertContains(self.client.get(reverse("admin:mail_smslinktoken_changelist")), "revoked")
 
     def test_a_links_status_follows_its_use_and_expiry(self):
         sms_settings(links_enabled=True, personal_links_enabled=True)

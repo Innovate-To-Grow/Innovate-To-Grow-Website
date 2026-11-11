@@ -220,24 +220,29 @@ class IssueAndOpenTests(TestCase):
         )
         self.assertEqual(sorted(SmsLinkToken.objects.values_list("redirect_path", flat=True)), ["/account", "/login"])
 
-    def test_turning_personal_links_off_stops_the_ones_already_texted(self):
-        url = links.issue_personal_link(
-            purpose=links.Purpose.LOGIN, member=self.member, phone=PHONE, redirect_path="/subscribe", validity_days=3
-        )
-        token = token_of(url)
-        for switches in ({"personal_links_enabled": False}, {"links_enabled": False, "personal_links_enabled": True}):
+    def test_turning_personal_links_off_revokes_the_ones_already_texted_for_good(self):
+        for switches in ({"personal_links_enabled": False}, {"links_enabled": False}):
             with self.subTest(switches=switches):
-                sms_settings(**{"links_enabled": True, **switches})
-                opened = links.open_link(token)
+                sms_settings(links_enabled=True, personal_links_enabled=True)
+                url = links.issue_personal_link(
+                    purpose=links.Purpose.LOGIN,
+                    member=self.member,
+                    phone=PHONE,
+                    redirect_path="/subscribe",
+                    validity_days=3,
+                )
+                token = token_of(url)
+                sms_settings(**switches)
                 # It opens the sign-in page, returning to its page, and signs nobody in.
+                opened = links.open_link(token)
                 self.assertEqual((opened.kind, opened.member), ("redirect", None))
                 self.assertEqual(opened.redirect_to, "/login?returnTo=/subscribe")
-        row = SmsLinkToken.objects.get()
-        self.assertIsNone(row.first_used_at)
-        self.assertEqual(row.use_count, 0)
-        # Turned on again before it expires, it signs its member in (once), as when it was texted.
-        sms_settings(links_enabled=True, personal_links_enabled=True)
-        self.assertEqual(links.open_link(token).kind, "sign_in")
+                # Turned on again before it would have expired, it still signs nobody in.
+                sms_settings(links_enabled=True, personal_links_enabled=True)
+                self.assertEqual(links.open_link(token).kind, "redirect")
+                row = SmsLinkToken.objects.get(token_hash=links.token_digest(token))
+                self.assertIsNotNone(row.revoked_at)
+                self.assertEqual((row.first_used_at, row.use_count), (None, 0))
 
     def test_revoking_expires_only_live_links(self):
         url = links.issue_personal_link(
@@ -245,4 +250,28 @@ class IssueAndOpenTests(TestCase):
         )
         self.assertEqual(links.revoke_links(SmsLinkToken.objects.all()), 1)
         self.assertEqual(links.revoke_links(SmsLinkToken.objects.all()), 0)
-        self.assertEqual(links.open_link(token_of(url)).code, "expired")
+        row = SmsLinkToken.objects.get()
+        self.assertIsNotNone(row.revoked_at)
+        self.assertLessEqual(row.expires_at, timezone.now())
+        # A revoked personal link opens the sign-in page and signs nobody in ("/account" is where it lands anyway).
+        opened = links.open_link(token_of(url))
+        self.assertEqual((opened.kind, opened.member, opened.redirect_to), ("redirect", None, "/login"))
+
+    def test_a_revoked_shared_link_is_refused_as_expired(self):
+        url = links.shared_link(
+            campaign=self.campaign,
+            purpose=links.Purpose.EVENT,
+            redirect_path="/event-registration?event=x",
+            validity_days=3,
+        )
+        SmsLinkToken.objects.update(revoked_at=timezone.now())  # revoked, though its expiry is still ahead
+        opened = links.open_link(token_of(url))
+        self.assertEqual((opened.kind, opened.code), ("rejected", "expired"))
+
+    def test_with_personal_links_off_none_is_issued(self):
+        sms_settings(personal_links_enabled=False)
+        url = links.issue_personal_link(
+            purpose=links.Purpose.LOGIN, member=self.member, phone=PHONE, redirect_path="/", validity_days=1
+        )
+        self.assertIsNone(url)
+        self.assertFalse(SmsLinkToken.objects.exists())

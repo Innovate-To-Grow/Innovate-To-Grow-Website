@@ -166,7 +166,7 @@ def _ticket_link(registration, config: SmsConfig, phone: str) -> str:
     destination = ticket_login_redirect_path(registration)
     days = config.ticket_link_validity_days
     if config.personal_links_enabled and may_text_personal_link(registration.member, phone):
-        return issue_personal_link(
+        url = issue_personal_link(
             purpose=Purpose.TICKET,
             member=registration.member,
             phone=phone,
@@ -174,6 +174,8 @@ def _ticket_link(registration, config: SmsConfig, phone: str) -> str:
             validity_days=days,
             registration=registration,
         )
+        if url is not None:  # None: personal sign-in links were turned off meanwhile.
+            return url
     return issue_redirect_link(
         purpose=Purpose.TICKET, redirect_path=sign_in_path(destination), validity_days=days, registration=registration
     )

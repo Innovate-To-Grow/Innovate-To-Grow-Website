@@ -1,10 +1,13 @@
-"""Read-only records of SMS links and ticket texts (Mail → SMS Links, Ticket SMS)."""
+"""Read-only records of SMS links, their revocations and ticket texts (Mail → SMS Links, SMS link revocations,
+Ticket SMS)."""
 
 from django.contrib import admin, messages
+from django.db.models import Subquery
 from unfold.decorators import display
 
 from apps.core.admin import ReadOnlyModelAdmin
-from apps.mail.models import SmsLinkToken, TicketSms
+from apps.mail.models import SmsConfig, SmsLinkRevocation, SmsLinkToken, TicketSms
+from apps.mail.models.sms_config import SETTINGS_PK
 from apps.mail.services.sms.links import revoke_links
 
 
@@ -37,19 +40,30 @@ class SmsLinkTokenAdmin(ReadOnlyModelAdmin):
         "expires_at",
         "first_used_at",
         "use_count",
+        "revoked_at",
     )
     actions = ["revoke_selected_action"]
+
+    def get_queryset(self, request):
+        # The epoch a personal link must carry: one from an earlier epoch is revoked whatever its row says.
+        current = SmsConfig.objects.filter(pk=SETTINGS_PK).values("personal_links_epoch")[:1]
+        return super().get_queryset(request).annotate(settings_epoch=Subquery(current))
 
     @display(description="Kind")
     def kind(self, obj):
         return "Personal sign-in" if obj.is_personal else "Shared"
 
-    @display(description="Status", label={"active": "success", "used": "info", "expired": "danger"})
+    @display(
+        description="Status", label={"active": "success", "used": "info", "revoked": "warning", "expired": "danger"}
+    )
     def status_badge(self, obj):
-        if obj.is_expired:
-            return "expired"
         if obj.is_personal and obj.first_used_at:
             return "used"
+        stale = obj.is_personal and obj.epoch != getattr(obj, "settings_epoch", obj.epoch)
+        if obj.revoked_at is not None or stale:
+            return "revoked"
+        if obj.is_expired:
+            return "expired"
         return "active"
 
     @admin.action(description="Revoke selected SMS links", permissions=["revoke"])
@@ -59,6 +73,21 @@ class SmsLinkTokenAdmin(ReadOnlyModelAdmin):
 
     def has_revoke_permission(self, request):
         return self._has_app_access(request)
+
+
+@admin.register(SmsLinkRevocation)
+class SmsLinkRevocationAdmin(ReadOnlyModelAdmin):
+    """Each time personal sign-in links were revoked as a whole: who, when, why and how many."""
+
+    list_display = ("created_at", "reason", "who", "via", "revoked_count", "epoch")
+    list_filter = ("reason", "via")
+    list_select_related = ("actor",)
+    ordering = ("-created_at",)
+    fields = ("created_at", "reason", "via", "actor", "actor_label", "revoked_count", "epoch")
+
+    @display(description="Who")
+    def who(self, obj):
+        return obj.actor_label or obj.get_via_display()
 
 
 @admin.register(TicketSms)

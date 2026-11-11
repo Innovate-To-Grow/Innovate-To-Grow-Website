@@ -96,4 +96,5 @@ class RevokeLoginLinksActionTest(TestCase):
 
         live.refresh_from_db()
         self.assertLessEqual(live.expires_at, timezone.now())
+        self.assertIsNotNone(live.revoked_at)
         self.assertIn("Revoked 1 login link(s).", [str(message) for message in request._messages])

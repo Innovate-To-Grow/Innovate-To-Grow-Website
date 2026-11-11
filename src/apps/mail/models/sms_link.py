@@ -1,4 +1,4 @@
-"""SMS short links (``/l/<token>``) and the record of each ticket text.
+"""SMS short links (``/l/<token>``), the record of each ticket text, and the audit of personal-link revocations.
 
 ``SmsLinkToken`` is what ``{{login_link}}``, ``{{ticket_link}}`` and ``{{event_link}}`` become in a text: a short,
 random, expiring token with one purpose. The URL carries nothing but the token (no member, phone or event), and the
@@ -6,7 +6,9 @@ table keeps only its SHA-256 digest. Two kinds:
 
 - **personal** (``member`` set): signs that member in once and lands on ``redirect_path``; issued per recipient,
   only when personal sign-in links are on, never to staff, and only to a phone that is the member's own verified
-  account phone (``phone_digest``): opening it checks again that the member still has that phone;
+  account phone (``phone_digest``): opening it checks again that the member still has that phone. It carries the
+  SMS Settings ``epoch`` it was issued in: turning personal sign-in links off moves the epoch on and revokes every
+  outstanding one (``SmsLinkRevocation``), so a link from an earlier epoch never signs anyone in again;
 - **shared** (no member): one per campaign and purpose, sends everyone to ``redirect_path`` (the sign-in page with a
   return path, or the event page). It is no credential, so its plain token is kept to put it in every recipient's text.
 
@@ -19,6 +21,15 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.models import ProjectControlModel
+from apps.core.models.managers import ProjectControlQuerySet
+
+
+class SmsLinkTokenQuerySet(ProjectControlQuerySet):
+    def outstanding_personal(self):
+        """Personal sign-in links that could still sign someone in: not used, revoked or expired."""
+        return self.filter(
+            member__isnull=False, first_used_at__isnull=True, revoked_at__isnull=True, expires_at__gt=timezone.now()
+        )
 
 
 class SmsLinkToken(ProjectControlModel):
@@ -42,9 +53,14 @@ class SmsLinkToken(ProjectControlModel):
     redirect_path = models.CharField(max_length=200, editable=False)
     # SHA-256 of the E.164 number a personal link was texted to (that member's own verified phone); empty otherwise.
     phone_digest = models.CharField(max_length=64, blank=True, default="", editable=False)
+    # The SMS Settings epoch a personal link was issued in (0 for shared links): it signs in only while it is current.
+    epoch = models.PositiveIntegerField(default=0, editable=False)
     expires_at = models.DateTimeField(db_index=True)
     first_used_at = models.DateTimeField(null=True, blank=True)
     use_count = models.PositiveIntegerField(default=0)
+    revoked_at = models.DateTimeField(null=True, blank=True, editable=False)
+
+    objects = SmsLinkTokenQuerySet.as_manager()
 
     class Meta:
         ordering = ["-created_at"]
@@ -69,6 +85,40 @@ class SmsLinkToken(ProjectControlModel):
     @property
     def is_expired(self) -> bool:
         return timezone.now() >= self.expires_at
+
+
+class SmsLinkRevocation(ProjectControlModel):
+    """Append-only audit of each time personal sign-in links were revoked as a whole: who (``actor``), when
+    (``created_at``), how many outstanding links (``revoked_count``) and the epoch links must now carry. Snapshots keep
+    it readable after the actor's account is deleted."""
+
+    class Reason(models.TextChoices):
+        PERSONAL_LINKS_OFF = "personal_links_off", "Personal sign-in links turned off"
+        LINKS_OFF = "links_off", "Links in SMS turned off"
+        FOUND_OFF = "found_off", "Live links found while personal sign-in links were off"
+
+    class Via(models.TextChoices):
+        ADMIN = "admin", "SMS Settings page"
+        SAVE = "save", "Saved outside the admin"
+        BULK_UPDATE = "bulk_update", "Bulk update outside the admin"
+        LINK_OPENED = "link_opened", "A link opened while they were off"
+
+    reason = models.CharField(max_length=32, choices=Reason.choices)
+    via = models.CharField(max_length=16, choices=Via.choices)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+"
+    )
+    actor_label = models.CharField(max_length=255, blank=True, default="", verbose_name="Who")
+    revoked_count = models.PositiveIntegerField(default=0, verbose_name="Links revoked")
+    epoch = models.PositiveIntegerField(help_text="Personal links issued before this epoch never sign in again.")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "SMS link revocation"
+        verbose_name_plural = "SMS link revocations"
+
+    def __str__(self):
+        return f"{self.get_reason_display()}: {self.revoked_count} link(s) revoked"
 
 
 class TicketSms(ProjectControlModel):

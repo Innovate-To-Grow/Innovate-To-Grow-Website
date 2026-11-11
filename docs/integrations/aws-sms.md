@@ -132,18 +132,38 @@ With **Allow links in SMS** on, a Broadcast SMS may use:
     still has that verified phone, so a number removed from the account or moved to someone else stops working.
 
   Anyone else gets the shared link, which opens the sign-in page (email or phone) and returns to the same page.
-  Turning **Personal sign-in links** (or **Allow links in SMS**) off also stops the personal links already texted:
-  while it is off, opening one only opens the sign-in page, and the link stays unused until it expires.
+- **Turning personal sign-in links off revokes them for good.** Turning **Personal sign-in links** or **Allow links
+  in SMS** off revokes every personal sign-in link already texted, and turning it back on does not bring any back:
+  whoever opens one gets the normal sign-in page, with its return path, and is not signed in. Shared links are no
+  credential and are not affected. How it holds on every path:
+  - **In the save's transaction.** Every write to SMS Settings (the admin, a `save()` in code, a bulk `update()`)
+    locks the row and settles personal links before it commits (`SmsConfig.save`, `settle_personal_links` in
+    `apps/mail/models/sms_config.py`). Unless personal sign-in links were on before and are still on, the settings'
+    **epoch** (`personal_links_epoch`) moves on and every outstanding personal link (unused, unexpired) is revoked
+    (`revoked_at`). The epoch never moves back, not even from an outdated copy of the settings.
+  - **When a link is opened.** A personal link carries the epoch it was issued in, read together with the switches,
+    and signs in only while that epoch is current and the link was never revoked. So it can't revive, whether the
+    switch is turned back on, its own row is edited back, or it was being stored while the switch went off (that
+    link is dead on arrival). The sign-in claim also requires `revoked_at` to be empty, so a revocation that
+    commits first wins over a click.
+  - **Changed outside the app** (raw SQL, which skips all of the above): opening a personal link while the switches
+    say off revokes every outstanding one then, and so does the next save of SMS Settings, which logs a warning.
+  - **Audit:** each revocation is a row in **SMS link revocations** (Broadcast Campaigns tabs): who, when, why
+    (personal sign-in links or links in SMS turned off, or links found live while off), how many links and the new
+    epoch. SMS Settings shows the last five. Before saving, the "Links in SMS" section says how many personal links
+    still work, and the type-to-confirm page lists the revocation; the save then says how many were revoked.
 - Destinations must pass `is_strict_internal_path` (`apps/mail/redirects.py`), the SPA's own rule: one leading
   slash, no backslash, space or control character, no encoded slash, backslash or line break.
 - Opening one: the SPA moves the token out of the address at start-up (`/l/<token>` → `/l`), then posts it to
-  `POST /mail/sms-link/`, which answers with a session (personal) or a destination (shared), or a 400 with
-  `invalid_link` / `expired` / `already_used` (never whose link it was). It is limited by the request limiter's P0
+  `POST /mail/sms-link/`, which answers with a session (personal) or a destination (shared, or a revoked personal
+  link: the sign-in page), or a 400 with `invalid_link` / `expired` / `already_used` (never whose link it was). It is limited by the request limiter's P0
   `auth-email-link` scope, like the emailed login link.
 - Campaign texts are checked before sending: a message with a link placeholder cannot be saved, previewed for
   sending or sent while links are off, and one whose links are turned off after it was queued fails each remaining
-  recipient with that reason. **SMS Links** lists every link (never its token) and can revoke them; the
-  registration admin's **Revoke login links** also revokes the registration's ticket-text links.
+  recipient with that reason. **SMS Links** lists every link (never its token, with its status: active, used,
+  revoked or expired) and can revoke them; the registration admin's **Revoke login links** also revokes the
+  registration's ticket-text links. A revoked shared link is refused as expired; a revoked personal link opens the
+  sign-in page.
 
 ## Ticket texts
 
@@ -179,8 +199,8 @@ and slides (`segno`, error level M, 4-module quiet zone).
 | `SMS_QUIET_HOURS_ENFORCED` | settings (`config/settings/base/integrations/sms`) | on (off in test settings) |
 | `SMS_POLICY` | settings | 16-byte tokens, 14-day maximum validity, 100 per page × 50 pages, 10 s per AWS call |
 
-The opt-out list, its sync state, the SMS settings, SMS links and ticket texts are denied to `safe_orm` (the
-assistant and `/admin-api/`): they change only through these pages and the senders.
+The opt-out list, its sync state, the SMS settings, SMS links, their revocations and ticket texts are denied to
+`safe_orm` (the assistant and `/admin-api/`): they change only through these pages and the senders.
 
 ## Not included
 

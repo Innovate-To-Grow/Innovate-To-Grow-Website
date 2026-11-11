@@ -6,7 +6,15 @@ from django.test import SimpleTestCase, TestCase
 
 from apps.core.services.db_tools.safe_orm import is_model_denied
 from apps.event.tests.helpers import make_event
-from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken, SmsOptOut, SmsOptOutSyncState, TicketSms
+from apps.mail.models import (
+    SmsCampaign,
+    SmsConfig,
+    SmsLinkRevocation,
+    SmsLinkToken,
+    SmsOptOut,
+    SmsOptOutSyncState,
+    TicketSms,
+)
 from apps.mail.models.sms_config import SETTINGS_PK
 
 
@@ -75,7 +83,7 @@ class SmsPolicyStringTests(SimpleTestCase):
 
 class SafeOrmDenylistTests(SimpleTestCase):
     def test_the_sms_policy_tables_are_denied(self):
-        for model in (SmsConfig, SmsOptOut, SmsOptOutSyncState, SmsLinkToken, TicketSms):
+        for model in (SmsConfig, SmsOptOut, SmsOptOutSyncState, SmsLinkToken, SmsLinkRevocation, TicketSms):
             with self.subTest(model=model.__name__):
                 self.assertTrue(is_model_denied(model, write=False))
                 self.assertTrue(is_model_denied(model, write=True))
