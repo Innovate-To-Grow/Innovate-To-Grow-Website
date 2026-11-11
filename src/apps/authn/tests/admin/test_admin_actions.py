@@ -429,12 +429,12 @@ class ContactPhoneAdminTests(_AdminTestBase):
         result = self.model_admin.get_formatted_number(self.phone)
         self.assertTrue(result)
 
-    def test_mark_verified(self):
+    def test_there_is_no_bulk_mark_verified_action(self):
+        # A verified number signs in by SMS: only a code verifies it, never a bulk action.
         request = _request(self.rf, self.admin_user)
-        self.model_admin.mark_verified(request, ContactPhone.objects.filter(pk=self.phone.pk))
-        self.phone.refresh_from_db()
-        self.assertTrue(self.phone.verified)
-        self.assertIn("1 phone(s) marked as verified.", self._messages(request))
+        actions = self.model_admin.get_actions(request)
+        self.assertNotIn("mark_verified", actions)
+        self.assertIn("mark_unverified", actions)
 
     def test_mark_unverified(self):
         self.phone.verified = True

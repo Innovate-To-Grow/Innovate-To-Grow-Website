@@ -11,7 +11,11 @@ def get_primary_email_display(member):
 
 
 def get_primary_phone_display(member):
-    return member.get_primary_phone() or "-"
+    phone = member.get_primary_contact_phone()
+    if phone is None:
+        return "-"
+    # An unverified number cannot be used to sign in: say so where staff see the member list.
+    return phone.to_e164() if phone.verified else f"{phone.to_e164()} (unverified)"
 
 
 def get_full_name_display(member):
