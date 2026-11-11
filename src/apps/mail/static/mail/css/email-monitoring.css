@@ -780,6 +780,16 @@
     gap: 12px;
 }
 
+/* In this column a field's flex basis would be a height: keep each field at its content height. */
+.i2g-monitor-confirm .i2g-monitor-field,
+.i2g-monitor-confirm .i2g-monitor-field--wide {
+    flex: 0 0 auto;
+}
+
+.i2g-monitor-card--danger .i2g-monitor-meters {
+    margin: 10px 0 12px;
+}
+
 .i2g-monitor-fieldset {
     border: 1px solid var(--i2g-m-border);
     border-radius: 6px;
