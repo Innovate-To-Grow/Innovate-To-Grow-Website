@@ -71,7 +71,7 @@ class ContactPhoneAdminForm(forms.ModelForm):
         return cleaned
 
     def _number_changed(self, cleaned) -> bool:
-        if self.instance.pk is None or not self.instance.phone_number:
+        if self.instance._state.adding or not self.instance.phone_number:
             return False
         number = cleaned.get("phone_number", self.instance.phone_number) or ""
         region = cleaned.get("region", self.instance.region) or self.instance.region
@@ -84,7 +84,8 @@ def verify_url(contact) -> str:
 
 def sms_sign_in_status(contact, *, with_link: bool = True) -> str:
     """A badge saying whether ``contact`` can sign in by SMS, with the staff verification link when it cannot."""
-    if contact is None or contact.pk is None:
+    # A new inline row is not saved yet (its UUID pk is set on construction, so check ``_state``): nothing to show.
+    if contact is None or contact._state.adding:
         return "-"
     if contact.verified:
         return render_to_string("unfold/helpers/label.html", {"text": "Verified · SMS sign-in on", "type": "success"})
