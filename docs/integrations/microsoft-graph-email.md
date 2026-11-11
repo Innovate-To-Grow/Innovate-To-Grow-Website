@@ -103,7 +103,9 @@ go-live.
     copy and therefore without the one-click `List-Unsubscribe` header
     ([Sent Items](#sent-items-and-credential-mail)); addresses SES suppressed are mailed again under Graph.
     Agree with InfoSec which records count as the logging record (admin history, recorded access checks,
-    CloudTrail) and their retention ([Retention](#retention)).
+    CloudTrail) and their retention ([Retention](#retention)). The [helpdesk](helpdesk.md) **stores** the
+    bodies (sanitized, sign-in links scrubbed) and attachments of Inbox mail in PostgreSQL, with retention
+    periods; it reads with the same two GET requests as the admin inbox and sends nothing (shadow mode).
 
 Known gaps that remain (not fixed by this change): a campaign the web process is already sending keeps its
 provider when the provider is switched ([Emergency revocation](#emergency-revocation)); the inbox cache keys

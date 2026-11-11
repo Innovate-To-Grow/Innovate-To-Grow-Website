@@ -119,6 +119,7 @@ from the cycle check. They still count for boundaries.
 | `event` | `core`, `authn` |
 | `cms` | `core`, `authn`, `event` |
 | `mail` | `core`, `authn`, `cms`, `event`; from `system_intelligence` only `models` and `services.bedrock` |
+| `helpdesk` | `core`, `authn`, `event`, `mail` (it sits above `mail`; `mail` never imports it) |
 | `projects` | `core`, `authn`; from `system_intelligence` only `models`, `services.agents`, `services.bedrock`, `services.public_assistant`, `services.usage_log` |
 | `system_intelligence` | `core`, `authn`, `cms`, `event`, `mail`, `projects` (its admin assistant reads every app) |
 | `cli_admin` | `core` (it reaches models only through `core.services.db_tools.safe_orm`) |
@@ -135,6 +136,9 @@ app. Apps plug in instead:
   (`family=`, `lane=`), so the worker can skip a lane the delivery-rate limiter holds back.
 - **CSP frame hosts:** `core`'s CSP middleware reads the provider callables listed in the
   `CSP_FRAME_HOST_PROVIDERS` setting (`cms` supplies the embed-host allowlist).
+- **Inbound mail:** an app that consumes the mailbox scan's inbound queue calls
+  `apps.core.services.email.inbound.register_inbound_consumer(...)` from `AppConfig.ready()` with its job kind
+  (`helpdesk`); `core` queues that job by name after a scan records new mail.
 - **Project-level wiring:** `src/config/` (URLs, settings) and the operational management commands in
   `apps.core.management.commands.*` (the background worker and its maintenance list, seeding, and
   service-config checks) are composition roots and may import any app.

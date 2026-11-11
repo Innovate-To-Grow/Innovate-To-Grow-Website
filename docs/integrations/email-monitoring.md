@@ -70,8 +70,9 @@ provider call, retries included; 429 incidents and response times are attempt fi
 ## How bounce processing works
 
 1. **Schedule.** Job kind `core.email_bounce_scan` runs in the background worker. Each scan queues the next
-   (every `bounce_scan_interval_seconds`, default 10 minutes; sooner when it stopped at its message budget;
-   later when Microsoft sent a longer `Retry-After`). The worker's hourly maintenance ("Email bounce scan
+   (every `bounce_scan_interval_seconds`, default 10 minutes, or `inbox_scan_interval_seconds`, 2 minutes, while
+   an inbound-mail consumer such as the [helpdesk](helpdesk.md) is on; sooner when it stopped at its message
+   budget; later when Microsoft sent a longer `Retry-After`). The worker's hourly maintenance ("Email bounce scan
    scheduling") restarts the chain at start-up or if it broke. **Scan now** on the dashboard queues one at
    once. Finished scan jobs older than a week are deleted.
 2. **Which mailbox.** Only the Graph sending mailbox, only when it is in `EMAIL_BOUNCE_MAILBOXES` (default
@@ -82,10 +83,14 @@ provider call, retries included; 429 incidents and response times are attempt fi
 3. **Incremental listing.** Each scan lists Inbox messages received since its durable checkpoint (less a
    15-minute overlap), oldest first, 50 per request, at most 10 requests; the first scan looks back 72 hours (or
    the mailbox's first-scan lookback set on the dashboard; see [Reading older mail again](#reading-older-mail-again)).
+   Every listed message is recorded once in the inbound queue (`core.InboundMessage`: Graph id, internet
+   Message-ID, conversation id, received time, sender and a scrubbed subject; never a body) for the apps that
+   consume inbound mail, and a scan that recorded new rows queues their jobs (the [helpdesk](helpdesk.md)
+   registers `helpdesk.ingest_inbound`). Nothing is recorded while no consumer is registered.
    It opens (raw MIME, at most 256 KB, at most 200 per scan, and for at most 60 seconds per scan) only messages
    that look like reports: a report subject prefix (`Undeliverable:`, `Delivery Status Notification`, …) or a
    report sender (`postmaster`, `mailer-daemon`, `MicrosoftExchange…`). The checkpoint moves past what was fully
-   processed. Scans share the background worker with every queued email, so these bounds keep a flood of
+   processed (and recorded). Scans share the background worker with every queued email, so these bounds keep a flood of
    reports from holding it.
 4. **Parsing.** RFC 3464 `message/delivery-status` parts give, per recipient, the original or final
    recipient, the action, the enhanced status code, the diagnostic code and the remote server; the report
@@ -172,6 +177,9 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `bounce_processing_enabled` (`EMAIL_BOUNCE_PROCESSING_ENABLED`) | `true` | Run bounce scans. |
 | `bounce_mailboxes` (`EMAIL_BOUNCE_MAILBOXES`, comma-separated) | `i2g@ucmerced.edu` | The only mailboxes bounce processing may read. |
 | `bounce_scan_interval_seconds` | `600` | Time between scans (a `Retry-After` can only lengthen it). |
+| `inbox_scan_interval_seconds` | `120` | Time between scans while an inbound-mail consumer (the helpdesk) is on; never under 60 s. |
+| `inbound_retention_days` | `90` | Inbound queue rows are deleted this long after they were processed (or received, never processed). |
+| `graph_immutable_ids` (`EMAIL_GRAPH_IMMUTABLE_IDS`) | `false` | Send `Prefer: IdType="ImmutableId"` on every mailbox read, so a message moved to another folder keeps its id. Switching it on changes the ids the scan and the admin inbox see once (bounce records and the inbound queue still de-duplicate by internet Message-ID). |
 | `bounce_scan_page_size`, `bounce_scan_max_pages`, `bounce_scan_max_messages` | `50`, `10`, `200` | Messages per list request, list requests per scan, reports opened per scan. |
 | `bounce_scan_max_seconds` | `60` | A scan stops (keeping its progress) after this long; the next one continues. |
 | `bounce_max_recipients_per_report` | `50` | Recipients read from one report (a genuine report names at most one message's recipients). |
@@ -191,7 +199,8 @@ generic admin form for that row on purpose: a form saves every column and would 
 
 1. Deploy as usual: migration `core.0044_email_monitoring` creates the four tables (no data migration, no
    backfill), and `core.0045_email_monitor_lookback` adds the nullable first-scan lookback column (empty: the
-   setting's default). Telemetry starts with the first email sent after the deploy; the dashboard shows that moment
+   setting's default); `core.0046_inbound_message` adds the inbound queue the [helpdesk](helpdesk.md) drains.
+   Telemetry starts with the first email sent after the deploy; the dashboard shows that moment
    as "Monitoring began". Bounce reports that arrived before the first scan's lookback are read with **Rescan
    since**.
 2. The **background worker** container (`itg-background-worker`) must run: it runs the scans and the retention
