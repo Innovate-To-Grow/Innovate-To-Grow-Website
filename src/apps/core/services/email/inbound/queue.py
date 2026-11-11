@@ -87,13 +87,16 @@ def retention_days() -> int:
 
 
 def purge_expired(*, now: datetime | None = None, should_stop=None) -> int:
-    """Delete queue rows ``inbound_retention_days`` after they were processed (or, never processed, received), in
-    batches; a stop request ends it after the batch in flight. What a consumer made of them stays (FKs are SET_NULL)."""
+    """Delete queue rows ``inbound_retention_days`` after they were processed (or, never processed, recorded), in
+    batches; a stop request ends it after the batch in flight. What a consumer made of them stays (FKs are SET_NULL).
+
+    A row waiting for its consumer counts from when it was recorded, not from when the mail arrived: a "Rescan since"
+    (up to ``bounce_max_lookback_days`` back) records old mail, which must still wait to be imported."""
     now = now or timezone.now()
     cutoff = now - timedelta(days=retention_days())
     batch_size = max(1, int(settings.EMAIL_MONITORING["purge_batch_size"]))
     expired = InboundMessage.objects.annotate(
-        settled_at=Coalesce("processed_at", "received_at", output_field=DateTimeField())
+        settled_at=Coalesce("processed_at", "created_at", output_field=DateTimeField())
     ).filter(settled_at__lt=cutoff)
     deleted = 0
     while not (should_stop is not None and should_stop()):

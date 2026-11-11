@@ -54,8 +54,9 @@ EMAIL_MONITORING = {
     # lists is recorded in the inbound queue, and a ticket queue wants new mail within minutes. A quiet scan is one
     # list request, about 720 a day at 120 seconds; Outlook allows 10,000 requests per 10 minutes per app and mailbox.
     "inbox_scan_interval_seconds": 120,
-    # Days an inbound queue row (metadata of one listed message) is kept after it was processed, or received when it
-    # never was. What a consumer made of it (a helpdesk ticket) has its own retention.
+    # Days an inbound queue row (metadata of one listed message) is kept after it was processed, or recorded when it
+    # never was (not received: a rescan records old mail, which must still wait to be imported). What a consumer made
+    # of it (a helpdesk ticket) has its own retention.
     "inbound_retention_days": 90,
     # Ask Microsoft Graph for immutable message ids (Prefer: IdType="ImmutableId"), which survive a move to another
     # Outlook folder. Off by default: switching changes the ids the bounce scan and the Admin Inbox see once (the

@@ -280,20 +280,24 @@ class ConsumeTests(TestCase):
 
 
 class RetentionTests(TestCase):
-    def test_rows_go_retention_days_after_processing_or_receipt(self):
+    def test_rows_go_retention_days_after_processing_or_recording(self):
         now = timezone.now()
         old = now - timedelta(days=91)
         processed_long_ago = row(status=Status.DONE, received_at=old, processed_at=old)
         never_processed = row(received_at=old)
+        InboundMessage.objects.filter(pk=never_processed.pk).update(created_at=old)
         processed_recently = row(status=Status.DONE, received_at=old, processed_at=now - timedelta(days=1))
         recent = row(received_at=now)
         in_flight = row(status=Status.PROCESSING, received_at=old)
+        InboundMessage.objects.filter(pk=in_flight.pk).update(created_at=old)
+        # Old mail recorded just now (a "Rescan since" far back) still waits for its consumer.
+        rescanned = row(received_at=old)
 
         with monitoring_settings(inbound_retention_days=90, purge_batch_size=1):
             self.assertEqual(purge_expired(now=now), 2)
 
         remaining = set(InboundMessage.objects.values_list("pk", flat=True))
-        self.assertEqual(remaining, {processed_recently.pk, recent.pk, in_flight.pk})
+        self.assertEqual(remaining, {processed_recently.pk, recent.pk, in_flight.pk, rescanned.pk})
         self.assertNotIn(processed_long_ago.pk, remaining)
         self.assertNotIn(never_processed.pk, remaining)
 

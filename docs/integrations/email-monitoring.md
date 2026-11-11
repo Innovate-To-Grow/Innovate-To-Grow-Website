@@ -178,7 +178,7 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `bounce_mailboxes` (`EMAIL_BOUNCE_MAILBOXES`, comma-separated) | `i2g@ucmerced.edu` | The only mailboxes bounce processing may read. |
 | `bounce_scan_interval_seconds` | `600` | Time between scans (a `Retry-After` can only lengthen it). |
 | `inbox_scan_interval_seconds` | `120` | Time between scans while an inbound-mail consumer (the helpdesk) is on; never under 60 s. |
-| `inbound_retention_days` | `90` | Inbound queue rows are deleted this long after they were processed (or received, never processed). |
+| `inbound_retention_days` | `90` | Inbound queue rows are deleted this long after they were processed (or recorded, never processed: old mail a rescan records still waits to be imported). |
 | `graph_immutable_ids` (`EMAIL_GRAPH_IMMUTABLE_IDS`) | `false` | Send `Prefer: IdType="ImmutableId"` on every mailbox read, so a message moved to another folder keeps its id. Switching it on changes the ids the scan and the admin inbox see once (bounce records and the inbound queue still de-duplicate by internet Message-ID). |
 | `bounce_scan_page_size`, `bounce_scan_max_pages`, `bounce_scan_max_messages` | `50`, `10`, `200` | Messages per list request, list requests per scan, reports opened per scan. |
 | `bounce_scan_max_seconds` | `60` | A scan stops (keeping its progress) after this long; the next one continues. |

@@ -96,7 +96,7 @@ takes the highest number plus one. Display: `I2G-#1234`.
 
 | Data | Where | Kept (Settings) |
 |---|---|---|
-| Listed-message metadata | `core.InboundMessage` | `inbound_retention_days` (90) after processing (`EMAIL_MONITORING`) |
+| Listed-message metadata | `core.InboundMessage` | `inbound_retention_days` (90) after processing, or after recording while it waits (`EMAIL_MONITORING`) |
 | Message text (personal sign-in links and token-shaped runs scrubbed) and sanitized HTML, capped at 256 KB / 1 MB | `helpdesk.TicketMessage` | 730 days after the ticket closed |
 | Attachments (10 MB per file, 25 MB per message; blocked types never) | `helpdesk.TicketAttachment.content` (PostgreSQL, not S3: the production media bucket serves public URLs) | 365 days after the ticket closed |
 | Bodies of automated mail / of spam | | 90 / 30 days after arrival |
