@@ -1,22 +1,28 @@
 """Helpdesk → Settings (one row of admin-editable limits, retention periods and switches) and → Categories.
 
-Shadow mode is shown, never editable: this release has no sending code. Saving the settings wakes the ingest, so mail
-that waited while the helpdesk was off is imported.
+Shadow mode is shown, never editable: this release has no sending code. Above the form sits the intake card (its
+controls are in ``intake``). Saving the settings switched on restarts the intake and wakes the ingest, so mail that
+arrived while the helpdesk was off is read and imported.
 """
 
 from django.contrib import admin
 from django.http import HttpResponseRedirect
-from django.urls import reverse
+from django.urls import path, reverse
 
 from apps.core.admin import BaseModelAdmin
 
 from ..models import HelpdeskSettings, TicketCategory
 from ..services.ingest import jobs
+from ..services.intake import jobs as intake_jobs
+from ..services.intake import status as intake_status
+from . import intake
 
 
 @admin.register(HelpdeskSettings)
 class HelpdeskSettingsAdmin(BaseModelAdmin):
     readonly_fields = ("shadow_mode",)
+    # The intake card (its own POST forms) sits above the settings form, outside it.
+    change_form_outer_before_template = "admin/helpdesk/intake/card.html"
     fieldsets = (
         ("Switches", {"fields": ("enabled", "shadow_mode", "pause_while_campaign_sending")}),
         (
@@ -61,8 +67,19 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
         ),
     )
 
+    class Media:
+        css = {"all": ("helpdesk/css/helpdesk.css",)}
+
     def has_add_permission(self, request):
         return super().has_add_permission(request) and not HelpdeskSettings.objects.exists()
+
+    def get_urls(self):
+        control = path("intake/", self.admin_site.admin_view(intake.intake_view), name="helpdesk_intake")
+        return [control, *super().get_urls()]
+
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        context["helpdesk_intake"] = intake_status.card()
+        return super().render_change_form(request, context, add=add, change=change, form_url=form_url, obj=obj)
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -81,6 +98,7 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
         super().save_model(request, obj, form, change)
         if obj.enabled:
             jobs.ensure_scheduled()
+            intake_jobs.ensure_scheduled()
 
 
 @admin.register(TicketCategory)

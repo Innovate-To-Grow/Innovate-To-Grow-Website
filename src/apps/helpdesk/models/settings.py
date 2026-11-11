@@ -27,8 +27,9 @@ class HelpdeskSettings(ProjectControlModel):
     singleton = models.CharField(max_length=16, unique=True, default=_SINGLETON, editable=False)
     enabled = models.BooleanField(
         default=True,
-        help_text="Turn new Inbox mail into tickets. Off: the scan still records new mail, which waits here until "
-        "this is switched back on.",
+        help_text="Read the Inbox and turn its mail into tickets. Off: the helpdesk neither reads nor imports; "
+        "switched back on, it continues from where its intake stopped, so mail that arrived meanwhile (and is still "
+        "in the Inbox) becomes tickets then.",
     )
     shadow_mode = models.BooleanField(
         default=True,
@@ -113,8 +114,8 @@ class HelpdeskSettings(ProjectControlModel):
     backfill_age_hours = models.PositiveSmallIntegerField(
         default=24,
         validators=_bounded(1, 8760),
-        help_text="Mail imported more than this many hours after it arrived (the first import, or a Rescan since on "
-        "Email Monitoring) opens tickets marked as backfilled.",
+        help_text="Mail imported more than this many hours after it arrived (the first intake scan's lookback, or "
+        "a Rescan since on the intake card) opens tickets marked as backfilled.",
     )
 
     class Meta:

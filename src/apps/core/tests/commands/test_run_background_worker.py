@@ -51,9 +51,11 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
             patch.object(run_background_worker, "purge_expired_email_telemetry", return_value={"emails": 0}),
             patch.object(run_background_worker, "purge_expired_inbound_queue", return_value=0),
             patch.object(run_background_worker, "purge_finished_bounce_scans", return_value=0),
+            patch.object(run_background_worker, "ensure_helpdesk_intake_scheduled", return_value=False),
             patch.object(run_background_worker, "ensure_helpdesk_ingest_scheduled", return_value=False),
             patch.object(run_background_worker, "purge_expired_helpdesk", return_value=HELPDESK_NOTHING_PURGED),
             patch.object(run_background_worker, "purge_finished_helpdesk_ingests", return_value=0),
+            patch.object(run_background_worker, "purge_finished_helpdesk_intake_scans", return_value=0),
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
         ):
             command.handle(
@@ -296,9 +298,11 @@ MAINTENANCE_SERVICES = {
     "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
     "purge_expired_inbound_queue": 0,
     "purge_finished_bounce_scans": 0,
+    "ensure_helpdesk_intake_scheduled": False,
     "ensure_helpdesk_ingest_scheduled": False,
     "purge_expired_helpdesk": HELPDESK_NOTHING_PURGED,
     "purge_finished_helpdesk_ingests": 0,
+    "purge_finished_helpdesk_intake_scans": 0,
 }
 
 
@@ -360,9 +364,11 @@ class MaintenanceTaskTests(SimpleTestCase):
             purge_expired_email_telemetry=record("email telemetry", {"emails": 0, "bounces": 0}),
             purge_expired_inbound_queue=record("inbound queue", 0),
             purge_finished_bounce_scans=record("bounce scan jobs", 0),
+            ensure_helpdesk_intake_scheduled=record("helpdesk intake", False),
             ensure_helpdesk_ingest_scheduled=record("helpdesk ingest", False),
             purge_expired_helpdesk=record("helpdesk retention", HELPDESK_NOTHING_PURGED),
             purge_finished_helpdesk_ingests=record("helpdesk ingest jobs", 0),
+            purge_finished_helpdesk_intake_scans=record("helpdesk intake scans", 0),
         )
 
         self.assertEqual(
@@ -379,9 +385,11 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "email telemetry",
                 "inbound queue",
                 "bounce scan jobs",
+                "helpdesk intake",
                 "helpdesk ingest",
                 "helpdesk retention",
                 "helpdesk ingest jobs",
+                "helpdesk intake scans",
             ],
         )
         self.assertEqual(
@@ -396,6 +404,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Microsoft Graph certificate expiry check",
                 "Email bounce scan scheduling",
                 "Email telemetry retention",
+                "Helpdesk intake scheduling",
                 "Helpdesk ingest scheduling",
                 "Helpdesk retention",
             ],
@@ -468,6 +477,24 @@ class MaintenanceTaskTests(SimpleTestCase):
         with self.assertNoLogs(LOGGER_NAME, level="INFO"):
             self.run_patched()
 
+    def test_the_helpdesk_counts_name_its_intake_scans_and_scheduling_is_logged_at_debug(self):
+        purged = {**HELPDESK_NOTHING_PURGED, "tickets": 2}
+        with self.assertLogs(LOGGER_NAME, level="DEBUG") as logs:
+            self.run_patched(
+                ensure_helpdesk_intake_scheduled=lambda **_kwargs: True,
+                ensure_helpdesk_ingest_scheduled=lambda **_kwargs: True,
+                purge_expired_helpdesk=lambda **_kwargs: purged,
+                purge_finished_helpdesk_intake_scans=lambda **_kwargs: 4,
+            )
+
+        self.assertIn(f"DEBUG:{LOGGER_NAME}:Queued a helpdesk intake scan", logs.output)
+        self.assertIn(f"DEBUG:{LOGGER_NAME}:Queued a helpdesk ingest run", logs.output)
+        self.assertIn(
+            f"INFO:{LOGGER_NAME}:Helpdesk retention: purged 0 automated, 0 spam and 0 closed-ticket bodies and 0 "
+            "attachments; deleted 2 tickets, 0 finished ingest jobs and 4 finished intake scans",
+            logs.output,
+        )
+
     def test_a_stop_request_skips_the_remaining_tasks(self):
         ran = []
         tasks = (
@@ -520,6 +547,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),
             purge_expired_email_telemetry=RuntimeError("i"),
+            ensure_helpdesk_intake_scheduled=RuntimeError("l"),
             ensure_helpdesk_ingest_scheduled=RuntimeError("j"),
             purge_expired_helpdesk=RuntimeError("k"),
         ):

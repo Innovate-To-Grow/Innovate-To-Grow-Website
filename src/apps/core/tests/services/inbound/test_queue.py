@@ -1,5 +1,6 @@
-"""The inbound queue: recording listed messages once, waking the registered consumers, the consumer's claim and
-settle steps, and retention. No consumer app is involved: the registry is patched where it matters."""
+"""The inbound queue: recording listed messages once, the consumer's claim and settle steps, retention, and the
+registry through which an app that lists the Inbox on its own schedule describes itself to the Email Monitoring card.
+No consumer app is involved, except where the helpdesk's own registration is checked."""
 
 from datetime import timedelta
 from unittest.mock import patch
@@ -7,20 +8,21 @@ from unittest.mock import patch
 from django.core.cache import cache
 from django.core.exceptions import ImproperlyConfigured
 from django.db import DataError
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
-from apps.core.models import BackgroundJob, InboundMessage
+from apps.core.models import InboundMessage
 from apps.core.services.email.inbound import (
     LINK_PLACEHOLDER,
-    active_consumer_kinds,
+    InboxReader,
     consume,
-    notify_consumers,
+    format_interval,
+    inbox_readers,
     pending_count,
     purge_expired,
     record,
-    register_inbound_consumer,
-    registered_consumers,
+    register_inbox_reader,
+    registered_inbox_readers,
     registry,
 )
 from apps.core.tests.services.email_monitoring.helpers import monitoring_settings
@@ -28,6 +30,7 @@ from apps.core.tests.services.email_monitoring.helpers import monitoring_setting
 SITE = "i2g@ucmerced.edu"
 Status = InboundMessage.Status
 TOKEN = "fake-test-token-0000000000"  # a synthetic value: only its position matters
+READER = InboxReader("Test reader", "paused", 120, "/admin/test/")
 
 
 def listed(graph_id="AAMk-1", **values):
@@ -50,36 +53,57 @@ def row(**values):
     return InboundMessage.objects.create(**{**defaults, **values})
 
 
-class RegistryTests(TestCase):
+def describe_test_reader():
+    return READER
+
+
+def describe_nothing_useful():
+    return {"label": "not an InboxReader"}
+
+
+class InboxReaderRegistryTests(SimpleTestCase):
     def setUp(self):
-        self.saved = dict(registry._CONSUMERS)
+        self.saved = dict(registry._READERS)
         self.addCleanup(self.restore)
 
     def restore(self):
-        registry._CONSUMERS.clear()
-        registry._CONSUMERS.update(self.saved)
+        registry._READERS.clear()
+        registry._READERS.update(self.saved)
 
-    def test_registering_again_needs_identical_values(self):
-        register_inbound_consumer("app.ingest", active="app.on")
-        register_inbound_consumer("app.ingest", active="app.on")
+    def test_registering_again_needs_the_same_description(self):
+        path = f"{__name__}.describe_test_reader"
+        register_inbox_reader("test", describe=path)
+        register_inbox_reader("test", describe=path)
 
         with self.assertRaises(ImproperlyConfigured):
-            register_inbound_consumer("app.ingest", active="app.other")
-        with self.assertRaises(ImproperlyConfigured):
-            register_inbound_consumer("")
-        self.assertIn("app.ingest", registered_consumers())
+            register_inbox_reader("test", describe=f"{__name__}.describe_nothing_useful")
+        for name, describe in (("", path), ("nameless", "")):
+            with self.subTest(name=name), self.assertRaises(ImproperlyConfigured):
+                register_inbox_reader(name, describe=describe)
+        self.assertEqual(registered_inbox_readers()["test"], path)
 
-    def test_active_consumers_follow_their_switch_and_a_broken_switch_counts_as_off(self):
-        registry._CONSUMERS.clear()
-        register_inbound_consumer("always.on")
-        register_inbound_consumer("switched.off", active="builtins.bool")
-        register_inbound_consumer("broken.switch", active="apps.nowhere.switch")
+    def test_readers_describe_themselves_in_order_and_a_broken_one_never_breaks_the_page(self):
+        registry._READERS.clear()
+        register_inbox_reader("good", describe=f"{__name__}.describe_test_reader")
+        register_inbox_reader("missing", describe="apps.nowhere.describe")
+        register_inbox_reader("odd", describe=f"{__name__}.describe_nothing_useful")
 
-        with self.assertLogs("apps.core.services.email.inbound.registry", level="ERROR"):
-            self.assertEqual(active_consumer_kinds(), ["always.on"])
+        with self.assertLogs("apps.core.services.email.inbound.registry", level="ERROR") as logs:
+            self.assertEqual(inbox_readers(), [READER])
 
-    def test_the_helpdesk_registers_itself(self):
-        self.assertEqual(registered_consumers()["helpdesk.ingest_inbound"].job_kind, "helpdesk.ingest_inbound")
+        self.assertEqual(len(logs.records), 2)
+        self.assertIn("missing", logs.records[0].getMessage())
+        self.assertIn("odd described itself as dict", logs.records[1].getMessage())
+
+    def test_the_helpdesk_registers_its_intake(self):
+        self.assertEqual(registered_inbox_readers()["helpdesk"], "apps.helpdesk.services.intake.status.describe")
+
+    def test_a_cadence_reads_as_people_say_it(self):
+        cases = {600: "10 min", 120: "2 min", 60: "1 min", 90: "90 s", 30: "30 s", 3600: "1 h", 5400: "1 h 30 min"}
+        for seconds, text in cases.items():
+            with self.subTest(seconds=seconds):
+                self.assertEqual(format_interval(seconds), text)
+        self.assertEqual(READER.every, "2 min")
 
 
 class RecordTests(TestCase):
@@ -114,9 +138,7 @@ class RecordTests(TestCase):
 
         self.assertTrue(record("other@ucmerced.edu", listed(), self.received, candidate=False))
 
-    def test_nothing_is_recorded_without_a_consumer_or_an_id(self):
-        with patch("apps.core.services.email.inbound.queue.registered_consumers", return_value={}):
-            self.assertFalse(record(SITE, listed(), self.received, candidate=False))
+    def test_nothing_is_recorded_without_an_id(self):
         self.assertFalse(record(SITE, listed(graph_id=""), self.received, candidate=False))
         self.assertFalse(InboundMessage.objects.exists())
 
@@ -153,29 +175,6 @@ class RecordTests(TestCase):
             self.assertLogs("apps.core.services.email.inbound.queue", level="WARNING"),
         ):
             self.assertFalse(record(SITE, listed(), self.received, candidate=False))
-
-
-class NotifyTests(TestCase):
-    def jobs(self):
-        return BackgroundJob.objects.filter(kind="helpdesk.ingest_inbound")
-
-    def test_each_active_consumer_is_queued_once_while_its_job_waits(self):
-        self.assertEqual(notify_consumers(), 1)
-        self.assertEqual(notify_consumers(), 0)
-
-        job = self.jobs().get()
-        self.assertEqual((job.status, job.max_attempts), (BackgroundJob.Status.PENDING, 1))
-
-    def test_a_running_consumer_job_does_not_count_as_waiting(self):
-        notify_consumers()
-        self.jobs().update(status=BackgroundJob.Status.PROCESSING)
-
-        self.assertEqual(notify_consumers(now=timezone.now() + timedelta(seconds=1)), 1)
-
-    def test_a_consumer_that_is_off_is_not_queued(self):
-        with patch("apps.core.services.email.inbound.queue.active_consumer_kinds", return_value=[]):
-            self.assertEqual(notify_consumers(), 0)
-        self.assertFalse(self.jobs().exists())
 
 
 class ConsumeTests(TestCase):

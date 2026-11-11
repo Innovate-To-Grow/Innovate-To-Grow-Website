@@ -1,9 +1,8 @@
 """One bounce scan of the Microsoft Graph sending mailbox.
 
 The scan lists the Inbox incrementally (received since the checkpoint less an overlap, oldest first; never the whole
-folder), records every listed message once in the inbound queue for the apps that consume it (``inbound``), opens
-only the messages that look like bounce reports, parses them (``dsn``), saves their bounces (``store``) and moves the
-checkpoint past what it fully processed. Every request is a GET through the site's Graph
+folder), opens only the messages that look like bounce reports, parses them (``dsn``), saves their bounces
+(``store``) and moves the checkpoint past what it fully processed. Every request is a GET through the site's Graph
 reader, paced on the ``graph_read`` delivery channel together with the mailbox's sends: a throttle or cooldown ends
 the scan early with its progress kept, and the next scheduled scan continues from there. Nothing in the mailbox is
 changed: no message is marked read, moved or deleted.
@@ -19,7 +18,6 @@ from django.utils import timezone
 
 from apps.core.models import EmailBounce
 
-from .. import inbound
 from ..graph.mailbox import GraphMessageNotFound, GraphReadBusy, GraphReadError
 from ..telemetry import text
 from . import state
@@ -38,7 +36,6 @@ STAT_KEYS = (
     "bounces",
     "matched",
     "duplicates",
-    "recorded",
 )
 
 
@@ -134,10 +131,7 @@ def _scan_page(reader, mailbox: str, messages: list[dict], progress: _Progress) 
         received = received_at(message)
         if received is None:
             continue
-        candidate = is_candidate(message)
-        if inbound.record(mailbox, message, received, candidate=candidate):
-            progress.count("recorded")
-        if candidate:
+        if is_candidate(message):
             if progress.stats["opened"] >= budget or time.monotonic() >= progress.deadline:
                 return False
             _process(reader, mailbox, message, received, progress)

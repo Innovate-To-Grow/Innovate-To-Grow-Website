@@ -32,11 +32,13 @@ DENIED_MODEL_LABELS = {
     "core.emailmonitorstate",
     "core.outboundemail",
     "core.outboundemailattempt",
-    # The inbound mail queue (metadata of every message the mailbox scan lists) and the helpdesk built on it: mail
-    # content, the people who wrote it and staff decisions on it. Staff work them in Helpdesk (its own app grant).
+    # The inbound mail queue (metadata of every message the helpdesk's intake lists) and the helpdesk built on it:
+    # mail content, the people who wrote it, staff decisions on it, and the intake's checkpoint and lease (a write
+    # would skip or re-import mail). Staff work them in Helpdesk (its own app grant).
     "core.inboundmessage",
     "helpdesk.helpdesksettings",
     "helpdesk.ingestrecord",
+    "helpdesk.intakestate",
     "helpdesk.ticket",
     "helpdesk.ticketattachment",
     "helpdesk.ticketcategory",

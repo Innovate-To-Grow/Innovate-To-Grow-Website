@@ -5,7 +5,8 @@ MIME through the site's Graph reader (GET only, paced on the ``graph_read`` deli
 changes), parse it, classify it, store it, and settle the row with what became of it. A message that is gone from
 the mailbox is skipped with the reason; a read or processing failure retries with backoff and, after the last
 attempt, is listed under Helpdesk → Ingest problems; a throttle from Microsoft ends the run and the row waits for
-the time Microsoft asked for (without spending an attempt). Nothing is ever sent.
+the time Microsoft asked for (without spending an attempt). While the intake is paused on its card, nothing is read:
+the rows wait. Nothing is ever sent.
 """
 
 import logging
@@ -23,6 +24,7 @@ from apps.core.services.email.graph.mailbox import GraphMessageNotFound, GraphRe
 from apps.core.services.email.inbound import consume
 
 from ...models import HelpdeskSettings, TicketMessage
+from ..intake import state as intake_state
 from .classify import classify_message, own_addresses
 from .parse import parse
 from .store import store
@@ -34,7 +36,7 @@ OTHER_MAILBOX = "Received by a mailbox the site no longer reads."
 
 @dataclass
 class RunOutcome:
-    stopped: str = "empty"  # empty, budget, time, busy, no_reader or disabled
+    stopped: str = "empty"  # empty, budget, time, busy, no_reader, paused or disabled
     processed: int = 0
     tickets: int = 0
     failed: int = 0
@@ -55,6 +57,8 @@ def run(settings: HelpdeskSettings | None = None) -> RunOutcome:
     reader, mailbox, problem = active_reader()
     if reader is None:
         return RunOutcome("no_reader", problem=problem)
+    if intake_state.is_paused(mailbox):
+        return RunOutcome("paused")
     outcome = RunOutcome()
     deadline = time.monotonic() + int(settings.ingest_max_seconds)
     own = own_addresses(mailbox)

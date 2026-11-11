@@ -1,4 +1,5 @@
-"""The bounce scans in the background worker: scheduling, the chain of scans, timing, and their own retention."""
+"""The bounce scans in the background worker: scheduling, the chain of scans, timing (the cadence the dashboard shows),
+and their own retention. Bounce processing keeps its own cadence whatever else reads the Inbox."""
 
 from datetime import timedelta
 from unittest.mock import patch
@@ -10,18 +11,17 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 from apps.core.services.background_jobs import claim_jobs, run_claimed_job
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND, ScanOutcome, ensure_scheduled, run_now
-from apps.core.services.email.bounces.jobs import next_delay, purge_finished_jobs, run_scan_job
+from apps.core.services.email.bounces.jobs import (
+    catch_up_seconds,
+    interval_seconds,
+    next_delay,
+    purge_finished_jobs,
+    run_scan_job,
+)
 
 from .helpers import monitoring_settings
 
 SCAN = "apps.core.services.email.bounces.scanner.scan_mailbox"
-CONSUMERS = "apps.core.services.email.bounces.jobs.active_consumer_kinds"
-NOTIFY = "apps.core.services.email.bounces.jobs.notify_consumers"
-
-
-def no_inbound_consumer():
-    """Bounce processing alone: no app consumes inbound mail (the interval stays the bounce interval)."""
-    return patch(CONSUMERS, return_value=[])
 
 
 def scan_jobs():
@@ -53,39 +53,11 @@ class SchedulingTests(TestCase):
         self.assertEqual(scan_jobs().filter(available_at__lte=timezone.now()).count(), 1)
 
     def test_a_scan_queues_the_next_one_after_the_interval(self):
-        with (
-            patch(SCAN, return_value=ScanOutcome("ok")),
-            monitoring_settings(bounce_scan_interval_seconds=600),
-            no_inbound_consumer(),
-        ):
+        with patch(SCAN, return_value=ScanOutcome("ok")), monitoring_settings(bounce_scan_interval_seconds=600):
             run_scan_job(job=None)
 
         job = scan_jobs().get()
         self.assertAlmostEqual((job.available_at - timezone.now()).total_seconds(), 600, delta=5)
-
-    def test_while_an_inbound_consumer_is_on_scans_come_every_inbox_interval(self):
-        settings = monitoring_settings(bounce_scan_interval_seconds=600, inbox_scan_interval_seconds=120)
-        with patch(SCAN, return_value=ScanOutcome("ok")), settings, patch(CONSUMERS, return_value=["app.ingest"]):
-            run_scan_job(job=None)
-            self.assertEqual(next_delay(ScanOutcome("ok")), 120)
-
-        job = scan_jobs().get()
-        self.assertAlmostEqual((job.available_at - timezone.now()).total_seconds(), 120, delta=5)
-
-    def test_the_interval_never_goes_below_a_minute(self):
-        settings = monitoring_settings(bounce_scan_interval_seconds=600, inbox_scan_interval_seconds=5)
-        with settings, patch(CONSUMERS, return_value=["app.ingest"]):
-            self.assertEqual(next_delay(None), 60)
-
-    def test_a_scan_that_recorded_inbound_mail_wakes_the_consumers(self):
-        recorded = ScanOutcome("ok", stats={"recorded": 2})
-        with patch(SCAN, return_value=recorded), patch(NOTIFY) as notify:
-            run_scan_job(job=None)
-        notify.assert_called_once_with()
-
-        with patch(SCAN, return_value=ScanOutcome("ok", stats={"recorded": 0})), patch(NOTIFY) as notify:
-            run_scan_job(job=None)
-        notify.assert_not_called()
 
     def test_a_scan_that_fails_unexpectedly_still_queues_the_next(self):
         with patch(SCAN, side_effect=RuntimeError("database gone")), self.assertRaises(RuntimeError):
@@ -102,12 +74,33 @@ class SchedulingTests(TestCase):
         self.assertEqual(scan_jobs().count(), 1)
 
     def test_the_next_scan_waits_longer_when_microsoft_asks_and_comes_sooner_to_catch_up(self):
-        with monitoring_settings(bounce_scan_interval_seconds=600), no_inbound_consumer():
+        with monitoring_settings(bounce_scan_interval_seconds=600):
             self.assertEqual(next_delay(None), 600)
             self.assertEqual(next_delay(ScanOutcome("ok")), 600)
             self.assertEqual(next_delay(ScanOutcome("busy", retry_after=1800)), 1800)
             self.assertEqual(next_delay(ScanOutcome("busy", retry_after=30)), 600)
             self.assertEqual(next_delay(ScanOutcome("partial")), 120)
+
+    def test_the_cadence_the_dashboard_shows_is_the_one_scans_follow(self):
+        with monitoring_settings(bounce_scan_interval_seconds=600):
+            self.assertEqual((interval_seconds(), catch_up_seconds()), (600, 120))
+            self.assertEqual(next_delay(ScanOutcome("ok")), interval_seconds())
+            self.assertEqual(next_delay(ScanOutcome("partial")), catch_up_seconds())
+        # Never under a minute, and catching up is never slower than the interval.
+        with monitoring_settings(bounce_scan_interval_seconds=5):
+            self.assertEqual((interval_seconds(), catch_up_seconds()), (60, 60))
+        with monitoring_settings(bounce_scan_interval_seconds=90):
+            self.assertEqual((interval_seconds(), catch_up_seconds()), (90, 90))
+
+    def test_the_helpdesk_being_on_does_not_change_the_bounce_cadence(self):
+        """The helpdesk lists the Inbox with its own scan: bounce scans no longer speed up while it is on."""
+        settings = monitoring_settings(bounce_scan_interval_seconds=600, inbox_scan_interval_seconds=120)
+        with patch(SCAN, return_value=ScanOutcome("ok", stats={"listed": 3})), settings:
+            run_scan_job(job=None)
+
+        job = scan_jobs().get()
+        self.assertAlmostEqual((job.available_at - timezone.now()).total_seconds(), 600, delta=5)
+        self.assertEqual(set(BackgroundJob.objects.values_list("kind", flat=True)), {BOUNCE_SCAN_JOB_KIND})
 
     def test_the_worker_runs_a_scan_job_through_its_registered_handler(self):
         run_now()

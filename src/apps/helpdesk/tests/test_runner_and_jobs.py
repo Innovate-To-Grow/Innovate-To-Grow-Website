@@ -1,6 +1,7 @@
 """The ingest run (budgets, Microsoft's throttling, messages gone from the mailbox, failures retried then listed for
-staff) and its background job (registration, the chain of runs, pausing while a campaign sends, the hourly restart).
-Microsoft Graph is never contacted: the reader is a fake."""
+staff, waiting while the intake is paused) and its background job (registration, the wake-up after an intake scan,
+the chain of runs, pausing while a campaign sends, the hourly restart). Microsoft Graph is never contacted: the
+reader is a fake."""
 
 from datetime import timedelta
 from unittest.mock import patch
@@ -12,11 +13,11 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob, InboundMessage
 from apps.core.services.background_jobs import claim_jobs, registered_job_kinds, run_claimed_job
 from apps.core.services.email.graph.mailbox import GraphMessageNotFound, GraphReadBusy, GraphReadError
-from apps.core.services.email.inbound import notify_consumers
 from apps.mail.models import EmailCampaign
 
 from ..models import HelpdeskSettings, Ticket
 from ..services.ingest import jobs, runner
+from ..services.intake import state as intake_state
 from . import corpus
 from .helpers import FakeReader, graph_reader, ingest, queue
 
@@ -155,6 +156,28 @@ class RunnerTests(TestCase):
         self.assertEqual((outcome.stopped, outcome.problem), ("no_reader", "Microsoft Graph is not configured."))
         self.assertEqual(InboundMessage.objects.get().status, Status.PENDING)
 
+    def test_while_the_intake_is_paused_nothing_is_read_and_the_rows_wait(self):
+        row = queue(corpus.message(), reader=self.reader)
+        intake_state.set_paused(row.mailbox, True)
+
+        outcome = ingest(self.reader)
+
+        row.refresh_from_db()
+        self.assertEqual((outcome.stopped, outcome.processed), ("paused", 0))
+        self.assertEqual((row.status, row.attempts, self.reader.fetched), (Status.PENDING, 0, []))
+        self.assertIsNone(jobs.next_run_at(outcome, now=timezone.now()))
+
+        intake_state.set_paused(row.mailbox, False)
+        ingest(self.reader)
+        row.refresh_from_db()
+        self.assertEqual(row.status, Status.DONE)
+
+    def test_a_pause_of_another_mailbox_does_not_hold_this_one(self):
+        intake_state.set_paused("old@ucmerced.edu", True)
+        queue(corpus.message(), reader=self.reader)
+
+        self.assertEqual(ingest(self.reader).processed, 1)
+
     def test_a_row_left_processing_by_a_stopped_worker_is_imported_again(self):
         row = queue(corpus.message(), reader=self.reader, status=Status.PROCESSING)
         InboundMessage.objects.filter(pk=row.pk).update(updated_at=timezone.now() - timedelta(hours=2))
@@ -191,9 +214,9 @@ class JobTests(TestCase):
         self.assertEqual((kind.family, kind.lane), (None, None))
         self.assertTrue(jobs.ingest_enabled())
 
-    def test_a_scan_that_recorded_mail_queues_the_ingest_and_the_worker_runs_it(self):
+    def test_an_intake_scan_that_recorded_mail_wakes_the_ingest_and_the_worker_runs_it(self):
         queue(corpus.message(), reader=self.reader)
-        self.assertEqual(notify_consumers(), 1)
+        self.assertTrue(jobs.wake())
 
         with graph_reader(self.reader):
             for job in claim_jobs():
@@ -201,6 +224,22 @@ class JobTests(TestCase):
 
         self.assertEqual(Ticket.objects.count(), 1)
         self.assertEqual(ingest_jobs().get().status, BackgroundJob.Status.SUCCEEDED)
+
+    def test_the_wake_up_queues_one_run_while_it_waits_but_a_running_one_does_not_count(self):
+        self.assertTrue(jobs.wake())
+        self.assertFalse(jobs.wake())
+        self.assertEqual(ingest_jobs().get().payload, {"requested": "inbound"})
+
+        # A run in progress may have looked for rows before the new ones were recorded.
+        ingest_jobs().update(status=BackgroundJob.Status.PROCESSING)
+        self.assertTrue(jobs.wake(now=timezone.now() + timedelta(seconds=1)))
+        self.assertEqual(ingest_jobs().count(), 2)
+
+    def test_switched_off_the_wake_up_queues_nothing(self):
+        HelpdeskSettings.objects.create(enabled=False)
+
+        self.assertFalse(jobs.wake())
+        self.assertFalse(ingest_jobs().exists())
 
     def test_a_run_stopped_by_its_budget_queues_the_next_at_once(self):
         HelpdeskSettings.objects.create(ingest_batch_size=1)
@@ -216,6 +255,7 @@ class JobTests(TestCase):
         now = timezone.now()
         self.assertIsNone(jobs.next_run_at(runner.RunOutcome("empty"), now=now))
         self.assertIsNone(jobs.next_run_at(runner.RunOutcome("no_reader"), now=now))
+        self.assertIsNone(jobs.next_run_at(runner.RunOutcome("paused"), now=now))
         busy_until = now + timedelta(minutes=3)
         self.assertEqual(jobs.next_run_at(runner.RunOutcome("busy", busy_until=busy_until), now=now), busy_until)
         retry_at = now + timedelta(minutes=7)

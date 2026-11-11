@@ -1,9 +1,9 @@
-"""The inbound mail queue: one row per message the mailbox scan listed, metadata only.
+"""The inbound mail queue: one row per message an Inbox scan listed, metadata only.
 
-The bounce processor's scan (``apps.core.services.email.bounces``) records every message it lists in the Microsoft
-Graph sending mailbox's Inbox here, once per (mailbox, Graph id), before it handles bounce reports as it always did.
-Apps that consume inbound mail register a background job kind with ``apps.core.services.email.inbound`` and drain the
-pending rows (the helpdesk turns each into a ticket); ``core`` itself never reads a message body.
+The helpdesk's intake lists the Microsoft Graph sending mailbox's Inbox on its own schedule and checkpoint and records
+every message here, once per (mailbox, Graph id), through ``apps.core.services.email.inbound``; its ingest drains the
+pending rows and turns each into a ticket. Bounce processing reads the same Inbox separately and records nothing
+here. ``core`` itself never reads a message body.
 
 Only what the folder listing returns is kept: the subject is cleaned and scrubbed of personal sign-in links and
 token-shaped runs, and no body, recipient list or attachment is ever stored here.

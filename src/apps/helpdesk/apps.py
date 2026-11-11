@@ -9,6 +9,9 @@ class HelpdeskConfig(AppConfig):
 
     def ready(self):
         from .services.ingest.jobs import register_ingest
+        from .services.intake.jobs import register_intake
 
-        # The ingest job drains core's inbound queue; core queues it by name after a scan records new mail.
+        # The intake scans the Inbox on its own schedule and fills core's inbound queue; the ingest drains it into
+        # tickets. The intake also describes itself to core, for the Email Monitoring card.
+        register_intake()
         register_ingest()
