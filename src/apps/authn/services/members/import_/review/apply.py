@@ -10,11 +10,12 @@ everything back, and the batch stays in review with the reason in ``last_error``
 
 from __future__ import annotations
 
+import logging
 from collections import Counter
 from dataclasses import dataclass, field
 
 from django.contrib.auth.hashers import make_password
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from django.utils import timezone
 
 from apps.authn.models import Member, MemberImportBatch, MemberImportRow
@@ -27,6 +28,8 @@ from .choices import allowed_values
 from .execute import RowWriteError, execute_creations, execute_update, log_batch, log_member_changes
 from .lookup import load_snapshot
 from .selection import plan_for, selection_problems, tick_items
+
+logger = logging.getLogger(__name__)
 
 MATCHED_BY = {
     "uuid": "matched by Member UUID",
@@ -148,6 +151,17 @@ def apply_batch(batch_id, *, user, version: int, ctx: Context) -> ApplyResult:
     except RowWriteError as exc:
         _note_error(batch_id, str(exc), user)
         return ApplyResult("error", str(exc), [exc.row_number])
+    except DatabaseError as exc:
+        # A write the re-read records could not foresee: typically an address or number another request created after
+        # the snapshot, which trips its unique constraint. The transaction rolled back, so nothing was written; send
+        # the batch back to the review with the reason instead of failing the request.
+        logger.exception("Member import %s: the apply hit a database error and was rolled back", batch_id)
+        message = (
+            f"A database error stopped the import ({exc.__class__.__name__}), probably a record that changed at the "
+            "same moment. Check the review and confirm again"
+        )
+        _note_error(batch_id, message, user)
+        return ApplyResult("error", message)
 
 
 def _refusal(batch: MemberImportBatch, version: int) -> str:

@@ -15,6 +15,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.authn.models import ContactEmail, Member, MemberImportBatch
+from apps.authn.services.members.import_ import contacts as contacts_module
 from apps.authn.services.members.import_.contacts import ContactWriteError
 from apps.authn.services.members.import_.review import (
     analyse_rows,
@@ -220,6 +221,38 @@ class ApplyTests(ApplyTestCase):
             (batch.activity[-1]["action"], batch.activity[-1]["detail"]),
             ("error", "Row 3: the number was taken after the review"),
         )
+
+    def test_a_database_error_sends_the_batch_back_to_review(self):
+        """An address another request stored after the re-read trips the unique constraint: nothing is written."""
+        add_email = contacts_module.add_email
+
+        def racing_add_email(member, data):
+            ContactEmail.objects.create(member=None, email_address=data["address"])  # the other request's insert
+            add_email(member, data)
+
+        batch = self.stage(
+            [
+                row("nina@example.com", First_Name="Nina", Last_Name="New"),
+                row("ada@example.com", Organization="Engines", Secondary_Email="ada.new@example.com"),
+            ],
+            self.admin,
+        )
+
+        with (
+            patch("apps.authn.services.members.import_.review.execute.contacts.add_email", racing_add_email),
+            self.assertLogs("apps.authn.services.members.import_.review.apply", level="ERROR"),
+        ):
+            result = self.confirm(batch)
+
+        self.assertEqual(result.status, "error")
+        self.assertTrue(result.message.startswith("A database error stopped the import (IntegrityError)"))
+        self.assertFalse(Member.objects.filter(first_name="Nina").exists())
+        self.assertFalse(ContactEmail.objects.filter(email_address="ada.new@example.com").exists())
+        self.ada.refresh_from_db()
+        self.assertIsNone(self.ada.organization)
+        self.assertEqual(batch.status, "review")
+        self.assertTrue(batch.last_error.startswith("Nothing was imported. A database error stopped the import"))
+        self.assertEqual(batch.activity[-1]["action"], "error")
 
 
 class PermissionAtApplyTests(ApplyTestCase):
