@@ -37,6 +37,13 @@ def local_input(value) -> str:
     return timezone.localtime(value).strftime("%Y-%m-%dT%H:%M")
 
 
+def posted(value) -> str:
+    """The same minute, posted with an explicit UTC offset. ``datetime-local`` posts a wall time, which the form reads in
+    the site's time zone (tested on its own with fixed times); a wall time computed from "now" could fall in the hour a
+    daylight-saving change makes ambiguous, and the form rightly refuses it, so the other tests post an instant."""
+    return value.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:00Z")
+
+
 def to_minute(value):
     return value.replace(second=0, microsecond=0)
 
@@ -86,7 +93,7 @@ class BackfillTestCase(TestCase):
 class AccessTests(BackfillTestCase):
     def actions(self):
         return (
-            {"action": "rescan", "since": local_input(self.now - timedelta(days=1))},
+            {"action": "rescan", "since": posted(self.now - timedelta(days=1))},
             {"action": "lookback", "lookback_hours": "100"},
         )
 
@@ -112,12 +119,12 @@ class AccessTests(BackfillTestCase):
     def test_superusers_may_rescan(self):
         self.client.force_login(make_superuser())
 
-        self.post(action="rescan", since=local_input(self.now - timedelta(days=1)))
+        self.post(action="rescan", since=posted(self.now - timedelta(days=1)))
 
         self.assertEqual(self.row().checkpoint_at, to_minute(self.now - timedelta(days=1)))
 
     def test_a_get_never_changes_anything(self):
-        response = self.client.get(self.url, {"action": "rescan", "since": local_input(self.now - timedelta(days=1))})
+        response = self.client.get(self.url, {"action": "rescan", "since": posted(self.now - timedelta(days=1))})
 
         self.assertEqual(response.status_code, 405)
         self.assertUnchanged()
@@ -125,7 +132,7 @@ class AccessTests(BackfillTestCase):
     def test_a_post_without_the_csrf_token_is_refused_and_one_with_it_is_accepted(self):
         client = Client(enforce_csrf_checks=True)
         client.force_login(self.staff)
-        data = {"action": "rescan", "since": local_input(self.now - timedelta(days=1))}
+        data = {"action": "rescan", "since": posted(self.now - timedelta(days=1))}
 
         self.assertEqual(client.post(self.url, data).status_code, 403)
         self.assertUnchanged()
@@ -149,7 +156,7 @@ class RescanTests(BackfillTestCase):
     def test_a_rescan_moves_the_checkpoint_back_and_says_what_happens_next(self):
         since = to_minute(self.now - timedelta(days=7))
 
-        response = self.post(action="rescan", since=local_input(since))
+        response = self.post(action="rescan", since=posted(since))
 
         self.assertEqual(self.row().checkpoint_at, since)
         self.assertMessage(
@@ -192,8 +199,8 @@ class RescanTests(BackfillTestCase):
         cases = {
             "": "enter the date and time to rescan from.",
             "last week": "enter a valid date and time.",
-            local_input(self.now + timedelta(hours=2)): "is in the future.",
-            local_input(self.now - timedelta(days=91)): "is more than 90 days ago. Choose ",
+            posted(self.now + timedelta(hours=2)): "is in the future.",
+            posted(self.now - timedelta(days=91)): "is more than 90 days ago. Choose ",
         }
         with monitoring_settings(bounce_max_lookback_days=90):
             for value, reason in cases.items():
@@ -204,7 +211,7 @@ class RescanTests(BackfillTestCase):
         self.assertUnchanged()
 
     def test_a_time_not_before_the_checkpoint_changes_nothing(self):
-        response = self.post(action="rescan", since=local_input(self.now - timedelta(minutes=1)))
+        response = self.post(action="rescan", since=posted(self.now - timedelta(minutes=1)))
 
         self.assertMessage(
             response, f"Nothing changed: the checkpoint ({when(self.checkpoint)}) is already at or before"
@@ -214,7 +221,7 @@ class RescanTests(BackfillTestCase):
     def test_a_running_scan_is_never_overwritten(self):
         token = state.acquire_lease(SENDER, timezone.now())
 
-        response = self.post(action="rescan", since=local_input(self.now - timedelta(days=1)))
+        response = self.post(action="rescan", since=posted(self.now - timedelta(days=1)))
 
         self.assertMessage(response, f"A scan of {SENDER} is running, so the checkpoint was not moved", "Try again")
         self.assertEqual((self.row().lease_token, self.row().checkpoint_at), (token, self.checkpoint))
@@ -224,7 +231,7 @@ class RescanTests(BackfillTestCase):
         state.set_paused(SENDER, True)
         since = to_minute(self.now - timedelta(days=1))
 
-        response = self.post(action="rescan", since=local_input(since))
+        response = self.post(action="rescan", since=posted(since))
 
         self.assertMessage(response, "once bounce processing is resumed (it is paused)")
         self.assertEqual((self.row().paused, self.row().checkpoint_at), (True, since))
@@ -234,20 +241,20 @@ class RescanTests(BackfillTestCase):
         EmailMonitorState.objects.filter(mailbox=SENDER).update(checkpoint_at=None)
         since = to_minute(self.now - timedelta(days=5))
 
-        response = self.post(action="rescan", since=local_input(since))
+        response = self.post(action="rescan", since=posted(since))
 
         self.assertMessage(response, f"its first scan reads mail received since {when(since)}")
         self.assertEqual(self.row().checkpoint_at, since)
 
     def test_switched_off_bounce_processing_is_left_alone(self):
         with monitoring_settings(bounce_processing_enabled=False):
-            response = self.post(action="rescan", since=local_input(self.now - timedelta(days=1)))
+            response = self.post(action="rescan", since=posted(self.now - timedelta(days=1)))
 
         self.assertMessage(response, "Bounce processing is turned off (EMAIL_BOUNCE_PROCESSING_ENABLED).")
         self.assertUnchanged()
 
     def test_a_mailbox_the_processor_may_not_read_is_refused_with_the_reason(self):
-        since = local_input(self.now - timedelta(days=1))
+        since = posted(self.now - timedelta(days=1))
 
         with monitoring_settings(bounce_mailboxes=("other@ucmerced.edu",)):
             outside = self.post(action="rescan", since=since)
