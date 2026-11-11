@@ -3,6 +3,7 @@ phones (never undone), and its place in core's send check."""
 
 from datetime import UTC, datetime
 
+from django.db.models.signals import post_save
 from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
@@ -79,6 +80,19 @@ class OptOutListTests(TestCase):
         self.phone.refresh_from_db()
         self.assertTrue(self.phone.subscribe)
         self.assertEqual(SmsOptOut.objects.count(), 1)
+
+    def test_the_unsubscribe_is_a_save_the_member_sheet_sync_sees(self):
+        saved = []
+
+        def receiver(sender, instance, update_fields=None, **kwargs):
+            saved.append((instance.pk, instance.subscribe, frozenset(update_fields or ())))
+
+        post_save.connect(receiver, sender=ContactPhone, dispatch_uid="test-sms-opt-out-phone-save")
+        self.addCleanup(post_save.disconnect, sender=ContactPhone, dispatch_uid="test-sms-opt-out-phone-save")
+
+        self.assertEqual(opt_outs.unsubscribe_contact_phones(opt_out(NUMBER)), 1)
+
+        self.assertEqual(saved, [(self.phone.pk, False, frozenset({"subscribe", "updated_at"}))])
 
     def test_a_refusal_reopens_a_number_that_had_opted_back_in(self):
         row = opt_out(

@@ -116,13 +116,15 @@ def unsubscribe_contact_phones(row: SmsOptOut) -> int:
         if not claimed:
             return 0
         national = us_national_digits(row.phone_number)
-        changed = 0
+        phones = []
         if national:
-            changed = ContactPhone.objects.filter(phone_number=national, region=US_REGION, subscribe=True).update(
-                subscribe=False, updated_at=now
-            )
+            phones = list(ContactPhone.objects.filter(phone_number=national, region=US_REGION, subscribe=True))
+        for phone in phones:
+            phone.subscribe = False
+            # A save, not an update: the member Google Sheet sync (``post_save``) must see the unsubscribe.
+            phone.save(update_fields=["subscribe", "updated_at"])
     row.contacts_unsubscribed_at = now
-    return changed
+    return len(phones)
 
 
 def add_staff_opt_out(phone, *, note: str, actor) -> SmsOptOut:
