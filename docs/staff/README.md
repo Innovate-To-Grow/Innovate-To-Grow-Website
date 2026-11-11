@@ -55,11 +55,23 @@ nothing):
 - Working a ticket: status, priority, category, assignee, notes; the member is linked from the sender's address;
   what shadow mode does not do yet (no replies, no notifications).
 - The scam warning shown on suspicious messages, and why a message can be marked as spam.
+- The helpdesk's own **Intake: reading the Inbox** card (**Helpdesk → Settings**): its status, **Scan now**,
+  **Pause intake** / **Resume intake**, **Rescan since** and the first-scan lookback. The intake reads the Inbox
+  every 2 minutes, separately from bounce processing (every 10 minutes, chapter 3): the controls of one never
+  change the other.
 
 ### 5. SMS (planned)
 
 Phone sign-up and sign-in, Broadcast SMS audiences and wording, consent and STOP, message length and cost, the SMS
-log.
+log. Also, once they ship:
+
+- Only a verified phone number signs in with a texted code (pull request #732): members verify a number on their
+  account page (**Account → Phone Numbers → Verify**), and staff use **Verify by SMS code** with the member instead
+  of ticking **Verified** (chapter 2).
+- Links in texts (pull request #731, off by default). A personal sign-in link goes only to the member's own
+  verified phone. Turning **Personal sign-in links** or **Allow links in SMS** off revokes every personal sign-in
+  link already sent, for good: turning it back on does not bring any back, and whoever opens one gets the normal
+  sign-in page.
 
 ### 6. Events (planned)
 
@@ -82,7 +94,7 @@ Collected from the chapters as questions come in.
 | Member | One person's account. Each member has a **Member UUID**, a long ID shown on the member page and in exports. |
 | Contact email | An email address saved on a member. An address belongs to one member at most. An address with no member is an **unlinked contact**. |
 | Primary / secondary / other | The role of an email address. A member's main address is the **primary**; their other addresses are **secondary** (a backup, often a former primary) or **other** (any further address, for example a former secondary). |
-| Verified | The person proved the address or phone number is theirs by entering a code (or staff marked it verified). Only a verified address can be used to sign in with an emailed code or a password. A texted code works for any phone number saved on a member, verified or not (chapter 2). |
+| Verified | The person proved the address or phone number is theirs by entering a code (or staff marked it verified). Only a verified address can be used to sign in with an emailed code or a password. A texted code works for any phone number saved on a member, verified or not, until pull request #732 ships; then only a verified number signs in, and a number becomes verified only with a code (chapter 2). |
 | Subscribed | Set per address and per phone number. For an email address: whether it receives newsletters (the **All subscribers** audience); the unsubscribe link in a newsletter turns it off for every address of that member. For a phone number: whether it receives SMS sent to subscribers. |
 | Active / inactive | An inactive member cannot sign in and is left out of the **All subscribers**, **All active members** and **Staff Members** email audiences (the other audiences do not check: see chapter 3). Their history stays. |
 | Unfinished sign-up | Someone started creating an account and never finished. |

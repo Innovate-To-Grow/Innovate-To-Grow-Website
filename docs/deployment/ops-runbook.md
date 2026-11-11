@@ -71,6 +71,11 @@ It sends queued email and SMS, scans the mailbox for bounce reports, syncs Googl
 clean-ups. Signs that it is down: **Bounce processing** shows "No recent successful scan"; campaigns stay
 **Queued**.
 
+Once the helpdesk ships (pull request #728), the worker also runs the helpdesk's intake, its own scan of the same
+Inbox (every 2 minutes; bounce scans stay at every 10). Each has its own card, pause and checkpoint (**Email
+Monitoring → Bounce processing**, **Helpdesk → Settings** intake card): pausing one does not stop the other, so to
+stop both scans, pause both.
+
 **TODO:** how to check it, read its logs and restart it (log locations and service names → private ops doc).
 
 ## 6. Incident playbooks

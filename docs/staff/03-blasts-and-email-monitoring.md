@@ -174,12 +174,13 @@ so treat an unmatched report with care.
 
 A bounce report never changes a member, a subscription or a campaign by itself. Acting on it is a staff decision.
 
-**In Outlook, leave "Undeliverable" messages in the i2g@ Inbox** until they have been read (scans run every 10
-minutes and read only the Inbox). Do not create Outlook rules that move them.
+**In Outlook, leave "Undeliverable" messages in the i2g@ Inbox** until they have been read (bounce scans run every
+10 minutes and read only the Inbox). Do not create Outlook rules that move them.
 
 ## 3.5 Bounce processing
 
-The **Bounce processing** card at the top of the Overview shows whether reports are being read.
+The **Bounce processing** card at the top of the Overview shows whether bounce reports are being read. Its
+controls act on bounce processing only.
 
 | Status | Meaning |
 |---|---|
@@ -192,11 +193,30 @@ The **Bounce processing** card at the top of the Overview shows whether reports 
 | **Not active** | The mailbox is not set up for reading; the card shows the reason. |
 
 The card also shows the mailbox, the last scan, the last successful scan, the **Checkpoint** (how far the reading
-has got), the next scan, the interval, and what the last scan found.
+has got), the next scan, the interval (every 10 minutes), and what the last scan found.
 
-- **Scan now** asks the background worker to scan within a minute instead of waiting for the next scan. It is
-  greyed out while processing is paused or not active.
-- **Pause** stops reading the mailbox; **Resume** starts again. Pausing does not affect sending.
+- **Scan now** asks the background worker to scan for bounce reports within a minute instead of waiting for the
+  next scan. It is greyed out while processing is paused or not active.
+- **Pause** stops bounce scans; **Resume** starts them again from the checkpoint, so reports that arrived meanwhile
+  (and are still in the Inbox) are read then. Pausing does not affect sending, and it stops nothing else that reads
+  the i2g@ Inbox: Outlook, the admin's inbox page (3.8) and, once it ships, the helpdesk carry on.
+
+> **Coming soon** (pull request #728, not live yet; details may change).
+>
+> The helpdesk (chapter 4) reads the same Inbox with its own scan, every 2 minutes (every 30 seconds while it
+> catches up), and has its own controls on the **Intake: reading the Inbox** card at the top of **Helpdesk →
+> Settings** (needs the Helpdesk section):
+>
+> - **Scan now**, and **Pause intake** / **Resume intake**. While paused, the helpdesk neither reads the Inbox nor
+>   imports mail; resuming continues from its checkpoint, so mail that arrived meanwhile (and is still in the
+>   Inbox) becomes tickets then.
+> - Under **Read older mail again**: **Rescan since** and **First-scan lookback (hours)**, which work like the ones
+>   for bounce reports (3.6). Messages the helpdesk already has are skipped, so no ticket is made twice.
+>
+> The two never change each other: **Pause**, **Rescan since** and the lookback on the Bounce processing card act on
+> bounce processing only, and the intake card's controls act on the helpdesk only. To stop both from reading the
+> Inbox, pause both. The Bounce processing card then also lists the helpdesk's intake, for example "Helpdesk
+> intake, every 2 min (paused)", with a link to its card.
 
 ## 3.6 Coming soon: read older mail again
 
@@ -214,7 +234,8 @@ again**:
 - **First-scan lookback (hours):** how far back the very first scan of a mailbox reads (1 to 2,160 hours; empty
   means the default of 72). It has no effect once the mailbox has a checkpoint; use **Rescan since** instead.
 
-Both changes are recorded in the admin log (**Site Settings → Admin Log**, for staff who have that section).
+Both change bounce processing only; the helpdesk has its own (3.5). Both changes are recorded in the admin log
+(**Site Settings → Admin Log**, for staff who have that section).
 
 ## 3.7 Coming soon: Bounced addresses
 

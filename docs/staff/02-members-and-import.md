@@ -39,6 +39,24 @@ contact**), for example one entered by hand or left over from old data.
 account, whether or not the number is ticked **Verified** (it becomes verified when used). Whoever has that phone
 can sign in, so add a phone number to a member only when you are sure it is theirs.
 
+> **Coming soon** (pull request #732, not live yet; details may change). Only a **verified** number signs in. For a
+> number that is saved on an account but not verified, the sign-in page answers as if a code had been sent (so it
+> never reveals which numbers have an account), and no text is sent. A number becomes verified only with a code:
+>
+> - **The member** verifies it on their account page: **Account → Phone Numbers → Verify**. An unverified number
+>   there says "Verify this number to use it to sign in with a texted code".
+> - **Staff** use **Verify by SMS code**, the link next to an unverified number on the member page and on the
+>   phone's own page, for a member who cannot sign in another way (for example a phone-only member whose only
+>   number is unverified). Talk to the member (in person, or on a call to them at a contact you already trust),
+>   click **Send code to …**, ask them to read the code to you, and enter it. The code works for 10 minutes and
+>   allows 5 tries, and both steps are recorded in the admin history. A staff or superuser account's number needs
+>   the I2G Master.
+> - **Verified** can no longer be ticked by hand, and **Mark selected phones as verified** is gone. Unticking it
+>   (or **Mark selected phones as unverified (stops SMS sign-in)**) still works. A phone added in the admin starts
+>   unverified, and changing a number's digits makes it unverified again.
+> - Phone rows show **Verified · SMS sign-in on** or **Unverified · no SMS sign-in**, and the Members list adds
+>   "(unverified)" to an unverified number in its **Primary Phone** column.
+
 ## 2.2 Find a member
 
 1. Go to **Members & Authentication → Members**.
@@ -149,8 +167,8 @@ Only **Primary Email** is required. A column that is missing, or a blank cell, n
 | Primary Subscribed | Default TRUE. | FALSE unsubscribes the primary. TRUE never re-subscribes it (a note says so). |
 | Secondary Email | Added as the secondary address. | Added as the secondary; the previous secondary becomes "other". It starts unverified, and it is subscribed only if the member is subscribed at another address. |
 | Secondary Verified, Secondary Subscribed | Used for the new secondary. | Not applied to an address the member already has (a note says so). |
-| Phone Number | Added (10 digits, or +1 and 10 digits; the import does not check that the number is real). | Added next to the member's numbers, unverified. It never replaces a number. Either way, whoever has that phone can sign in with a texted code (2.1): include numbers only if they came from the members themselves. |
-| Phone Verified, Phone Subscribed | Used for the new number (defaults: FALSE, FALSE). | Not applied to a number the member already has. |
+| Phone Number | Added (10 digits, or +1 and 10 digits; the import does not check that the number is real). | Added next to the member's numbers, unverified. It never replaces a number. Either way, whoever has that phone can sign in with a texted code (2.1): include numbers only if they came from the members themselves. Once pull request #732 ships, only a verified number signs in: a number added to an existing member then waits until the member verifies it. |
+| Phone Verified, Phone Subscribed | Used for the new number (defaults: FALSE, FALSE). Once pull request #732 ships, TRUE makes the number a way to sign in at once, without a code: put TRUE only for numbers you are sure of. | Not applied to a number the member already has. |
 | Active | Default TRUE. | Ignored. Use the **Activate** / **Deactivate** actions on the member list. |
 | Staff | Ignored: an import never creates a staff account. | Applied only when the I2G Master imports. |
 | Member UUID | Ignored by today's import. | Ignored (the coming review step uses it, see 2.6). |
@@ -307,5 +325,6 @@ Also new:
 | "Excel file must contain a 'Primary Email' column" | The file was saved with another tab open (for example Instructions), or row 1 does not hold the column names. Open the members tab, check row 1, save, upload again. |
 | Everything was skipped with "… already exists: … Skipped because "Update Existing Members" is off" | **Update Existing Members** was not ticked. (Rows that say "… already exists: it is the secondary email of …" are the "Row 5" case instead.) |
 | A member says they cannot sign in with their address | Check on their member page that the address is **Verified** and the member is **Active**. Only mark it verified if you are sure it is theirs. |
+| A member cannot sign in with their phone | Check on their member page that the number is right and the member is **Active**. Once pull request #732 ships, the number must also be verified (an unverified number gets no text): they verify it on their account page, or you use **Verify by SMS code** with them (2.1). |
 | A member's name changed after an import | A filled name cell replaces the stored name when a row matches by primary email. Correct it on the member page; check the sheet before importing it again. |
 | You need to undo an import | There is no undo, and this import leaves nothing in a member's **History**. Compare with the **Export Excel** you took before (see Good practice) and fix members by hand. Importing again cannot remove what an import added or verified. |

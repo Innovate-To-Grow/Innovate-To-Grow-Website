@@ -110,7 +110,12 @@ in [Microsoft Graph email](../integrations/microsoft-graph-email.md).
 
 - Text messages go through **AWS End User Messaging**: sign-in and verification codes, the admin's test message
   and **Broadcast SMS** campaigns. US numbers only.
-- People can sign up and sign in with a phone number alone; event registration can ask for a verified phone.
+- People can sign up and sign in with a phone number alone; event registration can ask for a verified phone. Coming
+  with pull request #732: only a verified number signs in, and a number becomes verified only with a code (from
+  the member's account page, or staff's **Verify by SMS code** page with the member reading the code back).
+- Coming with pull request #731: links in texts (off by default). A personal sign-in link goes only to the
+  member's own verified phone, and switching personal links (or links in texts) off revokes every one already
+  sent, for good.
 - SMS sending is paced like email. A daily SMS limit can be set; none is set until it has been calibrated.
 - The site only sends. It does not receive text messages, so replies such as STOP are not yet synced back to a
   member's phone settings.
