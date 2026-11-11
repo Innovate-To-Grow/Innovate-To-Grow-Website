@@ -1,0 +1,12 @@
+{% if group.bulk %}
+    <div class="flex flex-wrap items-center gap-2 ml-auto text-sm">
+        <label for="bulk-{{ group.conflict }}" class="text-xs">For all {{ group.views|length }} rows:</label>
+        <select id="bulk-{{ group.conflict }}" name="bulk-{{ group.conflict }}" class="border border-base-300 dark:border-base-600 rounded-default px-2 py-1 text-sm bg-white dark:bg-base-900">
+            {% for value, label in group.bulk %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+        <button type="submit" name="action" value="bulk:{{ group.conflict }}" class="border border-base-300 dark:border-base-600 px-2 py-1 rounded-default text-xs">Apply to all {{ group.views|length }} rows</button>
+        <button type="submit" name="action" value="reset:{{ group.conflict }}" class="text-xs underline">Reset to Skip</button>
+    </div>
+{% else %}
+    <span class="ml-auto text-xs text-font-subtle-light dark:text-font-subtle-dark">Only one choice: Skip.</span>
+{% endif %}

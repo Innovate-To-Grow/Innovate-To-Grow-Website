@@ -25,12 +25,15 @@ class ImportResult:
     """Result of a member import operation.
 
     ``errors`` lists the rows that were not imported, and why (plus file-level failures). ``warnings`` lists what an
-    imported row asked for but was not applied, or what was kept, and why.
+    imported row asked for but was not applied, or what was kept, and why. ``updated_count`` counts the rows applied
+    to an existing member; ``unchanged_count`` how many of those changed nothing. ``details`` has one entry per
+    imported row: ``{"row", "member_id", "outcome", "changes"}``, the changes being what was written.
     """
 
     success: bool
     created_count: int = 0
     updated_count: int = 0
+    unchanged_count: int = 0
     skipped_count: int = 0
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
