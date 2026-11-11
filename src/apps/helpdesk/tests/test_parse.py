@@ -129,6 +129,14 @@ class AttachmentTests(SimpleTestCase):
         self.assertEqual((len(long_name) <= 255, long_name.endswith(".pdf")), (True, True))
         self.assertEqual(len(clean_filename("b" * 400)), 255)
 
+    def test_file_names_lose_the_trailing_dots_and_spaces_windows_would_drop(self):
+        # Saved by Windows as "evil.js" and "evil.hta": the blocked-type check must see that extension.
+        self.assertEqual(clean_filename("evil.js."), "evil.js")
+        self.assertEqual(clean_filename("evil.hta . ."), "evil.hta")
+        self.assertEqual(clean_filename(" . "), "")
+        cut = clean_filename("x" * 251 + ".js." + "c" * 20)  # cut inside a long last part: no dot left at the end
+        self.assertEqual((len(cut), cut.endswith(".js")), (254, True))
+
 
 class AttachedMessageTests(SimpleTestCase):
     def test_a_forwarded_message_is_summarized_never_kept_raw(self):

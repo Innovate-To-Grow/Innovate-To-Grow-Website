@@ -392,6 +392,14 @@ class EdgeTests(TestCase):
         self.assertIn("Please see below;", message.body_text)
         self.assertEqual(message.attached_messages[0]["text"].strip(), "quotedtext")
 
+    def test_a_blocked_type_named_with_trailing_dots_is_still_blocked(self):
+        raw = corpus.message(attachments=[("invoice.js.", b"WScript.Echo(1)", "application/octet-stream")])
+
+        ticket = receive(raw, reader=self.reader)
+
+        attachment = ticket.messages.get().attachments.get()
+        self.assertEqual((attachment.filename, attachment.blocked, attachment.content), ("invoice.js", True, None))
+
     def test_a_message_without_a_sender_still_becomes_a_ticket(self):
         raw = b"Subject: no sender\r\nMessage-ID: <nosender@x>\r\n\r\nhello"
 

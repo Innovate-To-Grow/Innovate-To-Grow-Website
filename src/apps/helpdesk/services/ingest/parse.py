@@ -234,12 +234,14 @@ def _filename(part) -> str:
 
 
 def clean_filename(name: str) -> str:
-    """A file name safe to show and to offer as a download: no directory part, no control characters."""
-    base = text.clean(str(name or ""), 1000).replace("\\", "/").rsplit("/", 1)[-1].strip().lstrip(".")
+    """A file name safe to show and to offer as a download: no directory part, no control characters, and no dots
+    or spaces at either end. Windows drops trailing ones when it saves a file, so "evil.js." would be saved as
+    "evil.js": the blocked file types are checked on the name as it will be saved."""
+    base = text.clean(str(name or ""), 1000).replace("\\", "/").rsplit("/", 1)[-1].strip(" .")
     if len(base) > 255:
         stem, dot, extension = base.rpartition(".")
         base = f"{stem[: 250 - len(extension)]}.{extension}" if dot and len(extension) <= 16 else base[:255]
-    return base
+    return base.rstrip(" .")
 
 
 def _decode_text(part) -> str:
