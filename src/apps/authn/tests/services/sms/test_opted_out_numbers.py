@@ -14,7 +14,7 @@ from apps.authn.services.sms import PhoneNumberOptedOut, publish_plain_sms, star
 from apps.authn.services.sms.errors import OPTED_OUT_MESSAGE
 from apps.authn.services.sms.sns_verify import _verification_error
 from apps.authn.tests.sms_provider import sms_budget_used
-from apps.authn.views.helpers import PHONE_OPTED_OUT_CODE, challenge_error_response
+from apps.authn.views.helpers import challenge_error_response
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.aws import sms_opt_outs
 from apps.core.services.aws.sms_errors import SmsDeliveryError, SmsOptedOut
@@ -109,20 +109,23 @@ class OptedOutErrorMappingTests(SimpleTestCase):
         error = _verification_error(SmsDeliveryError("rejected", outcome="permanent", code="ConflictException"))
         self.assertNotIsInstance(error, PhoneNumberOptedOut)
 
-    def test_the_response_is_a_400_that_says_why(self):
+    def test_open_endpoints_answer_like_any_delivery_failure(self):
+        # The opt-out is no stranger's business: the same answer as before the list existed, with no AWS call.
         response = challenge_error_response(PhoneNumberOptedOut())
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data, {"detail": OPTED_OUT_MESSAGE, "code": PHONE_OPTED_OUT_CODE})
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.data, {"detail": "Failed to send verification SMS."})
 
 
 @patch("apps.authn.services.sms.start_phone_verification", side_effect=PhoneNumberOptedOut())
 class PhoneAuthRequestOptedOutTests(APITestCase):
+    """The open sign-in code request answers an opted-out number like any failed send."""
+
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
 
-    def test_the_sign_in_code_request_answers_400_with_the_reason(self, _start):
+    def test_the_anonymous_sign_in_code_request_does_not_disclose_the_opt_out(self, _start):
         response = self.client.post("/authn/phone-auth/request-code/", {"phone_number": "2025550123"}, format="json")
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.data["code"], PHONE_OPTED_OUT_CODE)
-        self.assertEqual(response.data["detail"], OPTED_OUT_MESSAGE)
+        self.assertEqual(response.status_code, 503)
+        self.assertNotIn("code", response.data)
+        self.assertNotIn("STOP", str(response.data))

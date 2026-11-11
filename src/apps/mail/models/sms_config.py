@@ -80,8 +80,9 @@ class SmsConfig(ProjectControlModel):
         default=False,
         verbose_name="Personal sign-in links",
         help_text="On: {{login_link}} and {{ticket_link}} sign a member in with one tap (single use, never for "
-        "staff). Off: they open the sign-in page and land on the same page after a code sign-in. A recycled "
-        "phone number could receive someone else's personal link.",
+        "staff, only when the text goes to the member's own verified phone). Off: they open the sign-in page and "
+        "land on the same page after a code sign-in. A recycled phone number could receive someone else's personal "
+        "link. Only the I2G Master can change this.",
     )
 
     ticket_sms_enabled = models.BooleanField(
@@ -174,10 +175,10 @@ class SmsConfig(ProjectControlModel):
 
 
 def register_path_errors(path: str) -> dict:
-    from apps.mail.redirects import is_safe_internal_redirect_path
+    from apps.mail.redirects import is_strict_internal_path
 
     value = (path or "").strip()
-    if not is_safe_internal_redirect_path(value):
+    if not is_strict_internal_path(value):
         return {"register_redirect_path": "Choose a page on this site (a path starting with /)."}
     if value.split("?", 1)[0].rstrip("/") == REGISTER_PATH:
         return {"register_redirect_path": "/register cannot lead to itself."}

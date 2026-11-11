@@ -19,8 +19,10 @@ Every text the site sends goes through `apps.core.services.aws.sms_send.send_tex
 verification codes, the admin test SMS, Broadcast SMS recipients (the background job and the in-process sender)
 and ticket texts. Before anything is admitted it asks the opt-out list (`apps.core.services.aws.sms_opt_outs`; the
 list lives in the mail app, which registers it from `MailConfig.ready()`). A code request for an opted-out number
-is refused even earlier, before it takes a delivery slot, the hourly cap or a unit of the SMS daily budget, with a
-400 that says the number replied STOP (`code: phone_opted_out`).
+is refused even earlier, before it takes a delivery slot, the hourly cap or a unit of the SMS daily budget. The
+sign-in and account endpoints answer it like any failed send (503 "Failed to send verification SMS.", as before the
+list existed): they are open to anyone, and "this number replied STOP" is no stranger's business. The signed-in
+event registration says why (400, `code: phone_opted_out`, "use your email address instead").
 
 ## Opt-outs
 
@@ -118,16 +120,26 @@ With **Allow links in SMS** on, a Broadcast SMS may use:
   text can carry it.
 - Every link expires: **Link validity (days)** per campaign (default 3), at most
   `SMS_POLICY["link_max_validity_days"]` (14).
-- **Personal sign-in links** are off by default (a recycled phone number could receive someone else's link). On,
-  they sign the member in **once**, only for an active member who is not staff or a superuser; anyone else gets
-  the shared link, which opens the sign-in page (email or phone) and returns to the same page.
+- **Personal sign-in links** are off by default (a recycled phone number could receive someone else's link), and
+  only the I2G Master (a superuser) can turn them on. On, a link signs its member in **once**, and only when:
+  - the member is active and is not staff or a superuser; and
+  - the text goes to **that member's own verified account phone**: a personal link reaches no further than signing
+    in with a code texted to the same number. A recipient log pointed at another member, a phone verified only for
+    one event registration (it may be a family or lab phone), or any other number gets the shared link instead.
+    The token keeps a SHA-256 digest of the number (`phone_digest`), and opening it checks again that the member
+    still has that verified phone, so a number removed from the account or moved to someone else stops working.
+
+  Anyone else gets the shared link, which opens the sign-in page (email or phone) and returns to the same page.
+- Destinations must pass `is_strict_internal_path` (`apps/mail/redirects.py`), the SPA's own rule: one leading
+  slash, no backslash, space or control character, no encoded slash, backslash or line break.
 - Opening one: the SPA moves the token out of the address at start-up (`/l/<token>` → `/l`), then posts it to
   `POST /mail/sms-link/`, which answers with a session (personal) or a destination (shared), or a 400 with
   `invalid_link` / `expired` / `already_used` (never whose link it was). It is limited by the request limiter's P0
   `auth-email-link` scope, like the emailed login link.
 - Campaign texts are checked before sending: a message with a link placeholder cannot be saved, previewed for
   sending or sent while links are off, and one whose links are turned off after it was queued fails each remaining
-  recipient with that reason. **SMS Links** lists every link (never its token) and can revoke them.
+  recipient with that reason. **SMS Links** lists every link (never its token) and can revoke them; the
+  registration admin's **Revoke login links** also revokes the registration's ticket-text links.
 
 ## Ticket texts
 
@@ -136,8 +148,8 @@ email address whose phone is verified (the phone verified for the registration, 
 phone) gets a ticket text when its first ticket is issued. The event app sends `initial_ticket_issued` from the
 registration's transaction; the mail app records a `TicketSms` (**Ticket SMS**) and queues `mail.ticket_sms` on the
 transactional lane, due when quiet hours end. The text is **Ticket text** (`{{first_name}}`, `{{event_name}}`,
-`{{ticket_link}}`) plus the footer; the ticket link signs the registrant in when personal links are on, otherwise it
-opens the sign-in page and returns to the ticket. An opted-out number is never texted; a link that cannot have
+`{{ticket_link}}`) plus the footer; the ticket link signs the registrant in when personal links are on and the text
+goes to the registrant's own verified account phone, otherwise it opens the sign-in page and returns to the ticket. An opted-out number is never texted; a link that cannot have
 arrived (a definite failure) is revoked. A queueing failure never undoes the registration.
 
 ## The short /register link and QR code

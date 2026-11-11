@@ -63,7 +63,8 @@ OPTED_OUT_MESSAGE = (
 
 class PhoneNumberOptedOut(PhoneVerificationDeliveryError):
     """The number is on the SMS opt-out list (it replied STOP, or staff opted it out): nothing was sent, and nothing
-    is until it opts back in. Asking again does not help, so callers answer 400 with ``OPTED_OUT_MESSAGE``."""
+    is until it opts back in. Endpoints open to anyone answer it like any delivery failure (the opt-out is no
+    stranger's business); the signed-in event registration says why, with ``OPTED_OUT_MESSAGE``."""
 
     def __init__(self, *, challenge_id: str = ""):
         super().__init__(OPTED_OUT_MESSAGE, outcome=PROVIDER_OUTCOME_PERMANENT, challenge_id=challenge_id)

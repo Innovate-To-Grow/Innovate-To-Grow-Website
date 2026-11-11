@@ -53,9 +53,10 @@ class SmsCampaignLinkCheckTests(TestCase):
         self.campaign(message="{{event_link}}", event=make_event()).full_clean()
 
     def test_the_sign_in_destination_must_be_on_this_site(self):
-        with self.assertRaises(ValidationError) as caught:
-            self.campaign(message="{{login_link}}", login_redirect_path="//evil.example").full_clean()
-        self.assertIn("login_redirect_path", caught.exception.message_dict)
+        for path in ("//evil.example", "/\\evil.example", "/%5Cevil.example"):
+            with self.subTest(path=path), self.assertRaises(ValidationError) as caught:
+                self.campaign(message="{{login_link}}", login_redirect_path=path).full_clean()
+            self.assertIn("login_redirect_path", caught.exception.message_dict)
 
     def test_validity_is_bounded(self):
         for days in (0, 15):

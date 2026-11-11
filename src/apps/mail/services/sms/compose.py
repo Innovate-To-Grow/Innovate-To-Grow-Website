@@ -2,7 +2,8 @@
 
 A link placeholder is filled only while links in SMS are allowed (Mail → SMS Settings); otherwise rendering raises
 ``LinksDisabled`` and nothing is sent. ``{{login_link}}`` and ``{{ticket_link}}`` sign the recipient in with one tap
-when personal sign-in links are on and the recipient is a member who may sign in that way; any other recipient gets
+when personal sign-in links are on, the recipient is a member who may sign in that way, and the text goes to that
+member's own verified phone; any other recipient gets
 the campaign's shared link to the sign-in page, which returns to the same page afterwards. ``{{event_link}}`` is the
 campaign's shared link to its event's registration page.
 """
@@ -15,7 +16,7 @@ from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_link_redi
 
 from ..campaign.personalize import personalize, uses_placeholder
 from .errors import LinksDisabled, SmsSendRefused
-from .links import Purpose, event_page_path, issue_personal_link, may_sign_in_by_sms, shared_link, sign_in_path
+from .links import Purpose, event_page_path, issue_personal_link, may_text_personal_link, shared_link, sign_in_path
 
 STOP_RE = re.compile(r"\bstop\b", re.IGNORECASE)
 # The names a preview or the composer's counter fills in (the same example the send preview shows).
@@ -53,15 +54,17 @@ class CampaignLinks:
         if not self.config.links_enabled:
             raise LinksDisabled()
         member = self._personal_member(recipient)
-        return {name: self._link(name, member) for name in self.used}
+        return {name: self._link(name, member, recipient.get("phone")) for name in self.used}
 
     def _personal_member(self, recipient):
+        """The member a personal link may sign in: only when the text goes to their own verified phone (a log
+        pointed at another member, or a registration-only or shared phone, gets the sign-in page link)."""
         if not self.config.personal_links_enabled or not recipient.get("member_id"):
             return None
         from apps.authn.models import Member
 
         member = Member.objects.filter(pk=recipient["member_id"]).first()
-        return member if may_sign_in_by_sms(member) else None
+        return member if may_text_personal_link(member, recipient.get("phone")) else None
 
     def _destination(self, name: str) -> str:
         if name == "ticket_link":
@@ -69,7 +72,7 @@ class CampaignLinks:
             return event_page_path(event) if event is not None else DEFAULT_LOGIN_REDIRECT_PATH
         return get_login_link_redirect_path(self.campaign)
 
-    def _link(self, name: str, member) -> str:
+    def _link(self, name: str, member, phone) -> str:
         days = self.campaign.link_validity_days
         if name == "event_link":
             if self.campaign.event is None:
@@ -79,7 +82,12 @@ class CampaignLinks:
         destination = self._destination(name)
         if member is not None:
             return issue_personal_link(
-                purpose=purpose, member=member, redirect_path=destination, validity_days=days, campaign=self.campaign
+                purpose=purpose,
+                member=member,
+                phone=phone,
+                redirect_path=destination,
+                validity_days=days,
+                campaign=self.campaign,
             )
         return self._shared_link(purpose, sign_in_path(destination), days)
 

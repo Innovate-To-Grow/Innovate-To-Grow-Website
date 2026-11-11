@@ -109,6 +109,27 @@ class SmsSettingsAdminTests(TestCase):
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False, FRONTEND_URL="https://i2g.example.edu")
+class PersonalLinksSwitchTests(TestCase):
+    def test_only_the_i2g_master_can_turn_personal_links_on(self):
+        make_admin(apps=["mail"], email="mail@example.com")
+        self.client.login(username="mail@example.com", password="testpass123")
+        change_url = reverse("admin:mail_smsconfig_change", args=[SmsConfig.load().pk])
+        page = self.client.get(change_url)
+        self.assertNotContains(page, 'name="personal_links_enabled"')
+        response = self.client.post(change_url, settings_form(personal_links_enabled="on", links_enabled="on"))
+        self.assertEqual(response.status_code, 302)
+        config = SmsConfig.load()
+        self.assertTrue(config.links_enabled)
+        self.assertFalse(config.personal_links_enabled)
+
+        make_superuser()
+        self.client.login(username="admin@example.com", password="testpass123")
+        self.assertContains(self.client.get(change_url), 'name="personal_links_enabled"')
+        self.client.post(change_url, settings_form(personal_links_enabled="on", links_enabled="on"))
+        self.assertTrue(SmsConfig.load().personal_links_enabled)
+
+
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=False, FRONTEND_URL="https://i2g.example.edu")
 class SmsSettingsAccessTests(TestCase):
     def test_only_mail_staff_reach_the_settings_and_the_qr_code(self):
         make_admin(apps=["cms"], email="cms@example.com")
@@ -230,7 +251,10 @@ class SmsRecordsAdminTests(TestCase):
 
     def test_sms_links_are_listed_without_their_tokens_and_can_be_revoked(self):
         member = make_member(email="ada@example.com")
-        url = links.issue_personal_link(purpose=links.Purpose.LOGIN, member=member, redirect_path="/", validity_days=1)
+        add_phone(member, "2095550101")
+        url = links.issue_personal_link(
+            purpose=links.Purpose.LOGIN, member=member, phone="+12095550101", redirect_path="/", validity_days=1
+        )
         token = url.rsplit("/", 1)[1]
         response = self.client.get(reverse("admin:mail_smslinktoken_changelist"))
         self.assertContains(response, "Personal sign-in")
@@ -244,7 +268,10 @@ class SmsRecordsAdminTests(TestCase):
 
     def test_a_links_status_follows_its_use_and_expiry(self):
         member = make_member(email="ada@example.com")
-        used = links.issue_personal_link(purpose=links.Purpose.LOGIN, member=member, redirect_path="/", validity_days=1)
+        add_phone(member, "2095550101")
+        used = links.issue_personal_link(
+            purpose=links.Purpose.LOGIN, member=member, phone="+12095550101", redirect_path="/", validity_days=1
+        )
         links.open_link(used.rsplit("/", 1)[1])
         expired = SmsLinkToken.objects.create(
             token_hash="e" * 64, purpose="event", redirect_path="/", expires_at=timezone.now() - timedelta(days=1)

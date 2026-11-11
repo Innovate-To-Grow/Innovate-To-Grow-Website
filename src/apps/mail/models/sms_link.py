@@ -5,7 +5,8 @@ random, expiring token with one purpose. The URL carries nothing but the token (
 table keeps only its SHA-256 digest. Two kinds:
 
 - **personal** (``member`` set): signs that member in once and lands on ``redirect_path``; issued per recipient,
-  only when personal sign-in links are on, never to staff;
+  only when personal sign-in links are on, never to staff, and only to a phone that is the member's own verified
+  account phone (``phone_digest``): opening it checks again that the member still has that phone;
 - **shared** (no member): one per campaign and purpose, sends everyone to ``redirect_path`` (the sign-in page with a
   return path, or the event page). It is no credential, so its plain token is kept to put it in every recipient's text.
 
@@ -39,6 +40,8 @@ class SmsLinkToken(ProjectControlModel):
         "event.EventRegistration", null=True, blank=True, on_delete=models.CASCADE, related_name="+"
     )
     redirect_path = models.CharField(max_length=200, editable=False)
+    # SHA-256 of the E.164 number a personal link was texted to (that member's own verified phone); empty otherwise.
+    phone_digest = models.CharField(max_length=64, blank=True, default="", editable=False)
     expires_at = models.DateTimeField(db_index=True)
     first_used_at = models.DateTimeField(null=True, blank=True)
     use_count = models.PositiveIntegerField(default=0)

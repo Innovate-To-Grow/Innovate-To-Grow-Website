@@ -202,7 +202,7 @@ class SmsCampaign(ProjectControlModel):
 
     def _clean_links(self):
         """Link placeholders only while links in SMS are allowed; ``{{event_link}}`` needs an event."""
-        from apps.mail.redirects import is_safe_internal_redirect_path
+        from apps.mail.redirects import is_strict_internal_path
         from apps.mail.services.campaign.personalize import uses_placeholder
 
         from .sms_config import SmsConfig
@@ -215,7 +215,7 @@ class SmsCampaign(ProjectControlModel):
         maximum = settings.SMS_POLICY["link_max_validity_days"]
         if not 1 <= (self.link_validity_days or 0) <= maximum:
             raise ValidationError({"link_validity_days": f"Choose 1 to {maximum} days."})
-        if not is_safe_internal_redirect_path(self.login_redirect_path):
+        if not is_strict_internal_path(self.login_redirect_path):
             raise ValidationError({"login_redirect_path": "Please select a valid internal destination."})
 
     def _clean_manual_phones(self):

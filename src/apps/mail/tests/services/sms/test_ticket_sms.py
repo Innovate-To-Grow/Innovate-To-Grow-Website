@@ -189,6 +189,16 @@ class TicketSmsJobTests(TicketSmsTestCase):
         link = SmsLinkToken.objects.get()
         self.assertEqual((link.member, link.redirect_path), (self.member, "/event-registration?event=fall-demo"))
 
+    @patch(SEND, return_value="msg-1")
+    def test_a_phone_verified_only_for_the_registration_never_gets_a_personal_link(self, _send):
+        # It may be someone else's phone (a family or lab phone): the link opens the sign-in page instead.
+        sms_settings(personal_links_enabled=True)
+        TicketSms.objects.filter(pk=self.record.pk).update(phone_number="+12095550199")
+        self.assertTrue(self.run_job())
+        link = SmsLinkToken.objects.get()
+        self.assertIsNone(link.member)
+        self.assertTrue(link.redirect_path.startswith("/login?returnTo="))
+
     @patch(SEND)
     def test_an_opted_out_number_is_never_texted(self, send):
         opt_out(PHONE)

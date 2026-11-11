@@ -10,7 +10,7 @@ from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken
 from apps.mail.services.sms import compose, estimate
 from apps.mail.services.sms.errors import LinksDisabled, SmsSendRefused
 
-from .policy_helpers import sms_settings
+from .policy_helpers import add_phone, sms_settings
 
 FOOTER = "Reply STOP to opt out."
 
@@ -43,6 +43,7 @@ class CampaignTextTests(TestCase):
     def setUp(self):
         self.event = make_event(name="Fall Demo", slug="fall-demo")
         self.member = make_member(email="ada@example.com", first_name="Ada")
+        add_phone(self.member, "2095550101")
 
     def campaign(self, message, **fields):
         return SmsCampaign.objects.create(message=message, audience_type="all_members", **fields)
@@ -92,6 +93,15 @@ class CampaignTextTests(TestCase):
             (personal.member, personal.redirect_path, personal.campaign), (self.member, "/account", campaign)
         )
         self.assertEqual(SmsLinkToken.objects.filter(member__isnull=True).count(), 1)
+
+    def test_a_text_to_a_phone_that_is_not_the_members_own_never_signs_them_in(self):
+        # A log pointed at another member, or a phone verified only for a registration, gets the sign-in page link.
+        config = sms_settings(links_enabled=True, personal_links_enabled=True)
+        campaign = self.campaign("{{login_link}}")
+        text = self.text(campaign, recipient(self.member, phone="+12095550199"), config)
+        self.assertFalse(SmsLinkToken.objects.filter(member__isnull=False).exists())
+        shared = SmsLinkToken.objects.get()
+        self.assertIn(shared.public_token, text)
 
     def test_a_ticket_link_without_an_event_lands_on_the_account(self):
         config = sms_settings(links_enabled=True, personal_links_enabled=True)

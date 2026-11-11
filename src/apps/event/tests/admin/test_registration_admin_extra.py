@@ -61,3 +61,39 @@ class RegistrationSaveModelTest(TestCase):
 
         registration.refresh_from_db()
         self.assertEqual(registration.attendee_first_name, original_name)
+
+
+class RevokeLoginLinksActionTest(TestCase):
+    """ "Revoke login links" also ends the registration's SMS ticket links (security review L4)."""
+
+    def setUp(self):
+        self.admin = EventRegistrationAdmin(EventRegistration, AdminSite())
+        self.factory = RequestFactory()
+        self.user = make_superuser(email="revoke-admin@example.com")
+        event = make_event(name="Revoke Event")
+        self.registration = make_registration(make_member(email="revoke-member@example.com"), event, make_ticket(event))
+
+    def test_ticket_email_and_ticket_text_links_are_revoked(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.mail.models import SmsLinkToken
+
+        live = SmsLinkToken.objects.create(
+            token_hash="a" * 64,
+            purpose="ticket",
+            registration=self.registration,
+            redirect_path="/account",
+            expires_at=timezone.now() + timedelta(days=3),
+        )
+        request = self.factory.post("/admin/")
+        request.user = self.user
+        request.session = "session"
+        request._messages = FallbackStorage(request)
+
+        self.admin.revoke_login_links_action(request, EventRegistration.objects.filter(pk=self.registration.pk))
+
+        live.refresh_from_db()
+        self.assertLessEqual(live.expires_at, timezone.now())
+        self.assertIn("Revoked 1 login link(s).", [str(message) for message in request._messages])

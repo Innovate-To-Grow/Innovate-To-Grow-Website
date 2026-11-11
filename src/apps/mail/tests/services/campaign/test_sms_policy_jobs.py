@@ -10,17 +10,19 @@ from django.test import override_settings
 from apps.core.models import BackgroundJob
 from apps.core.services.aws.sms_errors import SmsOptedOut
 from apps.core.services.background_jobs import claim_jobs, process_claimed_job
-from apps.mail.models import SmsCampaign, SmsRecipientLog
+from apps.event.tests.helpers import make_member
+from apps.mail.models import SmsCampaign, SmsLinkToken, SmsRecipientLog
 from apps.mail.models.sms_campaign import LINKS_OFF_MESSAGE
 from apps.mail.services.campaign.dispatch import (
     queue_sms_campaign,
     resolve_stale_delivery_job,
     resume_paused_sms_recipients,
 )
+from apps.mail.services.sms.links import open_link
 from apps.mail.services.sms.opt_outs import SKIPPED_MESSAGE
 from apps.mail.services.sms.quiet_hours import HELD_LOG_MESSAGE
 
-from ..sms.policy_helpers import QUIET_ENDS, QUIET_MOMENT, at, opt_out, sms_settings
+from ..sms.policy_helpers import QUIET_ENDS, QUIET_MOMENT, add_phone, at, opt_out, sms_settings
 from .durable_queue_helpers import DurableCampaignQueueTestCase, _provider_failure
 
 SEND = "apps.mail.services.campaign.dispatch.sms_job._send_via_sms"
@@ -129,6 +131,27 @@ class QueuedSmsPolicyTests(DurableCampaignQueueTestCase):
         self.assertTrue(message.startswith("Sign in: https://i2g.example.edu/l/"))
         self.assertTrue(message.endswith("\nReply STOP to opt out."))
         self.assertEqual(SmsRecipientLog.objects.get(campaign=campaign).status, "sent")
+
+    @override_settings(FRONTEND_URL="https://i2g.example.edu")
+    @patch(SEND, return_value="msg-1")
+    def test_a_log_pointed_at_another_member_never_texts_their_sign_in_link(self, send, _config):
+        """Security review H1: a log whose member was changed (the /admin-api/ CLI can write recipient logs) must not
+        text that member's one-tap sign-in link to the log's phone."""
+        sms_settings(links_enabled=True, personal_links_enabled=True)
+        victim = make_member(email="victim@example.com")
+        add_phone(victim, "2095550123")
+        campaign = SmsCampaign.objects.create(
+            name="Repoint", message="Hi {{login_link}}", audience_type="manual", manual_phones="+12095550199"
+        )
+        queue_sms_campaign(campaign, sent_by=self.sender)
+        SmsRecipientLog.objects.filter(campaign=campaign).update(member=victim)
+
+        self.assertTrue(process_claimed_job(claim_jobs()[0]))
+
+        self.assertEqual(send.call_args.kwargs["phone_number"], "+12095550199")
+        self.assertFalse(SmsLinkToken.objects.filter(member__isnull=False).exists())
+        token = send.call_args.kwargs["message"].split("/l/")[1].split()[0]
+        self.assertEqual(open_link(token).kind, "redirect")
 
     def test_resumed_recipients_in_quiet_hours_are_due_when_they_end(self, _config):
         campaign, log = self._queued_sms()

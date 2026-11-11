@@ -26,7 +26,7 @@ from apps.mail.models import SmsConfig, SmsLinkToken, TicketSms
 
 from ..campaign.personalize import personalize
 from .compose import apply_footer
-from .links import Purpose, issue_personal_link, issue_redirect_link, may_sign_in_by_sms, revoke_links, sign_in_path
+from .links import Purpose, issue_personal_link, issue_redirect_link, may_text_personal_link, revoke_links, sign_in_path
 from .opt_outs import SKIPPED_MESSAGE, is_opted_out, normalize_phone
 from .quiet_hours import HELD_LOG_MESSAGE, held_until, next_send_time
 
@@ -129,7 +129,7 @@ def deliver_ticket_sms(record: TicketSms, *, job=None) -> None:
         return _finish(record, Status.OPTED_OUT, SKIPPED_MESSAGE)
     links = SmsLinkToken.objects.filter(registration=record.registration, purpose=Purpose.TICKET)
     revoke_links(links)
-    body = ticket_text(record.registration, _ticket_link(record.registration, config), config)
+    body = ticket_text(record.registration, _ticket_link(record.registration, config, record.phone_number), config)
     TicketSms.objects.filter(pk=record.pk).update(attempts=F("attempts") + 1, updated_at=timezone.now())
     try:
         message_id = send_text_message(
@@ -158,15 +158,18 @@ def ticket_text(registration, link: str, config: SmsConfig) -> str:
     return apply_footer(personalize(config.ticket_sms_template, values), config)
 
 
-def _ticket_link(registration, config: SmsConfig) -> str:
+def _ticket_link(registration, config: SmsConfig, phone: str) -> str:
+    """A personal link when personal links are on and ``phone`` is the registrant's own verified account phone (a
+    phone verified only for this registration may be someone else's), else one that opens the sign-in page."""
     from apps.event.services.ticket.mail import ticket_login_redirect_path
 
     destination = ticket_login_redirect_path(registration)
     days = config.ticket_link_validity_days
-    if config.personal_links_enabled and may_sign_in_by_sms(registration.member):
+    if config.personal_links_enabled and may_text_personal_link(registration.member, phone):
         return issue_personal_link(
             purpose=Purpose.TICKET,
             member=registration.member,
+            phone=phone,
             redirect_path=destination,
             validity_days=days,
             registration=registration,

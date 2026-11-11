@@ -12,6 +12,8 @@ from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken
 from apps.mail.services.sms import links
 from apps.mail.services.sms.register_link import CACHE_KEY
 
+from ..services.sms.policy_helpers import add_phone
+
 LINK_URL = "/mail/sms-link/"
 REGISTER_URL = "/mail/register-link/"
 
@@ -26,11 +28,16 @@ class SmsLinkViewTests(TestCase):
         cache.clear()
         self.client = APIClient()
         self.member = make_member(email="ada@example.com", first_name="Ada", last_name="Lovelace")
+        add_phone(self.member, "2095550101")
 
     def personal(self, redirect_path="/subscribe"):
         return token_of(
             links.issue_personal_link(
-                purpose=links.Purpose.LOGIN, member=self.member, redirect_path=redirect_path, validity_days=3
+                purpose=links.Purpose.LOGIN,
+                member=self.member,
+                phone="+12095550101",
+                redirect_path=redirect_path,
+                validity_days=3,
             )
         )
 
@@ -115,7 +122,7 @@ class RegisterLinkViewTests(TestCase):
         self.assertEqual(self.client.get(REGISTER_URL).data, {"path": "/event-registration?event=fall-demo"})
 
     def test_a_stored_value_that_is_not_a_safe_page_falls_back(self):
-        for stored in ("//evil.example", "/register", "/register/?x=1", "https://evil.example"):
+        for stored in ("//evil.example", "/\\evil.example", "/register", "/register/?x=1", "https://evil.example"):
             with self.subTest(stored=stored):
                 cache.clear()
                 SmsConfig.objects.filter(pk=SmsConfig.load().pk).update(register_redirect_path=stored)

@@ -384,7 +384,9 @@ What staff need to know before texting people (full detail: [AWS SMS](../integra
   more than doubles the number of segments.
 - **Links** (`{{login_link}}`, `{{ticket_link}}`, `{{event_link}}`) and **ticket texts for phone-only
   registrants** are **off** until the sending number's 10DLC or toll-free registration is confirmed to allow
-  embedded links. While they are off, a message with a link placeholder cannot be saved or sent.
+  embedded links. While they are off, a message with a link placeholder cannot be saved or sent. One-tap
+  **personal sign-in links** are a separate switch that only the I2G Master can turn on; even then a link signs a
+  member in only when it is texted to that member's own verified phone.
 - **Short /register link**: SMS Settings shows the QR code for `/register` (SVG and PNG) and where it leads (by
   default the sign-in page, which takes an email address or a phone number).
 
