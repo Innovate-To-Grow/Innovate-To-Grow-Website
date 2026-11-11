@@ -14,7 +14,7 @@ from apps.mail.models import SmsCampaign, SmsLinkToken
 from apps.mail.redirects import is_strict_internal_path
 from apps.mail.services.sms import links
 
-from .policy_helpers import add_phone
+from .policy_helpers import add_phone, sms_settings
 
 PHONE = "+12095550101"
 
@@ -74,6 +74,8 @@ class StrictPathTests(SimpleTestCase):
 @override_settings(FRONTEND_URL="https://i2g.example.edu")
 class IssueAndOpenTests(TestCase):
     def setUp(self):
+        # Personal links sign in only while links in SMS and personal sign-in links are on (both off by default).
+        sms_settings(links_enabled=True, personal_links_enabled=True)
         self.member = make_member(email="ada@example.com", first_name="Ada")
         self.phone = add_phone(self.member, "2095550101")
         self.campaign = SmsCampaign.objects.create(message="Hi {{login_link}}", audience_type="all_members")
@@ -217,6 +219,25 @@ class IssueAndOpenTests(TestCase):
             validity_days=1,
         )
         self.assertEqual(sorted(SmsLinkToken.objects.values_list("redirect_path", flat=True)), ["/account", "/login"])
+
+    def test_turning_personal_links_off_stops_the_ones_already_texted(self):
+        url = links.issue_personal_link(
+            purpose=links.Purpose.LOGIN, member=self.member, phone=PHONE, redirect_path="/subscribe", validity_days=3
+        )
+        token = token_of(url)
+        for switches in ({"personal_links_enabled": False}, {"links_enabled": False, "personal_links_enabled": True}):
+            with self.subTest(switches=switches):
+                sms_settings(**{"links_enabled": True, **switches})
+                opened = links.open_link(token)
+                # It opens the sign-in page, returning to its page, and signs nobody in.
+                self.assertEqual((opened.kind, opened.member), ("redirect", None))
+                self.assertEqual(opened.redirect_to, "/login?returnTo=/subscribe")
+        row = SmsLinkToken.objects.get()
+        self.assertIsNone(row.first_used_at)
+        self.assertEqual(row.use_count, 0)
+        # Turned on again before it expires, it signs its member in (once), as when it was texted.
+        sms_settings(links_enabled=True, personal_links_enabled=True)
+        self.assertEqual(links.open_link(token).kind, "sign_in")
 
     def test_revoking_expires_only_live_links(self):
         url = links.issue_personal_link(

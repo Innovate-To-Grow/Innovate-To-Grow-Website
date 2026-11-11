@@ -12,7 +12,7 @@ from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken
 from apps.mail.services.sms import links
 from apps.mail.services.sms.register_link import CACHE_KEY
 
-from ..services.sms.policy_helpers import add_phone
+from ..services.sms.policy_helpers import add_phone, sms_settings
 
 LINK_URL = "/mail/sms-link/"
 REGISTER_URL = "/mail/register-link/"
@@ -27,6 +27,7 @@ class SmsLinkViewTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
+        sms_settings(links_enabled=True, personal_links_enabled=True)
         self.member = make_member(email="ada@example.com", first_name="Ada", last_name="Lovelace")
         add_phone(self.member, "2095550101")
 
@@ -56,6 +57,17 @@ class SmsLinkViewTests(TestCase):
         self.assertEqual(again.status_code, 400)
         self.assertEqual((again.data["code"], again.data["redirect_to"]), ("already_used", "/subscribe"))
         self.assertNotIn(token, "\n".join(logs.output))
+
+    def test_with_personal_links_turned_off_it_answers_the_sign_in_page_without_a_session(self):
+        token = self.personal()
+        sms_settings(personal_links_enabled=False)
+
+        response = self.client.post(LINK_URL, {"token": token}, format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data, {"kind": "redirect", "redirect_to": "/login?returnTo=/subscribe"})
+        self.assertEqual(response["Cache-Control"], "no-store")
+        self.assertIsNone(SmsLinkToken.objects.get().first_used_at)
 
     def test_a_stale_bearer_header_never_turns_it_into_a_401(self):
         self.client.credentials(HTTP_AUTHORIZATION="Bearer not-a-real-token")

@@ -9,7 +9,8 @@ inactive member.
 
 A personal link reaches no further than signing in with a code texted to the same number would: it is issued only
 when the number it is texted to is the member's own verified account phone, and opening it checks that the member
-still has that phone (``phone_digest``). Any other recipient gets a link that opens the sign-in page. Destinations
+still has that phone (``phone_digest``) and that personal sign-in links are still on (turned off, it only opens the
+sign-in page). Any other recipient gets a link that opens the sign-in page. Destinations
 must pass ``is_strict_internal_path`` (the SPA's own rule). Opening a link is limited by the request limiter's
 ``auth-email-link`` scope.
 """
@@ -28,7 +29,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.authn.models import ContactPhone
-from apps.mail.models import SmsLinkToken
+from apps.mail.models import SmsConfig, SmsLinkToken
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, is_strict_internal_path
 
 from .opt_outs import US_REGION, normalize_phone, us_national_digits
@@ -70,6 +71,14 @@ def sign_in_path(destination: str) -> str:
         return SIGN_IN_PATH
     path = f"{SIGN_IN_PATH}?returnTo={quote(destination, safe='/')}"
     return path if len(path) <= 200 else SIGN_IN_PATH
+
+
+def personal_sign_in_on() -> bool:
+    """Whether personal SMS sign-in links may sign anyone in right now (Mail → SMS Settings): links in SMS and
+    personal sign-in links both on. Checked again when a link is opened, so turning either off stops the ones already
+    texted too."""
+    config = SmsConfig.load()
+    return bool(config.links_enabled and config.personal_links_enabled)
 
 
 def may_sign_in_by_sms(member) -> bool:
@@ -200,6 +209,10 @@ def open_link(token: str) -> Opened:
             use_count=F("use_count") + 1, first_used_at=Coalesce("first_used_at", now), updated_at=now
         )
         return Opened("redirect", redirect_to=link.redirect_path)
+    if not personal_sign_in_on():
+        # Personal sign-in links (or links in SMS) were turned off after this one was texted: it signs nobody in now
+        # and opens the sign-in page, which returns to its page (it stays unused).
+        return Opened("redirect", redirect_to=sign_in_path(link.redirect_path))
     claimed = SmsLinkToken.objects.filter(pk=link.pk, first_used_at__isnull=True, expires_at__gt=now).update(
         first_used_at=now, use_count=F("use_count") + 1, updated_at=now
     )

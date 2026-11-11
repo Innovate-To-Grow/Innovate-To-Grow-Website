@@ -2,7 +2,7 @@
 
 ``POST /mail/sms-link/`` exchanges the token of an ``/l/<token>`` link the SPA opened (``{"token": "..."}``). A
 personal link signs its member in once (the same payload as the emailed login link, plus ``kind: "sign_in"``); any
-other link answers ``kind: "redirect"``. Both carry ``redirect_to``, an internal path. A rejection is a 400 with the
+other link, and a personal one while personal sign-in links are off, answers ``kind: "redirect"``. Both carry ``redirect_to``, an internal path. A rejection is a 400 with the
 login link's codes (``token_required``, ``invalid_link``, ``expired``, ``already_used``); it never says whose link it
 was. It is limited by the request limiter's P0 ``auth-email-link`` scope like the emailed login link: the 128-bit token
 is the control, and campus users share one public IP.

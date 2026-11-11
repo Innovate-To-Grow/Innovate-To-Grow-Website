@@ -267,6 +267,7 @@ class SmsRecordsAdminTests(TestCase):
         self.assertEqual(links.open_link(token).code, "expired")
 
     def test_a_links_status_follows_its_use_and_expiry(self):
+        sms_settings(links_enabled=True, personal_links_enabled=True)
         member = make_member(email="ada@example.com")
         add_phone(member, "2095550101")
         used = links.issue_personal_link(

@@ -132,6 +132,8 @@ With **Allow links in SMS** on, a Broadcast SMS may use:
     still has that verified phone, so a number removed from the account or moved to someone else stops working.
 
   Anyone else gets the shared link, which opens the sign-in page (email or phone) and returns to the same page.
+  Turning **Personal sign-in links** (or **Allow links in SMS**) off also stops the personal links already texted:
+  while it is off, opening one only opens the sign-in page, and the link stays unused until it expires.
 - Destinations must pass `is_strict_internal_path` (`apps/mail/redirects.py`), the SPA's own rule: one leading
   slash, no backslash, space or control character, no encoded slash, backslash or line break.
 - Opening one: the SPA moves the token out of the address at start-up (`/l/<token>` → `/l`), then posts it to
