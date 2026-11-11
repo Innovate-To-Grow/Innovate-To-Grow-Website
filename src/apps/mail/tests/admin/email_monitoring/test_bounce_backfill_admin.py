@@ -4,6 +4,7 @@ messages and the admin history. No scan is queued or run, and Microsoft Graph is
 
 import re
 from datetime import UTC, datetime, timedelta
+from unittest.mock import patch
 
 from django.contrib.admin.models import LogEntry
 from django.core.cache import cache
@@ -19,6 +20,7 @@ from apps.core.models import (
     MicrosoftGraphProviderConfig,
 )
 from apps.core.services.email.bounces import state
+from apps.core.services.email.inbound import InboxReader
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.email_monitoring.helpers import SENDER, monitoring_settings
 from apps.event.tests.helpers import make_admin, make_superuser
@@ -413,3 +415,76 @@ class CardTests(BackfillTestCase):
         response = self.client.get(self.overview)
 
         self.assertContains(response, DISABLED_RESCAN)
+
+
+READERS = "apps.mail.services.email_monitoring.health.inbox_readers"
+INTAKE_URL = "/admin/helpdesk/helpdesksettings/#helpdesk-intake"
+
+
+class CadenceTests(BackfillTestCase):
+    """The card says how often the Inbox is really read: the bounce scan's own cadence, from the code that schedules
+    it, and every other app that lists the same Inbox on its own schedule (through core's inbox-reader registry)."""
+
+    def card(self):
+        return self.client.get(self.overview)
+
+    def test_the_interval_is_the_one_scans_follow_with_the_catch_up(self):
+        with monitoring_settings(bounce_scan_interval_seconds=600):
+            response = self.card()
+
+        self.assertEqual(
+            (response.context["health"]["bounces"]["every"], response.context["health"]["bounces"]["catch_up"]),
+            ("10 min", "2 min"),
+        )
+        self.assertContains(
+            response, "<dt>Interval</dt><dd>every 10 min; every 2 min while catching up</dd>", html=False
+        )
+        self.assertNotContains(response, " min min")
+
+    def test_an_interval_that_is_not_whole_minutes_is_shown_exactly(self):
+        with monitoring_settings(bounce_scan_interval_seconds=90):
+            response = self.card()
+
+        # 90 s used to read "every 1 min"; catching up is no sooner than that, so it is not repeated.
+        self.assertContains(response, "<dt>Interval</dt><dd>every 90 s</dd>", html=False)
+
+    def test_a_scan_counts_as_recent_against_the_real_interval(self):
+        # The interval is never under a minute, so a scan two minutes ago is recent with a 5-second setting.
+        EmailMonitorState.objects.filter(mailbox=SENDER).update(
+            last_run_finished_at=self.now - timedelta(minutes=2), last_success_at=self.now - timedelta(minutes=2)
+        )
+        with monitoring_settings(bounce_scan_interval_seconds=5):
+            self.assertEqual(health.bounce_processing()["level"], "ok")
+        EmailMonitorState.objects.filter(mailbox=SENDER).update(last_success_at=self.now - timedelta(minutes=4))
+        with monitoring_settings(bounce_scan_interval_seconds=5):
+            self.assertEqual(health.bounce_processing()["level"], "warning")
+
+    def test_other_readers_of_the_inbox_are_listed_with_their_own_cadence(self):
+        readers = [
+            InboxReader("Helpdesk intake", "paused", 120, INTAKE_URL),
+            InboxReader("Another reader", "running", 3600),
+        ]
+        with patch(READERS, return_value=readers):
+            response = self.card()
+
+        self.assertEqual(
+            response.context["health"]["bounces"]["other_readers"],
+            [
+                {"label": "Helpdesk intake", "every": "2 min", "state": "paused", "url": INTAKE_URL},
+                {"label": "Another reader", "every": "1 h", "state": "", "url": ""},
+            ],
+        )
+        self.assertContains(response, "This card controls bounce processing only")
+        self.assertContains(
+            response, f'<a href="{INTAKE_URL}">Helpdesk intake</a>, every 2 min (paused); Another reader, every 1 h.'
+        )
+
+    def test_reader_states_are_named_and_no_line_without_other_readers(self):
+        for state_name, label in (("off", "switched off"), ("inactive", "not active"), ("running", "")):
+            with self.subTest(state=state_name), patch(READERS, return_value=[InboxReader("Intake", state_name, 120)]):
+                self.assertEqual(health.other_readers()[0]["state"], label)
+
+        with patch(READERS, return_value=[]):
+            response = self.card()
+
+        self.assertNotContains(response, "This card controls bounce processing only")

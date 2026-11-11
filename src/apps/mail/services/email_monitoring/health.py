@@ -2,7 +2,10 @@
 bounds of its "Rescan since" and first-scan lookback controls).
 
 Nothing here contacts Microsoft: the bounce processor's readiness is the same local check its scans start with
-(configuration, mailbox allow-list, mailbox scope), and its last outcome is what its state row recorded.
+(configuration, mailbox allow-list, mailbox scope), and its last outcome is what its state row recorded. The cadence
+comes from the functions that schedule the scans, and every other app that lists the same Inbox on its own schedule
+(the helpdesk's intake) is listed with its own cadence, through ``core``'s inbox-reader registry, so the card always
+says how often the mailbox is really read.
 """
 
 from datetime import timedelta
@@ -13,11 +16,15 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob, EmailMonitorState
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND, active_reader
 from apps.core.services.email.bounces import state as bounce_state
+from apps.core.services.email.bounces.jobs import catch_up_seconds, interval_seconds
+from apps.core.services.email.inbound import format_interval, inbox_readers
 
 from .scope import monitoring_began
 
 # A scan older than this many intervals means the scans have stopped (most likely the background worker is down).
 STALE_INTERVALS = 3
+# How the card names another reader's state ("running" needs no word).
+READER_STATES = {"paused": "paused", "off": "switched off", "inactive": "not active"}
 
 
 def _level(state: EmailMonitorState | None, *, active: bool, now) -> str:
@@ -29,7 +36,7 @@ def _level(state: EmailMonitorState | None, *, active: bool, now) -> str:
         return "paused"
     if state.consecutive_failures:
         return "error"
-    stale_after = timedelta(seconds=STALE_INTERVALS * settings.EMAIL_MONITORING["bounce_scan_interval_seconds"])
+    stale_after = timedelta(seconds=STALE_INTERVALS * interval_seconds())
     if state.last_success_at is None or now - state.last_success_at > stale_after:
         return "warning"
     return "ok"
@@ -56,10 +63,26 @@ def bounce_processing() -> dict:
         "stats": (state.last_run_stats if state else {}) or {},
         "next_scan_at": next_job,
         "level": _level(state, active=reader is not None, now=now),
-        "interval_minutes": max(1, settings.EMAIL_MONITORING["bounce_scan_interval_seconds"] // 60),
+        **cadence(),
+        "other_readers": other_readers(),
         "scan_running": bool(state and state.lease_until and state.lease_until >= now),
         "backfill": backfill(state, now),
     }
+
+
+def cadence() -> dict:
+    """The bounce scan's real cadence: ``every`` (the interval) and ``catch_up`` (how soon a scan that stopped at its
+    budget is followed; empty when that is no sooner)."""
+    interval, catch_up = interval_seconds(), catch_up_seconds()
+    return {"every": format_interval(interval), "catch_up": format_interval(catch_up) if catch_up < interval else ""}
+
+
+def other_readers() -> list[dict]:
+    """The other apps that list the same Inbox on their own schedule (the helpdesk's intake), as the card shows them."""
+    return [
+        {"label": reader.label, "every": reader.every, "state": READER_STATES.get(reader.state, ""), "url": reader.url}
+        for reader in inbox_readers()
+    ]
 
 
 def backfill(state: EmailMonitorState | None, now) -> dict:

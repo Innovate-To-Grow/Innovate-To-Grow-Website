@@ -13,8 +13,11 @@
     <div><dt>Last successful scan</dt><dd>{% if bp.state.last_success_at %}{{ bp.state.last_success_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
     <div><dt>Checkpoint</dt><dd>{% if bp.state.checkpoint_at %}{{ bp.state.checkpoint_at|date:"M j, H:i" }}{% else %}–{% endif %}</dd></div>
     <div><dt>Next scan</dt><dd>{% if bp.next_scan_at %}{{ bp.next_scan_at|date:"M j, H:i" }}{% else %}not queued{% endif %}{% if bp.state.next_run_after %} (Microsoft asked to wait until {{ bp.state.next_run_after|date:"H:i" }}){% endif %}</dd></div>
-    <div><dt>Interval</dt><dd>every {{ bp.interval_minutes }} min</dd></div>
+    <div><dt>Interval</dt><dd>every {{ bp.every }}{% if bp.catch_up %}; every {{ bp.catch_up }} while catching up{% endif %}</dd></div>
   </dl>
+  {% if bp.other_readers %}
+    <p class="i2g-monitor-muted">This card controls bounce processing only: its Pause, Rescan since and lookback never change how other apps read this Inbox. Also reading it, on their own schedule and with their own controls: {% for reader in bp.other_readers %}{% if reader.url %}<a href="{{ reader.url }}">{{ reader.label }}</a>{% else %}{{ reader.label }}{% endif %}, every {{ reader.every }}{% if reader.state %} ({{ reader.state }}){% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}.</p>
+  {% endif %}
   {% if bp.problem %}
     <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ bp.problem }}</p>
   {% elif bp.state.consecutive_failures %}
