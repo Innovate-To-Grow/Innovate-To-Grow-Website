@@ -121,6 +121,10 @@ def _apply_instruction_sheet(workbook):
         ("", "Username is auto-generated from the primary email address"),
         ("", "A random password is generated unless a default is specified"),
         ("", "Existing members can be updated if matched by primary email and updates are enabled"),
+        ("", "Updates never delete anything: a blank cell or a missing column keeps the stored value"),
+        ("", "A new Secondary Email or Phone Number is added next to the member's existing ones, unverified"),
+        ("", "An import never re-subscribes or un-verifies an address, or activates/deactivates an existing member"),
+        ("", "TRUE/FALSE columns accept TRUE, FALSE, Yes or No; any other text is ignored"),
         ("", "'Last Updated' and 'Primary Expired' are informational only"),
     ]
     for row, (col1, col2) in enumerate(instructions, 1):

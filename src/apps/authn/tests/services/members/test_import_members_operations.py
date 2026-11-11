@@ -1,10 +1,10 @@
-"""Direct coverage for import_members.operations.update_single_member."""
+"""Direct coverage for import_.operations.update_single_member: one row applied to one existing member."""
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail, ContactPhone
-from apps.authn.services.members.import_.operations import update_single_member
+from apps.authn.services.members.import_.operations import STAFF_COLUMN_IGNORED, update_single_member
 
 Member = get_user_model()
 
@@ -29,6 +29,7 @@ def _parsed(**overrides):
         "phone_number": None,
         "phone_subscribed": False,
         "phone_verified": False,
+        "notes": [],
     }
     base.update(overrides)
     return base
@@ -52,27 +53,48 @@ class UpdateSingleMemberTests(TestCase):
             is_active=True,
             is_staff=True,
         )
-        update_single_member(
-            self.member,
-            parsed,
-            claimed_contact_emails=set(),
-            claimed_phones=set(),
-            allow_privilege_fields=True,
-        )
+        notes = update_single_member(self.member, parsed, allow_privilege_fields=True)
         self.member.refresh_from_db()
         self.assertEqual(self.member.middle_name, "Quincy")
         self.assertEqual(self.member.title, "Engineer")
         self.assertEqual(self.member.organization, "Acme")
         self.assertTrue(self.member.is_staff)
+        self.assertEqual(notes, [])
 
     def test_is_staff_is_ignored_without_the_privilege_flag(self):
         """The Staff column is an I2G Master field; the export/re-import round trip must not grant it."""
         parsed = _parsed(is_staff=True)
 
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+        notes = update_single_member(self.member, parsed)
 
         self.member.refresh_from_db()
         self.assertFalse(self.member.is_staff)
+        self.assertEqual(notes, [STAFF_COLUMN_IGNORED])
+
+    def test_unchanged_staff_column_is_not_reported(self):
+        """An export carries Staff on every row; a value that changes nothing is not a note."""
+        notes = update_single_member(self.member, _parsed(is_staff=False))
+
+        self.assertEqual(notes, [])
+
+    def test_only_the_changed_fields_are_written(self):
+        """The instance is loaded before the rows run; a full save would undo an admin's change made meanwhile."""
+        stale = Member.objects.get(pk=self.member.pk)
+        Member.objects.filter(pk=self.member.pk).update(is_active=False, title="Set by an admin")
+
+        update_single_member(stale, _parsed(organization="Acme"))
+
+        self.member.refresh_from_db()
+        self.assertFalse(self.member.is_active)
+        self.assertEqual(self.member.title, "Set by an admin")
+        self.assertEqual(self.member.organization, "Acme")
+
+    def test_a_row_that_changes_nothing_writes_nothing(self):
+        before = Member.objects.get(pk=self.member.pk).updated_at
+
+        update_single_member(self.member, _parsed(first_name="Old", primary_verified=None, primary_subscribed=None))
+
+        self.assertEqual(Member.objects.get(pk=self.member.pk).updated_at, before)
 
     def test_absent_flag_columns_preserve_the_stored_values(self):
         """A sheet without the verified/subscribed columns must not de-verify the primary email."""
@@ -81,7 +103,7 @@ class UpdateSingleMemberTests(TestCase):
         self.primary.save(update_fields=["verified", "subscribe"])
         parsed = _parsed(primary_verified=None, primary_subscribed=None)
 
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+        update_single_member(self.member, parsed)
 
         self.primary.refresh_from_db()
         self.assertTrue(self.primary.verified)
@@ -91,17 +113,23 @@ class UpdateSingleMemberTests(TestCase):
         ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US")
         parsed = _parsed(phone_number=None)  # no has_phone_column key at all
 
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+        notes = update_single_member(self.member, parsed)
 
         self.assertEqual(self.member.contact_phones.count(), 1)
+        self.assertEqual(notes, [])
 
-    def test_blank_cell_in_a_present_phone_column_clears_the_phone(self):
-        ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US")
+    def test_blank_cell_in_a_present_phone_column_keeps_the_phone(self):
+        """Used to hard-delete every phone (a phone-only member's only way to sign in)."""
+        ContactPhone.objects.create(member=self.member, phone_number="2095551234", region="1-US", verified=True)
         parsed = _parsed(phone_number=None, has_phone_column=True)
 
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+        notes = update_single_member(self.member, parsed)
 
-        self.assertEqual(self.member.contact_phones.count(), 0)
+        phone = ContactPhone.objects.get(member=self.member)
+        self.assertEqual(phone.phone_number, "2095551234")
+        self.assertTrue(phone.verified)
+        self.assertEqual(len(notes), 1)
+        self.assertIn("Phone Number is blank; kept +12095551234", notes[0])
 
     def test_absent_secondary_column_does_not_delete_secondary_emails(self):
         ContactEmail.objects.create(
@@ -109,39 +137,60 @@ class UpdateSingleMemberTests(TestCase):
         )
         parsed = _parsed(secondary_email=None)
 
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+        update_single_member(self.member, parsed)
 
         self.assertEqual(self.member.contact_emails.filter(email_type="secondary").count(), 1)
 
-    def test_primary_email_updated_when_not_claimed(self):
-        # Empty claimed set -> takes the "update existing primary contact" branch (lines 63-68).
+    def test_primary_flags_apply_in_the_safe_direction(self):
+        """TRUE verifies (as "Mark verified" does) and FALSE unsubscribes (an opt-out)."""
         parsed = _parsed(primary_verified=True, primary_subscribed=False)
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
+
+        notes = update_single_member(self.member, parsed)
+
         self.primary.refresh_from_db()
         self.assertTrue(self.primary.verified)
         self.assertFalse(self.primary.subscribe)
+        self.assertEqual(notes, [])
 
-    def test_primary_email_created_when_member_has_none(self):
-        # Member with no primary contact -> create branch (lines 70-76).
+    def test_primary_email_is_never_created_for_a_member_without_it(self):
+        """The import matched the member by this address; it never creates or re-types a primary email."""
         bare = Member.objects.create_user(password="StrongPass123!", first_name="No", last_name="Email")
         parsed = _parsed(primary_email="fresh@example.com")
-        update_single_member(bare, parsed, claimed_contact_emails=set(), claimed_phones=set())
-        self.assertTrue(ContactEmail.objects.filter(member=bare, email_type="primary").exists())
 
-    def test_secondary_email_existing_updated(self):
-        # Pre-existing record with the same address -> existing_sec update branch (lines 95-98).
+        update_single_member(bare, parsed)
+
+        self.assertFalse(ContactEmail.objects.filter(email_address="fresh@example.com").exists())
+        self.assertFalse(ContactEmail.objects.filter(member=bare).exists())
+
+    def test_existing_other_email_named_as_secondary_is_left_alone(self):
+        """Roles and flags of an address the member already has are not changed by the Secondary cells."""
         ContactEmail.objects.create(
             member=self.member, email_address="sec@example.com", email_type="other", verified=False
         )
         parsed = _parsed(secondary_email="sec@example.com", secondary_verified=True)
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
-        sec = ContactEmail.objects.get(member=self.member, email_address="sec@example.com")
-        self.assertEqual(sec.email_type, "secondary")
-        self.assertTrue(sec.verified)
 
-    def test_phone_existing_updated(self):
-        ContactPhone.objects.create(member=self.member, phone_number="2095550000", region="1-US")
+        notes = update_single_member(self.member, parsed)
+
+        sec = ContactEmail.objects.get(member=self.member, email_address="sec@example.com")
+        self.assertEqual(sec.email_type, "other")
+        self.assertFalse(sec.verified)
+        self.assertEqual(
+            notes, ['Secondary Email sec@example.com is already this member\'s "other" email; left as it is']
+        )
+
+    def test_new_phone_is_added_next_to_the_existing_one(self):
+        """Used to overwrite the first phone in place, keeping its "verified" flag for the new number."""
+        old = ContactPhone.objects.create(member=self.member, phone_number="2095550000", region="1-US", verified=True)
         parsed = _parsed(phone_number="+12095559999")
-        update_single_member(self.member, parsed, claimed_contact_emails=set(), claimed_phones=set())
-        phone = ContactPhone.objects.get(member=self.member)
-        self.assertEqual(phone.phone_number, "2095559999")
+
+        notes = update_single_member(self.member, parsed)
+
+        old.refresh_from_db()
+        self.assertEqual(old.phone_number, "2095550000")
+        self.assertTrue(old.verified)
+        new = ContactPhone.objects.get(member=self.member, phone_number="2095559999")
+        self.assertFalse(new.verified)
+        self.assertEqual(
+            notes,
+            ["Added +12095559999 as an additional phone number; kept +12095550000 (an import never replaces a number)"],
+        )

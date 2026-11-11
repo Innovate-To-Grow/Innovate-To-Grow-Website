@@ -63,6 +63,19 @@ HEADER_MAP = {
     "company": "organization",
     "org": "organization",
 }
+# The TRUE/FALSE columns, by the key ``normalize_header`` maps them to, with the header an admin sees.
+FLAG_COLUMNS = {
+    "is_active": "Active",
+    "is_staff": "Staff",
+    "primary_verified": "Primary Verified",
+    "primary_subscribed": "Primary Subscribed",
+    "secondary_verified": "Secondary Verified",
+    "secondary_subscribed": "Secondary Subscribed",
+    "phone_subscribed": "Phone Subscribed",
+    "phone_verified": "Phone Verified",
+}
+TRUE_TEXT = frozenset({"true", "yes", "y", "1", "active"})
+FALSE_TEXT = frozenset({"false", "no", "n", "0", "inactive"})
 DATE_FORMATS = [
     "%Y-%m-%d %I:%M %p",
     "%Y-%m-%d %I:%M:%S %p",
@@ -87,12 +100,22 @@ def normalize_header(header: str) -> str:
     return HEADER_MAP.get(str(header).strip().lower(), str(header).strip().lower())
 
 
-def parse_boolean(value) -> bool:
+def parse_flag(value) -> bool | None:
+    """Read a TRUE/FALSE cell: True, False, or None for a blank cell and for text that is neither.
+
+    Unrecognised text ("N/A", "x", "?") used to count as FALSE, which un-verified or unsubscribed contacts on a
+    typo. Now it counts as blank, which leaves the stored value alone.
+    """
     if isinstance(value, bool):
         return value
-    if value is None:
+    if isinstance(value, int | float):
+        return {1: True, 0: False}.get(value)
+    text = str(value).strip().lower() if value is not None else ""
+    if text in TRUE_TEXT:
+        return True
+    if text in FALSE_TEXT:
         return False
-    return str(value).strip().lower() in ("true", "yes", "1", "y", "active")
+    return None
 
 
 def parse_date(value):
@@ -130,21 +153,27 @@ def clean_phone(value) -> str | None:
     return f"+{digits_only}"
 
 
-def optional_flag(row_data: dict, key: str) -> bool | None:
+def optional_flag(row_data: dict, key: str, notes: list[str] | None = None) -> bool | None:
     """Return the boolean in ``key``, or None when the sheet does not supply one.
 
-    ``parse_boolean(None)`` is ``False``, so reading these columns unconditionally turned "this sheet
-    has no Primary Verified column" into "set verified=False" — which de-verified the primary email of
-    every matched member and locked them out of every login path. Only ``is_active``/``is_staff`` got
-    this guard originally; every flag needs it.
+    A missing column, a blank cell and unrecognised text all give None, which keeps the stored value. Reading these
+    columns as FALSE instead turned "this sheet has no Primary Verified column" into "set verified=False", which
+    de-verified the primary email of every matched member and locked them out of every login path. Unrecognised
+    text is reported in ``notes``.
     """
     value = row_data.get(key)
-    return parse_boolean(value) if value is not None else None
+    flag = parse_flag(value)
+    if flag is None and notes is not None and str(value if value is not None else "").strip():
+        notes.append(f"{FLAG_COLUMNS[key]} cell {str(value).strip()!r} is not TRUE or FALSE; it was ignored")
+    return flag
 
 
 def parse_row(row_num: int, row_data: dict) -> dict:
     primary_email = str(row_data.get("primary_email", "")).strip() if row_data.get("primary_email") else None
     secondary_email = str(row_data.get("secondary_email", "")).strip() if row_data.get("secondary_email") else None
+    # What the row's cells could not say: reported only if the row is imported.
+    notes: list[str] = []
+    flags = {key: optional_flag(row_data, key, notes) for key in FLAG_COLUMNS}
     return {
         "row": row_num,
         "primary_email": primary_email,
@@ -153,20 +182,14 @@ def parse_row(row_num: int, row_data: dict) -> dict:
         "middle_name": str(row_data.get("middle_name", "")).strip() if row_data.get("middle_name") else "",
         "title": str(row_data.get("title", "")).strip() if row_data.get("title") else "",
         "organization": str(row_data.get("organization", "")).strip() if row_data.get("organization") else "",
-        "is_active": optional_flag(row_data, "is_active"),
-        "is_staff": optional_flag(row_data, "is_staff"),
         "date_joined": parse_date(row_data.get("when_started")),
-        "primary_verified": optional_flag(row_data, "primary_verified"),
-        "primary_subscribed": optional_flag(row_data, "primary_subscribed"),
         "secondary_email": secondary_email,
-        "secondary_verified": optional_flag(row_data, "secondary_verified"),
-        "secondary_subscribed": optional_flag(row_data, "secondary_subscribed"),
         "phone_number": clean_phone(row_data.get("phone_number")),
-        "phone_subscribed": optional_flag(row_data, "phone_subscribed"),
-        "phone_verified": optional_flag(row_data, "phone_verified"),
-        # Header presence, not cell content: a column that is present but blank still means "clear
-        # this", while a column the sheet omits entirely must leave the stored records alone. Without
-        # the distinction a partial-update sheet hard-deleted every phone and secondary email.
+        **flags,
+        # Header presence, not cell content. Neither a blank cell nor a missing column deletes anything; a blank
+        # cell in a column the sheet has is reported, so whoever expected the old "blank clears it" behaviour sees
+        # what was kept.
         "has_secondary_email_column": "secondary_email" in row_data,
         "has_phone_column": "phone_number" in row_data,
+        "notes": notes,
     }

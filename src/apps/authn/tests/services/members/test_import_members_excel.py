@@ -236,7 +236,8 @@ class ImportMembersExcelTests(TestCase):
         self.assertFalse(ContactEmail.objects.filter(member=member, email_address="attacker@example.net").exists())
         self.assertTrue(any("permission" in error for error in result.errors))
 
-    def test_update_existing_replaces_phone_and_clears_secondary(self):
+    def test_update_existing_keeps_the_secondary_and_adds_the_new_phone(self):
+        # A blank Secondary cell and a different phone used to delete the secondary and overwrite the phone.
         member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")
         ContactEmail.objects.create(
             member=member, email_address="repl@example.com", email_type="primary", verified=True
@@ -245,7 +246,6 @@ class ImportMembersExcelTests(TestCase):
             member=member, email_address="oldsec@example.com", email_type="secondary", verified=True
         )
         ContactPhone.objects.create(member=member, phone_number="2095550000", region="1-US")
-        # Import with no secondary email and a new phone -> secondary deleted, phone replaced
         workbook = self._build_full_workbook(
             [
                 ["repl@example.com", "New", "Name", "", "+12095557777", "Org"],
@@ -255,17 +255,19 @@ class ImportMembersExcelTests(TestCase):
         member.refresh_from_db()
         self.assertTrue(result.success)
         self.assertEqual(result.updated_count, 1)
-        self.assertFalse(ContactEmail.objects.filter(member=member, email_type="secondary").exists())
+        self.assertEqual(member.first_name, "New")
+        self.assertTrue(ContactEmail.objects.filter(member=member, email_address="oldsec@example.com").exists())
         self.assertTrue(ContactPhone.objects.filter(member=member, phone_number="2095557777").exists())
-        self.assertFalse(ContactPhone.objects.filter(member=member, phone_number="2095550000").exists())
+        self.assertTrue(ContactPhone.objects.filter(member=member, phone_number="2095550000").exists())
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.warnings), 2)
+        self.assertIn("Row 2: Secondary Email is blank; kept oldsec@example.com", result.warnings[0])
+        self.assertIn("Row 2: Added +12095557777 as an additional phone number; kept +12095550000", result.warnings[1])
 
     def test_update_existing_member_not_resolved_is_skipped(self):
-        # The primary ContactEmail exists (so the row is routed to update), but the
-        # row's email only matches a *secondary* contact -> member_map lookup misses
-        # -> bulk_update_members skips it (operations.py lines 30-32).
+        # The address exists (so the row is routed to update), but only as a *secondary* contact: rows match
+        # members by primary email only, so it is skipped -- and the message says whose secondary it is.
         member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")
-        # Primary contact under a DIFFERENT casing-insensitive address so the
-        # existing_emails set sees it (routes to update), but it is stored as secondary.
         ContactEmail.objects.create(
             member=member, email_address="ghost@example.com", email_type="secondary", verified=True
         )
@@ -273,9 +275,13 @@ class ImportMembersExcelTests(TestCase):
 
         result = import_members_from_excel(workbook, update_existing=True)
 
-        # No primary-type contact matched -> member_map miss -> skipped.
         self.assertEqual(result.updated_count, 0)
         self.assertEqual(result.skipped_count, 1)
+        self.assertEqual(len(result.errors), 1)
+        self.assertIn("no member has ghost@example.com as their primary email", result.errors[0])
+        self.assertIn(f"it is the secondary email of Old Name (member {member.pk})", result.errors[0])
+        member.refresh_from_db()
+        self.assertEqual(member.first_name, "Old")
 
     def test_update_single_member_error_is_recorded(self):
         member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")

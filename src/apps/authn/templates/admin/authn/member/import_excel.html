@@ -64,8 +64,13 @@
                         class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">TRUE</code> / <code
                         class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">FALSE</code> or <code
                         class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">yes</code> / <code
-                        class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">no</code></li>
+                        class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">no</code>; any other text is ignored</li>
                 <li>Existing members (matched by primary email) are skipped unless "Update Existing" is enabled</li>
+                <li><strong>Updates never delete anything:</strong> a blank cell or a missing column keeps the stored
+                    value, and a new secondary email or phone number is added next to the existing ones</li>
+                <li>An import never re-subscribes or un-verifies an address, and never activates or deactivates an
+                    existing member. Addresses and numbers added to an existing member start unverified</li>
+                <li>Every skipped row, and every cell that was not applied, is listed below with the reason</li>
                 <li><strong>Last Updated</strong> and <strong>Primary Expired</strong> columns are accepted but not stored</li>
             </ul>
         </div>
@@ -95,17 +100,37 @@
                             <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Errors</div>
                         </div>
                     {% endif %}
+                    {% if result.warnings %}
+                        <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center">
+                            <div class="text-2xl font-bold text-primary-600 dark:text-primary-400">{{ result.warnings|length }}</div>
+                            <div class="text-xs text-font-subtle-light dark:text-font-subtle-dark mt-1">Notes</div>
+                        </div>
+                    {% endif %}
                 </div>
 
                 {% if result.errors %}
-                    <div class="border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 rounded-default p-4">
+                    <div class="border border-yellow-300 dark:border-yellow-700 bg-yellow-50 dark:bg-yellow-900/30 rounded-default p-4 mb-4">
                         <div class="flex items-center gap-2 mb-2">
                             <span class="material-symbols-outlined text-yellow-600 dark:text-yellow-400 !text-[20px]">warning</span>
-                            <span class="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Error Details</span>
+                            <span class="text-sm font-semibold text-yellow-800 dark:text-yellow-300">Not imported, and why</span>
                         </div>
                         <ul class="list-disc list-inside text-sm text-yellow-800 dark:text-yellow-300">
                             {% for error in result.errors %}
-                                <li>{{ error }}</li>
+                                <li>{{ error }}{% if error.member_id %} <a href="{% url 'admin:authn_member_change' error.member_id %}" target="_blank" rel="noopener" class="underline font-medium">Open member</a>{% endif %}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% endif %}
+
+                {% if result.warnings %}
+                    <div class="border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800 rounded-default p-4">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="material-symbols-outlined text-primary-600 dark:text-primary-400 !text-[20px]">info</span>
+                            <span class="text-sm font-semibold text-font-default-light dark:text-font-default-dark">Imported, with notes: what was kept or not applied</span>
+                        </div>
+                        <ul class="list-disc list-inside text-sm text-font-default-light dark:text-font-default-dark">
+                            {% for note in result.warnings %}
+                                <li>{{ note }}{% if note.member_id %} <a href="{% url 'admin:authn_member_change' note.member_id %}" target="_blank" rel="noopener" class="underline font-medium">Open member</a>{% endif %}</li>
                             {% endfor %}
                         </ul>
                     </div>

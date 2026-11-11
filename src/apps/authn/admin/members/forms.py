@@ -234,10 +234,10 @@ class MemberImportForm(forms.Form):
 
     excel_file = forms.FileField(
         label="Excel File",
-        help_text="Upload a .xlsx or .xls format Excel file",
+        help_text="Upload an Excel workbook in .xlsx format",
         widget=forms.FileInput(
             attrs={
-                "accept": ".xlsx,.xls",
+                "accept": ".xlsx",
                 "class": _file_classes,
             }
         ),
@@ -259,16 +259,22 @@ class MemberImportForm(forms.Form):
         label="Update Existing Members",
         required=False,
         initial=False,
-        help_text="If a member with the same primary email already exists, update their info instead of skipping",
+        help_text=(
+            "If a row's Primary Email is an existing member's primary email, update that member instead of skipping "
+            "the row. Nothing is deleted: blank cells keep the stored values."
+        ),
     )
 
     def clean_excel_file(self):
         """Validate the uploaded file."""
         file = self.cleaned_data.get("excel_file")
         if file:
-            # Check file extension
-            if not file.name.endswith((".xlsx", ".xls")):
-                raise forms.ValidationError("Please upload a .xlsx or .xls format file")
+            # openpyxl reads only the .xlsx format; an old .xls workbook used to fail later with a bare
+            # "Error creating members".
+            if not file.name.lower().endswith(".xlsx"):
+                raise forms.ValidationError(
+                    "Please upload an .xlsx file. Older .xls workbooks can't be read: save the file as .xlsx first."
+                )
 
             # Check file size (max 5MB)
             if file.size > 5 * 1024 * 1024:
