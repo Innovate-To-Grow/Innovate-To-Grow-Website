@@ -23,7 +23,7 @@
     <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">warning</span>No scan has succeeded recently. Check that the background worker (itg-background-worker) is running.</p>
   {% endif %}
   {% if bp.stats %}
-    <p class="i2g-monitor-muted">Last scan: {{ bp.stats.listed|default:0 }} messages listed, {{ bp.stats.candidates|default:0 }} bounce candidates, {{ bp.stats.opened|default:0 }} opened, {{ bp.stats.bounces|default:0 }} new bounce records ({{ bp.stats.matched|default:0 }} matched), {{ bp.stats.duplicates|default:0 }} duplicates skipped.</p>
+    <p class="i2g-monitor-muted">Last scan: {{ bp.stats.listed|default:0 }} messages listed, {{ bp.stats.candidates|default:0 }} bounce candidates ({{ bp.stats.already_processed|default:0 }} already recorded), {{ bp.stats.opened|default:0 }} opened, {{ bp.stats.bounces|default:0 }} new bounce records ({{ bp.stats.matched|default:0 }} matched), {{ bp.stats.duplicates|default:0 }} duplicates skipped.</p>
   {% endif %}
   {% if bp.enabled and bp.mailbox %}
   <div class="i2g-monitor-actions">

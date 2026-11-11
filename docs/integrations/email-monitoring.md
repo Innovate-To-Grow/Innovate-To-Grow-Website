@@ -221,6 +221,11 @@ Dashboard; the controls are POST with CSRF. The telemetry tables are denied to t
   heuristically and may be recorded as "Unknown delivery status".
 - **Reports must reach the Inbox.** A report moved out of the Inbox before a scan (by an Outlook rule or a
   person) is not seen. Only the Inbox is read.
+- **A very dense Inbox stalls catch-up.** A scan lists at most `bounce_scan_max_pages` × `bounce_scan_page_size`
+  messages (each page repeats the previous page's last one) and starts 15 minutes before its checkpoint, so if
+  more than about 490 messages arrived within 15 minutes, later scans cannot get past that window. That is far
+  above this mailbox's traffic (sends are paced at 30 a minute); raise `bounce_scan_max_pages` if it ever happens,
+  for example during a large **Rescan since**.
 - **Multi-recipient inference uses the first recipient.** An inferred match compares the report's recipient
   with the email's first recipient; Cc'd recipients of JSON sends are matched only exactly.
 - **History.** Emails sent before monitoring began are not in the telemetry and nothing is reconstructed.
@@ -248,4 +253,4 @@ Dashboard; the controls are POST with CSRF. The telemetry tables are denied to t
 | Many unmatched bounce reports | Reports about mail staff sent from Outlook, mail sent before monitoring began, or ambiguous JSON sends. |
 | An attempt "Interrupted: outcome unknown" | The process stopped mid-send (deploy, crash); treat as possibly sent. |
 | "A scan of … is running, so the checkpoint was not moved" | Wait for the scan to finish (the card shows "running now"; at most `bounce_lease_seconds`), then rescan again. |
-| A rescan reads nothing new | The reports were already recorded (see the last scan's "duplicates skipped" / candidates), or they were deleted or moved out of the Inbox. |
+| A rescan reads nothing new | The reports were already recorded (the card's last scan counts them as "already recorded" or "duplicates skipped"), or they were deleted or moved out of the Inbox. |

@@ -196,6 +196,28 @@ class RescanAndScanTests(StateTestCase):
         self.assertEqual((again.stats["bounces"], again.stats["duplicates"]), (0, 1))
         self.assertEqual(EmailBounce.objects.count(), 1)
 
+    def test_a_backlog_longer_than_one_scan_is_read_page_by_page_over_several_scans(self):
+        # A rescan far back can list more than one scan may read: each scan stops at its page budget with the
+        # checkpoint at what it processed, and the next continues from there (less the overlap) until it catches up.
+        start = self.now - timedelta(days=5)
+        inbox = [
+            listed(f"m-{i}", subject="Hello", sender="person@example.com", received=start + timedelta(minutes=20 * i))
+            for i in range(7)
+        ]
+        reader = FakeReader(inbox, {})
+        state.rescan_since(SENDER, self.now - timedelta(days=6), now=self.now)
+
+        outcomes, checkpoints = [], []
+        with monitoring_settings(bounce_scan_page_size=2, bounce_scan_max_pages=2):
+            for _scan in range(4):
+                outcomes.append(self.scan(reader, self.now).status)
+                checkpoints.append(self.row().checkpoint_at)
+
+        self.assertEqual(outcomes, ["partial", "partial", "partial", "ok"])
+        received = [start + timedelta(minutes=20 * i) for i in (2, 4, 6)]
+        self.assertEqual(checkpoints, [*received, self.now])
+        self.assertEqual(reader.opened, [])  # none of them looked like a report
+
     def test_a_rescan_saved_just_before_the_scan_takes_the_lease_is_where_it_starts(self):
         # The scan reads its checkpoint once it holds the lease, so a rescan that lands after the scan first looked at
         # the state, but before it took the lease, is neither missed nor overwritten.

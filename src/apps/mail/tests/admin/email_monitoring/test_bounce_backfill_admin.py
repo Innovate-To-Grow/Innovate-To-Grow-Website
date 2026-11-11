@@ -383,6 +383,15 @@ class CardTests(BackfillTestCase):
         self.assertEqual(backfill["latest_input"], local_input(now))
         self.assertEqual((backfill["lookback_hours"], backfill["lookback_custom"]), (72, False))
 
+    def test_the_last_scan_says_how_many_reports_were_already_recorded(self):
+        # After a rescan, reports read again are skipped without being opened: the card counts them.
+        stats = {"listed": 40, "candidates": 12, "already_processed": 12, "opened": 0, "bounces": 0, "duplicates": 0}
+        EmailMonitorState.objects.filter(mailbox=SENDER).update(last_run_stats=stats)
+
+        response = self.client.get(self.overview)
+
+        self.assertContains(response, "12 bounce candidates (12 already recorded), 0 opened, 0 new bounce records")
+
     def test_a_running_scan_shows_on_the_card(self):
         state.acquire_lease(SENDER, timezone.now())
 
