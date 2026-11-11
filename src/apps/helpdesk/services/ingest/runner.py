@@ -10,6 +10,7 @@ the time Microsoft asked for (without spending an attempt). Nothing is ever sent
 
 import logging
 import time
+import traceback
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -78,6 +79,14 @@ def run(settings: HelpdeskSettings | None = None) -> RunOutcome:
     return outcome
 
 
+def _origin(exc: BaseException) -> str:
+    """``module:line`` of the innermost frame ``exc`` was raised from (no message text, for the log line)."""
+    origin = "?"
+    for frame, line in traceback.walk_tb(exc.__traceback__):
+        origin = f"{frame.f_globals.get('__name__', '?')}:{line}"
+    return origin
+
+
 def _read_limit(settings: HelpdeskSettings) -> int:
     return max(1, min(int(settings.message_max_bytes), int(django_settings.GRAPH_INBOX_MESSAGE_MAX_BYTES)))
 
@@ -116,7 +125,9 @@ def _process(row: InboundMessage, reader, settings: HelpdeskSettings, own: froze
         classified = classify_message(parsed, mailbox=reader.mailbox, settings=settings)
         stored = store(row, parsed, classified, settings, own=own)
     except Exception as exc:  # noqa: BLE001 - one bad message must not stop the queue: it is retried, then listed.
-        logger.exception("Helpdesk could not import an inbound message (%s)", type(exc).__name__)
+        # The type and where it was raised, never the exception's text or traceback: those can quote the message (a
+        # database error's detail, a parser's complaint), and the logs would keep it unscrubbed and past retention.
+        logger.error("Helpdesk could not import an inbound message (%s at %s)", type(exc).__name__, _origin(exc))
         error = f"Could not be imported ({type(exc).__name__})."
         outcome.failed += int(consume.retry(row, error, max_attempts=int(settings.max_attempts)))
         return

@@ -108,13 +108,18 @@ class RunnerTests(TestCase):
 
         with (
             patch("apps.helpdesk.services.ingest.runner.store", side_effect=ValueError("secret detail")),
-            self.assertLogs("apps.helpdesk.services.ingest.runner", level="ERROR"),
+            self.assertLogs("apps.helpdesk.services.ingest.runner", level="ERROR") as logs,
         ):
             ingest(self.reader)
 
         row.refresh_from_db()
         self.assertEqual((row.status, row.last_error), (Status.PENDING, "Could not be imported (ValueError)."))
         self.assertFalse(Ticket.objects.exists())
+        # The log names the type and where it was raised, never the text (it can quote the message) or a traceback.
+        (record,) = logs.records
+        self.assertIn("ValueError at unittest.mock:", record.getMessage())
+        self.assertNotIn("secret detail", record.getMessage())
+        self.assertIsNone(record.exc_info)
 
     def test_microsofts_throttle_ends_the_run_and_refunds_the_attempt(self):
         busy = queue(graph_id="busy", received=timezone.now() - timedelta(minutes=9))
