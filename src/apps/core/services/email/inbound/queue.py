@@ -36,7 +36,8 @@ def record(mailbox: str, message: dict, received_at: datetime, *, candidate: boo
     sender = (message.get("from") or {}).get("emailAddress") or {}
     values = {
         "folder": folder,
-        "internet_message_id": text.message_id(message.get("internetMessageId"))[:255],
+        # A NUL (which PostgreSQL text cannot hold) would make the row impossible to record, and the message be missed.
+        "internet_message_id": text.message_id(str(message.get("internetMessageId") or "").replace("\x00", ""))[:255],
         "conversation_id": text.clean(message.get("conversationId"), 255),
         "received_at": received_at,
         "from_address": text.address(sender.get("address"))[:254],

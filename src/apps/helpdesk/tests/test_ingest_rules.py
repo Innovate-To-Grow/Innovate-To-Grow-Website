@@ -380,6 +380,18 @@ class EdgeTests(TestCase):
         self.assertLessEqual(len(ticket.subject), 255)
         self.assertLessEqual(len(ticket.requester_name), 255)
 
+    def test_nul_characters_never_keep_a_message_out_of_the_queue(self):
+        # PostgreSQL text and JSON cannot hold NUL: before they were dropped, such a message failed every attempt.
+        raw = corpus.forwarded(inner_text="quoted\x00text").replace(b"<fwd-1@", b"<fwd-1\x00@", 1)
+        raw = raw.replace(b"Please see below;", b"Please see\x00 below;", 1)
+
+        ticket = receive(raw, reader=self.reader, internet_message_id="")
+
+        message = ticket.messages.get()
+        self.assertEqual(message.internet_message_id, "<fwd-1@mail.example.org>")
+        self.assertIn("Please see below;", message.body_text)
+        self.assertEqual(message.attached_messages[0]["text"].strip(), "quotedtext")
+
     def test_a_message_without_a_sender_still_becomes_a_ticket(self):
         raw = b"Subject: no sender\r\nMessage-ID: <nosender@x>\r\n\r\nhello"
 

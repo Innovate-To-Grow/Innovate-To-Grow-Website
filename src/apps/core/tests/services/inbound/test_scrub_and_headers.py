@@ -84,6 +84,15 @@ class HeaderTests(SimpleTestCase):
         self.assertEqual(len(headers["references"][0]), 16 * mime.LIMIT)
         self.assertEqual(len(mime.message_ids(mime.joined(headers, "references"))), 1)
 
+    def test_nul_characters_are_dropped_from_header_values(self):
+        # PostgreSQL text cannot hold NUL: a Message-ID carrying one would make the message impossible to store.
+        raw = b"From: a@example.org\r\nMessage-ID: <m1\x00x@example.org>\r\nReferences: <r\x001@x> <r2@x>\r\n\r\nbody"
+
+        headers = mime.header_map(mime.parse(raw))
+
+        self.assertEqual(headers["message-id"], ["<m1x@example.org>"])
+        self.assertEqual(mime.message_ids(mime.joined(headers, "references")), ["<r1@x>", "<r2@x>"])
+
     def test_at_most_max_headers_are_kept(self):
         raw = b"".join(b"X-Filler-%d: v\r\n" % index for index in range(500)) + b"\r\nbody"
 

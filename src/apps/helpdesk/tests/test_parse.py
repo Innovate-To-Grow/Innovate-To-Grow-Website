@@ -1,5 +1,6 @@
 """Reading raw MIME into a message: envelope, bodies, attachments, attached messages, and hostile or cut-off input."""
 
+import base64
 from datetime import UTC, datetime
 
 from django.test import SimpleTestCase
@@ -62,6 +63,19 @@ class BodyTests(SimpleTestCase):
 
         self.assertEqual(parsed.text, "")
         self.assertIn("out of the office", parsed.text_head())
+
+    def test_nul_characters_are_dropped_so_the_message_can_be_stored(self):
+        # PostgreSQL text cannot hold NUL; a UTF-16 part labelled as plain text decodes to a NUL after every letter.
+        raw = (
+            b"From: a@example.org\r\nMessage-ID: <n\x00ul@x>\r\nContent-Type: text/plain\r\n"
+            b"Content-Transfer-Encoding: base64\r\n\r\n" + base64.encodebytes("Hello from a person".encode("utf-16-le"))
+        )
+
+        parsed = parse(raw)
+
+        self.assertEqual((parsed.text, parsed.message_id), ("Hello from a person", "<nul@x>"))
+        html = parse(corpus.message(text="plain\x00text", html="<p>rich\x00text</p>"))
+        self.assertEqual((html.text, html.html), ("plaintext\n", "<p>richtext</p>\n"))
 
     def test_unknown_charsets_and_bad_bytes_are_decoded_with_replacements(self):
         raw = b"From: a@example.org\r\nContent-Type: text/plain; charset=x-unknown\r\n\r\ncaf\xe9"

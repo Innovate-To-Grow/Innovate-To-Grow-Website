@@ -131,6 +131,12 @@ class RecordTests(TestCase):
         self.assertEqual((stored.internet_message_id, stored.from_address), ("", ""))
         self.assertNotIn("\x00", stored.from_name)
 
+    def test_a_nul_in_the_message_id_does_not_keep_the_message_out(self):
+        # PostgreSQL text cannot hold NUL: kept, it would make the insert fail and the scan move past the message.
+        self.assertTrue(record(SITE, listed(internetMessageId="<m1\x00@example.org>"), self.received, candidate=False))
+
+        self.assertEqual(InboundMessage.objects.get().internet_message_id, "<m1@example.org>")
+
     def test_a_row_recorded_by_another_process_meanwhile_is_not_an_error(self):
         record(SITE, listed(), self.received, candidate=False)
         with patch("apps.core.services.email.inbound.queue.InboundMessage.objects.filter") as lookup:

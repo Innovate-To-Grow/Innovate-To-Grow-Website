@@ -82,7 +82,8 @@ def add_note(ticket: Ticket, *, actor, body: str) -> TicketMessage:
             author=actor,
             from_name=_name(actor)[:255],
             occurred_at=now,
-            body_text=scrub_links(body.strip())[:NOTE_MAX_CHARS],
+            # NUL cannot be stored in PostgreSQL text; a pasted one is dropped rather than failing the save.
+            body_text=scrub_links(body.replace("\x00", "").strip())[:NOTE_MAX_CHARS],
         )
         events.record(ticket, Kind.NOTE, actor=actor)
         Ticket.objects.filter(pk=ticket.pk).update(last_activity_at=now, updated_at=now)

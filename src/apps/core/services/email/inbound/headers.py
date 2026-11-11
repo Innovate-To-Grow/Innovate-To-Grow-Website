@@ -3,7 +3,8 @@
 Anyone can mail the mailbox, so the input is hostile: messages are parsed with the ``compat32`` policy (headers stay
 plain strings until read), at most ``MAX_HEADERS`` headers are kept, and every value is cut to 998 characters
 (RFC 5322's line limit; ``References`` and address lists get a few lines more) before it is decoded or parsed, so the
-work stays linear in the input, as in the bounce report parser.
+work stays linear in the input, as in the bounce report parser. NUL characters are dropped: PostgreSQL text cannot
+hold them, so a Message-ID carrying one would make the message impossible to store.
 """
 
 import email
@@ -36,7 +37,7 @@ def header_map(message) -> dict[str, list[str]]:
     for name, value in message.items()[:MAX_HEADERS]:
         key = str(name).strip().lower()[:100]
         limit = _LONG_LIMIT if key in _LONG_HEADERS else LIMIT
-        headers.setdefault(key, []).append(str(value)[:limit])
+        headers.setdefault(key, []).append(str(value)[:limit].replace("\x00", ""))
     return headers
 
 

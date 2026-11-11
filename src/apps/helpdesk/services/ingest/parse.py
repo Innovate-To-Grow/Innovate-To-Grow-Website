@@ -5,7 +5,9 @@ parsing, every value cut to 998 characters before it is decoded); the MIME tree 
 parts and ``MAX_DEPTH`` levels (a message is marked ``incomplete`` past them); each text part is decoded from at most
 ``TEXT_PART_MAX_BYTES``; attached messages (forwards, the original inside a bounce report) are read to a summary of
 their headers and text, never kept as raw bytes, and their own attachments are ignored. A message cut off at the
-read limit (``truncated``) keeps what was read. Nothing here touches the database.
+read limit (``truncated``) keeps what was read. NUL characters are dropped from every text read (headers, bodies,
+part headers): PostgreSQL text cannot hold them, and a body that has some (a UTF-16 part labelled as another charset
+is full of them) must still become a ticket. Nothing here touches the database.
 """
 
 import hashlib
@@ -206,12 +208,12 @@ class _Walker:
 
 def _header(part, name: str) -> str:
     value = part.get(name)
-    return str(value)[: mime.LIMIT] if value is not None else ""
+    return str(value)[: mime.LIMIT].replace("\x00", "") if value is not None else ""
 
 
 def _content_type(part) -> str:
     try:
-        return str(part.get_content_type()).lower()[:127]
+        return str(part.get_content_type()).lower().replace("\x00", "")[:127]
     except _PART_ERRORS:
         return "application/octet-stream"
 
@@ -253,4 +255,4 @@ def _decode_text(part) -> str:
         decoded = payload.decode(charset, errors="replace")
     except _PART_ERRORS:
         decoded = payload.decode("utf-8", errors="replace")
-    return decoded.replace("\r\n", "\n").replace("\r", "\n")
+    return decoded.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")

@@ -138,6 +138,12 @@ class StaffActionTests(TestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.last_activity_at, note.occurred_at)
 
+    def test_a_pasted_nul_character_is_dropped_instead_of_failing_the_save(self):
+        note = tickets.add_note(self.ticket, actor=self.agent, body="Called\x00 them.")
+
+        note.refresh_from_db()
+        self.assertEqual(note.body_text, "Called them.")
+
     def test_bulk_status_assignment_and_read(self):
         other = new_ticket(unread=True)
 
