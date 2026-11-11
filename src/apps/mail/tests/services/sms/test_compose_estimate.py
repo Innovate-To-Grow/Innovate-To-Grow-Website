@@ -9,6 +9,7 @@ from apps.event.tests.helpers import make_event, make_member, make_superuser
 from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken
 from apps.mail.services.sms import compose, estimate
 from apps.mail.services.sms.errors import LinksDisabled, SmsSendRefused
+from apps.mail.services.sms.ticket import ticket_text
 
 from .policy_helpers import add_phone, sms_settings
 
@@ -32,6 +33,43 @@ class FooterTests(TestCase):
         self.assertEqual(compose.apply_footer("Text STOP to quit", config), "Text STOP to quit")
         self.assertEqual(compose.apply_footer("Reply stop.", config), "Reply stop.")
         self.assertEqual(compose.apply_footer("We stopped by", config), f"We stopped by\n{FOOTER}")
+
+    def test_only_an_opt_out_instruction_counts_as_saying_stop(self):
+        # A plain "stop" tells nobody how to opt out: those texts still get the footer.
+        config = SmsConfig.load()
+        for text in (
+            "Stop by our booth at the Expo!",
+            "STOP BY BOOTH 5",
+            "Meet at the bus stop",
+            "Don't reply, stop by instead",
+            "Stop Motion Workshop: your ticket is ready",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(compose.apply_footer(text, config), f"{text}\n{FOOTER}")
+        for text in (
+            'Reply "STOP" to unsubscribe',
+            "Reply with STOP to end",
+            "txt stop to quit",
+            "Send STOP",
+            "Reply HELP for help, STOP to cancel.",
+            "STOP to opt-out",
+            "Msg rates may apply. reply stop to opt out.",
+        ):
+            with self.subTest(text=text):
+                self.assertEqual(compose.apply_footer(text, config), text)
+
+    def test_a_custom_footer_already_in_the_text_is_not_repeated(self):
+        config = sms_settings(footer_text="Opt out: STOP=end")
+        self.assertEqual(compose.apply_footer("Hi. Opt out: stop=end", config), "Hi. Opt out: stop=end")
+        self.assertEqual(compose.apply_footer("Stop by!", config), "Stop by!\nOpt out: STOP=end")
+
+    def test_ticket_texts_follow_the_same_rule(self):
+        # The default ticket template carries the event's name, which may say "stop".
+        event = make_event(name="Stop Motion Workshop", slug="stop-motion")
+        member = make_member(email="ticket-holder@example.com", first_name="Ada")
+        registration = type("Registration", (), {"attendee_first_name": "Ada", "member": member, "event": event})()
+        text = ticket_text(registration, "https://i2g.example.edu/l/token", SmsConfig.load())
+        self.assertTrue(text.endswith(f"\n{FOOTER}"))
 
     def test_staff_can_turn_it_off(self):
         config = sms_settings(footer_enabled=False)

@@ -71,8 +71,10 @@ number) and `sms-voice:DescribeOptedOutNumbers`. Without the second, every run i
 ## Opt-out footer
 
 **Add the opt-out footer** (on by default) appends **Opt-out footer** ("Reply STOP to opt out.") on its own line to
-each Broadcast SMS and ticket text that does not already say STOP. The footer must say STOP, and should use plain
-GSM-7 characters only: one curly quote or emoji makes the whole text UCS-2, which halves what a segment holds.
+each Broadcast SMS and ticket text that does not already tell people how to opt out: an instruction such as "Reply
+STOP", "Text STOP to quit" or "STOP to opt out", or the footer itself. A plain "stop" ("Stop by our booth") is no
+instruction, so that text still gets the footer. The footer must say STOP, and should use plain GSM-7 characters only:
+one curly quote or emoji makes the whole text UCS-2, which halves what a segment holds.
 Sign-in and verification codes use their own template (Notification Delivery), unchanged.
 
 ## Quiet hours

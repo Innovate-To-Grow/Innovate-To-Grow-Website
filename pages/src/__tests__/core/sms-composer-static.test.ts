@@ -69,6 +69,19 @@ describe('sms-composer.js', () => {
     expect(compose('Hi  ', {...SETTINGS, footer: ''})).toBe('Hi  ');
   });
 
+  it('adds the footer unless the text already says how to opt out, as compose.py does', () => {
+    const {compose} = composer();
+    // A plain "stop" tells nobody how to opt out.
+    for (const text of ['Stop by our booth!', 'STOP BY BOOTH 5', 'Meet at the bus stop', "Don't reply, stop by"]) {
+      expect(compose(text, SETTINGS)).toBe(`${text}\nReply STOP to opt out.`);
+    }
+    for (const text of ['Reply "STOP" to unsubscribe', 'Reply with STOP to end', 'txt stop to quit', 'STOP to opt-out']) {
+      expect(compose(text, SETTINGS)).toBe(text);
+    }
+    // The footer itself, in any letter case, is not repeated.
+    expect(compose('Hi. Opt out: stop=end', {...SETTINGS, footer: 'Opt out: STOP=end'})).toBe('Hi. Opt out: stop=end');
+  });
+
   it('says what the text costs, and warns about UCS-2 and links that are off', () => {
     const {describe: describeText} = composer();
     const plain = describeText('Hello', SETTINGS);

@@ -18,7 +18,14 @@ from ..campaign.personalize import personalize, uses_placeholder
 from .errors import LinksDisabled, SmsSendRefused
 from .links import Purpose, event_page_path, issue_personal_link, may_text_personal_link, shared_link, sign_in_path
 
-STOP_RE = re.compile(r"\bstop\b", re.IGNORECASE)
+# An opt-out instruction the text already gives ("Reply STOP", "text stop to quit", "Send STOP", "STOP to opt out").
+# A plain "stop" ("Stop by our booth", "the bus stop") tells nobody how to opt out, so such a text still gets the
+# footer. ``mail/js/sms-composer.js`` uses the same pattern for its live count.
+OPT_OUT_RE = re.compile(
+    r"\b(?:reply|text|txt|send|respond)(?:\s+(?:with|back))?\s+[\"'“‘]?stop\b"
+    r"|\bstop\s+to\s+(?:opt[\s-]?out|unsubscribe|end|quit|cancel)\b",
+    re.IGNORECASE,
+)
 # The names a preview or the composer's counter fills in (the same example the send preview shows).
 EXAMPLE_NAMES = {"first_name": "Hongzhe", "last_name": "Xie", "full_name": "Hongzhe Xie"}
 
@@ -27,10 +34,16 @@ def links_used(*texts) -> tuple[str, ...]:
     return tuple(name for name in SMS_LINK_PLACEHOLDERS if uses_placeholder(name, *texts))
 
 
+def says_how_to_opt_out(text: str, footer: str) -> bool:
+    """Whether ``text`` already tells people how to opt out: an opt-out instruction, or the footer itself."""
+    return bool(OPT_OUT_RE.search(text)) or (bool(footer) and footer.lower() in text.lower())
+
+
 def apply_footer(text: str, config: SmsConfig) -> str:
-    """``text`` with the opt-out footer on a new line, unless it is off or the text already says STOP."""
+    """``text`` with the opt-out footer on a new line, unless it is off or the text already tells people how to opt
+    out (``says_how_to_opt_out``)."""
     footer = (config.footer_text or "").strip()
-    if not config.footer_enabled or not footer or STOP_RE.search(text):
+    if not config.footer_enabled or not footer or says_how_to_opt_out(text, footer):
         return text
     return f"{text.rstrip()}\n{footer}"
 

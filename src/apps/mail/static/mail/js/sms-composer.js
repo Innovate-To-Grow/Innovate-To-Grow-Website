@@ -3,7 +3,7 @@
  *
  * It measures the text as it will be sent (apps/mail/services/sms/compose.py): example names, every link placeholder
  * as long as a real link, line breaks as the form submits them (CR LF), and the opt-out footer unless the message
- * already says STOP. The count follows apps/core/services/delivery_rates/rules/sms_parts.py (GSM 03.38): 160 GSM-7
+ * already tells people how to opt out ("Reply STOP"). The count follows apps/core/services/delivery_rates/rules/sms_parts.py (GSM 03.38): 160 GSM-7
  * characters fit one text and 153 each part once it is split, an extension character takes two; any other character
  * makes the whole text UCS-2, 70 per text and 67 per part. The settings come from #sms-composer-settings.
  */
@@ -17,7 +17,13 @@
   var GSM_BASIC = '@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&\'()*+,-./0123456789:;<=>?' +
     '¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà';
   var GSM_EXTENSION = '\f^{}\\[~]|€';
-  var STOP_RE = /\bstop\b/i;
+  /* An opt-out instruction the text already gives (compose.py's OPT_OUT_RE): a plain "stop" ("Stop by our booth")
+     tells nobody how to opt out, so such a text still gets the footer. */
+  var OPT_OUT_RE = /\b(?:reply|text|txt|send|respond)(?:\s+(?:with|back))?\s+["'“‘]?stop\b|\bstop\s+to\s+(?:opt[\s-]?out|unsubscribe|end|quit|cancel)\b/i;
+
+  function saysHowToOptOut(text, footer) {
+    return OPT_OUT_RE.test(text) || text.toLowerCase().indexOf(footer.toLowerCase()) !== -1;
+  }
 
   function gsmSizes(characters) {
     var sizes = [];
@@ -80,7 +86,7 @@
     var link = new Array((settings.linkLength || 0) + 1).join('x');
     (settings.linkPlaceholders || []).forEach(function (key) { text = fill(text, key, link); });
     var footer = String(settings.footer || '').trim();
-    if (footer && !STOP_RE.test(text)) {
+    if (footer && !saysHowToOptOut(text, footer)) {
       text = text.replace(/\s+$/, '') + '\n' + footer;
     }
     return text;

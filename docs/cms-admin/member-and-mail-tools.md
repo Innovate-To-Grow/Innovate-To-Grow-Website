@@ -378,7 +378,8 @@ What staff need to know before texting people (full detail: [AWS SMS](../integra
   later never subscribes it again. Only staff opt-outs can be lifted here.
 - **Quiet hours** (SMS Settings, 20:00–09:00 Pacific by default): a Broadcast SMS started then is queued until
   they end (with background jobs off it cannot be sent until then). Sign-in codes are never held.
-- **Footer**: "Reply STOP to opt out." is added to each Broadcast SMS that does not already say STOP.
+- **Footer**: "Reply STOP to opt out." is added to each Broadcast SMS that does not already tell people how to opt
+  out (such as "Reply STOP"; a plain "Stop by our booth" still gets the footer).
 - **Cost**: the message field shows the encoding, the segments and the estimated cost as you type; the send
   preview and the confirmation show the total for the real recipients. Avoid emoji and curly quotes: one of them
   more than doubles the number of segments.
