@@ -360,7 +360,7 @@ class CardTests(BackfillTestCase):
         self.assertContains(response, 'name="lookback_hours" min="1" max="2160" step="1"')
         self.assertContains(response, 'placeholder="72"')
         self.assertContains(response, "at most 90 days back")
-        self.assertContains(response, "now 72 hours (the default)")
+        self.assertContains(response, "now 72 hours (the default). Allowed: 1 to 2,160 hours;")
         self.assertContains(response, "This mailbox already has a checkpoint, so the lookback is not used")
         self.assertNotContains(response, DISABLED_RESCAN)
 

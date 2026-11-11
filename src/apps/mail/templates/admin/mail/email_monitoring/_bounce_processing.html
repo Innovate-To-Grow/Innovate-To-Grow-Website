@@ -62,7 +62,7 @@
       </label>
       <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">save</span>Save lookback</button>
     </form>
-    <p class="i2g-monitor-muted">How far back the first scan of {{ bp.mailbox }} reads: now {{ bf.lookback_hours }} hours{% if bf.lookback_custom %} (set here){% else %} (the default){% endif %}. Allowed: {{ bf.lookback_min }} to {{ bf.lookback_max }} hours; leave it empty for the default ({{ bf.lookback_default }} hours).{% if bp.state.checkpoint_at %} This mailbox already has a checkpoint, so the lookback is not used: to read older mail, use Rescan since.{% endif %}</p>
+    <p class="i2g-monitor-muted">How far back the first scan of {{ bp.mailbox }} reads: now {{ bf.lookback_hours }} hours{% if bf.lookback_custom %} (set here){% else %} (the default){% endif %}. Allowed: {{ bf.lookback_min }} to {{ bf.lookback_max|floatformat:"0g" }} hours; leave it empty for the default ({{ bf.lookback_default }} hours).{% if bp.state.checkpoint_at %} This mailbox already has a checkpoint, so the lookback is not used: to read older mail, use Rescan since.{% endif %}</p>
   </details>
   {% endwith %}
   {% endif %}
