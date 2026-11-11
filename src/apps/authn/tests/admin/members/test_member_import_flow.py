@@ -107,6 +107,9 @@ class Row5FlowTests(ImportTestCase):
 
         roles = dict(self.neil.contact_emails.values_list("email_address", "email_type"))
         self.assertEqual(roles, {"neil@home.example": "secondary", "neil.r.parkhi@spiritaero.example": "primary"})
+        result = self.client.get(reverse("admin:authn_member_import_result", args=[batch.pk]))
+        self.assertContains(result, "Makes neil.r.parkhi@spiritaero.example the primary email; the previous primary")
+        self.assertContains(result, "does not change the address on event tickets already issued")
 
     def test_make_primary_is_refused_for_an_unverified_address(self):
         ContactEmail.objects.filter(pk=self.work.pk).update(verified=False)

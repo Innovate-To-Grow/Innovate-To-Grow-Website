@@ -25,6 +25,9 @@ class MemberImportRowInline(TabularInline):
     can_delete = False
     show_change_link = False
 
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("chosen_by", "result_member")
+
     def has_add_permission(self, request, obj=None):
         return False
 
@@ -61,6 +64,9 @@ class MemberImportBatchAdmin(ReadOnlyModelAdmin):
     )
     readonly_fields = fields
     inlines = [MemberImportRowInline]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("created_by", "applied_by")
 
     def get_actions(self, request):
         # No "Export selected data": the rows hold sheet values and member snapshots.
