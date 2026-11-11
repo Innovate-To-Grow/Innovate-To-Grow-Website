@@ -16,10 +16,16 @@ Sending Method**. Today it is Microsoft Graph, sending as **i2g@ucmerced.edu**. 
 
 ### How long a blast takes
 
-The mailbox has sending limits per minute, per hour and per day, agreed with UC Merced IT, and every sign-in code and
-ticket the site sends counts against them too. Campaigns use at most 80 % of the rate and stop short of the daily
-limit, so a blast to 1,000 people takes about an hour or more, and a long list can take several hours or carry on
-the next day. The confirmation page shows the estimate and the limits for your campaign before you send it.
+The mailbox has sending limits per minute, per hour and per day (the per-minute and per-day ones come from UC Merced
+IT; the hourly ones are Microsoft's standard values), and every sign-in code and ticket the site sends counts
+against them too. Campaigns use at most 80 % of the sending rate and stop at 90 % of each limit, so codes and tickets
+keep the rest. With the default limits a campaign sends about 19 emails a minute and at most 450 an hour to
+addresses outside ucmerced.edu, so a blast to 1,000 people takes two hours or more, and a long list carries on the
+next day. Until the web team ticks **Tenant limits confirmed** in the delivery settings, campaigns also stop at 900
+recipients a day.
+
+The confirmation page shows the daily limits and warns when your list is larger than campaigns may send in 24
+hours. Its time estimate counts only the per-minute rate, so the real send usually takes longer.
 
 ### Who receives it
 
@@ -29,7 +35,7 @@ the next day. The confirmation page shows the estimate and the limits for your c
 | **All active members (subscribed or not)** | Every active member, including people who unsubscribed. Only for messages every member must receive. |
 | **Staff Members** | Active staff accounts. |
 | **Selected Members** | The members you pick. |
-| **Manual Emails** | The addresses you type, one per line. An address that belongs to a member gets that member's name and sign-in link; any other address gets an empty name and a link to the sign-in page. |
+| **Manual Emails** | The addresses you type, one per line, all of them. An address that belongs to an active member gets that member's name and sign-in link; any other address gets an empty name and a link to the sign-in page. |
 | **Event Registrants**, **Event Ticket Type**, **Checked-In Attendees**, **No-Shows (Not Checked In)** | People registered for the event you pick (or for one ticket type, or who did or did not check in), at the address they registered with. |
 
 - **Send to** chooses which addresses of each member are used: **Primary email only**, or **All emails (primary +
@@ -38,7 +44,10 @@ the next day. The confirmation page shows the estimate and the limits for your c
   event".
 - Only **All subscribers** respects unsubscribes. The other audiences also reach people who unsubscribed, so use
   them only for messages those people expect (about an event they registered for, for example).
-- Inactive members are never included. The recipient list is fixed when sending starts.
+- **All subscribers**, **All active members** and **Staff Members** leave out inactive (deactivated) members.
+  **Selected Members**, **Manual Emails** and the event audiences do not check: a deactivated member you pick,
+  type in, or who registered for the event still gets the email.
+- The recipient list is fixed when sending starts.
 
 ### Personal fields and sign-in links
 
@@ -58,18 +67,20 @@ A login link works like a password: anyone with it can sign in as that person.
   campaigns at once.
 - Never forward a test email that contains your own link.
 
-**Include one-click unsubscribe** (on by default) adds an "Unsubscribe from newsletters" link to the footer.
+**Include one-click unsubscribe** (on by default) adds an "Unsubscribe from newsletters" link to the footer of
+recipients who have an account.
 
 ## 3.2 Write and send a blast
 
-1. Go to **Broadcast Delivery → Broadcast Campaigns** (tab **Broadcast Email**) and click **Add**.
+1. Go to **Broadcast Delivery → Broadcast Campaigns** (tab **Broadcast Email**) and click the **+** (add) button.
 2. **Audience:** choose the **Audience type** and, depending on it, the event, ticket type, members or addresses;
    then **Send to**, and an **Exclude audience** if needed.
 3. **Campaign:** fill in the **Subject**, the **Post-login destination**, **Login link validity (days)**,
    **Reusable login links** and **Include one-click unsubscribe**. Choose the **Email format** (**HTML** or **Plain
-   text**) and write the **Email Content**. To reuse a design prepared in Gmail, save the draft and use **Import
-   Gmail HTML**.
-4. **Save**, check the summary of changes and type the confirmation word.
+   Text**) and write the **Email Content**. To reuse a design prepared in Gmail, send it from the I2G Gmail account
+   set up for the import (**Import Gmail HTML** lists that account's five most recent *sent* messages, not drafts),
+   save the campaign, and use **Import Gmail HTML**.
+4. **Save**, check the summary of changes and type the confirmation word the page shows.
 5. Click **Preview Email** to see the message (with sample name data) and **Preview Recipients** to check who will
    get it and how many.
 6. **Test it on yourself first** (see below).
@@ -79,17 +90,18 @@ A login link works like a password: anyone with it can sign in as that person.
    - how long sending will take and the daily limits;
    - (coming soon) how many recipients are skipped because their address is marked undeliverable.
 8. Type the campaign's name exactly as shown and click **Confirm & Send**.
-9. Follow the progress on the status page or in the campaign list. **Status** goes from **Draft** to **Queued**,
-   **Sending**, then **Sent**. **Partially sent** means some recipients failed or were paused; **Failed** means none
-   went.
+9. Follow the progress on the status page or in the campaign list. **Status** goes from **Draft** to **Queued**
+   (when the background worker sends; otherwise straight to **Sending**), **Sending**, then **Sent**. **Partially
+   sent** means some recipients failed, were paused, or are **Uncertain delivery**; **Failed** means none went.
 
 ### Test on yourself first
 
 A campaign cannot be "test sent" from its page. Instead:
 
 1. Make the campaign with **Audience type: Manual Emails** and your own address (and a colleague's) in the list.
-2. Send it as above and check the message in your inbox, on a computer and on a phone: layout, links, names, the
-   unsubscribe link. Your copy holds your own sign-in link; do not forward it.
+2. Send it as above and check the message in your inbox, on a computer and on a phone: layout, links, names, and
+   that the unsubscribe link opens its page (do not confirm it there: that would unsubscribe every address of your
+   own account). Your copy holds your own sign-in link; do not forward it.
 3. On that campaign, click **Duplicate campaign**, keep the same audience, and open the new draft.
 4. Change the audience to the real one, preview, and send.
 
@@ -99,8 +111,10 @@ A campaign cannot be "test sent" from its page. Instead:
   send a corrected version, or send it to more people, use **Duplicate campaign**. Addresses that already received
   the original are not left out automatically: list only the new addresses, or use **Exclude audience**.
 - **Broadcast Campaigns → Email Log** shows every recipient with their status.
-- Recipients held back by the limits normally wait and go out later by themselves. If some show **Paused by
-  delivery limits**, select the campaign and run **Resume paused recipients (held back by delivery limits)** later.
+- Recipients held back by the limits normally wait (**Retry scheduled**) and go out later by themselves. **Paused by
+  delivery limits** appears only when the web server itself sends the campaign (when the background worker is not
+  running): select the campaign and run **Resume paused recipients (held back by delivery limits)** later, and tell
+  the web team.
 - A recipient marked **Uncertain delivery** may have received the email. It is never resent automatically; ask the
   web team before sending it again.
 
@@ -115,7 +129,7 @@ A campaign cannot be "test sent" from its page. Instead:
 | **API accepted** | Microsoft accepted the email for delivery. Not proof that it arrived. |
 | **API failed** | Microsoft refused it, or could not be reached. Nothing was sent. |
 | **API outcome unknown** | The answer was lost. The email may have been sent, so it is not retried automatically. |
-| **Not sent** | The site stopped it before contacting Microsoft (settings, delivery limits, or the address is suppressed). |
+| **Not sent** | The site stopped it before contacting Microsoft (settings, mailbox scope or delivery limits). |
 | **Delivery status unknown** | Accepted, and no bounce report has been matched to it. This is the normal state of most emails: they most likely arrived, but the site cannot prove it. |
 | **Delivery failure confirmed** | A bounce report says delivery failed. |
 | **Delivery delayed** | A report says the receiving server is still trying. Not a failure yet. |
@@ -129,17 +143,18 @@ The campaign's own recipient list shows **Sent** for an email Microsoft accepted
 
 ## 3.4 The Email Monitoring dashboard
 
-Open **Broadcast Delivery → Delivery Operations → Email Monitoring**, or click **Delivery monitoring** on a sent
-campaign. Pick a **Range** and **Apply**. The pages:
+Open **Broadcast Delivery → Delivery Operations → Email Monitoring**, pick a **Range** and **Apply**. (**Delivery
+monitoring** on a sent campaign opens the same figures for that one campaign.) The pages:
 
 - **Overview:** the **Bounce processing** card (3.5); counts of messages, recipients and API attempts; charts; the
   most common failure and bounce reasons; and **Broadcast campaigns**, one row per campaign with its emails, API
-  accepted, failed, outcome unknown, confirmed bounces, bounce rate and retries.
+  accepted, failed / not sent, outcome unknown, confirmed bounces, bounce rate and retries.
 - **Email log:** every email the site sent, with search (an address, for example) and filters. Click one to see its
-  full history.
+  full history. It starts on the last 7 days: widen the **Range** for older emails.
 - **Bounce reports:** one row per failed recipient in each report, with its classification and match.
 
-The note at the top of every page says when monitoring began (November 2026). Emails sent before then are not in it.
+The note at the top of every page gives the date of the oldest email on record. Monitoring began in November 2026,
+and emails are kept for 180 days, so anything older is not there.
 
 ### Bounce reports
 
@@ -149,12 +164,13 @@ The note at the top of every page says when monitoring began (November 2026). Em
 | **Soft bounce** | Temporary: mailbox full, message too large, server busy. | Wait. Act only if the same address keeps bouncing. |
 | **Rejected** (codes starting 5.7) | The receiving server refused the message (policy, spam filter). Usually about our sending, not about the address. | Do not change the member. Tell the web team if there are many. |
 | **Delivery delayed** | The receiving side is still retrying. | Nothing. |
-| **Unknown delivery status** | A report without a usable code. | Open the report and read the reason. |
+| **Unknown delivery status** | A report without a usable code. | Read the reason shown in the row; the full report is in the i2g@ Inbox in Outlook. |
 
-The match column says how the report was tied to an email: **Exact** (the report quotes our message's ID),
-**Inferred** (the only email to that recipient with that subject shortly before), or unmatched. Unmatched reports
-are usually about mail someone sent from Outlook, mail sent before monitoring began, or a case the site will not
-guess. Anyone can send a fake bounce report, so treat an unmatched report with care.
+The match column says how the report was tied to an email: **Exact: original Message-ID** (the report quotes our
+message's ID), **Inferred: recipient, subject and time** (the only email to that recipient with that subject in the
+five days before the report), or **Not matched**. Unmatched reports are usually about mail someone sent from
+Outlook, mail sent before monitoring began, or a case the site will not guess. Anyone can send a fake bounce report,
+so treat an unmatched report with care.
 
 A bounce report never changes a member, a subscription or a campaign by itself. Acting on it is a staff decision.
 
@@ -172,12 +188,14 @@ The **Bounce processing** card at the top of the Overview shows whether reports 
 | **Paused** | Someone clicked **Pause**. |
 | **No recent successful scan** | Scans stopped succeeding: tell the web team (the background worker may be down). |
 | **Last scan failed** | The card shows the error: tell the web team. |
-| **Switched off**, **Not active** | Bounce processing is off, or the mailbox is not set up for it; the card says why. |
+| **Switched off** | Bounce processing is turned off in the site's configuration: tell the web team. |
+| **Not active** | The mailbox is not set up for reading; the card shows the reason. |
 
 The card also shows the mailbox, the last scan, the last successful scan, the **Checkpoint** (how far the reading
-has got), the next scan, and what the last scan found.
+has got), the next scan, the interval, and what the last scan found.
 
-- **Scan now** reads new mail at once instead of waiting for the next scan.
+- **Scan now** asks the background worker to scan within a minute instead of waiting for the next scan. It is
+  greyed out while processing is paused or not active.
 - **Pause** stops reading the mailbox; **Resume** starts again. Pausing does not affect sending.
 
 ## 3.6 Coming soon: read older mail again
@@ -196,7 +214,7 @@ again**:
 - **First-scan lookback (hours):** how far back the very first scan of a mailbox reads (1 to 2,160 hours; empty
   means the default of 72). It has no effect once the mailbox has a checkpoint; use **Rescan since** instead.
 
-Both changes are recorded in **Site Settings → Admin Log**.
+Both changes are recorded in the admin log (**Site Settings → Admin Log**, for staff who have that section).
 
 ## 3.7 Coming soon: Bounced addresses
 
@@ -204,7 +222,9 @@ Both changes are recorded in **Site Settings → Admin Log**.
 
 A new **Bounced addresses** page in Email Monitoring lists every address that has bounced, one row per address,
 with what you may do about it. **Nothing on it happens by itself:** the counts never change a member, an address
-or a subscription. Every change is a staff action with a confirmation page, and it is recorded.
+or a subscription. Every change is a staff action with a confirmation page, and it is recorded. (Only the list's
+own review state moves on its own: a new matched hard bounce, rejection or spam complaint puts a dismissed address
+back on the **Open** tab.)
 
 ### The list
 
@@ -219,7 +239,7 @@ or a subscription. Every change is a staff action with a confirmation page, and 
 |---|---|
 | **Unsubscribe: they reported us as spam** | A spam complaint. |
 | **Mark undeliverable or replace the address** | A hard bounce. |
-| **Consider marking undeliverable (repeated soft bounces)** | Three or more soft bounces spread over at least seven days. |
+| **Consider marking undeliverable (repeated soft bounces)** | Three or more soft bounces, with at least seven days between the address's first and last report. |
 | **Probably our reputation or policy, not the address: no action** | Rejections (5.7.x) and none of the above. |
 
 A row whose reports are all unmatched says "unmatched reports only: check them first".
@@ -234,7 +254,7 @@ Open an address (or use a row's **Actions** menu). Each action shows a confirmat
 | **Suppress address** | For an address that belongs to no member: every campaign skips it. | **Clear suppression** | Mail |
 | **Mark undeliverable** | Every campaign skips this member's address. Sign-in codes, tickets and notifications still go. | **Clear suppression** | Mail + Members |
 | **Unsubscribe this address** | Turns off newsletters for this address only. | Re-subscribe on the member page | Mail + Members |
-| **Use another address as primary** | A verified address you pick becomes the primary. | Swap back | Mail + Members |
+| **Use another address as primary** | A verified address you pick becomes the primary. | Make the old address primary again once it is verified | Mail + Members |
 | **Replace email** | Adds the new address to the member, then marks the old one undeliverable or deletes it. Sends nothing. | Partly | Mail + Members |
 | **Delete this email address** | Removes the address. You type the address to confirm. | No | Mail + Members |
 | **Deactivate account** | The member can no longer sign in; their registrations and history stay. | Activate on the Members page | Mail + Members |
@@ -243,15 +263,17 @@ Open an address (or use a row's **Actions** menu). Each action shows a confirmat
 Changes to a staff or superuser account need the I2G Master. An address that is a member's only address, or their
 last verified way to sign in, cannot be deleted.
 
-**Bulk:** tick rows and choose **Dismiss**, **Reopen**, **Suppress**, **Mark undeliverable**, **Clear suppression**
-or **Unsubscribe**. The next page lists every address with "will change" or the reason it is skipped. Changes to
-addresses and accounts are made one at a time.
+**Bulk:** tick rows (up to 500) and choose **Dismiss**, **Reopen**, **Suppress address**, **Mark undeliverable**,
+**Clear suppression** or **Unsubscribe this address**. The next page lists every address with "will change" or the
+reason it is skipped. Changes to addresses and accounts are made one at a time.
 
 ### Effect on blasts
 
 Every campaign audience skips an address that is suppressed or marked undeliverable. The previews and the
-confirmation page say "N recipients skipped: undeliverable", and an email already queued for that address is not
-sent. Sign-in codes, tickets and notifications still reach it, in case the person fixes their mailbox.
+confirmation page say "N recipients skipped: undeliverable". An email already queued for that address is not sent:
+the campaign's **Email Log** shows it as **Failed** ("Not sent: this address is suppressed for bulk mail"), and it
+counts towards **Partially sent**. Sign-in codes, tickets and notifications still reach the address, in case the
+person fixes their mailbox.
 
 ### A routine after each blast
 
@@ -265,8 +287,9 @@ sent. Sign-in codes, tickets and notifications still reach it, in case the perso
 
 ## 3.8 Replies to a blast
 
-Replies arrive in the i2g@ucmerced.edu Inbox. Read them in Outlook or on **Broadcast Delivery → Gmail Inbox**, which
-shows that mailbox and warns about suspicious messages. Replies often quote the original email, including the
+Replies arrive in the i2g@ucmerced.edu Inbox. Read them in Outlook or on **Broadcast Delivery → Gmail Inbox**:
+despite its name, that page shows the i2g@ucmerced.edu mailbox when Microsoft Graph is set up to read it, and it
+warns about suspicious messages. Replies often quote the original email, including the
 person's own sign-in link: do not forward replies outside the I2G team. A helpdesk that turns each message into a
 ticket is being built (chapter 4).
 
@@ -274,11 +297,11 @@ ticket is being built (chapter 4).
 
 | Problem | What to check |
 |---|---|
-| **Send Campaign** is missing | The campaign has already been sent: use **Duplicate campaign**. |
-| "No recipients found for this audience" | The audience is empty: check the event, ticket or member selection and **Send to**. |
-| The confirmation word is not accepted | Type the campaign's name exactly as shown on the page. |
-| Some recipients are **Paused by delivery limits** | The daily allowance is used up. Run **Resume paused recipients** later. |
-| A person says they never got the blast | Search their address in **Email Monitoring → Email log**. **API accepted** with no bounce means Microsoft accepted it: ask them to check spam and other folders. No email at all: they were not in the audience (unsubscribed, inactive, or a different address). |
-| A sign-in link "does not work" | It expired, was already used, or was revoked. The person can sign in with a code instead. |
+| **Send Campaign** is missing | The campaign has not been saved yet (save it first), or it has already been sent (use **Duplicate campaign**). |
+| "No recipients found for this audience" (a grey **No Recipients Found** button on the preview) | The audience is empty: check the event, ticket or member selection and **Send to**. |
+| The confirmation word is not accepted | On the send confirmation, type the campaign's name exactly as shown (**Confirm & Send** stays grey until it matches). Everywhere else, type the word the page shows. |
+| Some recipients are **Paused by delivery limits** | A delivery limit (the hourly or daily allowance, or a pause from Microsoft) held them back while the web server itself was sending. Run **Resume paused recipients** later and tell the web team. |
+| A person says they never got the blast | Open the campaign's **Email Log** tab. Not listed: they were not in the audience (unsubscribed, inactive, or a different address). **Retry scheduled** or **Paused**: it has not gone yet. **Sent**: search their address in **Email Monitoring → Email log**, with a **Range** that covers the send date. **API accepted** with no bounce means Microsoft accepted it: ask them to check spam and other folders. |
+| A sign-in link "does not work" | It expired, was already used, or was revoked, or the account is inactive. The person can sign in with a code instead. |
 | Many **Rejected** reports | Tell the web team: it is usually about our sending, not the addresses. |
-| The **Bounce processing** card is not **Running** | Tell the web team. |
+| The **Bounce processing** card is not **Running** | **Paused** (someone paused it) and **Waiting for the first scan** (just switched on) can be normal. Anything else: tell the web team. |
