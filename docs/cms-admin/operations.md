@@ -379,8 +379,29 @@ cd src && python manage.py createsuperuser --email admin@example.com
 ### Member import/export
 
 Available through the Member admin:
-- Import from Excel (openpyxl)
+- Import from Excel (openpyxl, `.xlsx` only)
 - Export to Excel
+
+**Import rules** (`src/apps/authn/services/members/import_/`):
+
+- A row whose Primary Email is new creates a member. A brand-new member's own Verified/Subscribed/Active cells are
+  used as given.
+- With **Update Existing Members** ticked, a row updates the member whose *primary* email is in its Primary Email cell.
+  Matching is by primary email only. If the address exists in any other way, the row is skipped and the report says
+  why, naming and linking the member: another member's secondary or "other" email, a contact email linked to no
+  member, or legacy addresses that differ only in letter case.
+- An update never deletes anything. A blank cell, or a missing column, keeps the stored value.
+- A new Secondary Email is added as the secondary, and the previous secondary becomes "other". A new Phone Number is
+  added next to the member's numbers instead of replacing one. Both start unverified, whatever the sheet says.
+- An address or number held by another member, or by no member, is never moved or attached.
+- The Primary Verified/Subscribed cells can verify the primary address or unsubscribe it. They never un-verify it or
+  re-subscribe it. A contact added to an existing member is not subscribed when that member has opted out on that
+  channel. The flag cells of an existing secondary email or phone are not applied.
+- The Active column does not activate or deactivate existing members; use the member list's actions. The Staff column
+  is applied only when an I2G Master imports.
+- TRUE/FALSE cells accept TRUE, FALSE, Yes, No, Y, N, 1 and 0. Any other text is ignored, not read as FALSE.
+- The result page lists every skipped row with the reason, and every cell that was not applied or contact that was
+  kept. Each line links to its member.
 
 ## Stylesheets and design tokens
 
