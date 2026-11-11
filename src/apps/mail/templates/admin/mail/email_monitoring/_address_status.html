@@ -1,0 +1,4 @@
+{# Review status, with how it was resolved or dismissed. #}
+<span class="i2g-monitor-chip i2g-monitor-chip--{{ row.status }}">
+  <span class="material-symbols-outlined" aria-hidden="true">{% if row.status == "open" %}pending{% elif row.status == "dismissed" %}do_not_disturb_on{% else %}task_alt{% endif %}</span>{{ row.get_status_display }}
+</span>{% if row.resolution and row.status != "open" %}<br><span class="i2g-monitor-muted">{{ row.resolution_label }}</span>{% endif %}

@@ -40,11 +40,14 @@ class CampaignPreviewMixin:
             raise PermissionDenied("You do not have permission to view this campaign's recipients.")
         obj = EmailCampaign.objects.get(pk=object_id)
         recipients = campaign_api.get_recipients(obj)
+        skipped = getattr(recipients, "skipped", [])
         context = {
             **self.admin_site.each_context(request),
             "title": f"Preview Recipients - {obj.name}",
             "campaign": obj,
             "recipients": recipients,
+            "skipped": skipped,
+            "skipped_count": len(skipped),
             "back_url": reverse("admin:mail_emailcampaign_change", args=[object_id]),
         }
         return TemplateResponse(request, "admin/mail/preview_recipients.html", context)
@@ -65,6 +68,7 @@ class CampaignPreviewMixin:
             "title": f"Preview Email - {obj.name}",
             "campaign": obj,
             "recipient_count": len(recipients),
+            "skipped_count": len(getattr(recipients, "skipped", [])),
             "preview_html_json": safe_json(preview["html"]),
             "confirm_url": reverse("admin:mail_emailcampaign_send_confirm", args=[object_id]) if is_draft else None,
             "cancel_url": change_url,

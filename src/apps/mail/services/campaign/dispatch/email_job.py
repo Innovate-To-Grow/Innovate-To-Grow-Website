@@ -14,8 +14,14 @@ from apps.core.services.background_jobs import (
 from apps.mail.models import RecipientLog
 from apps.mail.services.campaign.personalize import personalize
 from apps.mail.services.campaign.preview import render_email_html
-from apps.mail.services.send_campaign.runner import _recipient_context, _unsubscribe_url_for, carries_login_link
+from apps.mail.services.send_campaign.runner import (
+    _recipient_context,
+    _unsubscribe_url_for,
+    carries_login_link,
+    skip_suppressed_log,
+)
 from apps.mail.services.send_campaign.transport import _get_configuration_set_name, _get_ses_client, _send_via_ses
+from apps.mail.services.suppression import is_suppressed
 
 from .channels import (
     EMAIL,
@@ -54,6 +60,20 @@ def _classified_email_failure(exc: Exception, job) -> Exception:
     return UncertainJobError("Email provider request outcome could not be confirmed.")
 
 
+def _claim_unless_suppressed(log, job) -> bool:
+    """Claim the log for this job; False when its address was suppressed after the campaign was queued.
+
+    Such a recipient is recorded as not sent and the job ends there: it succeeded in deciding (a failed job would
+    replace the log's reason with a generic one)."""
+    if not mark_log_processing(EMAIL, log, job):
+        raise PermanentJobError("Recipient log is no longer eligible for delivery.")
+    if not is_suppressed(log.email_address):
+        return True
+    skip_suppressed_log(log, claim_token=job.claim_token)
+    aggregate_email_campaign(log.campaign_id)
+    return False
+
+
 def send_email_recipient_job(job) -> None:
     log = RecipientLog.objects.select_related("campaign", "member").get(pk=job.payload["recipient_log_id"])
     if log.status in EMAIL_PROVIDER_TERMINAL_STATUSES:
@@ -61,8 +81,8 @@ def send_email_recipient_job(job) -> None:
         if log.status not in EMAIL_SUCCESS_STATUSES:
             raise PermanentJobError("Recipient already has a terminal provider failure.")
         return
-    if not mark_log_processing(EMAIL, log, job):
-        raise PermanentJobError("Recipient log is no longer eligible for delivery.")
+    if not _claim_unless_suppressed(log, job):
+        return
     try:
         config = EmailServiceConfig.load()
         provider_config = _get_ses_client(config)

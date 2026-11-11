@@ -17,6 +17,7 @@ from apps.core.services.delivery_rates.maintenance import MaintenanceResult
 
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
 NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)
+NOTHING_COUNTED = {"graph": 0, "ses": 0, "busy": False}
 
 
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
@@ -39,6 +40,8 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
             patch.object(run_background_worker, "run_delivery_rate_maintenance", return_value=NOTHING_MAINTAINED),
             patch.object(run_background_worker, "active_certificate_expiry", return_value=None),
             patch.object(run_background_worker, "ensure_bounce_scan_scheduled", return_value=False),
+            patch.object(run_background_worker, "count_bounced_addresses", return_value=NOTHING_COUNTED),
+            patch.object(run_background_worker, "refresh_bounced_address_links", return_value=0),
             patch.object(run_background_worker, "purge_expired_email_telemetry", return_value={"emails": 0}),
             patch.object(run_background_worker, "purge_finished_bounce_scans", return_value=0),
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
@@ -270,7 +273,7 @@ class RunBackgroundWorkerShutdownTests(TestCase):
 LOGGER_NAME = "apps.core.management.commands.run_background_worker"
 
 
-# The seven maintenance services, in task order, with what each returns when there is nothing to do.
+# The maintenance services, in task order, with what each returns when there is nothing to do.
 MAINTENANCE_SERVICES = {
     "purge_retired_auth_keypairs": 0,
     "purge_expired_public_assistant_budgets": 0,
@@ -280,6 +283,8 @@ MAINTENANCE_SERVICES = {
     "run_delivery_rate_maintenance": NOTHING_MAINTAINED,
     "active_certificate_expiry": None,
     "ensure_bounce_scan_scheduled": False,
+    "count_bounced_addresses": NOTHING_COUNTED,
+    "refresh_bounced_address_links": 0,
     "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
     "purge_finished_bounce_scans": 0,
 }
@@ -301,6 +306,8 @@ BATCHED_SERVICES = (
     "cleanup_expired_records",
     "clear_expired_sessions",
     "purge_expired_failure_windows",
+    "count_bounced_addresses",
+    "refresh_bounced_address_links",
     "purge_expired_email_telemetry",
 )
 
@@ -338,6 +345,8 @@ class MaintenanceTaskTests(SimpleTestCase):
             run_delivery_rate_maintenance=record("delivery rates", NOTHING_MAINTAINED),
             active_certificate_expiry=record("graph certificate", None),
             ensure_bounce_scan_scheduled=record("bounce scans", False),
+            count_bounced_addresses=record("bounced addresses", NOTHING_COUNTED),
+            refresh_bounced_address_links=record("bounced address links", 0),
             purge_expired_email_telemetry=record("email telemetry", {"emails": 0, "bounces": 0}),
             purge_finished_bounce_scans=record("bounce scan jobs", 0),
         )
@@ -353,6 +362,8 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "delivery rates",
                 "graph certificate",
                 "bounce scans",
+                "bounced addresses",
+                "bounced address links",
                 "email telemetry",
                 "bounce scan jobs",
             ],
@@ -368,6 +379,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Delivery-rate maintenance",
                 "Microsoft Graph certificate expiry check",
                 "Email bounce scan scheduling",
+                "Bounced address counting",
                 "Email telemetry retention",
             ],
         )
@@ -439,6 +451,18 @@ class MaintenanceTaskTests(SimpleTestCase):
         with self.assertNoLogs(LOGGER_NAME, level="INFO"):
             self.run_patched()
 
+    def test_bounced_address_counts_are_logged_only_when_something_changed(self):
+        with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
+            self.run_patched(
+                count_bounced_addresses=lambda **_kwargs: {"graph": 3, "ses": 1, "busy": False},
+                refresh_bounced_address_links=lambda **_kwargs: 2,
+            )
+
+        self.assertEqual(
+            logs.output,
+            [f"INFO:{LOGGER_NAME}:Bounced addresses: counted 3 bounce reports and 1 SES events; refreshed 2 addresses"],
+        )
+
     def test_a_stop_request_skips_the_remaining_tasks(self):
         ran = []
         tasks = (
@@ -490,6 +514,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             run_delivery_rate_maintenance=RuntimeError("g"),
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),
+            count_bounced_addresses=RuntimeError("j"),
             purge_expired_email_telemetry=RuntimeError("i"),
         ):
             patcher.start()

@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/email-monitoring.css' %}?v=20261109-monitoring">
+<link rel="stylesheet" href="{% static 'mail/css/email-monitoring.css' %}?v=20261111-addresses">
 {% block monitoring_head %}{% endblock %}
 {% endblock %}
 
@@ -23,6 +23,9 @@
     </a>
     <a href="{% url 'admin:mail_email_monitoring_bounces' %}{% if scope_query %}?{{ scope_query }}{% endif %}" {% if section == "bounces" %}aria-current="page"{% endif %}>
       <span class="material-symbols-outlined" aria-hidden="true">assignment_return</span>Bounce reports
+    </a>
+    <a href="{% url 'admin:mail_email_monitoring_addresses' %}" {% if section == "addresses" %}aria-current="page"{% endif %}>
+      <span class="material-symbols-outlined" aria-hidden="true">unsubscribe</span>Bounced addresses
     </a>
   </nav>
 

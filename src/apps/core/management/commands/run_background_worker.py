@@ -25,6 +25,8 @@ from apps.core.services.email.bounces import purge_finished_jobs as purge_finish
 from apps.core.services.email.graph.credential import expiry
 from apps.core.services.email.graph.credential.expiry import active_certificate_expiry
 from apps.core.services.email.telemetry.retention import purge_expired as purge_expired_email_telemetry
+from apps.mail.services.email_monitoring.addresses.aggregate import refresh_all as refresh_bounced_address_links
+from apps.mail.services.email_monitoring.addresses.aggregate import run as count_bounced_addresses
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)
@@ -99,6 +101,20 @@ def _schedule_bounce_scans(should_stop=None) -> None:
         logger.debug("Queued an email bounce scan")
 
 
+def _count_bounced_addresses(should_stop=None) -> None:
+    # Count new bounce reports and SES events per address (Email Monitoring → Bounced addresses) before the retention
+    # purge deletes old reports, then re-check every address's member links. Never changes a member or a contact.
+    result = count_bounced_addresses(should_stop=should_stop)
+    refreshed = refresh_bounced_address_links(should_stop=should_stop)
+    if result["graph"] or result["ses"] or refreshed:
+        logger.info(
+            "Bounced addresses: counted %d bounce reports and %d SES events; refreshed %d addresses",
+            result["graph"],
+            result["ses"],
+            refreshed,
+        )
+
+
 def _purge_email_telemetry(should_stop=None) -> None:
     # Outgoing-email telemetry and bounce records past EMAIL_MONITORING's retention, and finished scan jobs.
     result = {**purge_expired_email_telemetry(should_stop=should_stop), "scan_jobs": purge_finished_bounce_scans()}
@@ -112,8 +128,8 @@ def _purge_email_telemetry(should_stop=None) -> None:
 
 # Periodic maintenance, run in this order every ``--maintenance-seconds`` (hourly by default). Each entry is
 # ``(name, callable)``; ``run_maintenance`` isolates every call, so one failure never stops the worker or the rest.
-# Every callable takes the stop check: the batched tasks (the three cleanups and the email telemetry retention) hand
-# it to their batch loops, so a stop request ends them after the batch in flight; the two single-statement purges,
+# Every callable takes the stop check: the batched tasks (the three cleanups, the bounced-address counting and the
+# email telemetry retention) hand it to their batch loops, so a stop request ends them after the batch in flight; the two single-statement purges,
 # the delivery-rate upkeep, the certificate expiry check and the bounce scan scheduling ignore it.
 MAINTENANCE_TASKS = (
     ("Retired RSA key purge", _purge_retired_keys),
@@ -124,6 +140,7 @@ MAINTENANCE_TASKS = (
     ("Delivery-rate maintenance", _delivery_rate_maintenance),
     ("Microsoft Graph certificate expiry check", _check_graph_certificate_expiry),
     ("Email bounce scan scheduling", _schedule_bounce_scans),
+    ("Bounced address counting", _count_bounced_addresses),
     ("Email telemetry retention", _purge_email_telemetry),
 )
 

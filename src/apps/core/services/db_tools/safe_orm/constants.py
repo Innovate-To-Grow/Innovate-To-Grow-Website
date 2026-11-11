@@ -46,6 +46,12 @@ DENIED_MODEL_LABELS = {
     "core.microsoftgraphcertificate",
     "core.microsoftgraphmailboxscope",
     "core.microsoftgraphproviderconfig",
+    # Bounced addresses: staff review decisions, the bulk-mail suppression list and their audit log, written only by
+    # Mail → Email Monitoring → Bounced addresses (a write would lift or set a suppression outside its guards).
+    "mail.bounceaggregationstate",
+    "mail.bouncedaddress",
+    "mail.bouncedaddressaction",
+    "mail.bouncedaddresscampaign",
     "system_intelligence.chatconversation",
     "system_intelligence.chatmessage",
     "system_intelligence.systemintelligenceactionrequest",
