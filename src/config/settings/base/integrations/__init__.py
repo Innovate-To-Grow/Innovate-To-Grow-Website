@@ -9,4 +9,5 @@ Third-party package configuration.
   gmail_api/ – Gmail API request limits, token and assertion lifetimes, and what the admin accepts as a key.
   delivery_rates/ – Per-channel delivery-rate seeds and ceilings, the Smart rate controller, waits and signals.
   request_limits/ – Inbound request-limit scopes, priority tiers, routes, Smart limiting and the counter store.
+  email_monitoring/ – Outgoing-email telemetry, its retention, and bounce (NDR / DSN) processing.
 """

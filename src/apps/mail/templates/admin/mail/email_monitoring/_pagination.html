@@ -1,0 +1,14 @@
+{# Pagination that keeps the scope, filters, page size and sort (``page_query``). #}
+{% if page.paginator.num_pages > 1 %}
+<nav class="i2g-monitor-pages" aria-label="Pages">
+  {% if page.has_previous %}
+    <a href="?{{ page_query }}&amp;page=1">First</a>
+    <a href="?{{ page_query }}&amp;page={{ page.previous_page_number }}" rel="prev">Previous</a>
+  {% endif %}
+  <span aria-current="page">Page {{ page.number }} of {{ page.paginator.num_pages }}</span>
+  {% if page.has_next %}
+    <a href="?{{ page_query }}&amp;page={{ page.next_page_number }}" rel="next">Next</a>
+    <a href="?{{ page_query }}&amp;page={{ page.paginator.num_pages }}">Last</a>
+  {% endif %}
+</nav>
+{% endif %}

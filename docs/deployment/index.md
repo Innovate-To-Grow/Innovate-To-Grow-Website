@@ -15,6 +15,7 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 - [Legacy read-only viewer](legacy-view.md) — Private CloudFront gateway to the retired Flask site, launched from Admin
 - [WAF rate limits](waf-rate-limits.md) — Campus-aware AWS WAF rules for the unauthenticated auth endpoints
 - [Assistant and AI search limits](../integrations/assistant-limits.md) — Per-visitor/member and global token budgets, sizing and alarm
+- [Email monitoring](../integrations/email-monitoring.md) — Email telemetry, Graph bounce processing in the background worker, the dashboard and its settings
 
 ## Who this is for
 

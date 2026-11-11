@@ -1,0 +1,27 @@
+{# One chart over time: the SVG is drawn by email-monitoring.js from the page's JSON; the legend and the data table are rendered here, so every value stays readable without hovering or scripts. #}
+<figure class="i2g-monitor-card i2g-monitor-chart" data-chart="{{ key }}" data-kind="{{ kind }}" data-source="{{ source|default:'i2g-monitor-charts' }}">
+  <figcaption class="i2g-monitor-chart-head">
+    <h3>{{ title }}</h3>
+    {% if data.names|length > 1 %}
+    <ul class="i2g-monitor-legend" aria-label="Legend">
+      {% for name in data.names %}
+        <li><span class="i2g-monitor-key i2g-monitor-key--{% if kind == 'lines' %}line{% else %}rect{% endif %} i2g-series-{{ forloop.counter }}" aria-hidden="true"></span>{{ name.label }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  </figcaption>
+  {% if data.table %}
+    <div class="i2g-monitor-plot" data-chart-plot></div>
+    <details class="i2g-monitor-table-view">
+      <summary>Data table</summary>
+      <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+        <thead><tr><th scope="col">Period</th>{% for name in data.names %}<th scope="col" class="num">{{ name.label }}</th>{% endfor %}</tr></thead>
+        <tbody>{% for row in data.table %}
+          <tr><th scope="row">{{ row.label }}</th>{% for value in row.values %}<td class="num">{{ value }}</td>{% endfor %}</tr>
+        {% endfor %}</tbody>
+      </table></div>
+    </details>
+  {% else %}
+    <p class="i2g-monitor-empty">Nothing recorded in this range.</p>
+  {% endif %}
+</figure>

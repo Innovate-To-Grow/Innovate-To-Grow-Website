@@ -1,0 +1,89 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block monitoring_head %}
+{% if monitoring.timeline %}{{ chart_payload|json_script:"i2g-monitor-campaign" }}{% endif %}
+{% endblock %}
+
+{% block monitoring_content %}
+{% with m=monitoring.messages a=monitoring.attempts %}
+<p><a class="i2g-monitor-back" href="{{ campaign_link }}"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Back to the campaign</a></p>
+
+<section class="i2g-monitor-card" aria-labelledby="campaign-summary">
+  <h2 id="campaign-summary" class="i2g-monitor-heading">{{ campaign.name|default:campaign.subject }} <span>{{ campaign.get_status_display }}{% if campaign.sent_at %} · sent {{ campaign.sent_at|date:"M j, Y H:i" }}{% endif %}</span></h2>
+  <p class="i2g-monitor-muted">Subject: {{ campaign.subject }}</p>
+  {% if monitoring.coverage == "none" %}
+    <p class="i2g-monitor-error" role="note"><span class="material-symbols-outlined" aria-hidden="true">history</span>
+      This campaign was sent before email monitoring began{% if monitoring.monitoring_began %} ({{ monitoring.monitoring_began|date:"M j, Y H:i" }}){% endif %}: no API attempts were recorded for its emails, and none are reconstructed. The recipient-log counts below are what the campaign itself recorded at the time.
+    </p>
+  {% elif monitoring.coverage == "partial" %}
+    <p class="i2g-monitor-error" role="note"><span class="material-symbols-outlined" aria-hidden="true">history</span>
+      Telemetry covers {{ m.total }} of the {{ monitoring.processed_recipients }} recipients this campaign has processed: the others were processed before email monitoring began, or stopped before reaching the email service. Their outcomes are only in the recipient log below; nothing is reconstructed.
+    </p>
+  {% endif %}
+  <div class="i2g-monitor-tiles">
+    <div class="i2g-monitor-tile"><p>Intended recipients</p><strong>{{ campaign.total_recipients }}</strong><small>from the campaign record</small></div>
+    <div class="i2g-monitor-tile"><p>Emails recorded</p><strong>{{ m.total }}</strong><small>one per recipient</small></div>
+    <div class="i2g-monitor-tile"><p>API accepted</p><strong>{{ m.accepted }}</strong><small>queued, not proof of delivery</small></div>
+    <div class="i2g-monitor-tile"><p>API failed or not sent</p><strong>{{ m.failed|add:m.not_sent }}</strong><small>{{ m.uncertain }} with outcome unknown · {{ m.pending }} pending</small></div>
+    <div class="i2g-monitor-tile"><p>Confirmed bounces</p><strong>{{ m.bounced }}</strong><small>{% if m.bounce_rate is None %}–{% else %}{{ m.bounce_rate }}% of accepted{% endif %} · {{ m.delayed }} delayed</small></div>
+    <div class="i2g-monitor-tile"><p>Retries</p><strong>{{ a.retries }}</strong><small>{{ a.throttled }} throttled (HTTP 429) · {{ m.retried }} recipients retried</small></div>
+  </div>
+</section>
+
+<div class="i2g-monitor-grid">
+  <div class="i2g-monitor-card">
+    <h3>Error categories <span class="i2g-monitor-muted">failed attempts</span></h3>
+    {% if monitoring.error_kinds %}
+    <ul class="i2g-monitor-meters i2g-monitor-meters--plain">
+      {% for row in monitoring.error_kinds %}<li><span class="i2g-monitor-meter-label">{{ row.label }}</span><span class="i2g-monitor-meter-value">{{ row.count }}</span></li>{% endfor %}
+    </ul>
+    {% else %}<p class="i2g-monitor-empty">No failed attempts.</p>{% endif %}
+  </div>
+  <div class="i2g-monitor-card">
+    <h3>Bounce reports <span class="i2g-monitor-muted">by classification</span></h3>
+    <ul class="i2g-monitor-meters i2g-monitor-meters--plain">
+      {% for row in monitoring.bounce_classes %}<li><span class="i2g-monitor-meter-label">{{ row.label }}</span><span class="i2g-monitor-meter-value">{{ row.count }}</span></li>{% endfor %}
+    </ul>
+  </div>
+  <div class="i2g-monitor-card">
+    <h3>Recipient log <span class="i2g-monitor-muted">the campaign's own record</span></h3>
+    {% if monitoring.recipient_log %}
+    <ul class="i2g-monitor-meters i2g-monitor-meters--plain">
+      {% for status, count in monitoring.recipient_log.items %}<li><span class="i2g-monitor-meter-label">{{ status|capfirst }}</span><span class="i2g-monitor-meter-value">{{ count }}</span></li>{% endfor %}
+    </ul>
+    {% else %}<p class="i2g-monitor-empty">No recipient log rows.</p>{% endif %}
+  </div>
+</div>
+
+{% if monitoring.timeline %}
+<div class="i2g-monitor-grid i2g-monitor-grid--single">
+  {% include "admin/mail/email_monitoring/_time_chart.html" with key="campaign" source="i2g-monitor-campaign" title="Sending timeline: attempts and bounce reports" kind="lines" data=monitoring.timeline %}
+</div>
+{% endif %}
+
+<section class="i2g-monitor-section" aria-labelledby="campaign-failed">
+  <h2 id="campaign-failed" class="i2g-monitor-heading">Recipients without a clean result <span>{{ monitoring.failed_total }} — failed, not sent, outcome unknown, bounced or delayed</span></h2>
+  <div class="i2g-monitor-card">
+    {% if monitoring.failed %}
+    <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+      <thead><tr><th scope="col">Recipient</th><th scope="col">API status</th><th scope="col">Delivery / bounce</th><th scope="col" class="num">Attempts</th><th scope="col">Why</th><th scope="col">Last attempt</th></tr></thead>
+      <tbody>{% for email in monitoring.failed %}
+        <tr>
+          <td><a href="{% url 'admin:mail_email_monitoring_email' email.pk %}">{{ email.recipient|default:"–" }}</a></td>
+          <td>{% include "admin/mail/email_monitoring/_status.html" with value=email.status label=email.get_status_display %}</td>
+          <td>{% include "admin/mail/email_monitoring/_status.html" with value=email.delivery_status label=email.get_delivery_status_display %}{% if email.bounce_classification %}<br><span class="i2g-monitor-muted">{{ email.bounce_label }}</span>{% endif %}</td>
+          <td class="num">{{ email.attempt_count }}</td>
+          <td>{% if email.status == "accepted" %}See the bounce report on the email's page{% else %}{% if email.last_http_status %}HTTP {{ email.last_http_status }} · {% endif %}{{ email.last_error|default:"–"|truncatechars:160 }}{% endif %}</td>
+          <td>{{ email.last_attempt_at|date:"M j, H:i"|default:"–" }}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% if monitoring.failed_total > monitoring.failed|length %}<p class="i2g-monitor-muted">Showing the {{ monitoring.failed|length }} most recent; <a href="{% url 'admin:mail_email_monitoring_emails' %}?{{ log_query }}">open the email log</a> for all.</p>{% endif %}
+    {% else %}
+      <p class="i2g-monitor-empty">Every recorded email of this campaign was accepted, and no bounce report has been matched to any of them (which does not prove delivery).</p>
+    {% endif %}
+    <p><a href="{% url 'admin:mail_email_monitoring_emails' %}?{{ log_query }}">All of this campaign's emails in the email log</a></p>
+  </div>
+</section>
+{% endwith %}
+{% endblock %}

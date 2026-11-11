@@ -38,8 +38,8 @@ def _is_service_credentials(request):
 
 
 def _is_mail_delivery_operations(request):
-    return request.path.startswith("/admin/mail/delivery-dashboard/") or request.path.startswith(
-        "/admin/mail/settings/"
+    return request.path.startswith(
+        ("/admin/mail/delivery-dashboard/", "/admin/mail/email-monitoring/", "/admin/mail/settings/")
     )
 
 

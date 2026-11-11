@@ -25,6 +25,13 @@ DENIED_MODEL_LABELS = {
     "core.deliveryratestate",
     "core.deliveryusagebucket",
     "core.emailserviceconfig",
+    # Email telemetry and bounce processing: written only by the delivery facade and the bounce processor. A write
+    # would falsify the delivery record or move the bounce scan's checkpoint; staff read them on the Email
+    # Monitoring dashboard. None of their names matches DENIED_MODEL_NAME_PARTS.
+    "core.emailbounce",
+    "core.emailmonitorstate",
+    "core.outboundemail",
+    "core.outboundemailattempt",
     # Request limits: changing a policy, a Smart factor or the process heartbeats would loosen or tighten every
     # caller's limits outside the admin's audited page. None of their names matches DENIED_MODEL_NAME_PARTS.
     "core.requestlimitprocess",

@@ -130,6 +130,7 @@ TABS = [
         "page": "mail_delivery_operations",
         "items": [
             {"title": "Delivery Dashboard", "link": "/admin/mail/delivery-dashboard/"},
+            {"title": "Email Monitoring", "link": "/admin/mail/email-monitoring/"},
             {"title": "Notification Delivery", "link": "/admin/mail/settings/", "active": _is_notification_delivery},
             {"title": "Delivery Rates", "link": _DELIVERY_RATES_PATH},
         ],

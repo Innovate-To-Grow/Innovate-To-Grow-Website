@@ -16,8 +16,9 @@ from ..exceptions import (
     UncertainEmailDeliveryError,
 )
 from ..mime import build_mime_message, transport_bytes
+from ..telemetry import notes as telemetry
 from . import auth, json_message, transport
-from .errors import graph_error_code, request_id, send_mail_error
+from .errors import graph_error_code, request_id, response_facts, send_mail_error
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,10 @@ class GraphProvider:
     Graph answers ``202 Accepted`` with an empty body, so it returns no message id; the MIME ``Message-ID`` is
     reported instead (as SMTP does), and a JSON send reports none. A 202 only means the message was queued: later
     transport or recipient failures are delivered as non-delivery reports to the sender mailbox, which this provider
-    cannot observe.
+    cannot observe (the bounce processor, ``email.bounces``, reads them).
+
+    Each step and Microsoft's answer is noted for the email telemetry (``telemetry.notes``), and every sendMail carries
+    a fresh ``client-request-id`` GUID that Microsoft logs with the request, so a lost response can still be traced.
     """
 
     name = "graph"
@@ -88,6 +92,8 @@ class GraphProvider:
         }
 
     def send(self, message: EmailMessage, *, before_provider_call=None) -> DeliveryResult:
+        notes = telemetry.current_notes()
+        notes.step(telemetry.COMPOSE)
         recipients = len(message.envelope_recipients)
         if self.max_recipients is not None and recipients > self.max_recipients:
             # Exchange would reject it as a whole (or send to none), so refuse it before anything is counted.
@@ -96,7 +102,12 @@ class GraphProvider:
                 "message for this mailbox."
             )
         message_id, payload, content_type = self._encode(message)
+        notes.message(
+            send_format="json" if content_type == json_message.CONTENT_TYPE else "mime", internet_message_id=message_id
+        )
+        notes.step(telemetry.TOKEN, telemetry.IDENTITY_ENDPOINT)
         access_token, fresh = auth.obtain_access_token(self.credential, timeout=self.timeout)
+        notes.token_fresh = fresh
         if before_provider_call is not None:
             before_provider_call()
         return self._submit(access_token, payload, content_type, message_id, fresh_token=fresh)
@@ -140,20 +151,27 @@ class GraphProvider:
             raise PermanentEmailDeliveryError("The email could not be composed for Microsoft Graph.") from exc
 
     def _post(self, access_token: str, payload: bytes, content_type: str) -> transport.HttpResponse:
+        notes = telemetry.current_notes()
+        notes.step(telemetry.SEND_MAIL, telemetry.SEND_MAIL_ENDPOINT)
         path = SEND_MAIL_PATH.format(mailbox=quote(self.mailbox, safe="@"))
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": content_type,
             "Accept": "application/json",
+            "client-request-id": notes.new_client_request_id(),
         }
         try:
-            return transport.post(GRAPH_HOST, path, payload, headers, timeout=self.timeout)
+            response = transport.post(GRAPH_HOST, path, payload, headers, timeout=self.timeout)
         except transport.ConnectFailed as exc:
+            notes.transport_failed(exc)
             if exc.verification_failed:
                 raise PermanentEmailDeliveryError("TLS verification of Microsoft Graph failed.") from exc
             raise TransientEmailDeliveryError("Microsoft Graph could not be reached before sending.") from exc
         except transport.ResponseLost as exc:
+            notes.transport_failed(exc)
             raise UncertainEmailDeliveryError("Microsoft Graph response was lost after the request began.") from exc
+        notes.answered(**response_facts(response))
+        return response
 
     def _log_failure(self, response: transport.HttpResponse) -> None:
         # Stored delivery errors stay generic; operators get the correlation id here. Never log bodies or tokens.
