@@ -151,16 +151,25 @@ class StaleVersion(Exception):
     """The posted choices were made on an older version of the review."""
 
 
+class ReviewClosed(StaleVersion):
+    """The batch was applied, discarded or expired after the page was loaded: its choices are final."""
+
+
 def save_choices(
     batch: MemberImportBatch, *, user, version: int, posted: dict, command: str, bulk: dict
 ) -> SaveOutcome:
     """Save the posted choices, then run ``command`` (save, a bulk choice, reset, tick all, skip all) on top.
 
     ``posted`` is ``{row number: (choice or None, [ticks] or None)}`` for the rows the form showed (None keeps what is
-    stored); ``bulk`` maps a conflict to the bulk value its control selected. Raises ``ForgedSelection`` or ``StaleVersion``; nothing is saved then.
+    stored); ``bulk`` maps a conflict to the bulk value its control selected. Raises ``ForgedSelection``,
+    ``StaleVersion`` or ``ReviewClosed``; nothing is saved then.
     """
     with transaction.atomic():
         locked = MemberImportBatch.objects.select_for_update().get(pk=batch.pk)
+        # Checked under the lock: a save that waited for an apply (or a discard) in another request must not rewrite
+        # the choices, and who made them, of an import that is already final. The apply does not raise the version.
+        if locked.status != Status.REVIEW or locked.expires_at <= timezone.now():
+            raise ReviewClosed("This import was already applied, discarded or expired; nothing was saved.")
         if version != locked.choices_version:
             raise StaleVersion(
                 "This review was changed in another tab. Its latest choices are shown; check them again."

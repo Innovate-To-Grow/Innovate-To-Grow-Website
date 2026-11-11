@@ -6,9 +6,14 @@ from datetime import timedelta
 from django.contrib.auth.hashers import check_password
 from django.utils import timezone
 
-from apps.authn.models import ContactEmail, Member
+from apps.authn.models import ContactEmail, Member, MemberImportBatch
 from apps.authn.services.members.import_.review.analysis import SKIP_EXISTING
-from apps.authn.services.members.import_.review.batches import StaleVersion, save_choices, stored_analysis
+from apps.authn.services.members.import_.review.batches import (
+    ReviewClosed,
+    StaleVersion,
+    save_choices,
+    stored_analysis,
+)
 from apps.authn.services.members.import_.review.choices import NEEDS_NAMES
 from apps.authn.services.members.import_.review.selection import ForgedSelection
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row
@@ -172,6 +177,25 @@ class SaveChoicesTests(BatchTestCase):
 
         self.assertEqual(self.choices(self.batch)[2], ("skip", []))
         self.assertEqual(self.version(self.batch), 0)
+
+    def test_a_batch_that_is_no_longer_in_review_keeps_its_choices(self):
+        """A save that waited for an apply or a discard in another request finds the batch final (same version)."""
+        before = self.choices(self.batch)
+        for status in ("applied", "discarded", "expired"):
+            MemberImportBatch.objects.filter(pk=self.batch.pk).update(status=status)
+            with self.assertRaisesMessage(ReviewClosed, "already applied, discarded or expired; nothing was saved"):
+                self.save(self.batch, {2: ("update", [self.tick]), 4: ("skip", [])})
+            self.assertEqual(self.choices(self.batch), before)
+            self.assertEqual(self.version(self.batch), 0)
+            self.assertFalse(self.batch.rows.filter(chosen_by__isnull=False).exists())
+
+    def test_an_expired_review_keeps_its_choices(self):
+        MemberImportBatch.objects.filter(pk=self.batch.pk).update(expires_at=timezone.now() - timedelta(seconds=1))
+
+        with self.assertRaises(ReviewClosed):
+            self.save(self.batch, {2: ("update", [])})
+
+        self.assertEqual(self.choices(self.batch)[2], ("skip", []))
 
     def test_a_choice_the_row_never_offered_saves_nothing(self):
         with self.assertRaisesMessage(ForgedSelection, "Row 3: 'create' is not one of this row's choices"):
