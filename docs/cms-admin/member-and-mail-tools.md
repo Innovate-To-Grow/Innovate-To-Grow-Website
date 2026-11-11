@@ -367,6 +367,27 @@ The campaign admin includes a Gmail import feature (`src/apps/mail/services/gmai
 
 Viewable as inline records in the campaign admin.
 
+## Broadcast SMS: opt-outs, quiet hours, links and ticket texts
+
+What staff need to know before texting people (full detail: [AWS SMS](../integrations/aws-sms.md)):
+
+- **SMS Opt-outs** (Broadcast Campaigns tabs) lists every number no text goes to: people who replied STOP (read
+  from AWS every hour, or **Sync with AWS now**) and numbers staff added because someone asked them to stop. A
+  Broadcast SMS skips them ("N recipients skipped: opted out of texts"), sign-in codes are refused for them, and
+  the SMS Log shows **Opted out** instead of "Failed". Opting out unsubscribes the member's phone; replying START
+  later never subscribes it again. Only staff opt-outs can be lifted here.
+- **Quiet hours** (SMS Settings, 20:00–09:00 Pacific by default): a Broadcast SMS started then is queued until
+  they end (with background jobs off it cannot be sent until then). Sign-in codes are never held.
+- **Footer**: "Reply STOP to opt out." is added to each Broadcast SMS that does not already say STOP.
+- **Cost**: the message field shows the encoding, the segments and the estimated cost as you type; the send
+  preview and the confirmation show the total for the real recipients. Avoid emoji and curly quotes: one of them
+  more than doubles the number of segments.
+- **Links** (`{{login_link}}`, `{{ticket_link}}`, `{{event_link}}`) and **ticket texts for phone-only
+  registrants** are **off** until the sending number's 10DLC or toll-free registration is confirmed to allow
+  embedded links. While they are off, a message with a link placeholder cannot be saved or sent.
+- **Short /register link**: SMS Settings shows the QR code for `/register` (SVG and PNG) and where it leads (by
+  default the sign-in page, which takes an email address or a phone number).
+
 ## Related pages
 
 - [Django Admin](django-admin.md) — Admin interface and customization
@@ -375,4 +396,5 @@ Viewable as inline records in the campaign admin.
 - [Microsoft Graph email](../integrations/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
 - [Gmail API email](../integrations/gmail-api-email.md) — service account, domain-wide delegation, key install, the access check and Sent copies for the Gmail API provider
 - [Delivery rates](../integrations/delivery-rates.md) — Smart rate, manual rate, budgets, stops and Resume for every delivery channel
+- [AWS SMS](../integrations/aws-sms.md) — SMS opt-outs and their AWS sync, the footer, quiet hours, the cost estimate, links in SMS, ticket texts and the /register QR code
 - [Operations](operations.md) — Operational tasks
