@@ -5,8 +5,10 @@ People reply quoting a blast, and the quote carries their personal links: ``/log
 the retired ``/unsubscribe-login``, or any link with a ``token=`` (or ``…_token=``) parameter. Each such URL, also
 when it is percent-encoded inside another one (a "safe links" wrapper), is replaced as a whole by
 ``LINK_PLACEHOLDER``, and any remaining token-shaped run (60+ base64-ish characters, as ``telemetry.text`` scrubs
-error texts) by ``REDACTED_PLACEHOLDER``. The functions work on plain text and on serialized HTML alike (attribute
-values are quoted, and ``&amp;`` is matched like ``&``).
+error texts) by ``REDACTED_PLACEHOLDER``. Inside any other link a token is one path segment or parameter value (a run
+without "/" or "."), so a long but ordinary address (a shared document, a deep page) is kept whole and still works.
+The functions work on plain text and on serialized HTML alike (attribute values are quoted, and ``&amp;`` is matched
+like ``&``).
 """
 
 import re
@@ -23,6 +25,8 @@ _SENSITIVE_PATH_RE = re.compile(
 )
 _TOKEN_PARAM_RE = re.compile(r"(?i)[?#&;][a-z_]{0,32}token=")
 _LONG_TOKEN_RE = re.compile(r"[A-Za-z0-9+/=_.-]{60,}")
+# Within a link: one segment or parameter value, so the run never spans a host, a path or a "name=" ("/", ".", "=").
+_LINK_TOKEN_RE = re.compile(r"[A-Za-z0-9+_-]{60,}")
 # A link can be wrapped (percent-encoded) more than once; a few rounds of decoding find any such inner link.
 _DECODE_ROUNDS = 3
 
@@ -40,14 +44,19 @@ def is_sensitive_url(url: str) -> bool:
     return False
 
 
-def _replace(match: re.Match) -> str:
-    return LINK_PLACEHOLDER if is_sensitive_url(match.group(0)) else match.group(0)
+def _link(url: str) -> str:
+    return LINK_PLACEHOLDER if is_sensitive_url(url) else _LINK_TOKEN_RE.sub(REDACTED_PLACEHOLDER, url)
 
 
 def scrub_links(value) -> str:
-    """``value`` with every personal sign-in link and token-shaped run replaced."""
-    scrubbed = _URL_RE.sub(_replace, str(value or ""))
-    return _LONG_TOKEN_RE.sub(REDACTED_PLACEHOLDER, scrubbed)
+    """``value`` with every personal sign-in link and token-shaped run replaced: a link is judged as a whole, the
+    text around links loses every token-shaped run."""
+    value, parts, start = str(value or ""), [], 0
+    for match in _URL_RE.finditer(value):
+        parts += [_LONG_TOKEN_RE.sub(REDACTED_PLACEHOLDER, value[start : match.start()]), _link(match.group(0))]
+        start = match.end()
+    parts.append(_LONG_TOKEN_RE.sub(REDACTED_PLACEHOLDER, value[start:]))
+    return "".join(parts)
 
 
 def scrub_subject(value, limit: int = 255) -> str:

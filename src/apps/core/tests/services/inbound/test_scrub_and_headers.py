@@ -55,6 +55,22 @@ class ScrubTests(SimpleTestCase):
     def test_long_token_runs_are_redacted(self):
         self.assertEqual(scrub_links("code " + "A" * 80 + " end"), "code [redacted] end")
 
+    def test_long_ordinary_links_stay_whole_and_only_token_segments_go(self):
+        # The run rule used to span a link's host and path, so a shared document's address became "https:[redacted]".
+        links = (
+            "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcdefgh/edit",
+            "https://ucmerced.box.com/s/abcdefghijklmnopqrstuvwxyz0123456789abcdefghijkl",
+            "https://www.ucmerced.edu/academics/schools/engineering/innovate-to-grow-program-overview-2026",
+        )
+        for link in links:
+            with self.subTest(link):
+                self.assertEqual(scrub_links(f"See {link} today."), f"See {link} today.")
+                self.assertEqual(scrub_links(f'<a href="{link}">{link}</a>'), f'<a href="{link}">{link}</a>')
+        opaque = "https://files.example/get?id=" + "Q" * 70 + "&x=1"
+
+        self.assertEqual(scrub_links(opaque), "https://files.example/get?id=[redacted]&x=1")
+        self.assertEqual(scrub_links("key " + "a/b" * 30 + " after"), "key [redacted] after")
+
     def test_subjects_are_single_line_scrubbed_and_bounded(self):
         subject = scrub_subject(
             f"Re:\r\n your link https://i2g.ucmerced.edu/login-link#token={TOKEN}\x00" + " word" * 100
