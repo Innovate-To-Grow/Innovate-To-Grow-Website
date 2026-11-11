@@ -115,8 +115,8 @@ policy (plan question S5).
 The **Helpdesk** app grant (`Member.admin_apps` contains `helpdesk`, or I2G Master) gives everything in the
 helpdesk: the queue, ticket pages, notes, assignment, merge, spam, Ingest Problems and Settings. Every custom view
 (ticket notes, attachment downloads) checks the grant itself (403 without it). Tickets are created only from
-mail; only an I2G Master can delete one by hand (otherwise only retention deletes). Opening the linked member or
-campaign needs the Members or Mail app.
+mail; only an I2G Master can delete one by hand, behind the typed confirmation (otherwise only retention deletes).
+Opening the linked member or campaign needs the Members or Mail app.
 
 ## Settings
 

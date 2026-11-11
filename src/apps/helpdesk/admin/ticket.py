@@ -4,7 +4,8 @@ The list opens on people's open tickets: automated mail and spam are hidden unle
 (the sidebar's "Automated & spam"). The ticket page edits status, priority, category and assignee (each change goes
 to the ticket's audit trail; no typed confirmation, which would be noise on every status change) and shows the
 timeline with the note form below the form. Merging and marking spam do need a typed confirmation. Tickets are
-created only from mail, and deleted only by retention or an I2G Master. Nothing here sends anything.
+created only from mail, and deleted only by retention or an I2G Master (behind the typed confirmation). Nothing here
+sends anything.
 """
 
 from django.contrib import admin, messages
@@ -120,8 +121,11 @@ class TicketAdmin(BaseModelAdmin):
         return bool(getattr(request.user, "is_superuser", False)) and super().has_delete_permission(request, obj)
 
     def _should_skip_confirmation(self, request):
-        # Saving the ticket page needs no typed confirmation; the merge and spam actions keep it.
-        if request.method == "POST" and "action" not in request.POST:
+        # Saving the ticket page needs no typed confirmation (it would be noise on every status change). Deleting a
+        # ticket (I2G Master only; its messages, files and audit trail go with it) and the merge and spam actions
+        # keep theirs, so the skip is limited to the change view.
+        match = getattr(request, "resolver_match", None)
+        if request.method == "POST" and getattr(match, "url_name", "") == f"{self.opts.app_label}_ticket_change":
             return True
         return super()._should_skip_confirmation(request)
 

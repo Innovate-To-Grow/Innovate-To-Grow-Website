@@ -16,6 +16,7 @@ from .helpers import helpdesk_staff, make_admin, make_superuser
 Status = Ticket.Status
 CHANGELIST = "admin:helpdesk_ticket_changelist"
 ACTION_SESSION_KEY = "_admin_pending_action_helpdesk_ticket"
+CHANGE_SESSION_KEY = "_admin_pending_change_helpdesk_ticket"
 
 
 def ticket(subject, **values) -> Ticket:
@@ -74,6 +75,21 @@ class AccessTests(QueueTestCase):
         self.assertEqual(self.client.get(delete).status_code, 403)
         self.client.force_login(make_superuser(email="master@example.com"))
         self.assertEqual(self.client.get(delete).status_code, 200)
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_deleting_a_ticket_still_needs_the_typed_confirmation(self):
+        # Only the ticket page's save skips it: a delete takes the messages, files and audit trail with it.
+        self.client.force_login(make_superuser(email="master@example.com"))
+
+        response = self.client.post(reverse("admin:helpdesk_ticket_delete", args=[self.open.pk]), {"post": "yes"})
+
+        self.assertIn("confirm-change", response.url)
+        self.assertTrue(Ticket.objects.filter(pk=self.open.pk).exists())
+        token = self.client.session[CHANGE_SESSION_KEY]["token"]
+        self.client.post(
+            reverse("admin:helpdesk_ticket_confirm_change"), {"confirmation_word": "ticket", "token": token}
+        )
+        self.assertFalse(Ticket.objects.filter(pk=self.open.pk).exists())
 
 
 class ListTests(QueueTestCase):
