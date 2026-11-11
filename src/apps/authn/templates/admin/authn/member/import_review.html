@@ -124,14 +124,14 @@
 
         <!-- 4. Ready -->
         <h2 id="ready" class="text-xl font-semibold mb-3">Ready</h2>
-        <details class="mb-6"{% if ready|length < 30 %} open{% endif %}>
+        <details class="mb-6"{% if ready|length < 30 or ready_changed %} open{% endif %}>
             <summary class="cursor-pointer text-sm">{{ ready|length }} row(s) will be created or updated unless you tick Skip</summary>
             <table class="w-full text-sm mt-2">
                 <thead><tr class="text-left text-xs uppercase"><th class="py-1 pr-3">Row</th><th class="py-1 pr-3">Skip</th><th class="py-1 pr-3">Member</th><th class="py-1">What happens</th></tr></thead>
                 <tbody>
                     {% for view in ready %}
                         <tr class="border-t border-base-100 dark:border-base-800 align-top">
-                            <td class="py-1 pr-3">{{ view.number }}<input type="hidden" name="ready-{{ view.number }}" value="{{ view.default }}"></td>
+                            <td class="py-1 pr-3">{{ view.number }}<input type="hidden" name="ready-{{ view.number }}" value="{{ view.default }}">{% if view.row.changed_since_review %}<span class="block text-xs text-red-700 dark:text-red-300">Changed since you reviewed it</span>{% endif %}</td>
                             <td class="py-1 pr-3"><input type="checkbox" name="skip-{{ view.number }}" value="1"{% if view.skip_checked %} checked{% endif %}{% if not editable %} disabled{% endif %} aria-label="Skip row {{ view.number }}"></td>
                             <td class="py-1 pr-3">{% if view.target_url %}<a class="underline" href="{{ view.target_url }}" target="_blank" rel="noopener">{{ view.target_name|default:"member" }}</a>{% else %}New: {{ view.row.values.raw.first_name }} {{ view.row.values.raw.last_name }}{% endif %}</td>
                             <td class="py-1">{% include "admin/authn/member/_import_plan.html" with plan=view.plan %}
@@ -144,11 +144,11 @@
 
         <!-- 5. No change -->
         <h2 id="no-change" class="text-xl font-semibold mb-3">No change</h2>
-        <details class="mb-6">
+        <details class="mb-6"{% if no_change_changed %} open{% endif %}>
             <summary class="cursor-pointer text-sm">{{ no_change|length }} row(s) match a member and change nothing</summary>
             <ul class="text-sm mt-2">
                 {% for view in no_change %}
-                    <li>Row {{ view.number }}: <a class="underline" href="{{ view.target_url }}" target="_blank" rel="noopener">{{ view.target_name|default:"member" }}</a>{% if view.plan.notes %} · {{ view.plan.notes|join:"; " }}{% endif %}
+                    <li>Row {{ view.number }}: <a class="underline" href="{{ view.target_url }}" target="_blank" rel="noopener">{{ view.target_name|default:"member" }}</a>{% if view.row.changed_since_review %} <span class="text-xs text-red-700 dark:text-red-300">Changed since you reviewed it</span>{% endif %}{% if view.plan.notes %} · {{ view.plan.notes|join:"; " }}{% endif %}
                         <input type="hidden" name="ready-{{ view.number }}" value="{{ view.default }}">
                         <label class="text-xs ml-2"><input type="checkbox" name="skip-{{ view.number }}" value="1"{% if view.skip_checked %} checked{% endif %}{% if not editable %} disabled{% endif %}> Skip</label>
                     </li>

@@ -199,6 +199,10 @@ def review_sections(batch) -> dict:
         "invalid": by_status["invalid"],
         "ready": by_status["ready_create"] + by_status["ready_update"],
         "no_change": by_status["no_change"],
+        "no_change_changed": any(view["row"].changed_since_review for view in by_status["no_change"]),
+        "ready_changed": any(
+            view["row"].changed_since_review for view in by_status["ready_create"] + by_status["ready_update"]
+        ),
         "counts": {status: len(items) for status, items in by_status.items()}
         | {"risky": sum(group["count"] for group in risky)},
         "problems": selection_problems(analyses, selections),

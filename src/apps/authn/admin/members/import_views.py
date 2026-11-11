@@ -83,21 +83,9 @@ def upload_view(admin_obj, request):
     if request.method == "POST":
         form = MemberImportForm(request.POST, request.FILES, can_update=can_update)
         if form.is_valid():
-            read = read_upload(form.cleaned_data["excel_file"], max_rows=import_setting("max_rows"))
-            if read.error:
-                form.add_error("excel_file", read.error)
-            else:
-                repeats = repeat_uploads(read.file_sha256)
-                if not repeats or form.cleaned_data["upload_anyway"]:
-                    mode = form.cleaned_data["mode"]
-                    batch = create_batch(
-                        read,
-                        user=request.user,
-                        mode=mode,
-                        password=form.cleaned_data.get("set_password") or "",
-                        ctx=analysis_context(admin_obj, request, mode),
-                    )
-                    return HttpResponseRedirect(_url("review", batch))
+            batch, repeats = _stage_upload(admin_obj, request, form)
+            if batch is not None:
+                return HttpResponseRedirect(_url("review", batch))
     in_review = MemberImportBatch.objects.filter(status=Status.REVIEW, expires_at__gt=timezone.now())
     if not request.user.is_superuser:
         in_review = in_review.filter(created_by=request.user)
@@ -112,6 +100,26 @@ def upload_view(admin_obj, request):
         max_rows=import_setting("max_rows"),
         lifetime_hours=import_setting("batch_lifetime_hours"),
     )
+
+
+def _stage_upload(admin_obj, request, form):
+    """``(batch, repeats)``: the staged batch, or None with the earlier uploads of the same file to warn about."""
+    read = read_upload(form.cleaned_data["excel_file"], max_rows=import_setting("max_rows"))
+    if read.error or not read.rows:
+        form.add_error("excel_file", read.error or "The sheet has no member rows below its header row.")
+        return None, []
+    repeats = repeat_uploads(read.file_sha256)
+    if repeats and not form.cleaned_data["upload_anyway"]:
+        return None, repeats
+    mode = form.cleaned_data["mode"]
+    batch = create_batch(
+        read,
+        user=request.user,
+        mode=mode,
+        password=form.cleaned_data.get("set_password") or "",
+        ctx=analysis_context(admin_obj, request, mode),
+    )
+    return batch, repeats
 
 
 def review_view(admin_obj, request, batch_id):
@@ -212,7 +220,7 @@ def _apply(admin_obj, request, batch, version: int):
         messages.info(request, "This import was already applied or discarded.")
         return HttpResponseRedirect(_url("result", batch))
     level = messages.warning if result.status == "stale" else messages.error
-    level(request, f"Nothing was imported. {result.message}.")
+    level(request, f"Nothing was imported. {result.message.rstrip('.')}.")
     return HttpResponseRedirect(_url("review", batch))
 
 

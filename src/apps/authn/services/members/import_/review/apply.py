@@ -17,12 +17,12 @@ from django.contrib.auth.hashers import make_password
 from django.db import transaction
 from django.utils import timezone
 
-from apps.authn.models import Member, MemberImportBatch
+from apps.authn.models import Member, MemberImportBatch, MemberImportRow
 
 from ..parsing import generate_random_password, values_from_json
 from .actions import CREATE, CREATE_CLAIM, SKIP
 from .analysis import INVALID, Context, analyse_rows
-from .batches import activity_event, to_stored
+from .batches import activity_event, forget_password, to_stored
 from .choices import allowed_values
 from .execute import RowWriteError, execute_creations, execute_update, log_batch, log_member_changes
 from .lookup import load_snapshot
@@ -87,7 +87,7 @@ def run_import(analyses, selections: dict, snapshot, *, password_hash: str, memb
     )
     history = []
     for analysis, plan in planned:
-        outcome = _write_row(analysis, plan, created, members)
+        outcome = _write_row(analysis, plan, created, members, getattr(snapshot, "objects", {}))
         outcomes[outcome.row_number] = outcome
         if outcome.outcome == "created":
             history.append((outcome.member, True, f"Created by member import {label}, row {outcome.row_number}"))
@@ -99,12 +99,12 @@ def run_import(analyses, selections: dict, snapshot, *, password_hash: str, memb
     return [outcomes[analysis.row_number] for analysis in analyses]
 
 
-def _write_row(analysis, plan, created: dict, members: dict) -> RowOutcome:
+def _write_row(analysis, plan, created: dict, members: dict, known: dict) -> RowOutcome:
     number = analysis.row_number
     listed = {kind: list(items) for kind, items in plan.listed.items()}
     if plan.kind == SKIP:
-        reason = analysis.facts.get("why", "")
-        return RowOutcome(number, "skipped", member=members.get(analysis.target), reason=reason)
+        member = members.get(analysis.target) or known.get(analysis.target)
+        return RowOutcome(number, "skipped", member=member, reason=analysis.facts.get("why", ""))
     if plan.kind in (CREATE, CREATE_CLAIM):
         return RowOutcome(number, "created", plan.changes, plan.notes, created[number], listed=listed)
     member = members.get(plan.target)
@@ -196,14 +196,14 @@ def _record(batch: MemberImportBatch, stored, outcomes: list[RowOutcome], user) 
         row.outcome_detail = "\n".join([*outcome.changes, *outcome.notes] or [outcome.reason])
         row.result_member = outcome.member
         row.updated_at = timezone.now()
-    type(stored[0]).objects.bulk_update(
+    MemberImportRow.objects.bulk_update(
         stored, ["outcome", "outcome_detail", "result_member", "updated_at"], batch_size=500
     )
     now = timezone.now()
     batch.status = MemberImportBatch.Status.APPLIED
     batch.applied_at, batch.applied_by = now, user
     batch.summary = {"outcomes": dict(counts), "risky": dict(risky)}
-    batch.default_password_hash = ""
+    forget_password(batch)
     batch.last_error = ""
     batch.activity = [*batch.activity, activity_event(user, "apply", _counts_text(counts))]
     batch.save()
@@ -229,7 +229,7 @@ def _send_back(batch_id, fresh, changed: list[int], user) -> None:
             row.chosen_by, row.chosen_at = None, None
             row.updated_at = timezone.now()
         fields = [*to_stored(fresh[0]), "changed_since_review", "chosen_by", "chosen_at", "updated_at"]
-        type(rows[0]).objects.bulk_update(rows, fields, batch_size=200)
+        MemberImportRow.objects.bulk_update(rows, fields, batch_size=200)
         batch.choices_version += 1
         numbers = ", ".join(str(number) for number in changed[:20]) + (" …" if len(changed) > 20 else "")
         batch.last_error = (

@@ -111,6 +111,11 @@ def repeat_uploads(sha256: str, *, exclude=None):
     return [batch for batch in found if exclude is None or batch.pk != exclude]
 
 
+def forget_password(batch: MemberImportBatch) -> None:
+    """Drop the upload's Default Password hash: it is kept only while the batch can still be applied."""
+    batch.default_password_hash = ""  # nosec B105 - clears a stored hash; it is not a credential
+
+
 def is_expired(batch: MemberImportBatch) -> bool:
     return batch.status == Status.EXPIRED or (batch.status == Status.REVIEW and batch.expires_at <= timezone.now())
 
@@ -119,7 +124,7 @@ def mark_expired(batch: MemberImportBatch) -> None:
     """An expired review keeps no password hash and can't be applied; the purge deletes it."""
     if batch.status == Status.REVIEW and batch.expires_at <= timezone.now():
         batch.status = Status.EXPIRED
-        batch.default_password_hash = ""
+        forget_password(batch)
         batch.save(update_fields=["status", "default_password_hash", "updated_at"])
 
 
@@ -129,7 +134,7 @@ def discard_batch(batch: MemberImportBatch, user) -> None:
         if locked.status != Status.REVIEW:
             return
         locked.status = Status.DISCARDED
-        locked.default_password_hash = ""
+        forget_password(locked)
         locked.activity = [*locked.activity, activity_event(user, "discard")]
         locked.save(update_fields=["status", "default_password_hash", "activity", "updated_at"])
 

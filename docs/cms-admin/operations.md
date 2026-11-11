@@ -379,29 +379,71 @@ cd src && python manage.py createsuperuser --email admin@example.com
 ### Member import/export
 
 Available through the Member admin:
-- Import from Excel (openpyxl, `.xlsx` only)
-- Export to Excel
+- **Import Members** (Members → Import): `.xlsx` only, up to 2,000 rows per file
+- **Export to Excel**: its file can be edited and imported again; its **Member UUID** column matches each row to its
+  member
 
-**Import rules** (`src/apps/authn/services/members/import_/`):
+**Import: Upload → Review → Confirm → Result** (`src/apps/authn/services/members/import_/`). Nothing is written to
+member data until you confirm.
 
-- A row whose Primary Email is new creates a member. A brand-new member's own Verified/Subscribed/Active cells are
-  used as given.
-- With **Update Existing Members** ticked, a row updates the member whose *primary* email is in its Primary Email cell.
-  Matching is by primary email only. If the address exists in any other way, the row is skipped and the report says
-  why, naming and linking the member: another member's secondary or "other" email, a contact email linked to no
-  member, or legacy addresses that differ only in letter case.
-- An update never deletes anything. A blank cell, or a missing column, keeps the stored value.
-- A new Secondary Email is added as the secondary, and the previous secondary becomes "other". A new Phone Number is
-  added next to the member's numbers instead of replacing one. Both start unverified, whatever the sheet says.
-- An address or number held by another member, or by no member, is never moved or attached.
-- The Primary Verified/Subscribed cells can verify the primary address or unsubscribe it. They never un-verify it or
-  re-subscribe it. A contact added to an existing member is not subscribed when that member has opted out on that
-  channel. The flag cells of an existing secondary email or phone are not applied.
-- The Active column does not activate or deactivate existing members; use the member list's actions. The Staff column
-  is applied only when an I2G Master imports.
-- TRUE/FALSE cells accept TRUE, FALSE, Yes, No, Y, N, 1 and 0. Any other text is ignored, not read as FALSE.
-- The result page lists every skipped row with the reason, and every cell that was not applied or contact that was
-  kept. Each line links to its member.
+1. **Upload** the sheet. Choose what a row that matches an existing member does by default (**Update them** or **Skip
+   them**) and, optionally, a default password for new members (only its hash is kept, until the import is applied).
+   Uploading a file that is already in review, or was imported in the last 30 days, asks first.
+2. **Review.** Each row is one of:
+   - **Ready**: a new member, or an update of the member whose primary email (or Member UUID) the row names. Applied
+     unless you tick its **Skip** box. Updates list each change ("Organization: 'A' → 'B'").
+   - **Needs a decision**: skipped until you choose otherwise. Each card shows the sheet's cells, every member and
+     contact involved (with their roles and Verified/Subscribed flags), why the row needs a decision, the choices, and
+     exactly what the selected choice will change.
+   - **Cannot import**: no Primary Email, an invalid new address, or a new member without a first and last name. Fix
+     the sheet and upload it again.
+3. **Confirm**: the counts per outcome and per decision, and every risky change spelled out. Type `import`.
+4. **Result**: one line per row with what changed and a link to the member. Each member's History shows the change
+   ("Member import 1a2b3c4d, row 5: matched by secondary email; …").
+
+**Decisions** (each group has an "apply to all N rows" control that offers only the choices that are safe in bulk):
+
+| Code | When | Choices |
+|---|---|---|
+| C1 | The same person is in several rows (one member, or one new address) | Use one of the rows; skip the others |
+| C2 | The member is a staff or superuser account and you are not an I2G Master | Skip |
+| C3 | The address exists more than once, differing only in letter case | Use one of the members; skip. Merge the duplicates under Contact Emails |
+| C4 | The Member UUID and the Primary Email name different members | Use the UUID's member (the address is not moved), use the address's member, or skip |
+| C5 | The Member UUID matches nobody (deleted member, typo, a staging export) | Match by email instead, or skip |
+| C6 | Found by email, but the name differs | Same person (with or without the name), or skip |
+| C7 | The address is a member's **secondary** or "other" email (the "Row 5" case) | Update the member and keep the email roles; update and make the address the primary (only if it is verified: the old primary becomes secondary, nothing is deleted); or skip |
+| C8 | The address exists but belongs to no member | Create a new member with it; attach it to the member the row's other cells found; or skip |
+| C9 | The row matches a member and the upload said "Skip them" | Skip, or update the member |
+
+**Risky changes** are never made unless you tick them, one tick per change: removing a secondary email (the Secondary
+cell is blank, or names another address), removing a phone number (blank cell, or a new number), re-subscribing an
+address or number (only with the person's consent), marking one unverified, deactivating or reactivating a member, and
+staff status (I2G Master only). A tick is disabled for the address the row was matched on, and for a member's last
+verified sign-in contact.
+
+**Always:**
+- A blank cell, or a missing column, keeps the stored value. Nothing is deleted, re-subscribed or un-verified without
+  its tick, and Active and Staff never change without theirs.
+- The Primary/Secondary/Phone Verified and Subscribed cells apply only to the contact the cell names, and only when the
+  member owns it: TRUE verifies, FALSE unsubscribes.
+- A new address or number on an existing member starts unverified; a new secondary becomes the secondary and the old
+  one becomes "other"; a new number is added next to the old ones. A contact email that belongs to no member is
+  attached (unverified); an address or number held by another member is never moved.
+- No email or SMS is sent. TRUE/FALSE cells accept TRUE, FALSE, Yes, No, Y, N, 1 and 0; other text is ignored.
+  Malformed addresses, non-US phone numbers and unreadable dates are reported and ignored.
+- The apply is all or nothing. If a member or contact the review showed changed in the meantime, nothing is written
+  and those rows go back to the review, marked "Changed since you reviewed it".
+- Only the admin who uploaded an import, or an I2G Master, can change, apply or discard it; other admins with the
+  Members app see it read-only.
+
+**History and retention** (Members → Member Imports, read-only, no export): an import that is not applied is deleted
+24 hours after the upload. An applied import keeps its sheet values for 30 days and its record (who chose what for
+each row, and the outcome) for a year. The members' History entries stay. The defaults are in
+`settings.MEMBER_IMPORT`; the background worker's hourly maintenance and each visit to the upload page apply them.
+
+The import without a review (`import_members_from_excel`) remains for scripts and tests: it applies the ready rows,
+skips every row that needs a decision, and makes no risky change. Design notes:
+[Member import review](../architecture/member-import-review.md).
 
 ## Stylesheets and design tokens
 

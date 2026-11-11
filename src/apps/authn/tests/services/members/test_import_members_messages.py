@@ -1,8 +1,8 @@
-"""Every row the member import skips says why, and names the member it is about.
+"""Every row the import without a review skips says why, and names the member it is about.
 
-The "Row 5" report ("no member has … as their primary email") gave no reason. These tests pin the reasons for the
-update path, the create-only path and the creation of new members, without changing which rows match: a row still
-reaches an existing member only through that member's primary email.
+``import_members_from_excel`` runs the review's analysis and applies what a review would apply untouched: every row
+that needs a decision (C1–C9) is skipped with its reason, and nothing risky is done. These tests pin the reasons, the
+notes on imported rows, and that the whole import is one transaction.
 """
 
 from unittest.mock import patch
@@ -12,14 +12,13 @@ from django.test import TestCase
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.authn.services.members.import_ import import_members_from_excel
-from apps.authn.services.members.import_.matching import lookup_contact_emails, lookup_contact_phones
-from apps.authn.services.members.import_.operations import bulk_update_members
-from apps.authn.services.members.import_.parsing import parse_row
-from apps.authn.services.members.import_.types import ImportMessage, ImportResult
+from apps.authn.services.members.import_.review.lookup import load_snapshot
+from apps.authn.services.members.import_.types import ImportMessage
 
 from .import_sheets import FULL_HEADERS, build_sheet, full_row
 
 HEADERS = ["Primary Email", "First Name", "Last Name", "Secondary Email", "Phone Number", "Organization"]
+C7 = "needs a decision (C7: The address is a member's secondary or other email)"
 
 
 def _member(first, last, primary, **primary_flags):
@@ -51,10 +50,8 @@ class UpdateModeSkipReasonTests(TestCase):
         self.assertEqual(
             result.errors,
             [
-                "Row 5: no member has neil.parkhi@work.example as their primary email: it is the secondary email of "
-                f"Neil Parkhi (member {self.neil.pk}), whose primary email is neil@home.example. Row not imported. "
-                "Rows are matched to existing members by primary email only: put the member's primary email in the "
-                "Primary Email cell, or make this address their primary email on the member page first"
+                f"Row 5: {C7}. neil.parkhi@work.example is the secondary email of Neil Parkhi (member {self.neil.pk}), "
+                "whose primary email is neil@home.example."
             ],
         )
         message = result.errors[0]
@@ -74,7 +71,7 @@ class UpdateModeSkipReasonTests(TestCase):
             update_existing=True,
         )
 
-        self.assertIn("it is the other email of Neil Parkhi", result.errors[0])
+        self.assertIn("is the other email of Neil Parkhi", result.errors[0])
 
     def test_unlinked_address(self):
         ContactEmail.objects.create(member=None, email_address="orphan@example.com")
@@ -83,14 +80,14 @@ class UpdateModeSkipReasonTests(TestCase):
             build_sheet(HEADERS, [["orphan@example.com", "Or", "Phan", None, None, None]]), update_existing=True
         )
 
-        self.assertEqual(
-            result.errors,
-            [
-                "Row 2: no member has orphan@example.com as their primary email: it is a contact email that is not "
-                "linked to any member. Row not imported: link it to a member (or delete it) under Contact Emails first"
-            ],
+        self.assertEqual(len(result.errors), 1)
+        self.assertIn(
+            "Row 2: needs a decision (C8: The address exists, but with no member). orphan@example.com is a contact "
+            "email with no member (added ",
+            result.errors[0],
         )
         self.assertIsNone(result.errors[0].member_id)
+        self.assertIsNone(ContactEmail.objects.get(email_address="orphan@example.com").member)
 
     def test_case_only_duplicates_are_skipped_instead_of_picking_one(self):
         """The old lookup kept whichever primary it met; the row might update the wrong person."""
@@ -102,11 +99,11 @@ class UpdateModeSkipReasonTests(TestCase):
             build_sheet(HEADERS, [["shared@example.com", "Who", "Ever", None, None, "Changed"]]), update_existing=True
         )
 
-        self.assertEqual(result.updated_count, 0)
-        self.assertEqual(result.skipped_count, 1)
+        self.assertEqual((result.updated_count, result.skipped_count), (0, 1))
+        self.assertIn("(C3: The address exists more than once, differing only in letter case)", result.errors[0])
         self.assertIn("shared@example.com matches 2 contact emails that differ only in letter case", result.errors[0])
         self.assertIn(f"Shared@Example.com is the primary email of Grace Hopper (member {grace.pk})", result.errors[0])
-        self.assertIn("merge the duplicates under Contact Emails first", result.errors[0])
+        self.assertIn("Merge the duplicates under Contact Emails", result.errors[0])
         grace.refresh_from_db()
         self.assertNotEqual(grace.organization, "Changed")
 
@@ -120,28 +117,26 @@ class UpdateModeSkipReasonTests(TestCase):
         self.assertEqual(
             result.errors,
             [
-                f"Row 2: You do not have permission to update Neil Parkhi (member {self.neil.pk}) (only an I2G "
-                "Master may change staff and superuser accounts)"
+                "Row 2: needs a decision (C2: A staff or superuser account). You do not have permission to update "
+                f"Neil Parkhi (member {self.neil.pk}) (only an I2G Master may change staff and superuser accounts)."
             ],
         )
         self.assertEqual(result.errors[0].member_id, str(self.neil.pk))
 
-    def test_a_failing_row_is_rolled_back_and_named(self):
-        sheet = build_sheet(HEADERS, [["neil@home.example", "Renamed", "Parkhi", None, "+12095550001", "Org"]])
+    def test_a_failing_row_rolls_back_the_whole_import(self):
+        sheet = self._rows(["neil@home.example", "Neil", "Parkhi", None, "+12095550001", "Org"])
 
-        with patch("apps.authn.services.members.import_.operations.sync_phone", side_effect=RuntimeError("phone boom")):
+        with patch(
+            "apps.authn.services.members.import_.contacts.create_contact_phone", side_effect=RuntimeError("phone boom")
+        ):
             result = import_members_from_excel(sheet, update_existing=True)
 
-        self.assertEqual((result.updated_count, result.skipped_count), (0, 1))
-        self.assertEqual(
-            result.errors,
-            [
-                f"Row 2: could not update Neil Parkhi (member {self.neil.pk}): phone boom. Nothing in this row was "
-                "changed"
-            ],
-        )
+        self.assertFalse(result.success)
+        self.assertEqual((result.created_count, result.updated_count), (0, 0))
+        self.assertEqual(result.errors, ["Error importing members: Row 5: phone boom. Nothing was imported"])
+        self.assertFalse(Member.objects.filter(first_name="New").exists())
         self.neil.refresh_from_db()
-        self.assertEqual(self.neil.first_name, "Neil")
+        self.assertIsNone(self.neil.organization)
 
 
 class CreateOnlySkipReasonTests(TestCase):
@@ -158,8 +153,9 @@ class CreateOnlySkipReasonTests(TestCase):
         self.assertEqual(
             result.errors,
             [
-                f"Row 2: Member with email NEIL@home.example already exists: Neil Parkhi (member {self.neil.pk}). "
-                'Skipped because "Update Existing Members" is off'
+                "Row 2: needs a decision (C9: Matches an existing member, and the upload said to skip those). "
+                f"NEIL@home.example is the primary email of Neil Parkhi (member {self.neil.pk}), and the upload said "
+                "to skip rows that match an existing member."
             ],
         )
         self.assertEqual(result.errors[0].member_id, str(self.neil.pk))
@@ -170,8 +166,8 @@ class CreateOnlySkipReasonTests(TestCase):
         result = self._import("work@example.com")
 
         self.assertIn(
-            f"work@example.com already exists: it is the secondary email of Neil Parkhi (member {self.neil.pk}), "
-            "whose primary email is neil@home.example. Row not imported",
+            f"{C7}. work@example.com is the secondary email of Neil Parkhi (member {self.neil.pk}), whose primary "
+            "email is neil@home.example.",
             result.errors[0],
         )
 
@@ -180,7 +176,7 @@ class CreateOnlySkipReasonTests(TestCase):
 
         result = self._import("orphan@example.com")
 
-        self.assertIn("orphan@example.com already exists: it is a contact email that is not linked", result.errors[0])
+        self.assertIn("orphan@example.com is a contact email with no member", result.errors[0])
 
     def test_existing_case_only_duplicates(self):
         ContactEmail.objects.create(member=None, email_address="Twin@example.com")
@@ -244,7 +240,8 @@ class NewMemberMessageTests(TestCase):
         self.assertEqual(ContactEmail.objects.count(), 1)
         self.assertEqual(result.warnings, ["Row 2: Secondary Email is the same as the Primary Email; ignored"])
 
-    def test_primary_already_used_as_an_earlier_rows_secondary(self):
+    def test_one_rows_primary_wins_over_another_rows_secondary(self):
+        """V8: the address is created as row 3's primary; row 2's Secondary cell is set aside."""
         result = import_members_from_excel(
             build_sheet(
                 HEADERS,
@@ -255,8 +252,15 @@ class NewMemberMessageTests(TestCase):
             )
         )
 
-        self.assertEqual((result.created_count, result.skipped_count), (1, 1))
-        self.assertEqual(result.errors, ["Row 3: shared@example.com is already used by row 2 of this file"])
+        self.assertEqual((result.created_count, result.skipped_count), (2, 0))
+        self.assertEqual(
+            result.warnings,
+            [
+                "Row 2: Secondary Email shared@example.com is the Primary Email of row 3; that row wins, and this cell is ignored"
+            ],
+        )
+        shared = ContactEmail.objects.get(email_address="shared@example.com")
+        self.assertEqual((shared.member.first_name, shared.email_type), ("Grace", "primary"))
 
     def test_secondary_and_phone_already_used_by_an_earlier_row(self):
         result = import_members_from_excel(
@@ -273,12 +277,12 @@ class NewMemberMessageTests(TestCase):
         self.assertEqual(
             result.warnings,
             [
-                "Row 3: Secondary Email shared@example.com is already used by row 2 of this file; not added",
-                "Row 3: Phone Number +12095550001 is already used by row 2 of this file; not added",
+                "Row 3: Secondary Email shared@example.com is also in row 2; only that row adds it",
+                "Row 3: Phone Number +12095550001 is also in row 2; only that row adds it",
             ],
         )
 
-    def test_duplicate_row_names_the_row_that_is_imported(self):
+    def test_repeated_rows_are_all_skipped_until_someone_picks_one(self):
         result = import_members_from_excel(
             build_sheet(
                 HEADERS,
@@ -289,10 +293,10 @@ class NewMemberMessageTests(TestCase):
             )
         )
 
-        self.assertEqual(
-            result.errors,
-            ["Row 3: Duplicate email in file (DUP@example.com): row 2 has it too, and only that row is imported"],
-        )
+        self.assertEqual((result.created_count, result.skipped_count), (0, 2))
+        prefix = "needs a decision (C1: The same person appears more than once in the sheet). Rows 2, 3 all resolve to"
+        self.assertEqual([message.row for message in result.errors], [2, 3])
+        self.assertTrue(all(prefix in message for message in result.errors))
 
     def test_a_new_members_own_flags_are_still_taken_from_the_sheet(self):
         result = import_members_from_excel(
@@ -335,14 +339,12 @@ class NewMemberMessageTests(TestCase):
     def test_notes_of_a_failed_creation_are_dropped(self):
         sheet = build_sheet(HEADERS, [["ada@example.com", "Ada", "Lovelace", "bad address", None, None]])
 
-        with patch(
-            "apps.authn.services.members.import_.excel.Member.objects.bulk_create", side_effect=RuntimeError("db down")
-        ):
+        with patch("apps.authn.models.Member.objects.bulk_create", side_effect=RuntimeError("db down")):
             result = import_members_from_excel(sheet)
 
         self.assertFalse(result.success)
         self.assertEqual(result.warnings, [])
-        self.assertEqual(result.errors, ["Error creating members: db down"])
+        self.assertEqual(result.errors, ["Error importing members: db down. Nothing was imported"])
 
     def test_messages_are_listed_in_row_order(self):
         neil = _member("Neil", "Parkhi", "neil@home.example")
@@ -354,18 +356,17 @@ class NewMemberMessageTests(TestCase):
                 [
                     ["neil@work.example", "Neil", "Parkhi", None, None, None],
                     ["ada@example.com", "Ada", "", None, None, None],
-                    ["neil@home.example", "Neil", "Parkhi", None, None, None],
+                    ["neil@home.example", "Neil", "Parkhi", None, None, "Org"],
                     ["grace@example.com", "Grace", "Hopper", "grace at home", None, None],
                 ],
             ),
             update_existing=True,
         )
 
-        # Creation runs before the updates, so unsorted these would read rows 3, 2 and 5, 4.
-        self.assertEqual([message.row for message in result.errors], [2, 3])
-        self.assertEqual([message.row for message in result.warnings], [4, 5])
-        self.assertIn("Row 4: Secondary Email is blank; kept neil@work.example", result.warnings[0])
-        self.assertEqual(result.updated_count, 1)
+        # Rows 2 and 4 are both Neil (C1), row 3 has no last name; only row 5 is created.
+        self.assertEqual([message.row for message in result.errors], [2, 3, 4])
+        self.assertEqual([message.row for message in result.warnings], [5])
+        self.assertEqual((result.created_count, result.updated_count), (1, 0))
 
 
 class EdgeCaseTests(TestCase):
@@ -392,7 +393,7 @@ class EdgeCaseTests(TestCase):
             result.warnings, [f"Row 3: Secondary Email {long_address!r} is not a valid email address; ignored"]
         )
 
-    def test_phone_cell_without_national_digits_is_ignored(self):
+    def test_phone_cell_that_is_not_a_us_number_is_ignored(self):
         neil = _member("Neil", "Parkhi", "neil@home.example")
 
         result = import_members_from_excel(
@@ -400,39 +401,24 @@ class EdgeCaseTests(TestCase):
                 HEADERS,
                 [
                     ["ada@example.com", "Ada", "Lovelace", None, "+1", None],
-                    ["neil@home.example", "Neil", "Parkhi", None, "1", None],
+                    ["neil@home.example", "Neil", "Parkhi", None, "+44 20 7946 0958", None],
                 ],
             ),
             update_existing=True,
         )
 
-        self.assertEqual((result.created_count, result.updated_count), (1, 1))
+        self.assertEqual((result.created_count, result.updated_count, result.unchanged_count), (1, 1, 1))
         self.assertFalse(ContactPhone.objects.exists())
         self.assertEqual(
             result.warnings,
             [
-                "Row 2: Phone Number +1 has no digits after the country code; ignored",
-                "Row 3: Phone Number +1 has no digits after the country code; ignored",
+                "Row 2: Phone Number +1 is not a 10-digit US number; ignored",
+                "Row 3: Phone Number +442079460958 is not a 10-digit US number; ignored",
             ],
         )
         self.assertEqual(result.warnings[1].member_id, str(neil.pk))
 
     def test_lookups_of_nothing_query_nothing(self):
         with self.assertNumQueries(0):
-            self.assertEqual(lookup_contact_emails([None, ""]), {})
-            self.assertEqual(lookup_contact_phones([None, ""]), {})
-
-    def test_address_that_disappeared_before_the_update_is_skipped(self):
-        """Routing saw the address, but it was deleted before the update phase ran."""
-        result = ImportResult(success=True)
-
-        bulk_update_members([parse_row(7, {"primary_email": "gone@example.com"})], result)
-
-        self.assertEqual(
-            result.errors,
-            [
-                "Row 7: no member has gone@example.com as their primary email: no contact email has this address any "
-                "more. Row not imported"
-            ],
-        )
-        self.assertEqual(result.skipped_count, 1)
+            snapshot = load_snapshot([{"primary_email": None, "secondary_email": "", "phone_number": None}])
+        self.assertEqual((snapshot.emails, snapshot.phones, snapshot.members), ({}, {}, {}))

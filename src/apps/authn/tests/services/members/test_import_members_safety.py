@@ -105,10 +105,12 @@ class SecondaryEmailIsNeverDeletedTests(_ImportCase):
         self.assertEqual(
             (new.member, new.email_type, new.verified, new.subscribe), (self.member, "secondary", False, True)
         )
+        self.assertEqual(result.warnings, [])
         self.assertEqual(
-            result.warnings,
+            result.details[0]["changes"],
             [
-                'Row 2: Added new@example.com as the secondary email; kept the previous secondary old@example.com as "other"'
+                "Adds new@example.com as the secondary email (unverified, subscribed); the previous secondary "
+                'old@example.com becomes "other"'
             ],
         )
 
@@ -117,7 +119,7 @@ class SecondaryEmailIsNeverDeletedTests(_ImportCase):
 
         self.assertFalse(ContactEmail.objects.get(email_address="new@example.com").verified)
         self.assertEqual(len(result.warnings), 1)
-        self.assertIn("new@example.com was added unverified", result.warnings[0])
+        self.assertIn("new@example.com is added unverified", result.warnings[0])
 
     def test_secondary_owned_by_another_member_is_never_moved(self):
         other = self._other_member()
@@ -138,14 +140,16 @@ class SecondaryEmailIsNeverDeletedTests(_ImportCase):
             ],
         )
 
-    def test_unlinked_secondary_is_not_attached(self):
-        unlinked = ContactEmail.objects.create(member=None, email_address="loose@example.com")
+    def test_unlinked_secondary_is_attached_unverified(self):
+        """A contact email with no member loses nothing by being attached; it starts unverified (plan §4.2)."""
+        unlinked = ContactEmail.objects.create(member=None, email_address="loose@example.com", verified=True)
 
-        result = self._update({"Secondary Email": "loose@example.com"})
+        result = self._update({"Secondary Email": "loose@example.com", "Secondary Verified": "TRUE"})
 
         unlinked.refresh_from_db()
-        self.assertIsNone(unlinked.member)
-        self.assertIn("loose@example.com is a contact email that is not linked to any member", result.warnings[0])
+        self.assertEqual((unlinked.member, unlinked.email_type, unlinked.verified), (self.member, "secondary", False))
+        self.assertIn("Attaches loose@example.com (a contact email with no member)", result.details[0]["changes"][0])
+        self.assertIn("loose@example.com is added unverified", result.warnings[0])
 
     def test_secondary_equal_to_the_primary_is_ignored(self):
         self._email("one@example.com")
@@ -173,7 +177,8 @@ class SecondaryEmailIsNeverDeletedTests(_ImportCase):
         self.assertFalse(self.member.contact_emails.filter(email_address__iexact="twin@example.com").exists())
         self.assertIn("matches 2 contact emails that differ only in letter case; not added", result.warnings[0])
 
-    def test_flags_of_an_existing_secondary_are_reported_not_applied(self):
+    def test_flags_of_an_existing_secondary_apply_only_in_the_safe_direction(self):
+        """FALSE unsubscribes (an opt-out); un-verifying is a risky change that needs its tick."""
         secondary = self._email("one@example.com", verified=True, subscribe=True)
 
         result = self._update(
@@ -181,13 +186,12 @@ class SecondaryEmailIsNeverDeletedTests(_ImportCase):
         )
 
         secondary.refresh_from_db()
-        self.assertTrue(secondary.verified)
-        self.assertTrue(secondary.subscribe)
+        self.assertEqual((secondary.verified, secondary.subscribe), (True, False))
         self.assertEqual(
             result.warnings,
             [
-                "Row 2: Secondary Verified and Secondary Subscribed not applied to the existing one@example.com; "
-                "change it on the member page"
+                "Row 2: Secondary Verified is FALSE, but one@example.com is verified; left verified (un-verifying "
+                "needs its tick)"
             ],
         )
 
@@ -198,8 +202,8 @@ class SecondaryEmailIsNeverDeletedTests(_ImportCase):
         result = self._update({"Secondary Email": "new@example.com", "Secondary Subscribed": "TRUE"})
 
         self.assertFalse(ContactEmail.objects.get(email_address="new@example.com").subscribe)
-        self.assertIn("new@example.com was added unsubscribed", result.warnings[0])
-        self.assertIn("an import never re-subscribes", result.warnings[0])
+        self.assertIn("new@example.com is added unsubscribed", result.warnings[0])
+        self.assertIn("re-subscribing needs the person's consent", result.warnings[0])
 
     def test_new_secondary_of_a_member_unsubscribed_everywhere_is_unsubscribed_silently_on_a_blank_cell(self):
         self.primary.subscribe = False
@@ -249,11 +253,12 @@ class PhoneIsNeverDeletedOrOverwrittenTests(_ImportCase):
         self.assertEqual((old.phone_number, old.verified, old.subscribe), ("2095550001", True, True))
         new = ContactPhone.objects.get(phone_number="2095550002")
         self.assertEqual((new.member, new.verified), (self.member, False))
+        self.assertEqual(result.warnings, [])
         self.assertEqual(
-            result.warnings,
+            result.details[0]["changes"],
             [
-                "Row 2: Added +12095550002 as an additional phone number; kept +12095550001 "
-                "(an import never replaces a number)"
+                "Adds phone +12095550002 (unverified, not subscribed); keeps +12095550001 (an import never replaces "
+                "a number in place)"
             ],
         )
 
@@ -261,7 +266,7 @@ class PhoneIsNeverDeletedOrOverwrittenTests(_ImportCase):
         result = self._update({"Phone Number": "+12095550002", "Phone Verified": "TRUE"})
 
         self.assertFalse(ContactPhone.objects.get(phone_number="2095550002").verified)
-        self.assertIn("+12095550002 was added unverified", result.warnings[0])
+        self.assertIn("+12095550002 is added unverified", result.warnings[0])
 
     def test_number_owned_by_another_member_is_never_moved(self):
         other = self._other_member()
@@ -281,7 +286,7 @@ class PhoneIsNeverDeletedOrOverwrittenTests(_ImportCase):
 
         unlinked.refresh_from_db()
         self.assertIsNone(unlinked.member)
-        self.assertIn("is a contact phone that is not linked to any member; not added", result.warnings[0])
+        self.assertIn("Phone Number +12095550009 is a contact with no member; not added", result.warnings[0])
 
     def test_new_number_is_not_subscribed_when_the_members_numbers_are_all_unsubscribed(self):
         self._phone("2095550001", subscribe=False)
@@ -289,7 +294,7 @@ class PhoneIsNeverDeletedOrOverwrittenTests(_ImportCase):
         result = self._update({"Phone Number": "+12095550002", "Phone Subscribed": "TRUE"})
 
         self.assertFalse(ContactPhone.objects.get(phone_number="2095550002").subscribe)
-        self.assertTrue(any("was added unsubscribed" in note for note in result.warnings))
+        self.assertTrue(any("is added unsubscribed" in note for note in result.warnings))
 
     def test_new_number_follows_the_sheet_for_a_member_without_phones_or_with_a_subscribed_one(self):
         self._update({"Phone Number": "+12095550002", "Phone Subscribed": "TRUE"})
@@ -299,7 +304,7 @@ class PhoneIsNeverDeletedOrOverwrittenTests(_ImportCase):
         self.assertTrue(ContactPhone.objects.get(phone_number="2095550003").subscribe)
         self.assertFalse(any("unsubscribed" in note for note in result.warnings))
 
-    def test_flags_of_an_existing_number_are_reported_not_applied(self):
+    def test_flags_of_an_existing_number_never_resubscribe_without_a_tick(self):
         phone = self._phone("2095550001", subscribe=False)
 
         result = self._update({"Phone Number": "+12095550001", "Phone Subscribed": "TRUE"})
@@ -308,7 +313,10 @@ class PhoneIsNeverDeletedOrOverwrittenTests(_ImportCase):
         self.assertFalse(phone.subscribe)
         self.assertEqual(
             result.warnings,
-            ["Row 2: Phone Subscribed not applied to the existing +12095550001; change it on the member page"],
+            [
+                "Row 2: Phone Subscribed is TRUE, but +12095550001 is unsubscribed; left unsubscribed (re-subscribing "
+                "needs the person's consent and its tick)"
+            ],
         )
 
 
@@ -325,7 +333,7 @@ class PrimaryFlagsTests(_ImportCase):
             result.warnings,
             [
                 "Row 2: Primary Subscribed is TRUE, but ada@example.com is unsubscribed; left unsubscribed "
-                "(an import never re-subscribes)"
+                "(re-subscribing needs the person's consent and its tick)"
             ],
         )
 
@@ -375,7 +383,7 @@ class ActiveColumnTests(_ImportCase):
         self.member.refresh_from_db()
         self.assertTrue(self.member.is_active)
         self.assertEqual(len(result.warnings), 1)
-        self.assertIn("Row 2: Active column ignored: the member stays active", result.warnings[0])
+        self.assertIn("Row 2: Active is FALSE, but the member is active; left active", result.warnings[0])
 
     def test_active_yes_neither_reactivates_nor_ends_an_unfinished_signup(self):
         Member.objects.filter(pk=self.member.pk).update(is_active=False, registration_pending=True)
@@ -385,7 +393,7 @@ class ActiveColumnTests(_ImportCase):
         self.member.refresh_from_db()
         self.assertFalse(self.member.is_active)
         self.assertTrue(self.member.registration_pending)
-        self.assertIn("Active column ignored: the member stays inactive", result.warnings[0])
+        self.assertIn("Active is TRUE, but the member is inactive; left inactive", result.warnings[0])
 
     def test_unchanged_active_cell_is_silent(self):
         result = self._update({"Active": "Yes"})

@@ -24,8 +24,10 @@ def cross_row_drops(rows: list[dict], snapshot: Snapshot) -> dict[int, dict[str,
     """``{row number: {cell key: {"code", "text"}}}`` for every cell set aside."""
     primary_rows: dict[str, int] = {}
     for row in rows:
-        if row.get("primary_email"):
-            primary_rows.setdefault(address_key(row["primary_email"]), row["row"])
+        address = row.get("primary_email")
+        # Only a primary the row can import wins over another row's Secondary cell.
+        if address and (snapshot.email_records(address) or valid_new_address(address)):
+            primary_rows.setdefault(address_key(address), row["row"])
     drops: dict[int, dict[str, dict]] = defaultdict(dict)
     new_secondaries: dict[str, int] = {}
     new_phones: dict[str, int] = {}
