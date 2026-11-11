@@ -327,6 +327,45 @@ class ResubscribeTests(RiskyTestCase):
         mobile.refresh_from_db()
         self.assertEqual((work.subscribe, mobile.subscribe), (True, True))
 
+    def test_an_unsubscribed_address_with_no_member_is_never_re_subscribed(self):
+        """A ready row attaches an unlinked Secondary Email; its Subscribed TRUE can't undo the record's opt-out."""
+        loose = ContactEmail.objects.create(member=None, email_address="loose@example.com", subscribe=False)
+        cells_row = row("ada@example.com", Secondary_Email="loose@example.com", Secondary_Subscribed="TRUE")
+
+        analysis = self.analyse_one(cells_row)
+        outcome = self.ticked(cells_row)
+
+        self.assertEqual(analysis.status, "ready_update")
+        self.assertFalse(any(item["code"] == "R5" for item in analysis.risky.get(str(self.ada.pk), [])))
+        loose.refresh_from_db()
+        self.assertEqual((loose.member, loose.email_type, loose.subscribe), (self.ada, "secondary", False))
+        self.assertIn(
+            "Secondary Subscribed is TRUE, but loose@example.com is unsubscribed; left unsubscribed (an import never "
+            "re-subscribes an address; with the person's consent, re-subscribe it under Contact Emails)",
+            outcome.notes,
+        )
+
+    def test_a_new_member_never_re_subscribes_an_address_with_no_member(self):
+        loose = ContactEmail.objects.create(member=None, email_address="loose@example.com", subscribe=False)
+        cells_row = row(
+            "grace@example.com",
+            First_Name="Grace",
+            Last_Name="Hopper",
+            Secondary_Email="loose@example.com",
+            Secondary_Subscribed="TRUE",
+        )
+
+        (outcome,) = self.apply([cells_row])
+
+        self.assertEqual(outcome.outcome, "created")
+        loose.refresh_from_db()
+        self.assertEqual((loose.member, loose.email_type, loose.subscribe), (outcome.member, "secondary", False))
+        self.assertIn(
+            "Attaches loose@example.com (a contact email with no member) as the secondary email (unverified, not "
+            "subscribed)",
+            outcome.changes,
+        )
+
 
 class UnverifyTests(RiskyTestCase):
     """R6: a Verified cell is FALSE for a contact of the member that is verified."""

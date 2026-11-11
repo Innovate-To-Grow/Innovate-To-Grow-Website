@@ -71,6 +71,25 @@ def new_contact_subscribe(sheet_value, *, default: bool, allowed: bool, refusal:
     return wanted
 
 
+def claimed_subscribe(
+    record, sheet_value, *, column: str, plan: RowPlan, allowed: bool = True, refusal: str = ""
+) -> bool:
+    """Subscribed flag for a contact email with no member that a row takes (a new member's primary, or attached).
+
+    The record keeps its own flag, which the cell can turn off (an opt-out) but never on: an unsubscribed record may
+    carry the person's earlier opt-out, and an import never re-subscribes anyone without a tick (there is none for a
+    record no member owns yet). A subscribed record then follows ``new_contact_subscribe`` with ``allowed``.
+    """
+    if not record.subscribe:
+        if sheet_value is True:
+            plan.notes.append(
+                f"{column} Subscribed is TRUE, but {record.address} is unsubscribed; left unsubscribed (an import never "
+                "re-subscribes an address; with the person's consent, re-subscribe it under Contact Emails)"
+            )
+        return False
+    return new_contact_subscribe(sheet_value, default=True, allowed=allowed, refusal=refusal, plan=plan)
+
+
 def plan_flags(plan: RowPlan, state: ContactState, record, column: str, cells: tuple, ticks: set[str]) -> None:
     """Apply a contact's Verified/Subscribed cells (``cells``) to ``record``, an email or phone the member owns."""
     verified, subscribe = cells
@@ -218,13 +237,13 @@ def _add_secondary(plan, state, values, address, record, ticks, stored) -> None:
     """Add (or attach an unlinked) secondary; the current secondaries become "other" unless their removal is ticked."""
     removed = {other.id for other in stored if f"R2:{other.id}" in ticks}
     demote = [contact for contact in state.of_type("secondary") if contact not in removed]
-    subscribe = new_contact_subscribe(
-        values.get("secondary_subscribed"),
-        default=True if record is None else record.subscribe,
-        allowed=state.any_email_subscribed(),
-        refusal=f"{address} is added unsubscribed: the member is unsubscribed at every other address",
-        plan=plan,
-    )
+    sheet = values.get("secondary_subscribed")
+    allowed = state.any_email_subscribed()
+    refusal = f"{address} is added unsubscribed: the member is unsubscribed at every other address"
+    if record is None:
+        subscribe = new_contact_subscribe(sheet, default=True, allowed=allowed, refusal=refusal, plan=plan)
+    else:
+        subscribe = claimed_subscribe(record, sheet, column="Secondary", plan=plan, allowed=allowed, refusal=refusal)
     data = {"type": "secondary", "verified": False, "subscribe": subscribe, "demote": demote}
     if record is None:
         plan.ops.append(Op("add_email", data={"address": address, **data}))

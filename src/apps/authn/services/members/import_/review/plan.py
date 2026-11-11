@@ -15,7 +15,7 @@ from .actions import CREATE_CLAIM, SKIP, UPDATE, Action, Op, RowPlan
 from .lookup import Snapshot, us_phone
 from .plan_contacts import (
     ContactState,
-    new_contact_subscribe,
+    claimed_subscribe,
     plan_flags,
     plan_phone,
     plan_promote,
@@ -80,7 +80,7 @@ def _plan_create(values: dict, action: Action, snapshot: Snapshot) -> RowPlan:
     if action.kind == CREATE_CLAIM:
         record = next(c for c in snapshot.email_records(values["primary_email"]) if c.id == action.claim)
         verified = bool(verified)
-        subscribe = record.subscribe if subscribe is None else subscribe
+        subscribe = claimed_subscribe(record, subscribe, column="Primary", plan=plan)
         plan.add(
             Op("claim_email", ref=record.id, data={"type": "primary", "verified": verified, "subscribe": subscribe}),
             f"Takes {record.address} (a contact email with no member) as the primary email ({_flags(verified, subscribe)})",
@@ -111,7 +111,7 @@ def _create_secondary(plan: RowPlan, values: dict, snapshot: Snapshot) -> None:
         plan.add(Op("add_email", data=data), f"Secondary email {address} ({_flags(verified, subscribe)})")
     elif len(records) == 1 and records[0].member is None:
         record = records[0]
-        subscribe = record.subscribe if subscribe is None else subscribe
+        subscribe = claimed_subscribe(record, subscribe, column="Secondary", plan=plan)
         data = {"type": "secondary", "verified": False, "subscribe": subscribe, "demote": []}
         plan.add(
             Op("claim_email", ref=record.id, data=data),
@@ -188,12 +188,13 @@ def _plan_attach(plan: RowPlan, state: ContactState, values: dict, snapshot: Sna
     """Attach the Primary Email cell's unlinked address to the member, unverified, as secondary (or "other")."""
     record = next(c for c in snapshot.email_records(values["primary_email"]) if c.id == claim)
     email_type = "other" if state.of_type("secondary") else "secondary"
-    subscribe = new_contact_subscribe(
+    subscribe = claimed_subscribe(
+        record,
         values.get("primary_subscribed"),
-        default=record.subscribe,
+        column="Primary",
+        plan=plan,
         allowed=state.any_email_subscribed(),
         refusal=f"{record.address} is attached unsubscribed: the member is unsubscribed at every other address",
-        plan=plan,
     )
     data = {"type": email_type, "verified": False, "subscribe": subscribe, "demote": []}
     plan.add(

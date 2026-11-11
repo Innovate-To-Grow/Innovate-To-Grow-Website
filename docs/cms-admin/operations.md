@@ -431,7 +431,9 @@ every risky change and every change to a staff or superuser account.
   member owns it: FALSE unsubscribes; verifying, un-verifying and re-subscribing need their ticks.
 - A new address or number on an existing member starts unverified; a new secondary becomes the secondary and the old
   one becomes "other"; a new number is added next to the old ones. A contact email that belongs to no member is
-  attached (unverified); an address or number held by another member is never moved.
+  attached (unverified), or taken by a new member (C8), and keeps its Subscribed flag: the sheet can unsubscribe it
+  but never re-subscribe it (it may carry the person's opt-out). An address or number held by another member is never
+  moved.
 - No email or SMS is sent. TRUE/FALSE cells accept TRUE, FALSE, Yes, No, Y, N, 1 and 0; other text is ignored.
   Malformed addresses, non-US phone numbers and unreadable dates are reported and ignored.
 - The apply is all or nothing. If a member or contact the review showed changed in the meantime, nothing is written

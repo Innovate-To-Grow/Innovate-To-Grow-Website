@@ -321,13 +321,51 @@ class UnlinkedAddressTests(ImportTestCase):
         # A blank Verified cell never carries the record's old "verified"; a blank Subscribed cell keeps the record's.
         self.assertEqual((self.loose.verified, self.loose.subscribe), (False, False))
 
-    def test_create_claim_takes_the_flag_cells(self):
+    def test_create_claim_takes_the_verified_cell_but_never_re_subscribes(self):
+        """The record may carry the person's opt-out: Subscribed TRUE can't turn it back on (no tick exists here)."""
         cells_row = row("loose@example.com", Primary_Verified="TRUE", Primary_Subscribed="TRUE", **self.lin)
 
-        self.apply([cells_row], {2: (self.claim, [])})
+        (outcome,) = self.apply([cells_row], {2: (self.claim, [])})
 
         self.loose.refresh_from_db()
-        self.assertEqual((self.loose.verified, self.loose.subscribe), (True, True))
+        self.assertEqual((self.loose.verified, self.loose.subscribe), (True, False))
+        self.assertIn(
+            "Primary Subscribed is TRUE, but loose@example.com is unsubscribed; left unsubscribed (an import never "
+            "re-subscribes an address; with the person's consent, re-subscribe it under Contact Emails)",
+            outcome.notes,
+        )
+        self.assertIn(
+            "Takes loose@example.com (a contact email with no member) as the primary email (verified, not subscribed)",
+            outcome.changes,
+        )
+
+    def test_create_claim_of_a_subscribed_record_keeps_it_unless_the_cell_says_false(self):
+        kept = ContactEmail.objects.create(member=None, email_address="kept@example.com", subscribe=True)
+        dropped = ContactEmail.objects.create(member=None, email_address="dropped@example.com", subscribe=True)
+        rows = [
+            row("kept@example.com", First_Name="Kim", Last_Name="Kept"),
+            row("dropped@example.com", First_Name="Dee", Last_Name="Dropped", Primary_Subscribed="FALSE"),
+        ]
+
+        self.apply(rows, {2: (f"create_claim:{kept.pk}", []), 3: (f"create_claim:{dropped.pk}", [])})
+
+        kept.refresh_from_db()
+        dropped.refresh_from_db()
+        self.assertEqual((kept.email_type, kept.subscribe), ("primary", True))
+        self.assertEqual((dropped.email_type, dropped.subscribe), ("primary", False))
+
+    def test_attach_to_never_re_subscribes_the_record(self):
+        cells_row = row("loose@example.com", Secondary_Email="ada@example.com", Primary_Subscribed="TRUE", **self.lin)
+
+        (outcome,) = self.apply([cells_row], {2: (f"attach_to:{self.ada.pk}", [])})
+
+        self.loose.refresh_from_db()
+        self.assertEqual((self.loose.member, self.loose.subscribe), (self.ada, False))
+        self.assertIn(
+            "Primary Subscribed is TRUE, but loose@example.com is unsubscribed; left unsubscribed (an import never "
+            "re-subscribes an address; with the person's consent, re-subscribe it under Contact Emails)",
+            outcome.notes,
+        )
 
     def test_attach_to_a_member_keeps_their_name_and_adds_the_address_unverified(self):
         cells_row = row("loose@example.com", Secondary_Email="ada@example.com", Organization="Engines", **self.lin)
