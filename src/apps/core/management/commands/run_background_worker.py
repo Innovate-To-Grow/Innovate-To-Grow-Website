@@ -24,7 +24,11 @@ from apps.core.services.email.bounces import ensure_scheduled as ensure_bounce_s
 from apps.core.services.email.bounces import purge_finished_jobs as purge_finished_bounce_scans
 from apps.core.services.email.graph.credential import expiry
 from apps.core.services.email.graph.credential.expiry import active_certificate_expiry
+from apps.core.services.email.inbound import purge_expired as purge_expired_inbound_queue
 from apps.core.services.email.telemetry.retention import purge_expired as purge_expired_email_telemetry
+from apps.helpdesk.services.ingest.jobs import ensure_scheduled as ensure_helpdesk_ingest_scheduled
+from apps.helpdesk.services.ingest.jobs import purge_finished_jobs as purge_finished_helpdesk_ingests
+from apps.helpdesk.services.retention import purge_expired as purge_expired_helpdesk
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)
@@ -100,21 +104,45 @@ def _schedule_bounce_scans(should_stop=None) -> None:
 
 
 def _purge_email_telemetry(should_stop=None) -> None:
-    # Outgoing-email telemetry and bounce records past EMAIL_MONITORING's retention, and finished scan jobs.
-    result = {**purge_expired_email_telemetry(should_stop=should_stop), "scan_jobs": purge_finished_bounce_scans()}
+    # Outgoing-email telemetry, bounce records and inbound queue rows past EMAIL_MONITORING's retention, and finished
+    # scan jobs.
+    result = {
+        **purge_expired_email_telemetry(should_stop=should_stop),
+        "inbound": purge_expired_inbound_queue(should_stop=should_stop),
+        "scan_jobs": purge_finished_bounce_scans(),
+    }
     if any(result.values()):
         logger.info(
-            "Email telemetry retention: deleted %(emails)d emails, %(bounces)d bounce records and %(scan_jobs)d "
-            "finished bounce scan jobs",
+            "Email telemetry retention: deleted %(emails)d emails, %(bounces)d bounce records, %(inbound)d inbound "
+            "queue rows and %(scan_jobs)d finished bounce scan jobs",
+            result,
+        )
+
+
+def _schedule_helpdesk_ingest(should_stop=None) -> None:
+    # The ingest is queued by each scan that records new mail and chains itself; this restarts it if mail waits.
+    if ensure_helpdesk_ingest_scheduled():
+        logger.debug("Queued a helpdesk ingest run")
+
+
+def _purge_helpdesk(should_stop=None) -> None:
+    # Ticket bodies, attachments and tickets past the retention periods set in Helpdesk → Settings.
+    result = {**purge_expired_helpdesk(should_stop=should_stop), "ingest_jobs": purge_finished_helpdesk_ingests()}
+    if any(result.values()):
+        logger.info(
+            "Helpdesk retention: purged %(automated_bodies)d automated, %(spam_bodies)d spam and %(closed_bodies)d "
+            "closed-ticket bodies and %(attachments)d attachments; deleted %(tickets)d tickets and %(ingest_jobs)d "
+            "finished ingest jobs",
             result,
         )
 
 
 # Periodic maintenance, run in this order every ``--maintenance-seconds`` (hourly by default). Each entry is
 # ``(name, callable)``; ``run_maintenance`` isolates every call, so one failure never stops the worker or the rest.
-# Every callable takes the stop check: the batched tasks (the three cleanups and the email telemetry retention) hand
-# it to their batch loops, so a stop request ends them after the batch in flight; the two single-statement purges,
-# the delivery-rate upkeep, the certificate expiry check and the bounce scan scheduling ignore it.
+# Every callable takes the stop check: the batched tasks (the three cleanups, the email telemetry retention and the
+# helpdesk retention) hand it to their batch loops, so a stop request ends them after the batch in flight; the two
+# single-statement purges, the delivery-rate upkeep, the certificate expiry check and the scan and ingest scheduling
+# ignore it.
 MAINTENANCE_TASKS = (
     ("Retired RSA key purge", _purge_retired_keys),
     ("Public assistant budget purge", _purge_public_assistant_budgets),
@@ -125,6 +153,8 @@ MAINTENANCE_TASKS = (
     ("Microsoft Graph certificate expiry check", _check_graph_certificate_expiry),
     ("Email bounce scan scheduling", _schedule_bounce_scans),
     ("Email telemetry retention", _purge_email_telemetry),
+    ("Helpdesk ingest scheduling", _schedule_helpdesk_ingest),
+    ("Helpdesk retention", _purge_helpdesk),
 )
 
 

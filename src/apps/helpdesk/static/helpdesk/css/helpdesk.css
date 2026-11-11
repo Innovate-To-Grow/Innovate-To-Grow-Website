@@ -1,0 +1,210 @@
+/* Helpdesk admin: the ticket timeline, the note form and the shadow-mode notice (Unfold light and dark themes). */
+
+.i2g-helpdesk {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.i2g-helpdesk-heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.i2g-helpdesk-notice,
+.i2g-helpdesk-warning {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(191 219 254);
+  background: rgb(239 246 255);
+  color: rgb(30 58 138);
+}
+
+.i2g-helpdesk-warning {
+  border-color: rgb(253 230 138);
+  background: rgb(255 251 235);
+  color: rgb(120 53 15);
+}
+
+.i2g-helpdesk-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.i2g-helpdesk-card {
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgb(255 255 255);
+}
+
+.i2g-helpdesk-card.is-automated {
+  background: rgb(249 250 251);
+}
+
+.i2g-helpdesk-note {
+  border-color: rgb(253 224 71);
+  background: rgb(254 252 232);
+}
+
+.i2g-helpdesk-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  cursor: default;
+}
+
+summary.i2g-helpdesk-card-head {
+  cursor: pointer;
+}
+
+.i2g-helpdesk-card-head time,
+.i2g-helpdesk-event time,
+.i2g-helpdesk-muted {
+  color: rgb(107 114 128);
+  font-size: 0.875rem;
+}
+
+.i2g-helpdesk-event {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: rgb(75 85 99);
+}
+
+.i2g-helpdesk-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.125rem 0.75rem;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.i2g-helpdesk-meta dt {
+  color: rgb(107 114 128);
+}
+
+.i2g-helpdesk-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  margin: 0.5rem 0;
+}
+
+.i2g-helpdesk-frame-wrap {
+  height: 22rem;
+  resize: vertical;
+  overflow: auto;
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.375rem;
+}
+
+.i2g-helpdesk-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: rgb(255 255 255);
+}
+
+.i2g-helpdesk-files {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.i2g-helpdesk-files li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.i2g-helpdesk-badge,
+.i2g-helpdesk-reason {
+  font-size: 0.75rem;
+  border-radius: 999px;
+  padding: 0 0.5rem;
+  background: rgb(254 243 199);
+  color: rgb(120 53 15);
+}
+
+.i2g-helpdesk-reason {
+  background: rgb(243 244 246);
+  color: rgb(55 65 81);
+}
+
+.i2g-helpdesk-note-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.i2g-helpdesk-note-form textarea {
+  width: 100%;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  background: transparent;
+  color: inherit;
+}
+
+.i2g-helpdesk-button {
+  display: inline-flex;
+  gap: 0.375rem;
+  align-items: center;
+  align-self: flex-start;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  background: rgb(37 99 235);
+  color: rgb(255 255 255);
+  font-weight: 500;
+}
+
+.i2g-helpdesk-unread {
+  color: rgb(37 99 235);
+}
+
+.dark .i2g-helpdesk-card {
+  border-color: rgb(55 65 81);
+  background: rgb(31 41 55);
+}
+
+.dark .i2g-helpdesk-card.is-automated {
+  background: rgb(17 24 39);
+}
+
+.dark .i2g-helpdesk-note {
+  border-color: rgb(161 98 7);
+  background: rgb(66 32 6);
+}
+
+.dark .i2g-helpdesk-notice {
+  border-color: rgb(30 64 175);
+  background: rgb(23 37 84);
+  color: rgb(191 219 254);
+}
+
+.dark .i2g-helpdesk-warning {
+  border-color: rgb(146 64 14);
+  background: rgb(69 26 3);
+  color: rgb(253 230 138);
+}
+
+.dark .i2g-helpdesk-event,
+.dark .i2g-helpdesk-meta dt {
+  color: rgb(156 163 175);
+}

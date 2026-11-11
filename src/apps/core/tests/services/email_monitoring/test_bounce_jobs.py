@@ -15,6 +15,13 @@ from apps.core.services.email.bounces.jobs import next_delay, purge_finished_job
 from .helpers import monitoring_settings
 
 SCAN = "apps.core.services.email.bounces.scanner.scan_mailbox"
+CONSUMERS = "apps.core.services.email.bounces.jobs.active_consumer_kinds"
+NOTIFY = "apps.core.services.email.bounces.jobs.notify_consumers"
+
+
+def no_inbound_consumer():
+    """Bounce processing alone: no app consumes inbound mail (the interval stays the bounce interval)."""
+    return patch(CONSUMERS, return_value=[])
 
 
 def scan_jobs():
@@ -46,11 +53,39 @@ class SchedulingTests(TestCase):
         self.assertEqual(scan_jobs().filter(available_at__lte=timezone.now()).count(), 1)
 
     def test_a_scan_queues_the_next_one_after_the_interval(self):
-        with patch(SCAN, return_value=ScanOutcome("ok")), monitoring_settings(bounce_scan_interval_seconds=600):
+        with (
+            patch(SCAN, return_value=ScanOutcome("ok")),
+            monitoring_settings(bounce_scan_interval_seconds=600),
+            no_inbound_consumer(),
+        ):
             run_scan_job(job=None)
 
         job = scan_jobs().get()
         self.assertAlmostEqual((job.available_at - timezone.now()).total_seconds(), 600, delta=5)
+
+    def test_while_an_inbound_consumer_is_on_scans_come_every_inbox_interval(self):
+        settings = monitoring_settings(bounce_scan_interval_seconds=600, inbox_scan_interval_seconds=120)
+        with patch(SCAN, return_value=ScanOutcome("ok")), settings, patch(CONSUMERS, return_value=["app.ingest"]):
+            run_scan_job(job=None)
+            self.assertEqual(next_delay(ScanOutcome("ok")), 120)
+
+        job = scan_jobs().get()
+        self.assertAlmostEqual((job.available_at - timezone.now()).total_seconds(), 120, delta=5)
+
+    def test_the_interval_never_goes_below_a_minute(self):
+        settings = monitoring_settings(bounce_scan_interval_seconds=600, inbox_scan_interval_seconds=5)
+        with settings, patch(CONSUMERS, return_value=["app.ingest"]):
+            self.assertEqual(next_delay(None), 60)
+
+    def test_a_scan_that_recorded_inbound_mail_wakes_the_consumers(self):
+        recorded = ScanOutcome("ok", stats={"recorded": 2})
+        with patch(SCAN, return_value=recorded), patch(NOTIFY) as notify:
+            run_scan_job(job=None)
+        notify.assert_called_once_with()
+
+        with patch(SCAN, return_value=ScanOutcome("ok", stats={"recorded": 0})), patch(NOTIFY) as notify:
+            run_scan_job(job=None)
+        notify.assert_not_called()
 
     def test_a_scan_that_fails_unexpectedly_still_queues_the_next(self):
         with patch(SCAN, side_effect=RuntimeError("database gone")), self.assertRaises(RuntimeError):
@@ -67,7 +102,7 @@ class SchedulingTests(TestCase):
         self.assertEqual(scan_jobs().count(), 1)
 
     def test_the_next_scan_waits_longer_when_microsoft_asks_and_comes_sooner_to_catch_up(self):
-        with monitoring_settings(bounce_scan_interval_seconds=600):
+        with monitoring_settings(bounce_scan_interval_seconds=600), no_inbound_consumer():
             self.assertEqual(next_delay(None), 600)
             self.assertEqual(next_delay(ScanOutcome("ok")), 600)
             self.assertEqual(next_delay(ScanOutcome("busy", retry_after=1800)), 1800)

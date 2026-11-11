@@ -21,6 +21,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
                 "Projects",
                 "Members & Authentication",
                 "Broadcast Delivery",
+                "Helpdesk",
                 "System Intelligence",
                 "Site Settings",
                 "CLI Admin",

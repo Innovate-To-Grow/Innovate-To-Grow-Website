@@ -3,6 +3,7 @@ from .delivery_rate_limit import DeliveryRateLimit
 from .delivery_rate_state import DeliveryRateState, DeliveryUsageBucket
 from .email_bounce import EmailBounce, EmailMonitorState
 from .email_telemetry import EmailCategory, OutboundEmail, OutboundEmailAttempt
+from .inbound_message import InboundMessage
 from .legacy_access_grant import LegacyAccessGrant
 from .request_limit_state import RequestLimitProcess, RequestRateLimitState
 
@@ -14,6 +15,7 @@ __all__ = [
     "EmailBounce",
     "EmailCategory",
     "EmailMonitorState",
+    "InboundMessage",
     "LegacyAccessGrant",
     "OutboundEmail",
     "OutboundEmailAttempt",

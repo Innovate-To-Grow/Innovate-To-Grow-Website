@@ -3,7 +3,8 @@
 ``ensure_scheduled`` (run by the worker's maintenance: at start-up, then hourly) queues a scan when none is waiting,
 which restarts the chain if it ever breaks; the dashboard's "Scan now" queues one at once (``run_now``). A scan job
 has one attempt and never raises for Microsoft's answers: the next scheduled scan is its retry, after the interval
-or Microsoft's longer Retry-After. Overlapping jobs are harmless: the mailbox lease lets only one scan run.
+or Microsoft's longer Retry-After. Overlapping jobs are harmless: the mailbox lease lets only one scan run. A scan
+that recorded new inbound messages queues the job of every inbound-mail consumer (``inbound.notify_consumers``).
 """
 
 from datetime import datetime, timedelta
@@ -12,6 +13,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.core.models import BackgroundJob
+
+from ..inbound import active_consumer_kinds, notify_consumers
 
 BOUNCE_SCAN_JOB_KIND = "core.email_bounce_scan"
 # A scan that stopped at its message budget continues sooner than the regular interval.
@@ -29,7 +32,12 @@ def register_bounce_jobs() -> None:
 
 
 def _interval() -> int:
-    return max(60, int(settings.EMAIL_MONITORING["bounce_scan_interval_seconds"]))
+    """The bounce interval, or the shorter inbox interval while an inbound-mail consumer (the helpdesk) is on."""
+    config = settings.EMAIL_MONITORING
+    seconds = int(config["bounce_scan_interval_seconds"])
+    if active_consumer_kinds():
+        seconds = min(seconds, int(config["inbox_scan_interval_seconds"]))
+    return max(60, seconds)
 
 
 def enabled() -> bool:
@@ -84,6 +92,8 @@ def run_scan_job(job) -> None:
     outcome = None
     try:
         outcome = scan_mailbox()
+        if outcome.stats.get("recorded"):
+            notify_consumers()
     finally:
         if enabled() and not BackgroundJob.objects.filter(kind=BOUNCE_SCAN_JOB_KIND, status__in=_WAITING).exists():
             _enqueue(timezone.now() + timedelta(seconds=next_delay(outcome)), "scheduled")

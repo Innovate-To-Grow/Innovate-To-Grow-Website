@@ -31,7 +31,10 @@ logger = logging.getLogger(__name__)
 FOLDERS = {"INBOX": "inbox", "SENT": "sentitems"}
 LIST_FIELDS = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead"
 # What the bounce processor's incremental scan reads of each message (no preview: it opens only bounce candidates).
-SCAN_FIELDS = "id,subject,from,receivedDateTime,internetMessageId"
+# The conversation id lets an inbound-mail consumer (the helpdesk) thread a reply whose headers say nothing.
+SCAN_FIELDS = "id,subject,from,receivedDateTime,internetMessageId,conversationId"
+# Asks for ids that survive a move to another folder (EMAIL_MONITORING["graph_immutable_ids"], off by default).
+IMMUTABLE_ID_PREFERENCE = 'IdType="ImmutableId"'
 # Graph message IDs are URL-safe base64; anything else is refused before it can become part of a URL.
 _MESSAGE_ID_RE = re.compile(r"[A-Za-z0-9_=-]{1,512}")
 
@@ -143,6 +146,8 @@ class GraphMailboxReader:
         except EmailDeliveryError as exc:
             raise GraphReadError(str(exc)) from exc
         headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
+        if settings.EMAIL_MONITORING.get("graph_immutable_ids"):
+            headers["Prefer"] = IMMUTABLE_ID_PREFERENCE
         try:
             return transport.get(GRAPH_HOST, path, headers, timeout=self.timeout, max_bytes=max_bytes)
         except (transport.ConnectFailed, transport.ResponseLost) as exc:

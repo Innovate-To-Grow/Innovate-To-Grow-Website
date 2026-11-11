@@ -19,6 +19,15 @@ NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_re
 NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)
 
 
+HELPDESK_NOTHING_PURGED = {
+    "automated_bodies": 0,
+    "spam_bodies": 0,
+    "closed_bodies": 0,
+    "attachments": 0,
+    "tickets": 0,
+}
+
+
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
     def _run_once(self, *, purged_row_count=0, purged_budget_count=0, batch_size=10):
         command = run_background_worker.Command(stdout=StringIO())
@@ -40,7 +49,11 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
             patch.object(run_background_worker, "active_certificate_expiry", return_value=None),
             patch.object(run_background_worker, "ensure_bounce_scan_scheduled", return_value=False),
             patch.object(run_background_worker, "purge_expired_email_telemetry", return_value={"emails": 0}),
+            patch.object(run_background_worker, "purge_expired_inbound_queue", return_value=0),
             patch.object(run_background_worker, "purge_finished_bounce_scans", return_value=0),
+            patch.object(run_background_worker, "ensure_helpdesk_ingest_scheduled", return_value=False),
+            patch.object(run_background_worker, "purge_expired_helpdesk", return_value=HELPDESK_NOTHING_PURGED),
+            patch.object(run_background_worker, "purge_finished_helpdesk_ingests", return_value=0),
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
         ):
             command.handle(
@@ -270,7 +283,7 @@ class RunBackgroundWorkerShutdownTests(TestCase):
 LOGGER_NAME = "apps.core.management.commands.run_background_worker"
 
 
-# The seven maintenance services, in task order, with what each returns when there is nothing to do.
+# The maintenance services, in task order, with what each returns when there is nothing to do.
 MAINTENANCE_SERVICES = {
     "purge_retired_auth_keypairs": 0,
     "purge_expired_public_assistant_budgets": 0,
@@ -281,7 +294,11 @@ MAINTENANCE_SERVICES = {
     "active_certificate_expiry": None,
     "ensure_bounce_scan_scheduled": False,
     "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
+    "purge_expired_inbound_queue": 0,
     "purge_finished_bounce_scans": 0,
+    "ensure_helpdesk_ingest_scheduled": False,
+    "purge_expired_helpdesk": HELPDESK_NOTHING_PURGED,
+    "purge_finished_helpdesk_ingests": 0,
 }
 
 
@@ -302,6 +319,8 @@ BATCHED_SERVICES = (
     "clear_expired_sessions",
     "purge_expired_failure_windows",
     "purge_expired_email_telemetry",
+    "purge_expired_inbound_queue",
+    "purge_expired_helpdesk",
 )
 
 
@@ -339,7 +358,11 @@ class MaintenanceTaskTests(SimpleTestCase):
             active_certificate_expiry=record("graph certificate", None),
             ensure_bounce_scan_scheduled=record("bounce scans", False),
             purge_expired_email_telemetry=record("email telemetry", {"emails": 0, "bounces": 0}),
+            purge_expired_inbound_queue=record("inbound queue", 0),
             purge_finished_bounce_scans=record("bounce scan jobs", 0),
+            ensure_helpdesk_ingest_scheduled=record("helpdesk ingest", False),
+            purge_expired_helpdesk=record("helpdesk retention", HELPDESK_NOTHING_PURGED),
+            purge_finished_helpdesk_ingests=record("helpdesk ingest jobs", 0),
         )
 
         self.assertEqual(
@@ -354,7 +377,11 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "graph certificate",
                 "bounce scans",
                 "email telemetry",
+                "inbound queue",
                 "bounce scan jobs",
+                "helpdesk ingest",
+                "helpdesk retention",
+                "helpdesk ingest jobs",
             ],
         )
         self.assertEqual(
@@ -369,6 +396,8 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Microsoft Graph certificate expiry check",
                 "Email bounce scan scheduling",
                 "Email telemetry retention",
+                "Helpdesk ingest scheduling",
+                "Helpdesk retention",
             ],
         )
 
@@ -491,6 +520,8 @@ class MaintenanceTaskTests(SimpleTestCase):
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),
             purge_expired_email_telemetry=RuntimeError("i"),
+            ensure_helpdesk_ingest_scheduled=RuntimeError("j"),
+            purge_expired_helpdesk=RuntimeError("k"),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)

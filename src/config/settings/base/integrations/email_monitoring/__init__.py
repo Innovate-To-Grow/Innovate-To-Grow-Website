@@ -50,6 +50,17 @@ EMAIL_MONITORING = {
     "bounce_processing_enabled": _env_flag("EMAIL_BOUNCE_PROCESSING_ENABLED", True),
     # Seconds between two scans of the mailbox (a Retry-After from Microsoft can only lengthen it).
     "bounce_scan_interval_seconds": 600,
+    # The shorter interval used while an inbound-mail consumer (the helpdesk) is switched on: every message the scan
+    # lists is recorded in the inbound queue, and a ticket queue wants new mail within minutes. A quiet scan is one
+    # list request, about 720 a day at 120 seconds; Outlook allows 10,000 requests per 10 minutes per app and mailbox.
+    "inbox_scan_interval_seconds": 120,
+    # Days an inbound queue row (metadata of one listed message) is kept after it was processed, or received when it
+    # never was. What a consumer made of it (a helpdesk ticket) has its own retention.
+    "inbound_retention_days": 90,
+    # Ask Microsoft Graph for immutable message ids (Prefer: IdType="ImmutableId"), which survive a move to another
+    # Outlook folder. Off by default: switching changes the ids the bounce scan and the Admin Inbox see once (the
+    # bounce records and the inbound queue still de-duplicate through the internet Message-ID).
+    "graph_immutable_ids": _env_flag("EMAIL_GRAPH_IMMUTABLE_IDS", False),
     # Messages listed per request, list requests per scan, and NDR candidates opened (raw MIME) per scan.
     "bounce_scan_page_size": 50,
     "bounce_scan_max_pages": 10,

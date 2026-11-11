@@ -32,6 +32,16 @@ DENIED_MODEL_LABELS = {
     "core.emailmonitorstate",
     "core.outboundemail",
     "core.outboundemailattempt",
+    # The inbound mail queue (metadata of every message the mailbox scan lists) and the helpdesk built on it: mail
+    # content, the people who wrote it and staff decisions on it. Staff work them in Helpdesk (its own app grant).
+    "core.inboundmessage",
+    "helpdesk.helpdesksettings",
+    "helpdesk.ingestrecord",
+    "helpdesk.ticket",
+    "helpdesk.ticketattachment",
+    "helpdesk.ticketcategory",
+    "helpdesk.ticketevent",
+    "helpdesk.ticketmessage",
     # Request limits: changing a policy, a Smart factor or the process heartbeats would loosen or tighten every
     # caller's limits outside the admin's audited page. None of their names matches DENIED_MODEL_NAME_PARTS.
     "core.requestlimitprocess",
