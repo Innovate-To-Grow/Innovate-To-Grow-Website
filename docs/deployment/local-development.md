@@ -74,7 +74,7 @@ For a clean slate (destroys all data):
 python manage.py resetdb --force
 ```
 
-This drops the database, regenerates migrations, migrates, and seeds a default admin user (`hongzhe` / `xiehongzhe04@gmail.com` / password: `1`). Dev-only — has safety guards against production databases.
+This drops the database, regenerates migrations, migrates, and seeds a default admin user (`admin` / `admin@localhost` / password `changeme`; set `DEV_ADMIN_USERNAME`, `DEV_ADMIN_EMAIL` and `DEV_ADMIN_PASSWORD` in `src/.env` to change them). Dev-only — has safety guards against production databases.
 
 ## Frontend setup
 
