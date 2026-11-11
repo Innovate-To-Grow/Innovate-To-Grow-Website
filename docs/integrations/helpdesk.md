@@ -21,7 +21,7 @@ only phase H1 plus merge and spam from H2 is built.
 | **My Tickets** / **Unassigned** | The same list, assigned to you / to nobody. |
 | **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here. |
 | **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry**. |
-| **Categories**, **Settings** | Ticket categories; the helpdesk's limits, retention periods and switches. |
+| **Categories**, **Settings** | Ticket categories; the helpdesk's limits, retention periods and switches, under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
 
 The list filters (**Mail**: people / automated & spam / everything; **Status**; **Assignee**; **Unread**; priority;
 category) and the search (a number such as `1234` or `I2G-#1234`, the subject, or the requester's address or
@@ -47,12 +47,15 @@ one; nothing is deleted) and **mark as spam**.
 
 ## How a message becomes a ticket
 
-1. **Recording.** The bounce processor's scan ([Email monitoring](email-monitoring.md)) lists the Inbox
-   incrementally and now records every listed message once in `core.InboundMessage` (mailbox, Graph id, internet
-   Message-ID, conversation id, received time, sender, scrubbed subject; never a body). While the helpdesk is on,
-   the scan runs every `inbox_scan_interval_seconds` (2 minutes) instead of 10, and a scan that recorded new mail
-   queues the job `helpdesk.ingest_inbound` (the helpdesk registers itself as the inbound queue's consumer;
-   `core` imports no business app). Polling only: no webhooks.
+1. **Intake** (`apps/helpdesk/services/intake/`). The helpdesk's own scan of the Inbox (job
+   `helpdesk.intake_scan`, every `inbox_scan_interval_seconds`, 2 minutes; 30 s while catching up) lists it
+   incrementally from the helpdesk's own checkpoint (less a 15-minute overlap; the first scan looks back 72 hours)
+   and records every listed message once in `core.InboundMessage` (mailbox, Graph id, internet Message-ID,
+   conversation id, received time, sender, scrubbed subject; never a body). It opens no message, lists with the
+   bounce scan's bounds and the same `graph_read` pacing, and a scan that recorded new mail queues the job
+   `helpdesk.ingest_inbound`. It is separate from bounce processing ([Email monitoring](email-monitoring.md)),
+   which reads the same Inbox for reports on its own schedule and checkpoint: pausing or rescanning one never
+   moves the other. Polling only: no webhooks.
 2. **Import** (`apps/helpdesk/services/ingest/`). The job takes due rows, oldest first, within a budget (100
    messages or 60 s per run), and for each: skips it as a duplicate when a ticket already holds its Message-ID;
    reads its raw MIME through the site's Graph reader (GET only, paced on the `graph_read` channel, at most
@@ -61,7 +64,7 @@ one; nothing is deleted) and **mark as spam**.
    listed under Ingest Problems (so is a message the worker stopped on at every attempt, once it is found left
    half-done). A throttle from Microsoft ends the run and the message waits as long as asked.
    While a campaign is sending, the job waits (`pause_while_campaign_sending`): reads and sends share Outlook's
-   per-mailbox limits.
+   per-mailbox limits. While the intake is paused, the import waits too.
 3. **Classification** (`apps/core/services/email/inbound/classify.py`, pure): the site's own message (from its
    address *and* proven by DKIM or Exchange's internal marker), bounce or delay report, read or delivery receipt,
    automatic reply (vacation, left the organisation, other), other system mail (calendar replies, quarantine
@@ -108,9 +111,9 @@ The raw MIME is never kept: the mailbox holds the original. The worker's hourly 
 model and `core.inboundmessage` are in `safe_orm`'s `DENIED_MODEL_LABELS`: the AI assistant and `/admin-api/` can
 neither read nor write them.
 
-**Storing message bodies and attachments is new** for this site (the admin inbox reads them on demand only).
-Before relying on it, tell OIT/InfoSec (plan question H6); the retention periods are proposals pending a UC records
-policy (plan question S5).
+**Storing message bodies and attachments is new** for this site (the admin inbox reads them on demand only). The
+helpdesk is internal: only staff with the Helpdesk app see it, and no note to OIT or InfoSec is needed (decided
+2026-11-11, plan question H6). The retention periods are proposals pending a UC records policy (plan question S5).
 
 ## Permissions
 
@@ -122,11 +125,12 @@ Opening the linked member or campaign needs the Members or Mail app.
 
 ## Settings
 
-Helpdesk → Settings (one row; until it is saved, the defaults apply):
+Helpdesk → Settings (one row; until it is saved, the defaults apply). The intake card above the form has the
+intake's own controls ([Intake controls](#intake-controls)).
 
 | Field | Default | Meaning |
 |---|---|---|
-| `enabled` | on | Import new mail. Off: the scan still records mail, which waits until this is switched on again. |
+| `enabled` | on | Read the Inbox and import its mail. Off: the helpdesk neither reads nor imports; switched back on, the intake continues from its checkpoint, so mail that arrived meanwhile (and is still in the Inbox) becomes tickets then. |
 | `shadow_mode` | on (read-only) | Nothing is ever sent. This release has no sending code; the switch is shown, not editable. |
 | `pause_while_campaign_sending` | on | Wait while a campaign is sending. |
 | `ingest_batch_size`, `ingest_max_seconds`, `max_attempts` | 100, 60, 5 | Budget of one run; attempts before a message is listed under Ingest Problems. |
@@ -139,22 +143,66 @@ Helpdesk → Settings (one row; until it is saved, the defaults apply):
 | `backfill_age_hours` | 24 | Mail imported later than this after it arrived is marked backfilled. |
 | `automated_retention_days`, `spam_retention_days`, `closed_body_retention_days`, `attachment_retention_days`, `ticket_retention_days` | 90, 30, 730, 365, 1095 | Retention (above). |
 
-Older mail (before the helpdesk ran, or before the first scan's lookback) is imported with **Rescan since** on
-Email Monitoring → Bounce processing (Mail app): the scan reads the Inbox again from that time, and both bounce
-records and tickets de-duplicate.
+The intake's cadence and bounds are settings (`EMAIL_MONITORING` in
+`src/config/settings/base/integrations/email_monitoring/__init__.py`), like bounce processing's: they bound the
+controls on the card, so they are not edited beside them.
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `inbox_scan_interval_seconds` | 120 | Time between intake scans (never under 60 s; 30 s while catching up). |
+| `inbox_initial_lookback_hours` | 72 | How far the first intake scan looks back, unless the first-scan lookback is set on the card. |
+| `inbox_max_lookback_days` | 90 | The furthest back **Rescan since** and the first-scan lookback reach. |
+| `bounce_scan_page_size`, `bounce_scan_max_pages`, `bounce_scan_overlap_seconds`, `bounce_scan_max_seconds`, `bounce_lease_seconds` | 50, 10, 900, 60, 900 | The listing bounds, shared with the bounce scan. |
+
+## Intake controls
+
+The **intake card** sits above the Helpdesk → Settings form. It shows the intake's state (running, paused, waiting
+for the first scan, last scan failed, no recent successful scan, switched off, or not active with the reason), the
+last and next scan, the checkpoint, the interval and how many messages wait to be imported, and has four controls.
+Each needs the Helpdesk app, is a POST form with CSRF (`/admin/helpdesk/helpdesksettings/intake/`, `action=scan`,
+`pause`, `resume`, `rescan&since=YYYY-MM-DDTHH:MM`, or `lookback&lookback_hours=N`), and changes the intake only:
+bounce processing has its own card on Email Monitoring, and its Pause, Rescan since and lookback never change the
+intake. Every change leaves an admin history line (Site Settings → Admin Log, on "Helpdesk intake for …") and a log
+line (`helpdesk_intake_state action=…`).
+
+- **Scan now** queues an intake scan at once (otherwise one runs every 2 minutes). Not while paused or off.
+- **Pause intake / Resume intake.** Paused, the helpdesk neither lists the Inbox nor imports mail already recorded
+  (it makes no Microsoft request at all); its checkpoint stays, so resuming continues from there and nothing is
+  missed. Resuming also wakes the import of mail that waited. It works while the mailbox cannot be read, like the
+  lookback. To switch the helpdesk off for good, use `enabled` instead.
+- **Rescan since** (a date and time in the site's time zone, `America/Los_Angeles`) moves the intake's checkpoint
+  back, so that its next scan lists the Inbox again from that time (less the 15-minute overlap): mail from before
+  the helpdesk ran, or before the first scan's lookback. Messages already recorded are skipped (one row per Graph
+  id), and a message whose queue row was purged meanwhile is recognised by its Message-ID, so no ticket is made
+  twice. It starts no scan, and is refused, with the reason, when the time is in the future, more than
+  `inbox_max_lookback_days` (90) days ago, not before the current checkpoint (nothing changes; repeating a rescan is
+  harmless), or does not exist or occurs twice in the site's time zone; also while an intake scan holds the
+  intake's lease (try again a minute later). A scan reads its checkpoint only once it holds the lease, so a rescan
+  is never lost to a scan starting at the same moment, and an expired lease is released so the stalled scan that
+  held it saves nothing. A paused intake stays paused, and a switched-off helpdesk stays off: the rescan takes
+  effect when it runs again. Mail deleted or moved out of the Inbox cannot be read again.
+- **First-scan lookback** (hours) sets how far back the intake's *first* scan reads, while it has no checkpoint: 1
+  hour to `inbox_max_lookback_days` (2,160 hours); empty restores the default, `inbox_initial_lookback_hours` (72).
+  Once the intake has a checkpoint it is no longer used: use **Rescan since**.
+
+There is no change form for the intake's state row (`helpdesk.IntakeState`, one per mailbox) on purpose: a form
+saves every column and would overwrite a running scan's lease.
 
 ## Deployment
 
-1. Migrations `core.0046_inbound_message` (the queue table) and `helpdesk.0001_initial` (the helpdesk tables and,
-   on PostgreSQL, the ticket number sequence). No data migration.
+1. Migrations `core.0046_inbound_message` (the queue table), `helpdesk.0001_initial` (the helpdesk tables and,
+   on PostgreSQL, the ticket number sequence) and `helpdesk.0002_intake_state` (the intake's state table). No data
+   migration.
 2. The background worker (`itg-background-worker`) and `BACKGROUND_JOBS_ENABLED` are required: the scan and the
    import are background jobs. Nothing happens without them.
 3. The Microsoft Graph mailbox scope must grant **read** on the sending mailbox, as for bounce processing. No new
    Graph permission and no allow-list change: the import uses the same two GET requests (list the Inbox, read a
    message's `$value`). `ALLOWED_REQUESTS` is unchanged; a test pins it.
-4. Within a few minutes of deploying, Helpdesk → Queue fills with mail received since the scan's checkpoint (less
-   the 15-minute overlap). Use **Rescan since** for older mail.
-5. To stop importing without a deploy, switch off **enabled** in Helpdesk → Settings.
+4. The worker's first maintenance run starts the intake. Within a few minutes, Helpdesk → Queue fills with the
+   Inbox's mail of the last 72 hours (the first scan's lookback; mail imported more than 24 hours after it arrived
+   opens backfilled tickets). Use **Rescan since** on the intake card for older mail.
+5. To stop reading and importing without a deploy, use **Pause intake** on the intake card (it keeps the
+   checkpoint), or switch off **enabled** in Helpdesk → Settings.
 
 ## Limitations and follow-ups
 
@@ -163,6 +211,8 @@ records and tickets de-duplicate.
 - **Mail deleted or moved out of the Inbox before a scan is missed**; only the Inbox is read. With immutable ids
   off (`EMAIL_GRAPH_IMMUTABLE_IDS`), a message moved in Outlook between its listing and its import is skipped as
   gone (Ingest Problems).
+- **A very dense Inbox stalls the intake's catch-up** as it does bounce processing's: it lists with the same bounds
+  ([Email monitoring, Limitations](email-monitoring.md#limitations)).
 - **Inline images are not shown** in the message (they are listed as attachments).
 - **Graph `conversationId`** can change when an outsider replies, and every reply to one blast may share it; it is
   only a fallback, and only for participants.

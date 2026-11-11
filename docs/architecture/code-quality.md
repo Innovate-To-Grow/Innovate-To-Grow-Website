@@ -136,9 +136,10 @@ app. Apps plug in instead:
   (`family=`, `lane=`), so the worker can skip a lane the delivery-rate limiter holds back.
 - **CSP frame hosts:** `core`'s CSP middleware reads the provider callables listed in the
   `CSP_FRAME_HOST_PROVIDERS` setting (`cms` supplies the embed-host allowlist).
-- **Inbound mail:** an app that consumes the mailbox scan's inbound queue calls
-  `apps.core.services.email.inbound.register_inbound_consumer(...)` from `AppConfig.ready()` with its job kind
-  (`helpdesk`); `core` queues that job by name after a scan records new mail.
+- **Inbound mail:** an app that lists the Graph mailbox's Inbox on its own schedule (the `helpdesk`'s intake)
+  records messages in `core`'s inbound queue with `apps.core.services.email.inbound.record` and calls
+  `register_inbox_reader(...)` from `AppConfig.ready()` with the dotted path of a function describing it; the
+  Email Monitoring card (`mail`) calls it by name to show the reader's cadence and a link to its controls.
 - **Project-level wiring:** `src/config/` (URLs, settings) and the operational management commands in
   `apps.core.management.commands.*` (the background worker and its maintenance list, seeding, and
   service-config checks) are composition roots and may import any app.
