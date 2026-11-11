@@ -338,6 +338,23 @@ class FloodTests(TestCase):
         self.assertEqual(grouped.messages.count(), 3)
         self.assertIn(Kind.FLOOD, event_kinds(grouped))
 
+    def test_a_persons_message_is_never_grouped_into_a_closed_ticket(self):
+        # Grouped into a closed ticket it would be hidden: it neither reopens it nor shows in the default queue.
+        reader = FakeReader()
+        first, latest = (
+            receive(corpus.message(message_id=f"<c{index}@x>", subject=f"Run {index}"), reader=reader)
+            for index in range(2)
+        )
+        Ticket.objects.filter(pk=latest.pk).update(status=Status.CLOSED, closed_at=timezone.now())
+
+        grouped = receive(corpus.message(message_id="<c2@x>", subject="Run 2"), reader=reader)
+        Ticket.objects.filter(pk=first.pk).update(status=Status.RESOLVED, closed_at=timezone.now())
+        alone = receive(corpus.message(message_id="<c3@x>", subject="Run 3"), reader=reader)
+
+        self.assertEqual(grouped.pk, first.pk)  # the latest open one
+        self.assertNotIn(alone.pk, (first.pk, latest.pk, grouped.pk))  # none open: a ticket of its own
+        self.assertEqual((alone.status, alone.unread), (Status.NEW, True))
+
     def test_automated_mail_is_never_grouped(self):
         reader = FakeReader()
         numbers = {

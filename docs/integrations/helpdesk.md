@@ -81,7 +81,8 @@ one; nothing is deleted) and **mark as spam**.
      linked to it). A ticket closed less than `reopen_window_days` (14) ago reopens; an older one gets a linked
      follow-up ticket. "Pending customer" becomes "Open".
    - More than `flood_threshold` (10) new tickets from one sender within `flood_window_minutes` (60) are grouped
-     into the latest one, flagged `flood`.
+     into the latest one still open, flagged `flood`; with none open, the message opens a ticket of its own (it is
+     never hidden in a closed one).
    - The same message arriving twice (same Message-ID, or the same sender, date, subject and text without one)
      is stored once.
    - The site's own mail keeps no body or attachment (it may hold sign-in codes).

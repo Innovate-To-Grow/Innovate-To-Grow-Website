@@ -9,7 +9,8 @@ The rules (Hongzhe's decision of 2026-11-11 on top of item2-helpdesk-bounces-pla
 - A person's message (or an uncertain one) joins the ticket it threads to, unless that ticket is automated or spam:
   then it opens a new ticket linked to it. A ticket closed less than ``reopen_window_days`` before the message arrived
   reopens; an older one gets a linked follow-up ticket. A sender with more than ``flood_threshold`` new tickets within
-  ``flood_window_minutes`` has the next one grouped into their latest ticket, which is flagged.
+  ``flood_window_minutes`` has the next one grouped into their latest open ticket, which is flagged (with none open,
+  it opens a ticket of its own, so a person's message is never hidden in a closed one).
 - The site's own messages keep no body or attachment (they may hold sign-in codes).
 """
 
@@ -98,7 +99,10 @@ def _flood_target(address: str, settings: HelpdeskSettings, received: datetime) 
     ).exclude(status__in=(Status.MERGED, Status.SPAM))
     if recent.count() < int(settings.flood_threshold):
         return None
-    return recent.select_for_update().order_by("-first_message_at").first()
+    # Only into a ticket still open: added to a closed one, a person's message would be hidden from the queue (it
+    # neither reopens it nor shows under the default status filter). With none open, it opens a ticket of its own.
+    open_tickets = recent.filter(status__in=Ticket.OPEN_STATUSES)
+    return open_tickets.select_for_update().order_by("-first_message_at").first()
 
 
 def _participants(addresses, own) -> list[str]:
