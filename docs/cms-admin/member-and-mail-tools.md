@@ -43,6 +43,30 @@ Members can have multiple contact emails and phones:
 
 Contact verification uses the email challenge system or AWS SNS SMS.
 
+### Phone numbers and SMS sign-in
+
+Only a **verified** phone number can be used to sign in with a texted code (passwordless sign-in, password sign-in
+by phone, password reset by phone). A number saved on an account but never verified, for example one added by staff
+or a member import, is refused without saying so: the sign-in page answers as if a code had been sent, and no text is
+sent. The member verifies the number with a one-time code from **Account → Phone Numbers → Verify**; from then on it
+signs in.
+
+A number becomes verified only with a code; there is no tick for it:
+
+- The **SMS sign-in** column of Contact Phones and the member page's phone rows show **Verified · SMS sign-in on** or
+  **Unverified · no SMS sign-in**; the member list adds `(unverified)` to an unverified primary phone.
+- The **Verified** box can be unticked (or use **Mark selected phones as unverified**) to stop SMS sign-in, but not
+  ticked: a phone added in the admin starts unverified, and changing a number's digits makes it unverified again
+  (writing the same number differently does not).
+- **Verify by SMS code** (the link next to an unverified number) is the staff path for a member who cannot sign in
+  another way, for example a phone-only member whose only number is unverified: talk to the member (in person, or on a
+  call to them at a contact you already trust), **Send code**, ask them to read it to you, and enter it. The code goes
+  to that number only, is valid for 10 minutes, allows 5 tries and follows the same per-number limits as every code.
+  Both steps are written to the admin history. A member who can sign in with their email should verify the number
+  themselves on their account page instead.
+- Staff with the Members app may do this for regular members; a staff or superuser account's number needs an I2G
+  Master.
+
 ### Admin invitations
 
 `AdminInvitation` allows existing staff to invite new admin users:
