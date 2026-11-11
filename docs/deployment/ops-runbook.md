@@ -29,7 +29,8 @@ Who holds each kind of access, and how to grant or remove it. **→ private ops 
 - Admin console: the I2G Master account(s) and staff section grants (see the
   [staff handbook](../staff/README.md)). Review every term.
 - AWS console and CLI access (SSO roles).
-- GitHub organisation, repository and `production` environment reviewers.
+- GitHub organisation and repository admins, and the reviewers of the `Manual Deployment Approval` environment
+  (the production approval gate).
 - Entra app owners (OIT) and the mailbox's delegates.
 - Google Cloud project owners.
 
@@ -41,7 +42,7 @@ Put each date in a shared calendar with a reminder well before it. Keep the cale
 
 | Item | Expires / renews | Warning | Procedure |
 |---|---|---|---|
-| Microsoft Graph app certificate | **2027-10-29** | The site logs a warning from 60 days before and shows an amber badge; red and a failing `verify_service_configs --strict` from 14 days before | [Rotate the certificate](../integrations/microsoft-graph-email.md#rotate-the-certificate) |
+| Microsoft Graph app certificate | **2027-10-29** | The site logs a warning from 60 days before and shows an amber badge; red from 14 days before, when `verify_service_configs --strict` also fails while Graph is the selected provider | [Rotate the certificate](../integrations/microsoft-graph-email.md#rotate-the-certificate) |
 | Gmail API service-account key | Does not expire by default; rotation date → private ops doc | None | [Gmail API rotation](../integrations/gmail-api-email.md#rotation) |
 | Shared AWS IAM key (SES, SMS, Bedrock) | Rotation date → private ops doc | None | [Application AWS credentials](production.md#application-aws-credentials-and-background-jobs) |
 | Google Sheets service-account key | Rotation date → private ops doc | None | **TODO** |
@@ -84,7 +85,7 @@ ops doc.
 | Many bounces or rejections after a blast | **Email Monitoring → Bounce reports**, the share of **Rejected** | [Email monitoring](../integrations/email-monitoring.md) |
 | A credential may have leaked (Graph key, AWS key, Gmail key, admin account) | Revoke first, then investigate; CloudTrail; Admin Log | [Emergency revocation](../integrations/microsoft-graph-email.md#emergency-revocation) |
 | The site is down or slow | Health checks, recent deploys, request limits | [Request limits](../integrations/request-limits.md) |
-| SMS stopped (spend limit, throttling) | **Delivery Rates → AWS SMS** card | [Delivery rates](../integrations/delivery-rates.md) |
+| SMS stopped (spend limit, throttling) | **Delivery Rates → SMS · AWS End User Messaging** card | [Delivery rates](../integrations/delivery-rates.md) |
 | Personal data exposed (an export shared, wrong recipients) | What, who, when; contain it | UC Merced privacy and InfoSec contacts → private ops doc |
 
 **TODO:** write each playbook out.
@@ -116,5 +117,5 @@ Record each decision with its date and where it was approved; ticket numbers →
 |---|---|
 | After every blast | **Email Monitoring** campaign row; bounce reports; (when live) **Bounced addresses** |
 | Weekly | **Bounce processing** is **Running**; no stuck **Queued** campaigns; delivery limits not stopped |
-| Monthly | Certificate and key expiry badges; CloudTrail access to the key secrets; AWS costs |
+| Monthly | The Graph certificate's expiry badge, and the key rotation dates in the private ops doc; CloudTrail access to the key secrets; AWS costs |
 | Every term | Admin access review; campus IP set; this runbook and the staff handbook |
