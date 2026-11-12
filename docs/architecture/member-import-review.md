@@ -51,7 +51,7 @@ and at `max_rows_read` rows read (blank ones included), so a compressed workbook
 | Module | Role |
 |---|---|
 | `lookup.py` | One snapshot of every record the sheet names, in a fixed number of queries per 500 values. Addresses compare through `UPPER()` and `upper().lower()` keys, as `login_guard` does |
-| `grouping.py` | Cross-row checks: V2/V4/V7/V8 cells set aside; C1 groups (same member, or same new address) |
+| `grouping.py` | Cross-row checks: V2/V4/V7/V8 cells set aside (a new address or number, or a contact email with no member, is added by the first row that names it); C1 groups (same member, or same new address) |
 | `analysis.py` | Per row: Member UUID → Primary Email in any role → unlinked contact → new member; conflicts C2–C9 in precedence order; status |
 | `choices.py`, `describe.py` | Options per conflict, bulk-safe choices, and the sentences shown |
 | `risky.py` | R1–R9 items per target member, with the disabled reasons (R9 "mark verified": a verified address is a sign-in factor). R6/R9 cover email addresses only |
@@ -77,9 +77,9 @@ refuses any flag but `subscribe`.
 member the review read in primary-key order, reloads the snapshot and re-runs the analysis. A row whose fingerprint,
 status or conflict differs, or whose choice or ticks are no longer allowed (a privilege change), sends the batch back to
 review: those rows get the new analysis, their choice reset to Skip (not to their default) and `changed_since_review`.
-The planner itself never activates or verifies an unfinished self-service sign-up, whatever the ticks say. Otherwise every row's
-plan is written in row order; new members are bulk-created (one sheet sync is scheduled after commit), updates are
-saved op by op so the save signals fire. `make_contact_email_primary`, `delete_contact_email` and `delete_contact_phone`
+The planner itself never activates or verifies an unfinished self-service sign-up, whatever the ticks say. Otherwise the
+plans are written: first the new members, bulk-created (one sheet sync is scheduled after commit), then the updates in
+row order, op by op so the save signals fire. `make_contact_email_primary`, `delete_contact_email` and `delete_contact_phone`
 run as savepoints with their own guards; `create_contact_email` is never used, so no mail is sent. Any error rolls back
 everything and is stored in `last_error`. Each affected member gets a LogEntry, and the batch one more.
 
