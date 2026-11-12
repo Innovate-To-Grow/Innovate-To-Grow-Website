@@ -173,9 +173,10 @@ What happens:
   password, or to delete the account, go to the new primary too.
 - **Campaigns:** a campaign sent to the **primary email only** now goes to the new primary: **All subscribers** only
   if the new primary is subscribed; **All active members**, **Staff Members** and **Selected Members** whatever it
-  says. The page warns when the new primary is unsubscribed (the member stops getting those newsletters) or when
-  the old primary was unsubscribed and the new one is subscribed (they start getting them). Change **Subscribed**
-  yourself only if the member asked for it. Campaigns sent to all of a member's addresses are not affected.
+  says. The page warns when the switch changes who gets **All subscribers** campaigns: the new primary is
+  unsubscribed while the old one was subscribed (the member stops getting those newsletters), or the other way round
+  (they start getting them). Change **Subscribed** yourself only if the member asked for it. Campaigns sent to all of
+  a member's addresses are not affected.
 - The member's profile, the Members list, exports and the member sheet show the new primary. Event registrations
   keep the address they were made with.
 - **History:** the member's History says "Primary email switched from … to …", and each address whose type changed

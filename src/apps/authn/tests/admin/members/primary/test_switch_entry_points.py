@@ -1,9 +1,13 @@
 """Where the switch starts (the member page's button and row links, the Contact Emails action) and what the page
 says about signing in and newsletters."""
 
+from unittest.mock import patch
+
 from django.contrib.admin.models import LogEntry
 from django.contrib.messages import get_messages
-from django.test import override_settings
+from django.db import DatabaseError, connection
+from django.test import RequestFactory, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
 from apps.authn.models import ContactEmail
@@ -65,6 +69,20 @@ class MemberPageEntryPointTests(SwitchFixture):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, "switch-primary")
 
+    def test_deciding_on_the_button_does_not_load_the_whole_member_again(self):
+        model_admin = self.client.get(change_url(self.jane)).context["adminform"].model_admin
+        request = RequestFactory().get(change_url(self.jane))
+        request.user = self.master
+
+        with CaptureQueriesContext(connection) as queries:
+            actions = model_admin.get_actions_detail(request, str(self.jane.pk))
+
+        self.assertEqual([item.action_name for item in actions], ["authn_member_switch_primary_email"])
+        # One small query: no profile image, no prefetched contacts.
+        self.assertEqual(len(queries), 1, [query["sql"] for query in queries])
+        self.assertNotIn("profile_image", queries[0]["sql"])
+        self.assertEqual(model_admin.get_actions_detail(request, "not-a-member-id"), [])
+
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class SwitchNotesTests(SwitchFixture):
@@ -105,6 +123,15 @@ class SwitchNotesTests(SwitchFixture):
         self.assertEqual(first["level"], "warning")
         self.assertIn("jane.work@example.com is unsubscribed (jane@example.com is subscribed)", first["text"])
         self.assertIn("The switch changes no subscription", first["text"])
+
+    def test_an_unsubscribed_new_primary_is_only_a_note_when_nothing_changes(self):
+        ContactEmail.objects.filter(pk__in=[self.primary.pk, self.secondary.pk]).update(subscribe=False)
+
+        first = self.notes(self.jane, self.secondary)["newsletters"][0]
+
+        self.assertEqual(first["level"], "info")
+        self.assertIn("did not reach this member before the switch and still will not", first["text"])
+        self.assertNotIn("no longer", first["text"])
 
     def test_an_unsubscribed_old_primary_is_a_warning(self):
         ContactEmail.objects.filter(pk=self.primary.pk).update(subscribe=False)
@@ -166,6 +193,15 @@ class ContactEmailsActionTests(SwitchFixture):
             "subscription or verification changed, and nothing was sent.",
             texts(response),
         )
+
+    def test_the_history_is_written_in_the_switchs_transaction(self):
+        with patch.object(LogEntry.objects, "log_actions", side_effect=DatabaseError("history unavailable")):
+            with self.assertRaises(DatabaseError):
+                self.run_action(self.secondary)
+
+        # A switch is never committed without its History.
+        self.assertEqual(types(self.jane)["jane@example.com"], "primary")
+        self.assertEqual(types(self.jane)["jane.work@example.com"], "secondary")
 
     def test_an_unverified_address_is_refused_with_what_to_do(self):
         response = self.run_action(self.unverified)

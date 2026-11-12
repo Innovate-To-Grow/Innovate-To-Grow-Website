@@ -8,7 +8,8 @@ primary email** (member page) and **Make selected email primary** (Contact Email
 
 * refuses, with a message staff can act on, an address that is not the member's or not verified;
 * refuses when the member or their addresses changed after the confirmation page was shown (``fingerprint``);
-* reads back every address whose type changed (``PrimarySwitch.changes``), for the admin history (``log_switch``).
+* reads back every address whose type changed (``PrimarySwitch.changes``) and, given the ``actor``, writes the admin
+  history (``log_switch``) inside that transaction, so a switch is never committed without its History.
 
 ``plan_primary_switch`` predicts those changes for the confirmation page without writing anything; it mirrors the
 service, and the tests hold the two together. A switch never changes a subscription or a verification, and sends
@@ -116,11 +117,15 @@ def plan_primary_switch(emails, target) -> list[RoleChange]:
 
 
 @transaction.atomic
-def switch_primary_email(*, member, contact_email_id, seen: str | None = None) -> PrimarySwitch:
+def switch_primary_email(
+    *, member, contact_email_id, seen: str | None = None, actor=None, via: str = ""
+) -> PrimarySwitch:
     """Make the member's verified address ``contact_email_id`` their primary email.
 
     ``seen`` is the ``fingerprint`` the confirmation page showed: when given, the switch is refused (``StaleSwitch``)
     if anything changed since. Raises ``SwitchRefused`` for an address that is not the member's or is not verified.
+    With ``actor`` (the admin), the History is written too (``log_switch``; ``via`` names where the switch was made),
+    in this same transaction: if writing it fails, the switch is rolled back with it.
     """
     locked = get_user_model().objects.select_for_update().get(pk=member.pk)
     before = member_emails(locked)
@@ -133,7 +138,9 @@ def switch_primary_email(*, member, contact_email_id, seen: str | None = None) -
         raise SwitchRefused(NOT_VERIFIED.format(address=target.email_address))
     try:
         make_contact_email_primary(member=locked, contact_email_id=target.pk)
-    except AuthChallengeError as exc:  # pragma: no cover - the checks above ran under the same member lock
+    except AuthChallengeError as exc:
+        # The rows above were read under the member lock, but not every writer takes it (the bulk "Mark selected emails
+        # as unverified" updates rows directly), so the service's own re-check under its row lock can still refuse.
         raise SwitchRefused(str(exc)) from exc
     after = {email.pk: email for email in member_emails(locked)}
     changes = tuple(
@@ -141,7 +148,10 @@ def switch_primary_email(*, member, contact_email_id, seen: str | None = None) -
         for email in before
         if email.pk in after and after[email.pk].email_type != email.email_type
     )
-    return PrimarySwitch(member=locked, primary=after[target.pk], previous=current_primary(before), changes=changes)
+    result = PrimarySwitch(member=locked, primary=after[target.pk], previous=current_primary(before), changes=changes)
+    if actor is not None:
+        log_switch(actor, result, via=via)
+    return result
 
 
 def describe(result: PrimarySwitch) -> str:

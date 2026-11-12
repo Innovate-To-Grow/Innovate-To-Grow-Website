@@ -1,10 +1,12 @@
 """Members → a member → Switch primary email: the page changes nothing, the POST switches, both are guarded."""
 
 import uuid
+from unittest.mock import patch
 
 from django.contrib.admin.models import LogEntry
 from django.contrib.messages import get_messages
-from django.test import override_settings
+from django.db import DatabaseError
+from django.test import Client, override_settings
 from django.urls import reverse
 
 from apps.authn.models import ContactEmail
@@ -140,6 +142,26 @@ class SwitchApplyTests(SwitchFixture):
         )
         self.assertFalse(ContactEmail.objects.get(pk=self.secondary.pk).subscribe)
 
+    def test_switching_between_two_unsubscribed_addresses_announces_no_loss(self):
+        ContactEmail.objects.filter(pk__in=[self.primary.pk, self.secondary.pk]).update(subscribe=False)
+
+        response = self.apply(self.jane, self.secondary)
+
+        self.assertEqual(types(self.jane)["jane.work@example.com"], "primary")
+        # They got no "primary email only" newsletters before the switch either.
+        self.assertFalse(any("no longer reach" in text for text in texts(response)), texts(response))
+
+    def test_the_history_is_written_in_the_switchs_transaction(self):
+        fingerprint = self.client.get(switch_url(self.jane, self.secondary)).context["fingerprint"]
+
+        with patch.object(LogEntry.objects, "log_actions", side_effect=DatabaseError("history unavailable")):
+            with self.assertRaises(DatabaseError):
+                self.apply(self.jane, self.secondary, fingerprint=fingerprint)
+
+        # A switch is never committed without its History.
+        self.assertEqual(types(self.jane)["jane@example.com"], "primary")
+        self.assertEqual(types(self.jane)["jane.work@example.com"], "secondary")
+
     def test_a_stale_page_changes_nothing_and_is_shown_again(self):
         fingerprint = self.client.get(switch_url(self.jane, self.secondary)).context["fingerprint"]
         ContactEmail.objects.filter(pk=self.primary.pk).update(subscribe=False)  # someone else, meanwhile
@@ -224,6 +246,18 @@ class SwitchPermissionTests(SwitchFixture):
 
         self.assertEqual(self.client.get(switch_url(self.jane)).status_code, 403)
         self.assertEqual(self.apply(self.jane, self.secondary, fingerprint="x").status_code, 403)
+        # Same answer for a member that does not exist, so the page does not tell which ids do.
+        self.assertEqual(self.client.get(f"/admin/authn/member/{uuid.uuid4()}/switch-primary/").status_code, 403)
+
+    def test_the_post_needs_the_csrf_token(self):
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.master)
+        fingerprint = client.get(switch_url(self.jane, self.secondary)).context["fingerprint"]
+
+        response = client.post(switch_url(self.jane), {"to": str(self.secondary.pk), "fingerprint": fingerprint})
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(types(self.jane)["jane@example.com"], "primary")
 
     def test_a_helper_may_switch_a_regular_member(self):
         self.client.force_login(self.helper)

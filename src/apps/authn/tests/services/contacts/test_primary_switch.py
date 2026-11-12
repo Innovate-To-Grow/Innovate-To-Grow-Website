@@ -1,16 +1,19 @@
 """``switch_primary_email``: the existing swap service, plus clear refusals, a stale check and what changed."""
 
 import datetime
+from unittest.mock import patch
 
 from django.contrib.admin.models import CHANGE, LogEntry
 from django.contrib.auth import get_user_model
 from django.contrib.contenttypes.models import ContentType
 from django.core.cache import cache
+from django.db import DatabaseError
 from django.test import TestCase
 from django.utils import timezone
 
 from apps.authn.models import ContactEmail, ContactPhone
 from apps.authn.services.account.recovery import members_with_sign_in_contact
+from apps.authn.services.contacts import primary_switch as service
 from apps.authn.services.contacts.primary_switch import (
     NOT_FOUND,
     NOT_VERIFIED,
@@ -143,6 +146,31 @@ class SwitchPrimaryEmailTests(TestCase):
                 self.assertNotEqual(fingerprint(self.jane, emails), seen)
         add_email(self.jane, "jane.new@example.com", "other")
         self.assertNotEqual(fingerprint(self.jane, member_emails(self.jane)), seen)
+
+    def test_with_an_actor_the_history_commits_or_rolls_back_with_the_switch(self):
+        result = switch_primary_email(
+            member=self.jane, contact_email_id=self.secondary.pk, actor=self.admin, via="test"
+        )
+
+        self.assertEqual(LogEntry.objects.filter(user=self.admin).count(), 1 + len(result.changes))
+        with patch.object(LogEntry.objects, "log_actions", side_effect=DatabaseError("history unavailable")):
+            with self.assertRaises(DatabaseError):
+                switch_primary_email(member=self.jane, contact_email_id=self.primary.pk, actor=self.admin, via="test")
+        self.assertEqual(types(self.jane)["jane.work@example.com"], "primary")
+
+    def test_an_address_unverified_meanwhile_by_a_bulk_action_is_refused(self):
+        # "Mark selected emails as unverified" updates rows without the member lock, so the target can lose Verified
+        # after it was read; the existing service's own check under its row lock refuses it, and nothing changes.
+        real = service.make_contact_email_primary
+
+        def unverified_meanwhile(*, member, contact_email_id):
+            ContactEmail.objects.filter(pk=contact_email_id).update(verified=False)
+            return real(member=member, contact_email_id=contact_email_id)
+
+        with patch.object(service, "make_contact_email_primary", side_effect=unverified_meanwhile):
+            with self.assertRaisesMessage(SwitchRefused, "Verify this email before setting it as primary."):
+                switch_primary_email(member=self.jane, contact_email_id=self.secondary.pk)
+        self.assertEqual(types(self.jane)["jane@example.com"], "primary")
 
     def test_a_member_with_no_primary_gets_one(self):
         ContactEmail.objects.filter(pk=self.primary.pk).delete()

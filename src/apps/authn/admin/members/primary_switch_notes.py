@@ -56,15 +56,27 @@ def _sign_in(request, member, previous, target) -> list[str]:
     return notes
 
 
+def _reached_before(previous) -> bool:
+    """Whether "primary email only" campaigns to All subscribers reached the member before the switch."""
+    return previous is not None and previous.subscribe
+
+
 def _newsletters(previous, target) -> list[dict]:
     new = target.email_address
-    if not target.subscribe:
-        was = f" ({previous.email_address} is subscribed)" if previous is not None and previous.subscribe else ""
+    advice = (
+        f"The switch changes no subscription: tick Subscribed on {new} only if the member asked for newsletters there."
+    )
+    if not target.subscribe and _reached_before(previous):
         first = _note(
-            f"{new} is unsubscribed{was}: campaigns to All subscribers sent to the primary email only will no longer "
-            f"reach this member. The switch changes no subscription: tick Subscribed on {new} only if the member asked "
-            "for newsletters there.",
+            f"{new} is unsubscribed ({previous.email_address} is subscribed): campaigns to All subscribers sent to the "
+            f"primary email only will no longer reach this member. {advice}",
             "warning",
+        )
+    elif not target.subscribe:
+        # Nothing changes here: the old primary was unsubscribed too, or there was none.
+        first = _note(
+            f"{new} is unsubscribed: campaigns to All subscribers sent to the primary email only did not reach this "
+            f"member before the switch and still will not. {advice}"
         )
     elif previous is not None and not previous.subscribe:
         first = _note(
@@ -132,7 +144,7 @@ def outcome_messages(result) -> list[tuple[int, str]]:
             "nothing was sent.",
         )
     ]
-    if not result.primary.subscribe:
+    if not result.primary.subscribe and _reached_before(result.previous):
         out.append(
             (
                 messages.WARNING,

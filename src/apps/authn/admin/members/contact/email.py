@@ -4,7 +4,7 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
-from apps.authn.services.contacts.primary_switch import SwitchRefused, log_switch, switch_primary_email
+from apps.authn.services.contacts.primary_switch import SwitchRefused, switch_primary_email
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactEmail, Member
@@ -225,13 +225,17 @@ class ContactEmailAdmin(RankedSearchMixin, SignInWarningAdminMixin, PrivilegedOw
             return
 
         try:
-            # Same service and history as the member page's "Switch primary email".
-            result = switch_primary_email(member=contact_email.member, contact_email_id=contact_email.pk)
+            # Same service and history as the member page's "Switch primary email" (written in its transaction).
+            result = switch_primary_email(
+                member=contact_email.member,
+                contact_email_id=contact_email.pk,
+                actor=request.user,
+                via=VIA_CONTACT_EMAILS,
+            )
         except SwitchRefused as exc:
             self.message_user(request, str(exc), level=messages.ERROR)
             return
 
-        log_switch(request.user, result, via=VIA_CONTACT_EMAILS)
         for level, text in outcome_messages(result):
             self.message_user(request, text, level=level)
 

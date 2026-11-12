@@ -20,7 +20,8 @@ ACCOUNT_ACTIVE = (
 UNFINISHED_SIGN_UP_LABEL = "Unfinished sign-up"
 UNFINISHED_SIGN_UP = (
     "The person started a self-service sign-up and never finished it, so the account is not active yet. It ends the "
-    "first time the account is activated."
+    "first time the account is activated, or with the list action “Deactivate selected members” (the person then can "
+    "no longer finish the sign-up)."
 )
 
 EMAIL_TYPE = (

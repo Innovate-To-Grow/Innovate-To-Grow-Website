@@ -90,7 +90,8 @@ campaigns. The POST (CSRF, the typed word `switch` while `ADMIN_REQUIRE_CONFIRMA
   → `other`), then reads back every changed type.
 
 `log_switch` writes a History line on the member ("Primary email switched from … to …") and one on each changed
-address; the application log gets ids only. The Contact Emails action **Make selected email primary** uses the same
+address, inside the switch's transaction (`switch_primary_email(..., actor=..., via=...)`), so a switch is never
+committed without its History; the application log gets ids only. The Contact Emails action **Make selected email primary** uses the same
 service and history. Subscriptions, verification and sessions never change, and nothing is sent; the page warns when
 the switch changes who receives "primary only" campaigns. Permission: the `authn` app plus `user_can_manage_member`
 (on a staff or superuser account, the I2G Master or the account holder); the button and links are hidden from
