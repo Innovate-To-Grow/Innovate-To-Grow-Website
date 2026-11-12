@@ -301,7 +301,8 @@ person fixes their mailbox.
 1. Wait a day for the reports to come in.
 2. Open **Bounced addresses** on the **Open** tab and filter by suggestion.
 3. Hard bounces: open the member, look for a better address, then **Replace email**, **Use another address as
-   primary**, or **Mark undeliverable**.
+   primary**, or **Mark undeliverable**. Do not deactivate the account for a bad address, and do not untick
+   **Verified** to stop mail: it stops sign-in, not mail (chapter 2, "A bounced address: what to do").
 4. Complaints: **Unsubscribe this address**.
 5. Rejections: leave the addresses alone and tell the web team if there are many.
 6. **Dismiss** what needs nothing, with a short reason.
