@@ -1,7 +1,7 @@
 """The member import without a review, for scripts and tests.
 
 It runs the review's analysis and applies what a review would apply if nobody changed a thing: ready rows are created
-or updated, every row that needs a decision (C1–C9) is skipped with the reason, and no risky change (R1–R8) is made.
+or updated, every row that needs a decision (C1–C9) is skipped with the reason, and no risky change (R1–R9) is made.
 So it never deletes, re-subscribes or un-verifies a contact, never changes Active or Staff, never moves a contact
 between members, and never changes a primary email. It never verifies a phone number either: a Phone Verified column
 is ignored and reported once, before the rows. Everything is written in one transaction: a row that fails to write
