@@ -39,6 +39,9 @@ class FrozenClassifierTests(SimpleTestCase):
         self.assertEqual(migration.classify("failed", "5.0.0", "")[:3], ("unknown", "unknown", None))
         self.assertEqual(migration.classify("failed", "4.7.1", "454 4.7.1 Relay access denied")[1], "relay_denied")
         self.assertEqual(migration.classify("failed", "5.4.4", "Host not found, try again")[1], "transient")
+        receiving_rate = "550-5.2.1 The user you are trying to contact is receiving mail at a rate that prevents"
+        self.assertEqual(migration.classify("failed", "5.2.1", receiving_rate)[:3], ("soft", "transient", False))
+        self.assertEqual(migration.classify("failed", "5.2.1", "550 5.2.1 Mailbox disabled")[1], "mailbox_disabled")
         self.assertEqual(migration.classify("failed", "5.0.0", "said: 550 5.1.1 x")[1], "hard")
         self.assertEqual(migration.classify("failed", "5.2.3", "Max size allowed: 0 KB")[1], "mailbox_disabled")
         self.assertEqual(migration.classify("failed", "5.0.0", "message size limit of 0 KB")[1], "mailbox_disabled")

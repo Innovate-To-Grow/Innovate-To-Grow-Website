@@ -84,7 +84,7 @@ SUBJECT_DEFAULTS = {
     7: "policy_rejected",
 }
 ADDRESS_DETAILS = frozenset({0, 1, 2, 3, 4, 6, 10})
-AMBIGUOUS = frozenset({"5.4.1", "5.4.4"})
+AMBIGUOUS = frozenset({"5.2.1", "5.4.1", "5.4.4"})
 SIZE_CODES = frozenset({"5.2.3", "5.3.4"})
 REASONS = {
     "5.1.0": "Bad recipient address",
@@ -235,6 +235,11 @@ PHRASES = (
         "transient",
         "Mail routing loop",
         re.compile(r"\bmail loop\b|\bloop(?:ing)? detected\b|\bhop count\b|\btoo many hops\b"),
+    ),
+    (
+        "transient",
+        "The recipient is receiving mail too fast: a temporary limit",
+        re.compile(r"\breceiving (?:mail|messages|e-?mails?) (?:too (?:quickly|fast)|at a rate)\b"),
     ),
     (
         "transient",

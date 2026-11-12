@@ -16,6 +16,10 @@ from .review_cases import CASES, CASES_BY_NAME
 
 Category = EmailBounce.Category
 Classification = EmailBounce.Classification
+GMAIL_RECEIVING_RATE = (
+    "550-5.2.1 The user you are trying to contact is receiving mail at a rate that prevents additional messages from "
+    "being delivered. For more information, go to https://support.google.com/mail/?p=ReceivingRatePerm - gsmtp"
+)
 
 
 def category_of(status: str, diagnostic: str = "", action: str = "failed") -> str:
@@ -113,7 +117,7 @@ class CodePrecedenceTests(SimpleTestCase):
             ("5.4.300", "550 5.4.300 Message expired: user unknown", Category.TRANSIENT),
             ("5.7.54", "550 5.7.54 user unknown", Category.RELAY_DENIED),
             ("5.2.2", "552 5.2.2 relay access denied", Category.MAILBOX_FULL),
-            ("5.2.1", "550 5.2.1 try again later", Category.MAILBOX_DISABLED),
+            ("5.1.10", "550 5.1.10 RecipientNotFound; try again later", Category.HARD),
             ("4.2.2", "452 4.2.2 user unknown", Category.MAILBOX_FULL),
         ):
             with self.subTest(status=status):
@@ -217,6 +221,29 @@ class CodePrecedenceTests(SimpleTestCase):
         host_retry = "Host or domain name not found. Name service error for name=x type=MX: Host not found, try again"
         self.assertEqual(category_of("5.4.4", host_retry), Category.TRANSIENT)
         self.assertEqual(category_of("5.4.4", "550 5.4.4 relay access denied (spam)"), Category.HARD)
+
+    def test_gmail_receiving_rate_limit_is_temporary_not_a_disabled_mailbox(self):
+        # Gmail returns 5.2.1 both for a disabled account and for a recipient receiving mail too fast (a limit that
+        # typically lifts within a day): only the second's text makes it temporary.
+        verdict = classify("failed", "5.2.1", GMAIL_RECEIVING_RATE)
+
+        self.assertEqual(
+            (verdict.category, verdict.classification, verdict.is_permanent, verdict.smtp_code),
+            (Category.TRANSIENT, Classification.SOFT, False, "550"),
+        )
+        self.assertEqual(verdict.reason, "The recipient is receiving mail too fast: a temporary limit")
+        wrapped = f"550 5.0.350 Remote server returned an error -> {GMAIL_RECEIVING_RATE}"
+        self.assertEqual(category_of("5.0.350", wrapped), Category.TRANSIENT)
+        self.assertEqual(category_of("5.2.1", "550 5.2.1 Mailbox temporarily disabled"), Category.TRANSIENT)
+        for diagnostic in (
+            "550-5.2.1 The email account that you tried to reach is disabled.",
+            "550 5.2.1 user unknown, relay access denied (spam)",
+            "",
+        ):
+            with self.subTest(diagnostic=diagnostic):
+                verdict = classify("failed", "5.2.1", diagnostic)
+                self.assertEqual((verdict.category, verdict.is_permanent), (Category.MAILBOX_DISABLED, True))
+                self.assertEqual(verdict.reason, "Recipient mailbox is disabled")
 
     def test_reports_without_a_code(self):
         for diagnostic, expected in (

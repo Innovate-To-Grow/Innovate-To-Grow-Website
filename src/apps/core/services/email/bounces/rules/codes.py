@@ -14,7 +14,7 @@ EXACT = {
     "5.1.7": SPAM,  # our sender address was refused
     "5.1.8": SPAM,  # our sender domain refused; Exchange: our mailbox is blocked for sending
     "5.1.90": TRANSIENT,  # Exchange: our mailbox reached its daily recipient limit
-    "5.2.1": DISABLED,
+    "5.2.1": DISABLED,  # unless its text says the limit is temporary (AMBIGUOUS)
     "5.2.2": FULL,
     "4.2.2": FULL,
     "5.2.3": TRANSIENT,  # message too large for the recipient (a 0 KB limit: see phrases.ZERO_LIMIT_RE)
@@ -48,8 +48,10 @@ RANGES = (
 # defined for one (RFC 3463, and X.1.10: null MX, Exchange's RecipientNotFound); any other bare code is unknown.
 SUBJECT_DEFAULTS = {0: UNKNOWN, 2: UNKNOWN, 3: TRANSIENT, 4: TRANSIENT, 5: UNKNOWN, 6: TRANSIENT, 7: POLICY}
 ADDRESS_DETAILS = frozenset({0, 1, 2, 3, 4, 6, 10})
-# Codes servers use for more than one thing: a phrase may only make them temporary.
-AMBIGUOUS = frozenset({"5.4.1", "5.4.4"})
+# Codes servers use for more than one thing: a phrase may only make them temporary. Gmail also returns 5.2.1 when the
+# recipient is "receiving mail at a rate that prevents additional messages from being delivered", a receiving limit
+# that typically lifts within a day: the address is fine.
+AMBIGUOUS = frozenset({"5.2.1", "5.4.1", "5.4.4"})
 SIZE_CODES = frozenset({"5.2.3", "5.3.4"})
 
 REASONS = {
