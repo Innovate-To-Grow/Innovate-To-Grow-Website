@@ -304,9 +304,10 @@ inferred without a feedback integration. Graph's non-delivery reports arrive in
 the sender mailbox, where bounce processing reads them for
 [Email monitoring](../integrations/email-monitoring.md) without changing the recipient log, and its
 uncertain outcomes are explained in the
-[error reference](../integrations/microsoft-graph-email.md#error-reference). The
-Delivery Dashboard under **Delivery Operations** charts SES CloudWatch metrics
-only and shows a notice while another provider is active.
+[error reference](../integrations/microsoft-graph-email.md#error-reference).
+Email Monitoring's **Amazon SES** tab under **Delivery Operations** (the former
+Delivery Dashboard, whose old address redirects there) charts SES CloudWatch
+metrics only and shows a notice while another provider is active.
 
 ### Sent campaigns are locked; duplicate to send again
 
@@ -354,7 +355,8 @@ Notification Delivery first, the others under **Not in use** but still editable)
   pause or stop holds the channel) clears it.
 
 Every save and button writes an admin history line such as `sms_send: Smart rate on→off; manual 1→0.5`.
-Notification Delivery, the Delivery Dashboard and the campaign send confirmation show the same status line.
+Notification Delivery, the Email Monitoring Overview (its **Send rate** line) and the campaign send confirmation
+show the same status line.
 
 The manual rate is the total for the channel, sign-in codes and tickets included, and campaigns get at most 80 % of
 it; the old campaign send rate paced only queued mail. The SES card's **Provider rate limit** starts at that old
