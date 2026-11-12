@@ -23,7 +23,9 @@ There is no member-level subscription field: newsletter subscription is the `sub
 ### Admin capabilities
 
 In Django admin → Members & Auth → Members:
-- Search by name, email
+- Search by email address (the exact address first, then addresses starting with it), name, organization, title or
+  Member UUID; a phone number typed on its own (any format, at least 3 digits) searches phone numbers. Member pickers
+  on other pages search the same way. See [Member and contact admin search](django-admin.md#member-and-contact-admin-search)
 - Filter by active status, staff status, date joined (subscription is filtered per address in the Contact Emails admin)
 - Inline contact emails and phones
 - Import/export members via Excel (openpyxl)
