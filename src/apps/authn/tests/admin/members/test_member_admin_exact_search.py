@@ -1,9 +1,10 @@
 """The Members list and every member picker find the member searched for, first, with no phone decoys.
 
-Stefano's report (2026-11): searching ``acalderon32@ucmerced.edu`` in the member admin listed 20 members who do not
-match, and ``blewis28`` was wrong too. The member search stripped every non-digit from the *whole* term and also
-matched what was left against phone numbers, so "32" and "28" pulled in every member whose phone contains them. The
-member pickers (autocomplete, 20 per page) then filled with those newer decoys and never showed the real member.
+Stefano's report (2026-11): searching a member's exact address, which had "32" in it, listed 20 members who do not
+match, and searching the part before the @ of another address (with "28") was wrong too. The member search stripped
+every non-digit from the *whole* term and also matched what was left against phone numbers, so "32" and "28" pulled in
+every member whose phone contains them. The member pickers (autocomplete, 20 per page) then filled with those newer
+decoys and never showed the real member. The members here are made up, with addresses of the same shape.
 """
 
 import datetime
@@ -48,7 +49,7 @@ def _member(first, last, email, *, joined, phone=None, **extra):
 
 
 class _SearchFixture(TestCase):
-    """The members from the report, and 50 newer decoys whose phone numbers contain "32" or "28"."""
+    """Made-up members shaped like the reported ones, and 50 newer decoys whose phones contain "32" or "28"."""
 
     @classmethod
     def setUpTestData(cls):
@@ -57,10 +58,10 @@ class _SearchFixture(TestCase):
             member=cls.superuser, email_address="admin@example.com", email_type="primary", verified=True
         )
         # Oldest first, so the list's usual order (newest first) puts each of them last.
-        cls.ana = _member("Ana", "Calderon", "acalderon32@ucmerced.edu", joined=_joined(2020, 1), phone="2097654100")
-        cls.brian = _member("Brian", "Lewis", "blewis28@ucmerced.edu", joined=_joined(2020, 2))
-        cls.bob = _member("Bob", "Lewis", "blewis@ucmerced.edu", joined=_joined(2020, 3))
-        cls.bea = _member("Bea", "Lewiston", "blewis281@gmail.com", joined=_joined(2020, 4))
+        cls.ana = _member("Ana", "Quill", "aquill32@example.edu", joined=_joined(2020, 1), phone="2097654100")
+        cls.brian = _member("Brian", "Fenwick", "bfenwick28@example.edu", joined=_joined(2020, 2))
+        cls.bob = _member("Bob", "Fenwick", "bfenwick@example.edu", joined=_joined(2020, 3))
+        cls.bea = _member("Bea", "Fenwickson", "bfenwick281@example.net", joined=_joined(2020, 4))
         cls.decoys = cls._make_decoys()
 
     @classmethod
@@ -109,47 +110,47 @@ class _SearchFixture(TestCase):
 
 class MemberChangelistExactSearchTests(_SearchFixture):
     def test_exact_email_lists_only_that_member(self):
-        self.assertEqual(self.changelist("acalderon32@ucmerced.edu"), [self.ana])
+        self.assertEqual(self.changelist("aquill32@example.edu"), [self.ana])
 
     def test_exact_email_ignores_letter_case(self):
-        self.assertEqual(self.changelist("ACalderon32@UCMerced.EDU"), [self.ana])
+        self.assertEqual(self.changelist("AQuill32@Example.EDU"), [self.ana])
 
     def test_handle_lists_the_exact_handle_first_and_no_decoys(self):
-        # Bea (blewis281@) is newer, so without the rank she would be listed first.
-        self.assertEqual(self.changelist("blewis28"), [self.brian, self.bea])
+        # Bea (bfenwick281@) is newer, so without the rank she would be listed first.
+        self.assertEqual(self.changelist("bfenwick28"), [self.brian, self.bea])
 
     def test_handle_with_trailing_at_matches_that_handle_only(self):
-        self.assertEqual(self.changelist("blewis28@"), [self.brian])
+        self.assertEqual(self.changelist("bfenwick28@"), [self.brian])
 
     def test_shorter_handle_puts_its_own_address_first(self):
-        self.assertEqual(self.changelist("blewis"), [self.bob, self.bea, self.brian])
+        self.assertEqual(self.changelist("bfenwick"), [self.bob, self.bea, self.brian])
 
     def test_quoted_email_is_still_exact(self):
-        self.assertEqual(self.changelist('"acalderon32@ucmerced.edu"'), [self.ana])
+        self.assertEqual(self.changelist('"aquill32@example.edu"'), [self.ana])
 
     def test_exact_email_ranks_above_a_newer_address_that_contains_it(self):
-        axel = _member("Axel", "Calderon", "xacalderon32@ucmerced.edu", joined=_joined(2025, 6))
-        self.assertEqual(self.changelist("acalderon32@ucmerced.edu"), [self.ana, axel])
+        axel = _member("Axel", "Quill", "xaquill32@example.edu", joined=_joined(2025, 6))
+        self.assertEqual(self.changelist("aquill32@example.edu"), [self.ana, axel])
 
     def test_secondary_address_counts_as_an_exact_match(self):
-        ContactEmail.objects.create(member=self.bob, email_address="bob.lewis@gmail.com", email_type="secondary")
-        self.assertEqual(self.changelist("bob.lewis@gmail.com"), [self.bob])
+        ContactEmail.objects.create(member=self.bob, email_address="bob.fenwick@example.net", email_type="secondary")
+        self.assertEqual(self.changelist("bob.fenwick@example.net"), [self.bob])
 
     def test_unknown_email_lists_nobody(self):
-        self.assertEqual(self.changelist("jdoe2@ucmerced.edu"), [])
+        self.assertEqual(self.changelist("jdoe2@example.edu"), [])
 
     def test_explicit_column_sort_wins_over_the_rank(self):
         column = self._column("date_joined")
-        self.assertEqual(self.changelist("blewis28", o=f"-{column}"), [self.bea, self.brian])
-        self.assertEqual(self.changelist("blewis28", o=str(column)), [self.brian, self.bea])
+        self.assertEqual(self.changelist("bfenwick28", o=f"-{column}"), [self.bea, self.brian])
+        self.assertEqual(self.changelist("bfenwick28", o=str(column)), [self.brian, self.bea])
 
     def test_list_filters_still_apply(self):
         Member.objects.filter(pk=self.brian.pk).update(is_active=False)
-        self.assertEqual(self.changelist("blewis28", is_active__exact="1"), [self.bea])
+        self.assertEqual(self.changelist("bfenwick28", is_active__exact="1"), [self.bea])
         self.assertEqual(self.changelist("(209) 765-4100", is_active__exact="0"), [])
 
     def test_facet_counts_render_with_a_ranked_search(self):
-        self.assertEqual(self.changelist("blewis28", _facets="1"), [self.brian, self.bea])
+        self.assertEqual(self.changelist("bfenwick28", _facets="1"), [self.brian, self.bea])
 
     def test_search_box_says_what_it_searches(self):
         self.assertContains(self.client.get(CHANGELIST), 'placeholder="Email, name, phone, organization or UUID"')
@@ -205,9 +206,9 @@ class MemberChangelistPhoneSearchTests(_SearchFixture):
         self.assertLessEqual(set(results), {self.ana})
 
     def test_two_words_match_name_parts(self):
-        self.assertEqual(self.changelist("Ana Calderon"), [self.ana])
-        self.assertEqual(self.changelist("Lewis Brian"), [self.brian])
-        self.assertEqual(self.changelist("lewis"), [self.bea, self.bob, self.brian])
+        self.assertEqual(self.changelist("Ana Quill"), [self.ana])
+        self.assertEqual(self.changelist("Fenwick Brian"), [self.brian])
+        self.assertEqual(self.changelist("fenwick"), [self.bea, self.bob, self.brian])
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
@@ -221,15 +222,15 @@ class MemberChangelistActionsOnSearchResultsTests(_SearchFixture):
         )
 
     def test_vcard_export_of_all_search_results(self):
-        response = self._post("export_members_to_vcard", "blewis28")
+        response = self._post("export_members_to_vcard", "bfenwick28")
         self.assertEqual(response.status_code, 200)
         body = response.content.decode()
-        self.assertIn("FN:Brian Lewis", body)
-        self.assertIn("FN:Bea Lewiston", body)
+        self.assertIn("FN:Brian Fenwick", body)
+        self.assertIn("FN:Bea Fenwickson", body)
         self.assertEqual(body.count("BEGIN:VCARD"), 2)
 
     def test_deactivate_all_search_results(self):
-        response = self._post("deactivate_members", "blewis28")
+        response = self._post("deactivate_members", "bfenwick28")
         self.assertEqual(response.status_code, 302)
         inactive = set(Member.objects.filter(is_active=False).values_list("pk", flat=True))
         self.assertEqual(inactive, {self.brian.pk, self.bea.pk})
@@ -242,22 +243,25 @@ class MemberPickerExactSearchTests(_SearchFixture):
         for app_label, model_name in MEMBER_PICKERS:
             with self.subTest(picker=model_name):
                 self.assertEqual(
-                    self.picker("acalderon32@ucmerced.edu", app_label, model_name), ([str(self.ana.pk)], False)
+                    self.picker("aquill32@example.edu", app_label, model_name), ([str(self.ana.pk)], False)
                 )
 
     def test_handle_returns_the_exact_handle_first_in_every_picker(self):
         for app_label, model_name in MEMBER_PICKERS:
             with self.subTest(picker=model_name):
                 self.assertEqual(
-                    self.picker("blewis28", app_label, model_name), ([str(self.brian.pk), str(self.bea.pk)], False)
+                    self.picker("bfenwick28", app_label, model_name), ([str(self.brian.pk), str(self.bea.pk)], False)
                 )
 
     def test_exact_handle_is_on_the_first_page_among_many_newer_partial_matches(self):
         for index in range(25):
             _member(
-                "Bulk", "Lewis", f"blewis28.{index}@gmail.com", joined=_joined(2025, 1) + datetime.timedelta(days=index)
+                "Bulk",
+                "Fenwick",
+                f"bfenwick28.{index}@example.net",
+                joined=_joined(2025, 1) + datetime.timedelta(days=index),
             )
-        ids, more = self.picker("blewis28")
+        ids, more = self.picker("bfenwick28")
         self.assertEqual(len(ids), 20)
         self.assertTrue(more)
         self.assertEqual(ids[0], str(self.brian.pk))
@@ -269,7 +273,7 @@ class MemberPickerExactSearchTests(_SearchFixture):
                 self.assertEqual(ids[0], str(self.ana.pk))
 
     def test_full_name_in_a_picker(self):
-        self.assertEqual(self.picker("Brian Lewis", "authn", "contactphone"), ([str(self.brian.pk)], False))
+        self.assertEqual(self.picker("Brian Fenwick", "authn", "contactphone"), ([str(self.brian.pk)], False))
 
     def test_empty_term_keeps_the_usual_newest_first_page(self):
         ids, more = self.picker("")
@@ -283,7 +287,7 @@ class MemberAdminSearchResultsUnitTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        cls.ana = _member("Ana", "Calderon", "acalderon32@ucmerced.edu", joined=_joined(2020, 1), phone="2097654100")
+        cls.ana = _member("Ana", "Quill", "aquill32@example.edu", joined=_joined(2020, 1), phone="2097654100")
         cls.other = _member("Omar", "Other", "omar@example.org", joined=_joined(2021, 1), phone="2093228000")
 
     def setUp(self):
@@ -302,7 +306,7 @@ class MemberAdminSearchResultsUnitTests(TestCase):
         return set(queryset.distinct())
 
     def test_terms_with_too_few_digits_add_no_phone_matches(self):
-        for term in ("32", "28", "+1", "(2) 8", "Ana 209", "acalderon32@ucmerced.edu", "blewis28"):
+        for term in ("32", "28", "+1", "(2) 8", "Ana 209", "aquill32@example.edu", "bfenwick28"):
             with self.subTest(term=term):
                 queryset, _dups = self._results(term)
                 self.assertEqual(set(queryset.distinct()), self._stock(term))
@@ -316,7 +320,7 @@ class MemberAdminSearchResultsUnitTests(TestCase):
         return [(member, member.rank) for member in queryset.annotate(rank=F("search_rank")).distinct()]
 
     def test_rank_orders_exact_first_without_selecting_it(self):
-        queryset, _dups = self._results("acalderon32@ucmerced.edu")
+        queryset, _dups = self._results("aquill32@example.edu")
         self.assertEqual(self._ranks(queryset), [(self.ana, 0)])
         self.assertEqual(queryset.query.order_by[0], "search_rank")
         self.assertNotIn("search_rank", queryset.query.annotation_select)
@@ -327,13 +331,13 @@ class MemberAdminSearchResultsUnitTests(TestCase):
         self.assertEqual(self._ranks(queryset), [(self.ana, 1)])
 
     def test_handle_ranks_close_and_the_rest_last(self):
-        bianca = _member("Bianca", "Lewis", "blewis281@gmail.com", joined=_joined(2022, 1))
-        brian = _member("Brian", "Lewis", "blewis28@ucmerced.edu", joined=_joined(2019, 1))
-        queryset, _dups = self._results("blewis28")
+        bianca = _member("Bianca", "Fenwick", "bfenwick281@example.net", joined=_joined(2022, 1))
+        brian = _member("Brian", "Fenwick", "bfenwick28@example.edu", joined=_joined(2019, 1))
+        queryset, _dups = self._results("bfenwick28")
         self.assertEqual(self._ranks(queryset), [(brian, 1), (bianca, 2)])
 
     def test_no_rank_without_a_term_or_with_a_column_sort(self):
-        for term, params in (("", {}), ("   ", {}), ("Ana Calderon", {}), ("acalderon32@ucmerced.edu", {"o": "2"})):
+        for term, params in (("", {}), ("   ", {}), ("Ana Quill", {}), ("aquill32@example.edu", {"o": "2"})):
             with self.subTest(term=term, params=params):
                 queryset, _dups = self._results(term, **params)
                 self.assertNotIn("search_rank", queryset.query.annotations)
@@ -341,10 +345,10 @@ class MemberAdminSearchResultsUnitTests(TestCase):
 
     def test_rank_keeps_the_model_ordering_when_the_queryset_has_none(self):
         request = self.factory.get(CHANGELIST)
-        queryset, _dups = self.admin.get_search_results(request, Member.objects.all(), "blewis28")
+        queryset, _dups = self.admin.get_search_results(request, Member.objects.all(), "bfenwick28")
         self.assertEqual(queryset.query.order_by, ("search_rank", *Member._meta.ordering))
 
     def test_rank_adds_no_ordering_to_a_queryset_that_cleared_it(self):
         request = self.factory.get(CHANGELIST)
-        queryset, _dups = self.admin.get_search_results(request, Member.objects.order_by(), "blewis28")
+        queryset, _dups = self.admin.get_search_results(request, Member.objects.order_by(), "bfenwick28")
         self.assertEqual(queryset.query.order_by, ("search_rank",))

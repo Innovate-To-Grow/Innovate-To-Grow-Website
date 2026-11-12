@@ -82,7 +82,7 @@ class ContactEmailAdmin(RankedSearchMixin, PrivilegedOwnerAdminMixin, BaseModelA
     )
     list_filter = ("email_type", "verified", "subscribe", "created_at")
     search_fields = ("email_address", "member__first_name", "member__last_name")
-    # The address equal to the search comes first, then addresses that start with it (``blewis28`` → ``blewis28@…``).
+    # The address equal to the search comes first, then addresses that start with it (``jdoe`` → ``jdoe@…``).
     search_rank = staticmethod(contact_email_search_rank)
     search_help_text = "Email address or member name"
     readonly_fields = ("created_at", "updated_at")

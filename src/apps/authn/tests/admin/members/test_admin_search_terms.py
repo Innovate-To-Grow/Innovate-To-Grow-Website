@@ -45,8 +45,8 @@ class PhoneDigitsTests(SimpleTestCase):
             "",
             None,
             "   ",
-            "acalderon32@ucmerced.edu",
-            "blewis28",
+            "aquill32@example.edu",
+            "bfenwick28",
             "Ana 209",
             "209 Ana",
             "32",
@@ -70,38 +70,36 @@ class PhoneDigitsTests(SimpleTestCase):
 
 class SearchTextTests(SimpleTestCase):
     def test_strips_spaces_and_one_pair_of_matching_quotes(self):
-        self.assertEqual(search_text('  "blewis28"  '), "blewis28")
-        self.assertEqual(search_text("'blewis28'"), "blewis28")
-        self.assertEqual(search_text("\"blewis28'"), "\"blewis28'")
+        self.assertEqual(search_text('  "bfenwick28"  '), "bfenwick28")
+        self.assertEqual(search_text("'bfenwick28'"), "bfenwick28")
+        self.assertEqual(search_text("\"bfenwick28'"), "\"bfenwick28'")
         self.assertEqual(search_text('"'), '"')
         self.assertEqual(search_text(None), "")
 
 
 class EmailTermsTests(SimpleTestCase):
     def test_address_and_handle(self):
-        self.assertEqual(
-            email_terms("acalderon32@ucmerced.edu"), ("acalderon32@ucmerced.edu", "acalderon32@ucmerced.edu")
-        )
-        self.assertEqual(email_terms("blewis28"), ("", "blewis28@"))
-        self.assertEqual(email_terms("blewis28@"), ("blewis28@", "blewis28@"))
-        self.assertEqual(email_terms(' "blewis28" '), ("", "blewis28@"))
+        self.assertEqual(email_terms("aquill32@example.edu"), ("aquill32@example.edu", "aquill32@example.edu"))
+        self.assertEqual(email_terms("bfenwick28"), ("", "bfenwick28@"))
+        self.assertEqual(email_terms("bfenwick28@"), ("bfenwick28@", "bfenwick28@"))
+        self.assertEqual(email_terms(' "bfenwick28" '), ("", "bfenwick28@"))
 
     def test_terms_that_cannot_be_one_address(self):
-        for term in ("", "   ", "@ucmerced.edu", "Ana Calderon", "blewis 28"):
+        for term in ("", "   ", "@example.edu", "Ana Quill", "bfenwick 28"):
             with self.subTest(term=term):
                 self.assertEqual(email_terms(term), ("", ""))
 
 
 class RankExpressionTests(SimpleTestCase):
     def test_no_rank_when_nothing_can_rank_first(self):
-        self.assertIsNone(member_search_rank("Ana Calderon"))
-        self.assertIsNone(contact_email_search_rank("Ana Calderon"))
-        self.assertIsNone(contact_phone_search_rank("blewis28"))
+        self.assertIsNone(member_search_rank("Ana Quill"))
+        self.assertIsNone(contact_email_search_rank("Ana Quill"))
+        self.assertIsNone(contact_phone_search_rank("bfenwick28"))
         self.assertIsNone(member_search_rank(""))
 
     def test_member_rank_tiers(self):
-        self.assertEqual(len(member_search_rank("acalderon32@ucmerced.edu").cases), 2)
-        self.assertEqual(len(member_search_rank("blewis28").cases), 1)
+        self.assertEqual(len(member_search_rank("aquill32@example.edu").cases), 2)
+        self.assertEqual(len(member_search_rank("bfenwick28").cases), 1)
         self.assertEqual(len(member_search_rank("(209) 765-4100").cases), 1)
         self.assertEqual(len(member_search_rank("2097654100").cases), 2)
 
@@ -113,7 +111,7 @@ class MixinDefaultsTests(TestCase):
 
         admin = PlainAdmin(ContactEmail, AdminSite())
         request = RequestFactory().get("/admin/authn/contactemail/", {"q": "2097654100"})
-        for term in ("2097654100", "blewis28", "jdoe@example.edu"):
+        for term in ("2097654100", "bfenwick28", "jdoe@example.edu"):
             with self.subTest(term=term):
                 queryset, dups = admin.get_search_results(request, ContactEmail.objects.all(), term)
                 stock, stock_dups = ModelAdmin.get_search_results(admin, request, ContactEmail.objects.all(), term)
