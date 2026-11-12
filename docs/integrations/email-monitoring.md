@@ -223,8 +223,9 @@ subscription, and every change is a staff action with a confirmation page and an
   notices** (the `inbound` source, `addresses/notices.py`): automatic replies the helpdesk classified as "left the
   organisation" (the person left, retired or changed address, or the mailbox is closed;
   [Helpdesk](helpdesk.md#how-a-message-becomes-a-ticket)) that answer an email the site sent, counted against **the
-  address that email went to** (the notice may come from another address of the organisation), with the first and
-  latest notice, the address the latest one names instead (a hint from its text, never verified) and its helpdesk
+  address that email went to** (the notice may come from another address of the same organisation, such as an alias
+  or the mailbox answering for a departed person; one from another organisation, where the email was redirected, is
+  attributed to nobody), with the first and latest notice, the address the latest one names instead (a hint from its text, never verified) and its helpdesk
   ticket. Only such matched notices count, as decided: one that answers nothing the site sent says nothing about an
   address it mails, and anyone can write one. **Out-of-office replies never count**: a notice that mentions an absence
   is classified as one, even when it also says someone left. Notices are read from `core.InboundMessage` in
