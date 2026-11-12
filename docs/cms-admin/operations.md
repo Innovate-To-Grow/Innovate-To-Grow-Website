@@ -169,8 +169,14 @@ SMS request endpoints need an explicitly active, configured AWS record to send. 
 Inspect recent challenge metadata without displaying phone numbers or code hashes:
 
 ```bash
-python manage.py shell -c "from apps.authn.models import PhoneVerificationChallenge as C; print(list(C.objects.order_by('-created_at').values('id', 'purpose', 'status', 'attempts', 'max_attempts', 'expires_at', 'consumed_at')[:20]))"
+python manage.py shell -c "from apps.authn.models import PhoneVerificationChallenge as C; print(list(C.objects.order_by('-created_at').values('id', 'purpose', 'status', 'attempts', 'max_attempts', 'expires_at', 'sent_at', 'consumed_at')[:20]))"
 ```
+
+A `phone_auth` row that is `pending` with no `sent_at` is a **withheld** code: a sign-in request for a number saved
+on an account but not verified. No SMS went out and none will (the log line is `Phone verification withheld, nothing
+sent`); its send request still reads `provider_accepted`, so that its public status matches a real send. The member
+verifies the number from the account page, or staff use **Verify by SMS code** (see
+[Member & Mail Tools](member-and-mail-tools.md#phone-numbers-and-sms-sign-in)).
 
 The supported purposes are `phone_auth`, `contact_phone_verify`,
 `password_reset`, `password_change`, and `event_registration`. A successful

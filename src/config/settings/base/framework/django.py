@@ -149,3 +149,8 @@ AUTH_USER_MODEL = "authn.Member"
 AUTHENTICATION_BACKENDS = [
     "apps.authn.security.backends.EmailAuthBackend",
 ]
+# Phone sign-in only works for VERIFIED numbers. A number saved on an account but not verified gets a withheld code:
+# the same answer as a real send, but no SMS. So that its answer is not quicker than a real one, it waits as long as
+# one of this process's recent provider calls took; until the process has sent a code, a time drawn from this
+# (low, high) range in seconds, the usual length of one SendTextMessage call (apps/authn/services/sms/latency.py).
+SMS_WITHHELD_SEND_DELAY_SECONDS = (0.2, 0.6)

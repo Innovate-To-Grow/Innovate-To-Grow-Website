@@ -57,14 +57,17 @@ class PhoneAuthLoginTests(APITestCase):
         self.assertFalse(response.data["requires_profile_completion"])
         self.assertEqual(response.data["next_step"], "account")
 
-    def test_verify_marks_unverified_existing_phone_verified_on_login(self, _mock_start, _mock_check):
+    def test_verify_refuses_unverified_existing_phone_without_verifying_it(self, _mock_start, _mock_check):
+        # Holding a number that staff or an import saved on an account proves nothing about the account: an
+        # unverified number signs no one in, even with a correct code, and the code no longer verifies it.
         self.contact.verified = False
         self.contact.save(update_fields=["verified"])
         response = self.client.post(VERIFY_URL, {"phone_number": "2025550123", "code": "654321"}, format="json")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["message"], "Login successful.")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "Verification code is invalid or has expired.")
+        self.assertNotIn("access", response.data)
         self.contact.refresh_from_db()
-        self.assertTrue(self.contact.verified)
+        self.assertFalse(self.contact.verified)
 
     def test_verify_inactive_member_is_rejected_without_reactivation(self, _mock_start, _mock_check):
         # Phone login must not revive a deactivated account; it returns the same
