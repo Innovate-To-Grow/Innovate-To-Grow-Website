@@ -121,8 +121,9 @@ complaining addresses are mailed again.
 
 ## AWS End User Messaging (SMS)
 
-Used for sign-in and verification codes (phone sign-up, phone sign-in with a number verified on the account, and the
-account and event-registration phone checks), the admin's test SMS, Broadcast SMS and ticket texts.
+Used for sign-in and verification codes (phone sign-up, phone sign-in with a number verified on the account, password
+reset and password create/change codes, and the account and event-registration phone checks), the admin's test SMS,
+Broadcast SMS and ticket texts.
 
 | Concern | Implementation |
 |---------|---------------|
