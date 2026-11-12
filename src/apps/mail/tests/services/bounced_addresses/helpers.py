@@ -78,8 +78,19 @@ def make_ses_log(campaign, email, *, bounce_type="Permanent", complained=False, 
     )
 
 
+# The category a test's coarse count stands for, when the test gives no category counts.
+COUNT_CATEGORIES = {
+    "hard_count": "hard",
+    "soft_count": "transient",
+    "rejected_count": "policy_rejected",
+    "delayed_count": "delayed",
+    "unknown_count": "unknown",
+}
+
+
 def make_row(address="person@example.org", **values) -> BouncedAddress:
-    """A counted address (as if one hard bounce had been counted), its links refreshed."""
+    """A counted address (as if one hard bounce had been counted), its links refreshed. Its category counts follow its
+    coarse counts unless given."""
     now = timezone.now()
     defaults = {
         "hard_count": 1,
@@ -88,10 +99,16 @@ def make_row(address="person@example.org", **values) -> BouncedAddress:
         "first_bounce_at": now,
         "last_bounce_at": now,
         "last_classification": "hard",
+        "last_category": "hard",
         "last_status_code": "5.1.1",
         "last_reason": "Recipient mailbox does not exist",
     }
-    row = BouncedAddress.objects.create(address=address, **{**defaults, **values})
+    merged = {**defaults, **values}
+    merged.setdefault(
+        "category_counts",
+        {category: merged[field] for field, category in COUNT_CATEGORIES.items() if merged.get(field)},
+    )
+    row = BouncedAddress.objects.create(address=address, **merged)
     if "suggestion" not in values:
         row.suggestion = suggest(row)
         row.save(update_fields=["suggestion"])

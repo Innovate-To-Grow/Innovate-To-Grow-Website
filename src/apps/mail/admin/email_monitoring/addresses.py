@@ -125,6 +125,8 @@ def address_list_view(request):
         status_counts=listing.status_counts(current.filters),
         statuses=BouncedAddress.Status.choices,
         types=[(key, label) for key, (label, _q) in listing.TYPES.items()],
+        categories=[(key, label) for key, (label, _q) in listing.CATEGORIES.items()],
+        category_legend=EmailBounce.category_legend(),
         roles=BouncedAddress.Role.choices,
         member_states=[(key, label) for key, (label, _q) in listing.MEMBER_STATES.items()],
         suggestions=BouncedAddress.Suggestion.choices,
@@ -214,5 +216,6 @@ def address_detail_view(request, pk):
         history=list(row.actions.select_related("actor").order_by("-created_at")[:REPORTS_SHOWN]),
         contact_admin=user_can_access_app(request.user, "authn"),
         shown=REPORTS_SHOWN,
+        category_legend=EmailBounce.category_legend(),
     )
     return TemplateResponse(request, f"{TEMPLATES}/address_detail.html", context)

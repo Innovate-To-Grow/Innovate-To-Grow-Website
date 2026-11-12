@@ -85,23 +85,53 @@ class SuggestionTests(TestCase):
     def test_the_suggestions_follow_the_plan_in_order(self):
         old = timezone.now() - timedelta(days=8)
         cases = [
-            ({"complaint_count": 1, "hard_count": 2}, Suggestion.UNSUBSCRIBE),
-            ({"hard_count": 1}, Suggestion.UNDELIVERABLE),
+            ({"complaint_count": 1, "category_counts": {"hard": 2}}, Suggestion.UNSUBSCRIBE),
+            ({"category_counts": {"hard": 1, "transient": 5}}, Suggestion.UNDELIVERABLE),
             ({"ses_permanent_count": 1}, Suggestion.UNDELIVERABLE),
-            ({"soft_count": 3, "first_bounce_at": old}, Suggestion.CONSIDER),
-            ({"soft_count": 2, "ses_transient_count": 1, "first_bounce_at": old}, Suggestion.CONSIDER),
-            ({"soft_count": 3}, ""),  # repeated, but not over a week
-            ({"soft_count": 2, "first_bounce_at": old}, ""),  # over a week, but not repeated enough
-            ({"rejected_count": 2}, Suggestion.POLICY),
-            ({"delayed_count": 4, "unknown_count": 1}, ""),
-            ({"hard_count": 1, "suppressed_at": timezone.now()}, ""),
+            ({"category_counts": {"mailbox_disabled": 1, "spam_rejected": 1}}, Suggestion.REPLACE),
+            ({"category_counts": {"transient": 3}, "first_bounce_at": old}, Suggestion.CONSIDER),
+            (
+                {
+                    "category_counts": {"mailbox_full": 1, "unknown": 1},
+                    "ses_transient_count": 1,
+                    "first_bounce_at": old,
+                },
+                Suggestion.CONSIDER,
+            ),
+            ({"ses_undetermined_count": 3, "first_bounce_at": old}, Suggestion.CONSIDER),
+            ({"category_counts": {"transient": 3}}, ""),  # repeated, but not over a week
+            ({"category_counts": {"transient": 2}, "first_bounce_at": old}, ""),  # over a week, not repeated enough
+            ({"category_counts": {"relay_denied": 3, "transient": 1}, "first_bounce_at": old}, Suggestion.RELAY),
+            ({"category_counts": {"spam_rejected": 2, "policy_rejected": 1}}, Suggestion.REPUTATION),
+            ({"category_counts": {"policy_rejected": 2}}, Suggestion.POLICY),
+            ({"category_counts": {"delayed": 4}}, ""),
+            ({"category_counts": {"hard": 1}, "suppressed_at": timezone.now()}, ""),
         ]
         for values, expected in cases:
             with self.subTest(values=values):
                 self.assertEqual(suggest(self._row(**values)), expected)
 
-    def test_the_soft_bounce_thresholds_are_settings(self):
-        row = self._row(soft_count=2, first_bounce_at=timezone.now() - timedelta(days=2))
+    def test_a_temporary_failure_alone_never_suggests_marking_the_address_undeliverable(self):
+        for category in ("transient", "mailbox_full", "unknown", "spam_rejected", "relay_denied", "policy_rejected"):
+            with self.subTest(category=category):
+                self.assertNotIn(
+                    suggest(self._row(category_counts={category: 1})),
+                    (Suggestion.UNDELIVERABLE, Suggestion.REPLACE, Suggestion.CONSIDER),
+                )
+
+    def test_relay_and_reputation_suggestions_point_at_our_sending_not_the_address(self):
+        for suggestion in (Suggestion.RELAY, Suggestion.REPUTATION, Suggestion.POLICY):
+            with self.subTest(suggestion=suggestion):
+                self.assertIn("not the address", suggestion.label)
+                self.assertFalse(self._row(suggestion=suggestion).suggests_address_action)
+        self.assertIn("route and authorisation", Suggestion.RELAY.label)
+        self.assertIn("reputation, authentication and content", Suggestion.REPUTATION.label)
+        self.assertTrue(self._row(suggestion=Suggestion.REPLACE).suggests_address_action)
+
+    def test_the_repeated_failure_thresholds_are_settings(self):
+        row = self._row(category_counts={"transient": 2}, first_bounce_at=timezone.now() - timedelta(days=2))
 
         with monitoring_settings(address_soft_bounce_repeats=2, address_soft_bounce_days=1):
             self.assertEqual(suggest(row), Suggestion.CONSIDER)
+        with monitoring_settings(address_soft_bounce_repeats=3, address_soft_bounce_days=1):
+            self.assertEqual(suggest(row), "")

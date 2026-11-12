@@ -8,6 +8,12 @@
     <strong>Nothing here changes on its own:</strong> counting never touches a member, a contact email or a subscription, and every change below is a staff action, confirmed and recorded.
     Marking an address undeliverable (or suppressing it) makes every campaign skip it; sign-in codes, tickets and notifications still go.
   </p>
+  <p class="i2g-monitor-muted">
+    Each report has a <strong>category</strong>. Only "Address does not exist" and "Mailbox disabled" are evidence against an address.
+    Temporary failures (a connection timeout, a DNS failure, an expired delivery, a full mailbox) and unclear ones only count toward "Consider marking undeliverable" when they repeat over several days.
+    A relay refusal or a spam or reputation rejection points at our own sending, not at the contact.
+  </p>
+  {% include "admin/mail/email_monitoring/_category_legend.html" %}
   <dl class="i2g-monitor-facts">
     <div><dt>Suppressed for campaigns</dt><dd>{{ suppressed_total }}</dd></div>
     <div><dt>Not counted yet</dt><dd>{% if pending %}{{ pending }} report{{ pending|pluralize }} (counted as this page reloads and hourly){% else %}none{% endif %}{% if counted.busy %} · another count is running{% endif %}{% if counted.failed %} · counting failed on this load (the worker counts hourly){% endif %}</dd></div>
@@ -41,6 +47,10 @@
   <label class="i2g-monitor-field">
     <span>Type</span>
     <select name="type"><option value="">Any</option>{% for value, label in types %}<option value="{{ value }}" {% if listing.filters.type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Category</span>
+    <select name="category"><option value="">Any</option>{% for value, label in categories %}<option value="{{ value }}" {% if listing.filters.category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
   </label>
   <label class="i2g-monitor-field">
     <span>Role</span>
@@ -105,6 +115,7 @@
       {% include "admin/mail/email_monitoring/_sort_header.html" with column="address" label="Address" %}
       {% include "admin/mail/email_monitoring/_sort_header.html" with column="reports" label="Counts" %}
       {% include "admin/mail/email_monitoring/_sort_header.html" with column="last" label="Last bounce" %}
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="category" label="Category" %}
       <th scope="col">Last reason</th>
       <th scope="col">Member</th>
       {% include "admin/mail/email_monitoring/_sort_header.html" with column="role" label="Role" %}
@@ -120,13 +131,14 @@
         <td><a href="{% url 'admin:mail_email_monitoring_address' row.pk %}"><strong>{{ row.address }}</strong></a></td>
         <td>{% include "admin/mail/email_monitoring/_address_counts.html" %}</td>
         <td>{{ row.last_bounce_at|date:"M j, Y H:i"|default:"–" }}<br><span class="i2g-monitor-muted">first {{ row.first_bounce_at|date:"M j, Y"|default:"–" }}</span></td>
+        <td>{% include "admin/mail/email_monitoring/_address_category.html" %}</td>
         <td>{% include "admin/mail/email_monitoring/_address_reason.html" %}</td>
         <td>{% include "admin/mail/email_monitoring/_address_member.html" with match=entry.match owners=entry.owners %}</td>
         <td>{{ entry.match.role.label }}{% if entry.match.role == "ambiguous" %}<br><span class="i2g-monitor-muted">{{ entry.match.contacts|length }} contact records</span>{% endif %}</td>
         <td>{% include "admin/mail/email_monitoring/_address_flags.html" with contact=entry.contact %}</td>
         <td>{% if entry.campaigns.count %}{{ entry.campaigns.count }}<br>{% if entry.campaigns.last.exists %}<a href="{% url 'admin:mail_email_monitoring_campaign' entry.campaigns.last.id %}">{{ entry.campaigns.last.name|truncatechars:40 }}</a>{% else %}<span class="i2g-monitor-muted">{{ entry.campaigns.last.name }}</span>{% endif %}{% if entry.campaigns.last.likely %} <span class="i2g-monitor-muted">(likely)</span>{% endif %}{% else %}–{% endif %}</td>
         <td>{% include "admin/mail/email_monitoring/_address_status.html" %}</td>
-        <td>{{ row.get_suggestion_display|default:"–" }}{% if row.suggestion and row.suggestion != "policy" and not row.has_matched_evidence %}<br><span class="i2g-monitor-muted">unmatched reports only: check them first</span>{% endif %}</td>
+        <td>{{ row.get_suggestion_display|default:"–" }}{% if row.suggests_address_action and not row.has_matched_evidence %}<br><span class="i2g-monitor-muted">unmatched reports only: check them first</span>{% endif %}</td>
         <td>
           <details class="i2g-monitor-menu">
             <summary>Actions</summary>

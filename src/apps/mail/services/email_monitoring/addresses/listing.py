@@ -14,20 +14,39 @@ from django.db.models import Count, F, Q
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
+from apps.core.models import EmailBounce
 from apps.mail.models import BouncedAddress, BouncedAddressCampaign, EmailCampaign
 
 from ..log import PAGE_SIZES
 
+Category = EmailBounce.Category
 Status = BouncedAddress.Status
 STATUS_FILTERS = (*Status.values, "all")
 TYPES = {
     "hard": ("Has a hard bounce", Q(hard_count__gt=0) | Q(ses_permanent_count__gt=0)),
     "soft": ("Has a soft bounce", Q(soft_count__gt=0) | Q(ses_transient_count__gt=0)),
-    "rejected": ("Has a rejection (5.7.x)", Q(rejected_count__gt=0)),
+    "rejected": ("Has a rejection (spam, relay or policy)", Q(rejected_count__gt=0)),
     "delayed": ("Has a delay report", Q(delayed_count__gt=0)),
     "unknown": ("Has an unknown status", Q(unknown_count__gt=0) | Q(ses_undetermined_count__gt=0)),
     "complaint": ("Has a spam complaint", Q(complaint_count__gt=0)),
 }
+# "Has a report of this category": Graph reports, and the SES bounce type that means the same where there is one.
+SES_CATEGORY = {
+    Category.HARD: ("SES permanent", Q(ses_permanent_count__gt=0)),
+    Category.TRANSIENT: ("SES transient", Q(ses_transient_count__gt=0)),
+    Category.UNKNOWN: ("SES undetermined", Q(ses_undetermined_count__gt=0)),
+}
+
+
+def _category_filter(value: str, label: str) -> tuple[str, Q]:
+    condition = Q(category_counts__has_key=value)
+    if value in SES_CATEGORY:
+        ses_label, ses_condition = SES_CATEGORY[value]
+        return f"{label} (or {ses_label})", condition | ses_condition
+    return label, condition
+
+
+CATEGORIES = {value: _category_filter(value, label) for value, label in Category.choices}
 MEMBER_STATES = {
     "yes": ("Has a member", Q(member__isnull=False)),
     "no": ("No member", Q(member__isnull=True)),
@@ -52,6 +71,7 @@ SORTS = {
     "address": "address",
     "hard": "hard_sort",
     "reports": "report_sort",
+    "category": "last_category",
     "status": "status",
     "role": "role",
 }
@@ -97,6 +117,7 @@ def parse_listing(params) -> Listing:
         "q": str(params.get("q") or "").strip()[:200],
         "status": status if status in STATUS_FILTERS else Status.OPEN,
         "type": _choice(params, "type", TYPES),
+        "category": _choice(params, "category", CATEGORIES),
         "role": _choice(params, "role", BouncedAddress.Role.values),
         "member": _choice(params, "member", MEMBER_STATES),
         "suppressed": _choice(params, "suppressed", SUPPRESSED),
@@ -127,7 +148,7 @@ def _day_start(value: str):
 def _conditions(filters: dict) -> list:
     """The ``Q`` conditions of the chosen filters (each value already checked against its choices)."""
     conditions = []
-    for name, table in (("type", TYPES), ("member", MEMBER_STATES), ("evidence", EVIDENCE)):
+    for name, table in (("type", TYPES), ("category", CATEGORIES), ("member", MEMBER_STATES), ("evidence", EVIDENCE)):
         if filters[name]:
             conditions.append(table[filters[name]][1])
     if filters["suppressed"]:

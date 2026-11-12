@@ -8,9 +8,11 @@
   is kept as one ``BouncedAddressCampaign`` row (an upsert, so seeing it again changes nothing) and the address's SES
   counts are recounted from those rows.
 
-A hard or rejected bounce matched to an email the site sent, or an SES permanent bounce or complaint, that arrives
-after an address was dismissed sets it back to open (queue state only). An unmatched report never does: anyone can
-mail the mailbox a report-shaped message.
+Graph reports are counted by coarse classification and by category. Only strong evidence reopens an address that was
+dismissed (queue state only): a report that the address does not exist or that its mailbox is disabled, matched to an
+email the site sent, or an SES permanent bounce or complaint, arriving after the dismissal. Temporary failures,
+rejections by spam filters, relays or policy, delays and unknown failures never reopen anything, and neither does an
+unmatched report: anyone can mail the mailbox a report-shaped message.
 """
 
 from collections import defaultdict
@@ -26,6 +28,7 @@ from apps.mail.models import BouncedAddress, BouncedAddressAction, BouncedAddres
 from apps.mail.services.suppression import normalize_address
 
 Classification = EmailBounce.Classification
+Category = EmailBounce.Category
 Source = BouncedAddressCampaign.Source
 Match = BouncedAddressCampaign.Match
 COUNT_FIELDS = {
@@ -41,6 +44,7 @@ GRAPH_FIELDS = (
     "received_at",
     "recipient",
     "classification",
+    "category",
     "status_code",
     "reason",
     "diagnostic_code",
@@ -59,7 +63,8 @@ SES_FIELDS = (
     "bounce_subtype",
     "diagnostic_code",
 )
-GRAPH_REOPEN = frozenset({Classification.HARD, Classification.REJECTED})
+# The categories that reopen a dismissed address (strong evidence against it), when matched to the site's mail.
+GRAPH_REOPEN = frozenset({Category.HARD, Category.MAILBOX_DISABLED})
 
 
 def after_cursor(rows, state, field: str):
@@ -133,12 +138,17 @@ def _likely_campaigns(bounces) -> dict:
 def _add_graph_bounce(row: BouncedAddress, bounce: dict) -> None:
     field = COUNT_FIELDS.get(bounce["classification"], "unknown_count")
     setattr(row, field, getattr(row, field) + 1)
+    category = bounce["category"] if bounce["category"] in Category.values else Category.UNKNOWN
+    counts = dict(row.category_counts or {})
+    counts[category] = int(counts.get(category) or 0) + 1
+    row.category_counts = counts
     at = bounce["received_at"]
     if row.graph_first_at is None or at < row.graph_first_at:
         row.graph_first_at = at
     if row.graph_last_at is None or at >= row.graph_last_at:
         row.graph_last_at = at
         row.last_classification = bounce["classification"][:16]
+        row.last_category = category
         row.last_status_code = bounce["status_code"][:16]
         row.last_reason = text.clean(bounce["reason"], 255)
         row.last_diagnostic = text.scrub(bounce["diagnostic_code"], 1000)
@@ -147,9 +157,9 @@ def _add_graph_bounce(row: BouncedAddress, bounce: dict) -> None:
     if matched:
         row.matched_count += 1
     # Only a report matched to an email the site sent reopens: anyone can mail a report-shaped message.
-    if matched and bounce["classification"] in GRAPH_REOPEN:
+    if matched and category in GRAPH_REOPEN:
         code = bounce["status_code"] or "no status code"
-        _reopen(row, f"New {bounce['classification']} bounce report ({code}).", at)
+        _reopen(row, f"New bounce report: {Category(category).label.lower()} ({code}).", at)
 
 
 def _link_graph(row: BouncedAddress, campaign_id, match: str, at) -> None:

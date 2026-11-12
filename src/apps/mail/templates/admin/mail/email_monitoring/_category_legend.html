@@ -1,0 +1,7 @@
+{# What each bounce category means for the address and what to look at (the bounce lists). #}
+<details class="i2g-monitor-legend">
+  <summary>What the categories mean</summary>
+  <dl class="i2g-monitor-facts">
+    {% for item in category_legend %}<div><dt>{{ item.label }}</dt><dd>{{ item.guidance }}</dd></div>{% endfor %}
+  </dl>
+</details>
