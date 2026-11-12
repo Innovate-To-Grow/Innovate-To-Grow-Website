@@ -1,0 +1,10 @@
+{# One address's report counts: hard / soft / rejected / delayed / unknown, and SES complaints. #}
+<span class="i2g-monitor-counts">
+  {% if row.hard_total %}<span title="Hard bounces (Graph hard + SES permanent)">hard {{ row.hard_total }}</span>{% endif %}
+  {% if row.soft_total %}<span title="Soft bounces (Graph soft + SES transient)">soft {{ row.soft_total }}</span>{% endif %}
+  {% if row.rejected_count %}<span title="Rejected by the recipient's server policy (5.7.x)">rejected {{ row.rejected_count }}</span>{% endif %}
+  {% if row.delayed_count %}<span title="Delivery delayed (not a failure)">delayed {{ row.delayed_count }}</span>{% endif %}
+  {% if row.unknown_total %}<span title="No status code, or SES undetermined">unknown {{ row.unknown_total }}</span>{% endif %}
+  {% if row.complaint_count %}<span title="Spam complaints (SES)"><strong>complaints {{ row.complaint_count }}</strong></span>{% endif %}
+  {% if not row.report_total %}<span class="i2g-monitor-muted">none counted</span>{% endif %}
+</span>{% if row.report_total and not row.has_matched_evidence %}<br><span class="i2g-monitor-muted" title="No report matched an email the site sent">unmatched</span>{% endif %}

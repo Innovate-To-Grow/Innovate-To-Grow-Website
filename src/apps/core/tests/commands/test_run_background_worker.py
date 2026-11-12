@@ -1,4 +1,5 @@
 import signal
+from contextlib import ExitStack, contextmanager
 from datetime import timedelta
 from io import StringIO
 from types import SimpleNamespace
@@ -17,32 +18,30 @@ from apps.core.services.delivery_rates.maintenance import MaintenanceResult
 
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
 NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)
+NO_IMPORTS_PURGED = {"expired": 0, "blanked": 0, "deleted": 0}
+NOTHING_COUNTED = {"graph": 0, "ses": 0, "busy": False}
+
+
+HELPDESK_NOTHING_PURGED = {
+    "automated_bodies": 0,
+    "spam_bodies": 0,
+    "closed_bodies": 0,
+    "attachments": 0,
+    "tickets": 0,
+}
 
 
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
     def _run_once(self, *, purged_row_count=0, purged_budget_count=0, batch_size=10):
         command = run_background_worker.Command(stdout=StringIO())
-        with (
-            patch.object(
-                run_background_worker,
-                "purge_retired_auth_keypairs",
-                return_value=purged_row_count,
-            ) as purge,
-            patch.object(
-                run_background_worker,
-                "purge_expired_public_assistant_budgets",
-                return_value=purged_budget_count,
-            ) as budget_purge,
-            patch.object(run_background_worker, "cleanup_expired_records", return_value=NOTHING_CLEANED),
-            patch.object(run_background_worker, "clear_expired_sessions", return_value=0),
-            patch.object(run_background_worker, "purge_expired_failure_windows", return_value=0),
-            patch.object(run_background_worker, "run_delivery_rate_maintenance", return_value=NOTHING_MAINTAINED),
-            patch.object(run_background_worker, "active_certificate_expiry", return_value=None),
-            patch.object(run_background_worker, "ensure_bounce_scan_scheduled", return_value=False),
-            patch.object(run_background_worker, "purge_expired_email_telemetry", return_value={"emails": 0}),
-            patch.object(run_background_worker, "purge_finished_bounce_scans", return_value=0),
-            patch.object(run_background_worker, "schedule_startup_reconciliation"),
-        ):
+        # Every maintenance service in MAINTENANCE_SERVICES (below) is patched: a new service needs no change here.
+        returns = {
+            **MAINTENANCE_SERVICES,
+            "purge_retired_auth_keypairs": purged_row_count,
+            "purge_expired_public_assistant_budgets": purged_budget_count,
+            "schedule_startup_reconciliation": False,
+        }
+        with patch_worker(returns) as mocks:
             command.handle(
                 once=True,
                 batch_size=batch_size,
@@ -50,7 +49,7 @@ class RunBackgroundWorkerCommandTests(SimpleTestCase):
                 stale_minutes=10,
                 key_purge_seconds=3600,
             )
-        return purge, budget_purge
+        return mocks["purge_retired_auth_keypairs"], mocks["purge_expired_public_assistant_budgets"]
 
     @patch.object(run_background_worker, "publish_worker_metrics")
     @patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1})
@@ -270,18 +269,28 @@ class RunBackgroundWorkerShutdownTests(TestCase):
 LOGGER_NAME = "apps.core.management.commands.run_background_worker"
 
 
-# The seven maintenance services, in task order, with what each returns when there is nothing to do.
+# The maintenance services, in task order, with what each returns when there is nothing to do.
 MAINTENANCE_SERVICES = {
     "purge_retired_auth_keypairs": 0,
     "purge_expired_public_assistant_budgets": 0,
     "cleanup_expired_records": NOTHING_CLEANED,
     "clear_expired_sessions": 0,
     "purge_expired_failure_windows": 0,
+    "purge_member_imports": NO_IMPORTS_PURGED,
     "run_delivery_rate_maintenance": NOTHING_MAINTAINED,
     "active_certificate_expiry": None,
     "ensure_bounce_scan_scheduled": False,
+    "count_bounced_addresses": NOTHING_COUNTED,
+    "refresh_bounced_address_links": 0,
+    "sync_sms_opt_outs": None,
     "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
+    "purge_expired_inbound_queue": 0,
     "purge_finished_bounce_scans": 0,
+    "ensure_helpdesk_intake_scheduled": False,
+    "ensure_helpdesk_ingest_scheduled": False,
+    "purge_expired_helpdesk": HELPDESK_NOTHING_PURGED,
+    "purge_finished_helpdesk_ingests": 0,
+    "purge_finished_helpdesk_intake_scans": 0,
 }
 
 
@@ -296,12 +305,31 @@ def patch_maintenance(**side_effects):
     return patchers
 
 
+@contextmanager
+def patch_worker(returns):
+    """Patch each ``run_background_worker`` name in ``returns`` to return its value; yield the mocks by name.
+
+    One ExitStack holds every patch, so the worker can gain any number of services: a single ``with`` statement of
+    more than 20 context managers does not compile on Python 3.11 ("too many statically nested blocks")."""
+    with ExitStack() as stack:
+        yield {
+            name: stack.enter_context(patch.object(run_background_worker, name, return_value=value))
+            for name, value in returns.items()
+        }
+
+
 # The batched services are called with the stop check; the others take no argument.
 BATCHED_SERVICES = (
     "cleanup_expired_records",
     "clear_expired_sessions",
     "purge_expired_failure_windows",
+    "purge_member_imports",
+    "count_bounced_addresses",
+    "refresh_bounced_address_links",
+    "sync_sms_opt_outs",
     "purge_expired_email_telemetry",
+    "purge_expired_inbound_queue",
+    "purge_expired_helpdesk",
 )
 
 
@@ -335,11 +363,21 @@ class MaintenanceTaskTests(SimpleTestCase):
             cleanup_expired_records=record("send verification", NOTHING_CLEANED),
             clear_expired_sessions=record("sessions", 0),
             purge_expired_failure_windows=record("login failure windows", 0),
+            purge_member_imports=record("member imports", NO_IMPORTS_PURGED),
             run_delivery_rate_maintenance=record("delivery rates", NOTHING_MAINTAINED),
             active_certificate_expiry=record("graph certificate", None),
             ensure_bounce_scan_scheduled=record("bounce scans", False),
+            count_bounced_addresses=record("bounced addresses", NOTHING_COUNTED),
+            refresh_bounced_address_links=record("bounced address links", 0),
+            sync_sms_opt_outs=record("sms opt-outs", None),
             purge_expired_email_telemetry=record("email telemetry", {"emails": 0, "bounces": 0}),
+            purge_expired_inbound_queue=record("inbound queue", 0),
             purge_finished_bounce_scans=record("bounce scan jobs", 0),
+            ensure_helpdesk_intake_scheduled=record("helpdesk intake", False),
+            ensure_helpdesk_ingest_scheduled=record("helpdesk ingest", False),
+            purge_expired_helpdesk=record("helpdesk retention", HELPDESK_NOTHING_PURGED),
+            purge_finished_helpdesk_ingests=record("helpdesk ingest jobs", 0),
+            purge_finished_helpdesk_intake_scans=record("helpdesk intake scans", 0),
         )
 
         self.assertEqual(
@@ -350,11 +388,21 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "send verification",
                 "sessions",
                 "login failure windows",
+                "member imports",
                 "delivery rates",
                 "graph certificate",
                 "bounce scans",
+                "bounced addresses",
+                "bounced address links",
+                "sms opt-outs",
                 "email telemetry",
+                "inbound queue",
                 "bounce scan jobs",
+                "helpdesk intake",
+                "helpdesk ingest",
+                "helpdesk retention",
+                "helpdesk ingest jobs",
+                "helpdesk intake scans",
             ],
         )
         self.assertEqual(
@@ -365,10 +413,16 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Send verification cleanup",
                 "Expired session cleanup",
                 "Login failure window purge",
+                "Member import purge",
                 "Delivery-rate maintenance",
                 "Microsoft Graph certificate expiry check",
                 "Email bounce scan scheduling",
+                "Bounced address counting",
+                "SMS opt-out sync",
                 "Email telemetry retention",
+                "Helpdesk intake scheduling",
+                "Helpdesk ingest scheduling",
+                "Helpdesk retention",
             ],
         )
 
@@ -388,6 +442,16 @@ class MaintenanceTaskTests(SimpleTestCase):
                 ("ERROR", "Send verification cleanup failed", True),
                 ("INFO", "Cleared 3 expired sessions", False),
             ],
+        )
+
+    def test_member_import_purge_logs_its_counts_only_when_it_purged_something(self):
+        with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
+            mocks = self.run_patched(purge_member_imports=lambda **_kwargs: {"expired": 2, "blanked": 1, "deleted": 0})
+
+        mocks["purge_member_imports"].assert_called_once_with(should_stop=None)
+        self.assertEqual(
+            [record.getMessage() for record in logs.records],
+            ["Member import retention: deleted 2 expired and 0 old imports; blanked 1"],
         )
 
     def test_a_failing_login_window_purge_is_isolated(self):
@@ -439,6 +503,36 @@ class MaintenanceTaskTests(SimpleTestCase):
         with self.assertNoLogs(LOGGER_NAME, level="INFO"):
             self.run_patched()
 
+    def test_the_helpdesk_counts_name_its_intake_scans_and_scheduling_is_logged_at_debug(self):
+        purged = {**HELPDESK_NOTHING_PURGED, "tickets": 2}
+        with self.assertLogs(LOGGER_NAME, level="DEBUG") as logs:
+            self.run_patched(
+                ensure_helpdesk_intake_scheduled=lambda **_kwargs: True,
+                ensure_helpdesk_ingest_scheduled=lambda **_kwargs: True,
+                purge_expired_helpdesk=lambda **_kwargs: purged,
+                purge_finished_helpdesk_intake_scans=lambda **_kwargs: 4,
+            )
+
+        self.assertIn(f"DEBUG:{LOGGER_NAME}:Queued a helpdesk intake scan", logs.output)
+        self.assertIn(f"DEBUG:{LOGGER_NAME}:Queued a helpdesk ingest run", logs.output)
+        self.assertIn(
+            f"INFO:{LOGGER_NAME}:Helpdesk retention: purged 0 automated, 0 spam and 0 closed-ticket bodies and 0 "
+            "attachments; deleted 2 tickets, 0 finished ingest jobs and 4 finished intake scans",
+            logs.output,
+        )
+
+    def test_bounced_address_counts_are_logged_only_when_something_changed(self):
+        with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
+            self.run_patched(
+                count_bounced_addresses=lambda **_kwargs: {"graph": 3, "ses": 1, "busy": False},
+                refresh_bounced_address_links=lambda **_kwargs: 2,
+            )
+
+        self.assertEqual(
+            logs.output,
+            [f"INFO:{LOGGER_NAME}:Bounced addresses: counted 3 bounce reports and 1 SES events; refreshed 2 addresses"],
+        )
+
     def test_a_stop_request_skips_the_remaining_tasks(self):
         ran = []
         tasks = (
@@ -487,10 +581,16 @@ class MaintenanceTaskTests(SimpleTestCase):
             cleanup_expired_records=RuntimeError("c"),
             clear_expired_sessions=RuntimeError("d"),
             purge_expired_failure_windows=RuntimeError("e"),
+            purge_member_imports=RuntimeError("j"),
             run_delivery_rate_maintenance=RuntimeError("g"),
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),
+            count_bounced_addresses=RuntimeError("j"),
+            sync_sms_opt_outs=RuntimeError("k"),
             purge_expired_email_telemetry=RuntimeError("i"),
+            ensure_helpdesk_intake_scheduled=RuntimeError("l"),
+            ensure_helpdesk_ingest_scheduled=RuntimeError("j"),
+            purge_expired_helpdesk=RuntimeError("k"),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)

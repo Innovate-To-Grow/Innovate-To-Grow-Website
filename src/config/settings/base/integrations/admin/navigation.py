@@ -7,6 +7,7 @@ from .tabs import SERVICE_CREDENTIAL_MODELS
 # Broadcast Delivery → Email Sending Method: its page, each method's test page and the switch. Not under
 # /admin/mail/settings/, so no Delivery Operations tab (and with it that sidebar entry) claims them too.
 _SENDING_METHOD_PATH = "/admin/mail/sending-method/"
+_HELPDESK_TICKETS_PATH = "/admin/helpdesk/ticket/"
 
 
 def _can(app_label):
@@ -45,6 +46,20 @@ def _is_mail_delivery_operations(request):
 
 def _is_email_sending_method(request):
     return request.path.startswith(_SENDING_METHOD_PATH)
+
+
+def _helpdesk_queue_view(name):
+    """Sidebar "active" callback for one view of the ticket list (the four views share one path)."""
+
+    def active(request):
+        if not request.path.startswith(_HELPDESK_TICKETS_PATH):
+            return False
+        mail, assignee = request.GET.get("mail", ""), request.GET.get("assignee", "")
+        if mail in ("automated", "all"):
+            return name == "automated"
+        return {"me": "mine", "none": "unassigned"}.get(assignee, "queue") == name
+
+    return active
 
 
 SIDEBAR = {
@@ -119,6 +134,39 @@ SIDEBAR = {
                 },
                 {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/", "permission": _can("mail")},
                 {"title": "Gmail Inbox", "link": "/admin/mail/inbox/", "permission": _can("mail")},
+            ],
+        },
+        {
+            "title": "Helpdesk",
+            "permission": _can("helpdesk"),
+            "items": [
+                {
+                    "title": "Queue",
+                    "link": _HELPDESK_TICKETS_PATH,
+                    "permission": _can("helpdesk"),
+                    "active": _helpdesk_queue_view("queue"),
+                },
+                {
+                    "title": "My Tickets",
+                    "link": f"{_HELPDESK_TICKETS_PATH}?assignee=me",
+                    "permission": _can("helpdesk"),
+                    "active": _helpdesk_queue_view("mine"),
+                },
+                {
+                    "title": "Unassigned",
+                    "link": f"{_HELPDESK_TICKETS_PATH}?assignee=none",
+                    "permission": _can("helpdesk"),
+                    "active": _helpdesk_queue_view("unassigned"),
+                },
+                {
+                    "title": "Automated & Spam",
+                    "link": f"{_HELPDESK_TICKETS_PATH}?mail=automated&status=any",
+                    "permission": _can("helpdesk"),
+                    "active": _helpdesk_queue_view("automated"),
+                },
+                {"title": "Ingest Problems", "link": "/admin/helpdesk/ingestrecord/", "permission": _can("helpdesk")},
+                {"title": "Categories", "link": "/admin/helpdesk/ticketcategory/", "permission": _can("helpdesk")},
+                {"title": "Settings", "link": "/admin/helpdesk/helpdesksettings/", "permission": _can("helpdesk")},
             ],
         },
         {

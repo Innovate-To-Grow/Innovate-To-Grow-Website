@@ -48,7 +48,7 @@ class SmsRecipientLogAdmin(ReadOnlyModelAdmin):
 
     @display(description="Status", label=True)
     def status_badge(self, obj):
-        colors = {"pending": "info", "sent": "success", "failed": "danger"}
+        colors = {"pending": "info", "sent": "success", "failed": "danger", "opted_out": "warning"}
         return obj.get_status_display(), colors.get(obj.status, "info")
 
     @display(description="Error")

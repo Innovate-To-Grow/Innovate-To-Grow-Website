@@ -7,7 +7,11 @@ INITIAL_TICKET_START_ERROR = "Ticket email could not be started. Check server lo
 
 def send_initial_ticket_email(registration) -> None:
     from apps.core.services.background_jobs import enqueue_job, jobs_enabled
+    from apps.event.signals import initial_ticket_issued
 
+    # Other apps' first-ticket deliveries (a ticket text for a phone-only registrant); a receiver's failure is logged
+    # and never stops the registration or its email.
+    initial_ticket_issued.send_robust(sender=type(registration), registration=registration)
     if jobs_enabled():
         enqueue_job(
             kind="event.ticket_email",

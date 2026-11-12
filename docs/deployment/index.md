@@ -16,6 +16,7 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 - [WAF rate limits](waf-rate-limits.md) — Campus-aware AWS WAF rules for the unauthenticated auth endpoints
 - [Assistant and AI search limits](../integrations/assistant-limits.md) — Per-visitor/member and global token budgets, sizing and alarm
 - [Email monitoring](../integrations/email-monitoring.md) — Email telemetry, Graph bounce processing in the background worker, the dashboard and its settings
+- [AWS SMS](../integrations/aws-sms.md) — SMS opt-out sync in the background worker (IAM `sms-voice:DescribeOptedOutNumbers`), quiet hours, links in SMS (off until the number's registration allows them), ticket texts
 
 ## Who this is for
 
