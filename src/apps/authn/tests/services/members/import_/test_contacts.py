@@ -42,22 +42,23 @@ class ContactWriteGuardTests(ImportTestCase):
             contacts.set_phone_flags,
             self.ada,
             str(phone.pk),
-            {"verified": True},
+            {"subscribe": True},
         )
 
         theirs.refresh_from_db()
         phone.refresh_from_db()
-        self.assertEqual((theirs.verified, phone.verified), (True, False))
+        self.assertEqual((theirs.verified, phone.verified, phone.subscribe), (True, False, False))
 
     def test_flags_of_an_owned_contact(self):
         phone = self.phone(self.ada, "2095550101")
 
         contacts.set_email_flags(self.ada, str(self.primary.pk), {"subscribe": False})
-        contacts.set_phone_flags(self.ada, str(phone.pk), {"verified": True, "subscribe": True})
+        # Subscribed is the only flag an import may write on a number (test_phone_verified.GuardedWriteTests).
+        contacts.set_phone_flags(self.ada, str(phone.pk), {"subscribe": True})
 
         self.primary.refresh_from_db()
         phone.refresh_from_db()
-        self.assertEqual((self.primary.subscribe, phone.verified, phone.subscribe), (False, True, True))
+        self.assertEqual((self.primary.subscribe, phone.verified, phone.subscribe), (False, False, True))
 
     def test_an_unverified_address_is_never_made_primary(self):
         work = self.email(self.ada, "ada.work@example.com", verified=False)
