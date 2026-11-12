@@ -66,6 +66,37 @@ export const loginLinkAutoLogin = async (
   return login;
 };
 
+/** What opening an SMS short link (`/l/<token>`) does: sign its member in, or send the visitor on. */
+export type SmsLinkResult =
+  | {kind: 'sign_in'; login: LoginResponse}
+  | {kind: 'redirect'; redirectTo: string | null};
+
+/**
+ * Exchange an SMS short-link token. A personal link signs its member in once
+ * (the session is stored, as for the emailed link); any other link answers
+ * where to go. Rejects like `loginLinkAutoLogin` (the same failure codes).
+ */
+export const openSmsLink = async (token: string): Promise<SmsLinkResult> => {
+  const response = await authApi.post<unknown>('/mail/sms-link/', {token}, {skipAuth: true});
+  const body = asRecord(response.data);
+  if (body?.kind === 'redirect') {
+    return {
+      kind: 'redirect',
+      redirectTo: typeof body.redirect_to === 'string' ? body.redirect_to : null,
+    };
+  }
+  const login = readLoginResponse(response.data);
+  persistAuthSession(login);
+  return {kind: 'sign_in', login};
+};
+
+/** Where the short `/register` link leads (Mail → SMS Settings); the sign-in page unless staff chose another. */
+export const getRegisterLinkPath = async (): Promise<string | null> => {
+  const response = await authApi.get<unknown>('/mail/register-link/', {skipAuth: true});
+  const path = asRecord(response.data)?.path;
+  return typeof path === 'string' ? path : null;
+};
+
 export const impersonateAutoLogin = async (
   token: string,
 ): Promise<LoginResponse> => {

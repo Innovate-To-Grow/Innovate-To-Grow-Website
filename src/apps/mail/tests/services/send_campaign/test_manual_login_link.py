@@ -87,7 +87,9 @@ class ManualAudienceMemberMatchTests(TestCase):
             "\n".join(f"person{index}@example.edu" for index in range(25)) + "\nhong@example.edu"
         )
 
-        with self.assertNumQueries(1):
+        # One query matches every address to its member; one more reads the bulk-mail suppression list (Email
+        # Monitoring → Bounced addresses). Neither grows with the list.
+        with self.assertNumQueries(2):
             recipients = get_recipients(campaign)
 
         self.assertEqual(recipients[-1]["member_id"], self.member.pk)

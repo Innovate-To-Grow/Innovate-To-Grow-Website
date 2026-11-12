@@ -17,6 +17,7 @@ from apps.authn.serializers import (
 )
 from apps.authn.services import (
     PhoneAccountInactive,
+    PhoneNotVerified,
     PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
@@ -108,8 +109,8 @@ class PhoneAuthVerifyCodeView(APIView):
             return Response({"detail": VERIFICATION_THROTTLED}, status=status.HTTP_429_TOO_MANY_REQUESTS)
         except PhoneVerificationDeliveryError:
             return Response({"detail": PHONE_VERIFICATION_DELIVERY_FAILED}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-        except PhoneAccountInactive:
-            # A deactivated account must not be revived via phone login; mirror
-            # the email flow's generic invalid-code 400 (no enumeration leak).
+        except (PhoneAccountInactive, PhoneNotVerified):
+            # A deactivated account must not be revived via phone login, and an unverified number signs no one in;
+            # mirror the email flow's generic invalid-code 400 (no enumeration leak).
             return Response({"detail": VERIFICATION_INVALID}, status=status.HTTP_400_BAD_REQUEST)
         return Response(payload, status=status.HTTP_200_OK)

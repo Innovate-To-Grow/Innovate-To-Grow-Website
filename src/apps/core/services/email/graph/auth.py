@@ -22,10 +22,11 @@ from django.views.decorators.debug import sensitive_variables
 from apps.core.services.credential_store import CredentialStoreError
 
 from ..exceptions import PermanentEmailDeliveryError, TransientEmailDeliveryError
+from ..telemetry.notes import current_notes
 from . import transport
 from .certificate import build_client_assertion
 from .credential import stored_key
-from .errors import token_endpoint_error
+from .errors import response_facts, token_endpoint_error
 
 AUTHORITY_HOST = transport.AUTHORITY_HOST
 RESOURCE_SCOPE = "https://graph.microsoft.com/.default"
@@ -130,16 +131,20 @@ def parse_access_token(body: bytes) -> tuple[str, int]:
 
 def _request_access_token(credential: GraphCredential, timeout: float) -> tuple[str, int]:
     assertion = _signed_assertion(credential)
+    notes = current_notes()  # the email telemetry of the send this token is for, if any
     try:
         response = post_token_request(credential.tenant_id, credential.client_id, assertion, timeout=timeout)
     except transport.ConnectFailed as exc:
+        notes.transport_failed(exc)
         if exc.verification_failed:
             raise PermanentEmailDeliveryError("TLS verification of the Microsoft identity platform failed.") from exc
         raise TransientEmailDeliveryError("Microsoft identity platform could not be reached.") from exc
     except transport.ResponseLost as exc:
+        notes.transport_failed(exc)
         # A token request sends no mail, so repeating it is always safe.
         raise TransientEmailDeliveryError("Microsoft identity platform did not answer.") from exc
     if response.status != 200:
+        notes.answered(**response_facts(response, identity=True))
         raise token_endpoint_error(response)
     return parse_access_token(response.body)
 

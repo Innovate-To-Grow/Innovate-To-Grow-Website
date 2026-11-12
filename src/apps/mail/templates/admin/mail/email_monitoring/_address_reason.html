@@ -1,0 +1,8 @@
+{# The latest report's code, reason and remote server (Graph), or the latest SES event. #}
+{% if row.graph_is_latest %}
+  <code>{{ row.last_status_code|default:"–" }}</code> {{ row.last_reason }}
+  {% if row.last_remote_mta %}<br><span class="i2g-monitor-muted">remote {{ row.last_remote_mta }}</span>{% endif %}
+{% elif row.ses_last %}
+  SES {{ row.ses_last.event|default:"bounce" }}{% if row.ses_last.type %} · {{ row.ses_last.type }}{% endif %}{% if row.ses_last.subtype %} ({{ row.ses_last.subtype }}){% endif %}
+  {% if row.ses_last.diagnostic %}<br><span class="i2g-monitor-muted">{{ row.ses_last.diagnostic|truncatechars:120 }}</span>{% endif %}
+{% else %}–{% endif %}

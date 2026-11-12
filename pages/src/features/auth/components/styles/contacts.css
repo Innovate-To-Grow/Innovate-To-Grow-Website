@@ -159,6 +159,13 @@
   line-height: 21px;
 }
 
+.email-center-card-note {
+  margin: 0 0 8px;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
 .email-center-verify-form,
 .email-center-pending-verify-form {
   display: flex;

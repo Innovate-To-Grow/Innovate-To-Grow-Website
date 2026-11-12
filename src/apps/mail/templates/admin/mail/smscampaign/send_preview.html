@@ -33,22 +33,24 @@
         </div>
     </div>
 
+    {% include "admin/mail/smscampaign/_sms_send_notices.html" %}
+
     <div class="mb-6 overflow-hidden rounded-default border border-base-200 dark:border-base-700">
         <div class="flex items-center gap-2 border-b border-base-200 bg-base-50 px-4 py-2 dark:border-base-700 dark:bg-base-800">
             <span class="material-symbols-outlined !text-[16px] text-base-400">visibility</span>
-            <span class="text-xs font-medium text-base-400">SMS Preview (Name Example Data: Hongzhe Xie)</span>
+            <span class="text-xs font-medium text-base-400">SMS Preview (Name Example Data: Hongzhe Xie; links shown as examples)</span>
         </div>
         <div class="bg-white p-4 dark:bg-base-900">
             <div class="rounded-default border border-base-200 bg-base-50 p-4 text-sm leading-6 text-font-default-light dark:border-base-700 dark:bg-base-800 dark:text-font-default-dark">
                 <pre class="whitespace-pre-wrap break-words font-sans">{{ preview_message }}</pre>
             </div>
-            <p class="mt-2 text-xs text-base-400">{{ preview_message|length }} characters</p>
+            <p class="mt-2 text-xs text-base-400">{{ preview_message|length }} characters, with the opt-out footer</p>
         </div>
     </div>
 
     <div class="flex gap-3">
         {% if confirm_url %}
-            {% if recipient_count > 0 %}
+            {% if recipient_count > 0 and not links_blocked %}
             <a href="{{ confirm_url }}"
                class="inline-flex items-center gap-2 rounded-md bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700">
                 <span class="material-symbols-outlined !text-[18px]">send</span>
@@ -57,7 +59,7 @@
             {% else %}
             <span class="inline-flex cursor-not-allowed items-center gap-2 rounded-md bg-base-200 px-4 py-2 text-sm font-medium text-base-400">
                 <span class="material-symbols-outlined !text-[18px]">block</span>
-                No Recipients Found
+                {% if links_blocked %}Links in SMS Are Off{% else %}No Recipients Found{% endif %}
             </span>
             {% endif %}
         {% endif %}

@@ -48,6 +48,31 @@ def request_id(headers: dict[str, str]) -> str:
     return value if _REQUEST_ID_RE.fullmatch(value) else ""
 
 
+def _safe_id(value) -> str:
+    return value if isinstance(value, str) and _REQUEST_ID_RE.fullmatch(value) else ""
+
+
+def response_facts(response: HttpResponse, *, identity: bool = False) -> dict:
+    """What the email telemetry keeps of a Graph (or, with ``identity``, a token endpoint) answer: the status,
+    allow-listed error codes, Microsoft's request ids, Retry-After and the headers its diagnostics are taken from."""
+    headers = response.headers
+    if identity:
+        codes = {
+            "error_code": identity_error_code(response.body),
+            "request_id": _safe_id(headers.get("x-ms-request-id")),
+        }
+    else:
+        outer, inner = _error_codes(response.body)
+        codes = {"error_code": outer, "inner_error_code": inner, "request_id": _safe_id(headers.get("request-id"))}
+    return {
+        "http_status": response.status,
+        "headers": headers,
+        "retry_after_seconds": retry_after_seconds(headers),
+        "client_request_id": _safe_id(headers.get("client-request-id")),
+        **codes,
+    }
+
+
 def _json_object(body: bytes) -> dict:
     try:
         data = json.loads(body) if body else {}

@@ -27,7 +27,7 @@ It is the third choice of the **Provider** setting:
 | Credentials | Shared AWS IAM key in Secrets Manager, referenced by `AWSCredentialConfig` | Host, port, optional username and password (`SMTPProviderConfig`) | Entra tenant ID and client ID, an installed certificate whose private key is kept in the credential store (AWS Secrets Manager in production), and a mailbox scope (`MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`) |
 | Transport | SES API, raw MIME | SMTP submission | HTTPS `sendMail`: base64 MIME, or JSON for credential mail |
 | Message ID recorded | SES message ID | MIME `Message-ID` | MIME `Message-ID` (none for a JSON send) |
-| Delivery events | Yes, through the [SNS webhook](ses-event-tracking.md) | No | No |
+| Delivery events | Yes, through the [SNS webhook](ses-event-tracking.md) | No | Failures only: bounce reports read from the sending mailbox ([Email monitoring](email-monitoring.md)) |
 | Bounced and complained addresses skipped | Yes, by the SES account-level suppression list | No | No: the site keeps no suppression list of its own, so addresses SES suppressed are mailed again |
 | Provider limits | SES account quotas | The SMTP server's | Per mailbox: 30 messages per minute, 10,000 recipients per day, and the tenant's own policies ([Limits](#limits)) |
 
@@ -768,7 +768,8 @@ configured.
 | Use of the key secret | CloudTrail for `itg/backend/microsoft-graph/certificate-key`: `GetSecretValue`, `PutSecretValue`, `UpdateSecretVersionStage`, resource-policy changes | Only `ecsTaskRole` sessions are expected: reads about hourly per process, writes only when a Core admin installs a certificate. |
 | Sign-ins of the app | Entra → Enterprise applications → the app → **Sign-in logs** (service principal sign-ins) | Unexpected IPs or failures. |
 | Mailbox activity | Microsoft Purview audit log for `i2g@ucmerced.edu` (`Send`, `MailItemsAccessed`), run by the M365 admins | Investigations. |
-| Non-delivery reports, mailbox size | The I2G Inbox and Sent Items | Watch for bounces and sending restrictions (`550 5.1.8`); a full mailbox stops sending (`507`). |
+| Every send, its attempts and Microsoft's answers; bounce reports | **Mail → Delivery Operations → Email Monitoring** ([Email monitoring](email-monitoring.md)) | Error categories, 429 incidents, failed recipients per campaign, the bounce processor's health. |
+| Non-delivery reports, mailbox size | The I2G Inbox and Sent Items; matched reports on the Email Monitoring dashboard | Watch for bounces and sending restrictions (`550 5.1.8`); a full mailbox stops sending (`507`). |
 
 Suggested CloudWatch metric filters: `"Microsoft Graph sendMail was not accepted"`,
 `"Microsoft Graph mailbox read was refused"`, `"Microsoft rejected the Graph credentials"` and
@@ -791,7 +792,8 @@ deploy also catches certificate expiry.
   removed when the cache is culled (above 2,000 entries), or the task is replaced. The site stores no other
   copy of received mail.
 - **Site records.** The Email Log (`RecipientLog`) and campaign records keep recipients, subjects, status and
-  the `Message-ID`; nothing deletes them. Recorded access checks, removed certificate rows (public data and
+  the `Message-ID`; nothing deletes them. The email telemetry and bounce records are deleted after 180 and 365
+  days ([Email monitoring](email-monitoring.md#configuration)). Recorded access checks, removed certificate rows (public data and
   the removal reason) and the admin history are kept until deleted; access checks and certificate rows go
   with their Graph configuration. Access tokens live only in process memory for about an hour.
 - **Logs.** Graph log lines carry status, error code and request ID only. This repository sets no retention

@@ -1,0 +1,72 @@
+{% comment %}
+The ticket page's timeline and note form, rendered after (outside) the ticket's change form.
+
+SECURITY: message HTML was sanitized when it was stored, and is shown only inside an iframe whose srcdoc Django
+escapes and whose sandbox OMITS allow-scripts and allow-same-origin: the framed mail gets an opaque origin and runs
+nothing, so it can reach neither the admin's session nor its CSRF token. allow-popups (with
+allow-popups-to-escape-sandbox) only lets its links open in a new tab, with rel="noopener noreferrer". Never add
+allow-scripts or allow-same-origin here. The admin CSP (inherited by srcdoc documents) blocks remote images.
+{% endcomment %}
+{% if helpdesk_timeline is not None %}
+<section class="i2g-helpdesk" aria-label="Ticket timeline">
+  {% if helpdesk_shadow_mode %}
+    {% include "admin/helpdesk/ticket/_shadow_banner.html" %}
+  {% endif %}
+
+  <h2 class="i2g-helpdesk-heading">Timeline</h2>
+  <ol class="i2g-helpdesk-timeline">
+    {% for entry in helpdesk_timeline %}
+      {% if entry.kind == "event" %}
+        <li class="i2g-helpdesk-event">
+          <time datetime="{{ entry.at|date:'c' }}">{{ entry.at|date:"M j, Y H:i" }}</time>
+          <span>{{ entry.text }}{% if entry.actor %} — {{ entry.actor }}{% endif %}</span>
+        </li>
+      {% elif entry.kind == "note" %}
+        <li class="i2g-helpdesk-card i2g-helpdesk-note">
+          <header class="i2g-helpdesk-card-head">
+            <span class="material-symbols-outlined" aria-hidden="true">sticky_note_2</span>
+            <strong>Internal note</strong>
+            <span>{{ entry.actor|default:"(former staff member)" }}</span>
+            <time datetime="{{ entry.at|date:'c' }}">{{ entry.at|date:"M j, Y H:i" }}</time>
+          </header>
+          <div class="i2g-helpdesk-text">{{ entry.message.body_text|linebreaksbr }}</div>
+        </li>
+      {% else %}
+        <li class="i2g-helpdesk-card{% if entry.kind == 'automated' %} is-automated{% endif %}">
+          {% if entry.kind == "automated" %}
+            <details>
+              <summary class="i2g-helpdesk-card-head">
+                <span class="material-symbols-outlined" aria-hidden="true">smart_toy</span>
+                <strong>{{ entry.label|default:"Automated message" }}</strong>
+                <span>from {{ entry.message.from_address|default:"unknown sender" }}</span>
+                <time datetime="{{ entry.at|date:'c' }}">{{ entry.at|date:"M j, Y H:i" }}</time>
+              </summary>
+              {% include "admin/helpdesk/ticket/_message.html" %}
+            </details>
+          {% else %}
+            <header class="i2g-helpdesk-card-head">
+              <span class="material-symbols-outlined" aria-hidden="true">mail</span>
+              <strong>{% if entry.message.from_name %}{{ entry.message.from_name }}{% else %}{{ entry.message.from_address|default:"Unknown sender" }}{% endif %}</strong>
+              {% if entry.message.from_name %}<span>&lt;{{ entry.message.from_address }}&gt;</span>{% endif %}
+              <time datetime="{{ entry.at|date:'c' }}">{{ entry.at|date:"M j, Y H:i" }}</time>
+            </header>
+            {% include "admin/helpdesk/ticket/_message.html" %}
+          {% endif %}
+        </li>
+      {% endif %}
+    {% empty %}
+      <li class="i2g-helpdesk-event">Nothing yet.</li>
+    {% endfor %}
+  </ol>
+
+  <form id="helpdesk-note" method="post" action="{{ helpdesk_note_url }}" class="i2g-helpdesk-note-form">
+    {% csrf_token %}
+    <label for="helpdesk-note-body"><strong>Add an internal note</strong></label>
+    <textarea id="helpdesk-note-body" name="body" rows="4" maxlength="20000" required></textarea>
+    <p class="i2g-helpdesk-muted">Seen only by staff with the Helpdesk app; never sent to anyone.</p>
+    <button type="submit" class="i2g-helpdesk-button">
+      <span class="material-symbols-outlined" aria-hidden="true">add_comment</span>Add note
+    </button>
+  </form>
+</section>
+{% endif %}

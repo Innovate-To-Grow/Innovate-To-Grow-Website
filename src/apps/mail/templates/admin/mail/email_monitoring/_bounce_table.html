@@ -1,0 +1,30 @@
+{# Bounce report rows. ``show_email`` adds the matched email's link (the bounce list); the email page omits it. #}
+{% if bounces %}
+<div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+  <thead><tr>
+    {% if sortable %}
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="received" label="Received" %}
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="recipient" label="Recipient" %}
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="classification" label="Classification" %}
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="status" label="Status code" %}
+    {% else %}
+      <th scope="col">Received</th><th scope="col">Recipient</th><th scope="col">Classification</th><th scope="col">Status code</th>
+    {% endif %}
+    <th scope="col">Reason and diagnostic</th><th scope="col">Reporting server</th>
+    {% if sortable %}{% include "admin/mail/email_monitoring/_sort_header.html" with column="match" label="Match" %}{% else %}<th scope="col">Match</th>{% endif %}
+  </tr></thead>
+  <tbody>{% for bounce in bounces %}
+    <tr>
+      <td>{{ bounce.received_at|date:"M j, H:i" }}{% if bounce.bounced_at %}<br><span class="i2g-monitor-muted">reported {{ bounce.bounced_at|date:"M j, H:i" }}</span>{% endif %}</td>
+      <td>{{ bounce.recipient|default:"(not named)" }}</td>
+      <td>{{ bounce.get_classification_display }}<br><span class="i2g-monitor-muted">{% if bounce.is_permanent %}permanent{% elif bounce.is_permanent is None %}permanence unknown{% else %}temporary{% endif %}</span></td>
+      <td><code>{{ bounce.status_code|default:"–" }}</code>{% if bounce.action %}<br><span class="i2g-monitor-muted">{{ bounce.action }}</span>{% endif %}</td>
+      <td>{{ bounce.reason|default:"–" }}{% if bounce.diagnostic_code %}<br><span class="i2g-monitor-muted">{{ bounce.diagnostic_code|truncatechars:200 }}</span>{% endif %}</td>
+      <td>{{ bounce.reporting_mta|default:"–" }}{% if bounce.remote_mta %}<br><span class="i2g-monitor-muted">remote {{ bounce.remote_mta }}</span>{% endif %}</td>
+      <td>{{ bounce.get_match_method_display }}{% if show_email and bounce.email_id %}<br><a href="{% url 'admin:mail_email_monitoring_email' bounce.email_id %}">open email</a>{% endif %}{% if bounce.match_note %}<br><span class="i2g-monitor-muted">{{ bounce.match_note }}</span>{% endif %}</td>
+    </tr>
+  {% endfor %}</tbody>
+</table></div>
+{% else %}
+  <p class="i2g-monitor-empty">{% if empty %}{{ empty }}{% else %}No bounce report has been matched. That does not prove delivery: reports can arrive later, and some cannot be matched reliably.{% endif %}</p>
+{% endif %}
