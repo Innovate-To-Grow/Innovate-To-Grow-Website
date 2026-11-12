@@ -1,5 +1,6 @@
 """Mail → Delivery Operations → Email Monitoring: the overview, the email log, one email's history, the bounce list,
-one campaign's monitoring, and the bounce processor's controls (scan now, pause, resume).
+one campaign's monitoring, and the bounce processor's controls (scan now, pause, resume, and in ``controls``
+"Rescan since" and the first-scan lookback).
 
 ``admin_view`` only requires a staff login, so every view also requires the Mail app (``user_can_access_app``),
 like the Delivery Dashboard. Every page is read-only except the bounce-processing POST.
@@ -24,6 +25,8 @@ from apps.core.services.email.telemetry import KIND_LABELS
 from apps.core.utils.access import user_can_access_app
 from apps.mail.models import EmailCampaign
 from apps.mail.services.email_monitoring import campaigns, charts, detail, health, log, overview, scope
+
+from . import controls
 
 TEMPLATES = "admin/mail/email_monitoring"
 
@@ -161,10 +164,13 @@ def campaign_view(request, pk):
 
 @require_POST
 def bounce_processing_view(request):
-    """Scan now, pause or resume bounce processing for the Graph sending mailbox."""
+    """Scan now, pause, resume, rescan since a time, or set the first-scan lookback of the Graph sending mailbox.
+
+    A rescan needs a mailbox the processor can read (the time it sets is read by the next scan); the lookback, like
+    pause and resume, needs only the mailbox."""
     require_mail_access(request)
     action = request.POST.get("action")
-    _reader, mailbox, problem = active_reader()
+    reader, mailbox, problem = active_reader()
     target = reverse("admin:mail_email_monitoring")
     if action == "scan":
         if run_now():
@@ -175,6 +181,10 @@ def bounce_processing_view(request):
         set_paused(mailbox, action == "pause")
         verb = "paused" if action == "pause" else "resumed"
         messages.success(request, f"Bounce processing for {mailbox} {verb}.")
+    elif action == "rescan" and reader is not None:
+        controls.rescan(request, mailbox)
+    elif action == "lookback" and mailbox:
+        controls.lookback(request, mailbox)
     else:
         messages.error(request, problem or "Unknown bounce processing action.")
     return HttpResponseRedirect(target)

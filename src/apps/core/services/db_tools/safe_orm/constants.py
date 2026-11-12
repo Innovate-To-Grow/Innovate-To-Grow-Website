@@ -17,6 +17,10 @@ DENIED_WRITE_APP_LABELS = DENIED_READ_APP_LABELS | {"auth"}
 DENIED_MODEL_LABELS = {
     "auth.group",
     "auth.permission",
+    # Staged member imports: sheet values, member snapshots and the admin's pending choices, written only by the
+    # Members → Import review and purged on a schedule. None of their names matches DENIED_MODEL_NAME_PARTS.
+    "authn.memberimportbatch",
+    "authn.memberimportrow",
     "core.awscredentialconfig",
     # Delivery-rate policy, live pacing state and usage: changing them would let a caller raise a rate or reopen a
     # provider breaker outside Mail → Delivery Rates. None of their names matches DENIED_MODEL_NAME_PARTS.
@@ -32,6 +36,18 @@ DENIED_MODEL_LABELS = {
     "core.emailmonitorstate",
     "core.outboundemail",
     "core.outboundemailattempt",
+    # The inbound mail queue (metadata of every message the helpdesk's intake lists) and the helpdesk built on it:
+    # mail content, the people who wrote it, staff decisions on it, and the intake's checkpoint and lease (a write
+    # would skip or re-import mail). Staff work them in Helpdesk (its own app grant).
+    "core.inboundmessage",
+    "helpdesk.helpdesksettings",
+    "helpdesk.ingestrecord",
+    "helpdesk.intakestate",
+    "helpdesk.ticket",
+    "helpdesk.ticketattachment",
+    "helpdesk.ticketcategory",
+    "helpdesk.ticketevent",
+    "helpdesk.ticketmessage",
     # Request limits: changing a policy, a Smart factor or the process heartbeats would loosen or tighten every
     # caller's limits outside the admin's audited page. None of their names matches DENIED_MODEL_NAME_PARTS.
     "core.requestlimitprocess",

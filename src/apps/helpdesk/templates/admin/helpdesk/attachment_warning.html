@@ -1,0 +1,26 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'helpdesk/css/helpdesk.css' %}?v=20261111-helpdesk">
+{% endblock %}
+
+{% block content %}
+<div class="i2g-helpdesk">
+  <div class="i2g-helpdesk-warning" role="alert">
+    <span class="material-symbols-outlined" aria-hidden="true">warning</span>
+    <p>
+      <strong>{{ attachment.filename }}</strong> ({{ attachment.size|filesizeformat }}) is an archive. Its contents could
+      not be checked. Download it only if you expected it from this sender.
+    </p>
+  </div>
+  <p>
+    <a class="i2g-helpdesk-button" href="{{ download_url }}" rel="noopener">Download anyway</a>
+    <a href="{{ back_url }}">Back to {{ ticket.display_number }}</a>
+  </p>
+</div>
+{% endblock %}

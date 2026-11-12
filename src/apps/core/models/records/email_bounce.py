@@ -58,12 +58,22 @@ class EmailBounce(ProjectControlModel):
 
 
 class EmailMonitorState(ProjectControlModel):
-    """The bounce processor's checkpoint, lease and health for one mailbox (shown on the monitoring dashboard)."""
+    """The bounce processor's checkpoint, lease and health for one mailbox, and the controls staff set for it on the
+    monitoring dashboard (pause, first-scan lookback)."""
 
     mailbox = models.CharField(max_length=254, unique=True)
     paused = models.BooleanField(default=False, help_text="Paused from the dashboard: scans skip this mailbox.")
     checkpoint_at = models.DateTimeField(
-        null=True, blank=True, help_text="Received time of the newest message every scan before it fully processed."
+        null=True,
+        blank=True,
+        help_text="Received time of the newest message every scan before it fully processed, or the earlier time "
+        "staff chose with Rescan since.",
+    )
+    initial_lookback_hours = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="How many hours back the first scan reads while there is no checkpoint (set on the Email Monitoring "
+        "dashboard). Empty: the EMAIL_MONITORING default.",
     )
     lease_token = models.UUIDField(null=True, blank=True, editable=False)
     lease_until = models.DateTimeField(null=True, blank=True, editable=False)

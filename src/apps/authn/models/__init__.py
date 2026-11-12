@@ -6,7 +6,7 @@ Aggregates commonly used models so callers can import from `authn.models`.
 
 from .contact import ContactEmail, ContactPhone
 from .member_sheet_sync import MemberSheetSyncConfig, MemberSheetSyncLog
-from .members import AdminInvitation, Member
+from .members import AdminInvitation, Member, MemberImportBatch, MemberImportRow
 from .security import (
     EmailAuthChallenge,
     ImpersonationToken,
@@ -23,6 +23,8 @@ __all__ = [
     # Members
     "Member",
     "AdminInvitation",
+    "MemberImportBatch",
+    "MemberImportRow",
     # Contact
     "ContactEmail",
     "ContactPhone",

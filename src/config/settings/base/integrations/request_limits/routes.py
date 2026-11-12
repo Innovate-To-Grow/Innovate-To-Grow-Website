@@ -30,6 +30,7 @@ ROUTES = {
     "admin:system_intelligence_export_download": "staff-bulk",
     "admin:search": "staff-bulk",
     "admin:authn_member_import_excel": "staff-bulk",
+    "admin:authn_member_import_confirm": "staff-bulk",
     "admin:authn_member_export_excel": "staff-bulk",
     "admin:cms_cmspage_import": "staff-bulk",
     "admin:cms_cmspage_export": "staff-bulk",
@@ -44,6 +45,7 @@ ROUTES = {
     "admin:projects_publish_all": "staff-bulk",
     "admin:mail_emailcampaign_send_confirm": "staff-bulk",
     "admin:mail_smscampaign_send_confirm": "staff-bulk",
+    "admin:helpdesk_ticket_attachment": "staff-bulk",
     # Email Monitoring → Bounced addresses: the action POSTs, bulk actions, the counts rebuild and the export.
     "admin:mail_email_monitoring_address_action": "staff-bulk",
     "admin:mail_email_monitoring_addresses_bulk": "staff-bulk",
