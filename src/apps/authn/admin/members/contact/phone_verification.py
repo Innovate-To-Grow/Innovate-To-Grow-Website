@@ -43,6 +43,13 @@ VERIFY_URL_NAME = "authn_contactphone_verify_by_code"
 _CODE = re.compile(r"\d{6}")
 
 
+def same_member(first, second) -> bool:
+    """Whether two member ids name the same member (or both none). Compared as UUIDs: the member page's inline gets
+    its member's pk as a string, while a stored phone's ``member_id`` is a UUID."""
+    to_python = ContactPhone._meta.get_field("member").target_field.to_python
+    return (None if first is None else to_python(first)) == (None if second is None else to_python(second))
+
+
 def _e164(phone_number: str, region: str) -> str:
     country_code = region.split("-")[0] if "-" in region else region
     return f"+{country_code}{ContactPhone._to_national_digits(phone_number, region)}"
@@ -69,6 +76,9 @@ class ContactPhoneAdminForm(forms.ModelForm):
         if "verified" in self.fields and (self._number_changed(cleaned) or self._member_changed(cleaned)):
             # A different number has proven nothing yet, and neither has the same number on another account: its
             # code proved that someone holds the phone, not that the new member does.
+            if self.instance.verified and "verified" not in self.changed_data:
+                # The box was left ticked: name the flip, so the typed confirmation and the history show it.
+                self.changed_data.append("verified")
             cleaned["verified"] = False
         return cleaned
 
@@ -76,7 +86,7 @@ class ContactPhoneAdminForm(forms.ModelForm):
         # The inline's member is its parent (unchanged); on the phone's own page staff may pick another member.
         if self.instance._state.adding or "member" not in cleaned:
             return False
-        return getattr(cleaned["member"], "pk", None) != self.instance.member_id
+        return not same_member(getattr(cleaned["member"], "pk", None), self.instance.member_id)
 
     def _number_changed(self, cleaned) -> bool:
         if self.instance._state.adding or not self.instance.phone_number:
