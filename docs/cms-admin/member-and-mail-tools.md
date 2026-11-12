@@ -57,7 +57,8 @@ A number becomes verified only with a code; there is no tick for it:
   **Unverified · no SMS sign-in**; the member list adds `(unverified)` to an unverified primary phone.
 - The **Verified** box can be unticked (or use **Mark selected phones as unverified**) to stop SMS sign-in, but not
   ticked: a phone added in the admin starts unverified, and changing a number's digits makes it unverified again
-  (writing the same number differently does not).
+  (writing the same number differently does not), as does moving it to another member (or to none) on the phone's
+  own page: its code proved that someone holds the phone, not that the new member does.
 - **Verify by SMS code** (the link next to an unverified number) is the staff path for a member who cannot sign in
   another way, for example a phone-only member whose only number is unverified: talk to the member (in person, or on a
   call to them at a contact you already trust), **Send code**, ask them to read it to you, and enter it. The code goes

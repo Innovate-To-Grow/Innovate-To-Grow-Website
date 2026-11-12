@@ -53,7 +53,7 @@ can sign in, so add a phone number to a member only when you are sure it is thei
 >   the I2G Master.
 > - **Verified** can no longer be ticked by hand, and **Mark selected phones as verified** is gone. Unticking it
 >   (or **Mark selected phones as unverified (stops SMS sign-in)**) still works. A phone added in the admin starts
->   unverified, and changing a number's digits makes it unverified again.
+>   unverified, and changing a number's digits, or moving it to another member, makes it unverified again.
 > - Phone rows show **Verified · SMS sign-in on** or **Unverified · no SMS sign-in**, and the Members list adds
 >   "(unverified)" to an unverified number in its **Primary Phone** column.
 

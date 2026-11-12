@@ -121,7 +121,8 @@ complaining addresses are mailed again.
 
 ## AWS End User Messaging (SMS)
 
-Used for phone number verification during event registration and contact management.
+Used for sign-in and verification codes (phone sign-up, phone sign-in with a number verified on the account, and the
+account and event-registration phone checks), the admin's test SMS, Broadcast SMS and ticket texts.
 
 | Concern | Implementation |
 |---------|---------------|
@@ -138,7 +139,9 @@ phone, optional member, and context, with persistent attempt/send limits and
 one-time consumption. The origination number is auto-detected from the
 account's End User Messaging phone numbers (`DescribePhoneNumbers`), or set
 manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
-`sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`.
+`sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`, plus `sms-voice:DescribeOptedOutNumbers` for the
+hourly opt-out sync (without it each sync is recorded as failed; sending is unaffected). The opt-out list, footer,
+quiet hours, links in texts and ticket texts are in [AWS SMS](../integrations/aws-sms.md).
 
 Every SMS (codes, the admin test SMS, campaigns) is sent by `send_text_message` on the `sms_send` delivery
 channel, for the identity `<region>:<origination>`; the SendTextMessage quota is per account and Region, so a

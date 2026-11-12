@@ -8,7 +8,7 @@ becomes verified only by proving possession with a one-time code, never by a tic
   (in person, or on a call to them), enter it. A code that went to a mistyped or recycled number never comes back.
 
 Staff can still switch verification off (untick, or "Mark selected phones as unverified"), and a number whose digits
-are changed here starts unverified again.
+are changed here, or that is moved to another member, starts unverified again.
 """
 
 from __future__ import annotations
@@ -49,7 +49,8 @@ def _e164(phone_number: str, region: str) -> str:
 
 
 class ContactPhoneAdminForm(forms.ModelForm):
-    """``verified`` may be switched off here but never on (that takes a code), and changing the number unverifies it."""
+    """``verified`` may be switched off here but never on (that takes a code), and changing the number, or the member it
+    belongs to, unverifies it."""
 
     class Meta:
         model = ContactPhone
@@ -65,10 +66,17 @@ class ContactPhoneAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if "verified" in self.fields and self._number_changed(cleaned):
-            # A different number has proven nothing yet.
+        if "verified" in self.fields and (self._number_changed(cleaned) or self._member_changed(cleaned)):
+            # A different number has proven nothing yet, and neither has the same number on another account: its
+            # code proved that someone holds the phone, not that the new member does.
             cleaned["verified"] = False
         return cleaned
+
+    def _member_changed(self, cleaned) -> bool:
+        # The inline's member is its parent (unchanged); on the phone's own page staff may pick another member.
+        if self.instance._state.adding or "member" not in cleaned:
+            return False
+        return getattr(cleaned["member"], "pk", None) != self.instance.member_id
 
     def _number_changed(self, cleaned) -> bool:
         if self.instance._state.adding or not self.instance.phone_number:
