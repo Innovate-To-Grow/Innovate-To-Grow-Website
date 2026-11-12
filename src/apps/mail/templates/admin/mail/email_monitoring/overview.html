@@ -42,7 +42,7 @@
         <div><dt>API attempts</dt><dd><strong>{{ a.total }}</strong> <span class="i2g-monitor-muted">{{ a.accepted }} accepted · {{ a.failed }} failed · {{ a.uncertain }} unknown</span></dd></div>
         <div><dt>Retries</dt><dd><strong>{{ a.retries }}</strong> <span class="i2g-monitor-muted">attempts after an email's first</span></dd></div>
         <div><dt>429 throttling incidents</dt><dd><strong>{{ a.throttled }}</strong> <span class="i2g-monitor-muted">Retry-After followed by the delivery rate</span></dd></div>
-        <div><dt>Average API response time</dt><dd><strong>{% if a.avg_response_ms is None %}–{% else %}{{ a.avg_response_ms }} ms{% endif %}</strong> <span class="i2g-monitor-muted">requests the provider answered</span></dd></div>
+        <div><dt>Average API response time</dt><dd><strong>{% if a.avg_response_ms is None %}–{% else %}{{ a.avg_response_ms }} ms{% endif %}</strong> <span class="i2g-monitor-muted">requests Microsoft answered</span></dd></div>
         <div><dt>Attempt success rate</dt><dd><strong>{% if a.success_rate is None %}–{% else %}{{ a.success_rate }}%{% endif %}</strong></dd></div>
       </dl>
     </div>

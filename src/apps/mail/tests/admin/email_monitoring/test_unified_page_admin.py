@@ -9,7 +9,7 @@ from django.core.cache import cache
 from django.test import Client, TestCase
 from django.urls import resolve, reverse
 
-from apps.core.models import BackgroundJob, EmailCategory, OutboundEmail
+from apps.core.models import AWSCredentialConfig, BackgroundJob, EmailCategory, EmailServiceConfig, OutboundEmail
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND
 from apps.core.services.request_limits.scopes import classify_route
 from apps.core.tests.services.email_monitoring.helpers import make_attempt, make_bounce, make_email
@@ -161,11 +161,40 @@ class OverviewTests(TestCase):
         self.assertNotContains(response, "data-monitor-send-rate")
 
     def test_the_overview_never_reads_aws(self):
-        with patch("boto3.client", side_effect=AssertionError("the Overview must not call AWS")):
-            response = self.client.get(self.url)
+        # SES is the sender and AWS credentials are set, so an AWS read (CloudWatch, the suppression list, a Secrets
+        # Manager key) would get as far as building a boto3 client. Check that no client is built at all: an
+        # exception raised from one would not prove anything, because the SES dashboard turns every AWS failure into
+        # a notice and the page would still load.
+        AWSCredentialConfig.objects.create(
+            name="Primary AWS",
+            is_active=True,
+            access_key_id="AKIAEXAMPLE0000",
+            secret_access_key="not-a-real-secret",
+            default_region="us-west-2",
+        )
+        EmailServiceConfig.objects.create(
+            name="Primary Sender", is_active=True, provider="ses", from_email="sender@example.com", max_send_rate=0
+        )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, f'href="{reverse("admin:mail_email_monitoring_ses")}"')
+        with patch("boto3.client") as client, patch("boto3.session.Session.client") as session_client:
+            page = self.client.get(self.url)
+            data = self.client.get(reverse("admin:mail_email_monitoring_data"))
+
+        self.assertEqual((page.status_code, data.status_code), (200, 200))
+        client.assert_not_called()
+        session_client.assert_not_called()
+        self.assertContains(page, f'href="{reverse("admin:mail_email_monitoring_ses")}"')
+
+    def test_the_response_time_names_microsoft_graph_whose_answers_it_averages(self):
+        # Only the Graph provider records an HTTP answer (AttemptNotes.answered), and the average reads only attempts
+        # with one, so the caption names Microsoft whatever the Provider filter says.
+        make_attempt(make_email(), http_status=202, response_ms=300)
+        make_attempt(make_email(provider="ses"), provider="ses", http_status=None, response_ms=900)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.context["figures"]["attempts"]["avg_response_ms"], 300)
+        self.assertContains(response, "requests Microsoft answered", count=1)
 
     def test_the_probe_note_and_the_figures_still_leave_probes_out(self):
         make_email(category=EmailCategory.ACCESS_CHECK)
