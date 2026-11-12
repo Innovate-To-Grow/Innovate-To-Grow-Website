@@ -125,16 +125,9 @@ def _apply_instruction_sheet(workbook):
         ("", "A random password is generated unless a default is specified"),
         ("", "A blank cell or a missing column keeps the stored value; nothing is deleted unless you tick it"),
         ("", "A new Secondary Email or Phone Number is added next to the member's existing ones, unverified"),
-        (
-            "",
-            "A Phone Verified column (Export to Excel has one) is ignored: phone numbers are saved unverified, stored "
-            "numbers keep their status, and members verify their own numbers with a one-time code",
-        ),
-        (
-            "",
-            "Verifying or un-verifying an email address, re-subscribing, (de)activating and staff changes each need a "
-            "tick in the review",
-        ),
+        ("", "A Phone Verified column (Export to Excel has one) is ignored: phone numbers are saved unverified"),
+        ("", "Stored phone numbers keep their status; members verify their own numbers with a one-time code"),
+        ("", "Verifying/un-verifying an email, re-subscribing, (de)activating and staff changes need a review tick"),
         ("", "TRUE/FALSE columns accept TRUE, FALSE, Yes or No; any other text is ignored"),
         ("", "'Last Updated' and 'Primary Expired' are informational only"),
     ]
