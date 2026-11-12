@@ -13,12 +13,20 @@ import json
 from contextlib import contextmanager
 from datetime import timedelta
 
+from django.contrib.auth.models import Group
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
-from apps.authn.models import AdminInvitation, ContactEmail, ContactPhone, Member, PhoneVerificationChallenge
+from apps.authn.models import (
+    AdminInvitation,
+    ContactEmail,
+    ContactPhone,
+    Member,
+    PhoneVerificationChallenge,
+    RSAKeypair,
+)
 from apps.event.tests.helpers import make_admin, make_member, make_superuser
 from apps.system_intelligence.models import ChatConversation, SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
@@ -188,6 +196,36 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
         self.assertEqual(phone["writable_fields"], [])
         self.assertTrue(phone["readable_fields"])
         self.assertIn("title", [field["name"] for field in member["writable_fields"]])
+
+    def test_the_rsa_sign_in_key_cannot_be_replaced_or_switched_off(self):
+        # A written public half no longer matches the stored private key: password sign-in (site and admin) breaks
+        # until an I2G Master makes a new key. The admin makes keys read-only once created.
+        key = RSAKeypair.objects.create(name="site-signing", is_active=True)
+        public_key = key.public_key_pem
+        with acting_as(self.staffer):
+            for changes in (
+                {"public_key_pem": "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----"},
+                {"is_active": False},
+            ):
+                with self.subTest(changes=list(changes)), self.assertRaises(actions.ActionRequestError) as error:
+                    actions.propose_db_update("authn", "RSAKeypair", str(key.pk), changes)
+                self.assertEqual(str(error.exception), WRITE_REFUSED.format("RSAKeypair"))
+            record = json.loads(actions.get_record("authn", "RSAKeypair", str(key.pk)))
+
+        key.refresh_from_db()
+        self.assertEqual((key.public_key_pem, key.is_active), (public_key, True))
+        self.assertEqual(record["public_key_pem"], public_key)
+
+    def test_group_membership_cannot_be_written_through_its_table(self):
+        # Member.groups is never writable; its auto-created table must not be either.
+        group = Group.objects.create(name="Editors")
+        with acting_as(self.staffer), self.assertRaises(actions.ActionRequestError) as error:
+            actions.propose_db_create(
+                "authn", "Member_groups", {"member_id": str(self.staffer.pk), "group_id": group.pk}
+            )
+
+        self.assertEqual(str(error.exception), WRITE_REFUSED.format("Member_groups"))
+        self.assertFalse(self.staffer.groups.exists())
 
 
 class MemberWriteTests(AuthnWriteGuardTestCase):

@@ -21,6 +21,11 @@ DENIED_MODEL_LABELS = {
     # Members → Import review and purged on a schedule. None of their names matches DENIED_MODEL_NAME_PARTS.
     "authn.memberimportbatch",
     "authn.memberimportrow",
+    # The i2g-admin CLI's sign-in: the token exchange issues a bearer token for whichever member an authorization
+    # code names, so a written code is a CLI session as anyone, the I2G Master included. The CLI denies both tables
+    # for itself as well; the access tokens also match "token" in DENIED_MODEL_NAME_PARTS.
+    "cli_admin.cliaccesstoken",
+    "cli_admin.cliauthorizationcode",
     "core.awscredentialconfig",
     # Delivery-rate policy, live pacing state and usage: changing them would let a caller raise a rate or reopen a
     # provider breaker outside Mail → Delivery Rates. None of their names matches DENIED_MODEL_NAME_PARTS.
@@ -80,15 +85,24 @@ DENIED_MODEL_LABELS = {
     "system_intelligence.chatmessage",
     "system_intelligence.systemintelligenceactionrequest",
     "system_intelligence.systemintelligenceconfig",
+    # An admin's export belongs to them, like their conversations: its download authorizes on ``created_by``, so a
+    # written owner hands one admin's file to another. The export tools create these rows themselves.
+    "system_intelligence.systemintelligenceexport",
     "cms.cmsblock",
     "cms.cmspage",
 }
 DENIED_MODEL_NAME_PARTS = ("credential", "config", "permission", "session", "logentry", "token")
-# Readable, never written by a proposed record write. Contact rows are sign-in factors: a verified address or number
-# signs in to its account, so they change only in the Members admin, under its owner guards and #732's code-only rule
-# for phones. Verification challenges are the proof of a one-time code: a challenge set to "verified" is a grant that
-# event registration accepts as a verified phone. Accepting an admin invitation makes its address's member staff, so
-# only the I2G Master writes invitations (in the admin). (The CLI denies the whole authn app.)
+# Readable, never written by a proposed record write (nor are Django's auto-created many-to-many tables, such as
+# Member.groups: see ``is_model_denied``). Contact rows are sign-in factors: a verified address or number signs in to
+# its account, so they change only in the Members admin, under its owner guards and #732's code-only rule for phones.
+# Verification challenges are the proof of a one-time code: a pending admin sign-in code re-pointed to another member
+# signs in as them, and a phone challenge set to "verified" is a grant that event registration accepts. Accepting an
+# admin invitation makes its address's member staff, so only the I2G Master writes invitations (in the admin). The
+# active RSA key pair decrypts every password sign-in: a written public half breaks sign-in until a new key is made.
+# The CLI audit log is the trail of every CLI write. Background jobs run whatever kind and payload a row names (a
+# notification email to any address, a resent campaign or ticket), and retries go through the admin's Retry action
+# and its guards; nothing in the assistant queues a job. The admin keeps the key, the audit log and the jobs read-only
+# too. (The CLI denies all of authn.)
 DENIED_WRITE_MODEL_LABELS = frozenset(
     {
         "authn.admininvitation",
@@ -96,6 +110,9 @@ DENIED_WRITE_MODEL_LABELS = frozenset(
         "authn.contactphone",
         "authn.emailauthchallenge",
         "authn.phoneverificationchallenge",
+        "authn.rsakeypair",
+        "cli_admin.cliauditlog",
+        "core.backgroundjob",
     }
 )
 SAFE_LOOKUPS = frozenset(

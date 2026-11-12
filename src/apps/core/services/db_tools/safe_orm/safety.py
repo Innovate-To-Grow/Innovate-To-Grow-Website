@@ -32,7 +32,9 @@ def is_model_denied(model: type[models.Model], *, write: bool) -> bool:
     denied_apps = DENIED_WRITE_APP_LABELS if write else DENIED_READ_APP_LABELS
     if model._meta.app_label in denied_apps or label in DENIED_MODEL_LABELS:
         return True
-    if write and label in DENIED_WRITE_MODEL_LABELS:
+    # An auto-created many-to-many table (Member.groups, a campaign's selected members) is only ever written through
+    # its parent; written directly, it skips the parent's field denies (``groups``).
+    if write and (label in DENIED_WRITE_MODEL_LABELS or model._meta.auto_created):
         return True
     return any(part in model._meta.model_name for part in DENIED_MODEL_NAME_PARTS)
 
