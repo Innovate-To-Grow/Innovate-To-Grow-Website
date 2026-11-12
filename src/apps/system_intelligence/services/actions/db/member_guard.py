@@ -1,25 +1,26 @@
-"""Member writes through an approved action follow the Members admin's own rules.
+"""Member writes through an approved action stay on the staff side of the staff/superuser line.
 
 ``check_model_permission`` checks only the section grant. Without this, a staffer holding the Members (``authn``) grant
 could use the assistant to change or delete another staff or superuser account, or to give themselves more admin
-sections, which ``MemberAdmin`` refuses them. Here, as there:
+sections. The rules are stricter than ``MemberAdmin``'s, which still lets a staffer edit the name, title or
+organization of another staff account (it locks only staff status, the admin sections and Active there):
 
-* only the I2G Master changes or deletes another staff or superuser account (``user_can_manage_member``; anyone may
-  change their own);
+* only the I2G Master changes or deletes another staff or superuser account through the assistant
+  (``user_can_manage_member``; anyone may change their own);
 * only the I2G Master writes the superuser-only fields (``MemberAdmin.superuser_only_fields``: staff status and the
   admin sections).
 
 Contact rows and verification challenges are not writable through the assistant at all (safe_orm's
-``DENIED_WRITE_MODEL_LABELS``). A proposal is refused at once; approval checks again, on the locked target row.
+``DENIED_WRITE_MODEL_LABELS``). A proposal is refused at once; approval checks again, on the locked target row, and a
+refused approval fails the request with the rule (``ActionRefused``).
 """
 
 from __future__ import annotations
 
-from django.core.exceptions import PermissionDenied
-
 from apps.core.utils.access import user_can_manage_member
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
+from ..exceptions import ActionRefused
 from ..orm import get_object
 
 MEMBER_LABEL = "authn.member"
@@ -31,18 +32,18 @@ def is_member_model(model) -> bool:
 
 
 def check_member_write(user, model, *, fields=None, target=None) -> None:
-    """Raise ``PermissionDenied`` unless ``user`` may write ``fields`` on ``target`` (None for a new member)."""
+    """Raise ``ActionRefused`` unless ``user`` may write ``fields`` on ``target`` (None for a new member)."""
     if not is_member_model(model):
         return
     if target is not None and not user_can_manage_member(user, target):
-        raise PermissionDenied(TARGET_REFUSED)
+        raise ActionRefused(TARGET_REFUSED)
     if getattr(user, "is_superuser", False):
         return
     from apps.authn.admin.members.member import MemberAdmin
 
     refused = sorted(set(fields or ()) & set(MemberAdmin.superuser_only_fields))
     if refused:
-        raise PermissionDenied(f"Only an I2G Master may change {', '.join(refused)}.")
+        raise ActionRefused(f"Only an I2G Master may change {', '.join(refused)}.")
 
 
 def check_member_action(user, model, action: SystemIntelligenceActionRequest) -> None:
