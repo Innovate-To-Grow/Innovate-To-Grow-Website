@@ -51,8 +51,7 @@ nothing):
   its conversation. Automated mail (out-of-office replies, left-the-organisation notices, bounce reports, read
   receipts, newsletters, spam) becomes a ticket that is closed at once and hidden by default; a message from a person
   (including an answer to our email sent from a sales or marketing tool), or one the system is unsure about, becomes a
-  normal ticket. Mail that never reaches the Inbox (Junk, or moved or deleted in Outlook first) is not
-  seen.
+  normal ticket. Mail that never reaches the Inbox (Junk, or moved or deleted in Outlook first) is not seen.
 - Working a ticket: status, priority, category, assignee, notes; the member is linked from the sender's address;
   what shadow mode does not do yet (no replies, no notifications).
 - The scam warning shown on suspicious messages, and why a message can be marked as spam.

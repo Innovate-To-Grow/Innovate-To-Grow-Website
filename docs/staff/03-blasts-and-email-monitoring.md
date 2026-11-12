@@ -251,8 +251,9 @@ Both change bounce processing only; the helpdesk has its own (3.5). Both changes
 
 A new **Bounced addresses** page in Email Monitoring lists every address that has bounced, one row per address,
 with what you may do about it. It also lists addresses whose automatic reply to our mail said the person **left the
-organisation** (or retired, or changed address): those are evidence to check, not proof. **Nothing on it happens by itself:** the counts never change a member, an address
-or a subscription. Every change is a staff action with a confirmation page, and it is recorded. (Only the list's
+organisation** (or retired, or changed address): those are evidence to check, not proof. **Nothing on it happens by
+itself:** the counts never change a member, an address or a subscription. Every change is a staff action with a
+confirmation page, and it is recorded. (Only the list's
 own review state moves on its own: a new matched report that the address does not exist or that its mailbox is
 disabled, or a spam complaint, puts a dismissed address back on the **Open** tab. Temporary failures and rejections
 never do.)
