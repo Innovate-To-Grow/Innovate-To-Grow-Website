@@ -112,7 +112,9 @@ in [Microsoft Graph email](../integrations/microsoft-graph-email.md).
   and **Broadcast SMS** campaigns. US numbers only.
 - People can sign up and sign in with a phone number alone; event registration can ask for a verified phone. Coming
   with pull request #732: only a verified number signs in, and a number becomes verified only with a code (from
-  the member's account page, or staff's **Verify by SMS code** page with the member reading the code back).
+  the member's account page, or staff's **Verify by SMS code** page with the member reading the code back). With
+  pull requests #726 and #730, a member import never verifies a number either: it ignores the sheet's **Phone
+  Verified** column, saves every number it adds unverified, and leaves stored numbers as they are.
 - Coming with pull request #731: links in texts (off by default). A personal sign-in link goes only to the
   member's own verified phone, and switching personal links (or links in texts) off revokes every one already
   sent, for good.

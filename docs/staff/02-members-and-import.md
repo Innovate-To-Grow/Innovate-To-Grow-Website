@@ -125,7 +125,9 @@ The import adds new members from a spreadsheet and, if you ask it to, updates ex
 >   un-verifies an address whose Verified cell holds FALSE (or any text other than TRUE, Yes, Y or 1), and changes
 >   **Active**. Until the safe import is live, leave **Update Existing Members** unticked (rows for existing members
 >   are then skipped). If you must update members, keep only the **Primary Email** column and the **First Name**,
->   **Last Name**, **Middle Name**, **Title** or **Organization** columns you are changing.
+>   **Last Name**, **Middle Name**, **Title** or **Organization** columns you are changing. The older import also
+>   copies the **Phone Verified** cell onto the numbers it saves, for new members too: delete that column before
+>   any import while the older import is live.
 > - A **Review import** button and the steps Upload → Review → Confirm → Result: the review flow is live (2.6).
 
 ### Steps
@@ -167,12 +169,19 @@ Only **Primary Email** is required. A column that is missing, or a blank cell, n
 | Primary Subscribed | Default TRUE. | FALSE unsubscribes the primary. TRUE never re-subscribes it (a note says so). |
 | Secondary Email | Added as the secondary address. | Added as the secondary; the previous secondary becomes "other". It starts unverified, and it is subscribed only if the member is subscribed at another address. |
 | Secondary Verified, Secondary Subscribed | Used for the new secondary. | Not applied to an address the member already has (a note says so). |
-| Phone Number | Added (10 digits, or +1 and 10 digits; the import does not check that the number is real). | Added next to the member's numbers, unverified. It never replaces a number. Either way, whoever has that phone can sign in with a texted code (2.1): include numbers only if they came from the members themselves. Once pull request #732 ships, only a verified number signs in: a number added to an existing member then waits until the member verifies it. |
-| Phone Verified, Phone Subscribed | Used for the new number (defaults: FALSE, FALSE). Once pull request #732 ships, TRUE makes the number a way to sign in at once, without a code: put TRUE only for numbers you are sure of. | Not applied to a number the member already has. |
+| Phone Number | Added, unverified (10 digits, or +1 and 10 digits; the import does not check that the number is real). | Added next to the member's numbers, unverified. It never replaces a number. Either way, whoever has that phone can sign in with a texted code (2.1): include numbers only if they came from the members themselves. Once pull request #732 ships, only a verified number signs in: an imported number then waits until the member verifies it with a code. |
+| Phone Subscribed | Used for the new number (default FALSE). | Not applied to a number the member already has (a note says so). |
+| Phone Verified | **Ignored**: the number is saved unverified, whatever the cell says. | **Ignored**: a number the member already has keeps its status (verified stays verified, unverified stays unverified). |
 | Active | Default TRUE. | Ignored. Use the **Activate** / **Deactivate** actions on the member list. |
 | Staff | Ignored: an import never creates a staff account. | Applied only when the I2G Master imports. |
 | Member UUID | Ignored by today's import. | Ignored (the coming review step uses it, see 2.6). |
 | Last Updated, Primary Expired, Secondary Expired, Secondary Bounced | Accepted, not stored. | Same. |
+
+**Phone Verified is ignored.** An import never verifies or un-verifies a phone number, and nobody can override that,
+not even the I2G Master: a verified number is a way to sign in, so it must be proved with the member's own code (2.1).
+Every number an import adds is saved unverified, and a number already stored keeps its status. A sheet may still have
+the column (every **Export Excel** file does): the import accepts it, ignores it, and says so once, at the top of the
+notes.
 
 TRUE/FALSE cells accept `TRUE`, `FALSE`, `Yes`, `No`, `Y`, `N`, `1` and `0`. Any other text (for example "N/A") is
 ignored and reported, never read as FALSE.
@@ -191,6 +200,7 @@ ignored and reported, never read as FALSE.
 - Delete an address or a phone number.
 - Move an address or a phone number from one member to another.
 - Re-subscribe an address, or un-verify one.
+- Verify or un-verify a phone number (the **Phone Verified** column is ignored).
 - Activate or deactivate an existing member, or change staff status (unless the I2G Master imports).
 - Send an email or a text message.
 
@@ -222,6 +232,9 @@ example:
 - "Phone Number … belongs to …; not added (an import never moves a contact from one member to another)"
 - "Active column ignored: the member stays active (…)"
 - "Primary Verified cell 'N/A' is not TRUE or FALSE; it was ignored"
+
+A sheet with a **Phone Verified** column gets one more note, about the file rather than a row, at the top of the
+list: "Phone Verified column ignored: an import never verifies or un-verifies a phone number. …".
 
 ### Example: "Row 5"
 
@@ -297,12 +310,13 @@ Decisions you may be asked for (each starts on **Skip**):
 | The row matches a member and you chose **Skip them** | Skip, or update the member |
 
 **Risky changes** happen only if you tick them: removing an address or phone number the sheet leaves blank or
-replaces, re-subscribing an address (only with the person's consent), marking an address or phone number verified
+replaces, re-subscribing an address or number (only with the person's consent), marking an email address verified
 (it then becomes a way to sign in) or unverified, activating or deactivating a member, and staff status (I2G Master
-only). Each row has its own ticks, and a **Tick all** button ticks every row of one kind at once: use it with care.
-A removal is unavailable for the address the row was matched on and for a member's only verified way to sign in. On
-a staff or superuser account only the I2G Master can tick them, and an unfinished sign-up can be neither activated
-nor verified by an import.
+only). There is no tick to verify or un-verify a phone number: the review ignores **Phone Verified** as in 2.5, lists
+the column under "Not imported", and says so on the Review, Confirm and Result pages. Each row has its own ticks, and
+a **Tick all** button ticks every row of one kind at once: use it with care. A removal is unavailable for the address
+the row was matched on and for a member's only verified way to sign in. On a staff or superuser account only the I2G
+Master can tick them, and an unfinished sign-up can be neither activated nor verified by an import.
 
 Also new:
 
@@ -325,6 +339,6 @@ Also new:
 | "Excel file must contain a 'Primary Email' column" | The file was saved with another tab open (for example Instructions), or row 1 does not hold the column names. Open the members tab, check row 1, save, upload again. |
 | Everything was skipped with "… already exists: … Skipped because "Update Existing Members" is off" | **Update Existing Members** was not ticked. (Rows that say "… already exists: it is the secondary email of …" are the "Row 5" case instead.) |
 | A member says they cannot sign in with their address | Check on their member page that the address is **Verified** and the member is **Active**. Only mark it verified if you are sure it is theirs. |
-| A member cannot sign in with their phone | Check on their member page that the number is right and the member is **Active**. Once pull request #732 ships, the number must also be verified (an unverified number gets no text): they verify it on their account page, or you use **Verify by SMS code** with them (2.1). |
+| A member cannot sign in with their phone | Check on their member page that the number is right and the member is **Active**. Once pull request #732 ships, the number must also be verified (an unverified number gets no text): they verify it on their account page, or you use **Verify by SMS code** with them (2.1). The safe import (2.5) never verifies a number, whatever the sheet's **Phone Verified** said. |
 | A member's name changed after an import | A filled name cell replaces the stored name when a row matches by primary email. Correct it on the member page; check the sheet before importing it again. |
 | You need to undo an import | There is no undo, and this import leaves nothing in a member's **History**. Compare with the **Export Excel** you took before (see Good practice) and fix members by hand. Importing again cannot remove what an import added or verified. |
