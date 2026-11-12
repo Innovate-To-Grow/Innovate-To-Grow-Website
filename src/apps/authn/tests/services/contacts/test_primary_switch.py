@@ -1,6 +1,7 @@
 """``switch_primary_email``: the existing swap service, plus clear refusals, a stale check and what changed."""
 
 import datetime
+import uuid
 from unittest.mock import patch
 
 from django.contrib.admin.models import CHANGE, LogEntry
@@ -232,6 +233,30 @@ class PlanMatchesTheServiceTests(TestCase):
                 ContactEmail.objects.all().delete()
                 planned, done = self.scenario(rows, target)
                 self.assertEqual(planned, done)
+
+    def test_two_secondaries_with_the_same_timestamp(self):
+        # Legacy data can hold two secondaries created at the same instant: the preview and the service must still
+        # pick the same one to move aside (the higher id, as the service's ``-created_at, -pk`` order does).
+        member = Member.objects.create_user(first_name="Tia", last_name="Tie")
+        add_email(member, "a@example.org", "primary", days_ago=50)
+        low, high = (
+            ContactEmail.objects.create(
+                id=uuid.UUID(int=value), member=member, email_address=address, email_type="secondary", verified=True
+            )
+            for value, address in ((1, "b@example.org"), (2**128 - 1, "c@example.org"))
+        )
+        ContactEmail.objects.filter(pk__in=[low.pk, high.pk]).update(created_at=timezone.now() - datetime.timedelta(5))
+        target = add_email(member, "d@example.org", "other", days_ago=1)
+        emails = member_emails(member)
+        planned = {(change.contact.pk, change.before, change.after) for change in plan_primary_switch(emails, target)}
+
+        done = {
+            (change.contact.pk, change.before, change.after)
+            for change in switch_primary_email(member=member, contact_email_id=target.pk).changes
+        }
+
+        self.assertEqual(planned, done)
+        self.assertIn((high.pk, "secondary", "other"), done)
 
     def test_current_primary_is_none_without_one(self):
         self.assertIsNone(current_primary([]))

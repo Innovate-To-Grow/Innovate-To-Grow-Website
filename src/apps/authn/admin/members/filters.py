@@ -113,7 +113,8 @@ class EmailVerifiedFilter(ChoiceFilter):
 
     def options(self):
         return (
-            ("verified", "Verified: can sign in", Q(verified=True)),
+            # Just the address flag: an unlinked address or an inactive account's address does not sign anyone in.
+            ("verified", "Verified", Q(verified=True)),
             ("unverified", "Unverified emails", Q(verified=False)),
             (
                 "unverified_primary",

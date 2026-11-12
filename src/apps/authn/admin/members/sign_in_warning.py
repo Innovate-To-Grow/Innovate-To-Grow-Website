@@ -1,9 +1,11 @@
 """Warn, never block, when an admin change leaves a member with no verified email address or phone number.
 
 Unticking **Verified** stops sign-in with that address or number, and stops no mail. When it was the member's last
-verified email or phone, they cannot sign in at all until one is verified again (a member signs in with any verified
-address, or a verified phone). The member API refuses to delete that last contact; the admin allows unverifying it
-(the address may never have been theirs) and says so:
+verified email or phone, they cannot sign in with a code or a password until one is verified again (codes and
+passwords work with any verified address, or a verified phone); only a personal sign-in link from an email they already
+received (``LoginLinkToken``, checked for an active account and expiry only) still works. Without one they cannot
+reach their account page to verify an address either, so the warning says how staff fix it. The member API refuses to
+delete that last contact; the admin allows unverifying it (the address may never have been theirs) and says so:
 
 - ``lost_sign_in`` wraps a write (a save, a bulk "mark unverified", a delete) and warns about every member who had a
   verified contact before it and has none after;
@@ -23,7 +25,10 @@ ROW = {
     "field": "sign-in-warning",
     "label": "Warning: signing in",
     "old_value": "The member has a verified email or phone, so they can sign in",
-    "new_value": "No verified email or phone left: the member cannot sign in until one is verified (mail still goes)",
+    "new_value": (
+        "No verified email or phone left: the member cannot sign in with a code or a password until one is verified "
+        "(mail still goes)"
+    ),
 }
 
 
@@ -39,9 +44,10 @@ def warning_text(member_ids) -> str:
     subject = f"{_names(member_ids)} now has" if count == 1 else f"{count} members now have"
     detail = "" if count == 1 else f" ({_names(member_ids)})"
     return (
-        f"{subject} no verified email address or phone number{detail}, so they cannot sign in until one is verified. "
-        "Mail to their addresses still goes. If that was not intended, tick Verified again on an address that is "
-        "theirs (or the member verifies one from their account page)."
+        f"{subject} no verified email address or phone number{detail}, so they cannot sign in with a code or a "
+        "password until one is verified (only a personal sign-in link from an email they received still works, until "
+        "it expires). Mail to their addresses still goes. If that was not intended, tick Verified again on an email "
+        "address that is theirs, or verify their phone with “Verify by SMS code”."
     )
 
 

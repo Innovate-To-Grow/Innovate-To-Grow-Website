@@ -95,6 +95,14 @@ class SwitchNotesTests(SwitchFixture):
         self.assertIn("both jane@example.com and jane.work@example.com keep working", notes["sign_in"][0])
         self.assertFalse(any("Admin sign-in codes" in note for note in notes["sign_in"]))
         self.assertTrue(any("password" in note and "jane.work@example.com" in note for note in notes["sign_in"]))
+        # A forgotten-password code goes to the verified address the member types, so the old primary still gets one.
+        self.assertTrue(
+            any(
+                "forgotten-password code" in note and "(jane@example.com included)" in note for note in notes["sign_in"]
+            )
+        )
+        # Switching to the secondary moves nothing aside, so switching back restores every type.
+        self.assertFalse(any("does not move" in note for note in notes["unchanged"]))
         self.assertEqual(
             notes["newsletters"][0]["text"],
             "Campaigns to All subscribers sent to the primary email only go to jane.work@example.com from now on.",
@@ -123,6 +131,20 @@ class SwitchNotesTests(SwitchFixture):
         self.assertEqual(first["level"], "warning")
         self.assertIn("jane.work@example.com is unsubscribed (jane@example.com is subscribed)", first["text"])
         self.assertIn("The switch changes no subscription", first["text"])
+
+    def test_switching_to_an_other_address_says_what_switching_back_leaves(self):
+        home = add_email(self.jane, "jane.home@example.com", "other", days_ago=5)
+
+        unchanged = self.notes(self.jane, home)["unchanged"]
+
+        self.assertTrue(
+            any(
+                "does not move jane.work@example.com back: it stays other" in note
+                and "jane.home@example.com becomes the secondary" in note
+                for note in unchanged
+            ),
+            unchanged,
+        )
 
     def test_an_unsubscribed_new_primary_is_only_a_note_when_nothing_changes(self):
         ContactEmail.objects.filter(pk__in=[self.primary.pk, self.secondary.pk]).update(subscribe=False)

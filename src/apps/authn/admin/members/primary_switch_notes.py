@@ -3,8 +3,8 @@
 What reads the primary (checked against the sign-in and audience code):
 
 - Email-code and password sign-in accept any **verified** address of the member, whatever its type.
-- Admin sign-in codes go only to a staff member's verified **primary**; password change/reset and account-deletion
-  codes go to the verified primary first.
+- Admin sign-in codes go only to a staff member's verified **primary**; password-change and account-deletion codes go
+  to the verified primary, while a forgotten-password code goes to the verified address or phone the member types.
 - "Primary email only" campaigns mail the primary: All subscribers only while it is subscribed; All active members,
   Staff and Selected members whatever its setting. "All emails" campaigns are not affected.
 - Event registrations copied the address when they were made, so they keep it.
@@ -12,7 +12,7 @@ What reads the primary (checked against the sign-in and audience code):
 
 from django.contrib import messages
 
-from ...services.contacts.primary_switch import NOT_VERIFIED, PRIMARY, current_primary
+from ...services.contacts.primary_switch import NOT_VERIFIED, OTHER, PRIMARY, current_primary, plan_primary_switch
 
 
 def row_reason(email) -> str:
@@ -49,8 +49,10 @@ def _sign_in(request, member, previous, target) -> list[str]:
             notes.append(
                 f"This is your own account: your next admin sign-in code goes to {new}. Check you can read it."
             )
+    kept = f" ({previous.email_address} included)" if previous is not None and previous.verified else ""
     notes.append(
-        f"Codes to change or reset the password, and to delete the account, go to the verified primary: {new}."
+        f"Codes to change the password and to delete the account go to the verified primary: {new}. A "
+        f"forgotten-password code goes to whichever verified address or phone the member types{kept}."
     )
     notes.append(f"The member's profile, the Members list, exports and the member sheet show {new} as the primary.")
     return notes
@@ -95,7 +97,18 @@ def _newsletters(previous, target) -> list[dict]:
     return [first, rest]
 
 
-def _unchanged(previous) -> list[str]:
+def _undo(old, new, moved_aside) -> str:
+    text = f"To undo, switch back: {old} stays verified (as the secondary)."
+    if moved_aside is None:
+        return text
+    # Switching back demotes the then-primary to secondary and leaves the address moved aside as other.
+    return (
+        f"{text} That does not move {moved_aside} back: it stays other (event registration forms offer only the "
+        f"primary and the secondary), and {new} becomes the secondary. Swap their types on the member page if needed."
+    )
+
+
+def _unchanged(previous, target, moved_aside) -> list[str]:
     notes = [
         "No address is verified, unverified, subscribed or unsubscribed, nothing is deleted, and nothing is sent to "
         "either address."
@@ -104,7 +117,7 @@ def _unchanged(previous) -> list[str]:
         old = previous.email_address
         notes.append(f"Event registrations keep the address they were made with: tickets issued to {old} stay there.")
         if previous.verified:
-            notes.append(f"To undo, switch back: {old} stays verified (as the secondary).")
+            notes.append(_undo(old, target.email_address, moved_aside))
         else:
             notes.append(f"{old} is not verified, so it cannot be made the primary again until it is verified.")
     return notes
@@ -123,10 +136,13 @@ def _bounce_tip(previous) -> str:
 def switch_notes(request, member, emails, target) -> dict:
     """The confirmation page's notes for making ``target`` the primary."""
     previous = current_primary(emails)
+    moved_aside = next(
+        (change.contact.email_address for change in plan_primary_switch(emails, target) if change.after == OTHER), None
+    )
     return {
         "sign_in": _sign_in(request, member, previous, target),
         "newsletters": _newsletters(previous, target),
-        "unchanged": _unchanged(previous),
+        "unchanged": _unchanged(previous, target, moved_aside),
         "bounce": _bounce_tip(previous),
     }
 

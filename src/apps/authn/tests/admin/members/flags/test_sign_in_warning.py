@@ -14,7 +14,10 @@ Member = get_user_model()
 
 EMAILS = reverse("admin:authn_contactemail_changelist")
 PHONES = reverse("admin:authn_contactphone_changelist")
-LOCKED_OUT = "now has no verified email address or phone number, so they cannot sign in until one is verified"
+LOCKED_OUT = (
+    "now has no verified email address or phone number, so they cannot sign in with a code or a password until one is "
+    "verified (only a personal sign-in link from an email they received still works, until it expires)"
+)
 
 
 def texts(response) -> list[str]:

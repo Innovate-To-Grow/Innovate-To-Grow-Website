@@ -71,9 +71,11 @@ account stops sign-in and the member audiences for every address.
 The admin labels and help text say this on every Members form (`src/apps/authn/admin/members/help_texts.py`). They
 are set through the forms' `Meta.labels` / `Meta.help_texts`, which Django also applies to read-only fields, so the
 models (and their migrations) are unchanged. Unticking a member's last verified email or phone, deleting it, or
-moving it to another member is allowed but warned about, on the type-to-confirm page and after the save
-(`sign_in_warning.py`): the member cannot sign in until one is verified again. The member API still refuses to delete
-that last contact.
+moving it to another member is allowed but warned about (`sign_in_warning.py`): after the save or delete, and for an
+edit (including removing the row on the member page) already on the type-to-confirm page; the delete confirmation of
+the Contact Emails / Contact Phones admin shows no warning row. The member then cannot sign in with a code or a
+password until one is verified again; only a personal sign-in link from an email (`LoginLinkToken`, which checks an
+active account and expiry only) still works. The member API still refuses to delete that last contact.
 
 ### Switching the primary email
 

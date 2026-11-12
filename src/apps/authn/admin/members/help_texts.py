@@ -40,7 +40,7 @@ EMAIL_SUBSCRIBED = (
     "account mail are never affected."
 )
 PHONE_SUBSCRIBED = (
-    "Receives SMS campaigns that need opt-in (the Subscribers audience, or the “verified and opted in” policy). "
+    "Receives SMS campaigns that need opt-in (the Subscribers audience, or the “Verified opt-ins” phone policy). "
     "Replying STOP turns it off."
 )
 

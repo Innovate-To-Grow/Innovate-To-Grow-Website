@@ -109,8 +109,10 @@ def plan_primary_switch(emails, target) -> list[RoleChange]:
     if previous is not None:
         secondaries = [email for email in emails if email.email_type == SECONDARY and email.pk != target.pk]
         if secondaries:
-            # ContactEmail is ordered newest first, so the service's ``.first()`` moves the newest secondary aside.
-            changes.append(RoleChange(max(secondaries, key=lambda email: email.created_at), SECONDARY, OTHER))
+            # The service moves the newest secondary aside (``-created_at``, then ``-pk`` on a tie); UUIDs compare as
+            # their 128-bit values here and in the database alike.
+            newest = max(secondaries, key=lambda email: (email.created_at, email.pk))
+            changes.append(RoleChange(newest, SECONDARY, OTHER))
         changes.append(RoleChange(previous, PRIMARY, SECONDARY))
     changes.append(RoleChange(target, target.email_type, PRIMARY))
     return changes
