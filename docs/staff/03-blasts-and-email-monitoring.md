@@ -151,20 +151,28 @@ monitoring** on a sent campaign opens the same figures for that one campaign.) T
   accepted, failed / not sent, outcome unknown, confirmed bounces, bounce rate and retries.
 - **Email log:** every email the site sent, with search (an address, for example) and filters. Click one to see its
   full history. It starts on the last 7 days: widen the **Range** for older emails.
-- **Bounce reports:** one row per failed recipient in each report, with its classification and match.
+- **Bounce reports:** one row per failed recipient in each report, with its category (what went wrong) and match.
 
 The note at the top of every page gives the date of the oldest email on record. Monitoring began in November 2026,
 and emails are kept for 180 days, so anything older is not there.
 
 ### Bounce reports
 
-| Classification | Usual cause | What to do |
+Each row has a **category**, read from the codes in the report. Under it, in grey, are the broad classification
+(hard, soft, rejected, delayed, unknown) and what the category means. **What the categories mean** on the page lists
+them all.
+
+| Category | Usual cause | What to do |
 |---|---|---|
-| **Hard bounce** | The address does not exist, or its domain takes no mail. | Correct the member's address, or mark it undeliverable (3.7). |
-| **Soft bounce** | Temporary: mailbox full, message too large, server busy. | Wait. Act only if the same address keeps bouncing. |
-| **Rejected** (codes starting 5.7) | The receiving server refused the message (policy, spam filter). Usually about our sending, not about the address. | Do not change the member. Tell the web team if there are many. |
-| **Delivery delayed** | The receiving side is still retrying. | Nothing. |
-| **Unknown delivery status** | A report without a usable code. | Read the reason shown in the row; the full report is in the i2g@ Inbox in Outlook. |
+| **Address does not exist** | The address, or its domain, does not exist. | Correct the member's address, or mark it undeliverable (3.7). |
+| **Mailbox disabled** | The account was closed or switched off, including a mailbox set to accept nothing (a "0 KB" size limit). | Look for another address for the person, or mark it undeliverable (3.7). |
+| **Mailbox full** | The person's mailbox is full. | Wait. Act only if it keeps happening. |
+| **Temporary failure** | A connection timeout or refusal, a DNS problem, a server that said "try again later", a delivery that expired after Microsoft's retries, a message too large. | Nothing: **the address is probably fine**, and the next blast tries again. Act only if the same address keeps failing. |
+| **Spam or reputation rejection** | A spam filter, a block list, our sending reputation, or a check on our sender (SPF, DKIM, DMARC). | **About our sending, not the contact.** Do not change the member. Tell the web team, with the code and reason. |
+| **Relay denied** | The receiving server would not accept our message by this route. | **About our sending (the route or authorisation), not the contact.** Do not change the member. Tell the web team. |
+| **Recipient policy rejection** | The receiving server's own rules (for example a group that only takes mail from inside the organisation). | Do not change the member. If it matters, ask the person by another channel to allow mail from i2g@ucmerced.edu. |
+| **Delayed (still retrying)** | The receiving side is still retrying. | Nothing. |
+| **Unknown failure** | A report without a specific code or a recognisable reason (for example a bare "554 delivery error"). | Read the reason and diagnostic in the row. It is never treated as proof the address is bad. If a category looks wrong, tell the web team the code and the text. |
 
 The match column says how the report was tied to an email: **Exact: original Message-ID** (the report quotes our
 message's ID), **Inferred: recipient, subject and time** (the only email to that recipient with that subject in the
@@ -244,14 +252,16 @@ Both change bounce processing only; the helpdesk has its own (3.5). Both changes
 A new **Bounced addresses** page in Email Monitoring lists every address that has bounced, one row per address,
 with what you may do about it. **Nothing on it happens by itself:** the counts never change a member, an address
 or a subscription. Every change is a staff action with a confirmation page, and it is recorded. (Only the list's
-own review state moves on its own: a new matched hard bounce, rejection or spam complaint puts a dismissed address
-back on the **Open** tab.)
+own review state moves on its own: a new matched report that the address does not exist or that its mailbox is
+disabled, or a spam complaint, puts a dismissed address back on the **Open** tab. Temporary failures and rejections
+never do.)
 
 ### The list
 
-- Tabs **Open**, **Dismissed**, **Resolved** and **All**; filters for type, role, member, suppressed, evidence,
-  suggestion, campaign and date; a search on the address or member name; **Export these rows (.xlsx)**.
-- Each row shows the counts by type, the first and last bounce, the last reason, the member (with Active, Inactive
+- Tabs **Open**, **Dismissed**, **Resolved** and **All**; filters for type, category, role, member, suppressed,
+  evidence, suggestion, campaign and date; a search on the address or member name; **Export these rows (.xlsx)**.
+- Each row shows the counts by category, the first and last bounce, the latest category and what it means, the last
+  reason, the member (with Active, Inactive
   or Staff), the address's role (**Primary**, **Secondary**, **Other**, **Unlinked contact**, **Not a contact** or
   **Ambiguous**), its flags, the campaigns, and a suggestion.
 - **Suggestions** are text only and are never applied:
@@ -259,11 +269,16 @@ back on the **Open** tab.)
 | Suggestion | Why |
 |---|---|
 | **Unsubscribe: they reported us as spam** | A spam complaint. |
-| **Mark undeliverable or replace the address** | A hard bounce. |
-| **Consider marking undeliverable (repeated soft bounces)** | Three or more soft bounces, with at least seven days between the address's first and last report. |
-| **Probably our reputation or policy, not the address: no action** | Rejections (5.7.x) and none of the above. |
+| **Mark undeliverable or replace the address** | A report that the address does not exist. |
+| **Replace the address (the mailbox is disabled), or mark it undeliverable** | A report that the mailbox is disabled. |
+| **Consider marking undeliverable (repeated temporary failures)** | Three or more temporary failures (temporary, mailbox full or unknown), with at least seven days between the address's first and last report. |
+| **Our sending side: relay denied…** | Relay refusals and none of the above: our sending route or authorisation, not the address. |
+| **Our sending side: spam or reputation rejection…** | Spam or reputation rejections and none of the above: our reputation, sender checks or content, not the address. |
+| **Their server's policy refused the message, not the address: no action** | Policy rejections and none of the above. |
 
-A row whose reports are all unmatched says "unmatched reports only: check them first".
+A single temporary failure, such as a connection timeout, never suggests marking an address undeliverable. A row
+whose reports are all unmatched says "unmatched reports only: check them first" beside a suggestion about the
+address itself.
 
 ### Actions
 
@@ -300,11 +315,14 @@ person fixes their mailbox.
 
 1. Wait a day for the reports to come in.
 2. Open **Bounced addresses** on the **Open** tab and filter by suggestion.
-3. Hard bounces: open the member, look for a better address, then **Replace email**, **Use another address as
-   primary**, or **Mark undeliverable**.
+3. **Address does not exist** or **Mailbox disabled**: open the member, look for a better address, then **Replace
+   email**, **Use another address as primary**, or **Mark undeliverable**.
 4. Complaints: **Unsubscribe this address**.
-5. Rejections: leave the addresses alone and tell the web team if there are many.
-6. **Dismiss** what needs nothing, with a short reason.
+5. **Temporary failures** (timeouts, full mailboxes, unknown): leave them; act only on **Consider marking
+   undeliverable**, after they repeat.
+6. **Relay denied** and **spam or reputation rejections**: leave the addresses alone; they are about our sending.
+   Tell the web team if there are several. **Policy rejections**: leave them.
+7. **Dismiss** what needs nothing, with a short reason.
 
 ## 3.8 Replies to a blast
 
