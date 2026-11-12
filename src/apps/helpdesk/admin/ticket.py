@@ -3,13 +3,16 @@
 The list opens on people's open tickets: automated mail and spam are hidden unless the Mail filter asks for them
 (the sidebar's "Automated & spam"). The ticket page edits status, priority, category and assignee (each change goes
 to the ticket's audit trail; no typed confirmation, which would be noise on every status change) and shows the
-timeline with the note form below the form. Merging and marking spam do need a typed confirmation. Tickets are
-created only from mail, and deleted only by retention or an I2G Master (behind the typed confirmation). Nothing here
-sends anything.
+timeline with the note form below the form. Merging and marking spam do need a typed confirmation. A merge into
+automated mail or spam is refused before that confirmation (and again by the service when it runs), and the
+"Automated & spam" view, where every ticket is one, offers no merge. Tickets are created only from mail, and deleted
+only by retention or an I2G Master (behind the typed confirmation). Nothing here sends anything.
 """
 
 from django.contrib import admin, messages
+from django.contrib.admin import helpers
 from django.db.models import Count, Q
+from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils.html import format_html, format_html_join
 from unfold.decorators import action, display
@@ -133,6 +136,28 @@ class TicketAdmin(BaseModelAdmin):
         return {"merge_tickets": "MERGE", "mark_spam": "SPAM"}.get(
             action_name, super().get_action_confirmation_word(action_name)
         )
+
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        if request.GET.get(MailTypeFilter.parameter_name) == "automated":
+            actions.pop("merge_tickets", None)  # every ticket listed is automated mail or spam: nothing to merge into
+        return actions
+
+    def response_action(self, request, queryset):
+        # A merge the service would refuse is refused here, before staff are asked to type the confirmation word.
+        refusal = self._merge_refusal(request, queryset)
+        if refusal:
+            messages.error(request, refusal)
+            return HttpResponseRedirect(request.get_full_path())
+        return super().response_action(request, queryset)
+
+    def _merge_refusal(self, request, queryset) -> str:
+        action_form = self._bound_action_form(request)
+        if action_form is None or not action_form.is_valid() or action_form.cleaned_data["action"] != "merge_tickets":
+            return ""
+        if not action_form.cleaned_data["select_across"]:
+            queryset = queryset.filter(pk__in=request.POST.getlist(helpers.ACTION_CHECKBOX_NAME))
+        return tickets.merge_refusal(list(queryset))
 
     # --- list ------------------------------------------------------------------------------------------------------
 
@@ -294,9 +319,13 @@ class TicketAdmin(BaseModelAdmin):
     def move_to_queue(self, request, queryset):
         self._done(request, tickets.move_to_queue(list(queryset), actor=request.user), "moved to the queue")
 
-    @action(description="Merge into the oldest selected ticket")
+    @action(description="Merge into the oldest selected ticket (not automated mail or spam)")
     def merge_tickets(self, request, queryset):
-        target = tickets.merge(list(queryset), actor=request.user)
+        try:
+            target = tickets.merge(list(queryset), actor=request.user)
+        except tickets.MergeRefused as refused:
+            messages.error(request, str(refused))
+            return
         if target is None:
             messages.error(request, "Select at least two tickets that are not merged already.")
             return

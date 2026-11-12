@@ -5,12 +5,17 @@ Every change is a targeted update of the fields it concerns, so it never overwri
 Merging moves the messages of every selected ticket to the oldest one and marks the others merged (nothing is
 deleted); marking spam closes a ticket as spam; "move to the queue" turns an automated ticket into a normal open one
 when the classifier was wrong.
+
+A merge never goes into automated mail or spam (Hongzhe's decision of 2026-11-12: people's messages would be hidden
+in it), and spam is never merged at all: ``merge`` raises ``MergeRefused`` before it changes anything. Automated mail
+merged into a person's ticket changes nothing on it but its timeline, like automated mail that threads there by
+itself (``ingest.store``), and stays hidden: still automated, now merged.
 """
 
 from django.db import transaction
 from django.utils import timezone
 
-from apps.core.services.email.inbound import scrub_links
+from apps.core.services.email.inbound import LABELS, scrub_links
 from apps.core.utils.access import user_can_access_app
 
 from ..models import Ticket, TicketEvent, TicketMessage
@@ -19,6 +24,12 @@ from . import events
 Status = Ticket.Status
 Kind = TicketEvent.Kind
 NOTE_MAX_CHARS = 20000
+# The admin action that turns misclassified mail into a normal ticket, named in the merge refusals.
+MOVE_TO_QUEUE = "Not automated: move to the queue"
+
+
+class MergeRefused(Exception):
+    """A merge refused before anything changed; the message tells staff why and what to do instead."""
 
 
 def _name(member) -> str:
@@ -114,11 +125,12 @@ def mark_spam(tickets, *, actor) -> int:
 
 
 def move_to_queue(tickets, *, actor) -> int:
-    """Automated (or spam) tickets the classifier got wrong become normal open, unread tickets."""
+    """Automated (or spam) tickets the classifier got wrong become normal open, unread tickets. A merged one stays as
+    it is: its messages are on the ticket it was merged into, so it would only be an empty ticket in the queue."""
     now = timezone.now()
     count = 0
     for ticket in tickets:
-        if not ticket.automated and ticket.status != Status.SPAM:
+        if not ticket.is_automated_or_spam or ticket.status == Status.MERGED:
             continue
         with transaction.atomic():
             Ticket.objects.filter(pk=ticket.pk).update(
@@ -129,22 +141,78 @@ def move_to_queue(tickets, *, actor) -> int:
     return count
 
 
+def _planned(tickets) -> list[Ticket]:
+    """The tickets a merge takes, each once and none merged already, oldest (the target) first."""
+    unique = {ticket.pk: ticket for ticket in tickets if ticket.status != Status.MERGED}
+    return sorted(unique.values(), key=_number)
+
+
+def _is_spam(ticket: Ticket) -> bool:
+    return ticket.status == Status.SPAM or (ticket.automated and ticket.classification == "spam")
+
+
+def _hidden_kind(ticket: Ticket) -> str:
+    """What an automated or spam ticket is, for staff: spam, or automated mail with the classifier's label."""
+    if _is_spam(ticket):
+        return "spam"
+    label = LABELS.get(ticket.classification)
+    return f"automated mail ({label})" if label else "automated mail"
+
+
+def _refusal(target: Ticket, sources) -> str:
+    """Why these tickets cannot be merged into ``target`` ("" when they can)."""
+    if target.is_automated_or_spam:
+        return (
+            f"Nothing was merged: {target.display_number}, the oldest selected ticket, is {_hidden_kind(target)}, "
+            "and nothing is merged into automated mail or spam. Leave it out of the selection, or use "
+            f'"{MOVE_TO_QUEUE}" on it first if a person wrote it.'
+        )
+    spam = next((source for source in sources if _is_spam(source)), None)
+    if spam is not None:
+        return (
+            f"Nothing was merged: {spam.display_number} is spam, and spam is never merged into a person's ticket. "
+            f'Leave it out of the selection, or use "{MOVE_TO_QUEUE}" on it first if it is not spam.'
+        )
+    merged = next((ticket for ticket in (target, *sources) if ticket.status == Status.MERGED), None)
+    if merged is not None:
+        return f"Nothing was merged: {merged.display_number} was merged meanwhile. Reload the list and try again."
+    return ""
+
+
+def merge_refusal(tickets) -> str:
+    """Why ``merge`` would refuse these tickets, asked before anything is locked ("" when it would not; fewer than two
+    is not a refusal: ``merge`` returns None). The admin asks it before the typed confirmation."""
+    planned = _planned(tickets)
+    return _refusal(planned[0], planned[1:]) if len(planned) > 1 else ""
+
+
 def merge(tickets, *, actor) -> Ticket | None:
-    """Merge every ticket into the oldest (lowest number); returns it, or None with fewer than two tickets."""
-    tickets = sorted({ticket.pk: ticket for ticket in tickets if ticket.status != Status.MERGED}.values(), key=_number)
-    if len(tickets) < 2:
+    """Merge every ticket into the oldest (lowest number); returns it, or None with fewer than two tickets.
+
+    Raises ``MergeRefused`` before anything changes when the oldest is automated mail or spam, when another one is
+    spam, or when one was merged meanwhile; the rows are judged once locked, so a ticket marked spam since the list
+    was shown is caught too. Automated mail moves its messages (still collapsed automated entries) and nothing else:
+    the ticket's status, unread mark, participants and last activity stay as they were.
+    """
+    planned = _planned(tickets)
+    if len(planned) < 2:
         return None
-    target, sources = tickets[0], tickets[1:]
     now = timezone.now()
     with transaction.atomic():
-        target = Ticket.objects.select_for_update().get(pk=target.pk)
+        # Oldest first, the order every merge locks in.
+        target, *sources = [Ticket.objects.select_for_update().get(pk=ticket.pk) for ticket in planned]
+        refusal = _refusal(target, sources)
+        if refusal:
+            raise MergeRefused(refusal)
         participants = list(target.participants)
         last_activity = target.last_activity_at
         for source in sources:
-            source = Ticket.objects.select_for_update().get(pk=source.pk)
             moved = TicketMessage.objects.filter(ticket=source).update(ticket=target, updated_at=now)
-            participants += [*source.participants, source.requester_email]
-            last_activity = max(last_activity, source.last_activity_at)
+            if not source.automated:
+                # Automated mail's addresses would let its senders (and anyone it was sent to) thread into the
+                # person's ticket by its number or conversation; its time would move the ticket up the queue.
+                participants += [*source.participants, source.requester_email]
+                last_activity = max(last_activity, source.last_activity_at)
             Ticket.objects.filter(pk=source.pk).update(
                 status=Status.MERGED, merged_into=target, closed_at=source.closed_at or now, updated_at=now
             )

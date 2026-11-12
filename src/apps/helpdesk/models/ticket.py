@@ -5,9 +5,13 @@ conversation join it (``services.ingest.matching``). Automated mail (out-of-offi
 list mail, spam, the site's own messages) opens a ticket that is closed at once and hidden from the default queue
 (``automated``): it raises no notification, has no response target and never reopens. Every link to a member or a
 campaign is ``SET_NULL``, so a ticket outlives a deleted account and keeps the requester's address.
+
+Nothing is ever merged into automated mail or spam (``is_automated_or_spam``): ``services.tickets.merge`` refuses
+it, and ``clean`` refuses such a ``merged_into`` for any form or ``full_clean()`` path.
 """
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
 
@@ -133,3 +137,27 @@ class Ticket(ProjectControlModel):
     @property
     def is_open(self) -> bool:
         return self.status in self.OPEN_STATUSES
+
+    @property
+    def is_automated_or_spam(self) -> bool:
+        """Hidden from the people queue (its "Automated & spam" view); a person's message never joins such a ticket,
+        and nothing is merged into one."""
+        return self.automated or self.status == self.Status.SPAM
+
+    def clean(self):
+        super().clean()
+        if not self.merged_into_id:
+            return
+        stored = Ticket.objects.filter(pk=self.pk).values_list("merged_into_id", flat=True).first()
+        if stored == self.merged_into_id:
+            return  # a merge made earlier is not judged again (its target may have been marked spam since)
+        target = Ticket.objects.filter(pk=self.merged_into_id).first()
+        if target is None:
+            return  # ``clean_fields`` reports a target that does not exist
+        if target.pk == self.pk or target.status == self.Status.MERGED:
+            raise ValidationError("A ticket can only be merged into another ticket that is not merged itself.")
+        if target.is_automated_or_spam:
+            what = "spam" if target.status == self.Status.SPAM else "automated mail"
+            raise ValidationError(
+                f"Nothing is merged into automated mail or spam, and {target.display_number} is {what}."
+            )

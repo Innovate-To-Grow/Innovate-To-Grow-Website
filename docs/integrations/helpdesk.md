@@ -19,7 +19,7 @@ only phase H1 plus merge and spam from H2 is built.
 |---|---|
 | **Queue** | People's open tickets (new, open, pending), most recent activity first. A dot marks an unread customer message. |
 | **My Tickets** / **Unassigned** | The same list, assigned to you / to nobody. |
-| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here. |
+| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here. There is no merge here: nothing is merged into automated mail or spam. |
 | **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry**. |
 | **Categories**, **Settings** | Ticket categories; the helpdesk's limits, retention periods and switches, under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
 
@@ -42,8 +42,17 @@ marks it read.
 - Automated messages in a thread are collapsed.
 
 **Bulk actions:** assign to me, unassign, close, reopen (never an automated ticket), mark as read, move to the
-queue, and, behind a typed confirmation (`MERGE`, `SPAM`), **merge** (every selected ticket goes into the oldest
-one; nothing is deleted) and **mark as spam**.
+queue (never a merged ticket: its messages are on the ticket it was merged into), and, behind a typed confirmation
+(`MERGE`, `SPAM`), **merge** and **mark as spam**.
+
+**Merging** puts every selected ticket into the oldest one; nothing is deleted. It never goes into automated mail or
+spam (a person's messages would be hidden there), and spam is never merged: when the oldest selected ticket is
+automated mail or spam, or another selected ticket is spam, nothing is merged and the reason is shown before the
+confirmation is asked for. The rule is the helpdesk service's (`services/tickets.py`), so it holds when the merge
+runs too, and `Ticket.clean()` refuses such a merge target for any form. Automated mail merged into a person's ticket
+shows there collapsed and changes nothing else on it (not its status, unread mark, participants or last activity),
+as when it threads there by itself; the merged ticket stays hidden (still automated, now merged), and later mail of
+its thread lands on the person's ticket.
 
 ## How a message becomes a ticket
 
