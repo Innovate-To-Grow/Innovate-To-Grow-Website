@@ -145,7 +145,8 @@ def switch_primary_email(*, member, contact_email_id, seen: str | None = None) -
 
 
 def describe(result: PrimarySwitch) -> str:
-    """One sentence for the member's history, e.g. "Primary email switched from a@x to b@x: a@x is now the secondary."""
+    """One sentence for the member's history, for example: Primary email switched from old@example.org to
+    new@example.org: old@example.org is now the secondary."""
     new = result.primary.email_address
     if result.previous is None:
         head = f"Primary email set to {new} (the member had none)"

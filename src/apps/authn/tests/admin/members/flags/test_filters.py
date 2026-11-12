@@ -28,10 +28,10 @@ class FilterFixture(TestCase):
         cls.master = Member.objects.create_superuser(password="StrongPass123!", first_name="Ada", last_name="Master")
         email(cls.master, "master@example.com", "primary")
         # Active; verified + subscribed primary; an unverified secondary; a verified phone.
-        cls.ana = Member.objects.create_user(first_name="Ana", last_name="Active", is_active=True)
-        email(cls.ana, "ana@example.com", "primary")
-        email(cls.ana, "ana.alt@example.com", "secondary", verified=False, subscribe=False)
-        ContactPhone.objects.create(member=cls.ana, phone_number="2095550101", verified=True)
+        cls.avery = Member.objects.create_user(first_name="Avery", last_name="Active", is_active=True)
+        email(cls.avery, "avery@example.com", "primary")
+        email(cls.avery, "avery.alt@example.com", "secondary", verified=False, subscribe=False)
+        ContactPhone.objects.create(member=cls.avery, phone_number="2095550101", verified=True)
         # Deactivated; unverified, unsubscribed primary.
         cls.ivan = Member.objects.create_user(first_name="Ivan", last_name="Inactive", is_active=False)
         email(cls.ivan, "ivan@example.com", "primary", verified=False, subscribe=False)
@@ -74,20 +74,20 @@ class FilterFixture(TestCase):
 
 class MemberFilterTests(FilterFixture):
     def test_account_active(self):
-        everyone_active = {"Ada Master", "Ana Active", "Leo Legacy", "Sue Secondary", "Pat Phone", "Sam Staff"}
+        everyone_active = {"Ada Master", "Avery Active", "Leo Legacy", "Sue Secondary", "Pat Phone", "Sam Staff"}
         self.assertEqual(self.names(MEMBERS, "account=active"), everyone_active)
         self.assertEqual(self.names(MEMBERS, "account=inactive"), {"Ivan Inactive", "Pete Pending"})
         self.assertEqual(self.names(MEMBERS, "account=pending"), {"Pete Pending"})
 
     def test_primary_email(self):
         self.assertEqual(
-            self.names(MEMBERS, "primary_email=verified"), {"Ada Master", "Ana Active", "Sue Secondary", "Sam Staff"}
+            self.names(MEMBERS, "primary_email=verified"), {"Ada Master", "Avery Active", "Sue Secondary", "Sam Staff"}
         )
         self.assertEqual(self.names(MEMBERS, "primary_email=unverified"), {"Ivan Inactive", "Pete Pending"})
         self.assertEqual(self.names(MEMBERS, "primary_email=none"), {"Leo Legacy", "Pat Phone"})
 
     def test_unverified_emails(self):
-        self.assertEqual(self.names(MEMBERS, "unverified_email=yes"), {"Ana Active", "Ivan Inactive", "Pete Pending"})
+        self.assertEqual(self.names(MEMBERS, "unverified_email=yes"), {"Avery Active", "Ivan Inactive", "Pete Pending"})
         self.assertEqual(
             self.names(MEMBERS, "unverified_email=no"),
             {"Ada Master", "Leo Legacy", "Sue Secondary", "Pat Phone", "Sam Staff"},
@@ -95,13 +95,13 @@ class MemberFilterTests(FilterFixture):
 
     def test_newsletter(self):
         self.assertEqual(
-            self.names(MEMBERS, "newsletter=primary"), {"Ada Master", "Ana Active", "Pete Pending", "Sam Staff"}
+            self.names(MEMBERS, "newsletter=primary"), {"Ada Master", "Avery Active", "Pete Pending", "Sam Staff"}
         )
         self.assertEqual(self.names(MEMBERS, "newsletter=other_only"), {"Leo Legacy", "Sue Secondary"})
         self.assertEqual(self.names(MEMBERS, "newsletter=none"), {"Ivan Inactive", "Pat Phone"})
 
     def test_phone(self):
-        self.assertEqual(self.names(MEMBERS, "phone=verified"), {"Ana Active", "Pat Phone"})
+        self.assertEqual(self.names(MEMBERS, "phone=verified"), {"Avery Active", "Pat Phone"})
         self.assertEqual(self.names(MEMBERS, "phone=unverified"), {"Leo Legacy"})
         self.assertEqual(
             self.names(MEMBERS, "phone=none"),
@@ -126,9 +126,9 @@ class MemberFilterTests(FilterFixture):
 
 class ContactFilterTests(FilterFixture):
     def test_verified(self):
-        unverified = {"ana.alt@example.com", "ivan@example.com", "pete@example.com", "nobody@example.com"}
+        unverified = {"avery.alt@example.com", "ivan@example.com", "pete@example.com", "nobody@example.com"}
         self.assertEqual(self.names(EMAILS, "verified_status=unverified"), unverified)
-        self.assertNotIn("ana.alt@example.com", self.names(EMAILS, "verified_status=verified"))
+        self.assertNotIn("avery.alt@example.com", self.names(EMAILS, "verified_status=verified"))
         self.assertIn("leo@example.com", self.names(EMAILS, "verified_status=verified"))
         # An unlinked row is nobody's primary.
         self.assertEqual(
@@ -137,7 +137,7 @@ class ContactFilterTests(FilterFixture):
 
     def test_subscribed(self):
         self.assertEqual(
-            self.names(EMAILS, "subscribed=no"), {"ana.alt@example.com", "ivan@example.com", "sue@example.com"}
+            self.names(EMAILS, "subscribed=no"), {"avery.alt@example.com", "ivan@example.com", "sue@example.com"}
         )
         self.assertIn("sue.alt@example.com", self.names(EMAILS, "subscribed=yes"))
 

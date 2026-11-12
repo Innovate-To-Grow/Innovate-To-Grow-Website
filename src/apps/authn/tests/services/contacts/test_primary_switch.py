@@ -172,22 +172,32 @@ class PlanMatchesTheServiceTests(TestCase):
 
     def test_every_shape(self):
         shapes = {
-            "secondary to primary": ([("a@x.org", "primary", True), ("b@x.org", "secondary", True)], "b@x.org"),
+            "secondary to primary": (
+                [("a@example.org", "primary", True), ("b@example.org", "secondary", True)],
+                "b@example.org",
+            ),
             "other to primary, secondary aside": (
-                [("a@x.org", "primary", True), ("b@x.org", "secondary", True), ("c@x.org", "other", True)],
-                "c@x.org",
+                [
+                    ("a@example.org", "primary", True),
+                    ("b@example.org", "secondary", True),
+                    ("c@example.org", "other", True),
+                ],
+                "c@example.org",
             ),
             "two legacy secondaries": (
                 [
-                    ("a@x.org", "primary", True),
-                    ("b@x.org", "secondary", True),
-                    ("c@x.org", "secondary", False),
-                    ("d@x.org", "other", True),
+                    ("a@example.org", "primary", True),
+                    ("b@example.org", "secondary", True),
+                    ("c@example.org", "secondary", False),
+                    ("d@example.org", "other", True),
                 ],
-                "d@x.org",
+                "d@example.org",
             ),
-            "no primary": ([("b@x.org", "secondary", True), ("c@x.org", "other", True)], "c@x.org"),
-            "already primary": ([("a@x.org", "primary", True), ("b@x.org", "secondary", True)], "a@x.org"),
+            "no primary": ([("b@example.org", "secondary", True), ("c@example.org", "other", True)], "c@example.org"),
+            "already primary": (
+                [("a@example.org", "primary", True), ("b@example.org", "secondary", True)],
+                "a@example.org",
+            ),
         }
         for name, (rows, target) in shapes.items():
             with self.subTest(name):
