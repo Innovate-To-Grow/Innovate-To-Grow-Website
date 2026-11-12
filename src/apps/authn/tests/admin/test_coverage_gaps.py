@@ -137,14 +137,14 @@ class MemberChangeFormClearImageTests(TestCase):
 
 class MemberImportFormValidationTests(SimpleTestCase):
     def test_wrong_extension_rejected(self):
-        """forms.py:180 — non-xlsx/xls extension raises a validation error."""
+        """forms.py — anything but .xlsx (openpyxl reads only that format) raises a validation error."""
         from apps.authn.admin.members.forms import MemberImportForm
 
         upload = SimpleUploadedFile("members.txt", b"data", content_type="text/plain")
         form = MemberImportForm(data={}, files={"excel_file": upload})
         self.assertFalse(form.is_valid())
         self.assertIn("excel_file", form.errors)
-        self.assertIn(".xlsx or .xls", str(form.errors["excel_file"]))
+        self.assertIn("Please upload an .xlsx file", str(form.errors["excel_file"]))
 
     def test_oversized_file_rejected(self):
         """forms.py:184 — file larger than 5MB raises a validation error."""

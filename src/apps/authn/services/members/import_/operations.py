@@ -1,22 +1,33 @@
-"""Update helpers for member imports."""
+"""Update existing members from an import.
+
+A row updates the member whose *primary* email is in its Primary Email cell. It overwrites the profile fields it
+fills in, applies the Primary Verified/Subscribed cells in the safe direction only, and adds the secondary email
+and phone number it names (``contacts.py``). It never deletes, re-subscribes, un-verifies, or changes whether a
+member is active, and it never verifies or un-verifies a phone number (the Phone Verified column is ignored). Every
+row that is skipped, and every cell that is not applied, is reported with the reason.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
 
 from django.db import transaction
-from django.db.models.functions import Lower
 
-from apps.authn.models import ContactEmail, ContactPhone
-from apps.authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
-
+from .contacts import apply_primary_flags, sync_phone, sync_secondary_email
+from .matching import lookup_contact_emails, member_label, update_skip_reason
 from .types import ImportResult
 
-# Model defaults, used when a brand-new contact row is created and the sheet supplies no flag.
+# Model defaults, used when a brand-new contact row is created and the sheet supplies no flag. A phone number has no
+# "verified" entry: an import always saves it unverified, whatever the sheet says.
 _EMAIL_DEFAULTS = {"verified": False, "subscribe": True}
-_PHONE_DEFAULTS = {"verified": False, "subscribe": False}
+_PHONE_DEFAULTS = {"subscribe": False}
 
 STAFF_COLUMN_IGNORED = "Staff column ignored (only an I2G Master may change staff status)"
+ACTIVE_COLUMN_IGNORED = (
+    "Active column ignored: the member stays {state} (an import never activates or deactivates an existing member; "
+    "use the Activate/Deactivate actions on the member list)"
+)
+_PROFILE_FIELDS = ("first_name", "last_name", "middle_name", "title", "organization")
 
 
 def _flag(parsed_value, current, default):
@@ -29,170 +40,82 @@ def _flag(parsed_value, current, default):
 def bulk_update_members(
     rows: list[dict],
     result: ImportResult,
-    claimed_contact_emails: set[str],
-    claimed_phones: set[str],
     update_member_allowed: Callable[[object], bool] | None = None,
     allow_privilege_fields: bool = False,
-):
-    emails = [row["primary_email"] for row in rows]
-    contacts = (
-        ContactEmail.objects.annotate(email_lower=Lower("email_address"))
-        .filter(email_lower__in=[e.lower() for e in emails], email_type="primary")
-        .select_related("member")
-    )
-    member_map = {contact.email_address.lower(): contact.member for contact in contacts if contact.member}
-
+) -> None:
+    """Update the member each row names by primary email; skip every other row and say why."""
+    matches_by_address = lookup_contact_emails(row["primary_email"] for row in rows)
     for parsed in rows:
-        member = member_map.get(parsed["primary_email"].lower())
-        if not member:
-            result.skipped_count += 1
-            # Say why: the address may exist only as a secondary or unowned ContactEmail, which is
-            # indistinguishable from a typo without a message.
-            result.errors.append(f"Row {parsed['row']}: no member has {parsed['primary_email']} as their primary email")
+        matches = matches_by_address.get(parsed["primary_email"].lower(), [])
+        if len(matches) != 1 or matches[0].member is None or matches[0].email_type != "primary":
+            reason, member = update_skip_reason(parsed["primary_email"], matches)
+            result.skip_row(parsed["row"], reason, member)
             continue
+        member = matches[0].member
         if update_member_allowed is not None and not update_member_allowed(member):
-            result.skipped_count += 1
-            result.errors.append(f"Row {parsed['row']}: You do not have permission to update this member")
+            result.skip_row(
+                parsed["row"],
+                f"You do not have permission to update {member_label(member)} (only an I2G Master may change staff "
+                "and superuser accounts)",
+                member,
+            )
             continue
-        try:
-            with transaction.atomic():
-                update_single_member(
-                    member,
-                    parsed,
-                    claimed_contact_emails,
-                    claimed_phones,
-                    allow_privilege_fields=allow_privilege_fields,
-                )
-            result.updated_count += 1
-            if parsed["is_staff"] is not None and not allow_privilege_fields:
-                result.errors.append(f"Row {parsed['row']}: {STAFF_COLUMN_IGNORED}")
-        except Exception as exc:  # noqa: BLE001
-            result.skipped_count += 1
-            result.errors.append(f"Row {parsed['row']}: {exc}")
+        _update_row(member, parsed, result, allow_privilege_fields)
 
 
-def _apply_profile_fields(member, parsed, allow_privilege_fields: bool) -> None:
-    """Overwrite the profile fields the row fills in; blank cells keep the current value."""
-    if parsed["first_name"]:
-        member.first_name = parsed["first_name"]
-    if parsed["last_name"]:
-        member.last_name = parsed["last_name"]
-    if parsed["middle_name"]:
-        member.middle_name = parsed["middle_name"]
-    if parsed["title"]:
-        member.title = parsed["title"]
-    if parsed["organization"]:
-        member.organization = parsed["organization"]
-    if parsed["is_active"] is not None:
-        member.is_active = parsed["is_active"]
+def _update_row(member, parsed: dict, result: ImportResult, allow_privilege_fields: bool) -> None:
+    # Taken before the row is applied: a failed row leaves the sheet's values on the in-memory instance.
+    label = member_label(member)
+    try:
+        # One savepoint per row: a failing row is rolled back on its own and the import goes on.
+        with transaction.atomic():
+            notes = update_single_member(member, parsed, allow_privilege_fields=allow_privilege_fields)
+    except Exception as exc:  # noqa: BLE001
+        result.skip_row(parsed["row"], f"could not update {label}: {exc}. Nothing in this row was changed", member)
+        return
+    result.updated_count += 1
+    for note in [*parsed.get("notes", []), *notes]:
+        result.note_row(parsed["row"], note, member)
+
+
+def update_single_member(member, parsed: dict, allow_privilege_fields: bool = False) -> list[str]:
+    """Apply one row to ``member`` and return what it asked for that was not applied, or was kept.
+
+    The Primary Verified/Subscribed cells touch only the address in the Primary Email cell, and only when this
+    member owns it. The primary email itself is never created, re-typed or deleted here.
+    """
+    notes: list[str] = []
+    _apply_profile_fields(member, parsed, allow_privilege_fields, notes)
+    primary = member.contact_emails.filter(email_address__iexact=parsed["primary_email"]).first()
+    if primary is not None:
+        apply_primary_flags(primary, parsed, notes)
+    sync_secondary_email(member, parsed, notes)
+    sync_phone(member, parsed, notes)
+    return notes
+
+
+def _apply_profile_fields(member, parsed: dict, allow_privilege_fields: bool, notes: list[str]) -> None:
+    """Overwrite the profile fields the row fills in; blank cells keep the current value.
+
+    Only the fields the row changes are written. ``member`` was loaded before the rows were applied, so a full save
+    could put back a value an admin changed meanwhile, such as reactivating a member deactivated mid-import.
+    """
+    changed = [name for name in _PROFILE_FIELDS if parsed[name] and parsed[name] != getattr(member, name)]
+    for name in changed:
+        setattr(member, name, parsed[name])
+    # Reactivating would undo an admin's deactivation, and activating ends an unfinished sign-up
+    # (``Member.save`` clears ``registration_pending``); deactivating locks the member out. None of that
+    # happens from a sheet, which may be an old export.
+    if parsed["is_active"] is not None and parsed["is_active"] != member.is_active:
+        notes.append(ACTIVE_COLUMN_IGNORED.format(state="active" if member.is_active else "inactive"))
     # ``is_staff`` is an I2G Master responsibility (see MemberAdmin.superuser_only_fields). The
     # export writes a Staff column, so without this gate the export -> edit -> re-import round trip
     # was a way for any authn-app admin to mint staff accounts or lock the superuser out.
-    if parsed["is_staff"] is not None and allow_privilege_fields:
-        member.is_staff = parsed["is_staff"]
-    member.save()
-
-
-def _sync_primary_email(member, parsed, claimed_contact_emails) -> None:
-    primary_contact = member.contact_emails.filter(email_type="primary").first()
-    primary_email = primary_contact.email_address if primary_contact else parsed["primary_email"]
-    email_key = primary_email.lower()
-    if email_key not in claimed_contact_emails:
-        existing = ContactEmail.objects.filter(member=member, email_address__iexact=primary_email).first()
-        if existing:
-            existing.verified = _flag(parsed["primary_verified"], existing.verified, _EMAIL_DEFAULTS["verified"])
-            existing.subscribe = _flag(parsed["primary_subscribed"], existing.subscribe, _EMAIL_DEFAULTS["subscribe"])
-            existing.email_type = "primary"
-            existing.save(update_fields=["verified", "subscribe", "email_type", "updated_at"])
+    if parsed["is_staff"] is not None and parsed["is_staff"] != member.is_staff:
+        if allow_privilege_fields:
+            member.is_staff = parsed["is_staff"]
+            changed.append("is_staff")
         else:
-            ContactEmail.objects.create(
-                member=member,
-                email_address=primary_email,
-                email_type="primary",
-                verified=_flag(parsed["primary_verified"], None, _EMAIL_DEFAULTS["verified"]),
-                subscribe=_flag(parsed["primary_subscribed"], None, _EMAIL_DEFAULTS["subscribe"]),
-            )
-        claimed_contact_emails.add(email_key)
-    else:
-        current = ContactEmail.objects.filter(member=member, email_address__iexact=primary_email).first()
-        if current is not None:
-            current.email_type = "primary"
-            current.verified = _flag(parsed["primary_verified"], current.verified, _EMAIL_DEFAULTS["verified"])
-            current.subscribe = _flag(parsed["primary_subscribed"], current.subscribe, _EMAIL_DEFAULTS["subscribe"])
-            current.save(update_fields=["email_type", "verified", "subscribe", "updated_at"])
-
-
-def _sync_secondary_email(member, parsed, claimed_contact_emails) -> None:
-    if parsed["secondary_email"]:
-        secondary_key = parsed["secondary_email"].lower()
-        member.contact_emails.filter(email_type="secondary").exclude(
-            email_address__iexact=parsed["secondary_email"]
-        ).delete()
-        if secondary_key not in claimed_contact_emails:
-            existing_sec = ContactEmail.objects.filter(
-                member=member, email_address__iexact=parsed["secondary_email"]
-            ).first()
-            if existing_sec:
-                existing_sec.email_type = "secondary"
-                existing_sec.verified = _flag(
-                    parsed["secondary_verified"], existing_sec.verified, _EMAIL_DEFAULTS["verified"]
-                )
-                existing_sec.subscribe = _flag(
-                    parsed["secondary_subscribed"], existing_sec.subscribe, _EMAIL_DEFAULTS["subscribe"]
-                )
-                existing_sec.save(update_fields=["email_type", "verified", "subscribe", "updated_at"])
-            else:
-                ContactEmail.objects.create(
-                    member=member,
-                    email_address=parsed["secondary_email"],
-                    email_type="secondary",
-                    verified=_flag(parsed["secondary_verified"], None, _EMAIL_DEFAULTS["verified"]),
-                    subscribe=_flag(parsed["secondary_subscribed"], None, _EMAIL_DEFAULTS["subscribe"]),
-                )
-            claimed_contact_emails.add(secondary_key)
-    elif parsed.get("has_secondary_email_column"):
-        # Blank cell in a column the sheet does have = "remove it". A sheet without the column at all
-        # must not delete anything; deletes here are hard and unrecoverable.
-        member.contact_emails.filter(email_type="secondary").delete()
-
-
-def _sync_phone(member, parsed, claimed_phones) -> None:
-    if parsed["phone_number"]:
-        region = infer_region_from_e164(parsed["phone_number"])
-        national = normalize_to_national(parsed["phone_number"], region)
-        if national not in claimed_phones:
-            existing_phone = member.contact_phones.first()
-            if existing_phone:
-                existing_phone.phone_number = national
-                existing_phone.region = region
-                existing_phone.subscribe = _flag(
-                    parsed["phone_subscribed"], existing_phone.subscribe, _PHONE_DEFAULTS["subscribe"]
-                )
-                existing_phone.verified = _flag(
-                    parsed["phone_verified"], existing_phone.verified, _PHONE_DEFAULTS["verified"]
-                )
-                existing_phone.save()
-            else:
-                ContactPhone.objects.create(
-                    member=member,
-                    phone_number=national,
-                    region=region,
-                    subscribe=_flag(parsed["phone_subscribed"], None, _PHONE_DEFAULTS["subscribe"]),
-                    verified=_flag(parsed["phone_verified"], None, _PHONE_DEFAULTS["verified"]),
-                )
-            claimed_phones.add(national)
-    elif parsed.get("has_phone_column"):
-        member.contact_phones.all().delete()
-
-
-def update_single_member(
-    member,
-    parsed,
-    claimed_contact_emails,
-    claimed_phones,
-    allow_privilege_fields: bool = False,
-):
-    _apply_profile_fields(member, parsed, allow_privilege_fields)
-    _sync_primary_email(member, parsed, claimed_contact_emails)
-    _sync_secondary_email(member, parsed, claimed_contact_emails)
-    _sync_phone(member, parsed, claimed_phones)
+            notes.append(STAFF_COLUMN_IGNORED)
+    if changed:
+        member.save(update_fields=[*changed, "updated_at"])

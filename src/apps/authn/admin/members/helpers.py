@@ -158,7 +158,10 @@ def import_excel_view(admin_obj, request):
             )
             if result.errors:
                 message += f", {len(result.errors)} error(s)"
-            admin_obj.message_user(request, message, level="success" if not result.errors else "warning")
+            if result.warnings:
+                message += f", {len(result.warnings)} note(s)"
+            level = "warning" if result.errors or result.warnings else "success"
+            admin_obj.message_user(request, message, level=level)
 
     return render(request, "admin/authn/member/import_excel.html", context)
 

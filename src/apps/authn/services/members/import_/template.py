@@ -30,7 +30,6 @@ def generate_template_excel() -> bytes:
         ("secondary_subscribed", "Secondary Subscribed", 20),
         ("phone_number", "Phone Number", 18),
         ("phone_subscribed", "Phone Subscribed", 18),
-        ("phone_verified", "Phone Verified", 18),
         ("organization", "Organization (optional)", 25),
     ]
     _apply_headers(worksheet, headers)
@@ -86,7 +85,6 @@ def _apply_example_row(worksheet):
         "FALSE",
         "+12095551234",
         "TRUE",
-        "FALSE",
         "UC Merced",
     ]
     for column, value in enumerate(example_data, 1):
@@ -113,7 +111,6 @@ def _apply_instruction_sheet(workbook):
         ("Secondary Subscribed", "Whether the secondary email is subscribed (TRUE/FALSE)"),
         ("Phone Number", "Phone number in E.164 format, e.g. +12095551234 (optional)"),
         ("Phone Subscribed", "Whether the phone is subscribed (TRUE/FALSE)"),
-        ("Phone Verified", "Whether the phone is verified (TRUE/FALSE)"),
         ("Organization (optional)", "Organization or company name"),
         ("", ""),
         ("Notes", ""),
@@ -121,6 +118,15 @@ def _apply_instruction_sheet(workbook):
         ("", "Username is auto-generated from the primary email address"),
         ("", "A random password is generated unless a default is specified"),
         ("", "Existing members can be updated if matched by primary email and updates are enabled"),
+        ("", "Updates never delete anything: a blank cell or a missing column keeps the stored value"),
+        ("", "A new Secondary Email or Phone Number is added next to the member's existing ones, unverified"),
+        (
+            "",
+            "A Phone Verified column (Export to Excel has one) is ignored: phone numbers are saved unverified, stored "
+            "numbers keep their status, and members verify their own numbers with a one-time code",
+        ),
+        ("", "An import never re-subscribes or un-verifies an address, or activates/deactivates an existing member"),
+        ("", "TRUE/FALSE columns accept TRUE, FALSE, Yes or No; any other text is ignored"),
         ("", "'Last Updated' and 'Primary Expired' are informational only"),
     ]
     for row, (col1, col2) in enumerate(instructions, 1):
