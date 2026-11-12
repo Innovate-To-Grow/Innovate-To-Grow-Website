@@ -156,16 +156,16 @@ one campaign.) Its tabs:
   full history. It starts on the last 7 days: widen the **Range** for older emails.
 - **Bounce reports:** one row per failed recipient in each report, with its classification and match.
 
-The note at the top of every page gives the date of the oldest email on record. Monitoring began in November 2026,
-and emails are kept for 180 days, so anything older is not there.
+The note at the top of every page except **Amazon SES** gives the date of the oldest email on record. Monitoring
+began in November 2026, and emails are kept for 180 days, so anything older is not there.
 
 Two more tabs: **Bounced addresses** (3.7) and **Amazon SES**. **Amazon SES** is the old **Delivery Dashboard**
-page (its old address opens this tab). It shows Amazon's own figures for mail sent through Amazon SES, the site's
-fallback email provider: attempts, deliveries and errors by type, with a daily chart (**Range**: 7 days to 12
-months), and Amazon's suppression list, the addresses Amazon refuses to send to, with a search and **Export the
-rows shown**. These numbers come from Amazon, not from the site's own record, so they do not match the Overview.
-Its own note at the top says where its figures come from; while Microsoft Graph sends the site's mail, a second
-note says so.
+page (its old address opens this tab). It shows Amazon's own figures for mail sent through Amazon SES, one of the
+providers **Email Sending Method** can choose (the site never switches to it by itself): attempts, deliveries and
+errors by type, with a daily chart (**Range**: 7 days to 12 months), and Amazon's suppression list, the addresses
+Amazon refuses to send to, with a search and **Export the rows shown**. These numbers come from Amazon, not from the
+site's own record, so they do not match the Overview. Its own note at the top says where its figures come from;
+while Microsoft Graph sends the site's mail, a second note says so.
 
 ### Bounce reports
 
