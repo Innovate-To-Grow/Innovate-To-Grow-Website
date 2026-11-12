@@ -163,8 +163,9 @@ Two more tabs: **Bounced addresses** (3.7) and **Amazon SES**. **Amazon SES** is
 page (its old address opens this tab). It shows Amazon's own figures for mail sent through Amazon SES, the site's
 fallback email provider: attempts, deliveries and errors by type, with a daily chart (**Range**: 7 days to 12
 months), and Amazon's suppression list, the addresses Amazon refuses to send to, with a search and **Export the
-rows shown**. These numbers come from Amazon, not from the site's own record, so they do not match the Overview;
-while Microsoft Graph sends the site's mail, a note at the top of the tab says so.
+rows shown**. These numbers come from Amazon, not from the site's own record, so they do not match the Overview.
+Its own note at the top says where its figures come from; while Microsoft Graph sends the site's mail, a second
+note says so.
 
 ### Bounce reports
 
