@@ -1,0 +1,87 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block extra_filters %}
+<label class="i2g-monitor-field i2g-monitor-field--wide">
+  <span>Search</span>
+  <input type="search" name="q" value="{{ listing.filters.q }}" placeholder="Recipient, subject, Message-ID, error or id">
+</label>
+<label class="i2g-monitor-field">
+  <span>Category</span>
+  <select name="category">
+    <option value="">All (no probes)</option>
+    {% for value, label in categories %}<option value="{{ value }}" {% if listing.filters.category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</label>
+<label class="i2g-monitor-field">
+  <span>API status</span>
+  <select name="status">
+    <option value="">Any</option>
+    {% for value, label in statuses %}<option value="{{ value }}" {% if listing.filters.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</label>
+<label class="i2g-monitor-field">
+  <span>Delivery</span>
+  <select name="delivery">
+    <option value="">Any</option>
+    {% for value, label in deliveries %}<option value="{{ value }}" {% if listing.filters.delivery == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</label>
+<label class="i2g-monitor-field">
+  <span>Last error</span>
+  <select name="error">
+    <option value="">Any</option>
+    {% for value, label in error_kinds %}<option value="{{ value }}" {% if listing.filters.error == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+</label>
+<label class="i2g-monitor-check"><input type="checkbox" name="retried" value="1" {% if listing.filters.retried %}checked{% endif %}> Retried only</label>
+{% if listing.filters.campaign %}<input type="hidden" name="campaign" value="{{ listing.filters.campaign }}">{% endif %}
+<label class="i2g-monitor-field">
+  <span>Per page</span>
+  <select name="page_size">{% for size in page_sizes %}<option value="{{ size }}" {% if listing.page_size == size %}selected{% endif %}>{{ size }}</option>{% endfor %}</select>
+</label>
+<input type="hidden" name="sort" value="{{ listing.sort }}">
+<input type="hidden" name="dir" value="{% if listing.descending %}desc{% else %}asc{% endif %}">
+{% endblock %}
+
+{% block monitoring_content %}
+<div class="i2g-monitor-card">
+  <p class="i2g-monitor-muted">
+    {{ page.paginator.count }} email{{ page.paginator.count|pluralize }}{% if listing.filters.campaign %} of one campaign{% endif %} · {{ scope.label|lower }}.
+    {% if listing.filters.campaign %}<a href="?{{ scope_query }}">Show all campaigns</a>{% endif %}
+    Select a row's time to see its attempts, errors and bounce reports.
+  </p>
+  <div class="i2g-monitor-table-wrap">
+    <table class="i2g-monitor-table">
+      <thead><tr>
+        {% include "admin/mail/email_monitoring/_sort_header.html" with column="created" label="Time" %}
+        {% include "admin/mail/email_monitoring/_sort_header.html" with column="category" label="Category" %}
+        {% include "admin/mail/email_monitoring/_sort_header.html" with column="recipient" label="Recipient" %}
+        <th scope="col">Campaign</th>
+        {% include "admin/mail/email_monitoring/_sort_header.html" with column="status" label="API status" %}
+        {% include "admin/mail/email_monitoring/_sort_header.html" with column="delivery" label="Delivery / bounce" %}
+        {% include "admin/mail/email_monitoring/_sort_header.html" with column="attempts" label="Attempts" numeric=True %}
+        <th scope="col">Error summary</th>
+        {% include "admin/mail/email_monitoring/_sort_header.html" with column="duration" label="Duration" numeric=True %}
+      </tr></thead>
+      <tbody>
+        {% for email in page.object_list %}
+        <tr>
+          <td><a href="{% url 'admin:mail_email_monitoring_email' email.pk %}">{{ email.created_at|date:"M j, H:i:s" }}</a></td>
+          <td>{{ email.get_category_display }}{% if email.subcategory and email.category != "notification" %}<br><span class="i2g-monitor-muted">{{ email.subcategory }}</span>{% endif %}</td>
+          <td>{{ email.recipient|default:"–" }}{% if email.recipient_count > 1 %} <span class="i2g-monitor-muted">+{{ email.recipient_count|add:"-1" }}</span>{% endif %}</td>
+          <td>{% if email.campaign_id %}<a href="{% url 'admin:mail_email_monitoring_campaign' email.campaign_id %}">{{ email.campaign_name }}</a>{% else %}–{% endif %}</td>
+          <td>{% include "admin/mail/email_monitoring/_status.html" with value=email.status label=email.get_status_display %}</td>
+          <td>{% include "admin/mail/email_monitoring/_status.html" with value=email.delivery_status label=email.get_delivery_status_display %}{% if email.bounce_classification %}<br><span class="i2g-monitor-muted">{{ email.bounce_label }}</span>{% endif %}</td>
+          <td class="num">{{ email.attempt_count }}{% if email.deferral_count %}<br><span class="i2g-monitor-muted">{{ email.deferral_count }} held</span>{% endif %}</td>
+          <td>{% if email.status == "accepted" %}{% if email.attempt_count > 1 %}Accepted after {{ email.retry_count }} retr{{ email.retry_count|pluralize:"y,ies" }}{% else %}–{% endif %}{% else %}{% if email.last_http_status and email.last_http_status != 202 %}HTTP {{ email.last_http_status }} · {% endif %}{{ email.last_error|default:"–"|truncatechars:120 }}{% endif %}</td>
+          <td class="num">{% if email.total_duration_ms %}{{ email.total_duration_ms }} ms{% else %}–{% endif %}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="9" class="i2g-monitor-empty">No emails match these filters.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "admin/mail/email_monitoring/_pagination.html" %}
+</div>
+{% endblock %}

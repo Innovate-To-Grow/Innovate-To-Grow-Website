@@ -107,5 +107,7 @@ def challenge_error_response(exc: Exception) -> Response:
     if isinstance(exc, PhoneVerificationBusy):
         return busy_response(exc)
     if isinstance(exc, PhoneVerificationDeliveryError):
+        # A number on the SMS opt-out list (``PhoneNumberOptedOut``) answers the same: these endpoints are open to
+        # anyone, and saying "it replied STOP" would tell a stranger about that number.
         return Response({"detail": "Failed to send verification SMS."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
     raise exc

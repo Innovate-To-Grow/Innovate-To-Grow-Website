@@ -63,6 +63,8 @@ describe('Router', () => {
         'membership/events',
         'subscribe',
         'login-link',
+        'l',
+        'l/:token',
         'email-auth-link',
         'impersonate-login',
     ];

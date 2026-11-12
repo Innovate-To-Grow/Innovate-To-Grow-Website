@@ -1,0 +1,13 @@
+{# Recipients the audience skipped because their address is suppressed for bulk mail (Email Monitoring → Bounced addresses). #}
+{% if skipped_count %}
+<div id="campaign-suppressed-notice" class="mb-6 rounded-default border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
+    <div class="flex items-start gap-3">
+        <span class="material-symbols-outlined text-blue-600 dark:text-blue-400 !text-[22px] mt-0.5">unsubscribe</span>
+        <p class="text-xs text-blue-800 dark:text-blue-300">
+            {{ skipped_count }} recipient{{ skipped_count|pluralize }} skipped: undeliverable. {{ skipped_count|pluralize:"The address is,Their addresses are" }} marked undeliverable or suppressed on
+            <a class="underline" href="{% url 'admin:mail_email_monitoring_addresses' %}?status=all&amp;suppressed=yes">Email Monitoring → Bounced addresses</a>,
+            so this campaign does not send to {{ skipped_count|pluralize:"it,them" }}. Sign-in codes and tickets still reach {{ skipped_count|pluralize:"it,them" }}.
+        </p>
+    </div>
+</div>
+{% endif %}

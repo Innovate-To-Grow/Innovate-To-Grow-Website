@@ -27,6 +27,7 @@ P0_ROUTES = (
     "event:verify-phone-code",
     "mail:login-link",
     "mail:magic-login",
+    "mail:sms-link",
     "authn:token-refresh",
     "authn:session",
     "authn:send-verification-challenge",

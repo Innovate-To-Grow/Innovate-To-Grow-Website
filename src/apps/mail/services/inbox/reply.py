@@ -2,7 +2,7 @@ import logging
 import re
 
 from apps.core.models import EmailServiceConfig
-from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
+from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email, email_tracking
 from apps.core.utils.security import is_plain_address
 
 logger = logging.getLogger(__name__)
@@ -75,7 +75,8 @@ def send_reply(
 
 def _send_reply_via_ses(*, config, to_email, cc_list, message) -> str:
     try:
-        deliver_email(message, config=config)
+        with email_tracking(category="inbox_reply"):
+            deliver_email(message, config=config)
         return ""
     except EmailDeliveryError:
         logger.exception("Failed to send reply to %s.", to_email)

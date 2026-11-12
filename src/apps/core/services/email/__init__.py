@@ -13,6 +13,7 @@ from .graph import GraphProvider
 from .registry import resolve_provider
 from .ses import SESProvider
 from .smtp import SMTPProvider
+from .telemetry import email_tracking
 
 __all__ = [
     "DeliveryResult",
@@ -29,5 +30,6 @@ __all__ = [
     "TransientEmailDeliveryError",
     "UncertainEmailDeliveryError",
     "deliver_email",
+    "email_tracking",
     "resolve_provider",
 ]

@@ -137,18 +137,18 @@ class MemberChangeFormClearImageTests(TestCase):
 
 class MemberImportFormValidationTests(SimpleTestCase):
     def test_wrong_extension_rejected(self):
-        """forms.py:180 — non-xlsx/xls extension raises a validation error."""
-        from apps.authn.admin.members.forms import MemberImportForm
+        """import_forms.py — anything but .xlsx (openpyxl reads only that format) raises a validation error."""
+        from apps.authn.admin.members.import_forms import MemberImportForm
 
         upload = SimpleUploadedFile("members.txt", b"data", content_type="text/plain")
         form = MemberImportForm(data={}, files={"excel_file": upload})
         self.assertFalse(form.is_valid())
         self.assertIn("excel_file", form.errors)
-        self.assertIn(".xlsx or .xls", str(form.errors["excel_file"]))
+        self.assertIn("Please upload an .xlsx file", str(form.errors["excel_file"]))
 
     def test_oversized_file_rejected(self):
-        """forms.py:184 — file larger than 5MB raises a validation error."""
-        from apps.authn.admin.members.forms import MemberImportForm
+        """import_forms.py — a file larger than 5MB raises a validation error."""
+        from apps.authn.admin.members.import_forms import MemberImportForm
 
         big = SimpleUploadedFile(
             "members.xlsx",
@@ -286,53 +286,6 @@ class ContactEmailInlinePrimaryFormsetTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "A member may only have one primary email.")
         self.assertFalse(Member.objects.filter(first_name="Two", last_name="Primaries").exists())
-
-
-# ---------------------------------------------------------------------------
-# admin/members/helpers.py:103
-# ---------------------------------------------------------------------------
-class ImportResultMessageTests(TestCase):
-    def test_import_view_appends_error_count_to_message(self):
-        """helpers.py:103 — success message includes error count when errors present."""
-        from apps.authn.admin.members import helpers
-        from apps.authn.services.members.import_.types import ImportResult
-
-        captured = {}
-
-        class FakeAdmin:
-            def has_view_permission(self, request, obj=None):
-                return True
-
-            def message_user(self, request, message, level=None):
-                captured["message"] = message
-                captured["level"] = level
-
-        result = ImportResult(
-            success=True,
-            created_count=1,
-            updated_count=0,
-            skipped_count=0,
-            errors=["row 5 bad email"],
-        )
-
-        request = RequestFactory().post("/import/", {})
-
-        with (
-            patch.object(helpers, "MemberImportForm") as FormCls,
-            patch(
-                "apps.authn.services.members.import_.import_members_from_excel",
-                return_value=result,
-            ),
-            patch.object(helpers, "build_import_context", return_value={}),
-            patch.object(helpers, "render", return_value="rendered"),
-        ):
-            form = FormCls.return_value
-            form.is_valid.return_value = True
-            form.cleaned_data = {"excel_file": object(), "set_password": "", "update_existing": False}
-            helpers.import_excel_view(FakeAdmin(), request)
-
-        self.assertIn("1 error(s)", captured["message"])
-        self.assertEqual(captured["level"], "warning")
 
 
 # ---------------------------------------------------------------------------

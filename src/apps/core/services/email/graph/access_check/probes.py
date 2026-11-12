@@ -23,6 +23,7 @@ from apps.core.services.delivery_rates.adapters.graph import graph_signal
 from ...contracts import EmailMessage
 from ...exceptions import PermanentEmailDeliveryError
 from ...mime import build_mime_message
+from ...telemetry.probes import tracked_probe
 from .. import json_message, transport
 from ..errors import innermost_error_code
 from .judge import judge, newest_id
@@ -96,6 +97,7 @@ class Prober:
         max_bytes = settings.GRAPH_ACCESS_CHECK_MIME_MAX_BYTES
         return self._get_response(VALUE, mailbox, path, True, max_bytes)[0]
 
+    @tracked_probe("mime", PROBE_SUBJECT)
     def send_mime(self, mailbox: str) -> ProbeResult:
         """A MIME sendMail from *mailbox* to itself, as the site sends most mail (Exchange keeps a Sent Items copy)."""
         message = EmailMessage(subject=PROBE_SUBJECT, to=(mailbox,), text_body=PROBE_BODY)
@@ -108,6 +110,7 @@ class Prober:
             return _with_note(result, f"probe email sent to {mailbox}; a copy stays in its Sent Items")
         return result
 
+    @tracked_probe("json", PROBE_SUBJECT)
     def send_json(self, check: str, *, url_mailbox: str, from_mailbox: str, recipient: str) -> ProbeResult:
         """A JSON sendMail Microsoft must refuse, with ``saveToSentItems`` false so a wrong 202 files no copy."""
         message = EmailMessage(subject=PROBE_SUBJECT, to=(recipient,), text_body=PROBE_BODY, keep_sent_copy=False)
