@@ -30,10 +30,11 @@ READER_STATES = {"paused": "paused", "off": "switched off", "inactive": "not act
 def _level(state: EmailMonitorState | None, *, active: bool, now) -> str:
     if not settings.EMAIL_MONITORING["bounce_processing_enabled"] or not active:
         return "inactive"
+    if state is not None and state.paused:
+        # Before the first scan too: that scan waits for Resume, so "waiting for the first scan" would mislead.
+        return "paused"
     if state is None or state.last_run_finished_at is None:
         return "waiting"
-    if state.paused:
-        return "paused"
     if state.consecutive_failures:
         return "error"
     stale_after = timedelta(seconds=STALE_INTERVALS * interval_seconds())
