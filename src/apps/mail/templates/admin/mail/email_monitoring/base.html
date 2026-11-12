@@ -27,8 +27,12 @@
     <a href="{% url 'admin:mail_email_monitoring_addresses' %}" {% if section == "addresses" %}aria-current="page"{% endif %}>
       <span class="material-symbols-outlined" aria-hidden="true">unsubscribe</span>Bounced addresses
     </a>
+    <a href="{% url 'admin:mail_email_monitoring_ses' %}" {% if section == "ses" %}aria-current="page"{% endif %}>
+      <span class="material-symbols-outlined" aria-hidden="true">cloud</span>Amazon SES
+    </a>
   </nav>
 
+  {% block monitoring_notice %}
   <div class="i2g-monitor-notice" role="note">
     <span class="material-symbols-outlined" aria-hidden="true">info</span>
     <p>
@@ -41,6 +45,7 @@
       {% if not health.telemetry_enabled %}<strong>Telemetry is switched off (EMAIL_TELEMETRY_ENABLED): new emails are not recorded.</strong>{% endif %}
     </p>
   </div>
+  {% endblock %}
 
   {% if scope %}
   <form method="get" class="i2g-monitor-filters" aria-label="Time range and filters">

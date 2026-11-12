@@ -136,9 +136,11 @@ TABS = [
         ],
     },
     {
+        # Email Monitoring holds every delivery figure: its tabs are Overview, Email log, Bounce reports, Bounced
+        # addresses and Amazon SES (the former Delivery Dashboard, whose old address redirects there). Unfold marks
+        # this tab active on every page under its link.
         "page": "mail_delivery_operations",
         "items": [
-            {"title": "Delivery Dashboard", "link": "/admin/mail/delivery-dashboard/"},
             {"title": "Email Monitoring", "link": "/admin/mail/email-monitoring/"},
             {"title": "Notification Delivery", "link": "/admin/mail/settings/", "active": _is_notification_delivery},
             {"title": "Delivery Rates", "link": _DELIVERY_RATES_PATH},

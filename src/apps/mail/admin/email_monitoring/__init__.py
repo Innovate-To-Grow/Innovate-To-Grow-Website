@@ -1,35 +1,42 @@
-"""Mail → Delivery Operations → Email Monitoring (admin URLs; the views are in ``views``, ``addresses`` and
-``address_actions``)."""
+"""Mail → Delivery Operations → Email Monitoring (admin URLs; the views are in ``views``, ``addresses``,
+``address_actions`` and ``ses``). The Amazon SES tab is the former Delivery Dashboard, whose old addresses are answered
+here too (``_legacy_urls``)."""
 
 from django.contrib import admin
 from django.urls import path
 
-from . import address_actions, addresses, views
+from . import address_actions, addresses, ses, views
 
 
 def get_email_monitoring_urls():
     view = admin.site.admin_view
-    return [
-        path("mail/email-monitoring/", view(views.overview_view), name="mail_email_monitoring"),
-        path("mail/email-monitoring/data/", view(views.overview_data_view), name="mail_email_monitoring_data"),
-        path("mail/email-monitoring/emails/", view(views.email_log_view), name="mail_email_monitoring_emails"),
-        path(
-            "mail/email-monitoring/emails/<uuid:pk>/",
-            view(views.email_detail_view),
-            name="mail_email_monitoring_email",
-        ),
-        path("mail/email-monitoring/bounces/", view(views.bounce_list_view), name="mail_email_monitoring_bounces"),
-        path(
-            "mail/email-monitoring/campaigns/<uuid:pk>/",
-            view(views.campaign_view),
-            name="mail_email_monitoring_campaign",
-        ),
-        path(
-            "mail/email-monitoring/bounce-processing/",
-            view(views.bounce_processing_view),
-            name="mail_email_monitoring_bounce_processing",
-        ),
-    ] + _address_urls(view)
+    return (
+        [
+            path("mail/email-monitoring/", view(views.overview_view), name="mail_email_monitoring"),
+            path("mail/email-monitoring/data/", view(views.overview_data_view), name="mail_email_monitoring_data"),
+            path("mail/email-monitoring/emails/", view(views.email_log_view), name="mail_email_monitoring_emails"),
+            path(
+                "mail/email-monitoring/emails/<uuid:pk>/",
+                view(views.email_detail_view),
+                name="mail_email_monitoring_email",
+            ),
+            path("mail/email-monitoring/bounces/", view(views.bounce_list_view), name="mail_email_monitoring_bounces"),
+            path(
+                "mail/email-monitoring/campaigns/<uuid:pk>/",
+                view(views.campaign_view),
+                name="mail_email_monitoring_campaign",
+            ),
+            path(
+                "mail/email-monitoring/bounce-processing/",
+                view(views.bounce_processing_view),
+                name="mail_email_monitoring_bounce_processing",
+            ),
+            path("mail/email-monitoring/ses/", view(ses.ses_view), name="mail_email_monitoring_ses"),
+            path("mail/email-monitoring/ses/data/", view(ses.ses_data_view), name="mail_email_monitoring_ses_data"),
+        ]
+        + _address_urls(view)
+        + _legacy_urls(view)
+    )
 
 
 def _address_urls(view):
@@ -65,4 +72,17 @@ def _address_urls(view):
             view(address_actions.address_action_view),
             name="mail_email_monitoring_address_action",
         ),
+    ]
+
+
+def _legacy_urls(view):
+    """The Delivery Dashboard's old addresses: the page redirects to the Amazon SES tab (query string kept), and its
+    JSON endpoint still answers with the same payload as ``ses/data/``. Both keep their URL names."""
+    return [
+        path(
+            "mail/delivery-dashboard/",
+            view(ses.DeliveryDashboardRedirect.as_view()),
+            name="mail_delivery_dashboard",
+        ),
+        path("mail/delivery-dashboard/data/", view(ses.ses_data_view), name="mail_delivery_dashboard_data"),
     ]

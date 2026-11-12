@@ -39,9 +39,9 @@ def _is_service_credentials(request):
 
 
 def _is_mail_delivery_operations(request):
-    return request.path.startswith(
-        ("/admin/mail/delivery-dashboard/", "/admin/mail/email-monitoring/", "/admin/mail/settings/")
-    )
+    # Every page of the Delivery Operations tabs: Email Monitoring (all its tabs and drill-downs), Notification Delivery
+    # and Delivery Rates. The old /admin/mail/delivery-dashboard/ only redirects to Email Monitoring → Amazon SES.
+    return request.path.startswith(("/admin/mail/email-monitoring/", "/admin/mail/settings/"))
 
 
 def _is_email_sending_method(request):
@@ -122,7 +122,7 @@ SIDEBAR = {
             "items": [
                 {
                     "title": "Delivery Operations",
-                    "link": "/admin/mail/delivery-dashboard/",
+                    "link": "/admin/mail/email-monitoring/",
                     "permission": _can("mail"),
                     "active": _is_mail_delivery_operations,
                 },

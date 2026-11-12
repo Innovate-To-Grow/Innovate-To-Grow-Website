@@ -1,9 +1,10 @@
 """Mail → Delivery Operations → Email Monitoring: the overview, the email log, one email's history, the bounce list,
 one campaign's monitoring, and the bounce processor's controls (scan now, pause, resume, and in ``controls``
-"Rescan since" and the first-scan lookback).
+"Rescan since" and the first-scan lookback). The Bounced addresses tab is in ``addresses`` and ``address_actions``,
+the Amazon SES tab (the former Delivery Dashboard) in ``ses``.
 
-``admin_view`` only requires a staff login, so every view also requires the Mail app (``user_can_access_app``),
-like the Delivery Dashboard. Every page is read-only except the bounce-processing POST.
+``admin_view`` only requires a staff login, so every view also requires the Mail app (``user_can_access_app``).
+Every page is read-only except the bounce-processing POST.
 """
 
 from datetime import timedelta
@@ -64,6 +65,7 @@ def overview_view(request):
         probe_count=OutboundEmail.objects.filter(
             category=EmailCategory.ACCESS_CHECK, created_at__gte=current.start, created_at__lt=current.end
         ).count(),
+        send_rate=overview.send_rate(),
     )
     return TemplateResponse(request, f"{TEMPLATES}/overview.html", context)
 

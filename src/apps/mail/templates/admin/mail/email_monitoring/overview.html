@@ -9,9 +9,9 @@
 
 {% include "admin/mail/email_monitoring/_bounce_processing.html" with bp=bp %}
 
-<section class="i2g-monitor-section" aria-labelledby="monitor-messages">
-  <h2 id="monitor-messages" class="i2g-monitor-heading">Messages <span>one per logical email, however many attempts it took · {{ scope.label|lower }}</span></h2>
-  <div class="i2g-monitor-tiles">
+<section class="i2g-monitor-section" aria-labelledby="monitor-key-figures">
+  <h2 id="monitor-key-figures" class="i2g-monitor-heading">Key figures <span>emails: one per logical email, however many attempts it took · {{ scope.label|lower }}</span></h2>
+  <div class="i2g-monitor-tiles" data-monitor-kpis>
     <div class="i2g-monitor-tile"><p>Total outgoing emails</p><strong>{{ m.total }}</strong><small>{{ m.pending }} pending · {{ m.not_sent }} not sent</small></div>
     <div class="i2g-monitor-tile"><p>API accepted</p><strong>{{ m.accepted }}</strong><small>queued by the provider, not proof of delivery</small></div>
     <div class="i2g-monitor-tile"><p>API failed</p><strong>{{ m.failed }}</strong><small>{{ m.uncertain }} with outcome unknown</small></div>
@@ -19,27 +19,33 @@
     <div class="i2g-monitor-tile"><p>Confirmed bounced emails</p><strong>{{ m.bounced }}</strong><small>{% if m.bounce_rate is None %}no accepted emails{% else %}{{ m.bounce_rate }}% of API-accepted emails{% endif %}</small></div>
     <div class="i2g-monitor-tile"><p>Emails retried</p><strong>{{ m.retried }}</strong><small>needed more than one attempt</small></div>
   </div>
+  <p class="i2g-monitor-muted">The site's own record of the emails it sent{% if scope.provider %} through the chosen provider{% else %}, every provider{% endif %}. Amazon SES's own counts for the whole AWS account (CloudWatch) are on the <a href="{% url 'admin:mail_email_monitoring_ses' %}">Amazon SES</a> tab.</p>
+  {% if send_rate %}<p class="i2g-monitor-muted" data-monitor-send-rate>Send rate: {{ send_rate }} · <a href="{% url 'admin:mail_delivery_rates' %}">Delivery Rates</a></p>{% endif %}
 </section>
 
-<section class="i2g-monitor-section" aria-labelledby="monitor-recipients">
-  <h2 id="monitor-recipients" class="i2g-monitor-heading">Recipients <span>To, Cc and Bcc of those emails</span></h2>
-  <div class="i2g-monitor-tiles">
-    <div class="i2g-monitor-tile"><p>Total intended recipients</p><strong>{{ m.recipients }}</strong></div>
-    <div class="i2g-monitor-tile"><p>Recipients in accepted emails</p><strong>{{ m.accepted_recipients }}</strong></div>
-    <div class="i2g-monitor-tile"><p>Recipients in failed or unsent emails</p><strong>{{ m.failed_recipients }}</strong></div>
-    <div class="i2g-monitor-tile"><p>Confirmed bounced recipients</p><strong>{{ b.bounced_recipients }}</strong><small>{% if b.recipient_bounce_rate is None %}–{% else %}{{ b.recipient_bounce_rate }}% bounce rate{% endif %}</small></div>
-    <div class="i2g-monitor-tile"><p>Bounce reports received</p><strong>{{ b.total }}</strong><small>{{ b.unmatched }} unmatched · {{ b.inferred }} inferred match{{ b.inferred|pluralize:"es" }} · {{ b.delayed }} delay{{ b.delayed|pluralize }}</small></div>
-  </div>
-</section>
-
-<section class="i2g-monitor-section" aria-labelledby="monitor-attempts">
-  <h2 id="monitor-attempts" class="i2g-monitor-heading">API attempts <span>every provider call, retries included</span></h2>
-  <div class="i2g-monitor-tiles">
-    <div class="i2g-monitor-tile"><p>API attempts</p><strong>{{ a.total }}</strong><small>{{ a.accepted }} accepted · {{ a.failed }} failed · {{ a.uncertain }} unknown</small></div>
-    <div class="i2g-monitor-tile"><p>Retries</p><strong>{{ a.retries }}</strong><small>attempts after an email's first</small></div>
-    <div class="i2g-monitor-tile"><p>429 throttling incidents</p><strong>{{ a.throttled }}</strong><small>Retry-After followed by the delivery rate</small></div>
-    <div class="i2g-monitor-tile"><p>Average API response time</p><strong>{% if a.avg_response_ms is None %}–{% else %}{{ a.avg_response_ms }} ms{% endif %}</strong><small>requests Microsoft answered</small></div>
-    <div class="i2g-monitor-tile"><p>Attempt success rate</p><strong>{% if a.success_rate is None %}–{% else %}{{ a.success_rate }}%{% endif %}</strong></div>
+<section class="i2g-monitor-section" aria-labelledby="monitor-levels">
+  <h2 id="monitor-levels" class="i2g-monitor-heading">Recipients and API attempts <span>counted on their own, never mixed with the email figures</span></h2>
+  <div class="i2g-monitor-grid">
+    <div class="i2g-monitor-card">
+      <h3 id="monitor-recipients">Recipients <span class="i2g-monitor-muted">To, Cc and Bcc of those emails</span></h3>
+      <dl class="i2g-monitor-facts">
+        <div><dt>Total intended recipients</dt><dd><strong>{{ m.recipients }}</strong></dd></div>
+        <div><dt>Recipients in accepted emails</dt><dd><strong>{{ m.accepted_recipients }}</strong></dd></div>
+        <div><dt>Recipients in failed or unsent emails</dt><dd><strong>{{ m.failed_recipients }}</strong></dd></div>
+        <div><dt>Confirmed bounced recipients</dt><dd><strong>{{ b.bounced_recipients }}</strong> <span class="i2g-monitor-muted">{% if b.recipient_bounce_rate is None %}–{% else %}{{ b.recipient_bounce_rate }}% bounce rate{% endif %}</span></dd></div>
+        <div><dt>Bounce reports received</dt><dd><strong>{{ b.total }}</strong> <span class="i2g-monitor-muted">{{ b.unmatched }} unmatched · {{ b.inferred }} inferred match{{ b.inferred|pluralize:"es" }} · {{ b.delayed }} delay{{ b.delayed|pluralize }}</span></dd></div>
+      </dl>
+    </div>
+    <div class="i2g-monitor-card">
+      <h3 id="monitor-attempts">API attempts <span class="i2g-monitor-muted">every provider call, retries included</span></h3>
+      <dl class="i2g-monitor-facts">
+        <div><dt>API attempts</dt><dd><strong>{{ a.total }}</strong> <span class="i2g-monitor-muted">{{ a.accepted }} accepted · {{ a.failed }} failed · {{ a.uncertain }} unknown</span></dd></div>
+        <div><dt>Retries</dt><dd><strong>{{ a.retries }}</strong> <span class="i2g-monitor-muted">attempts after an email's first</span></dd></div>
+        <div><dt>429 throttling incidents</dt><dd><strong>{{ a.throttled }}</strong> <span class="i2g-monitor-muted">Retry-After followed by the delivery rate</span></dd></div>
+        <div><dt>Average API response time</dt><dd><strong>{% if a.avg_response_ms is None %}–{% else %}{{ a.avg_response_ms }} ms{% endif %}</strong> <span class="i2g-monitor-muted">requests the provider answered</span></dd></div>
+        <div><dt>Attempt success rate</dt><dd><strong>{% if a.success_rate is None %}–{% else %}{{ a.success_rate }}%{% endif %}</strong></dd></div>
+      </dl>
+    </div>
   </div>
   <div class="i2g-monitor-card i2g-monitor-latest">
     <h3>Most recent sending error</h3>
