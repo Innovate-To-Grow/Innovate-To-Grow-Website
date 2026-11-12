@@ -97,7 +97,7 @@ class ContactEmailAdmin(RankedSearchMixin, SignInWarningAdminMixin, PrivilegedOw
     # ``member`` is nullable, so the changelist's automatic select_related() would not follow it.
     list_select_related = ("member",)
     search_fields = ("email_address", "member__first_name", "member__last_name")
-    # The address equal to the search comes first, then addresses that start with it (``blewis28`` → ``blewis28@…``).
+    # The address equal to the search comes first, then addresses that start with it (``jdoe`` → ``jdoe@…``).
     search_rank = staticmethod(contact_email_search_rank)
     search_help_text = "Email address or member name"
     readonly_fields = ("created_at", "updated_at")

@@ -7,11 +7,11 @@ Django's stock search splits the term into words; every word must match, and a w
   ``(209) 555-0100`` or ``+1 209 555 0100`` can only be found through its digits. They are searched when the *whole*
   term is phone-shaped (``phone_digits``): digits, spaces and ``( ) - . +``, with at least ``MIN_PHONE_DIGITS``
   digits. A term with a letter or an ``@`` is never a phone search. The member search used to strip the non-digits
-  of *any* term and match what was left against phones, so ``acalderon32@ucmerced.edu`` also listed every member
-  whose phone contains "32", and the member pickers (20 per page) filled up with those.
+  of *any* term and match what was left against phones, so ``jdoe32@example.edu`` also listed every member whose
+  phone contains "32", and the member pickers (20 per page) filled up with those.
 * **Exact matches first.** Unless a column sort was picked (``?o=``), results are ordered by ``search_rank`` ahead
   of the list's usual order: an address equal to the term (any letter case); then an address that starts with it,
-  ``blewis28`` → ``blewis28@…`` (or a phone equal to its digits); then everything else. Every member picker
+  ``jdoe`` → ``jdoe@…`` (or a phone equal to its digits); then everything else. Every member picker
   (autocomplete) runs ``MemberAdmin.get_search_results`` too, so the member searched for comes first there as well.
 """
 
@@ -27,7 +27,7 @@ from ...models import ContactEmail, ContactPhone
 MIN_PHONE_DIGITS = 3
 
 # Digits plus the characters people type inside a phone number. No letters and no "@", so an email address, a
-# handle such as "blewis28" or "Ana 209" is never a phone search.
+# handle such as "jdoe28" or "Jane 209" is never a phone search.
 PHONE_SHAPED_RE = re.compile(r"[0-9\s().+\-]+")
 NON_DIGIT_RE = re.compile(r"[^0-9]")
 
@@ -62,8 +62,8 @@ def email_terms(term) -> tuple[str, str]:
     """``(exact, prefix)``: the address to match exactly, and how a close match starts (``""`` when none applies).
 
     A full or partial address (it has an ``@``) is matched exactly and as the start of an address. A single word
-    without one is taken as the part before the ``@``: ``blewis28`` ranks ``blewis28@ucmerced.edu`` above
-    ``blewis281@gmail.com``. Several words never match one address.
+    without one is taken as the part before the ``@``: ``jdoe`` ranks ``jdoe@example.edu`` above
+    ``jdoe2@example.edu``. Several words never match one address.
     """
     text = search_text(term)
     if not text or text.startswith("@") or any(char.isspace() for char in text):
