@@ -329,7 +329,7 @@ jobs:
         # Every app on every event (PR/push parity). MatrixParityTests in
         # scripts/ci/tests/test_ci_workflow_invariants.py keeps this list equal
         # to src/apps/* and scripts/ci/backend_coverage_floors.json.
-        app: [authn, core, system_intelligence, cms, event, projects, mail, cli_admin]
+        app: [authn, core, system_intelligence, cms, event, projects, mail, helpdesk, cli_admin]
     services:
       postgres:
         image: postgres:16

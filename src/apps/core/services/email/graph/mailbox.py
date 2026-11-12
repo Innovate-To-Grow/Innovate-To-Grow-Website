@@ -30,8 +30,12 @@ logger = logging.getLogger(__name__)
 # Well-known folder names (Microsoft Graph "mailFolder resource type").
 FOLDERS = {"INBOX": "inbox", "SENT": "sentitems"}
 LIST_FIELDS = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead"
-# What the bounce processor's incremental scan reads of each message (no preview: it opens only bounce candidates).
-SCAN_FIELDS = "id,subject,from,receivedDateTime,internetMessageId"
+# What the incremental scans read of each message: bounce processing's (no preview: it opens only report candidates)
+# and the helpdesk's intake (it opens none). The conversation id lets the helpdesk thread a reply whose headers say
+# nothing.
+SCAN_FIELDS = "id,subject,from,receivedDateTime,internetMessageId,conversationId"
+# Asks for ids that survive a move to another folder (EMAIL_MONITORING["graph_immutable_ids"], off by default).
+IMMUTABLE_ID_PREFERENCE = 'IdType="ImmutableId"'
 # Graph message IDs are URL-safe base64; anything else is refused before it can become part of a URL.
 _MESSAGE_ID_RE = re.compile(r"[A-Za-z0-9_=-]{1,512}")
 
@@ -73,7 +77,8 @@ class GraphMailboxReader:
 
     def list_received_since(self, folder: str, since: datetime, limit: int) -> list[dict]:
         """Up to *limit* messages of a well-known folder received at or after *since*, oldest first, with
-        ``SCAN_FIELDS`` only: the bounce processor's incremental scan, which never lists the whole folder."""
+        ``SCAN_FIELDS`` only: the incremental scans (bounce processing's and the helpdesk's intake), which never list
+        the whole folder."""
         folder_name = FOLDERS.get(str(folder).upper(), FOLDERS["INBOX"])
         top = max(1, min(int(limit), settings.GRAPH_INBOX_MAX_LIST_LIMIT))
         stamp = since.astimezone(UTC).strftime("%Y-%m-%dT%H%%3A%M%%3A%SZ")
@@ -143,6 +148,8 @@ class GraphMailboxReader:
         except EmailDeliveryError as exc:
             raise GraphReadError(str(exc)) from exc
         headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
+        if settings.EMAIL_MONITORING.get("graph_immutable_ids"):
+            headers["Prefer"] = IMMUTABLE_ID_PREFERENCE
         try:
             return transport.get(GRAPH_HOST, path, headers, timeout=self.timeout, max_bytes=max_bytes)
         except (transport.ConnectFailed, transport.ResponseLost) as exc:

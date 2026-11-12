@@ -45,6 +45,7 @@ ROUTES = {
     "admin:projects_publish_all": "staff-bulk",
     "admin:mail_emailcampaign_send_confirm": "staff-bulk",
     "admin:mail_smscampaign_send_confirm": "staff-bulk",
+    "admin:helpdesk_ticket_attachment": "staff-bulk",
     # Third party (django-ckeditor-5).
     "ck_editor_5_upload_file": "staff-bulk",
 }

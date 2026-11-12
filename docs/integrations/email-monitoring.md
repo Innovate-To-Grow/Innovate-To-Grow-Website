@@ -70,10 +70,13 @@ provider call, retries included; 429 incidents and response times are attempt fi
 ## How bounce processing works
 
 1. **Schedule.** Job kind `core.email_bounce_scan` runs in the background worker. Each scan queues the next
-   (every `bounce_scan_interval_seconds`, default 10 minutes; sooner when it stopped at its message budget;
-   later when Microsoft sent a longer `Retry-After`). The worker's hourly maintenance ("Email bounce scan
-   scheduling") restarts the chain at start-up or if it broke. **Scan now** on the dashboard queues one at
-   once. Finished scan jobs older than a week are deleted.
+   (every `bounce_scan_interval_seconds`, default 10 minutes, never under a minute; after 2 minutes when it
+   stopped at its message budget; later when Microsoft sent a longer `Retry-After`). The worker's hourly
+   maintenance ("Email bounce scan scheduling") restarts the chain at start-up or if it broke. **Scan now** on the
+   dashboard queues one at once. Finished scan jobs older than a week are deleted. The card shows the interval and
+   the catch-up the scans really follow (it reads them from the code that schedules them), and lists every other
+   app that reads the same Inbox on its own schedule, with its cadence, state and a link to its own controls: the
+   [helpdesk](helpdesk.md)'s intake, every 2 minutes (`inbox_scan_interval_seconds`).
 2. **Which mailbox.** Only the Graph sending mailbox, only when it is in `EMAIL_BOUNCE_MAILBOXES` (default
    `i2g@ucmerced.edu`) **and** the Graph mailbox scope grants it read permission. Otherwise the dashboard
    shows why processing is not active. No additional Graph permission is used: the reads are the same GET
@@ -82,11 +85,14 @@ provider call, retries included; 429 incidents and response times are attempt fi
 3. **Incremental listing.** Each scan lists Inbox messages received since its durable checkpoint (less a
    15-minute overlap), oldest first, 50 per request, at most 10 requests; the first scan looks back 72 hours (or
    the mailbox's first-scan lookback set on the dashboard; see [Reading older mail again](#reading-older-mail-again)).
+   Bounce processing records nothing else: the [helpdesk](helpdesk.md) lists the same Inbox with its own scan
+   (its intake: own checkpoint, lease, pause and **Rescan since**), which fills the inbound queue
+   (`core.InboundMessage`). Neither one's controls move the other.
    It opens (raw MIME, at most 256 KB, at most 200 per scan, and for at most 60 seconds per scan) only messages
    that look like reports: a report subject prefix (`Undeliverable:`, `Delivery Status Notification`, …) or a
    report sender (`postmaster`, `mailer-daemon`, `MicrosoftExchange…`). The checkpoint moves past what was fully
-   processed. Scans share the background worker with every queued email, so these bounds keep a flood of
-   reports from holding it.
+   processed. Scans share the background worker with every queued email, so these bounds keep a flood of reports
+   from holding it.
 4. **Parsing.** RFC 3464 `message/delivery-status` parts give, per recipient, the original or final
    recipient, the action, the enhanced status code, the diagnostic code and the remote server; the report
    gives the reporting server and arrival date; the returned headers (`text/rfc822-headers` or
@@ -122,7 +128,9 @@ log: those are business decisions for staff, made from the failed-recipient list
 
 The **Bounce processing** card on the overview has a folded section, **Read older mail again**, with two controls.
 Both need the Mail app, are POST forms with CSRF, start no scan, and leave an admin history line (Site Settings →
-Admin Log, on the mailbox's "Bounce processing for …" state) plus a log line (`email_bounce_state action=…`).
+Admin Log, on the mailbox's "Bounce processing for …" state) plus a log line (`email_bounce_state action=…`). Like
+**Pause**, they change bounce processing only: the helpdesk's intake reads the same Inbox from its own checkpoint
+and has the same controls on its own card (Helpdesk → Settings; see the [helpdesk](helpdesk.md#intake-controls)).
 
 - **Rescan since** (a date and time in the site's time zone, `America/Los_Angeles`) moves the mailbox's checkpoint
   back, so that the next scan (the scheduled one, or **Scan now**) reads the Inbox again from that time, less the
@@ -172,6 +180,11 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `bounce_processing_enabled` (`EMAIL_BOUNCE_PROCESSING_ENABLED`) | `true` | Run bounce scans. |
 | `bounce_mailboxes` (`EMAIL_BOUNCE_MAILBOXES`, comma-separated) | `i2g@ucmerced.edu` | The only mailboxes bounce processing may read. |
 | `bounce_scan_interval_seconds` | `600` | Time between scans (a `Retry-After` can only lengthen it). |
+| `inbox_scan_interval_seconds` | `120` | Time between scans of the [helpdesk](helpdesk.md)'s intake, its own scan of the Inbox (never under 60 s; 30 s while catching up). It lists with the `bounce_scan_*` bounds below. |
+| `inbox_initial_lookback_hours` | `72` | How far the intake's first scan looks back unless its first-scan lookback is set on its card. |
+| `inbox_max_lookback_days` | `90` | The furthest back the intake's **Rescan since** and first-scan lookback reach. It bounds those admin controls, so it is set here. |
+| `inbound_retention_days` | `90` | Inbound queue rows are deleted this long after they were processed (or recorded, never processed: old mail a rescan records still waits to be imported). |
+| `graph_immutable_ids` (`EMAIL_GRAPH_IMMUTABLE_IDS`) | `false` | Send `Prefer: IdType="ImmutableId"` on every mailbox read, so a message moved to another folder keeps its id. Switching it on changes the ids the scans and the admin inbox see once (bounce records and helpdesk tickets still de-duplicate by internet Message-ID). |
 | `bounce_scan_page_size`, `bounce_scan_max_pages`, `bounce_scan_max_messages` | `50`, `10`, `200` | Messages per list request, list requests per scan, reports opened per scan. |
 | `bounce_scan_max_seconds` | `60` | A scan stops (keeping its progress) after this long; the next one continues. |
 | `bounce_max_recipients_per_report` | `50` | Recipients read from one report (a genuine report names at most one message's recipients). |
@@ -183,15 +196,18 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `attempt_stale_seconds` | `900` | An attempt still "in progress" after this is shown as interrupted (outcome unknown). |
 | `ndr_subject_prefixes`, `ndr_sender_local_parts` | see the file | How a listed message is recognised as a report candidate. |
 
-**Pause / resume** on the dashboard stops scans of the mailbox without a deploy (stored on its
-`EmailMonitorState`, like the first-scan lookback and the checkpoint that **Rescan since** moves). There is no
-generic admin form for that row on purpose: a form saves every column and would overwrite a running scan's lease.
+**Pause / resume** on the dashboard stops bounce scans of the mailbox without a deploy (stored on its
+`EmailMonitorState`, like the first-scan lookback and the checkpoint that **Rescan since** moves). It does not
+stop the helpdesk's intake, which has its own pause. There is no generic admin form for that row on purpose: a
+form saves every column and would overwrite a running scan's lease.
 
 ## Deployment
 
 1. Deploy as usual: migration `core.0044_email_monitoring` creates the four tables (no data migration, no
    backfill), and `core.0045_email_monitor_lookback` adds the nullable first-scan lookback column (empty: the
-   setting's default). Telemetry starts with the first email sent after the deploy; the dashboard shows that moment
+   setting's default); `core.0046_inbound_message` adds the inbound queue the [helpdesk](helpdesk.md) fills and
+   drains.
+   Telemetry starts with the first email sent after the deploy; the dashboard shows that moment
    as "Monitoring began". Bounce reports that arrived before the first scan's lookback are read with **Rescan
    since**.
 2. The **background worker** container (`itg-background-worker`) must run: it runs the scans and the retention
@@ -225,7 +241,8 @@ Dashboard; the controls are POST with CSRF. The telemetry tables are denied to t
   messages (each page repeats the previous page's last one) and starts 15 minutes before its checkpoint, so if
   more than about 490 messages arrived within 15 minutes, later scans cannot get past that window. That is far
   above this mailbox's traffic (sends are paced at 30 a minute); raise `bounce_scan_max_pages` if it ever happens,
-  for example during a large **Rescan since**.
+  for example during a large **Rescan since**. The helpdesk's intake lists with the same bounds, so the same holds
+  for it.
 - **Multi-recipient inference uses the first recipient.** An inferred match compares the report's recipient
   with the email's first recipient; Cc'd recipients of JSON sends are matched only exactly.
 - **History.** Emails sent before monitoring began are not in the telemetry and nothing is reconstructed.

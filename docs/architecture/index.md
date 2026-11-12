@@ -12,6 +12,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 - [Request limits](../integrations/request-limits.md) — Inbound limits by scope and priority tier, Smart limit, counters and the operator runbook
 - [Email monitoring](../integrations/email-monitoring.md) — Telemetry of every outgoing email and attempt, Microsoft Graph bounce processing, and the dashboard
 - [Member import review](member-import-review.md) — Members → Import: staged batches, the analysis (conflicts C1–C9, risky ticks R1–R8), fingerprints and the all-or-nothing apply
+- [Helpdesk](../integrations/helpdesk.md) — Every message to the i2g@ mailbox becomes a ticket (shadow mode: reads and records, sends nothing)
 - [Code Quality Rules](code-quality.md) — Size, complexity and nesting limits, dependency directions, check commands, exceptions
 
 ## Who this is for
