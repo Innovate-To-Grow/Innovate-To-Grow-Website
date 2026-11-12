@@ -4,23 +4,29 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
-from apps.authn.services.contacts.contact_emails import make_contact_email_primary
-from apps.authn.services.email.challenges import AuthChallengeInvalid
+from apps.authn.services.contacts.primary_switch import SwitchRefused, log_switch, switch_primary_email
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactEmail, Member
+from ..filters import EmailSubscribedFilter, EmailVerifiedFilter, MemberAccountFilter
+from ..help_texts import EMAIL_HELP_TEXTS, EMAIL_LABELS
+from ..primary_switch import VIA_CONTACT_EMAILS
+from ..primary_switch_notes import outcome_messages
 from ..search import RankedSearchMixin, contact_email_search_rank
+from ..sign_in_warning import SignInWarningAdminMixin, lost_sign_in
 from .guards import PrivilegedOwnerAdminMixin
 
 PRIMARY_EMAIL_EDIT_ERROR = _(
     "The current primary email's owner, address, and type cannot be edited directly. "
-    "Make another verified email primary first."
+    "Make another verified email primary first: “Switch primary email” on the member page, or the action "
+    "“Make selected email primary” here."
 )
 PRIMARY_EMAIL_DELETE_ERROR = _(
     "The current primary email cannot be deleted directly. Make another email primary first."
 )
 PRIMARY_EMAIL_PROMOTION_ERROR = _(
-    "A primary email cannot be assigned directly. Use the 'Make selected email primary' action."
+    "A primary email cannot be assigned directly. Use the 'Make selected email primary' action, or “Switch primary "
+    "email” on the member page."
 )
 
 
@@ -39,6 +45,8 @@ class ContactEmailAdminForm(forms.ModelForm):
     class Meta:
         model = ContactEmail
         fields = "__all__"
+        labels = EMAIL_LABELS
+        help_texts = EMAIL_HELP_TEXTS
 
     def clean(self):
         cleaned_data = super().clean()
@@ -68,8 +76,12 @@ class ContactEmailAdminForm(forms.ModelForm):
 
 
 @admin.register(ContactEmail)
-class ContactEmailAdmin(RankedSearchMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin):
-    """Admin for ContactEmail model."""
+class ContactEmailAdmin(RankedSearchMixin, SignInWarningAdminMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin):
+    """Admin for ContactEmail model.
+
+    Verified and Subscribed belong to the address; **Account active** is its member's account flag, shown next to them
+    so the two are not confused (an unlinked address has no account).
+    """
 
     form = ContactEmailAdminForm
     list_display = (
@@ -78,9 +90,12 @@ class ContactEmailAdmin(RankedSearchMixin, PrivilegedOwnerAdminMixin, BaseModelA
         "email_type",
         "verified",
         "subscribe",
+        "account_active",
         "created_at",
     )
-    list_filter = ("email_type", "verified", "subscribe", "created_at")
+    list_filter = (EmailVerifiedFilter, EmailSubscribedFilter, "email_type", MemberAccountFilter, "created_at")
+    # ``member`` is nullable, so the changelist's automatic select_related() would not follow it.
+    list_select_related = ("member",)
     search_fields = ("email_address", "member__first_name", "member__last_name")
     # The address equal to the search comes first, then addresses that start with it (``blewis28`` → ``blewis28@…``).
     search_rank = staticmethod(contact_email_search_rank)
@@ -97,6 +112,10 @@ class ContactEmailAdmin(RankedSearchMixin, PrivilegedOwnerAdminMixin, BaseModelA
         ),
     )
     actions = ["make_primary", "mark_verified", "mark_unverified", "toggle_subscribe"]
+
+    @admin.display(description="Account active", boolean=True, ordering="member__is_active")
+    def account_active(self, obj):
+        return None if obj.member_id is None else obj.member.is_active
 
     @staticmethod
     def _is_owned_primary(obj) -> bool:
@@ -174,7 +193,10 @@ class ContactEmailAdmin(RankedSearchMixin, PrivilegedOwnerAdminMixin, BaseModelA
                 key=str,
             )
             list(Member.objects.select_for_update().filter(pk__in=member_ids).order_by("pk"))
-            locked = ContactEmail.objects.select_for_update().filter(pk__in=selected_ids)
+            # ``of=("self",)``: the owner guard later reads these rows with ``select_related("member")``, a LEFT JOIN
+            # (``member`` is nullable), and PostgreSQL refuses FOR UPDATE on the nullable side of an outer join. The
+            # members are already locked just above.
+            locked = ContactEmail.objects.select_for_update(of=("self",)).filter(pk__in=selected_ids)
             if locked.filter(email_type="primary", member__isnull=False).exists():
                 raise PermissionDenied(PRIMARY_EMAIL_DELETE_ERROR)
             super().delete_queryset(request, locked)
@@ -203,19 +225,15 @@ class ContactEmailAdmin(RankedSearchMixin, PrivilegedOwnerAdminMixin, BaseModelA
             return
 
         try:
-            updated = make_contact_email_primary(
-                member=contact_email.member,
-                contact_email_id=contact_email.pk,
-            )
-        except AuthChallengeInvalid as exc:
+            # Same service and history as the member page's "Switch primary email".
+            result = switch_primary_email(member=contact_email.member, contact_email_id=contact_email.pk)
+        except SwitchRefused as exc:
             self.message_user(request, str(exc), level=messages.ERROR)
             return
 
-        self.message_user(
-            request,
-            f"{updated.email_address} is now the primary email.",
-            level=messages.SUCCESS,
-        )
+        log_switch(request.user, result, via=VIA_CONTACT_EMAILS)
+        for level, text in outcome_messages(result):
+            self.message_user(request, text, level=level)
 
     def _report_skipped(self, request, skipped):
         if skipped:
@@ -234,10 +252,11 @@ class ContactEmailAdmin(RankedSearchMixin, PrivilegedOwnerAdminMixin, BaseModelA
         self.message_user(request, f"{updated} email(s) marked as verified.")
         self._report_skipped(request, skipped)
 
-    @admin.action(description="Mark selected emails as unverified")
+    @admin.action(description="Mark selected emails as unverified (stops sign-in with them, not mail)")
     def mark_unverified(self, request, queryset):
         allowed, skipped = self.manageable(request, queryset)
-        updated = allowed.update(verified=False)
+        with lost_sign_in(request, set(allowed.values_list("member_id", flat=True))):
+            updated = allowed.update(verified=False)
         self.message_user(request, f"{updated} email(s) marked as unverified.")
         self._report_skipped(request, skipped)
 
