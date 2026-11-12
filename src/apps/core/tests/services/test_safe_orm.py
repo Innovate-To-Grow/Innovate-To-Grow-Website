@@ -10,8 +10,10 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
+from apps.authn.models import ContactEmail, ContactPhone, EmailAuthChallenge, PhoneVerificationChallenge
 from apps.cms.models import CMSAsset, CMSBlock
 from apps.core.services.db_tools.safe_orm import (
+    DENIED_WRITE_MODEL_LABELS,
     ActionRequestError,
     assert_snapshot_unchanged,
     assign_model_fields,
@@ -133,6 +135,29 @@ class SafetyTests(TestCase):
         pk = uuid.uuid4()
         self.assertEqual(coerce_field_value(Project._meta.get_field("semester"), str(pk)), pk)
         self.assertEqual(coerce_field_value(year, "2030"), 2030)
+
+
+class AuthnWriteDenylistTests(TestCase):
+    """Contact rows (sign-in factors) and verification challenges (proofs of a code) can be read, never written."""
+
+    WRITE_DENIED = (ContactEmail, ContactPhone, EmailAuthChallenge, PhoneVerificationChallenge)
+
+    def test_each_model_is_listed_by_its_label(self):
+        self.assertEqual(DENIED_WRITE_MODEL_LABELS, {model._meta.label_lower for model in self.WRITE_DENIED})
+
+    def test_they_can_be_read_but_not_written(self):
+        for model in self.WRITE_DENIED:
+            with self.subTest(model=model.__name__):
+                self.assertFalse(is_model_denied(model, write=False))
+                self.assertTrue(is_model_denied(model, write=True))
+                self.assertIs(resolve_model("authn", model.__name__, write=False), model)
+                with self.assertRaises(ActionRequestError) as error:
+                    resolve_model("authn", model.__name__, write=True)
+                self.assertEqual(str(error.exception), f"Write access is not allowed for authn.{model.__name__}.")
+
+    def test_members_stay_writable(self):
+        # The assistant's member updates (propose_member_update) write authn.Member; its own guard limits them.
+        self.assertFalse(is_model_denied(Member, write=True))
 
 
 class RecordsTests(TestCase):

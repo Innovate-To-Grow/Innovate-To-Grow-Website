@@ -9,6 +9,7 @@ from .constants import (
     DENIED_MODEL_NAME_PARTS,
     DENIED_READ_APP_LABELS,
     DENIED_WRITE_APP_LABELS,
+    DENIED_WRITE_MODEL_LABELS,
     SAFE_LOOKUPS,
     SENSITIVE_FIELD_RE,
 )
@@ -30,6 +31,8 @@ def is_model_denied(model: type[models.Model], *, write: bool) -> bool:
     label = model._meta.label_lower
     denied_apps = DENIED_WRITE_APP_LABELS if write else DENIED_READ_APP_LABELS
     if model._meta.app_label in denied_apps or label in DENIED_MODEL_LABELS:
+        return True
+    if write and label in DENIED_WRITE_MODEL_LABELS:
         return True
     return any(part in model._meta.model_name for part in DENIED_MODEL_NAME_PARTS)
 

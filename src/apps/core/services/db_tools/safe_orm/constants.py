@@ -84,6 +84,18 @@ DENIED_MODEL_LABELS = {
     "cms.cmspage",
 }
 DENIED_MODEL_NAME_PARTS = ("credential", "config", "permission", "session", "logentry", "token")
+# Readable, never written by a proposed record write. Contact rows are sign-in factors: a verified address or number
+# signs in to its account, so they change only in the Members admin, under its owner guards and #732's code-only rule
+# for phones. Verification challenges are the proof of a one-time code: a challenge set to "verified" is a grant that
+# event registration accepts as a verified phone. (The CLI denies the whole authn app.)
+DENIED_WRITE_MODEL_LABELS = frozenset(
+    {
+        "authn.contactemail",
+        "authn.contactphone",
+        "authn.emailauthchallenge",
+        "authn.phoneverificationchallenge",
+    }
+)
 SAFE_LOOKUPS = frozenset(
     {
         "exact",
@@ -114,6 +126,7 @@ __all__ = [
     "DENIED_MODEL_NAME_PARTS",
     "DENIED_READ_APP_LABELS",
     "DENIED_WRITE_APP_LABELS",
+    "DENIED_WRITE_MODEL_LABELS",
     "SAFE_LOOKUPS",
     "SENSITIVE_FIELD_RE",
 ]
