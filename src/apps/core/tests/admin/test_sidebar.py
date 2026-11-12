@@ -21,6 +21,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
                 "Projects",
                 "Members & Authentication",
                 "Broadcast Delivery",
+                "Helpdesk",
                 "System Intelligence",
                 "Site Settings",
                 "CLI Admin",
@@ -193,12 +194,13 @@ class AdminSidebarNavigationTest(SimpleTestCase):
 
         self.assertEqual(
             members_tab["models"],
-            ["authn.member", "authn.membersheetsyncconfig", "authn.membersheetsynclog"],
+            ["authn.member", "authn.membersheetsyncconfig", "authn.membersheetsynclog", "authn.memberimportbatch"],
         )
-        self.assertEqual(item_titles, {"Members", "Member Sheet Sync", "Sync Logs"})
+        self.assertEqual(item_titles, {"Members", "Member Sheet Sync", "Sync Logs", "Member Imports"})
         self.assertEqual(item_links["Members"], "/admin/authn/member/")
         self.assertEqual(item_links["Member Sheet Sync"], "/admin/authn/membersheetsyncconfig/")
         self.assertEqual(item_links["Sync Logs"], "/admin/authn/membersheetsynclog/")
+        self.assertEqual(item_links["Member Imports"], "/admin/authn/memberimportbatch/")
 
     def test_mail_navigation_includes_settings_and_tools(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
@@ -230,6 +232,9 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertTrue(items_by_title["Delivery Operations"]["active"](dashboard_request))
         self.assertTrue(items_by_title["Delivery Operations"]["active"](settings_request))
         self.assertTrue(items_by_title["Delivery Operations"]["active"](rates_request))
+        self.assertTrue(
+            items_by_title["Delivery Operations"]["active"](factory.get("/admin/mail/email-monitoring/emails/"))
+        )
         self.assertFalse(items_by_title["Delivery Operations"]["active"](inbox_request))
         # Email Sending Method has its own entry: it, not Delivery Operations, is highlighted on its pages.
         for path in (
@@ -250,6 +255,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
             [{key: item[key] for key in ("title", "link")} for item in delivery_tab["items"]],
             [
                 {"title": "Delivery Dashboard", "link": "/admin/mail/delivery-dashboard/"},
+                {"title": "Email Monitoring", "link": "/admin/mail/email-monitoring/"},
                 {"title": "Notification Delivery", "link": "/admin/mail/settings/"},
                 {"title": "Delivery Rates", "link": "/admin/mail/settings/rates/"},
             ],
@@ -393,6 +399,7 @@ class AdminIndexNavigationTest(TestCase):
                 self.assertContains(response, 'href="/admin/authn/member/"')
                 self.assertContains(response, 'href="/admin/authn/membersheetsyncconfig/"')
                 self.assertContains(response, 'href="/admin/authn/membersheetsynclog/"')
+                self.assertContains(response, 'href="/admin/authn/memberimportbatch/"')
                 self.assertContains(response, f'href="{active_href}" class="active"')
 
         response = self.client.get(reverse("admin:authn_member_changelist"))

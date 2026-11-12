@@ -1,0 +1,126 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block monitoring_head %}
+{{ chart_data|json_script:"i2g-monitor-charts" }}
+{% endblock %}
+
+{% block monitoring_content %}
+{% with m=figures.messages a=figures.attempts b=figures.bounces bp=health.bounces %}
+
+{% include "admin/mail/email_monitoring/_bounce_processing.html" with bp=bp %}
+
+<section class="i2g-monitor-section" aria-labelledby="monitor-messages">
+  <h2 id="monitor-messages" class="i2g-monitor-heading">Messages <span>one per logical email, however many attempts it took · {{ scope.label|lower }}</span></h2>
+  <div class="i2g-monitor-tiles">
+    <div class="i2g-monitor-tile"><p>Total outgoing emails</p><strong>{{ m.total }}</strong><small>{{ m.pending }} pending · {{ m.not_sent }} not sent</small></div>
+    <div class="i2g-monitor-tile"><p>API accepted</p><strong>{{ m.accepted }}</strong><small>queued by the provider, not proof of delivery</small></div>
+    <div class="i2g-monitor-tile"><p>API failed</p><strong>{{ m.failed }}</strong><small>{{ m.uncertain }} with outcome unknown</small></div>
+    <div class="i2g-monitor-tile"><p>API success rate</p><strong>{% if m.api_success_rate is None %}–{% else %}{{ m.api_success_rate }}%{% endif %}</strong><small>accepted ÷ submitted ({{ m.submitted }})</small></div>
+    <div class="i2g-monitor-tile"><p>Confirmed bounced emails</p><strong>{{ m.bounced }}</strong><small>{% if m.bounce_rate is None %}no accepted emails{% else %}{{ m.bounce_rate }}% of API-accepted emails{% endif %}</small></div>
+    <div class="i2g-monitor-tile"><p>Emails retried</p><strong>{{ m.retried }}</strong><small>needed more than one attempt</small></div>
+  </div>
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="monitor-recipients">
+  <h2 id="monitor-recipients" class="i2g-monitor-heading">Recipients <span>To, Cc and Bcc of those emails</span></h2>
+  <div class="i2g-monitor-tiles">
+    <div class="i2g-monitor-tile"><p>Total intended recipients</p><strong>{{ m.recipients }}</strong></div>
+    <div class="i2g-monitor-tile"><p>Recipients in accepted emails</p><strong>{{ m.accepted_recipients }}</strong></div>
+    <div class="i2g-monitor-tile"><p>Recipients in failed or unsent emails</p><strong>{{ m.failed_recipients }}</strong></div>
+    <div class="i2g-monitor-tile"><p>Confirmed bounced recipients</p><strong>{{ b.bounced_recipients }}</strong><small>{% if b.recipient_bounce_rate is None %}–{% else %}{{ b.recipient_bounce_rate }}% bounce rate{% endif %}</small></div>
+    <div class="i2g-monitor-tile"><p>Bounce reports received</p><strong>{{ b.total }}</strong><small>{{ b.unmatched }} unmatched · {{ b.inferred }} inferred match{{ b.inferred|pluralize:"es" }} · {{ b.delayed }} delay{{ b.delayed|pluralize }}</small></div>
+  </div>
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="monitor-attempts">
+  <h2 id="monitor-attempts" class="i2g-monitor-heading">API attempts <span>every provider call, retries included</span></h2>
+  <div class="i2g-monitor-tiles">
+    <div class="i2g-monitor-tile"><p>API attempts</p><strong>{{ a.total }}</strong><small>{{ a.accepted }} accepted · {{ a.failed }} failed · {{ a.uncertain }} unknown</small></div>
+    <div class="i2g-monitor-tile"><p>Retries</p><strong>{{ a.retries }}</strong><small>attempts after an email's first</small></div>
+    <div class="i2g-monitor-tile"><p>429 throttling incidents</p><strong>{{ a.throttled }}</strong><small>Retry-After followed by the delivery rate</small></div>
+    <div class="i2g-monitor-tile"><p>Average API response time</p><strong>{% if a.avg_response_ms is None %}–{% else %}{{ a.avg_response_ms }} ms{% endif %}</strong><small>requests Microsoft answered</small></div>
+    <div class="i2g-monitor-tile"><p>Attempt success rate</p><strong>{% if a.success_rate is None %}–{% else %}{{ a.success_rate }}%{% endif %}</strong></div>
+  </div>
+  <div class="i2g-monitor-card i2g-monitor-latest">
+    <h3>Most recent sending error</h3>
+    {% if figures.latest_error %}{% with e=figures.latest_error %}
+      <p>
+        <a href="{% url 'admin:mail_email_monitoring_email' e.email_id %}">{{ e.at|date:"M j, H:i:s" }}</a>
+        · {{ e.category }} to {{ e.recipient|default:"(no recipient)" }}
+        · <strong>{{ e.kind }}</strong>{% if e.http_status %} · HTTP {{ e.http_status }}{% endif %}{% if e.code %} · {{ e.code }}{% endif %}
+      </p>
+      {% if e.message %}<p class="i2g-monitor-muted">{{ e.message }}</p>{% endif %}
+      {% if e.request_id %}<p class="i2g-monitor-muted">Microsoft request id <code>{{ e.request_id }}</code></p>{% endif %}
+    {% endwith %}{% else %}
+      <p class="i2g-monitor-muted">No sending error in this range.</p>
+    {% endif %}
+  </div>
+  {% if probe_count %}<p class="i2g-monitor-muted">{{ probe_count }} Graph access check probe send{{ probe_count|pluralize }} in this range {{ probe_count|pluralize:"is,are" }} listed in the email log but left out of these figures.</p>{% endif %}
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="monitor-trends">
+  <h2 id="monitor-trends" class="i2g-monitor-heading">Trends <span>{% if chart_data.bucket == "hour" %}hourly{% else %}daily{% endif %} · site time zone</span></h2>
+  <div class="i2g-monitor-grid">
+    {% include "admin/mail/email_monitoring/_time_chart.html" with key="volume" title="Email volume" kind="columns" names="Emails" data=chart_data.volume %}
+    {% include "admin/mail/email_monitoring/_time_chart.html" with key="api" title="API attempts: accepted vs failed" kind="lines" names="Accepted,Failed,Outcome unknown" data=chart_data.api %}
+    {% include "admin/mail/email_monitoring/_time_chart.html" with key="bounces" title="Bounce reports by classification" kind="stacked" names="Hard bounce,Soft bounce,Rejected,Delivery delayed,Unknown" data=chart_data.bounces %}
+  </div>
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="monitor-breakdowns">
+  <h2 id="monitor-breakdowns" class="i2g-monitor-heading">Breakdowns</h2>
+  <div class="i2g-monitor-grid">
+    {% include "admin/mail/email_monitoring/_meter_list.html" with title="Failed attempts by HTTP status" rows=chart_data.http_errors empty="No failed attempts in this range." %}
+    {% include "admin/mail/email_monitoring/_meter_list.html" with title="Emails by category" rows=chart_data.categories empty="No emails in this range." %}
+  </div>
+  <div class="i2g-monitor-grid">
+    <div class="i2g-monitor-card">
+      <h3>Top failure reasons</h3>
+      {% if failure_reasons %}
+      <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+        <thead><tr><th scope="col">Count</th><th scope="col">Kind</th><th scope="col">Code</th><th scope="col">Message</th><th scope="col">Last seen</th></tr></thead>
+        <tbody>{% for row in failure_reasons %}
+          <tr><td class="num">{{ row.count }}</td><td>{{ row.kind }}</td><td><code>{{ row.code|default:"–" }}</code></td><td>{{ row.message|default:"–" }}</td><td>{{ row.last_seen|date:"M j, H:i" }}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% else %}<p class="i2g-monitor-muted">No failures in this range.</p>{% endif %}
+    </div>
+    <div class="i2g-monitor-card">
+      <h3>Top bounce reasons</h3>
+      {% if bounce_reasons %}
+      <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+        <thead><tr><th scope="col">Count</th><th scope="col">Classification</th><th scope="col">Status</th><th scope="col">Reason</th></tr></thead>
+        <tbody>{% for row in bounce_reasons %}
+          <tr><td class="num">{{ row.count }}</td><td>{{ row.label }}</td><td><code>{{ row.status_code|default:"–" }}</code></td><td>{{ row.reason|default:"–" }}</td></tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% else %}<p class="i2g-monitor-muted">No bounce reports in this range.</p>{% endif %}
+    </div>
+  </div>
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="monitor-campaigns">
+  <h2 id="monitor-campaigns" class="i2g-monitor-heading">Broadcast campaigns <span>campaigns with emails recorded in this range, newest first</span></h2>
+  <div class="i2g-monitor-card">
+    {% if comparisons %}
+    <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+      <thead><tr>
+        <th scope="col">Campaign</th><th scope="col" class="num">Emails</th><th scope="col" class="num">API accepted</th>
+        <th scope="col" class="num">Failed / not sent</th><th scope="col" class="num">Outcome unknown</th>
+        <th scope="col" class="num">Confirmed bounces</th><th scope="col" class="num">Bounce rate</th><th scope="col" class="num">Retries</th>
+      </tr></thead>
+      <tbody>{% for row in comparisons %}
+        <tr>
+          <td><a href="{% url 'admin:mail_email_monitoring_campaign' row.campaign_id %}">{{ row.name }}</a><br><span class="i2g-monitor-muted">{{ row.first_sent|date:"M j, Y H:i" }}</span></td>
+          <td class="num">{{ row.emails }}</td><td class="num">{{ row.accepted }}</td><td class="num">{{ row.failed }}</td>
+          <td class="num">{{ row.uncertain }}</td><td class="num">{{ row.bounced }}</td>
+          <td class="num">{% if row.bounce_rate is None %}–{% else %}{{ row.bounce_rate }}%{% endif %}</td><td class="num">{{ row.retries }}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}<p class="i2g-monitor-muted">No campaign emails were recorded in this range.</p>{% endif %}
+  </div>
+</section>
+
+{% endwith %}
+{% endblock %}

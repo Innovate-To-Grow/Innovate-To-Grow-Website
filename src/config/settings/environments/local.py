@@ -99,3 +99,8 @@ if "test" in sys.argv:
 # Local test runs keep private keys in memory, never in the developer's src/data/ key files.
 if "test" in sys.argv:
     CREDENTIAL_STORE_BACKEND = "memory"
+
+# SMS quiet hours apply to the dev server (as in production) and are off for local test runs, like the test settings;
+# the quiet-hours tests switch them on with override_settings.
+if "test" in sys.argv:
+    SMS_QUIET_HOURS_ENFORCED = False

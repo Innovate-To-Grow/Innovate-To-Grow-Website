@@ -1,0 +1,25 @@
+{# Personal sign-in link revocations: each time turning them off (or finding them live while off) revoked the links already texted. #}
+<div id="sms-link-revocations" class="mb-6 rounded-default border border-base-200 bg-white p-4 text-sm dark:border-base-700 dark:bg-base-800">
+    <h3 class="mb-2 flex items-center gap-2 text-sm font-semibold text-font-important-light dark:text-font-important-dark">
+        <span class="material-symbols-outlined !text-[18px]">link_off</span>
+        Personal sign-in link revocations
+    </h3>
+    <p class="text-xs text-base-500 dark:text-base-300">
+        Turning personal sign-in links or links in SMS off revokes every personal sign-in link already texted, for good.
+        Turning them on again does not bring any back: whoever opens one gets the sign-in page.
+    </p>
+    {% if revocations %}
+    <ul class="mt-3 flex flex-col gap-1 text-xs">
+        {% for revocation in revocations %}
+        <li class="sms-link-revocation">
+            <span class="text-base-400">{{ revocation.created_at|date:"Y-m-d H:i T" }}</span>
+            {{ revocation.get_reason_display }}: <strong>{{ revocation.revoked_count }}</strong> link{{ revocation.revoked_count|pluralize }} revoked,
+            by {{ revocation.actor_label|default:revocation.get_via_display }}
+        </li>
+        {% endfor %}
+    </ul>
+    <p class="mt-3 text-xs"><a id="sms-link-revocations-all" class="text-primary-600 hover:text-primary-700 dark:text-primary-400" href="{% url 'admin:mail_smslinkrevocation_changelist' %}">All revocations</a></p>
+    {% else %}
+    <p class="mt-3 text-xs text-base-500 dark:text-base-300">None yet.</p>
+    {% endif %}
+</div>

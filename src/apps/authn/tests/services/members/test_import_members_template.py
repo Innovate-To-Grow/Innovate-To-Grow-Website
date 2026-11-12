@@ -10,8 +10,8 @@ from apps.authn.services.members.import_.parsing import (
     clean_phone,
     generate_random_password,
     normalize_header,
-    parse_boolean,
     parse_date,
+    parse_flag,
     parse_row,
 )
 from apps.authn.services.members.import_.template import generate_template_excel
@@ -59,11 +59,47 @@ class ParsingHelperTests(TestCase):
     def test_normalize_header_unknown_lowercased(self):
         self.assertEqual(normalize_header("Some Random"), "some random")
 
-    def test_parse_boolean_variants(self):
-        self.assertTrue(parse_boolean(True))
-        self.assertFalse(parse_boolean(None))
-        self.assertTrue(parse_boolean("yes"))
-        self.assertFalse(parse_boolean("no"))
+    def test_parse_flag_variants(self):
+        self.assertIs(parse_flag(True), True)
+        self.assertIs(parse_flag(False), False)
+        self.assertIs(parse_flag("yes"), True)
+        self.assertIs(parse_flag(" TRUE "), True)
+        self.assertIs(parse_flag("Y"), True)
+        self.assertIs(parse_flag("active"), True)
+        self.assertIs(parse_flag("no"), False)
+        self.assertIs(parse_flag("FALSE"), False)
+        self.assertIs(parse_flag("inactive"), False)
+        self.assertIs(parse_flag(1), True)
+        self.assertIs(parse_flag(0), False)
+        self.assertIs(parse_flag(1.0), True)
+        self.assertIs(parse_flag(0.0), False)
+
+    def test_parse_flag_blank_or_unrecognised_is_none(self):
+        """Unrecognised text used to count as FALSE and so un-verified or unsubscribed contacts."""
+        for value in (None, "", "   ", "N/A", "x", "maybe", 2, 0.5):
+            with self.subTest(value=value):
+                self.assertIsNone(parse_flag(value))
+
+    def test_parse_row_reports_unrecognised_flag_text(self):
+        row = parse_row(
+            4,
+            {
+                "primary_email": "a@example.com",
+                "primary_subscribed": "N/A",
+                "primary_verified": "   ",
+                "is_active": "yes",
+            },
+        )
+        self.assertIsNone(row["primary_subscribed"])
+        self.assertIsNone(row["primary_verified"])
+        self.assertTrue(row["is_active"])
+        self.assertEqual(row["notes"], ["Primary Subscribed cell 'N/A' is not TRUE or FALSE; it was ignored"])
+
+    def test_parse_row_records_which_contact_columns_exist(self):
+        row = parse_row(2, {"primary_email": "a@example.com", "secondary_email": None, "phone_number": None})
+        self.assertTrue(row["has_secondary_email_column"])
+        self.assertTrue(row["has_phone_column"])
+        self.assertFalse(parse_row(2, {"primary_email": "a@example.com"})["has_phone_column"])
 
     def test_parse_date_none(self):
         self.assertIsNone(parse_date(None))
@@ -134,3 +170,4 @@ class ParsingHelperTests(TestCase):
         self.assertIsNone(row["is_active"])
         self.assertIsNone(row["is_staff"])
         self.assertIsNone(row["phone_number"])
+        self.assertEqual(row["notes"], [])

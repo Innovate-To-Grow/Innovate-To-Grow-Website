@@ -156,8 +156,8 @@ class Member(AbstractUser, ProjectControlModel):
         phones.sort(key=lambda p: (-p.verified, p.created_at))
         return phones[0]
 
-    def get_primary_phone(self) -> str:
-        """Return the member's primary phone in E.164, or empty string.
+    def get_primary_contact_phone(self):
+        """Return the member's primary ContactPhone, or None.
 
         ContactPhone has no ``phone_type`` (unlike ContactEmail), so pick
         deterministically: verified phones sort first (``-verified``), then the
@@ -167,6 +167,10 @@ class Member(AbstractUser, ProjectControlModel):
         """
         prefetched = self._primary_phone_from_prefetch()
         if prefetched is not None:
-            return prefetched.to_e164()
-        contact = self.contact_phones.order_by("-verified", "created_at").first()
+            return prefetched
+        return self.contact_phones.order_by("-verified", "created_at").first()
+
+    def get_primary_phone(self) -> str:
+        """Return the member's primary phone (``get_primary_contact_phone``) in E.164, or empty string."""
+        contact = self.get_primary_contact_phone()
         return contact.to_e164() if contact else ""

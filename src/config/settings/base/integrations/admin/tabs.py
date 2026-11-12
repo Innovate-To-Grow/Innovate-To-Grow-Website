@@ -117,6 +117,11 @@ TABS = [
             "mail.loginlinktoken",
             "mail.smscampaign",
             "mail.smsrecipientlog",
+            "mail.smsoptout",
+            "mail.smslinktoken",
+            "mail.smslinkrevocation",
+            "mail.ticketsms",
+            "mail.smsconfig",
         ],
         "items": [
             {"title": "Broadcast Email", "link": "/admin/mail/emailcampaign/"},
@@ -124,22 +129,33 @@ TABS = [
             {"title": "Login Links", "link": "/admin/mail/loginlinktoken/"},
             {"title": "Broadcast SMS", "link": "/admin/mail/smscampaign/"},
             {"title": "SMS Log", "link": "/admin/mail/smsrecipientlog/"},
+            {"title": "SMS Opt-outs", "link": "/admin/mail/smsoptout/"},
+            {"title": "SMS Links", "link": "/admin/mail/smslinktoken/"},
+            {"title": "Ticket SMS", "link": "/admin/mail/ticketsms/"},
+            {"title": "SMS Settings", "link": "/admin/mail/smsconfig/"},
         ],
     },
     {
         "page": "mail_delivery_operations",
         "items": [
             {"title": "Delivery Dashboard", "link": "/admin/mail/delivery-dashboard/"},
+            {"title": "Email Monitoring", "link": "/admin/mail/email-monitoring/"},
             {"title": "Notification Delivery", "link": "/admin/mail/settings/", "active": _is_notification_delivery},
             {"title": "Delivery Rates", "link": _DELIVERY_RATES_PATH},
         ],
     },
     {
-        "models": ["authn.member", "authn.membersheetsyncconfig", "authn.membersheetsynclog"],
+        "models": [
+            "authn.member",
+            "authn.membersheetsyncconfig",
+            "authn.membersheetsynclog",
+            "authn.memberimportbatch",
+        ],
         "items": [
             {"title": "Members", "link": "/admin/authn/member/"},
             {"title": "Member Sheet Sync", "link": "/admin/authn/membersheetsyncconfig/"},
             {"title": "Sync Logs", "link": "/admin/authn/membersheetsynclog/"},
+            {"title": "Member Imports", "link": "/admin/authn/memberimportbatch/"},
         ],
     },
     {
