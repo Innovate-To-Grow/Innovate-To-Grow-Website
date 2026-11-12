@@ -80,7 +80,8 @@ provider call, retries included; 429 incidents and response times are attempt fi
    requests as the admin inbox (`mailFolders/inbox/messages` and a message's `$value`), which the Graph
    transport's allow-list already permits; nothing is marked read, moved or deleted.
 3. **Incremental listing.** Each scan lists Inbox messages received since its durable checkpoint (less a
-   15-minute overlap), oldest first, 50 per request, at most 10 requests; the first scan looks back 72 hours.
+   15-minute overlap), oldest first, 50 per request, at most 10 requests; the first scan looks back 72 hours (or
+   the mailbox's first-scan lookback set on the dashboard; see [Reading older mail again](#reading-older-mail-again)).
    It opens (raw MIME, at most 256 KB, at most 200 per scan, and for at most 60 seconds per scan) only messages
    that look like reports: a report subject prefix (`Undeliverable:`, `Delivery Status Notification`, …) or a
    report sender (`postmaster`, `mailer-daemon`, `MicrosoftExchange…`). The checkpoint moves past what was fully
@@ -117,6 +118,34 @@ A matched bounce changes only the email's **delivery status** (its API status st
 **not** resend, suppress or unsubscribe anyone because of a bounce, and does not change the campaign's recipient
 log: those are business decisions for staff, made from the failed-recipient lists.
 
+### Reading older mail again
+
+The **Bounce processing** card on the overview has a folded section, **Read older mail again**, with two controls.
+Both need the Mail app, are POST forms with CSRF, start no scan, and leave an admin history line (Site Settings →
+Admin Log, on the mailbox's "Bounce processing for …" state) plus a log line (`email_bounce_state action=…`).
+
+- **Rescan since** (a date and time in the site's time zone, `America/Los_Angeles`) moves the mailbox's checkpoint
+  back, so that the next scan (the scheduled one, or **Scan now**) reads the Inbox again from that time, less the
+  usual 15-minute overlap. Use it to backfill: reports that arrived before the first scan (it looks back only 72
+  hours), or while the worker was stopped. Reports already recorded are skipped (by Graph id, then by the unique
+  key above), so a rescan never adds a second row; it only costs reads, at the usual budgets per scan. It is
+  refused, with the reason, when the time:
+  - is in the future;
+  - is more than `bounce_max_lookback_days` (90) days ago, or beyond `bounce_retention_days` if that is shorter
+    (older reports would be purged within the hour);
+  - is not before the current checkpoint (that would move it forward and skip mail; nothing changes);
+  - does not exist or occurs twice in the site's time zone (a daylight-saving change).
+
+  It is also refused while a scan holds the mailbox's lease (that scan would save its own checkpoint over the new
+  one; try again a minute later). A scan reads its checkpoint only once it holds the lease, so a rescan is never
+  lost to a scan starting at the same moment, and an expired lease is released so the stalled scan that held it
+  saves nothing. A paused mailbox stays paused: the rescan takes effect when processing is resumed. Mail deleted
+  or moved out of the Inbox cannot be read again.
+- **First-scan lookback** (hours) sets how far back the *first* scan of the mailbox reads, while it has no
+  checkpoint: 1 hour to `bounce_max_lookback_days` (2,160 hours). Empty restores the default,
+  `bounce_initial_lookback_hours` (72). Once the mailbox has a checkpoint the lookback is no longer used; use
+  **Rescan since** instead. The lookback stays editable while processing is not active, like Pause.
+
 ## Dashboard entry points
 
 | Page | URL |
@@ -127,7 +156,7 @@ log: those are business decisions for staff, made from the failed-recipient list
 | One email | `/admin/mail/email-monitoring/emails/<uuid>/` |
 | Bounce reports | `/admin/mail/email-monitoring/bounces/` (classification, match method, search) |
 | One campaign | `/admin/mail/email-monitoring/campaigns/<campaign uuid>/`, or **Delivery monitoring** on a sent campaign |
-| Bounce processing controls | POST `/admin/mail/email-monitoring/bounce-processing/` (`action=scan|pause|resume`) |
+| Bounce processing controls | POST `/admin/mail/email-monitoring/bounce-processing/` (`action=scan|pause|resume`; `action=rescan&since=YYYY-MM-DDTHH:MM`; `action=lookback&lookback_hours=N`, empty for the default) |
 
 The pages are a tab of **Delivery Operations** in the Broadcast Delivery section.
 
@@ -146,7 +175,8 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `bounce_scan_page_size`, `bounce_scan_max_pages`, `bounce_scan_max_messages` | `50`, `10`, `200` | Messages per list request, list requests per scan, reports opened per scan. |
 | `bounce_scan_max_seconds` | `60` | A scan stops (keeping its progress) after this long; the next one continues. |
 | `bounce_max_recipients_per_report` | `50` | Recipients read from one report (a genuine report names at most one message's recipients). |
-| `bounce_scan_overlap_seconds`, `bounce_initial_lookback_hours` | `900`, `72` | Overlap before the checkpoint; how far the first scan looks back. |
+| `bounce_scan_overlap_seconds`, `bounce_initial_lookback_hours` | `900`, `72` | Overlap before the checkpoint; how far the first scan looks back unless the mailbox's first-scan lookback is set on the dashboard. |
+| `bounce_max_lookback_days` | `90` | The furthest back **Rescan since** and the first-scan lookback reach (capped by `bounce_retention_days`). It bounds those admin controls, so it is set here, not beside them. |
 | `bounce_message_max_bytes` | `256 KiB` | Most of one report read (the status part comes first). |
 | `bounce_lease_seconds` | `900` | Longest a scan holds the mailbox. |
 | `bounce_match_window_hours` | `120` | Window of the inferred match. |
@@ -154,13 +184,16 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `ndr_subject_prefixes`, `ndr_sender_local_parts` | see the file | How a listed message is recognised as a report candidate. |
 
 **Pause / resume** on the dashboard stops scans of the mailbox without a deploy (stored on its
-`EmailMonitorState`).
+`EmailMonitorState`, like the first-scan lookback and the checkpoint that **Rescan since** moves). There is no
+generic admin form for that row on purpose: a form saves every column and would overwrite a running scan's lease.
 
 ## Deployment
 
 1. Deploy as usual: migration `core.0044_email_monitoring` creates the four tables (no data migration, no
-   backfill). Telemetry starts with the first email sent after the deploy; the dashboard shows that moment as
-   "Monitoring began".
+   backfill), and `core.0045_email_monitor_lookback` adds the nullable first-scan lookback column (empty: the
+   setting's default). Telemetry starts with the first email sent after the deploy; the dashboard shows that moment
+   as "Monitoring began". Bounce reports that arrived before the first scan's lookback are read with **Rescan
+   since**.
 2. The **background worker** container (`itg-background-worker`) must run: it runs the scans and the retention
    purge. Its first maintenance run queues the first scan.
 3. For bounce processing, the active Microsoft Graph configuration's mailbox scope must grant **read** on the
@@ -188,6 +221,11 @@ Dashboard; the controls are POST with CSRF. The telemetry tables are denied to t
   heuristically and may be recorded as "Unknown delivery status".
 - **Reports must reach the Inbox.** A report moved out of the Inbox before a scan (by an Outlook rule or a
   person) is not seen. Only the Inbox is read.
+- **A very dense Inbox stalls catch-up.** A scan lists at most `bounce_scan_max_pages` × `bounce_scan_page_size`
+  messages (each page repeats the previous page's last one) and starts 15 minutes before its checkpoint, so if
+  more than about 490 messages arrived within 15 minutes, later scans cannot get past that window. That is far
+  above this mailbox's traffic (sends are paced at 30 a minute); raise `bounce_scan_max_pages` if it ever happens,
+  for example during a large **Rescan since**.
 - **Multi-recipient inference uses the first recipient.** An inferred match compares the report's recipient
   with the email's first recipient; Cc'd recipients of JSON sends are matched only exactly.
 - **History.** Emails sent before monitoring began are not in the telemetry and nothing is reconstructed.
@@ -214,3 +252,5 @@ Dashboard; the controls are POST with CSRF. The telemetry tables are denied to t
 | "Last scan failed" with `403` | The Exchange restriction changed; run the access check. |
 | Many unmatched bounce reports | Reports about mail staff sent from Outlook, mail sent before monitoring began, or ambiguous JSON sends. |
 | An attempt "Interrupted: outcome unknown" | The process stopped mid-send (deploy, crash); treat as possibly sent. |
+| "A scan of … is running, so the checkpoint was not moved" | Wait for the scan to finish (the card shows "running now"; at most `bounce_lease_seconds`), then rescan again. |
+| A rescan reads nothing new | The reports were already recorded (the card's last scan counts them as "already recorded" or "duplicates skipped"), or they were deleted or moved out of the Inbox. |

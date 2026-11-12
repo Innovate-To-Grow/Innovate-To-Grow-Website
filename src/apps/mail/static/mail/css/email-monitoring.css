@@ -345,6 +345,33 @@
     margin-top: 12px;
 }
 
+/* "Read older mail again": Rescan since and the first-scan lookback, folded away until needed. */
+
+.i2g-monitor-backfill {
+    border-top: 1px solid var(--i2g-m-grid);
+    margin-top: 12px;
+    padding-top: 10px;
+}
+
+.i2g-monitor-backfill summary {
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.i2g-monitor-backfill-form {
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 12px;
+}
+
+.i2g-monitor-backfill .i2g-monitor-muted {
+    margin: 6px 0 0;
+    max-width: 80ch;
+}
+
 /* Status chips --------------------------------------------------------------------------------------------- */
 
 .i2g-monitor-chip {

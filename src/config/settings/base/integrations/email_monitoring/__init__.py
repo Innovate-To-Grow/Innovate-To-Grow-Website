@@ -62,8 +62,13 @@ EMAIL_MONITORING = {
     "bounce_max_recipients_per_report": 50,
     # Each scan starts this far before its checkpoint, so a message filed late is not missed (duplicates are skipped).
     "bounce_scan_overlap_seconds": 900,
-    # The first scan of a mailbox looks back this far.
+    # The first scan of a mailbox looks back this far, unless staff set another lookback for the mailbox on the
+    # dashboard (within one hour and bounce_max_lookback_days).
     "bounce_initial_lookback_hours": 72,
+    # The furthest back a scan can be sent, in days: "Rescan since" accepts no earlier time, and no first-scan lookback
+    # is longer. It never exceeds bounce_retention_days (older reports would be purged within the hour). It bounds those
+    # two admin controls, so it is set here rather than beside them.
+    "bounce_max_lookback_days": 90,
     # Most of one NDR's raw MIME read; the delivery-status part comes first, so a longer one is parsed as far as read.
     "bounce_message_max_bytes": 256 * 1024,
     # A scan holds the mailbox for at most this long, so a stopped worker never blocks the next scan for good.
