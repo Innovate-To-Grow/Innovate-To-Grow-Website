@@ -159,12 +159,12 @@ Reachability is decided by a shared denylist (used by both this CLI and the AI a
 - The whole **`authn`** app (identity/auth): `Member`, `ContactEmail`, `RSAKeypair`, `EmailAuthChallenge`, etc. Manage identity and auth records through the Django admin UI instead — a writable identity model on a no-per-model-permission API is an account-takeover vector.
 - Django internals: `admin.LogEntry`, `sessions.Session`, `contenttypes`, the stock `auth` app (`Group`/`Permission`).
 - Anything matching a denied name part — `*credential*`, `*config*`, `*permission*`, `*session*`, `*token*`, `logentry`.
-- Service configs and AI/chat models (`core.AWSCredentialConfig`, `system_intelligence.ChatMessage`, …), CMS structure (`cms.CMSPage`, `cms.CMSBlock`).
+- Service configs and AI/chat models and exports (`core.AWSCredentialConfig`, `system_intelligence.ChatMessage`, `system_intelligence.SystemIntelligenceExport`, …), CMS structure (`cms.CMSPage`, `cms.CMSBlock`).
 - The CLI's own tables (`cli_admin.*`) and other auth-sensitive tables (`mail.LoginLinkToken`, `authn.AdminInvitation`).
 
 **Fields that are never writable** (even on otherwise-writable models): `password`, `*secret*`, `*token*`, `*api_key*`, `is_staff`, `is_superuser`, `groups`, `permissions`, plus primary keys and non-editable / auto-timestamp fields.
 
-> The denylist lives in `src/apps/core/services/db_tools/safe_orm/`; the CLI's extra app/model denylist is `CLI_EXTRA_DENIED_APP_LABELS` / `CLI_EXTRA_DENIED_MODEL_LABELS` in `src/apps/cli_admin/auth/constants.py`. The shared layer also has a write-only list, `DENIED_WRITE_MODEL_LABELS` (contact emails and phones, the email and phone verification challenges, and admin invitations), which the AI action engine may read but never write; the CLI's whole-`authn` deny already covers them.
+> The denylist lives in `src/apps/core/services/db_tools/safe_orm/`; the CLI's extra app/model denylist is `CLI_EXTRA_DENIED_APP_LABELS` / `CLI_EXTRA_DENIED_MODEL_LABELS` in `src/apps/cli_admin/auth/constants.py`. The shared layer also has a write-only list, `DENIED_WRITE_MODEL_LABELS`: contact emails and phones, the email and phone verification challenges, admin invitations, the RSA sign-in key, the CLI audit log and background jobs (`core.BackgroundJob`) may be read but never written. Django's auto-created many-to-many tables (such as `mail.EmailCampaign_selected_members`) are never written either. For the CLI, this makes background jobs and the many-to-many tables read-only; it already kept the rest out of reach (the whole `authn` app and its own tables).
 
 ## Writes, cascades, and concurrency
 
