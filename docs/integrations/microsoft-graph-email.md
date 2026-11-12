@@ -101,14 +101,16 @@ go-live.
 10. **Disclosures to InfoSec.** The AI scam review sends some Inbox mail to Amazon Bedrock
     ([Admin inbox](#admin-inbox)); campaign messages with `{{login_link}}` are sent without a Sent Items
     copy and therefore without the one-click `List-Unsubscribe` header
-    ([Sent Items](#sent-items-and-credential-mail)); addresses SES suppressed are mailed again under Graph.
+    ([Sent Items](#sent-items-and-credential-mail)); addresses SES suppressed are mailed again under Graph until
+    staff suppress them on [Bounced addresses](email-monitoring.md#bounced-addresses).
     Agree with InfoSec which records count as the logging record (admin history, recorded access checks,
     CloudTrail) and their retention ([Retention](#retention)).
 
 Known gaps that remain (not fixed by this change): a campaign the web process is already sending keeps its
 provider when the provider is switched ([Emergency revocation](#emergency-revocation)); the inbox cache keys
 do not include the mailbox; the site does not log which admin opened which message; the AI scam review's
-request carries the admin assistant's tool definitions; there is no app-level bounce suppression.
+request carries the admin assistant's tool definitions; a bounce never suppresses an address by itself: staff
+suppress it on [Bounced addresses](email-monitoring.md#bounced-addresses), and only campaigns skip it.
 
 ## Prerequisites
 
