@@ -18,7 +18,17 @@ from apps.core.services.delivery_rates.maintenance import MaintenanceResult
 
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
 NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)
+NO_IMPORTS_PURGED = {"expired": 0, "blanked": 0, "deleted": 0}
 NOTHING_COUNTED = {"graph": 0, "ses": 0, "busy": False}
+
+
+HELPDESK_NOTHING_PURGED = {
+    "automated_bodies": 0,
+    "spam_bodies": 0,
+    "closed_bodies": 0,
+    "attachments": 0,
+    "tickets": 0,
+}
 
 
 class RunBackgroundWorkerCommandTests(SimpleTestCase):
@@ -266,6 +276,7 @@ MAINTENANCE_SERVICES = {
     "cleanup_expired_records": NOTHING_CLEANED,
     "clear_expired_sessions": 0,
     "purge_expired_failure_windows": 0,
+    "purge_member_imports": NO_IMPORTS_PURGED,
     "run_delivery_rate_maintenance": NOTHING_MAINTAINED,
     "active_certificate_expiry": None,
     "ensure_bounce_scan_scheduled": False,
@@ -273,7 +284,13 @@ MAINTENANCE_SERVICES = {
     "refresh_bounced_address_links": 0,
     "sync_sms_opt_outs": None,
     "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
+    "purge_expired_inbound_queue": 0,
     "purge_finished_bounce_scans": 0,
+    "ensure_helpdesk_intake_scheduled": False,
+    "ensure_helpdesk_ingest_scheduled": False,
+    "purge_expired_helpdesk": HELPDESK_NOTHING_PURGED,
+    "purge_finished_helpdesk_ingests": 0,
+    "purge_finished_helpdesk_intake_scans": 0,
 }
 
 
@@ -306,10 +323,13 @@ BATCHED_SERVICES = (
     "cleanup_expired_records",
     "clear_expired_sessions",
     "purge_expired_failure_windows",
+    "purge_member_imports",
     "count_bounced_addresses",
     "refresh_bounced_address_links",
     "sync_sms_opt_outs",
     "purge_expired_email_telemetry",
+    "purge_expired_inbound_queue",
+    "purge_expired_helpdesk",
 )
 
 
@@ -343,6 +363,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             cleanup_expired_records=record("send verification", NOTHING_CLEANED),
             clear_expired_sessions=record("sessions", 0),
             purge_expired_failure_windows=record("login failure windows", 0),
+            purge_member_imports=record("member imports", NO_IMPORTS_PURGED),
             run_delivery_rate_maintenance=record("delivery rates", NOTHING_MAINTAINED),
             active_certificate_expiry=record("graph certificate", None),
             ensure_bounce_scan_scheduled=record("bounce scans", False),
@@ -350,7 +371,13 @@ class MaintenanceTaskTests(SimpleTestCase):
             refresh_bounced_address_links=record("bounced address links", 0),
             sync_sms_opt_outs=record("sms opt-outs", None),
             purge_expired_email_telemetry=record("email telemetry", {"emails": 0, "bounces": 0}),
+            purge_expired_inbound_queue=record("inbound queue", 0),
             purge_finished_bounce_scans=record("bounce scan jobs", 0),
+            ensure_helpdesk_intake_scheduled=record("helpdesk intake", False),
+            ensure_helpdesk_ingest_scheduled=record("helpdesk ingest", False),
+            purge_expired_helpdesk=record("helpdesk retention", HELPDESK_NOTHING_PURGED),
+            purge_finished_helpdesk_ingests=record("helpdesk ingest jobs", 0),
+            purge_finished_helpdesk_intake_scans=record("helpdesk intake scans", 0),
         )
 
         self.assertEqual(
@@ -361,6 +388,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "send verification",
                 "sessions",
                 "login failure windows",
+                "member imports",
                 "delivery rates",
                 "graph certificate",
                 "bounce scans",
@@ -368,7 +396,13 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "bounced address links",
                 "sms opt-outs",
                 "email telemetry",
+                "inbound queue",
                 "bounce scan jobs",
+                "helpdesk intake",
+                "helpdesk ingest",
+                "helpdesk retention",
+                "helpdesk ingest jobs",
+                "helpdesk intake scans",
             ],
         )
         self.assertEqual(
@@ -379,12 +413,16 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Send verification cleanup",
                 "Expired session cleanup",
                 "Login failure window purge",
+                "Member import purge",
                 "Delivery-rate maintenance",
                 "Microsoft Graph certificate expiry check",
                 "Email bounce scan scheduling",
                 "Bounced address counting",
                 "SMS opt-out sync",
                 "Email telemetry retention",
+                "Helpdesk intake scheduling",
+                "Helpdesk ingest scheduling",
+                "Helpdesk retention",
             ],
         )
 
@@ -404,6 +442,16 @@ class MaintenanceTaskTests(SimpleTestCase):
                 ("ERROR", "Send verification cleanup failed", True),
                 ("INFO", "Cleared 3 expired sessions", False),
             ],
+        )
+
+    def test_member_import_purge_logs_its_counts_only_when_it_purged_something(self):
+        with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
+            mocks = self.run_patched(purge_member_imports=lambda **_kwargs: {"expired": 2, "blanked": 1, "deleted": 0})
+
+        mocks["purge_member_imports"].assert_called_once_with(should_stop=None)
+        self.assertEqual(
+            [record.getMessage() for record in logs.records],
+            ["Member import retention: deleted 2 expired and 0 old imports; blanked 1"],
         )
 
     def test_a_failing_login_window_purge_is_isolated(self):
@@ -454,6 +502,24 @@ class MaintenanceTaskTests(SimpleTestCase):
         )
         with self.assertNoLogs(LOGGER_NAME, level="INFO"):
             self.run_patched()
+
+    def test_the_helpdesk_counts_name_its_intake_scans_and_scheduling_is_logged_at_debug(self):
+        purged = {**HELPDESK_NOTHING_PURGED, "tickets": 2}
+        with self.assertLogs(LOGGER_NAME, level="DEBUG") as logs:
+            self.run_patched(
+                ensure_helpdesk_intake_scheduled=lambda **_kwargs: True,
+                ensure_helpdesk_ingest_scheduled=lambda **_kwargs: True,
+                purge_expired_helpdesk=lambda **_kwargs: purged,
+                purge_finished_helpdesk_intake_scans=lambda **_kwargs: 4,
+            )
+
+        self.assertIn(f"DEBUG:{LOGGER_NAME}:Queued a helpdesk intake scan", logs.output)
+        self.assertIn(f"DEBUG:{LOGGER_NAME}:Queued a helpdesk ingest run", logs.output)
+        self.assertIn(
+            f"INFO:{LOGGER_NAME}:Helpdesk retention: purged 0 automated, 0 spam and 0 closed-ticket bodies and 0 "
+            "attachments; deleted 2 tickets, 0 finished ingest jobs and 4 finished intake scans",
+            logs.output,
+        )
 
     def test_bounced_address_counts_are_logged_only_when_something_changed(self):
         with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
@@ -515,12 +581,16 @@ class MaintenanceTaskTests(SimpleTestCase):
             cleanup_expired_records=RuntimeError("c"),
             clear_expired_sessions=RuntimeError("d"),
             purge_expired_failure_windows=RuntimeError("e"),
+            purge_member_imports=RuntimeError("j"),
             run_delivery_rate_maintenance=RuntimeError("g"),
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),
             count_bounced_addresses=RuntimeError("j"),
             sync_sms_opt_outs=RuntimeError("k"),
             purge_expired_email_telemetry=RuntimeError("i"),
+            ensure_helpdesk_intake_scheduled=RuntimeError("l"),
+            ensure_helpdesk_ingest_scheduled=RuntimeError("j"),
+            purge_expired_helpdesk=RuntimeError("k"),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)

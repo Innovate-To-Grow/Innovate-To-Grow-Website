@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.event.apps.EventConfig",
     "apps.projects.apps.ProjectsConfig",
     "apps.mail.apps.MailConfig",
+    "apps.helpdesk.apps.HelpdeskConfig",
     "apps.cli_admin.apps.CliAdminConfig",
     # Third-party
     "corsheaders",

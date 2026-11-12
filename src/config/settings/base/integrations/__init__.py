@@ -10,5 +10,6 @@ Third-party package configuration.
   delivery_rates/ – Per-channel delivery-rate seeds and ceilings, the Smart rate controller, waits and signals.
   request_limits/ – Inbound request-limit scopes, priority tiers, routes, Smart limiting and the counter store.
   email_monitoring/ – Outgoing-email telemetry, its retention, and bounce (NDR / DSN) processing.
+  member_import/ – Member import review: the upload's row cap and how long staged imports are kept.
   sms/ – SMS policy bounds: the quiet-hours switch, SMS link tokens and the AWS opt-out list sync.
 """

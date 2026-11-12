@@ -145,11 +145,17 @@ TABS = [
         ],
     },
     {
-        "models": ["authn.member", "authn.membersheetsyncconfig", "authn.membersheetsynclog"],
+        "models": [
+            "authn.member",
+            "authn.membersheetsyncconfig",
+            "authn.membersheetsynclog",
+            "authn.memberimportbatch",
+        ],
         "items": [
             {"title": "Members", "link": "/admin/authn/member/"},
             {"title": "Member Sheet Sync", "link": "/admin/authn/membersheetsyncconfig/"},
             {"title": "Sync Logs", "link": "/admin/authn/membersheetsynclog/"},
+            {"title": "Member Imports", "link": "/admin/authn/memberimportbatch/"},
         ],
     },
     {

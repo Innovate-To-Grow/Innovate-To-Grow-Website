@@ -1,4 +1,5 @@
-"""The bounce scans in the background worker: scheduling, the chain of scans, timing, and their own retention."""
+"""The bounce scans in the background worker: scheduling, the chain of scans, timing (the cadence the dashboard shows),
+and their own retention. Bounce processing keeps its own cadence whatever else reads the Inbox."""
 
 from datetime import timedelta
 from unittest.mock import patch
@@ -10,7 +11,13 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 from apps.core.services.background_jobs import claim_jobs, run_claimed_job
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND, ScanOutcome, ensure_scheduled, run_now
-from apps.core.services.email.bounces.jobs import next_delay, purge_finished_jobs, run_scan_job
+from apps.core.services.email.bounces.jobs import (
+    catch_up_seconds,
+    interval_seconds,
+    next_delay,
+    purge_finished_jobs,
+    run_scan_job,
+)
 
 from .helpers import monitoring_settings
 
@@ -73,6 +80,27 @@ class SchedulingTests(TestCase):
             self.assertEqual(next_delay(ScanOutcome("busy", retry_after=1800)), 1800)
             self.assertEqual(next_delay(ScanOutcome("busy", retry_after=30)), 600)
             self.assertEqual(next_delay(ScanOutcome("partial")), 120)
+
+    def test_the_cadence_the_dashboard_shows_is_the_one_scans_follow(self):
+        with monitoring_settings(bounce_scan_interval_seconds=600):
+            self.assertEqual((interval_seconds(), catch_up_seconds()), (600, 120))
+            self.assertEqual(next_delay(ScanOutcome("ok")), interval_seconds())
+            self.assertEqual(next_delay(ScanOutcome("partial")), catch_up_seconds())
+        # Never under a minute, and catching up is never slower than the interval.
+        with monitoring_settings(bounce_scan_interval_seconds=5):
+            self.assertEqual((interval_seconds(), catch_up_seconds()), (60, 60))
+        with monitoring_settings(bounce_scan_interval_seconds=90):
+            self.assertEqual((interval_seconds(), catch_up_seconds()), (90, 90))
+
+    def test_the_helpdesk_being_on_does_not_change_the_bounce_cadence(self):
+        """The helpdesk lists the Inbox with its own scan: bounce scans no longer speed up while it is on."""
+        settings = monitoring_settings(bounce_scan_interval_seconds=600, inbox_scan_interval_seconds=120)
+        with patch(SCAN, return_value=ScanOutcome("ok", stats={"listed": 3})), settings:
+            run_scan_job(job=None)
+
+        job = scan_jobs().get()
+        self.assertAlmostEqual((job.available_at - timezone.now()).total_seconds(), 600, delta=5)
+        self.assertEqual(set(BackgroundJob.objects.values_list("kind", flat=True)), {BOUNCE_SCAN_JOB_KIND})
 
     def test_the_worker_runs_a_scan_job_through_its_registered_handler(self):
         run_now()

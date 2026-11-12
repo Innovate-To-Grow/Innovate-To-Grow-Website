@@ -15,7 +15,8 @@ class RegistrationPendingMigrationTests(TransactionTestCase):
     def tearDown(self):
         # Restore the schema to the latest migration state. The backward migrate below also unapplies every migration
         # that depends on authn 0022 (mail 0023_bounced_address, for one), and migrating forward only to `migrate_to`
-        # would leave those unapplied, which breaks every later test that touches their tables in the same run.
+        # would leave those, and every later authn migration (0023 onwards), unapplied, which breaks every later test
+        # that touches their tables in the same run.
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
         executor.migrate(executor.loader.graph.leaf_nodes())

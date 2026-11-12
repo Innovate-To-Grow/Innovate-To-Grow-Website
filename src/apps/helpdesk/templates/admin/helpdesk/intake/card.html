@@ -1,0 +1,79 @@
+{% comment %}
+Helpdesk → Settings: the intake card, above the settings form and outside it (each control is its own POST form).
+The intake is the helpdesk's own scan of the Inbox; bounce processing has its own card on Email Monitoring, and
+neither card's controls change the other. The level always shows an icon and a label, never color alone.
+{% endcomment %}
+{% with intake=helpdesk_intake %}{% if intake %}
+<section id="helpdesk-intake" class="i2g-helpdesk-intake i2g-helpdesk-intake--{{ intake.level }}" aria-labelledby="helpdesk-intake-heading">
+  <div class="i2g-helpdesk-intake-head">
+    <h2 id="helpdesk-intake-heading" class="i2g-helpdesk-heading">Intake: reading the Inbox</h2>
+    <p class="i2g-helpdesk-level">
+      <span class="material-symbols-outlined" aria-hidden="true">{% if intake.level == "ok" %}check_circle{% elif intake.level == "warning" %}warning{% elif intake.level == "error" %}error{% elif intake.level == "paused" %}pause_circle{% elif intake.level == "waiting" %}schedule{% else %}block{% endif %}</span>
+      <strong>{% if intake.level == "ok" %}Running{% elif intake.level == "warning" %}No recent successful scan{% elif intake.level == "error" %}Last scan failed{% elif intake.level == "paused" %}Paused{% elif intake.level == "waiting" %}Waiting for the first scan{% elif intake.level == "off" %}Switched off{% else %}Not active{% endif %}</strong>
+    </p>
+  </div>
+  <p class="i2g-helpdesk-muted">The helpdesk lists the Inbox with its own scan and checkpoint and records every message for import. Pause, Rescan since and the lookback here change only the helpdesk; bounce processing (Mail → Email Monitoring) reads the same Inbox on its own schedule, and its controls never change these.</p>
+  <dl class="i2g-helpdesk-facts">
+    <div><dt>Mailbox</dt><dd>{{ intake.mailbox|default:"–" }}</dd></div>
+    <div><dt>Last scan</dt><dd>{% if intake.scan_running %}running now (started {{ intake.state.last_run_started_at|date:"H:i" }}){% elif intake.state.last_run_finished_at %}{{ intake.state.last_run_finished_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
+    <div><dt>Last successful scan</dt><dd>{% if intake.state.last_success_at %}{{ intake.state.last_success_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
+    <div><dt>Checkpoint</dt><dd>{% if intake.state.checkpoint_at %}{{ intake.state.checkpoint_at|date:"M j, H:i" }}{% else %}–{% endif %}</dd></div>
+    <div><dt>Next scan</dt><dd>{% if intake.next_scan_at %}{{ intake.next_scan_at|date:"M j, H:i" }}{% else %}not queued{% endif %}{% if intake.state.next_run_after %} (Microsoft asked to wait until {{ intake.state.next_run_after|date:"H:i" }}){% endif %}</dd></div>
+    <div><dt>Interval</dt><dd>every {{ intake.every }}{% if intake.catch_up %}; every {{ intake.catch_up }} while catching up{% endif %}</dd></div>
+    <div><dt>Waiting to be imported</dt><dd>{{ intake.waiting }} message{{ intake.waiting|pluralize }}</dd></div>
+  </dl>
+  {% if intake.level == "off" %}
+    <p class="i2g-helpdesk-muted">The helpdesk is switched off (Enabled, below): nothing is read or imported. Switched back on, the intake continues from its checkpoint.</p>
+  {% elif intake.problem %}
+    <p class="i2g-helpdesk-alert" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ intake.problem }}</p>
+  {% elif intake.state.consecutive_failures %}
+    <p class="i2g-helpdesk-alert" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ intake.state.consecutive_failures }} scan{{ intake.state.consecutive_failures|pluralize }} in a row failed; last error {{ intake.state.last_error_at|date:"M j, H:i" }}: {{ intake.state.last_error }}</p>
+  {% elif intake.level == "warning" %}
+    <p class="i2g-helpdesk-alert" role="alert"><span class="material-symbols-outlined" aria-hidden="true">warning</span>No scan has succeeded recently. Check that the background worker (itg-background-worker) is running.</p>
+  {% endif %}
+  {% if intake.stats %}
+    <p class="i2g-helpdesk-muted">Last scan: {{ intake.stats.listed|default:0 }} message{{ intake.stats.listed|default:0|pluralize }} listed, {{ intake.stats.recorded|default:0 }} new recorded for import (the rest were recorded before).</p>
+  {% endif %}
+  {% if intake.mailbox %}
+  <div class="i2g-helpdesk-actions">
+    <form method="post" action="{{ intake.url }}">
+      {% csrf_token %}<input type="hidden" name="action" value="scan">
+      <button type="submit" class="i2g-helpdesk-button" {% if not intake.enabled or not intake.active or intake.state.paused %}disabled{% endif %}><span class="material-symbols-outlined" aria-hidden="true">sync</span>Scan now</button>
+    </form>
+    <form method="post" action="{{ intake.url }}">
+      {% csrf_token %}
+      {% if intake.state.paused %}
+        <input type="hidden" name="action" value="resume">
+        <button type="submit" class="i2g-helpdesk-button"><span class="material-symbols-outlined" aria-hidden="true">play_arrow</span>Resume intake</button>
+      {% else %}
+        <input type="hidden" name="action" value="pause">
+        <button type="submit" class="i2g-helpdesk-button"><span class="material-symbols-outlined" aria-hidden="true">pause</span>Pause intake</button>
+      {% endif %}
+    </form>
+  </div>
+  {% with bf=intake.backfill %}
+  <details class="i2g-helpdesk-backfill">
+    <summary>Read older mail again</summary>
+    <form method="post" action="{{ intake.url }}" class="i2g-helpdesk-backfill-form">
+      {% csrf_token %}<input type="hidden" name="action" value="rescan">
+      <label class="i2g-helpdesk-field">
+        <span>Rescan since ({{ bf.timezone }})</span>
+        <input type="datetime-local" name="since" required step="60" min="{{ bf.earliest_input }}" max="{{ bf.latest_input }}">
+      </label>
+      <button type="submit" class="i2g-helpdesk-button" {% if not intake.active %}disabled{% endif %}><span class="material-symbols-outlined" aria-hidden="true">history</span>Rescan since</button>
+    </form>
+    <p class="i2g-helpdesk-muted">Moves the intake's checkpoint back so that its next scan lists the Inbox again from that time, at most {{ bf.max_days }} days back, and imports what the helpdesk does not have yet: messages already recorded are skipped, so no ticket is made twice. It starts no scan: the next scheduled scan, or Scan now, does the reading{% if intake.state.paused %}, once the intake is resumed{% endif %}. Refused while a scan is running. Bounce processing is not affected.</p>
+    <form method="post" action="{{ intake.url }}" class="i2g-helpdesk-backfill-form">
+      {% csrf_token %}<input type="hidden" name="action" value="lookback">
+      <label class="i2g-helpdesk-field">
+        <span>First-scan lookback (hours)</span>
+        <input type="number" name="lookback_hours" min="{{ bf.lookback_min }}" max="{{ bf.lookback_max }}" step="1" inputmode="numeric" value="{{ intake.state.initial_lookback_hours|default_if_none:'' }}" placeholder="{{ bf.lookback_default }}">
+      </label>
+      <button type="submit" class="i2g-helpdesk-button"><span class="material-symbols-outlined" aria-hidden="true">save</span>Save lookback</button>
+    </form>
+    <p class="i2g-helpdesk-muted">How far back the intake's first scan of {{ intake.mailbox }} reads: now {{ bf.lookback_hours }} hours{% if bf.lookback_custom %} (set here){% else %} (the default){% endif %}. Allowed: {{ bf.lookback_min }} to {{ bf.lookback_max|floatformat:"0g" }} hours; leave it empty for the default ({{ bf.lookback_default }} hours).{% if intake.state.checkpoint_at %} The intake already has a checkpoint, so the lookback is not used: to read older mail, use Rescan since.{% endif %}</p>
+  </details>
+  {% endwith %}
+  {% endif %}
+</section>
+{% endif %}{% endwith %}
