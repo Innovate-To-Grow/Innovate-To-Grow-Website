@@ -9,10 +9,28 @@ from django.http import HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
 
+from apps.core.services.background_jobs import jobs_enabled
 from apps.mail.admin.campaign.views.status import _short_error
-from apps.mail.models import SmsCampaign, SmsRecipientLog
-from apps.mail.services.campaign.personalize import personalize
+from apps.mail.models import SmsCampaign, SmsConfig, SmsRecipientLog
 from apps.mail.services.sms.audience import get_sms_recipients
+from apps.mail.services.sms.compose import EXAMPLE_NAMES, links_used, preview_text
+from apps.mail.services.sms.errors import SmsSendRefused
+from apps.mail.services.sms.estimate import estimate
+from apps.mail.services.sms.links import example_link
+from apps.mail.services.sms.quiet_hours import held_until
+
+
+def _send_context(campaign, recipients) -> dict:
+    """What the preview and the confirmation show next to the count: the estimate and why texts may not go now."""
+    config = SmsConfig.load()
+    return {
+        "sms_estimate": estimate(campaign.message, recipients, config, sample=EXAMPLE_NAMES),
+        "opted_out_count": len(getattr(recipients, "skipped", ())),
+        "quiet_until": held_until(config=config),
+        "jobs_enabled": jobs_enabled(),
+        "links_blocked": bool(links_used(campaign.message)) and not config.links_enabled,
+        "preview_message": preview_text(campaign.message, config, link=example_link()),
+    }
 
 
 class SmsCampaignSendViewsMixin:
@@ -31,6 +49,7 @@ class SmsCampaignSendViewsMixin:
             "title": f"Preview SMS Recipients - {obj.name}",
             "campaign": obj,
             "recipients": recipients,
+            "opted_out_count": len(recipients.skipped),
             "back_url": reverse("admin:mail_smscampaign_change", args=[object_id]),
         }
         return TemplateResponse(request, "admin/mail/smscampaign/preview_recipients.html", context)
@@ -41,20 +60,12 @@ class SmsCampaignSendViewsMixin:
         obj = SmsCampaign.objects.get(pk=object_id)
         change_url = reverse("admin:mail_smscampaign_change", args=[object_id])
         recipients = get_sms_recipients(obj)
-        preview = personalize(
-            obj.message,
-            {
-                "first_name": "Hongzhe",
-                "last_name": "Xie",
-                "full_name": "Hongzhe Xie",
-            },
-        )
         context = {
             **self.admin_site.each_context(request),
+            **_send_context(obj, recipients),
             "title": f"Preview SMS - {obj.name}",
             "campaign": obj,
             "recipient_count": len(recipients),
-            "preview_message": preview,
             "confirm_url": reverse("admin:mail_smscampaign_send_confirm", args=[object_id])
             if obj.status == "draft"
             else None,
@@ -83,6 +94,10 @@ class SmsCampaignSendViewsMixin:
 
             try:
                 self._background_send(obj.pk, request.user.pk)
+            except SmsSendRefused as exc:
+                # Links turned off, or quiet hours with background jobs off: nothing was queued or changed.
+                messages.error(request, str(exc))
+                return HttpResponseRedirect(change_url)
             except ValueError:
                 messages.warning(request, "This SMS campaign has already been sent.")
                 return HttpResponseRedirect(change_url)
@@ -96,6 +111,7 @@ class SmsCampaignSendViewsMixin:
         recipients = get_sms_recipients(obj)
         context = {
             **self.admin_site.each_context(request),
+            **_send_context(obj, recipients),
             "title": f"Confirm SMS Send - {obj.name}",
             "campaign": obj,
             "recipient_count": len(recipients),
@@ -155,6 +171,7 @@ class SmsCampaignSendViewsMixin:
                 "total": obj.total_recipients,
                 "sent": obj.sent_count,
                 "failed": obj.failed_count,
+                "opted_out": SmsRecipientLog.objects.filter(campaign=obj, status="opted_out").count(),
                 "error_message": _short_error(obj.error_message),
                 "started_at": first_sent_at.isoformat() if first_sent_at else None,
                 "recent_logs": recent_logs,

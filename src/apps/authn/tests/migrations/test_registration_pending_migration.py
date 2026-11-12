@@ -12,6 +12,16 @@ class RegistrationPendingMigrationTests(TransactionTestCase):
     migrate_from = [("authn", "0021_login_failure_window")]
     migrate_to = [("authn", "0022_member_registration_pending")]
 
+    def tearDown(self):
+        # Restore the schema to the latest migration state. The backward migrate below also unapplies every migration
+        # that depends on authn 0022 (mail 0023_bounced_address, for one), and migrating forward only to `migrate_to`
+        # would leave those, and every later authn migration (0023 onwards), unapplied, which breaks every later test
+        # that touches their tables in the same run.
+        executor = MigrationExecutor(connection)
+        executor.loader.build_graph()
+        executor.migrate(executor.loader.graph.leaf_nodes())
+        super().tearDown()
+
     def test_old_register_code_cannot_identify_safe_pending_member(self):
         executor = MigrationExecutor(connection)
         executor.migrate(self.migrate_from)

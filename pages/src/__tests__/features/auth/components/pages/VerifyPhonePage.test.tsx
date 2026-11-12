@@ -2,7 +2,7 @@ import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/reac
 import {MemoryRouter, Route, Routes} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {VerifyPhonePage} from '@/features/auth/components/pages/VerifyPhonePage';
+import {PHONE_CODE_HINT, VerifyPhonePage} from '@/features/auth/components/pages/VerifyPhonePage';
 
 const mockUseAuth = vi.fn();
 const mockNavigate = vi.fn();
@@ -92,6 +92,14 @@ describe('VerifyPhonePage', () => {
   it('redirects to /login when the phone param is not a valid US number', () => {
     renderAt('/verify-phone?phone=123');
     expect(screen.queryByRole('button', {name: 'Verify'})).not.toBeInTheDocument();
+  });
+
+  it('says what to do when no text arrives, as the code field description', () => {
+    renderAt('/verify-phone?phone=2025550123');
+
+    expect(screen.getByText(PHONE_CODE_HINT)).toBeInTheDocument();
+    expect(PHONE_CODE_HINT).toContain('Only a verified phone number can be used to sign in');
+    expect(screen.getByRole('textbox', {name: '6-digit verification code'})).toHaveAccessibleDescription(PHONE_CODE_HINT);
   });
 
   it('stays on the verify screen when verification fails', async () => {

@@ -212,7 +212,7 @@ class MemberAdminActionTests(_AdminTestBase):
         response = self.model_admin.import_excel_view(request)
         self.assertEqual(response.status_code, 200)
 
-    def test_import_excel_view_post_imports_members(self):
+    def _upload_request(self, data):
         from io import BytesIO
 
         from django.core.files.uploadedfile import SimpleUploadedFile
@@ -224,52 +224,39 @@ class MemberAdminActionTests(_AdminTestBase):
         worksheet.append(["imported@example.com", "Imp", "Orted", "Acme"])
         payload = BytesIO()
         workbook.save(payload)
-        payload.seek(0)
-
         upload = SimpleUploadedFile(
             "members.xlsx",
             payload.getvalue(),
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         )
-        request = self.rf.post("/admin/authn/member/import-excel/", {"excel_file": upload})
-        request.user = self.admin_user
-        request.session = {}
-        from django.contrib.messages.storage.fallback import FallbackStorage
-
-        request._messages = FallbackStorage(request)
-
-        response = self.model_admin.import_excel_view(request)
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(ContactEmail.objects.filter(email_address="imported@example.com").exists())
-        self.assertTrue(any("Import complete" in str(m) for m in request._messages))
-
-    def test_import_excel_view_update_existing_requires_change_permission(self):
-        from io import BytesIO
-
-        from django.core.files.uploadedfile import SimpleUploadedFile
-        from openpyxl import Workbook
-
-        workbook = Workbook()
-        worksheet = workbook.active
-        worksheet.append(["Primary Email", "First Name", "Last Name", "Organization"])
-        worksheet.append(["imported@example.com", "Imp", "Orted", "Acme"])
-        payload = BytesIO()
-        workbook.save(payload)
-        payload.seek(0)
-
-        upload = SimpleUploadedFile(
-            "members.xlsx",
-            payload.getvalue(),
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        request = self.rf.post("/admin/authn/member/import-excel/", {"excel_file": upload, "update_existing": "on"})
+        request = self.rf.post("/admin/authn/member/import-excel/", {"excel_file": upload, **data})
         request.user = self.admin_user
         request.session = {}
         request._messages = FallbackStorage(request)
+        return request
 
+    def test_import_excel_view_post_stages_a_review(self):
+        from apps.authn.models import MemberImportBatch
+
+        response = self.model_admin.import_excel_view(self._upload_request({"mode": "update_existing"}))
+
+        batch = MemberImportBatch.objects.get()
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], f"/admin/authn/member/import-excel/{batch.pk}/review/")
+        # Nothing is created before the review is confirmed.
+        self.assertFalse(ContactEmail.objects.filter(email_address="imported@example.com").exists())
+        self.assertEqual(batch.rows.get().status, "ready_create")
+
+    def test_import_excel_view_update_mode_requires_change_permission(self):
+        from apps.authn.models import MemberImportBatch
+
+        request = self._upload_request({"mode": "update_existing"})
         with patch.object(self.model_admin, "has_change_permission", return_value=False):
-            with self.assertRaises(PermissionDenied):
-                self.model_admin.import_excel_view(request)
+            response = self.model_admin.import_excel_view(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "You do not have permission to update existing members.")
+        self.assertFalse(MemberImportBatch.objects.exists())
 
 
 class ContactEmailAdminTests(_AdminTestBase):
@@ -429,12 +416,12 @@ class ContactPhoneAdminTests(_AdminTestBase):
         result = self.model_admin.get_formatted_number(self.phone)
         self.assertTrue(result)
 
-    def test_mark_verified(self):
+    def test_there_is_no_bulk_mark_verified_action(self):
+        # A verified number signs in by SMS: only a code verifies it, never a bulk action.
         request = _request(self.rf, self.admin_user)
-        self.model_admin.mark_verified(request, ContactPhone.objects.filter(pk=self.phone.pk))
-        self.phone.refresh_from_db()
-        self.assertTrue(self.phone.verified)
-        self.assertIn("1 phone(s) marked as verified.", self._messages(request))
+        actions = self.model_admin.get_actions(request)
+        self.assertNotIn("mark_verified", actions)
+        self.assertIn("mark_unverified", actions)
 
     def test_mark_unverified(self):
         self.phone.verified = True

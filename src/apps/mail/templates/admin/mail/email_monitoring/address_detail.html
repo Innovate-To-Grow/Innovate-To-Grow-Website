@@ -1,0 +1,144 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block monitoring_content %}
+<p><a class="i2g-monitor-back" href="{% url 'admin:mail_email_monitoring_addresses' %}"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Bounced addresses</a></p>
+
+<section class="i2g-monitor-card" aria-labelledby="address-summary">
+  <h2 id="address-summary" class="i2g-monitor-heading">{{ row.address }} <span>{{ target.role.label }}</span></h2>
+  <dl class="i2g-monitor-facts">
+    <div><dt>Status</dt><dd>{% include "admin/mail/email_monitoring/_address_status.html" %}{% if row.reviewed_at %}<br><span class="i2g-monitor-muted">{{ row.reviewed_at|date:"M j, Y H:i" }}{% if row.reviewed_by %} by {{ row.reviewed_by }}{% endif %}{% if row.review_note %}: {{ row.review_note }}{% endif %}</span>{% endif %}</dd></div>
+    <div><dt>Campaign mail</dt><dd>{% if row.suppressed_at %}<strong>{{ row.get_suppression_display }}</strong> {{ row.suppressed_at|date:"M j, Y H:i" }}{% if row.suppressed_by %} by {{ row.suppressed_by }}{% endif %}{% if row.suppressed_reason %}<br><span class="i2g-monitor-muted">{{ row.suppressed_reason }}</span>{% endif %}<br><span class="i2g-monitor-muted">Every campaign skips this address; sign-in codes, tickets and notifications still go.</span>{% else %}Not suppressed{% endif %}</dd></div>
+    <div><dt>Suggestion</dt><dd>{{ row.get_suggestion_display|default:"None" }}<br><span class="i2g-monitor-muted">Text only: nothing is applied automatically.{% if row.suggestion and row.suggestion != "policy" and not row.has_matched_evidence %} No report matched an email the site sent (anyone can mail a report-shaped message): check the reports first.{% endif %}</span></dd></div>
+    <div><dt>First / last report</dt><dd>{{ row.first_bounce_at|date:"M j, Y H:i"|default:"–" }} / {{ row.last_bounce_at|date:"M j, Y H:i"|default:"–" }}</dd></div>
+    <div><dt>Last reason</dt><dd>{% include "admin/mail/email_monitoring/_address_reason.html" %}{% if row.graph_is_latest and row.last_diagnostic %}<br><span class="i2g-monitor-muted">{{ row.last_diagnostic|truncatechars:300 }}</span>{% endif %}</dd></div>
+    <div><dt>Microsoft Graph reports</dt><dd>hard {{ row.hard_count }} · soft {{ row.soft_count }} · rejected {{ row.rejected_count }} · delayed {{ row.delayed_count }} · unknown {{ row.unknown_count }}<br><span class="i2g-monitor-muted">{{ row.matched_count }} matched to an email the site sent</span></dd></div>
+    <div><dt>Amazon SES events</dt><dd>permanent {{ row.ses_permanent_count }} · transient {{ row.ses_transient_count }} · undetermined {{ row.ses_undetermined_count }} · complaints {{ row.complaint_count }}</dd></div>
+  </dl>
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="address-member">
+  <h2 id="address-member" class="i2g-monitor-heading">Member <span>read live from Members</span></h2>
+  {% if target.role == "none" %}
+    <p class="i2g-monitor-card i2g-monitor-muted">No contact email holds this address (a manual list or an event registration's attendee email). Suppress it to keep it out of campaigns, or dismiss it.</p>
+  {% elif target.role == "unlinked" %}
+    <p class="i2g-monitor-card i2g-monitor-muted">A contact email holds this address, but it belongs to no member.{% if contact_admin %} <a href="{% url 'admin:authn_contactemail_change' target.contact.pk %}">Open the contact email</a>.{% endif %}</p>
+  {% elif target.role == "ambiguous" %}
+    <div class="i2g-monitor-card">
+      <p class="i2g-monitor-error" role="note"><span class="material-symbols-outlined" aria-hidden="true">warning</span>This address is saved {{ target.match.contacts|length }} times in different letter cases. No contact or account change applies until the duplicates are resolved in Contact Emails.</p>
+      <ul>{% for contact in target.match.contacts %}<li>{% if contact_admin %}<a href="{% url 'admin:authn_contactemail_change' contact.pk %}">{{ contact.email_address }}</a>{% else %}{{ contact.email_address }}{% endif %} · {{ contact.get_email_type_display }}{% if contact.member %} · {{ contact.member }}{% else %} · no member{% endif %}</li>{% endfor %}</ul>
+    </div>
+  {% endif %}
+  {% for card in cards %}
+    <div class="i2g-monitor-card">
+      <h3>{% if card.link %}<a href="{{ card.link }}">{{ card.member.get_full_name|default:card.member.pk }}</a>{% else %}{{ card.member.get_full_name|default:card.member.pk }}{% endif %}
+        <span class="i2g-monitor-badges">{% if card.member.is_active %}<span class="i2g-monitor-badge i2g-monitor-badge--good">Active</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Inactive</span>{% endif %}{% if card.member.is_superuser %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">I2G Master</span>{% elif card.member.is_staff %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">Staff</span>{% endif %}</span>
+      </h3>
+      <p class="i2g-monitor-muted">{% if card.member.organization %}{{ card.member.organization }} · {% endif %}{{ card.registrations }} event registration{{ card.registrations|pluralize }}{% if card.contacts is not None %} · {{ card.verified_phones }} of {{ card.phones }} phone{{ card.phones|pluralize }} verified{% endif %}</p>
+      {% if card.contacts is None %}
+      <p class="i2g-monitor-muted">The member's other addresses and phones are shown to staff who also hold the Members app.</p>
+      {% else %}
+      <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+        <thead><tr><th scope="col">Email address</th><th scope="col">Role</th><th scope="col">Flags</th></tr></thead>
+        <tbody>{% for item in card.contacts %}
+          <tr>
+            <td>{{ item.contact.email_address }}{% if item.contact.pk == target.contact.pk %} <span class="i2g-monitor-muted">(this address)</span>{% endif %}</td>
+            <td>{{ item.contact.get_email_type_display }}</td>
+            <td><span class="i2g-monitor-badges">{% if item.contact.verified %}<span class="i2g-monitor-badge i2g-monitor-badge--good">Verified</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Unverified</span>{% endif %}{% if item.contact.subscribe %}<span class="i2g-monitor-badge">Subscribed</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Unsubscribed</span>{% endif %}{% if item.suppressed %}<span class="i2g-monitor-badge i2g-monitor-badge--danger">Suppressed for campaigns</span>{% endif %}</span></td>
+          </tr>
+        {% endfor %}</tbody>
+      </table></div>
+      {% endif %}
+    </div>
+  {% endfor %}
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="address-actions">
+  <h2 id="address-actions" class="i2g-monitor-heading">Actions <span>each one opens a confirmation page first; nothing happens on its own</span></h2>
+  <div class="i2g-monitor-card">
+    <ul class="i2g-monitor-action-list">
+      {% for item in actions %}
+        <li class="{% if item.spec.danger %}i2g-monitor-action--danger{% endif %}">
+          <div>
+            <strong>{{ item.spec.label }}</strong>
+            <p class="i2g-monitor-muted">{{ item.spec.effect }} Undo: {{ item.spec.reversible }}</p>
+            {% if not item.allowed %}<p class="i2g-monitor-reason"><span class="material-symbols-outlined" aria-hidden="true">block</span>{{ item.reason }}</p>{% endif %}
+          </div>
+          <form method="post" action="{% url 'admin:mail_email_monitoring_address_action' row.pk item.action %}">
+            {% csrf_token %}<input type="hidden" name="step" value="confirm">
+            <button type="submit" class="i2g-monitor-button" {% if not item.allowed %}disabled aria-disabled="true"{% endif %}>{{ item.spec.label }}…</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="address-reports">
+  <h2 id="address-reports" class="i2g-monitor-heading">Bounce reports <span>Microsoft Graph reports still stored ({{ report_count }}{% if report_count > shown %}, newest {{ shown }} shown{% endif %}); older ones were purged, but stay counted above</span></h2>
+  <div class="i2g-monitor-card">
+    {% include "admin/mail/email_monitoring/_bounce_table.html" with bounces=reports show_email=True empty="No Microsoft Graph report for this address is still stored." %}
+  </div>
+</section>
+
+{% if ses_events %}
+<section class="i2g-monitor-section" aria-labelledby="address-ses">
+  <h2 id="address-ses" class="i2g-monitor-heading">Amazon SES events <span>bounces and complaints on campaign recipient logs</span></h2>
+  <div class="i2g-monitor-card"><div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+    <thead><tr><th scope="col">Campaign</th><th scope="col">Event</th><th scope="col">Type</th><th scope="col">Diagnostic</th></tr></thead>
+    <tbody>{% for log in ses_events %}
+      <tr>
+        <td><a href="{% url 'admin:mail_email_monitoring_campaign' log.campaign_id %}">{{ log.campaign.name|default:log.campaign.subject }}</a></td>
+        <td>{% if log.complained_at %}Complaint {{ log.complained_at|date:"M j, Y H:i" }}{% if log.bounced_at %}<br>{% endif %}{% endif %}{% if log.bounced_at %}Bounce {{ log.bounced_at|date:"M j, Y H:i" }}{% endif %}</td>
+        <td>{{ log.bounce_type|default:"–" }}{% if log.bounce_subtype %} ({{ log.bounce_subtype }}){% endif %}{% if log.complaint_feedback_type %}<br><span class="i2g-monitor-muted">{{ log.complaint_feedback_type }}</span>{% endif %}</td>
+        <td>{{ log.diagnostic_code|truncatechars:200|default:"–" }}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div></div>
+</section>
+{% endif %}
+
+<section class="i2g-monitor-section" aria-labelledby="address-campaigns">
+  <h2 id="address-campaigns" class="i2g-monitor-heading">Campaigns <span>exact: the matched email's campaign; likely: the one campaign that mailed the address shortly before an unmatched report</span></h2>
+  <div class="i2g-monitor-card">
+    {% if campaign_links %}
+    <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+      <thead><tr><th scope="col">Campaign</th><th scope="col">Source</th><th scope="col">Match</th><th scope="col" class="num">Reports</th><th scope="col">Last</th></tr></thead>
+      <tbody>{% for item in campaign_links %}
+        <tr>
+          <td>{% if item.exists %}<a href="{% url 'admin:mail_email_monitoring_campaign' item.link.campaign_id %}">{{ item.name|default:item.link.campaign_id }}</a>{% else %}<span class="i2g-monitor-muted">(deleted campaign)</span>{% endif %}</td>
+          <td>{{ item.link.get_source_display }}</td>
+          <td>{{ item.link.get_match_display }}</td>
+          <td class="num">{{ item.link.bounce_count }}</td>
+          <td>{{ item.link.last_at|date:"M j, Y H:i"|default:"–" }}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}
+      <p class="i2g-monitor-empty">No campaign could be attributed.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="address-history">
+  <h2 id="address-history" class="i2g-monitor-heading">History <span>every action on this address</span></h2>
+  <div class="i2g-monitor-card">
+    {% if history %}
+    <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+      <thead><tr><th scope="col">When</th><th scope="col">Action</th><th scope="col">By</th><th scope="col">Member</th><th scope="col">Role</th><th scope="col">Note</th></tr></thead>
+      <tbody>{% for entry in history %}
+        <tr>
+          <td>{{ entry.created_at|date:"M j, Y H:i" }}</td>
+          <td>{{ entry.get_action_display }}{% for key, value in entry.details.items %}<br><span class="i2g-monitor-muted">{{ key }}: {{ value }}</span>{% endfor %}</td>
+          <td>{{ entry.actor_label|default:"–" }}</td>
+          <td>{{ entry.member_name|default:"–" }}</td>
+          <td>{{ entry.role_before|default:"–" }}{% if entry.role_after and entry.role_after != entry.role_before %} → {{ entry.role_after }}{% endif %}</td>
+          <td>{{ entry.note|default:"–" }}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table></div>
+    {% else %}
+      <p class="i2g-monitor-empty">No action yet.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

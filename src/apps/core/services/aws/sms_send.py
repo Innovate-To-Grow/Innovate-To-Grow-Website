@@ -1,13 +1,12 @@
 """The one SendTextMessage call (AWS End User Messaging SMS), paced by the delivery-rate limiter.
 
-Every SMS the site sends goes through ``send_text_message``: login and verification codes, the admin test SMS and
-campaign recipients (the queued job and the in-process sender). Each is admitted on the ``sms_send`` channel for
-its ``<region>:<origination>`` identity (one message and its parts; the API quota is per account and Region, so the
-Region is the cooldown group), sent once with SDK retries off, and AWS's answer is recorded
-(``delivery_rates.adapters.sms``). Campaigns pass ``lane=Lane.BULK``; everything else is transactional.
-
-A caller that must admit before other work (an OTP admits before it locks the number and reserves its challenge)
-calls ``admit_text`` and passes the admission in; it releases the admission itself if it never sends.
+Every SMS the site sends goes through ``send_text_message``: codes, the admin test SMS, campaign recipients and ticket
+texts. A destination on the opt-out list (``sms_opt_outs``) is refused before anything is admitted, and one AWS refuses
+as opted out is reported to that list. Each send is admitted on the ``sms_send`` channel for its
+``<region>:<origination>`` identity (one message and its parts; the API quota is per account and Region, so the Region
+is the cooldown group), sent once with SDK retries off, and AWS's answer is recorded (``delivery_rates.adapters.sms``).
+Campaigns pass ``lane=Lane.BULK``; everything else is transactional. A caller that must admit before other work (an OTP
+reserves its challenge first) passes ``admit_text``'s admission in, and releases it itself if it never sends.
 """
 
 import logging
@@ -46,6 +45,7 @@ from .provider_outcomes import (
 )
 from .sms import cached_origination_number
 from .sms_errors import SmsDeliveryError, SmsRateDeferred
+from .sms_opt_outs import opted_out_refusal, refuse_if_opted_out
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +136,7 @@ def send_text_message(
     """
     sender = sender or resolve_sender()
     try:
+        refuse_if_opted_out(destination)
         client = _client(sender)
     except SmsDeliveryError:
         if admission is not None:
@@ -154,7 +155,7 @@ def send_text_message(
             MessageType=MESSAGE_TYPE,
         )
     except (ClientError, BotoCoreError) as exc:
-        raise _provider_error(exc, admission) from exc
+        raise _provider_error(exc, admission, destination) from exc
     except BaseException:
         # The caller's callback refused (a lost job claim), or the call failed unexpectedly.
         _settle(admission, uncertain("exception") if reached else None)
@@ -163,7 +164,7 @@ def send_text_message(
     return response.get("MessageId", "")
 
 
-def _provider_error(exc: Exception, admission) -> SmsDeliveryError:
+def _provider_error(exc: Exception, admission, destination: str) -> SmsDeliveryError:
     """Record AWS's answer and return the sanitized error: an answer that only says "not now" is transient."""
     outcome, message = classify_aws_send_failure(exc, provider="SMS")
     code = str(((getattr(exc, "response", None) or {}).get("Error") or {}).get("Code") or "")
@@ -175,7 +176,8 @@ def _provider_error(exc: Exception, admission) -> SmsDeliveryError:
     retry_after = None
     if not_now(signal):
         outcome, retry_after = PROVIDER_OUTCOME_TRANSIENT, _held_for(admission)
-    return SmsDeliveryError(message, outcome=outcome, retry_after=retry_after, code=code, signal=signal)
+    error = SmsDeliveryError(message, outcome=outcome, retry_after=retry_after, code=code, signal=signal)
+    return opted_out_refusal(exc, destination, error)
 
 
 def _settle(admission, signal) -> None:
