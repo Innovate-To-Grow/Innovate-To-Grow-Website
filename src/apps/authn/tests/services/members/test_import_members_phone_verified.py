@@ -15,7 +15,6 @@ from openpyxl import load_workbook
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.authn.services.members.export_excel import export_members_to_excel
 from apps.authn.services.members.import_ import generate_template_excel, import_members_from_excel
-from apps.authn.services.members.import_.operations import update_single_member
 from apps.authn.services.members.import_.parsing import (
     FLAG_COLUMNS,
     IGNORED_COLUMNS,
@@ -24,6 +23,10 @@ from apps.authn.services.members.import_.parsing import (
     normalize_header,
     parse_row,
 )
+from apps.authn.services.members.import_.review.actions import UPDATE, Action
+from apps.authn.services.members.import_.review.execute import execute_update
+from apps.authn.services.members.import_.review.lookup import load_snapshot
+from apps.authn.services.members.import_.review.plan import plan_row
 from apps.authn.services.members.import_.types import ImportResult
 
 from .import_sheets import PHONE_VERIFIED_HEADERS, build_sheet, full_row
@@ -175,7 +178,7 @@ class NewMemberPhoneTests(TestCase):
             result.warnings,
             [
                 PHONE_VERIFIED_IGNORED,
-                "Row 3: Phone Number +12095550001 is already used by row 2 of this file; not added",
+                "Row 3: Phone Number +12095550001 is also in row 2; only that row adds it",
             ],
         )
 
@@ -238,7 +241,8 @@ class ExistingMemberPhoneTests(TestCase):
             result.warnings,
             [
                 PHONE_VERIFIED_IGNORED,
-                "Row 2: Phone Subscribed not applied to the existing +12095550001; change it on the member page",
+                "Row 2: Phone Subscribed is TRUE, but +12095550001 is unsubscribed; left unsubscribed (re-subscribing "
+                "needs the person's consent and its tick)",
             ],
         )
 
@@ -253,15 +257,18 @@ class ExistingMemberPhoneTests(TestCase):
         self.assertEqual((verified.verified, unverified.verified), (True, False))
         self.assertEqual(result.warnings[0], PHONE_VERIFIED_IGNORED)
 
-    def test_a_stale_phone_verified_value_from_a_caller_is_never_read(self):
-        """``update_single_member`` callers that still pass the old key can't verify a number with it."""
+    def test_a_stale_phone_verified_value_in_stored_row_values_is_never_read(self):
+        """A row planned from values that still carry the old key (a batch staged before the change) can't verify."""
         parsed = parse_row(2, {"primary_email": "ada@example.com", "phone_number": "+12095550009"})
         parsed["phone_verified"] = True
+        snapshot = load_snapshot([parsed])
 
-        notes = update_single_member(self.member, parsed)
+        plan = plan_row(parsed, Action(UPDATE, target=str(self.member.pk)), snapshot)
+        execute_update(2, plan, self.member)
 
         self.assertFalse(ContactPhone.objects.get(phone_number="2095550009").verified)
-        self.assertEqual(notes, [])
+        self.assertIn("Adds phone +12095550009 (unverified, not subscribed)", plan.changes)
+        self.assertEqual(plan.notes, [])
 
     def test_an_export_round_trip_keeps_every_numbers_status(self):
         verified = self._phone("2095550001", verified=True)

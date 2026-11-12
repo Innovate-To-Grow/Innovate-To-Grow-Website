@@ -1,13 +1,13 @@
-"""The contact changes an import may make to an existing member.
+"""The contact writes an import makes, each guarded, and the checks a sheet's addresses and numbers must pass.
 
-An import adds contacts. It never deletes one, overwrites one in place, moves one between members, re-subscribes
-one, or un-verifies one. It never verifies a phone number either: the Phone Verified column is ignored (only the
-member's own one-time code verifies a number), so a new number starts unverified and a stored one keeps its status.
-A blank cell and a missing column both leave the stored records alone. Everything a row asked for but did not get
-is returned as a note for the import report.
+Every write here runs inside the import's one transaction, after the apply has locked the member. A write whose
+record is not what the review saw raises ``ContactWriteError``, which rolls the whole import back. The account page's
+own services do the promotions and deletions, so their guards hold: an unverified address can't become primary, and a
+member's last verified sign-in contact can't be removed.
 
-Nothing here sends mail or SMS: contacts are written directly, never through ``create_contact_email``, which emails
-a verification code.
+Nothing here sends mail or SMS: addresses are written directly, never through ``create_contact_email``, which emails a
+verification code and a security notice. ``create_contact_phone`` sends nothing and stores numbers unverified, and a
+stored number's flags are limited to Subscribed: only the member's own one-time code verifies a number.
 """
 
 from __future__ import annotations
@@ -16,16 +16,22 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 
 from apps.authn.models import ContactEmail, ContactPhone
-from apps.authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
+from apps.authn.services.contacts.contact_emails import delete_contact_email, make_contact_email_primary
+from apps.authn.services.contacts.contact_phones import (
+    create_contact_phone,
+    delete_contact_phone,
+    infer_region_from_e164,
+    normalize_to_national,
+)
 
-from .matching import UNLINKED_EMAIL, UNLINKED_PHONE, member_label
-
-NEVER_DELETES = "an import never deletes a contact"
-NEVER_MOVES = "an import never moves a contact from one member to another"
-NEVER_RESUBSCRIBES = "an import never re-subscribes"
-NEVER_UNVERIFIES = "an import never un-verifies a contact"
-STARTS_UNVERIFIED = "contacts added to an existing member start unverified; the member verifies them on /account"
 _EMAIL_MAX_LENGTH = ContactEmail._meta.get_field("email_address").max_length
+# The only flag an import may write on a stored phone number. "verified" is not one: a verified number is a sign-in
+# factor, and the Phone Verified column is ignored.
+_PHONE_FLAGS = frozenset({"subscribe"})
+
+
+class ContactWriteError(Exception):
+    """A planned contact write found the record changed, or a guard refused it."""
 
 
 def valid_new_address(address: str) -> bool:
@@ -47,167 +53,89 @@ def phone_parts(raw: str | None) -> tuple[str, str]:
     return normalize_to_national(raw, region), region
 
 
-def apply_primary_flags(contact: ContactEmail, parsed: dict, notes: list[str]) -> None:
-    """Apply the Primary Verified/Subscribed cells to the address the Primary Email cell names, safe direction only.
-
-    TRUE marks the address verified, as the Contact Emails "Mark verified" action can, and FALSE unsubscribes it,
-    which honours an opt-out. Un-verifying could lock the member out of sign-in and re-subscribing would override an
-    opt-out, so those two are reported instead.
-    """
-    changed = []
-    verified, subscribe = parsed["primary_verified"], parsed["primary_subscribed"]
-    if verified is True and not contact.verified:
-        contact.verified = True
-        changed.append("verified")
-    elif verified is False and contact.verified:
-        notes.append(
-            f"Primary Verified is FALSE, but {contact.email_address} is verified; left verified ({NEVER_UNVERIFIES})"
-        )
-    if subscribe is False and contact.subscribe:
-        contact.subscribe = False
-        changed.append("subscribe")
-    elif subscribe is True and not contact.subscribe:
-        notes.append(
-            f"Primary Subscribed is TRUE, but {contact.email_address} is unsubscribed; left unsubscribed "
-            f"({NEVER_RESUBSCRIBES})"
-        )
-    if changed:
-        contact.save(update_fields=[*changed, "updated_at"])
+def _owned_email(member, ref: str) -> ContactEmail:
+    contact = ContactEmail.objects.select_for_update().filter(pk=ref, member=member).first()
+    if contact is None:
+        raise ContactWriteError("a contact email the review showed no longer belongs to this member")
+    return contact
 
 
-def sync_secondary_email(member, parsed: dict, notes: list[str]) -> None:
-    """Add the Secondary Email cell's address to ``member``; keep every address the member already has."""
-    address = parsed["secondary_email"]
-    if not address:
-        # A blank cell used to delete every secondary. Say what was kept, so nobody relies on that any more.
-        if parsed.get("has_secondary_email_column"):
-            secondaries = member.contact_emails.filter(email_type="secondary").values_list("email_address", flat=True)
-            _report_kept("Secondary Email", list(secondaries), notes)
-        return
-    if address.lower() == parsed["primary_email"].lower():
-        notes.append("Secondary Email is the same as the Primary Email; ignored")
-        return
-    holders = list(ContactEmail.objects.filter(email_address__iexact=address).select_related("member"))
-    if holders:
-        _report_existing_secondary(member, parsed, holders, notes)
-    elif not valid_new_address(address):
-        notes.append(f"Secondary Email {address!r} is not a valid email address; ignored")
-    else:
-        _add_secondary(member, parsed, address, notes)
+def set_email_flags(member, ref: str, data: dict) -> None:
+    contact = _owned_email(member, ref)
+    for name, value in data.items():
+        setattr(contact, name, value)
+    contact.save(update_fields=[*data, "updated_at"])
 
 
-def sync_phone(member, parsed: dict, notes: list[str]) -> None:
-    """Add the Phone Number cell's number to ``member``; keep every number the member already has."""
-    if not parsed["phone_number"]:
-        if parsed.get("has_phone_column"):
-            _report_kept("Phone Number", [phone.to_e164() for phone in member.contact_phones.all()], notes)
-        return
-    national, region = phone_parts(parsed["phone_number"])
-    if not national:
-        notes.append(f"Phone Number {parsed['phone_number']} has no digits after the country code; ignored")
-        return
-    holder = ContactPhone.objects.filter(phone_number=national).select_related("member").first()
-    if holder is None:
-        _add_phone(member, parsed, ContactPhone(member=member, phone_number=national, region=region), notes)
-    elif holder.member_id is None:
-        notes.append(f"Phone Number {holder.to_e164()} is {UNLINKED_PHONE}; not added")
-    elif holder.member_id != member.pk:
-        notes.append(
-            f"Phone Number {holder.to_e164()} belongs to {member_label(holder.member)}; not added ({NEVER_MOVES})"
-        )
-    else:
-        # No Verified cell: the Phone Verified column is ignored, so only Phone Subscribed can differ.
-        _report_unapplied_flags(holder, holder.to_e164(), "Phone", None, parsed["phone_subscribed"], notes)
+def set_phone_flags(member, ref: str, data: dict) -> None:
+    refused = sorted(set(data) - _PHONE_FLAGS)
+    if refused:
+        raise ContactWriteError(f"an import may not change a phone number's {', '.join(refused)} flag")
+    phone = ContactPhone.objects.select_for_update().filter(pk=ref, member=member).first()
+    if phone is None:
+        raise ContactWriteError("a phone number the review showed no longer belongs to this member")
+    for name, value in data.items():
+        setattr(phone, name, value)
+    phone.save(update_fields=[*data, "updated_at"])
 
 
-def _report_kept(column: str, kept: list[str], notes: list[str]) -> None:
-    if kept:
-        notes.append(f"{column} is blank; kept {', '.join(kept)} ({NEVER_DELETES})")
+def promote_email(member, ref: str) -> None:
+    """Make the address primary: the old primary becomes secondary and the old secondary "other"."""
+    try:
+        make_contact_email_primary(member=member, contact_email_id=ref)
+    except Exception as exc:  # AuthChallengeInvalid: not found, or not verified.
+        raise ContactWriteError(str(exc)) from exc
 
 
-def _report_existing_secondary(member, parsed: dict, holders: list[ContactEmail], notes: list[str]) -> None:
-    address = parsed["secondary_email"]
-    holder = holders[0]
-    if len(holders) > 1:
-        notes.append(
-            f"Secondary Email {address} matches {len(holders)} contact emails that differ only in letter case; "
-            "not added (merge them under Contact Emails)"
-        )
-    elif holder.member_id is None:
-        notes.append(f"Secondary Email {address} is {UNLINKED_EMAIL}; not added (link it under Contact Emails)")
-    elif holder.member_id != member.pk:
-        notes.append(f"Secondary Email {address} belongs to {member_label(holder.member)}; not added ({NEVER_MOVES})")
-    elif holder.email_type != "secondary":
-        notes.append(f'Secondary Email {address} is already this member\'s "{holder.email_type}" email; left as it is')
-    else:
-        verified, subscribe = parsed["secondary_verified"], parsed["secondary_subscribed"]
-        _report_unapplied_flags(holder, holder.email_address, "Secondary", verified, subscribe, notes)
-
-
-def _report_unapplied_flags(contact, label: str, column: str, verified, subscribe, notes: list[str]) -> None:
-    """Flag cells are not applied to a secondary email or phone the member already has (as before); say so."""
-    cells = [
-        f"{column} {name}"
-        for name, sheet, stored in (
-            ("Verified", verified, contact.verified),
-            ("Subscribed", subscribe, contact.subscribe),
-        )
-        if sheet is not None and sheet != stored
-    ]
-    if cells:
-        notes.append(f"{' and '.join(cells)} not applied to the existing {label}; change it on the member page")
-
-
-def _add_secondary(member, parsed: dict, address: str, notes: list[str]) -> None:
-    """Make ``address`` the member's secondary email. A previous secondary becomes "other"; nothing is deleted."""
-    previous = list(member.contact_emails.filter(email_type="secondary"))
-    subscribe = _new_contact_subscribe(
-        parsed["secondary_subscribed"],
-        default=True,
-        allowed=member.contact_emails.filter(subscribe=True).exists(),
-        refusal=f"{address} was added unsubscribed: the member is unsubscribed at every other address",
-        notes=notes,
-    )
-    for contact in previous:
+def _demote(member, ids: list[str]) -> None:
+    for contact in ContactEmail.objects.select_for_update().filter(pk__in=ids, member=member, email_type="secondary"):
         contact.email_type = "other"
         contact.save(update_fields=["email_type", "updated_at"])
+
+
+def add_email(member, data: dict) -> None:
+    """Add a new address: the listed secondaries become "other" first (one secondary per member)."""
+    _demote(member, data.get("demote", []))
     ContactEmail.objects.create(
-        member=member, email_address=address, email_type="secondary", verified=False, subscribe=subscribe
+        member=member,
+        email_address=data["address"],
+        email_type=data["type"],
+        verified=data["verified"],
+        subscribe=data["subscribe"],
     )
-    if previous:
-        kept = ", ".join(contact.email_address for contact in previous)
-        notes.append(f'Added {address} as the secondary email; kept the previous secondary {kept} as "other"')
-    if parsed["secondary_verified"]:
-        notes.append(f"{address} was added unverified ({STARTS_UNVERIFIED})")
 
 
-def _add_phone(member, parsed: dict, phone: ContactPhone, notes: list[str]) -> None:
-    """Add ``phone`` next to the member's numbers, unverified. It never replaces one, so it never inherits "verified"."""
-    existing = list(member.contact_phones.all())
-    label = phone.to_e164()
-    phone.verified = False
-    phone.subscribe = _new_contact_subscribe(
-        parsed["phone_subscribed"],
-        default=False,
-        allowed=not existing or any(other.subscribe for other in existing),
-        refusal=f"{label} was added unsubscribed: the member's other phone numbers are unsubscribed",
-        notes=notes,
-    )
-    phone.save()
-    if existing:
-        kept = ", ".join(other.to_e164() for other in existing)
-        notes.append(f"Added {label} as an additional phone number; kept {kept} (an import never replaces a number)")
+def claim_email(member, ref: str, data: dict) -> None:
+    """Attach a contact email that has no member. It must still have none, or nothing is changed."""
+    _demote(member, data.get("demote", []))
+    contact = ContactEmail.objects.select_for_update().filter(pk=ref, member__isnull=True).first()
+    if contact is None:
+        raise ContactWriteError("the contact email with no member was taken or removed after the review")
+    contact.member = member
+    contact.email_type = data["type"]
+    contact.verified = data["verified"]
+    contact.subscribe = data["subscribe"]
+    contact.save(update_fields=["member", "email_type", "verified", "subscribe", "updated_at"])
 
 
-def _new_contact_subscribe(sheet_value, *, default: bool, allowed: bool, refusal: str, notes: list[str]) -> bool:
-    """Subscribed flag for a contact added to an existing member.
+def add_phone(member, data: dict) -> None:
+    try:
+        create_contact_phone(
+            member=member, phone_number=data["number"], region=data["region"], subscribe=data["subscribe"]
+        )
+    except Exception as exc:  # AuthChallengeInvalid: the number was taken after the review.
+        raise ContactWriteError(str(exc)) from exc
 
-    The sheet's value, else the model default; but never on when the member has opted out on that channel (no
-    subscribed address, or only unsubscribed phone numbers), as the event-registration email sync also decides.
-    """
-    wanted = default if sheet_value is None else sheet_value
-    if wanted and not allowed:
-        if sheet_value:
-            notes.append(f"{refusal} ({NEVER_RESUBSCRIBES})")
-        return False
-    return wanted
+
+def delete_email(member, ref: str) -> None:
+    try:
+        delete_contact_email(member=member, contact_email_id=ref)
+    except Exception as exc:  # LastRecoveryContactError / AuthChallengeInvalid.
+        raise ContactWriteError(str(exc)) from exc
+
+
+def delete_phone(member, ref: str) -> None:
+    try:
+        delete_contact_phone(member=member, contact_phone_id=ref)
+    except Exception as exc:  # LastRecoveryContactError / AuthChallengeInvalid.
+        raise ContactWriteError(str(exc)) from exc

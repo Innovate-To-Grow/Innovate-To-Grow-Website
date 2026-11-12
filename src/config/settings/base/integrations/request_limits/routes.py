@@ -30,6 +30,7 @@ ROUTES = {
     "admin:system_intelligence_export_download": "staff-bulk",
     "admin:search": "staff-bulk",
     "admin:authn_member_import_excel": "staff-bulk",
+    "admin:authn_member_import_confirm": "staff-bulk",
     "admin:authn_member_export_excel": "staff-bulk",
     "admin:cms_cmspage_import": "staff-bulk",
     "admin:cms_cmspage_export": "staff-bulk",

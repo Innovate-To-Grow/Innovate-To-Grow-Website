@@ -182,7 +182,8 @@ included, and each is mailed only at addresses whose own flag is on:
 `verified` is not required. The member import creates a new member's addresses unverified and subscribed unless the
 sheet says otherwise, so requiring verification would drop most of the mailing list. An address the import adds to an
 existing member always starts unverified, and it is subscribed only if that member is subscribed at another address.
-The import never re-subscribes an address (see [Member import/export](operations.md#member-importexport)). The
+The import never re-subscribes an address unless an admin ticks that re-subscription in the import's review (see
+[Member import/export](operations.md#member-importexport)). The
 one-click unsubscribe link turns off every address of the member at once (see
 [Auth & Mail](../api/auth-and-mail.md#one-click-unsubscribe-and-resubscribe)); members change single addresses on
 `/account`. When **Exclude audience** is All subscribers, the same rules build the exclusion list with the
