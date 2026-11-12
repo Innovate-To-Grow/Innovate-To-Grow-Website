@@ -4,6 +4,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 
 ## In this section
 
+- [System overview](system-overview.md) — What the system is and how its parts fit together, for staff and newcomers (public-safe)
 - [Repository Structure](repository-structure.md) — Top-level layout, directory conventions, and configuration files
 - [Backend](backend.md) — Django apps, base models, settings, middleware, and auth system
 - [Frontend](frontend.md) — React roots, router, features, shared modules, and styling
