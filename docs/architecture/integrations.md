@@ -172,6 +172,7 @@ try again. A cached list or message never takes a slot.
 | Public spend limits | Per-visitor/member and global token budgets in PostgreSQL, set on the same config; see [Assistant and AI search limits](../integrations/assistant-limits.md) |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | Runtime | `src/apps/system_intelligence/services/bedrock/` |
+| Record writes (admin assistant) | Single-record writes through `core`'s `safe_orm`, proposed by the assistant and applied only when the conversation's owner approves (`src/apps/system_intelligence/services/actions/`). Contact emails and phones and the email and phone verification challenges are readable but never written (`DENIED_WRITE_MODEL_LABELS`). Member writes follow `MemberAdmin`'s rules: only the I2G Master changes or deletes another staff or superuser account or writes `MemberAdmin.superuser_only_fields` (`db/member_guard.py`). |
 
 Known Claude models with fixed sampling (including Fable 5) omit `temperature` in both Converse and agent calls. Older models retain the configured value. The admin connectivity test also omits optional sampling settings and reads text after any reasoning blocks. See [Anthropic sampling limits](https://platform.claude.com/docs/en/about-claude/models/extended-thinking-models).
 
