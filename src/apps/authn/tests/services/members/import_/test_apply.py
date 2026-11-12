@@ -23,8 +23,10 @@ from apps.authn.services.members.import_.review import (
     load_snapshot,
     run_import,
     save_choices,
+    stored_analysis,
 )
 from apps.authn.services.members.import_.review.execute import RowWriteError, log_batch, log_member_changes
+from apps.authn.services.members.import_.review.selection import selection_problems
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, read, row
 
 
@@ -441,3 +443,90 @@ class DuplicateCreateTests(ApplyTestCase):
             (result.status, result.message),
             ("refused", "Rows 2 and 3 are the same person; use only one of them (rows 2 and 3)."),
         )
+
+    def problems(self, batch):
+        """Every sentence the review lists for ``batch``'s saved choices (the confirm reports the first one)."""
+        rows = list(batch.rows.order_by("row_number"))
+        return selection_problems([stored_analysis(r) for r in rows], {r.row_number: (r.choice, r.ticks) for r in rows})
+
+    def test_a_repeat_group_row_and_a_row_matched_by_email_instead_of_its_uuid(self):
+        batch = self.stage_uuid_rows(
+            [
+                self.uuid_row(None, "ann@example.com", First_Name="Ann", Last_Name="Example"),
+                self.uuid_row(None, "ANN@example.com", First_Name="Ann", Last_Name="Example"),
+                self.uuid_row(UNKNOWN_UUID, "ann@example.com", First_Name="Ann", Last_Name="Example"),
+            ]
+        )
+        self.assertEqual(
+            [r.conflict for r in batch.rows.order_by("row_number")],
+            ["duplicate_in_sheet", "duplicate_in_sheet", "uuid_not_found"],
+        )
+        self.choose(batch, {2: ("use_row", []), 4: ("ignore_uuid", [])})
+
+        result = self.confirm(batch)
+
+        sentence = (
+            "Rows 2 and 4 would all create a new member with ann@example.com. Choose one of them and skip the others."
+        )
+        self.assertEqual((result.status, result.message), ("refused", sentence))
+        self.assertEqual(self.problems(batch), [sentence])
+        self.assertFalse(Member.objects.filter(first_name="Ann").exists())
+
+        # Using the group's other row as well is a second mistake, with its own sentence.
+        self.choose(batch, {3: ("use_row", [])})
+
+        self.assertEqual(
+            self.problems(batch),
+            [
+                "Rows 2, 3 and 4 would all create a new member with ann@example.com / ANN@example.com (the same "
+                "address in different letter case). Choose one of them and skip the others.",
+                "Rows 2 and 3 are the same person; use only one of them (rows 2 and 3).",
+            ],
+        )
+
+    def test_claims_of_unlinked_records_that_differ_only_in_letter_case(self):
+        # Legacy duplicates: the unique constraint is case-sensitive, so two unlinked records can hold one address.
+        # Every row naming it is ambiguous (C3) and may claim either record; claiming both made two members.
+        upper = ContactEmail.objects.create(member=None, email_address="Lab@example.com", email_type="primary")
+        lower = ContactEmail.objects.create(member=None, email_address="lab@example.com", email_type="primary")
+        batch = self.stage(
+            [
+                row("lab@example.com", First_Name="Lab", Last_Name="One", Primary_Verified="TRUE"),
+                row("lab@example.com", First_Name="Lab", Last_Name="Two", Primary_Verified="TRUE"),
+            ],
+            self.admin,
+        )
+        self.assertEqual([r.conflict for r in batch.rows.order_by("row_number")], ["ambiguous_address"] * 2)
+        self.choose(batch, {2: (f"create_claim:{upper.pk}", []), 3: (f"create_claim:{lower.pk}", [])})
+
+        result = self.confirm(batch)
+
+        sentence = (
+            "Rows 2 and 3 would all create a new member with lab@example.com. Choose one of them and skip the others."
+        )
+        self.assertEqual((result.status, result.message), ("refused", sentence))
+        self.assertEqual(self.problems(batch), [sentence])
+        self.assertFalse(Member.objects.filter(first_name="Lab").exists())
+        self.assertEqual(
+            ContactEmail.objects.filter(member__isnull=True, email_address__iexact="lab@example.com").count(), 2
+        )
+
+    def test_two_claims_of_one_unlinked_record_get_one_sentence(self):
+        upper = ContactEmail.objects.create(member=None, email_address="Lab@example.com", email_type="primary")
+        ContactEmail.objects.create(member=None, email_address="lab@example.com", email_type="primary")
+        batch = self.stage(
+            [
+                row("lab@example.com", First_Name="Lab", Last_Name="One"),
+                row("lab@example.com", First_Name="Lab", Last_Name="Two"),
+            ],
+            self.admin,
+        )
+        self.choose(batch, {2: (f"create_claim:{upper.pk}", []), 3: (f"create_claim:{upper.pk}", [])})
+
+        result = self.confirm(batch)
+
+        sentence = (
+            "Rows 2 and 3 would all change the contact email lab@example.com. Choose one of them and skip the others."
+        )
+        self.assertEqual((result.status, result.message), ("refused", sentence))
+        self.assertEqual(self.problems(batch), [sentence])
