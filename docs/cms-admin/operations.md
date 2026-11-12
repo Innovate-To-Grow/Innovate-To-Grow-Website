@@ -384,8 +384,8 @@ Available through the Member admin:
 
 **Import rules** (`src/apps/authn/services/members/import_/`):
 
-- A row whose Primary Email is new creates a member. A brand-new member's own Verified/Subscribed/Active cells are
-  used as given.
+- A row whose Primary Email is new creates a member. A brand-new member's own Primary/Secondary Verified, Subscribed
+  and Active cells are used as given; its phone number is saved unverified (see Phone Verified below).
 - With **Update Existing Members** ticked, a row updates the member whose *primary* email is in its Primary Email cell.
   Matching is by primary email only. If the address exists in any other way, the row is skipped and the report says
   why, naming and linking the member: another member's secondary or "other" email, a contact email linked to no
@@ -397,6 +397,10 @@ Available through the Member admin:
 - The Primary Verified/Subscribed cells can verify the primary address or unsubscribe it. They never un-verify it or
   re-subscribe it. A contact added to an existing member is not subscribed when that member has opted out on that
   channel. The flag cells of an existing secondary email or phone are not applied.
+- The **Phone Verified** column is ignored: an import never verifies or un-verifies a phone number. Every number it
+  adds, for a new or an existing member, is saved unverified, and a stored number keeps its status. A verified number
+  is a sign-in factor, so only the member's own one-time code (sent by SMS) verifies it. Export to Excel still writes
+  the column; when a sheet has it, the result page says it was ignored. The download template no longer has it.
 - The Active column does not activate or deactivate existing members; use the member list's actions. The Staff column
   is applied only when an I2G Master imports.
 - TRUE/FALSE cells accept TRUE, FALSE, Yes, No, Y, N, 1 and 0. Any other text is ignored, not read as FALSE.

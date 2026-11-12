@@ -45,6 +45,10 @@ class ImportResult:
         """Report something an imported row asked for that was not applied, or a contact that was kept."""
         self.warnings.append(ImportMessage(f"Row {row}: {note}", row, member))
 
+    def note_file(self, note: str) -> None:
+        """Report something about the file as a whole, such as a column that is ignored; listed before the rows."""
+        self.warnings.append(ImportMessage(note))
+
     def sort_by_row(self) -> None:
         """Order both lists by spreadsheet row; file-level messages (no row) stay first."""
         for messages in (self.errors, self.warnings):

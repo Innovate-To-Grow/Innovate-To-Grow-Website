@@ -9,6 +9,7 @@ from django.urls import reverse
 
 from apps.authn.admin.members.forms import MemberImportForm
 from apps.authn.models import ContactEmail, ContactPhone, Member
+from apps.authn.services.members.import_.parsing import PHONE_VERIFIED_IGNORED
 from apps.authn.tests.services.members.import_sheets import build_sheet
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -79,6 +80,50 @@ class MemberImportPageTests(TestCase):
         self.assertEqual([str(message) for message in messages], ["Import complete: 1 created, 0 updated, 0 skipped"])
         self.assertEqual(messages[0].level, message_levels.SUCCESS)
         self.assertNotContains(response, "Not imported, and why")
+        self.assertNotContains(response, PHONE_VERIFIED_IGNORED)
+
+
+class MemberImportPhoneVerifiedPageTests(TestCase):
+    """The page says, before and after an upload, that the Phone Verified column is ignored."""
+
+    def setUp(self):
+        cache.clear()
+        self.admin = Member.objects.create_superuser(
+            password="StrongPass123!", first_name="I2G", last_name="Master", is_active=True
+        )
+        self.client.force_login(self.admin)
+        self.url = reverse("admin:authn_member_import_excel")
+
+    def tearDown(self):
+        cache.clear()
+
+    def test_the_upload_page_lists_phone_verified_as_ignored(self):
+        response = self.client.get(self.url)
+
+        self.assertContains(response, "Phone Verified</code> <span")
+        self.assertContains(response, "(ignored)")
+        self.assertContains(response, "<strong>Phone Verified</strong> is ignored: imported phone numbers are saved")
+
+    def test_a_sheet_with_the_column_is_imported_with_one_note_and_unverified_numbers(self):
+        headers = ["Primary Email", "First Name", "Last Name", "Phone Number", "Phone Verified"]
+        rows = [
+            ["ada@example.com", "Ada", "Lovelace", "+12095550001", "TRUE"],
+            ["bob@example.com", "Bob", "Ross", "+12095550002", "Yes"],
+        ]
+        upload = SimpleUploadedFile("members.xlsx", build_sheet(headers, rows).getvalue(), content_type=XLSX)
+
+        response = self.client.post(self.url, {"excel_file": upload})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Imported, with notes")
+        self.assertContains(response, PHONE_VERIFIED_IGNORED, count=1)
+        messages = list(get_messages(response.wsgi_request))
+        self.assertEqual(
+            [str(message) for message in messages], ["Import complete: 2 created, 0 updated, 0 skipped, 1 note(s)"]
+        )
+        self.assertEqual(messages[0].level, message_levels.WARNING)
+        self.assertEqual(ContactPhone.objects.count(), 2)
+        self.assertFalse(ContactPhone.objects.filter(verified=True).exists())
 
 
 class MemberImportFormFileTypeTests(TestCase):

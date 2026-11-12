@@ -72,8 +72,16 @@ FLAG_COLUMNS = {
     "secondary_verified": "Secondary Verified",
     "secondary_subscribed": "Secondary Subscribed",
     "phone_subscribed": "Phone Subscribed",
-    "phone_verified": "Phone Verified",
 }
+PHONE_VERIFIED_IGNORED = (
+    "Phone Verified column ignored: an import never verifies or un-verifies a phone number. New numbers are saved "
+    "unverified and stored numbers keep their status; members verify their own numbers with a one-time code sent by "
+    "SMS."
+)
+# Columns a sheet may have (Export to Excel writes them) that the import recognises but never reads, by key, with
+# the note shown once per file. A verified phone number is a sign-in factor, so only the member's own one-time code
+# may produce one: a sheet cell is no proof that the number is theirs.
+IGNORED_COLUMNS = {"phone_verified": PHONE_VERIFIED_IGNORED}
 TRUE_TEXT = frozenset({"true", "yes", "y", "1", "active"})
 FALSE_TEXT = frozenset({"false", "no", "n", "0", "inactive"})
 DATE_FORMATS = [
@@ -98,6 +106,11 @@ def normalize_header(header: str) -> str:
     if not header:
         return ""
     return HEADER_MAP.get(str(header).strip().lower(), str(header).strip().lower())
+
+
+def column_notes(headers) -> list[str]:
+    """The notes for the ``IGNORED_COLUMNS`` among ``headers`` (normalised): what the import does instead."""
+    return [note for key, note in IGNORED_COLUMNS.items() if key in headers]
 
 
 def parse_flag(value) -> bool | None:

@@ -14,10 +14,10 @@ from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.authn.services.members.import_ import import_members_from_excel
 from apps.authn.services.members.import_.matching import lookup_contact_emails, lookup_contact_phones
 from apps.authn.services.members.import_.operations import bulk_update_members
-from apps.authn.services.members.import_.parsing import parse_row
+from apps.authn.services.members.import_.parsing import PHONE_VERIFIED_IGNORED, parse_row
 from apps.authn.services.members.import_.types import ImportMessage, ImportResult
 
-from .import_sheets import FULL_HEADERS, build_sheet, full_row
+from .import_sheets import FULL_HEADERS, PHONE_VERIFIED_HEADERS, build_sheet, full_row
 
 HEADERS = ["Primary Email", "First Name", "Last Name", "Secondary Email", "Phone Number", "Organization"]
 
@@ -294,10 +294,10 @@ class NewMemberMessageTests(TestCase):
             ["Row 3: Duplicate email in file (DUP@example.com): row 2 has it too, and only that row is imported"],
         )
 
-    def test_a_new_members_own_flags_are_still_taken_from_the_sheet(self):
+    def test_a_new_members_own_email_flags_are_still_taken_from_the_sheet_but_never_phone_verified(self):
         result = import_members_from_excel(
             build_sheet(
-                FULL_HEADERS,
+                PHONE_VERIFIED_HEADERS,
                 [
                     full_row(
                         "ada@example.com",
@@ -310,17 +310,18 @@ class NewMemberMessageTests(TestCase):
                             "Phone Subscribed": "TRUE",
                             "Phone Verified": "TRUE",
                         },
+                        headers=PHONE_VERIFIED_HEADERS,
                     )
                 ],
             )
         )
 
-        self.assertEqual((result.created_count, result.warnings), (1, []))
+        self.assertEqual((result.created_count, result.warnings), (1, [PHONE_VERIFIED_IGNORED]))
         primary = ContactEmail.objects.get(email_address="ada@example.com")
         self.assertEqual((primary.verified, primary.subscribe), (True, False))
         self.assertTrue(ContactEmail.objects.get(email_address="alt@example.com").verified)
         phone = ContactPhone.objects.get(phone_number="2095550001")
-        self.assertEqual((phone.verified, phone.subscribe), (True, True))
+        self.assertEqual((phone.verified, phone.subscribe), (False, True))
 
     def test_unrecognised_flag_text_on_a_new_member_is_reported(self):
         result = import_members_from_excel(

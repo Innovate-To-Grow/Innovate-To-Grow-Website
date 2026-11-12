@@ -1,8 +1,10 @@
 """The contact changes an import may make to an existing member.
 
 An import adds contacts. It never deletes one, overwrites one in place, moves one between members, re-subscribes
-one, or un-verifies one. A blank cell and a missing column both leave the stored records alone. Everything a row
-asked for but did not get is returned as a note for the import report.
+one, or un-verifies one. It never verifies a phone number either: the Phone Verified column is ignored (only the
+member's own one-time code verifies a number), so a new number starts unverified and a stored one keeps its status.
+A blank cell and a missing column both leave the stored records alone. Everything a row asked for but did not get
+is returned as a note for the import report.
 
 Nothing here sends mail or SMS: contacts are written directly, never through ``create_contact_email``, which emails
 a verification code.
@@ -114,9 +116,8 @@ def sync_phone(member, parsed: dict, notes: list[str]) -> None:
             f"Phone Number {holder.to_e164()} belongs to {member_label(holder.member)}; not added ({NEVER_MOVES})"
         )
     else:
-        _report_unapplied_flags(
-            holder, holder.to_e164(), "Phone", parsed["phone_verified"], parsed["phone_subscribed"], notes
-        )
+        # No Verified cell: the Phone Verified column is ignored, so only Phone Subscribed can differ.
+        _report_unapplied_flags(holder, holder.to_e164(), "Phone", None, parsed["phone_subscribed"], notes)
 
 
 def _report_kept(column: str, kept: list[str], notes: list[str]) -> None:
@@ -181,7 +182,7 @@ def _add_secondary(member, parsed: dict, address: str, notes: list[str]) -> None
 
 
 def _add_phone(member, parsed: dict, phone: ContactPhone, notes: list[str]) -> None:
-    """Add ``phone`` next to the member's numbers. It never replaces one, so it never inherits "verified"."""
+    """Add ``phone`` next to the member's numbers, unverified. It never replaces one, so it never inherits "verified"."""
     existing = list(member.contact_phones.all())
     label = phone.to_e164()
     phone.verified = False
@@ -196,8 +197,6 @@ def _add_phone(member, parsed: dict, phone: ContactPhone, notes: list[str]) -> N
     if existing:
         kept = ", ".join(other.to_e164() for other in existing)
         notes.append(f"Added {label} as an additional phone number; kept {kept} (an import never replaces a number)")
-    if parsed["phone_verified"]:
-        notes.append(f"{label} was added unverified ({STARTS_UNVERIFIED})")
 
 
 def _new_contact_subscribe(sheet_value, *, default: bool, allowed: bool, refusal: str, notes: list[str]) -> bool:

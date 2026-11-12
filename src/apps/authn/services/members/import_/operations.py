@@ -3,7 +3,8 @@
 A row updates the member whose *primary* email is in its Primary Email cell. It overwrites the profile fields it
 fills in, applies the Primary Verified/Subscribed cells in the safe direction only, and adds the secondary email
 and phone number it names (``contacts.py``). It never deletes, re-subscribes, un-verifies, or changes whether a
-member is active. Every row that is skipped, and every cell that is not applied, is reported with the reason.
+member is active, and it never verifies or un-verifies a phone number (the Phone Verified column is ignored). Every
+row that is skipped, and every cell that is not applied, is reported with the reason.
 """
 
 from __future__ import annotations
@@ -16,9 +17,10 @@ from .contacts import apply_primary_flags, sync_phone, sync_secondary_email
 from .matching import lookup_contact_emails, member_label, update_skip_reason
 from .types import ImportResult
 
-# Model defaults, used when a brand-new contact row is created and the sheet supplies no flag.
+# Model defaults, used when a brand-new contact row is created and the sheet supplies no flag. A phone number has no
+# "verified" entry: an import always saves it unverified, whatever the sheet says.
 _EMAIL_DEFAULTS = {"verified": False, "subscribe": True}
-_PHONE_DEFAULTS = {"verified": False, "subscribe": False}
+_PHONE_DEFAULTS = {"subscribe": False}
 
 STAFF_COLUMN_IGNORED = "Staff column ignored (only an I2G Master may change staff status)"
 ACTIVE_COLUMN_IGNORED = (

@@ -25,7 +25,7 @@ from .matching import (
     phone_holder,
 )
 from .operations import _EMAIL_DEFAULTS, _PHONE_DEFAULTS, _flag, bulk_update_members
-from .parsing import generate_random_password, normalize_header, parse_row
+from .parsing import column_notes, generate_random_password, normalize_header, parse_row
 from .types import ImportResult
 
 BATCH_SIZE = 500
@@ -166,7 +166,8 @@ def import_members_from_excel(
 
     New members are created from their rows. With ``update_existing``, a row whose Primary Email is an existing
     member's primary email updates that member without deleting anything (see ``operations.py``). Every row that is
-    not imported, and every cell that is not applied, is reported with the reason.
+    not imported, and every cell that is not applied, is reported with the reason. A column the import ignores (a
+    Phone Verified column) is reported once, before the rows.
     """
     if load_workbook is None:
         return ImportResult(success=False, errors=["openpyxl library not installed. Please run: pip install openpyxl"])
@@ -183,6 +184,8 @@ def import_members_from_excel(
         headers = [normalize_header(header) for header in raw_rows[0]]
         if "primary_email" not in headers:
             return ImportResult(success=False, errors=["Excel file must contain a 'Primary Email' column"])
+        for note in column_notes(headers):
+            result.note_file(note)
 
         parsed_rows = _parse_unique_rows(raw_rows, headers, result)
         if not parsed_rows:
@@ -209,7 +212,11 @@ def import_members_from_excel(
 
 
 def _append_contact_records(member, parsed: dict, plan: _CreationPlan, claims: _Claims, notes: list[str]) -> None:
-    """Queue a new member's contact records. The sheet's flags are trusted for a brand-new member's own contacts."""
+    """Queue a new member's contact records.
+
+    The sheet's flags are trusted for a brand-new member's own email addresses. Its phone number is always saved
+    unverified: the Phone Verified column is ignored, and only the member's own one-time code verifies a number.
+    """
     plan.emails.append(
         ContactEmail(
             member=member,
@@ -264,7 +271,7 @@ def _append_phone(member, parsed: dict, plan: _CreationPlan, claims: _Claims, no
                 phone_number=national,
                 region=region,
                 subscribe=_flag(parsed["phone_subscribed"], None, _PHONE_DEFAULTS["subscribe"]),
-                verified=_flag(parsed["phone_verified"], None, _PHONE_DEFAULTS["verified"]),
+                verified=False,
             )
         )
         claims.phones[national] = f"row {parsed['row']} of this file"
