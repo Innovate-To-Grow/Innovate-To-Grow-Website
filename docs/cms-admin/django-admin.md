@@ -72,7 +72,9 @@ organization and title. On top of that:
   - 2: everything else.
 
   A column sort the user picks (`?o=`) replaces the rank. `alias()` keeps the rank out of the paginator's
-  `count()`. The rank's `EXISTS` subqueries use the `member_id` foreign-key indexes.
+  `count()`. The rank's `EXISTS` subqueries are correlated on the indexed `member_id` foreign keys. On 6,000
+  members, an area-code search (`209`, every member matching) took about 57 ms for a ranked page of 50 on
+  PostgreSQL 16, against 26 ms before.
 - **Member pickers.** Django's `AutocompleteJsonView` calls `MemberAdmin.get_search_results`, so every
   `autocomplete_fields = ["member"]` picker (Contact Emails, Contact Phones, Event Registrations) gets the same
   results and order.

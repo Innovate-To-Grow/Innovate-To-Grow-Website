@@ -8,6 +8,7 @@ member pickers (autocomplete, 20 per page) then filled with those newer decoys a
 
 import datetime
 
+from django.contrib.admin import ModelAdmin
 from django.contrib.admin.sites import site
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
@@ -295,9 +296,10 @@ class MemberAdminSearchResultsUnitTests(TestCase):
         return self.admin.get_search_results(request, Member.objects.order_by("-date_joined"), term)
 
     def _stock(self, term):
+        """Django's own search over the same ``search_fields``, without the phone digits or the rank."""
         request = self.factory.get(CHANGELIST, {"q": term})
-        queryset, _dups = super(MemberAdmin, self.admin).get_search_results(request, Member.objects.all(), term)
-        return set(queryset)
+        queryset, _dups = ModelAdmin.get_search_results(self.admin, request, Member.objects.all(), term)
+        return set(queryset.distinct())
 
     def test_terms_with_too_few_digits_add_no_phone_matches(self):
         for term in ("32", "28", "+1", "(2) 8", "Ana 209", "acalderon32@ucmerced.edu", "blewis28"):
