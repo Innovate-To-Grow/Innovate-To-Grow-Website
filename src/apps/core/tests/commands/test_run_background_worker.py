@@ -19,6 +19,7 @@ from apps.core.services.delivery_rates.maintenance import MaintenanceResult
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
 NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)
 NO_IMPORTS_PURGED = {"expired": 0, "blanked": 0, "deleted": 0}
+NOTHING_COUNTED = {"graph": 0, "ses": 0, "busy": False}
 
 
 HELPDESK_NOTHING_PURGED = {
@@ -279,6 +280,8 @@ MAINTENANCE_SERVICES = {
     "run_delivery_rate_maintenance": NOTHING_MAINTAINED,
     "active_certificate_expiry": None,
     "ensure_bounce_scan_scheduled": False,
+    "count_bounced_addresses": NOTHING_COUNTED,
+    "refresh_bounced_address_links": 0,
     "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
     "purge_expired_inbound_queue": 0,
     "purge_finished_bounce_scans": 0,
@@ -320,6 +323,8 @@ BATCHED_SERVICES = (
     "clear_expired_sessions",
     "purge_expired_failure_windows",
     "purge_member_imports",
+    "count_bounced_addresses",
+    "refresh_bounced_address_links",
     "purge_expired_email_telemetry",
     "purge_expired_inbound_queue",
     "purge_expired_helpdesk",
@@ -360,6 +365,8 @@ class MaintenanceTaskTests(SimpleTestCase):
             run_delivery_rate_maintenance=record("delivery rates", NOTHING_MAINTAINED),
             active_certificate_expiry=record("graph certificate", None),
             ensure_bounce_scan_scheduled=record("bounce scans", False),
+            count_bounced_addresses=record("bounced addresses", NOTHING_COUNTED),
+            refresh_bounced_address_links=record("bounced address links", 0),
             purge_expired_email_telemetry=record("email telemetry", {"emails": 0, "bounces": 0}),
             purge_expired_inbound_queue=record("inbound queue", 0),
             purge_finished_bounce_scans=record("bounce scan jobs", 0),
@@ -382,6 +389,8 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "delivery rates",
                 "graph certificate",
                 "bounce scans",
+                "bounced addresses",
+                "bounced address links",
                 "email telemetry",
                 "inbound queue",
                 "bounce scan jobs",
@@ -404,6 +413,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Delivery-rate maintenance",
                 "Microsoft Graph certificate expiry check",
                 "Email bounce scan scheduling",
+                "Bounced address counting",
                 "Email telemetry retention",
                 "Helpdesk intake scheduling",
                 "Helpdesk ingest scheduling",
@@ -506,6 +516,18 @@ class MaintenanceTaskTests(SimpleTestCase):
             logs.output,
         )
 
+    def test_bounced_address_counts_are_logged_only_when_something_changed(self):
+        with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
+            self.run_patched(
+                count_bounced_addresses=lambda **_kwargs: {"graph": 3, "ses": 1, "busy": False},
+                refresh_bounced_address_links=lambda **_kwargs: 2,
+            )
+
+        self.assertEqual(
+            logs.output,
+            [f"INFO:{LOGGER_NAME}:Bounced addresses: counted 3 bounce reports and 1 SES events; refreshed 2 addresses"],
+        )
+
     def test_a_stop_request_skips_the_remaining_tasks(self):
         ran = []
         tasks = (
@@ -558,6 +580,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             run_delivery_rate_maintenance=RuntimeError("g"),
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),
+            count_bounced_addresses=RuntimeError("j"),
             purge_expired_email_telemetry=RuntimeError("i"),
             ensure_helpdesk_intake_scheduled=RuntimeError("l"),
             ensure_helpdesk_ingest_scheduled=RuntimeError("j"),

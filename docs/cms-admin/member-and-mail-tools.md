@@ -168,7 +168,15 @@ campaigns, inbox replies, and the **Send Test Email** action (which tests the me
 
 Audience resolution is handled by `src/apps/mail/services/audience/` (`resolvers.py`). The recipient list is resolved
 once, when sending starts (with the background worker, when the campaign is queued), so an address unsubscribed after
-that still receives that campaign. The labels of the two member-wide audiences name their one difference, the
+that still receives that campaign.
+
+**Suppressed addresses.** Every audience type leaves out an address that staff marked undeliverable or suppressed on
+**Email Monitoring → Bounced addresses** ([Email Monitoring](../integrations/email-monitoring.md#bounced-addresses)),
+compared in lower case (event audiences compare the attendee email). The previews and the send confirmation show
+"N recipients skipped: undeliverable", and a recipient queued before the address was suppressed is checked again just
+before sending and recorded as failed ("Not sent: this address is suppressed for bulk mail"). A member whose primary
+address is suppressed gets no primary-only campaign until another verified address is made primary. Transactional mail
+(sign-in codes, tickets, notifications) is never suppressed. The labels of the two member-wide audiences name their one difference, the
 `subscribe` flag, and the **Audience type** help text on the campaign form spells out who each one reaches
 (`models/campaign.py`, `AUDIENCE_HELP_TEXT`).
 

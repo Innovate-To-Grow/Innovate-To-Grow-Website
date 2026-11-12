@@ -46,6 +46,11 @@ ROUTES = {
     "admin:mail_emailcampaign_send_confirm": "staff-bulk",
     "admin:mail_smscampaign_send_confirm": "staff-bulk",
     "admin:helpdesk_ticket_attachment": "staff-bulk",
+    # Email Monitoring → Bounced addresses: the action POSTs, bulk actions, the counts rebuild and the export.
+    "admin:mail_email_monitoring_address_action": "staff-bulk",
+    "admin:mail_email_monitoring_addresses_bulk": "staff-bulk",
+    "admin:mail_email_monitoring_addresses_rebuild": "staff-bulk",
+    "admin:mail_email_monitoring_addresses_export": "staff-bulk",
     # Third party (django-ckeditor-5).
     "ck_editor_5_upload_file": "staff-bulk",
 }

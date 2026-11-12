@@ -136,7 +136,8 @@
 }
 
 .i2g-monitor-field input,
-.i2g-monitor-field select {
+.i2g-monitor-field select,
+.i2g-monitor-field textarea {
     background: var(--i2g-m-surface);
     border: 1px solid var(--i2g-m-border);
     border-radius: 6px;
@@ -630,6 +631,205 @@
 
 .i2g-monitor-tooltip-row span:last-child {
     color: var(--i2g-m-muted);
+}
+
+/* Bounced addresses ------------------------------------------------------------------------------------------ */
+
+.i2g-monitor-sr {
+    clip: rect(0 0 0 0);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
+}
+
+.i2g-monitor-count {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.8;
+}
+
+.i2g-monitor-bulk {
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.i2g-monitor-bulk .i2g-monitor-muted {
+    flex: 1 1 280px;
+}
+
+.i2g-monitor-counts {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    white-space: nowrap;
+}
+
+.i2g-monitor-badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    vertical-align: middle;
+}
+
+.i2g-monitor-badge {
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    padding: 0 6px;
+    white-space: nowrap;
+}
+
+.i2g-monitor-badge--good {
+    border-color: color-mix(in srgb, var(--i2g-status-good) 55%, transparent);
+}
+
+.i2g-monitor-badge--muted {
+    color: var(--i2g-m-muted);
+    border-style: dashed;
+}
+
+.i2g-monitor-badge--warn {
+    border-color: color-mix(in srgb, var(--i2g-status-warning) 70%, transparent);
+}
+
+.i2g-monitor-badge--danger {
+    background: color-mix(in srgb, var(--i2g-status-critical) 10%, transparent);
+    border-color: color-mix(in srgb, var(--i2g-status-critical) 55%, transparent);
+}
+
+.i2g-monitor-chip--open .material-symbols-outlined { color: var(--i2g-status-warning); }
+.i2g-monitor-chip--resolved .material-symbols-outlined { color: var(--i2g-status-good); }
+
+.i2g-monitor-menu {
+    position: relative;
+}
+
+.i2g-monitor-menu summary {
+    color: var(--i2g-m-accent);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
+.i2g-monitor-menu-body {
+    background: var(--i2g-m-surface);
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 220px;
+    padding: 6px;
+    position: absolute;
+    right: 0;
+    z-index: 5;
+}
+
+.i2g-monitor-menu-body a,
+.i2g-monitor-menu-body button {
+    background: none;
+    border: 0;
+    border-radius: 4px;
+    color: var(--i2g-m-text);
+    cursor: pointer;
+    font-size: 0.8125rem;
+    padding: 6px 8px;
+    text-align: left;
+    text-decoration: none;
+    width: 100%;
+}
+
+.i2g-monitor-menu-body a:hover,
+.i2g-monitor-menu-body button:hover {
+    background: var(--i2g-m-wash);
+}
+
+.i2g-monitor-action-list {
+    display: flex;
+    flex-direction: column;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.i2g-monitor-action-list li {
+    align-items: center;
+    border-bottom: 1px solid var(--i2g-m-grid);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    justify-content: space-between;
+    padding: 10px 0;
+}
+
+.i2g-monitor-action-list li > div {
+    flex: 1 1 320px;
+}
+
+.i2g-monitor-action-list p {
+    margin: 2px 0 0;
+}
+
+.i2g-monitor-action--danger strong {
+    color: var(--i2g-status-critical);
+}
+
+.i2g-monitor-reason {
+    align-items: center;
+    display: flex;
+    font-size: 0.8125rem;
+    gap: 4px;
+}
+
+.i2g-monitor-card--danger {
+    border-color: color-mix(in srgb, var(--i2g-status-critical) 45%, transparent);
+}
+
+.i2g-monitor-card--danger h3 {
+    color: var(--i2g-status-critical);
+}
+
+.i2g-monitor-button--danger {
+    border-color: var(--i2g-status-critical);
+    color: var(--i2g-status-critical);
+    font-weight: 600;
+}
+
+.i2g-monitor-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* In this column a field's flex basis would be a height: keep each field at its content height. */
+.i2g-monitor-confirm .i2g-monitor-field,
+.i2g-monitor-confirm .i2g-monitor-field--wide {
+    flex: 0 0 auto;
+}
+
+.i2g-monitor-card--danger .i2g-monitor-meters {
+    margin: 10px 0 12px;
+}
+
+.i2g-monitor-fieldset {
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 6px 12px;
+}
+
+.i2g-monitor-fieldset legend {
+    color: var(--i2g-m-muted);
+    font-size: 0.75rem;
+    padding: 0 4px;
 }
 
 @media (max-width: 640px) {

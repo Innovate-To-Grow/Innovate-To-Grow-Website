@@ -1,0 +1,152 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block monitoring_content %}
+<section class="i2g-monitor-card" aria-labelledby="addresses-intro">
+  <h2 id="addresses-intro" class="i2g-monitor-heading">Bounced addresses <span>every address a bounce report or an SES bounce or complaint named</span></h2>
+  <p class="i2g-monitor-muted">
+    Counts come from the Microsoft Graph bounce reports and Amazon SES events and are kept after the reports themselves are purged.
+    <strong>Nothing here changes on its own:</strong> counting never touches a member, a contact email or a subscription, and every change below is a staff action, confirmed and recorded.
+    Marking an address undeliverable (or suppressing it) makes every campaign skip it; sign-in codes, tickets and notifications still go.
+  </p>
+  <dl class="i2g-monitor-facts">
+    <div><dt>Suppressed for campaigns</dt><dd>{{ suppressed_total }}</dd></div>
+    <div><dt>Not counted yet</dt><dd>{% if pending %}{{ pending }} report{{ pending|pluralize }} (counted as this page reloads and hourly){% else %}none{% endif %}{% if counted.busy %} · another count is running{% endif %}{% if counted.failed %} · counting failed on this load (the worker counts hourly){% endif %}</dd></div>
+  </dl>
+  <div class="i2g-monitor-actions">
+    <a class="i2g-monitor-button" href="{% url 'admin:mail_email_monitoring_addresses_export' %}{% if filter_query %}?{{ filter_query }}&amp;{% else %}?{% endif %}sort={{ listing.sort }}&amp;dir={% if listing.descending %}desc{% else %}asc{% endif %}">
+      <span class="material-symbols-outlined" aria-hidden="true">download</span>Export these rows (.xlsx)
+    </a>
+    {% if can_rebuild %}
+    <form method="post" action="{% url 'admin:mail_email_monitoring_addresses_rebuild' %}">
+      {% csrf_token %}
+      <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>Rebuild counts…</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+<nav class="i2g-monitor-subnav i2g-monitor-tabs" aria-label="Review status">
+  <a href="?{% if status_query %}{{ status_query }}&amp;{% endif %}status=open" {% if listing.filters.status == "open" %}aria-current="page"{% endif %}>Open <span class="i2g-monitor-count">{{ status_counts.open }}</span></a>
+  <a href="?{% if status_query %}{{ status_query }}&amp;{% endif %}status=dismissed" {% if listing.filters.status == "dismissed" %}aria-current="page"{% endif %}>Dismissed <span class="i2g-monitor-count">{{ status_counts.dismissed }}</span></a>
+  <a href="?{% if status_query %}{{ status_query }}&amp;{% endif %}status=resolved" {% if listing.filters.status == "resolved" %}aria-current="page"{% endif %}>Resolved <span class="i2g-monitor-count">{{ status_counts.resolved }}</span></a>
+  <a href="?{% if status_query %}{{ status_query }}&amp;{% endif %}status=all" {% if listing.filters.status == "all" %}aria-current="page"{% endif %}>All <span class="i2g-monitor-count">{{ status_counts.all }}</span></a>
+</nav>
+
+<form method="get" class="i2g-monitor-filters" aria-label="Filter bounced addresses">
+  <input type="hidden" name="status" value="{{ listing.filters.status }}">
+  <label class="i2g-monitor-field i2g-monitor-field--wide">
+    <span>Search</span>
+    <input type="search" name="q" value="{{ listing.filters.q }}" placeholder="Address or member name">
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Type</span>
+    <select name="type"><option value="">Any</option>{% for value, label in types %}<option value="{{ value }}" {% if listing.filters.type == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Role</span>
+    <select name="role"><option value="">Any</option>{% for value, label in roles %}<option value="{{ value }}" {% if listing.filters.role == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Member</span>
+    <select name="member"><option value="">Any</option>{% for value, label in member_states %}<option value="{{ value }}" {% if listing.filters.member == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Suppressed</span>
+    <select name="suppressed"><option value="">Any</option><option value="yes" {% if listing.filters.suppressed == "yes" %}selected{% endif %}>Suppressed / undeliverable</option><option value="no" {% if listing.filters.suppressed == "no" %}selected{% endif %}>Not suppressed</option></select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Evidence</span>
+    <select name="evidence"><option value="">Any</option>{% for value, label in evidence_choices %}<option value="{{ value }}" {% if listing.filters.evidence == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Suggestion</span>
+    <select name="suggestion"><option value="">Any</option>{% for value, label in suggestions %}<option value="{{ value }}" {% if listing.filters.suggestion == value %}selected{% endif %}>{{ label }}</option>{% endfor %}<option value="none" {% if listing.filters.suggestion == "none" %}selected{% endif %}>No suggestion</option></select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Campaign</span>
+    <select name="campaign"><option value="">Any</option>{% for campaign in campaigns %}<option value="{{ campaign.pk }}" {% if listing.filters.campaign == campaign.pk|stringformat:"s" %}selected{% endif %}>{{ campaign.name|default:campaign.pk }}</option>{% endfor %}</select>
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Last bounce from</span>
+    <input type="date" name="start" value="{{ listing.filters.start }}">
+  </label>
+  <label class="i2g-monitor-field">
+    <span>to</span>
+    <input type="date" name="end" value="{{ listing.filters.end }}">
+  </label>
+  <label class="i2g-monitor-field">
+    <span>Per page</span>
+    <select name="page_size">{% for size in page_sizes %}<option value="{{ size }}" {% if listing.page_size == size %}selected{% endif %}>{{ size }}</option>{% endfor %}</select>
+  </label>
+  <input type="hidden" name="sort" value="{{ listing.sort }}">
+  <input type="hidden" name="dir" value="{% if listing.descending %}desc{% else %}asc{% endif %}">
+  <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>Apply</button>
+</form>
+
+<div class="i2g-monitor-card">
+  <form method="post" id="i2g-bulk-form" class="i2g-monitor-bulk" action="{% url 'admin:mail_email_monitoring_addresses_bulk' %}" aria-label="Bulk action on the selected addresses">
+    {% csrf_token %}
+    <label class="i2g-monitor-field">
+      <span>With the selected addresses</span>
+      <select name="action" required>
+        <option value="">Choose an action…</option>
+        {% for value, label in bulk_actions %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">checklist</span>Review…</button>
+    <span class="i2g-monitor-muted">The next page lists every selected address and skips the ones the action does not apply to, with the reason. Contact and account changes are made one address at a time.</span>
+  </form>
+
+  <p class="i2g-monitor-muted">{{ page.paginator.count }} address{{ page.paginator.count|pluralize:"es" }}. Roles, members and flags are read live from Members; filters use the values last refreshed.</p>
+  {% if entries %}
+  <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table i2g-monitor-addresses">
+    <thead><tr>
+      <th scope="col"><span class="i2g-monitor-sr">Select</span></th>
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="address" label="Address" %}
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="reports" label="Counts" %}
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="last" label="Last bounce" %}
+      <th scope="col">Last reason</th>
+      <th scope="col">Member</th>
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="role" label="Role" %}
+      <th scope="col">Flags</th>
+      <th scope="col">Campaigns</th>
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="status" label="Status" %}
+      <th scope="col">Suggestion</th>
+      <th scope="col">Actions</th>
+    </tr></thead>
+    <tbody>{% for entry in entries %}{% with row=entry.row %}
+      <tr>
+        <td><input type="checkbox" name="ids" value="{{ row.pk }}" form="i2g-bulk-form" aria-label="Select {{ row.address }}"></td>
+        <td><a href="{% url 'admin:mail_email_monitoring_address' row.pk %}"><strong>{{ row.address }}</strong></a></td>
+        <td>{% include "admin/mail/email_monitoring/_address_counts.html" %}</td>
+        <td>{{ row.last_bounce_at|date:"M j, Y H:i"|default:"–" }}<br><span class="i2g-monitor-muted">first {{ row.first_bounce_at|date:"M j, Y"|default:"–" }}</span></td>
+        <td>{% include "admin/mail/email_monitoring/_address_reason.html" %}</td>
+        <td>{% include "admin/mail/email_monitoring/_address_member.html" with match=entry.match owners=entry.owners %}</td>
+        <td>{{ entry.match.role.label }}{% if entry.match.role == "ambiguous" %}<br><span class="i2g-monitor-muted">{{ entry.match.contacts|length }} contact records</span>{% endif %}</td>
+        <td>{% include "admin/mail/email_monitoring/_address_flags.html" with contact=entry.contact %}</td>
+        <td>{% if entry.campaigns.count %}{{ entry.campaigns.count }}<br>{% if entry.campaigns.last.exists %}<a href="{% url 'admin:mail_email_monitoring_campaign' entry.campaigns.last.id %}">{{ entry.campaigns.last.name|truncatechars:40 }}</a>{% else %}<span class="i2g-monitor-muted">{{ entry.campaigns.last.name }}</span>{% endif %}{% if entry.campaigns.last.likely %} <span class="i2g-monitor-muted">(likely)</span>{% endif %}{% else %}–{% endif %}</td>
+        <td>{% include "admin/mail/email_monitoring/_address_status.html" %}</td>
+        <td>{{ row.get_suggestion_display|default:"–" }}{% if row.suggestion and row.suggestion != "policy" and not row.has_matched_evidence %}<br><span class="i2g-monitor-muted">unmatched reports only: check them first</span>{% endif %}</td>
+        <td>
+          <details class="i2g-monitor-menu">
+            <summary>Actions</summary>
+            <div class="i2g-monitor-menu-body">
+              <a href="{% url 'admin:mail_email_monitoring_address' row.pk %}">Open address page (all actions)</a>
+              {% for item in entry.quick %}
+                <form method="post" action="{% url 'admin:mail_email_monitoring_address_action' row.pk item.action %}">
+                  {% csrf_token %}<input type="hidden" name="step" value="confirm">
+                  <button type="submit">{{ item.label }}…</button>
+                </form>
+              {% endfor %}
+            </div>
+          </details>
+        </td>
+      </tr>
+    {% endwith %}{% endfor %}</tbody>
+  </table></div>
+  {% else %}
+    <p class="i2g-monitor-empty">No address matches these filters.</p>
+  {% endif %}
+  {% include "admin/mail/email_monitoring/_pagination.html" %}
+</div>
+{% endblock %}

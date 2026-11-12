@@ -122,7 +122,7 @@ provider call, retries included; 429 incidents and response times are attempt fi
 
 A matched bounce changes only the email's **delivery status** (its API status stays "accepted"). The site does
 **not** resend, suppress or unsubscribe anyone because of a bounce, and does not change the campaign's recipient
-log: those are business decisions for staff, made from the failed-recipient lists.
+log: those are business decisions for staff, made on the **Bounced addresses** page (below).
 
 ### Reading older mail again
 
@@ -154,6 +154,105 @@ and has the same controls on its own card (Helpdesk → Settings; see the [helpd
   `bounce_initial_lookback_hours` (72). Once the mailbox has a checkpoint the lookback is no longer used; use
   **Rescan since** instead. The lookback stays editable while processing is not active, like Pause.
 
+## Bounced addresses
+
+**Email Monitoring → Bounced addresses** (`/admin/mail/email-monitoring/addresses/`) lists every address a bounce
+report or an Amazon SES bounce or complaint named, one row per address (`mail.BouncedAddress`), with what staff may
+do about it. **Nothing on it happens on its own:** counting never changes a member, a contact email or a
+subscription, and every change is a staff action with a confirmation page and an audit record.
+
+### Counting
+
+- **Sources.** Microsoft Graph bounce reports (`core.EmailBounce`): hard, soft, rejected, delayed and unknown, each
+  counted once. Amazon SES events on campaign recipient logs (`RecipientLog`): permanent (shown as hard), transient
+  (soft) and undetermined (unknown) bounces, and spam **complaints**. "Left the company" auto-replies are not counted
+  yet: they need the helpdesk's inbound queue.
+- **Kept after purges.** Counts are stored on the row, so they outlive the 365-day bounce retention; a deleted
+  campaign keeps its SES counts too.
+- **Incremental and exactly once.** Each source is read from a stored cursor (`mail.BounceAggregationState`), one
+  batch per transaction holding the source's row lock. Reports younger than `address_settle_seconds` wait for the next
+  run, so a report whose transaction commits late is never skipped. Counting runs when the list page loads (at most
+  `address_page_rows` rows, without waiting for another run) and in the background worker's hourly maintenance
+  ("Bounced address counting", before "Email telemetry retention").
+- **Campaigns.** A matched report gives its email's campaign (exact). For an unmatched one (the blast predates
+  telemetry), the one campaign that mailed the address in the matching window before the report is shown as
+  *likely*; when several did, none is guessed.
+- **Matched reports.** Anyone can mail the mailbox a report-shaped message, so each address also counts the Graph
+  reports matched to an email the site sent (exactly or inferred). An address whose reports are all unmatched (and
+  with no SES event, which AWS signs) is marked "unmatched", its suggestion says to check the reports first, and the
+  **Evidence** filter separates the two.
+- **Reopening.** A matched hard or rejected bounce (or an SES permanent bounce or complaint) that arrives after an
+  address was dismissed sets it back to *Open*: queue state only. An unmatched report never reopens anything.
+- **Rebuild counts…** (I2G Master only) starts every count again from the records still stored (review state,
+  suppressions and the history stay). Counts of purged reports cannot be rebuilt; the confirmation page says so. It
+  leaves an audit row and an admin history line.
+- **Member links** are re-checked hourly for at most `address_refresh_rows_per_run` addresses per run, continuing
+  where the last run stopped, so a very long list is covered over several runs.
+
+### The list and one address
+
+- **Columns:** counts by type, first and last report, the last code and reason with the remote server, the member
+  (linked for staff who also hold the Members app) with Active / Inactive / Staff badges, the address's **role**
+  (primary, secondary, other, unlinked contact, not a contact, or **ambiguous** when one address is saved in several
+  letter cases), verified / subscribed / suppression flags, campaigns, review status and a text-only suggestion.
+- **Filters:** status tabs (Open by default), type, role, member (has a member, none, active, inactive, staff),
+  suppressed, evidence (matched to the site's mail, or unmatched reports only), suggestion, campaign, last-report date
+  range and a search on the address or member name; sortable
+  columns; **Export these rows (.xlsx)** writes the filtered list (every cell formula-safe, at most
+  `address_export_max_rows` rows). Roles and members are read live on every page; the filters use the values last
+  refreshed (on each page, after each count and hourly).
+- **One address** shows the Graph reports still stored, the SES events, the campaigns, the member card (name,
+  status, registrations; their other addresses with their flags, and their phones, only for staff who also hold the
+  Members app, as on the Member admin), every action with why it is unavailable, and the history.
+- **Suggestions** (never applied): a complaint → unsubscribe; a hard bounce → mark undeliverable or replace; at
+  least `address_soft_bounce_repeats` soft bounces over `address_soft_bounce_days` days → consider undeliverable;
+  rejections only (5.7.x) → probably our reputation or policy, no action.
+
+### Actions
+
+Every action is a POST (with CSRF) to a confirmation page, then an "apply" POST. Applying re-reads the address, its
+contact emails and the member under locks and refuses, changing nothing, when anything changed since the page was
+shown. Each applied action writes a `mail.BouncedAddressAction` row (actor, member and address snapshots, role
+before and after, note and details; it survives the member's deletion) and an admin history line on the member (or
+on the address when it belongs to no member).
+
+| Action | Effect | Undo | Confirmation | Needs |
+|---|---|---|---|---|
+| Dismiss (reason required) | Leaves the open queue; nothing else changes | Reopen | page | Mail |
+| Suppress address (no member) | Every campaign skips it | Clear suppression | page | Mail |
+| Mark undeliverable (a member's address) | Every campaign skips it; sign-in codes, tickets and notifications still go | Clear suppression | page | Mail + Members, and the member is manageable |
+| Unsubscribe this address | `subscribe` off for this address only | Re-subscribe on the member page | page | Mail + Members |
+| Use another address as primary | `make_contact_email_primary` on a verified address the admin picks; the old primary becomes secondary | Swap back once verified | page | Mail + Members |
+| Replace email | Adds the new address (valid, unused in any letter case, not an address with a pending admin invitation; primary only when attested verified, which needs an I2G Master on a staff account), then marks the old one undeliverable or deletes it. Sends nothing | Partly | page; typed old address when it is deleted | Mail + Members |
+| Delete this email address | `delete_contact_email` after the rules below | No | typed address | Mail + Members (an unlinked contact: I2G Master) |
+| Deactivate account | `is_active` off and an unfinished sign-up ended (as the Member admin does); never your own account | Activate on the Members page | page | Mail + Members |
+| Delete account | Hard delete of the member: the page lists the cascade (`get_deleted_objects`: event registrations, check-ins, contact emails, login links, …) and recommends Deactivate; never your own account; refused when other records protect it | No | typed primary address | **I2G Master** (the cascade reaches apps other staff may not hold; no other admin page deletes a member with a primary email) |
+
+"Manageable" is `user_can_manage_member`: only an I2G Master changes a staff or superuser account. Typed
+confirmations follow `ADMIN_REQUIRE_CONFIRMATION` (on in production). Deleting an address is refused when it is the
+member's only address, the primary without another verified address (otherwise the admin picks the new primary), the
+member's last verified sign-in contact (email or phone), or an ambiguous address; an ambiguous address allows no
+contact or account change at all.
+
+**Bulk:** select rows on the list and choose Dismiss, Reopen, Suppress, Mark undeliverable, Clear suppression or
+Unsubscribe. The next page lists every selected address with "will change" or the reason it is skipped, and applies
+row by row with the same guards and re-checks. Contact and account changes (delete address, replace, make primary,
+deactivate, delete account) are never offered in bulk.
+
+### What suppression stops
+
+Suppression (`BouncedAddress.suppressed_at`, set by Suppress address or Mark undeliverable) is the site's one
+bulk-mail suppression list (`apps.mail.services.suppression`). Addresses compare in their bare lower-case form.
+
+- **Every campaign audience** skips a suppressed address when it is resolved (subscribers, all members, staff,
+  selected members, event registrants, ticket type, checked-in, no-shows, manual lists; registrant audiences
+  compare the attendee email snapshot). The campaign's preview, recipient preview and send confirmation say how many
+  recipients were skipped.
+- **Sends already queued** check again just before the provider call: a queued job or the in-process runner records
+  the recipient as failed with "Not sent: this address is suppressed for bulk mail" and sends nothing.
+- **Transactional mail is never suppressed:** sign-in and verification codes, password codes, event tickets,
+  notifications and inbox replies still go, since the person may have fixed their mailbox.
+
 ## Dashboard entry points
 
 | Page | URL |
@@ -165,6 +264,11 @@ and has the same controls on its own card (Helpdesk → Settings; see the [helpd
 | Bounce reports | `/admin/mail/email-monitoring/bounces/` (classification, match method, search) |
 | One campaign | `/admin/mail/email-monitoring/campaigns/<campaign uuid>/`, or **Delivery monitoring** on a sent campaign |
 | Bounce processing controls | POST `/admin/mail/email-monitoring/bounce-processing/` (`action=scan|pause|resume`; `action=rescan&since=YYYY-MM-DDTHH:MM`; `action=lookback&lookback_hours=N`, empty for the default) |
+| Bounced addresses | `/admin/mail/email-monitoring/addresses/` (status, type, role, member, suppressed, suggestion, campaign, `start`/`end`, `q`, sort, page size) |
+| Bounced addresses export | `/admin/mail/email-monitoring/addresses/export/` (the same filters) |
+| One bounced address | `/admin/mail/email-monitoring/addresses/<uuid>/` |
+| Bounced-address action | POST `/admin/mail/email-monitoring/addresses/<uuid>/<action>/` (`step=confirm`, then `step=apply` with the page's `fingerprint`) |
+| Bulk action / counts rebuild | POST `/admin/mail/email-monitoring/addresses/bulk/`, `/admin/mail/email-monitoring/addresses/rebuild/` |
 
 The pages are a tab of **Delivery Operations** in the Broadcast Delivery section.
 
@@ -195,6 +299,11 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `bounce_match_window_hours` | `120` | Window of the inferred match. |
 | `attempt_stale_seconds` | `900` | An attempt still "in progress" after this is shown as interrupted (outcome unknown). |
 | `ndr_subject_prefixes`, `ndr_sender_local_parts` | see the file | How a listed message is recognised as a report candidate. |
+| `address_batch_size`, `address_page_rows` | `500`, `1000` | Bounced addresses: rows counted per transaction, and at most this many when the list loads. |
+| `address_settle_seconds` | `120` | A report is counted only once it is this old (a late-committing transaction is never skipped). |
+| `address_soft_bounce_repeats`, `address_soft_bounce_days` | `3`, `7` | When "consider marking undeliverable" is suggested for soft bounces. |
+| `address_export_max_rows`, `address_bulk_max_rows` | `10000`, `500` | Rows in one Bounced addresses export; addresses one bulk action may change. |
+| `address_refresh_rows_per_run` | `5000` | Addresses whose member links the hourly maintenance re-checks per run. |
 
 **Pause / resume** on the dashboard stops bounce scans of the mailbox without a deploy (stored on its
 `EmailMonitorState`, like the first-scan lookback and the checkpoint that **Rescan since** moves). It does not
@@ -216,10 +325,14 @@ form saves every column and would overwrite a running scan's lease.
    sending mailbox (`Send and read`), as it already does for the admin inbox. No Entra or Exchange change is
    needed: the app's existing grant (Mail.Send + Mail.ReadWrite) covers the GET requests used.
 4. Check **Email Monitoring → Bounce processing** after ~10 minutes: "Running" with a recent successful scan.
+5. Migration `mail.0023_bounced_address` adds the four Bounced addresses tables (no data migration). The first page
+   load and the worker's next hourly maintenance count the bounce reports and SES events already stored.
 
 Access: every page requires the **Mail** app (`Member.admin_apps`, or superuser), like the Delivery
-Dashboard; the controls are POST with CSRF. The telemetry tables are denied to the CLI and the assistant
-(`safe_orm` `DENIED_MODEL_LABELS`) for reads and writes.
+Dashboard; the controls are POST with CSRF. Bounced-address actions that change a contact email or a member also need
+the **Members** (`authn`) app and a manageable member (see the actions table). The telemetry tables and the four
+Bounced addresses tables are denied to the CLI and the assistant (`safe_orm` `DENIED_MODEL_LABELS`) for reads and
+writes, so a suppression can only be set or lifted on the page, under its guards.
 
 ## Limitations
 
@@ -253,7 +366,8 @@ Dashboard; the controls are POST with CSRF. The telemetry tables are denied to t
   needs the original `Message-ID` (known only to the email's recipients) and an inferred one the recipient and
   subject; the parsing bounds above keep forged reports cheap.
 - **Bounces do not change campaign records or subscriptions.** Acting on a bounce (correcting an address,
-  unsubscribing) is a staff decision; the site makes none automatically.
+  unsubscribing, suppressing) is a staff decision made on the Bounced addresses page; the site makes none
+  automatically.
 - **Other providers.** SES, SMTP and the Gmail API are recorded at the facade (one attempt per call, error
   kind "Provider error"), without Graph's HTTP-level detail; SES delivery events remain in the SES dashboard
   and the recipient log ([SES event tracking](ses-event-tracking.md)).

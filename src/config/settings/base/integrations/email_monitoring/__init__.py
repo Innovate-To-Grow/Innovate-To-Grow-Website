@@ -119,4 +119,20 @@ EMAIL_MONITORING = {
         "warning: could not send message",
     ),
     "ndr_sender_local_parts": ("postmaster", "mailer-daemon", "mail-daemon", "maildaemon"),
+    # Bounced addresses (Email Monitoring → Bounced addresses). Reports and SES events are counted per address in
+    # batches of this many rows (one transaction each)...
+    "address_batch_size": 500,
+    # ...at most this many when the page loads (the worker's hourly maintenance counts the rest)...
+    "address_page_rows": 1000,
+    # ...and only once they are this old, so a report whose transaction commits late is never skipped.
+    "address_settle_seconds": 120,
+    # The hourly maintenance re-checks at most this many addresses' member links per run (continuing where it stopped).
+    "address_refresh_rows_per_run": 5000,
+    # "Consider marking undeliverable" is suggested after this many soft bounces spread over at least this many days.
+    "address_soft_bounce_repeats": 3,
+    "address_soft_bounce_days": 7,
+    # Rows written to one spreadsheet export of the list (the filtered rows, newest bounce first), and addresses one
+    # bulk action may change (each is checked and applied one at a time).
+    "address_export_max_rows": 10000,
+    "address_bulk_max_rows": 500,
 }
