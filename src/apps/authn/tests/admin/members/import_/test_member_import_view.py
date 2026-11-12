@@ -116,16 +116,22 @@ class MemberImportPageTests(TestCase):
 
     def test_the_same_file_twice_warns_before_a_second_batch_is_made(self):
         rows = [["new@example.com", "New", "Person", None]]
-        self.client.post(self.url, {"excel_file": _upload(rows), "mode": "update_existing"})
+        # Rebuilding the XLSX can change its timestamps and therefore its file hash.
+        data = build_sheet(HEADERS, rows).getvalue()
 
-        response = self.client.post(self.url, {"excel_file": _upload(rows), "mode": "update_existing"})
+        def same_file():
+            return SimpleUploadedFile("members.xlsx", data, content_type=XLSX)
+
+        self.client.post(self.url, {"excel_file": same_file(), "mode": "update_existing"})
+
+        response = self.client.post(self.url, {"excel_file": same_file(), "mode": "update_existing"})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "This file was uploaded before:")
         self.assertContains(response, "continue that one")
         self.assertEqual(MemberImportBatch.objects.count(), 1)
         again = self.client.post(
-            self.url, {"excel_file": _upload(rows), "mode": "update_existing", "upload_anyway": "on"}
+            self.url, {"excel_file": same_file(), "mode": "update_existing", "upload_anyway": "on"}
         )
         self.assertEqual(again.status_code, 302)
         self.assertEqual(MemberImportBatch.objects.count(), 2)
