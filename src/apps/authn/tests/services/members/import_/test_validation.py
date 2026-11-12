@@ -162,6 +162,38 @@ class SecondaryEmailWarningTests(ImportTestCase):
 
         self.assertEqual([a.warnings for a in analyses], [[], []])
 
+    def test_v8_the_same_unlinked_secondary_in_two_rows(self):
+        ContactEmail.objects.create(member=None, email_address="lab@example.com", email_type="primary")
+        rows = [
+            row("one@example.com", Secondary_Email="lab@example.com"),
+            row("two@example.com", Secondary_Email="LAB@example.com"),
+        ]
+
+        first, second = self.analyse(rows)
+
+        self.assertEqual(first.warnings, [])
+        self.assertEqual(
+            second.warnings,
+            [{"code": "V8", "text": "Secondary Email LAB@example.com is also in row 2; only that row adds it"}],
+        )
+
+    def test_only_the_first_row_attaches_a_shared_unlinked_secondary(self):
+        # Both rows used to plan the claim, so the second claim failed the whole apply ("taken … after the review").
+        lab = ContactEmail.objects.create(member=None, email_address="lab@example.com", email_type="primary")
+        rows = [
+            row("ada@example.com", Secondary_Email="lab@example.com"),
+            row("two@example.com", First_Name="Tom", Secondary_Email="lab@example.com"),
+        ]
+
+        first, second = self.apply(rows)
+
+        self.assertEqual((first.outcome, second.outcome), ("updated", "created"))
+        lab.refresh_from_db()
+        self.assertEqual((lab.member, lab.email_type, lab.verified), (self.ada, "secondary", False))
+        self.assertEqual(
+            list(second.member.contact_emails.values_list("email_address", flat=True)), ["two@example.com"]
+        )
+
     def test_only_the_first_row_adds_a_shared_new_secondary(self):
         rows = [
             row("one@example.com", Secondary_Email="shared.new@example.com", Phone_Number="209-555-0123"),

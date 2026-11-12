@@ -55,9 +55,13 @@ def _secondary_drop(row: dict, primary_rows: dict, new_secondaries: dict, snapsh
             "text": f"Secondary Email {address} is the Primary Email of row {other}; that row wins, and this cell is "
             "ignored",
         }
-    if snapshot.email_records(address):
+    records = snapshot.email_records(address)
+    # A stored address held by a member (or by several records that differ only in case) is never added: each row
+    # reports that on its own. One contact email with no member is taken by the row that attaches it, so like a new
+    # address it may be added by one row only: a second claim would fail the whole apply.
+    if records and not (len(records) == 1 and records[0].member is None):
         return None
-    if not valid_new_address(address):
+    if not records and not valid_new_address(address):
         return {"code": "V2", "text": f"Secondary Email {address!r} is not a valid email address; ignored"}
     first = new_secondaries.setdefault(key, row["row"])
     if first != row["row"]:
