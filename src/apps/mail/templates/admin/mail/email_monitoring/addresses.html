@@ -2,7 +2,7 @@
 
 {% block monitoring_content %}
 <section class="i2g-monitor-card" aria-labelledby="addresses-intro">
-  <h2 id="addresses-intro" class="i2g-monitor-heading">Bounced addresses <span>every address a bounce report or an SES bounce or complaint named</span></h2>
+  <h2 id="addresses-intro" class="i2g-monitor-heading">Bounced addresses <span>every address a bounce report, an SES bounce or complaint, or a left-the-organisation notice named</span></h2>
   <p class="i2g-monitor-muted">
     Counts come from the Microsoft Graph bounce reports and Amazon SES events and are kept after the reports themselves are purged.
     <strong>Nothing here changes on its own:</strong> counting never touches a member, a contact email or a subscription, and every change below is a staff action, confirmed and recorded.
@@ -12,6 +12,7 @@
     Each report has a <strong>category</strong>. Only "Address does not exist" and "Mailbox disabled" are evidence against an address.
     Temporary failures (a connection timeout, a DNS failure, an expired delivery, a full mailbox) and unclear ones only count toward "Consider marking undeliverable" when they repeat over several days.
     A relay refusal or a spam or reputation rejection points at our own sending, not at the contact.
+    An automatic reply to our mail saying the person <strong>left the organisation</strong> or changed address is counted too, as evidence to check (it suggests checking the notice, then replacing the address); out-of-office replies never count.
   </p>
   {% include "admin/mail/email_monitoring/_category_legend.html" %}
   <dl class="i2g-monitor-facts">

@@ -63,7 +63,11 @@ class CountingEdgeTests(TestCase):
 
         self.assertEqual(
             sorted(str(state) for state in BounceAggregationState.objects.all()),
-            ["Bounced-address counting: graph", "Bounced-address counting: ses"],
+            [
+                "Bounced-address counting: graph",
+                "Bounced-address counting: inbound",
+                "Bounced-address counting: ses",
+            ],
         )
 
 

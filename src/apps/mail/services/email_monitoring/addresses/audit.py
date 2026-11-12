@@ -27,7 +27,7 @@ def person_label(member) -> str:
 
 def evidence(row: BouncedAddress) -> str:
     """A short summary of the reports, e.g. "address does not exist 5.1.1, 3 reports" (the latest report's category,
-    or its classification when it has none)."""
+    or its classification when it has none), and of the left-the-organisation notices."""
     parts = []
     graph_latest = row.graph_last_at is not None and (row.ses_last_at is None or row.graph_last_at >= row.ses_last_at)
     if graph_latest and row.last_classification:
@@ -37,7 +37,11 @@ def evidence(row: BouncedAddress) -> str:
     elif row.ses_last:
         parts.append(f"SES {row.ses_last.get('event', 'bounce')} {row.ses_last.get('type', '')}")
     total = row.report_total
-    parts.append(f"{total} report{'' if total == 1 else 's'}")
+    if total or not row.left_org_count:
+        parts.append(f"{total} report{'' if total == 1 else 's'}")
+    if row.left_org_count:
+        notices = row.left_org_count
+        parts.append(f"{notices} left-the-organisation notice{'' if notices == 1 else 's'}")
     return ", ".join(part.strip() for part in parts if part.strip())
 
 

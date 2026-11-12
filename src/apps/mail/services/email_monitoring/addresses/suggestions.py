@@ -4,6 +4,8 @@
 - the address does not exist (a Graph report of that category, or an SES permanent bounce) → mark it undeliverable or
   replace it;
 - the mailbox is disabled → replace the address, or mark it undeliverable;
+- an automatic reply to the site's mail says the person left or the address changed → check the notice, then replace
+  the address or mark it undeliverable (an out-of-office reply is never counted);
 - repeated temporary failures over several days (Graph reports of a temporary, full-mailbox or unknown category, SES
   transient and undetermined bounces) → consider marking it undeliverable;
 - relay denied → our sending route or authorisation, not the address;
@@ -11,9 +13,9 @@
 - rejections by the recipient's policy → no action;
 - delays → nothing.
 
-Only a missing address and a disabled mailbox are evidence against the address on their own: a temporary failure
-(a connection timeout, a DNS failure, an expired delivery, a full mailbox) never suggests marking an address
-undeliverable unless it repeats. An address already suppressed gets no suggestion. The thresholds for "repeated" are
+Only a missing address and a disabled mailbox are evidence against the address on their own (a left-the-organisation
+notice is evidence to check: anyone can write one). A temporary failure (a connection timeout, a DNS failure, an
+expired delivery, a full mailbox) never suggests marking an address undeliverable unless it repeats. An address already suppressed gets no suggestion. The thresholds for "repeated" are
 ``EMAIL_MONITORING["address_soft_bounce_repeats"]`` and ``["address_soft_bounce_days"]``.
 """
 
@@ -45,6 +47,8 @@ def suggest(row: BouncedAddress) -> str:
         return Suggestion.UNDELIVERABLE
     if row.category_count(Category.MAILBOX_DISABLED):
         return Suggestion.REPLACE
+    if row.left_org_count:
+        return Suggestion.LEFT_ORG
     if _repeated(row):
         return Suggestion.CONSIDER
     for category, suggestion in (

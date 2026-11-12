@@ -181,6 +181,15 @@ def _member_card(request, member) -> dict:
     return card
 
 
+def _notice_link(request, row) -> str:
+    """The helpdesk ticket holding the latest left-the-organisation notice, for staff with the Helpdesk app (the
+    queue hides automated mail by default, so the link shows every ticket)."""
+    if not row.left_org_ticket or not user_can_access_app(request.user, "helpdesk"):
+        return ""
+    query = urlencode({"q": row.left_org_ticket, "mail": "all", "status": "any"})
+    return f"{reverse('admin:helpdesk_ticket_changelist')}?{query}"
+
+
 def _detail_campaigns(row) -> list:
     links = list(row.campaign_links.order_by("-last_at"))
     names = dict(EmailCampaign.objects.filter(pk__in={link.campaign_id for link in links}).values_list("pk", "name"))
@@ -215,6 +224,7 @@ def address_detail_view(request, pk):
         campaign_links=_detail_campaigns(row),
         history=list(row.actions.select_related("actor").order_by("-created_at")[:REPORTS_SHOWN]),
         contact_admin=user_can_access_app(request.user, "authn"),
+        notice_link=_notice_link(request, row),
         shown=REPORTS_SHOWN,
         category_legend=EmailBounce.category_legend(),
     )

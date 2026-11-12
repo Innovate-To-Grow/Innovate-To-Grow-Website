@@ -29,6 +29,7 @@ TYPES = {
     "delayed": ("Has a delay report", Q(delayed_count__gt=0)),
     "unknown": ("Has an unknown status", Q(unknown_count__gt=0) | Q(ses_undetermined_count__gt=0)),
     "complaint": ("Has a spam complaint", Q(complaint_count__gt=0)),
+    "left_org": ("Has a left-the-organisation notice", Q(left_org_count__gt=0)),
 }
 # "Has a report of this category": Graph reports, and the SES bounce type that means the same where there is one.
 SES_CATEGORY = {
@@ -61,9 +62,10 @@ _SES_EVENTS = (
     | Q(ses_undetermined_count__gt=0)
     | Q(complaint_count__gt=0)
 )
+_MATCHED = Q(matched_count__gt=0) | Q(left_org_count__gt=0) | _SES_EVENTS
 EVIDENCE = {
-    "matched": ("Matched to the site's mail (or SES)", Q(matched_count__gt=0) | _SES_EVENTS),
-    "unmatched": ("Unmatched reports only", Q(matched_count=0) & ~_SES_EVENTS),
+    "matched": ("Matched to the site's mail (or SES)", _MATCHED),
+    "unmatched": ("Unmatched reports only", ~_MATCHED),
 }
 SORTS = {
     "last": "last_bounce_at",
@@ -193,7 +195,8 @@ def rows_for(listing: Listing):
         + F("ses_permanent_count")
         + F("ses_transient_count")
         + F("ses_undetermined_count")
-        + F("complaint_count"),
+        + F("complaint_count")
+        + F("left_org_count"),
     )
     field = SORTS[listing.sort]
     ordering = F(field).desc(nulls_last=True) if listing.descending else F(field).asc(nulls_last=True)
