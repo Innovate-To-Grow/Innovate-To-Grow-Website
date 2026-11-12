@@ -18,6 +18,7 @@ from apps.core.services.delivery_rates.maintenance import MaintenanceResult
 
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
 NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)
+NO_IMPORTS_PURGED = {"expired": 0, "blanked": 0, "deleted": 0}
 
 
 HELPDESK_NOTHING_PURGED = {
@@ -274,6 +275,7 @@ MAINTENANCE_SERVICES = {
     "cleanup_expired_records": NOTHING_CLEANED,
     "clear_expired_sessions": 0,
     "purge_expired_failure_windows": 0,
+    "purge_member_imports": NO_IMPORTS_PURGED,
     "run_delivery_rate_maintenance": NOTHING_MAINTAINED,
     "active_certificate_expiry": None,
     "ensure_bounce_scan_scheduled": False,
@@ -317,6 +319,7 @@ BATCHED_SERVICES = (
     "cleanup_expired_records",
     "clear_expired_sessions",
     "purge_expired_failure_windows",
+    "purge_member_imports",
     "purge_expired_email_telemetry",
     "purge_expired_inbound_queue",
     "purge_expired_helpdesk",
@@ -353,6 +356,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             cleanup_expired_records=record("send verification", NOTHING_CLEANED),
             clear_expired_sessions=record("sessions", 0),
             purge_expired_failure_windows=record("login failure windows", 0),
+            purge_member_imports=record("member imports", NO_IMPORTS_PURGED),
             run_delivery_rate_maintenance=record("delivery rates", NOTHING_MAINTAINED),
             active_certificate_expiry=record("graph certificate", None),
             ensure_bounce_scan_scheduled=record("bounce scans", False),
@@ -374,6 +378,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "send verification",
                 "sessions",
                 "login failure windows",
+                "member imports",
                 "delivery rates",
                 "graph certificate",
                 "bounce scans",
@@ -395,6 +400,7 @@ class MaintenanceTaskTests(SimpleTestCase):
                 "Send verification cleanup",
                 "Expired session cleanup",
                 "Login failure window purge",
+                "Member import purge",
                 "Delivery-rate maintenance",
                 "Microsoft Graph certificate expiry check",
                 "Email bounce scan scheduling",
@@ -421,6 +427,16 @@ class MaintenanceTaskTests(SimpleTestCase):
                 ("ERROR", "Send verification cleanup failed", True),
                 ("INFO", "Cleared 3 expired sessions", False),
             ],
+        )
+
+    def test_member_import_purge_logs_its_counts_only_when_it_purged_something(self):
+        with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
+            mocks = self.run_patched(purge_member_imports=lambda **_kwargs: {"expired": 2, "blanked": 1, "deleted": 0})
+
+        mocks["purge_member_imports"].assert_called_once_with(should_stop=None)
+        self.assertEqual(
+            [record.getMessage() for record in logs.records],
+            ["Member import retention: deleted 2 expired and 0 old imports; blanked 1"],
         )
 
     def test_a_failing_login_window_purge_is_isolated(self):
@@ -538,6 +554,7 @@ class MaintenanceTaskTests(SimpleTestCase):
             cleanup_expired_records=RuntimeError("c"),
             clear_expired_sessions=RuntimeError("d"),
             purge_expired_failure_windows=RuntimeError("e"),
+            purge_member_imports=RuntimeError("j"),
             run_delivery_rate_maintenance=RuntimeError("g"),
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),

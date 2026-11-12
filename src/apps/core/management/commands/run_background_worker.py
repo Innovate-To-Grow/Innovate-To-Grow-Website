@@ -8,6 +8,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.authn.services.login_guard import purge_expired_failure_windows
+from apps.authn.services.members.import_.review.purge import purge_member_imports
 from apps.authn.services.security.rsa_manager import purge_retired_auth_keypairs
 from apps.authn.services.send_verification import cleanup_expired_records, clear_expired_sessions
 from apps.core.services.background_jobs import (
@@ -75,6 +76,16 @@ def _purge_login_failure_windows(should_stop=None) -> None:
     # Only windows that have already ended are deleted, so this never lifts a password-login lockout early.
     if purged := purge_expired_failure_windows(should_stop=should_stop):
         logger.info("Purged %d expired login failure windows", purged)
+
+
+def _purge_member_imports(should_stop=None) -> None:
+    # Unapplied member imports past their lifetime, and the sheet values / rows of old applied ones (MEMBER_IMPORT).
+    result = purge_member_imports(should_stop=should_stop)
+    if any(result.values()):
+        logger.info(
+            "Member import retention: deleted %(expired)d expired and %(deleted)d old imports; blanked %(blanked)d",
+            result,
+        )
 
 
 def _delivery_rate_maintenance(should_stop=None) -> None:
@@ -151,16 +162,17 @@ def _purge_helpdesk(should_stop=None) -> None:
 
 # Periodic maintenance, run in this order every ``--maintenance-seconds`` (hourly by default). Each entry is
 # ``(name, callable)``; ``run_maintenance`` isolates every call, so one failure never stops the worker or the rest.
-# Every callable takes the stop check: the batched tasks (the three cleanups, the email telemetry retention and the
-# helpdesk retention) hand it to their batch loops, so a stop request ends them after the batch in flight; the two
-# single-statement purges, the delivery-rate upkeep, the certificate expiry check and the scan and ingest scheduling
-# ignore it.
+# Every callable takes the stop check: the batched tasks (the three cleanups, the member import purge, the email
+# telemetry retention and the helpdesk retention) hand it to their batch loops, so a stop request ends them after
+# the batch in flight; the two single-statement purges, the delivery-rate upkeep, the certificate expiry check and
+# the scan and ingest scheduling ignore it.
 MAINTENANCE_TASKS = (
     ("Retired RSA key purge", _purge_retired_keys),
     ("Public assistant budget purge", _purge_public_assistant_budgets),
     ("Send verification cleanup", _cleanup_send_verification),
     ("Expired session cleanup", _clear_expired_sessions),
     ("Login failure window purge", _purge_login_failure_windows),
+    ("Member import purge", _purge_member_imports),
     ("Delivery-rate maintenance", _delivery_rate_maintenance),
     ("Microsoft Graph certificate expiry check", _check_graph_certificate_expiry),
     ("Email bounce scan scheduling", _schedule_bounce_scans),

@@ -194,12 +194,13 @@ class AdminSidebarNavigationTest(SimpleTestCase):
 
         self.assertEqual(
             members_tab["models"],
-            ["authn.member", "authn.membersheetsyncconfig", "authn.membersheetsynclog"],
+            ["authn.member", "authn.membersheetsyncconfig", "authn.membersheetsynclog", "authn.memberimportbatch"],
         )
-        self.assertEqual(item_titles, {"Members", "Member Sheet Sync", "Sync Logs"})
+        self.assertEqual(item_titles, {"Members", "Member Sheet Sync", "Sync Logs", "Member Imports"})
         self.assertEqual(item_links["Members"], "/admin/authn/member/")
         self.assertEqual(item_links["Member Sheet Sync"], "/admin/authn/membersheetsyncconfig/")
         self.assertEqual(item_links["Sync Logs"], "/admin/authn/membersheetsynclog/")
+        self.assertEqual(item_links["Member Imports"], "/admin/authn/memberimportbatch/")
 
     def test_mail_navigation_includes_settings_and_tools(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
@@ -398,6 +399,7 @@ class AdminIndexNavigationTest(TestCase):
                 self.assertContains(response, 'href="/admin/authn/member/"')
                 self.assertContains(response, 'href="/admin/authn/membersheetsyncconfig/"')
                 self.assertContains(response, 'href="/admin/authn/membersheetsynclog/"')
+                self.assertContains(response, 'href="/admin/authn/memberimportbatch/"')
                 self.assertContains(response, f'href="{active_href}" class="active"')
 
         response = self.client.get(reverse("admin:authn_member_changelist"))

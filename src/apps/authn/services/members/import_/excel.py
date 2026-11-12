@@ -1,138 +1,29 @@
-"""Excel import implementation for members."""
+"""The member import without a review, for scripts and tests.
+
+It runs the review's analysis and applies what a review would apply if nobody changed a thing: ready rows are created
+or updated, every row that needs a decision (C1–C9) is skipped with the reason, and no risky change (R1–R8) is made.
+So it never deletes, re-subscribes or un-verifies a contact, never changes Active or Staff, never moves a contact
+between members, and never changes a primary email. It never verifies a phone number either: a Phone Verified column
+is ignored and reported once, before the rows. Everything is written in one transaction: a row that fails to write
+rolls the whole import back. The admin's Members → Import page uses the review flow (``review/``) instead.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
 
 from django.contrib.auth.hashers import make_password
 from django.db import transaction
-from django.utils import timezone
 
-try:
-    from openpyxl import load_workbook
-except ImportError:  # pragma: no cover - guarded at runtime
-    load_workbook = None
+from apps.authn.models import Member
 
-from apps.authn.models import ContactEmail, ContactPhone, Member
-from apps.authn.services.contacts.contact_phones import infer_region_from_e164, normalize_to_national
-
-from .operations import _EMAIL_DEFAULTS, _PHONE_DEFAULTS, _flag, bulk_update_members
-from .parsing import generate_random_password, normalize_header, parse_row
+from .parsing import generate_random_password
+from .reader import read_upload
+from .review.analysis import INVALID, NEEDS_DECISION, SKIP_EXISTING, UPDATE_EXISTING, Context, analyse_rows
+from .review.apply import lock_members, run_import
+from .review.describe import conflict_code, conflict_title
+from .review.lookup import load_snapshot
 from .types import ImportResult
-
-BATCH_SIZE = 500
-
-
-@dataclass
-class _CreationPlan:
-    """Records to bulk-create for rows that are new members, and the rows that update existing ones."""
-
-    members: list = field(default_factory=list)
-    emails: list = field(default_factory=list)
-    phones: list = field(default_factory=list)
-    rows_to_update: list = field(default_factory=list)
-
-
-def _parse_unique_rows(raw_rows, headers, result: ImportResult) -> list[dict]:
-    """Parse data rows, skipping blank ones and reporting rows without (or repeating) a primary email."""
-    parsed_rows = []
-    seen_in_file: set[str] = set()
-    for row_num, row in enumerate(raw_rows[1:], start=2):
-        if not any(row):
-            continue
-        parsed = parse_row(row_num, dict(zip(headers, row, strict=False)))
-        if not parsed["primary_email"]:
-            result.skipped_count += 1
-            result.errors.append(f"Row {row_num}: Missing primary email")
-            continue
-        email_key = parsed["primary_email"].lower()
-        if email_key in seen_in_file:
-            result.skipped_count += 1
-            result.errors.append(f"Row {row_num}: Duplicate email in file ({parsed['primary_email']})")
-            continue
-        seen_in_file.add(email_key)
-        parsed_rows.append(parsed)
-    return parsed_rows
-
-
-def _new_member(parsed: dict, hashed_pw: str, now) -> Member:
-    return Member(
-        password=hashed_pw,
-        first_name=parsed["first_name"],
-        last_name=parsed["last_name"],
-        middle_name=parsed["middle_name"] or None,
-        title=parsed["title"] or None,
-        organization=parsed["organization"],
-        is_active=parsed["is_active"] if parsed["is_active"] is not None else True,
-        date_joined=parsed["date_joined"] or now,
-    )
-
-
-def _missing_name_error(parsed: dict) -> str | None:
-    if not parsed["first_name"]:
-        return f"Row {parsed['row']}: Missing first name"
-    if not parsed["last_name"]:
-        return f"Row {parsed['row']}: Missing last name"
-    return None
-
-
-def _plan_creations(parsed_rows, result: ImportResult, *, update_existing: bool, default_password) -> _CreationPlan:
-    existing_emails = {email.lower() for email in ContactEmail.objects.values_list("email_address", flat=True)}
-    existing_phones = set(ContactPhone.objects.values_list("phone_number", flat=True))
-    hashed_pw = make_password(default_password or generate_random_password())
-    plan = _CreationPlan()
-    claimed_contact_emails: set[str] = set(existing_emails)
-    claimed_phones: set[str] = set(existing_phones)
-    now = timezone.now()
-
-    for parsed in parsed_rows:
-        email_key = parsed["primary_email"].lower()
-        if email_key in existing_emails:
-            if update_existing:
-                plan.rows_to_update.append(parsed)
-            else:
-                result.skipped_count += 1
-                result.errors.append(f"Row {parsed['row']}: Member with email {parsed['primary_email']} already exists")
-            continue
-        name_error = _missing_name_error(parsed)
-        if name_error:
-            result.skipped_count += 1
-            result.errors.append(name_error)
-            continue
-
-        member = _new_member(parsed, hashed_pw, now)
-        # The exists-check above consults ``existing_emails`` (primary addresses), but
-        # ``_append_contact_records`` guards on ``claimed_contact_emails``, which also holds
-        # secondaries claimed earlier in this same file. When those disagree the member was
-        # created with NO ContactEmail at all and could never authenticate, yet was reported as
-        # created — so require that the primary row was actually claimed.
-        if not _append_contact_records(
-            member, parsed, plan.emails, plan.phones, claimed_contact_emails, claimed_phones
-        ):
-            result.skipped_count += 1
-            result.errors.append(
-                f"Row {parsed['row']}: {parsed['primary_email']} is already used by another row or record in this import"
-            )
-            continue
-        plan.members.append(member)
-        existing_emails.add(email_key)
-        result.created_count += 1
-    return plan
-
-
-def _bulk_create(plan: _CreationPlan) -> None:
-    with transaction.atomic():
-        # bulk_create bypasses post_save signals, so the Google-Sheet sync
-        # signal handlers in authn/signals.py will not fire here. Admins
-        # should run the "Sync ALL members to Google Sheet" admin action
-        # after import if auto-sync is enabled.
-        if plan.members:
-            Member.objects.bulk_create(plan.members, batch_size=BATCH_SIZE)
-        if plan.emails:
-            ContactEmail.objects.bulk_create(plan.emails, batch_size=BATCH_SIZE)
-        if plan.phones:
-            ContactPhone.objects.bulk_create(plan.phones, batch_size=BATCH_SIZE)
 
 
 def import_members_from_excel(
@@ -142,92 +33,64 @@ def import_members_from_excel(
     update_member_allowed: Callable[[Member], bool] | None = None,
     allow_privilege_fields: bool = False,
 ) -> ImportResult:
-    """Import members from an Excel file using bulk inserts when possible."""
-    if load_workbook is None:
-        return ImportResult(success=False, errors=["openpyxl library not installed. Please run: pip install openpyxl"])
-
-    result = ImportResult(success=True)
-    try:
-        workbook = load_workbook(filename=file, read_only=True, data_only=True)
-        worksheet = workbook.active
-        raw_rows = list(worksheet.iter_rows(values_only=True))
-        workbook.close()
-        if not raw_rows:
-            return ImportResult(success=False, errors=["Excel file is empty"])
-
-        headers = [normalize_header(header) for header in raw_rows[0]]
-        if "primary_email" not in headers:
-            return ImportResult(success=False, errors=["Excel file must contain a 'Primary Email' column"])
-
-        parsed_rows = _parse_unique_rows(raw_rows, headers, result)
-        if not parsed_rows:
-            return result
-        plan = _plan_creations(parsed_rows, result, update_existing=update_existing, default_password=default_password)
-        _bulk_create(plan)
-    except Exception as exc:  # noqa: BLE001
-        result.success = False
-        result.created_count = 0
-        result.errors.append(f"Error creating members: {exc}")
-        return result
-
-    if plan.rows_to_update:
-        # Rebuild claimed sets from actual DB state after successful create
-        claimed_contact_emails = {e.lower() for e in ContactEmail.objects.values_list("email_address", flat=True)}
-        claimed_phones = set(ContactPhone.objects.values_list("phone_number", flat=True))
-        bulk_update_members(
-            plan.rows_to_update,
-            result,
-            claimed_contact_emails,
-            claimed_phones,
-            update_member_allowed,
-            allow_privilege_fields=allow_privilege_fields,
-        )
-
-    return result
-
-
-def _append_contact_records(member, parsed, emails_to_create, phones_to_create, claimed_contact_emails, claimed_phones):
-    """Queue the row's contact records. Returns False if its primary email was already claimed."""
-    email_key = parsed["primary_email"].lower()
-    if email_key in claimed_contact_emails:
-        return False
-    emails_to_create.append(
-        ContactEmail(
-            member=member,
-            email_address=parsed["primary_email"],
-            email_type="primary",
-            verified=_flag(parsed["primary_verified"], None, _EMAIL_DEFAULTS["verified"]),
-            subscribe=_flag(parsed["primary_subscribed"], None, _EMAIL_DEFAULTS["subscribe"]),
-        )
+    """Import ``file`` without a review. With ``update_existing``, rows matching a member by primary email (or by
+    Member UUID) update that member; ``update_member_allowed`` may refuse a member (the row is then skipped). Without
+    it, staff and superuser accounts are skipped unless ``allow_privilege_fields`` (the caller is an I2G Master)."""
+    read = read_upload(file)
+    if read.error:
+        return ImportResult(success=False, errors=[read.error])
+    ctx = Context(
+        mode=UPDATE_EXISTING if update_existing else SKIP_EXISTING,
+        is_master=allow_privilege_fields,
+        can_update=update_existing,
+        can_manage=update_member_allowed or (lambda member: _ordinary_or_master(member, allow_privilege_fields)),
     )
-    claimed_contact_emails.add(email_key)
+    try:
+        with transaction.atomic():
+            first = analyse_rows(read.rows, load_snapshot(read.rows), ctx)
+            members = lock_members(a.target for a in first if a.status not in (INVALID, NEEDS_DECISION))
+            snapshot = load_snapshot(read.rows)
+            analyses = analyse_rows(read.rows, snapshot, ctx)
+            password_hash = make_password(default_password or generate_random_password())
+            outcomes = run_import(analyses, {}, snapshot, password_hash=password_hash, members=members)
+    except Exception as exc:  # noqa: BLE001 - RowWriteError or a database error: either way nothing was written.
+        return ImportResult(success=False, errors=[f"Error importing members: {exc}. Nothing was imported"])
+    return _result(analyses, outcomes, read.columns.get("notes", []))
 
-    if parsed["secondary_email"]:
-        secondary_key = parsed["secondary_email"].lower()
-        if secondary_key not in claimed_contact_emails:
-            emails_to_create.append(
-                ContactEmail(
-                    member=member,
-                    email_address=parsed["secondary_email"],
-                    email_type="secondary",
-                    verified=_flag(parsed["secondary_verified"], None, _EMAIL_DEFAULTS["verified"]),
-                    subscribe=_flag(parsed["secondary_subscribed"], None, _EMAIL_DEFAULTS["subscribe"]),
-                )
-            )
-            claimed_contact_emails.add(secondary_key)
 
-    if parsed["phone_number"]:
-        region = infer_region_from_e164(parsed["phone_number"])
-        national = normalize_to_national(parsed["phone_number"], region)
-        if national not in claimed_phones:
-            phones_to_create.append(
-                ContactPhone(
-                    member=member,
-                    phone_number=national,
-                    region=region,
-                    subscribe=_flag(parsed["phone_subscribed"], None, _PHONE_DEFAULTS["subscribe"]),
-                    verified=_flag(parsed["phone_verified"], None, _PHONE_DEFAULTS["verified"]),
-                )
+def _ordinary_or_master(member, is_master: bool) -> bool:
+    """Without a permission check of its own, a caller changes staff and superuser accounts only as an I2G Master."""
+    return is_master or not (member.is_staff or member.is_superuser)
+
+
+def _result(analyses, outcomes, file_notes) -> ImportResult:
+    result = ImportResult(success=True)
+    for note in file_notes:
+        result.note_file(note)
+    for analysis, outcome in zip(analyses, outcomes, strict=True):
+        number, member = analysis.row_number, outcome.member
+        if outcome.outcome == "not_imported":
+            result.skip_row(number, outcome.reason)
+        elif outcome.outcome == "skipped":
+            code, title = conflict_code(analysis.conflict), conflict_title(analysis.conflict)
+            result.skip_row(number, f"needs a decision ({code}: {title}). {outcome.reason}", member)
+        else:
+            if outcome.outcome == "created":
+                result.created_count += 1
+            else:
+                result.updated_count += 1
+                result.unchanged_count += outcome.outcome == "no_change"
+            for warning in analysis.warnings:
+                result.note_row(number, warning["text"], member)
+            for note in outcome.notes:
+                result.note_row(number, note, member)
+            result.details.append(
+                {
+                    "row": number,
+                    "member_id": str(member.pk) if member else None,
+                    "outcome": outcome.outcome,
+                    "changes": outcome.changes,
+                }
             )
-            claimed_phones.add(national)
-    return True
+    result.sort_by_row()
+    return result
