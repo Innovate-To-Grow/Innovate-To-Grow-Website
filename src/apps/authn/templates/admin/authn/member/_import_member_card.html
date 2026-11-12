@@ -1,0 +1,37 @@
+<div class="border border-base-200 dark:border-base-700 rounded-default p-3 bg-base-50 dark:bg-base-800 text-sm">
+    <div class="flex flex-wrap items-center gap-2 mb-1">
+        <a href="{{ card.url }}" target="_blank" rel="noopener" class="font-semibold underline">{{ card.name }}</a>
+        <span class="text-xs text-font-subtle-light dark:text-font-subtle-dark font-mono">{{ card.short_id }}</span>
+        {% for badge in card.badges %}
+            <span class="text-xs px-2 py-0.5 rounded-full {% if badge == 'Staff' or badge == 'I2G Master' %}bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300{% elif badge == 'Inactive' or badge == 'Unfinished sign-up' %}bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300{% else %}bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300{% endif %}">{{ badge }}</span>
+        {% endfor %}
+        {% if card.matched_by %}<span class="text-xs text-font-subtle-light dark:text-font-subtle-dark">matched by {{ card.matched_by }}</span>{% endif %}
+    </div>
+    <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-2">
+        {% if card.organization %}{{ card.organization }} · {% endif %}{% if card.title %}{{ card.title }} · {% endif %}joined {{ card.date_joined|default:"?" }} · last login {{ card.last_login }}
+    </p>
+    <table class="w-full text-xs">
+        <tbody>
+            {% for contact in card.emails %}
+                <tr class="{% if contact.matched %}bg-yellow-50 dark:bg-yellow-900/20 font-semibold{% endif %}">
+                    <td class="py-0.5 pr-2"><a href="{{ contact.url }}" target="_blank" rel="noopener" class="underline">{{ contact.address }}</a></td>
+                    <td class="py-0.5 pr-2">{{ contact.type }}</td>
+                    <td class="py-0.5 pr-2">verified {% if contact.verified %}✓{% else %}✗{% endif %}</td>
+                    <td class="py-0.5 pr-2">subscribed {% if contact.subscribe %}✓{% else %}✗{% endif %}</td>
+                    <td class="py-0.5">{% if contact.matched %}◀ the sheet's Primary Email{% endif %}</td>
+                </tr>
+            {% endfor %}
+            {% for contact in card.phones %}
+                <tr>
+                    <td class="py-0.5 pr-2"><a href="{{ contact.url }}" target="_blank" rel="noopener" class="underline">{{ contact.address }}</a></td>
+                    <td class="py-0.5 pr-2">phone</td>
+                    <td class="py-0.5 pr-2">verified {% if contact.verified %}✓{% else %}✗{% endif %}</td>
+                    <td class="py-0.5 pr-2">subscribed {% if contact.subscribe %}✓{% else %}✗{% endif %}</td>
+                    <td></td>
+                </tr>
+            {% empty %}
+                {% if not card.emails %}<tr><td class="py-0.5" colspan="5">No contacts.</td></tr>{% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

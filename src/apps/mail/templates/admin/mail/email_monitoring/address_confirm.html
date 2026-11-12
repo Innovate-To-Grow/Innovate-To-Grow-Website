@@ -1,0 +1,96 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block monitoring_content %}
+<p><a class="i2g-monitor-back" href="{{ cancel_url }}"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>{{ row.address }}</a></p>
+
+<section class="i2g-monitor-card{% if spec.danger %} i2g-monitor-card--danger{% endif %}" aria-labelledby="confirm-heading">
+  <h2 id="confirm-heading" class="i2g-monitor-heading">{{ spec.label }} <span>{{ row.address }}</span></h2>
+  <dl class="i2g-monitor-facts">
+    <div><dt>What happens</dt><dd>{{ spec.effect }}</dd></div>
+    <div><dt>Can it be undone?</dt><dd>{{ spec.reversible }}</dd></div>
+    <div><dt>Role of the address</dt><dd>{{ target.role.label }}</dd></div>
+    <div><dt>Member</dt><dd>{% if target.member %}{{ target.member.get_full_name|default:target.member.pk }} · {% if target.member.is_active %}active{% else %}inactive{% endif %}{% if target.member.is_superuser %} · I2G Master{% elif target.member.is_staff %} · staff{% endif %}{% elif target.owners %}{{ target.owners|length }} members{% else %}none{% endif %}</dd></div>
+    {% if target.contact %}<div><dt>This contact email</dt><dd>{{ target.contact.get_email_type_display }} · {% if target.contact.verified %}verified{% else %}unverified{% endif %} · {% if target.contact.subscribe %}subscribed{% else %}unsubscribed{% endif %}</dd></div>{% endif %}
+    <div><dt>Reports</dt><dd>{% include "admin/mail/email_monitoring/_address_counts.html" %}</dd></div>
+  </dl>
+</section>
+
+{% if action == "delete_account" and deletion %}
+<section class="i2g-monitor-card i2g-monitor-card--danger" aria-labelledby="deletion-heading">
+  <h3 id="deletion-heading">Deleting this account also deletes</h3>
+  <p>Deleting a member is permanent: their <strong>event registrations and check-ins</strong> go with it (attendance history and event counts change), as do their contact emails and phones, login links, verification codes, CLI tokens, assistant chats and exports, and the past-project shares they created. Campaign recipient logs and campaign records stay, without the member.</p>
+  <ul class="i2g-monitor-meters i2g-monitor-meters--plain">{% for name, count in deletion.model_count %}<li><span>{{ name|capfirst }}</span><strong>{{ count }}</strong></li>{% endfor %}</ul>
+  <details class="i2g-monitor-table-view"><summary>Every record that will be deleted</summary><ul>{{ deletion.deleted|unordered_list }}</ul></details>
+  {% if deletion.protected %}<p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">block</span>Other records protect this account from deletion: {{ deletion.protected|join:", " }}. Deactivate it instead.</p>{% endif %}
+  <div class="i2g-monitor-notice" role="note">
+    <span class="material-symbols-outlined" aria-hidden="true">lightbulb</span>
+    <p><strong>Recommended: deactivate instead.</strong> A deactivated member cannot sign in and gets no member campaign, but keeps their registrations, check-ins and history, and can be activated again.</p>
+  </div>
+  <form method="post" action="{% url 'admin:mail_email_monitoring_address_action' row.pk 'deactivate' %}">
+    {% csrf_token %}<input type="hidden" name="step" value="confirm">
+    <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">person_off</span>Deactivate instead…</button>
+  </form>
+</section>
+{% endif %}
+
+<form method="post" class="i2g-monitor-card i2g-monitor-confirm" aria-labelledby="confirm-heading">
+  {% csrf_token %}
+  <input type="hidden" name="step" value="apply">
+  <input type="hidden" name="fingerprint" value="{{ fingerprint }}">
+
+  {% if action == "make_primary" or action == "delete_email" and target.role == "primary" %}
+  <label class="i2g-monitor-field">
+    <span>New primary address (verified addresses only)</span>
+    <select name="new_primary" required>
+      <option value="">Choose…</option>
+      {% for contact in other_verified %}<option value="{{ contact.pk }}" {% if values.new_primary == contact.pk|stringformat:"s" %}selected{% endif %}>{{ contact.email_address }} ({{ contact.get_email_type_display }})</option>{% endfor %}
+    </select>
+  </label>
+  {% endif %}
+
+  {% if action == "replace" %}
+  <label class="i2g-monitor-field i2g-monitor-field--wide">
+    <span>New email address</span>
+    <input type="email" name="new_address" value="{{ values.new_address }}" required maxlength="254" autocomplete="off">
+  </label>
+  <fieldset class="i2g-monitor-fieldset">
+    <legend>Add it as</legend>
+    <label class="i2g-monitor-check"><input type="radio" name="new_role" value="secondary" {% if secondary_taken %}disabled{% elif values.new_role == "secondary" or not values.new_role %}checked{% endif %}> Secondary{% if secondary_taken %} (the member already has one){% endif %}</label>
+    <label class="i2g-monitor-check"><input type="radio" name="new_role" value="other" {% if values.new_role == "other" or secondary_taken and not values.new_role %}checked{% endif %}> Other</label>
+    <label class="i2g-monitor-check"><input type="radio" name="new_role" value="primary" {% if values.new_role == "primary" %}checked{% endif %} {% if not attest_allowed %}disabled{% endif %}> Primary (must be verified; the current primary becomes the secondary)</label>
+  </fieldset>
+  <label class="i2g-monitor-check"><input type="checkbox" name="attest_verified" value="1" {% if values.attest_verified %}checked{% endif %} {% if not attest_allowed %}disabled{% endif %}> The member confirmed this address (mark it verified){% if not attest_allowed %} — only an I2G Master may do this on a staff or superuser account{% endif %}</label>
+  <label class="i2g-monitor-check"><input type="checkbox" name="subscribe" value="1" {% if values.subscribe or not values.new_address and subscribe_default %}checked{% endif %}> Subscribe the new address to newsletters (the old address is {% if subscribe_default %}subscribed{% else %}unsubscribed{% endif %})</label>
+  <fieldset class="i2g-monitor-fieldset">
+    <legend>The old address ({{ target.contact.email_address }})</legend>
+    <label class="i2g-monitor-check"><input type="radio" name="old_address" value="undeliverable" {% if values.old_address != "delete" %}checked{% endif %}> Keep it, marked undeliverable (recommended)</label>
+    <label class="i2g-monitor-check"><input type="radio" name="old_address" value="delete" {% if values.old_address == "delete" %}checked{% endif %}> Delete it (cannot be undone; never the last verified sign-in contact)</label>
+  </fieldset>
+  {% if old_typed %}
+  <label class="i2g-monitor-field i2g-monitor-field--wide">
+    <span>Only when deleting: type <strong>{{ old_typed }}</strong> to confirm</span>
+    <input type="text" name="confirm" value="" autocomplete="off">
+  </label>
+  {% endif %}
+  {% endif %}
+
+  <label class="i2g-monitor-field i2g-monitor-field--wide">
+    <span>{% if action == "dismiss" %}Reason (required){% else %}Note (optional, kept in the history){% endif %}</span>
+    <textarea name="note" rows="2" maxlength="500" {% if action == "dismiss" %}required{% endif %}>{{ values.note }}</textarea>
+  </label>
+
+  {% if typed %}
+  <label class="i2g-monitor-field i2g-monitor-field--wide">
+    <span>Type <strong>{{ typed }}</strong> to confirm</span>
+    <input type="text" name="confirm" value="" autocomplete="off" required>
+  </label>
+  {% endif %}
+
+  <div class="i2g-monitor-actions">
+    <button type="submit" class="i2g-monitor-button{% if spec.danger %} i2g-monitor-button--danger{% endif %}" {% if deletion.protected %}disabled{% endif %}>
+      <span class="material-symbols-outlined" aria-hidden="true">{% if spec.danger %}warning{% else %}check{% endif %}</span>{{ spec.label }}
+    </button>
+    <a class="i2g-monitor-button" href="{{ cancel_url }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

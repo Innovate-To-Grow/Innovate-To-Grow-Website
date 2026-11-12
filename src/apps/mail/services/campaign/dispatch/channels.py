@@ -16,6 +16,7 @@ from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipi
 from apps.mail.services.audience import get_recipients
 from apps.mail.services.campaign.state import campaign_state
 from apps.mail.services.sms.audience import get_sms_recipients
+from apps.mail.services.sms.quiet_hours import next_send_time
 
 EMAIL_SUCCESS_STATUSES = frozenset({"sent", "delivered"})
 EMAIL_PROVIDER_TERMINAL_STATUSES = frozenset({*EMAIL_SUCCESS_STATUSES, "bounced", "complained", "rejected"})
@@ -38,9 +39,16 @@ class DeliveryChannel:
     success_statuses: frozenset
     #: Statuses counted as failed in the campaign totals.
     failed_statuses: tuple
-    #: Statuses the outbox must never overwrite (provider-confirmed outcomes).
+    #: Statuses the outbox must never overwrite (provider-confirmed outcomes, and decisions not to send).
     terminal_statuses: frozenset
     recipients: Callable
+    #: Recipients decided not to send (an SMS opt-out): neither sent nor failed, left out of the campaign's state.
+    skipped_statuses: tuple = ()
+    #: When a recipient queued at ``now`` may first be sent (SMS quiet hours); None: at once.
+    first_available_at: Callable | None = None
+
+    def available_at(self, now):
+        return self.first_available_at(now) if self.first_available_at is not None else now
 
 
 EMAIL = DeliveryChannel(
@@ -67,8 +75,10 @@ SMS = DeliveryChannel(
     not_draft_message="SMS campaign is no longer in draft state.",
     success_statuses=frozenset({"sent"}),
     failed_statuses=("failed", "uncertain"),
-    terminal_statuses=frozenset({"sent"}),
+    terminal_statuses=frozenset({"sent", "opted_out"}),
     recipients=get_sms_recipients,
+    skipped_statuses=("opted_out",),
+    first_available_at=lambda now: next_send_time(now),
 )
 
 CHANNELS_BY_KIND = {channel.job_kind: channel for channel in (EMAIL, SMS)}
@@ -91,7 +101,8 @@ def aggregate_campaign(channel: DeliveryChannel, campaign_id) -> None:
         failed = sum(statuses.get(status, 0) for status in channel.failed_statuses)
         active = sum(statuses.get(status, 0) for status in ACTIVE_STATUSES)
         paused = statuses.get(PAUSED_STATUS, 0)
-        campaign.status = campaign_state(total=total, sent=sent, failed=failed, active=active, paused=paused)
+        skipped = sum(statuses.get(status, 0) for status in channel.skipped_statuses)
+        campaign.status = campaign_state(total=total - skipped, sent=sent, failed=failed, active=active, paused=paused)
         campaign.total_recipients = total
         campaign.sent_count = sent
         campaign.failed_count = failed

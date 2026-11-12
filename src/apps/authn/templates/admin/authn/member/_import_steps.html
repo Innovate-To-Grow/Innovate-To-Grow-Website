@@ -1,0 +1,9 @@
+<ol class="flex flex-wrap items-center gap-2 text-xs font-medium text-font-subtle-light dark:text-font-subtle-dark mb-6" aria-label="Import steps">
+    <li class="{% if step == 1 %}text-primary-600 dark:text-primary-500 font-semibold{% endif %}"{% if step == 1 %} aria-current="step"{% endif %}>1 Upload</li>
+    <li aria-hidden="true">&rarr;</li>
+    <li class="{% if step == 2 %}text-primary-600 dark:text-primary-500 font-semibold{% endif %}"{% if step == 2 %} aria-current="step"{% endif %}>2 Review</li>
+    <li aria-hidden="true">&rarr;</li>
+    <li class="{% if step == 3 %}text-primary-600 dark:text-primary-500 font-semibold{% endif %}"{% if step == 3 %} aria-current="step"{% endif %}>3 Confirm</li>
+    <li aria-hidden="true">&rarr;</li>
+    <li class="{% if step == 4 %}text-primary-600 dark:text-primary-500 font-semibold{% endif %}"{% if step == 4 %} aria-current="step"{% endif %}>4 Result</li>
+</ol>

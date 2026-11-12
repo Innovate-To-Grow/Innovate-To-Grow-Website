@@ -77,9 +77,11 @@ def scan_mailbox(*, now: datetime | None = None) -> ScanOutcome:
     token = state.acquire_lease(mailbox, now)
     if token is None:
         return ScanOutcome("locked", mailbox)
+    # Read the checkpoint only now that the lease is held: a "Rescan since" saved before is seen, none lands meanwhile.
+    current.refresh_from_db(fields=["checkpoint_at", "initial_lookback_hours"])
     progress = _Progress(current.checkpoint_at, deadline=time.monotonic() + monitoring()["bounce_scan_max_seconds"])
     try:
-        status = _scan(reader, mailbox, current.checkpoint_at, now, progress)
+        status = _scan(reader, mailbox, _start(current, now), now, progress)
     except GraphReadBusy as exc:
         state.finish(mailbox, token, checkpoint=progress.checkpoint, stats=progress.stats, retry_after=exc.retry_after)
         return ScanOutcome("busy", mailbox, progress.stats, retry_after=exc.retry_after)
@@ -95,13 +97,16 @@ def scan_mailbox(*, now: datetime | None = None) -> ScanOutcome:
     return ScanOutcome("failed", mailbox, progress.stats, error=error)
 
 
-def _scan(reader, mailbox: str, checkpoint, now: datetime, progress: _Progress) -> str:
+def _start(current, now: datetime) -> datetime:
+    """Where a scan starts listing: its checkpoint less the overlap, or (first scan) the mailbox's lookback."""
+    if current.checkpoint_at is None:
+        return now - timedelta(hours=state.lookback_hours(current))
+    return current.checkpoint_at - timedelta(seconds=monitoring()["bounce_scan_overlap_seconds"])
+
+
+def _scan(reader, mailbox: str, since: datetime, now: datetime, progress: _Progress) -> str:
     config = monitoring()
     page_size = int(config["bounce_scan_page_size"])
-    if checkpoint is None:
-        since = now - timedelta(hours=config["bounce_initial_lookback_hours"])
-    else:
-        since = checkpoint - timedelta(seconds=config["bounce_scan_overlap_seconds"])
     for _page in range(int(config["bounce_scan_max_pages"])):
         if time.monotonic() >= progress.deadline:
             return "partial"

@@ -23,6 +23,7 @@ from apps.core.utils.access import user_can_manage_member
 
 from ...models import ImpersonationToken, Member
 from ...services.members.profile_image import ALLOWED_CONTENT_TYPES, ProfileImageError, split_data_uri
+from . import import_views
 from .forms import MemberChangeForm, MemberCreationForm
 from .helpers import (
     activate_members,
@@ -34,7 +35,6 @@ from .helpers import (
     get_full_name_display,
     get_primary_email_display,
     get_primary_phone_display,
-    import_excel_view,
     normalize_inline_uuid_none_values,
 )
 from .inlines import ContactEmailInline, ContactPhoneInline
@@ -171,6 +171,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     def get_urls(self):
         custom_urls = [
             path("import-excel/", self.admin_site.admin_view(self.import_excel_view), name="authn_member_import_excel"),
+            *self._import_review_urls(),
             path(
                 "import-template/",
                 self.admin_site.admin_view(self.download_template_view),
@@ -353,8 +354,24 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         if not change and getattr(obj, "id", None) in (None, "", "None"):
             obj.id = uuid.uuid4()
 
+    def _import_review_urls(self):
+        """Review → Confirm → Result of one staged import (``import_views``)."""
+        views = (
+            ("import-excel/<uuid:batch_id>/review/", import_views.review_view, "authn_member_import_review"),
+            ("import-excel/<uuid:batch_id>/confirm/", import_views.confirm_view, "authn_member_import_confirm"),
+            ("import-excel/<uuid:batch_id>/discard/", import_views.discard_view, "authn_member_import_discard"),
+            ("import-excel/<uuid:batch_id>/", import_views.result_view, "authn_member_import_result"),
+        )
+        return [path(route, self.admin_site.admin_view(self._bind(view)), name=name) for route, view, name in views]
+
+    def _bind(self, view):
+        def bound(request, *args, **kwargs):
+            return view(self, request, *args, **kwargs)
+
+        return bound
+
     def import_excel_view(self, request):
-        return import_excel_view(self, request)
+        return import_views.upload_view(self, request)
 
     def download_template_view(self, request):
         return download_template_view(self, request)

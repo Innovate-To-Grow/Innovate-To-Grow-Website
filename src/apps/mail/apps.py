@@ -11,6 +11,7 @@ class MailConfig(AppConfig):
         from django.contrib import admin
 
         register_background_jobs()
+        register_sms_policy()
 
         from .admin.delivery_dashboard import get_delivery_dashboard_urls
         from .admin.email_monitoring import get_email_monitoring_urls
@@ -54,3 +55,27 @@ def register_background_jobs():
             family=family,
             lane=Lane.BULK,
         )
+    # A ticket text carries the registrant's ticket link: transactional, claimed before campaign jobs.
+    register_job_kind(
+        "mail.ticket_sms",
+        handler="apps.mail.services.sms.ticket.send_ticket_sms_job",
+        family=Family.SMS,
+        lane=Lane.TRANSACTIONAL,
+    )
+
+
+def register_sms_policy():
+    """Every SMS the site sends asks the SMS opt-out list first (core's send check), a new registration's first
+    ticket may also go out as a text (the event app's ``initial_ticket_issued``), and saving SMS Settings drops the
+    cached ``/register`` destination."""
+    from django.db.models.signals import post_save
+
+    from apps.event.signals import initial_ticket_issued
+    from apps.mail.models import SmsConfig
+    from apps.mail.services.sms import opt_outs, register_link, ticket
+
+    opt_outs.register()
+    initial_ticket_issued.connect(ticket.queue_ticket_sms, dispatch_uid="mail_queue_ticket_sms")
+    post_save.connect(
+        register_link.forget_register_destination, sender=SmsConfig, dispatch_uid="mail_forget_register_link"
+    )

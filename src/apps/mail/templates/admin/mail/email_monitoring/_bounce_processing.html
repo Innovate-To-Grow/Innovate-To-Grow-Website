@@ -9,12 +9,15 @@
   </div>
   <dl class="i2g-monitor-facts">
     <div><dt>Mailbox</dt><dd>{{ bp.mailbox|default:"–" }}</dd></div>
-    <div><dt>Last scan</dt><dd>{% if bp.state.last_run_finished_at %}{{ bp.state.last_run_finished_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
+    <div><dt>Last scan</dt><dd>{% if bp.scan_running %}running now (started {{ bp.state.last_run_started_at|date:"H:i" }}){% elif bp.state.last_run_finished_at %}{{ bp.state.last_run_finished_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
     <div><dt>Last successful scan</dt><dd>{% if bp.state.last_success_at %}{{ bp.state.last_success_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
     <div><dt>Checkpoint</dt><dd>{% if bp.state.checkpoint_at %}{{ bp.state.checkpoint_at|date:"M j, H:i" }}{% else %}–{% endif %}</dd></div>
     <div><dt>Next scan</dt><dd>{% if bp.next_scan_at %}{{ bp.next_scan_at|date:"M j, H:i" }}{% else %}not queued{% endif %}{% if bp.state.next_run_after %} (Microsoft asked to wait until {{ bp.state.next_run_after|date:"H:i" }}){% endif %}</dd></div>
-    <div><dt>Interval</dt><dd>every {{ bp.interval_minutes }} min</dd></div>
+    <div><dt>Interval</dt><dd>every {{ bp.every }}{% if bp.catch_up %}; every {{ bp.catch_up }} while catching up{% endif %}</dd></div>
   </dl>
+  {% if bp.other_readers %}
+    <p class="i2g-monitor-muted">This card controls bounce processing only: its Pause, Rescan since and lookback never change how other apps read this Inbox. Also reading it, on their own schedule and with their own controls: {% for reader in bp.other_readers %}{% if reader.url %}<a href="{{ reader.url }}">{{ reader.label }}</a>{% else %}{{ reader.label }}{% endif %}, every {{ reader.every }}{% if reader.state %} ({{ reader.state }}){% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}.</p>
+  {% endif %}
   {% if bp.problem %}
     <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ bp.problem }}</p>
   {% elif bp.state.consecutive_failures %}
@@ -23,7 +26,7 @@
     <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">warning</span>No scan has succeeded recently. Check that the background worker (itg-background-worker) is running.</p>
   {% endif %}
   {% if bp.stats %}
-    <p class="i2g-monitor-muted">Last scan: {{ bp.stats.listed|default:0 }} messages listed, {{ bp.stats.candidates|default:0 }} bounce candidates, {{ bp.stats.opened|default:0 }} opened, {{ bp.stats.bounces|default:0 }} new bounce records ({{ bp.stats.matched|default:0 }} matched), {{ bp.stats.duplicates|default:0 }} duplicates skipped.</p>
+    <p class="i2g-monitor-muted">Last scan: {{ bp.stats.listed|default:0 }} messages listed, {{ bp.stats.candidates|default:0 }} bounce candidates ({{ bp.stats.already_processed|default:0 }} already recorded), {{ bp.stats.opened|default:0 }} opened, {{ bp.stats.bounces|default:0 }} new bounce records ({{ bp.stats.matched|default:0 }} matched), {{ bp.stats.duplicates|default:0 }} duplicates skipped.</p>
   {% endif %}
   {% if bp.enabled and bp.mailbox %}
   <div class="i2g-monitor-actions">
@@ -42,5 +45,28 @@
       {% endif %}
     </form>
   </div>
+  {% with bf=bp.backfill %}
+  <details class="i2g-monitor-backfill">
+    <summary>Read older mail again</summary>
+    <form method="post" action="{% url 'admin:mail_email_monitoring_bounce_processing' %}" class="i2g-monitor-backfill-form">
+      {% csrf_token %}<input type="hidden" name="action" value="rescan">
+      <label class="i2g-monitor-field">
+        <span>Rescan since ({{ bf.timezone }})</span>
+        <input type="datetime-local" name="since" required step="60" min="{{ bf.earliest_input }}" max="{{ bf.latest_input }}">
+      </label>
+      <button type="submit" class="i2g-monitor-button" {% if not bp.active %}disabled{% endif %}><span class="material-symbols-outlined" aria-hidden="true">history</span>Rescan since</button>
+    </form>
+    <p class="i2g-monitor-muted">Moves the checkpoint back so that the next scan reads the Inbox again from that time, at most {{ bf.max_days }} days back. Reports already recorded are skipped, so none is counted twice. It starts no scan: the next scheduled scan, or Scan now, does the reading{% if bp.state.paused %}, once processing is resumed{% endif %}. Refused while a scan is running.</p>
+    <form method="post" action="{% url 'admin:mail_email_monitoring_bounce_processing' %}" class="i2g-monitor-backfill-form">
+      {% csrf_token %}<input type="hidden" name="action" value="lookback">
+      <label class="i2g-monitor-field">
+        <span>First-scan lookback (hours)</span>
+        <input type="number" name="lookback_hours" min="{{ bf.lookback_min }}" max="{{ bf.lookback_max }}" step="1" inputmode="numeric" value="{{ bp.state.initial_lookback_hours|default_if_none:'' }}" placeholder="{{ bf.lookback_default }}">
+      </label>
+      <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">save</span>Save lookback</button>
+    </form>
+    <p class="i2g-monitor-muted">How far back the first scan of {{ bp.mailbox }} reads: now {{ bf.lookback_hours }} hours{% if bf.lookback_custom %} (set here){% else %} (the default){% endif %}. Allowed: {{ bf.lookback_min }} to {{ bf.lookback_max|floatformat:"0g" }} hours; leave it empty for the default ({{ bf.lookback_default }} hours).{% if bp.state.checkpoint_at %} This mailbox already has a checkpoint, so the lookback is not used: to read older mail, use Rescan since.{% endif %}</p>
+  </details>
+  {% endwith %}
   {% endif %}
 </section>

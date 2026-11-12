@@ -13,6 +13,8 @@
         <strong>Total recipients:</strong> {{ recipients|length }}
     </p>
 
+    {% include "admin/mail/_suppressed_notice.html" %}
+
     {% if recipients %}
     <table class="w-full text-sm border border-base-200 rounded-md overflow-hidden mb-6">
         <thead>
@@ -34,6 +36,15 @@
     </table>
     {% else %}
     <p class="text-sm text-base-400">No recipients found for this audience.</p>
+    {% endif %}
+
+    {% if skipped %}
+    <details class="mb-6 text-sm">
+        <summary class="cursor-pointer">Skipped recipients ({{ skipped|length }})</summary>
+        <ul class="mt-2 list-disc pl-6">
+            {% for r in skipped %}<li>{{ r.email }}{% if r.full_name %} &mdash; {{ r.full_name }}{% endif %}</li>{% endfor %}
+        </ul>
+    </details>
     {% endif %}
 
     <a href="{{ back_url }}" class="border border-base-300 px-4 py-2 rounded-md text-sm font-medium hover:bg-base-50 inline-block">

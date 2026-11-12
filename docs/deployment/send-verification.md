@@ -160,7 +160,10 @@ It is the only global cap on SMS spend, and it is never keyed on the client IP.
 verification SMS leaves the system. A request that sends nothing spends
 nothing: a password reset for a number that has no account, a number over its
 own 10/hour cap, a request refused by the cooldown or the proof check, a
-broken SMS template. So the budget cannot be used up without the same number
+broken SMS template, a withheld phone sign-in code (a number saved on an account
+but not verified, see [Passwordless phone authentication](../api/auth-and-mail.md#only-verified-numbers-sign-in);
+it still gets the refusal a spent budget gives a real send, from
+`check_sms_dispatch`, which reserves nothing). So the budget cannot be used up without the same number
 of SMS being handed to the provider (each one bounded by its number's cooldown
 and hourly cap, and by the ALTCHA proof in `enforce` mode).
 
