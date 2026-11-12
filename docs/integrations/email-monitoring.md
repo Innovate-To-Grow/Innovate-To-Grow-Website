@@ -411,6 +411,13 @@ form saves every column and would overwrite a running scan's lease.
    classified before the new release counts it. No manual step is needed; **Rebuild counts…** is there if the counts
    ever look off.
 
+   **Image rollback** (an ECS rollback never reverses DDL): an image from before categories finds every column it
+   reads (the new ones have database defaults), but it never unparks the Graph cursor. If it takes over before the new
+   release has counted once, its Bounced addresses page counts no new Graph report and says "Not counted yet: none"
+   (Bounce Reports still lists them). Press **Rebuild counts…** once on that release. Deploying the new release again
+   needs no step: the Graph counts start again at its first count when the cursor is still parked, or after the hourly
+   refresh finds counts made without categories (they do not add up).
+
 Access: every page requires the **Mail** app (`Member.admin_apps`, or superuser), like the Delivery
 Dashboard; the controls are POST with CSRF. Bounced-address actions that change a contact email or a member also need
 the **Members** (`authn`) app and a manageable member (see the actions table). The telemetry tables and the four
