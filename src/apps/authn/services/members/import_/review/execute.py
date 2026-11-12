@@ -108,7 +108,8 @@ def execute_creations(plans: list[tuple[int, RowPlan]], password_hash: str) -> d
                         member=member,
                         phone_number=op.data["number"],
                         region=op.data["region"],
-                        verified=op.data["verified"],
+                        # Never from the sheet: only the member's own one-time code verifies a number.
+                        verified=False,
                         subscribe=op.data["subscribe"],
                     )
                 )

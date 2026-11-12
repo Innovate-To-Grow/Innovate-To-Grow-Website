@@ -30,7 +30,6 @@ def generate_template_excel() -> bytes:
         ("secondary_subscribed", "Secondary Subscribed", 20),
         ("phone_number", "Phone Number", 18),
         ("phone_subscribed", "Phone Subscribed", 18),
-        ("phone_verified", "Phone Verified", 18),
         ("organization", "Organization (optional)", 25),
     ]
     _apply_headers(worksheet, headers)
@@ -86,7 +85,6 @@ def _apply_example_row(worksheet):
         "FALSE",
         "+12095551234",
         "TRUE",
-        "FALSE",
         "UC Merced",
     ]
     for column, value in enumerate(example_data, 1):
@@ -113,7 +111,6 @@ def _apply_instruction_sheet(workbook):
         ("Secondary Subscribed", "Whether the secondary email is subscribed (TRUE/FALSE)"),
         ("Phone Number", "Phone number in E.164 format, e.g. +12095551234 (optional)"),
         ("Phone Subscribed", "Whether the phone is subscribed (TRUE/FALSE)"),
-        ("Phone Verified", "Whether the phone is verified (TRUE/FALSE)"),
         ("Organization (optional)", "Organization or company name"),
         ("", ""),
         ("Member UUID", "Optional. A file from Export to Excel has it: rows are then matched to members by it"),
@@ -130,7 +127,13 @@ def _apply_instruction_sheet(workbook):
         ("", "A new Secondary Email or Phone Number is added next to the member's existing ones, unverified"),
         (
             "",
-            "Verifying, un-verifying, re-subscribing, (de)activating and staff changes each need a tick in the review",
+            "A Phone Verified column (Export to Excel has one) is ignored: phone numbers are saved unverified, stored "
+            "numbers keep their status, and members verify their own numbers with a one-time code",
+        ),
+        (
+            "",
+            "Verifying or un-verifying an email address, re-subscribing, (de)activating and staff changes each need a "
+            "tick in the review",
         ),
         ("", "TRUE/FALSE columns accept TRUE, FALSE, Yes or No; any other text is ignored"),
         ("", "'Last Updated' and 'Primary Expired' are informational only"),

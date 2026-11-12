@@ -417,18 +417,23 @@ member data until you confirm.
 
 **Risky changes** are never made unless you tick them, one tick per change: removing a secondary email (the Secondary
 cell is blank, or names another address), removing a phone number (blank cell, or a new number), re-subscribing an
-address or number (only with the person's consent), marking one unverified, **marking one verified** (a verified
-address or number is a working sign-in: email codes, SMS password resets), deactivating or reactivating a member, and
-staff status (I2G Master only). A tick is disabled for the address the row was matched on, for a member's last
-verified sign-in contact, and on staff and superuser accounts unless you are an I2G Master. A self-service sign-up
-the person never finished can't be activated or verified by an import: only the person can finish it. Confirm lists
-every risky change and every change to a staff or superuser account.
+address or number (only with the person's consent), marking an email address unverified, **marking one verified** (a
+verified address is a working sign-in: email codes), deactivating or reactivating a member, and staff status (I2G
+Master only). There is no tick to verify or un-verify a phone number (see Phone Verified below). A tick is disabled for
+the address the row was matched on, for a member's last verified sign-in contact, and on staff and superuser accounts
+unless you are an I2G Master. A self-service sign-up the person never finished can't be activated or verified by an
+import: only the person can finish it. Confirm lists every risky change and every change to a staff or superuser
+account.
 
 **Always:**
 - A blank cell, or a missing column, keeps the stored value. Nothing is deleted, re-subscribed or un-verified without
   its tick, and Active and Staff never change without theirs.
-- The Primary/Secondary/Phone Verified and Subscribed cells apply only to the contact the cell names, and only when the
+- The Primary/Secondary Verified and the Subscribed cells apply only to the contact the cell names, and only when the
   member owns it: FALSE unsubscribes; verifying, un-verifying and re-subscribing need their ticks.
+- The **Phone Verified** column is ignored: an import never verifies or un-verifies a phone number. Every number it
+  adds, for a new or an existing member, is saved unverified, and a stored number keeps its status. A verified number
+  is a sign-in factor, so only the member's own one-time code (sent by SMS) verifies it. Export to Excel still writes
+  the column: the review lists it under "Not imported". The download template no longer has it.
 - A new address or number on an existing member starts unverified; a new secondary becomes the secondary and the old
   one becomes "other"; a new number is added next to the old ones. A contact email that belongs to no member is
   attached (unverified), or taken by a new member (C8), and keeps its Subscribed flag: the sheet can unsubscribe it

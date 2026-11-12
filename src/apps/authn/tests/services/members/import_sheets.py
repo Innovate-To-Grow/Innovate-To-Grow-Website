@@ -15,10 +15,11 @@ FULL_HEADERS = [
     "Secondary Subscribed",
     "Phone Number",
     "Phone Subscribed",
-    "Phone Verified",
     "Active",
     "Organization",
 ]
+# FULL_HEADERS plus the Phone Verified column: Export to Excel still writes it, and the import ignores it.
+PHONE_VERIFIED_HEADERS = [*FULL_HEADERS, "Phone Verified"]
 
 
 def build_sheet(headers: list[str], rows: list[list]) -> BytesIO:
@@ -34,7 +35,10 @@ def build_sheet(headers: list[str], rows: list[list]) -> BytesIO:
     return payload
 
 
-def full_row(primary: str, cells: dict | None = None) -> list:
-    """One FULL_HEADERS row: ``cells`` maps a header to its value; names default to Ada Lovelace, the rest to blank."""
+def full_row(primary: str, cells: dict | None = None, headers: list[str] = FULL_HEADERS) -> list:
+    """One ``headers`` row: ``cells`` maps a header to its value; names default to Ada Lovelace, the rest to blank."""
+    unknown = set(cells or {}) - set(headers)
+    if unknown:
+        raise ValueError(f"cells for headers the sheet does not have: {sorted(unknown)}")
     values = {"First Name": "Ada", "Last Name": "Lovelace", **(cells or {})}
-    return [primary if header == "Primary Email" else values.get(header) for header in FULL_HEADERS]
+    return [primary if header == "Primary Email" else values.get(header) for header in headers]

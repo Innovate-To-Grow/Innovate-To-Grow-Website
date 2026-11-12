@@ -31,7 +31,6 @@ def _parsed(**overrides):
         "secondary_subscribed": False,
         "phone_number": None,
         "phone_subscribed": False,
-        "phone_verified": False,
         "member_uuid": None,
         "notes": [],
     }

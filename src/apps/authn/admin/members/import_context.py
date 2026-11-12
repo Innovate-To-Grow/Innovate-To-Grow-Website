@@ -29,7 +29,6 @@ CELL_ORDER = (
     "secondary_verified",
     "secondary_subscribed",
     "phone_number",
-    "phone_verified",
     "phone_subscribed",
     "is_active",
     "is_staff",
@@ -228,11 +227,11 @@ CHOICE_WORDS = {
 }
 LISTED_TITLES = {
     "privileged_changes": "Changes to staff or superuser accounts",
-    "verified": "Marked verified (each becomes a sign-in factor)",
+    "verified": "Email addresses marked verified (each becomes a sign-in factor)",
     "emails_deleted": "Contact emails deleted",
     "phones_deleted": "Phone numbers deleted",
     "resubscribed": "Re-subscribed",
-    "unverified": "Marked unverified",
+    "unverified": "Email addresses marked unverified",
     "active_changes": "Members deactivated or reactivated",
     "staff_changes": "Staff changes",
     "primary_changes": "Primary email changes",

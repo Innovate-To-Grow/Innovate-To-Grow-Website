@@ -3,8 +3,9 @@
 It runs the review's analysis and applies what a review would apply if nobody changed a thing: ready rows are created
 or updated, every row that needs a decision (C1–C9) is skipped with the reason, and no risky change (R1–R8) is made.
 So it never deletes, re-subscribes or un-verifies a contact, never changes Active or Staff, never moves a contact
-between members, and never changes a primary email. Everything is written in one transaction: a row that fails to
-write rolls the whole import back. The admin's Members → Import page uses the review flow (``review/``) instead.
+between members, and never changes a primary email. It never verifies a phone number either: a Phone Verified column
+is ignored and reported once, before the rows. Everything is written in one transaction: a row that fails to write
+rolls the whole import back. The admin's Members → Import page uses the review flow (``review/``) instead.
 """
 
 from __future__ import annotations
@@ -54,7 +55,7 @@ def import_members_from_excel(
             outcomes = run_import(analyses, {}, snapshot, password_hash=password_hash, members=members)
     except Exception as exc:  # noqa: BLE001 - RowWriteError or a database error: either way nothing was written.
         return ImportResult(success=False, errors=[f"Error importing members: {exc}. Nothing was imported"])
-    return _result(analyses, outcomes)
+    return _result(analyses, outcomes, read.columns.get("notes", []))
 
 
 def _ordinary_or_master(member, is_master: bool) -> bool:
@@ -62,8 +63,10 @@ def _ordinary_or_master(member, is_master: bool) -> bool:
     return is_master or not (member.is_staff or member.is_superuser)
 
 
-def _result(analyses, outcomes) -> ImportResult:
+def _result(analyses, outcomes, file_notes) -> ImportResult:
     result = ImportResult(success=True)
+    for note in file_notes:
+        result.note_file(note)
     for analysis, outcome in zip(analyses, outcomes, strict=True):
         number, member = analysis.row_number, outcome.member
         if outcome.outcome == "not_imported":

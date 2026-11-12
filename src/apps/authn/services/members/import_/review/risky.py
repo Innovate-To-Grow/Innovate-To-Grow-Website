@@ -1,12 +1,13 @@
 """Risky changes: what a row may do to the member it updates only when the admin ticks it (R1–R9).
 
 Each item is its own tick, off by default, so every deletion, re-subscription, un-verification and verification is a
-separate decision. Verifying (R9) is one too: a verified contact is a working sign-in factor (an email code, or an SMS
-password reset), so a sheet never creates one without a tick. An item that may not be ticked stays visible with the
-reason: the address the row was matched on, the member's only verified sign-in contact (the rule of
-``services/account/recovery.py``), an account only an I2G Master may change, or a self-service sign-up the person has
-not finished (only they can finish it, by confirming their email). The planner re-checks the ticks together against
-the last-sign-in-contact rule.
+separate decision. Verifying (R9) is one too: a verified address is a working sign-in factor (an email code), so a
+sheet never creates one without a tick. R6 and R9 cover email addresses only. A phone number's verified status never
+changes in an import, with or without a tick: the Phone Verified column is ignored, and only the member's own one-time
+code verifies a number. An item that may not be ticked stays visible with the reason: the address the row was matched
+on, the member's only verified sign-in contact (the rule of ``services/account/recovery.py``), an account only an I2G
+Master may change, or a self-service sign-up the person has not finished (only they can finish it, by confirming their
+email). The planner re-checks the ticks together against the last-sign-in-contact rule.
 """
 
 from __future__ import annotations
@@ -19,10 +20,10 @@ RISKY_TYPES = {
     "R3": "Remove phone numbers: the Phone Number cell is blank",
     "R4": "Remove the old phone numbers the sheet's number replaces",
     "R5": "Re-subscribe (only with the person's consent)",
-    "R6": "Mark contacts unverified",
+    "R6": "Mark email addresses unverified",
     "R7": "Deactivate or reactivate members",
     "R8": "Grant or remove staff status (I2G Master only)",
-    "R9": "Mark contacts verified (each becomes a sign-in factor)",
+    "R9": "Mark email addresses verified (each becomes a sign-in factor)",
 }
 MATCHED = "This is the address the row was matched on"
 PRIVILEGED = "Only an I2G Master may change staff and superuser accounts"
@@ -104,7 +105,8 @@ def _phones(items: _Items, values: dict, member: MemberRecord, snapshot: Snapsho
 
 
 def _owned_cells(values: dict, member: MemberRecord, snapshot: Snapshot):
-    """(record, label, Verified cell, Subscribed cell) for each contact the row names that the member owns."""
+    """(record, label, Verified cell, Subscribed cell) for each contact the row names that the member owns; a phone
+    number's Verified cell is always None."""
     for column in ("primary", "secondary"):
         records = snapshot.email_records(values.get(f"{column}_email"))
         if len(records) == 1 and records[0].member == member.id:
@@ -112,7 +114,8 @@ def _owned_cells(values: dict, member: MemberRecord, snapshot: Snapshot):
     parsed = us_phone(values.get("phone_number"))
     phone = snapshot.phones.get(parsed[0]) if parsed else None
     if phone is not None and phone.member == member.id:
-        yield phone, phone.e164, values.get("phone_verified"), values.get("phone_subscribed")
+        # No Verified cell: the Phone Verified column is ignored, so a number is never marked (un)verified (R6/R9).
+        yield phone, phone.e164, None, values.get("phone_subscribed")
 
 
 def _flags(items: _Items, values: dict, member: MemberRecord, snapshot: Snapshot) -> None:

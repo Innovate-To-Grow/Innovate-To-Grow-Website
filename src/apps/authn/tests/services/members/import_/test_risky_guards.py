@@ -114,7 +114,8 @@ class PhoneOnlyMemberTests(ImportTestCase):
 
         self.assertEqual((blank.status, blank.facts["matched_by"]), ("no_change", "uuid"))
         self.assertEqual(self.items(blank)[f"R3:{self.only.pk}"]["reason"], reason)
-        self.assertEqual(self.items(named)[f"R6:{self.only.pk}"]["reason"], reason)
+        # Phone Verified FALSE is ignored: a phone number has no un-verify item at all.
+        self.assertEqual(named.risky.get(str(self.pat.pk), []), [])
         self.assertEqual(self.items(replaced)[f"R4:{self.only.pk}"]["reason"], reason)
 
     def test_a_forced_tick_is_refused_and_the_phone_stays(self):
@@ -153,28 +154,30 @@ class SafeDirectionTests(ImportTestCase):
         self.mobile = self.phone(self.ada, "2095550101", verified=False, subscribe=True)
         self.named = {"Secondary_Email": "ada.work@example.com", "Phone_Number": "2095550101"}
 
-    def test_verified_true_verifies_only_with_its_tick(self):
-        """A verified contact is a sign-in factor, so marking one verified is its own tick (R9), off by default."""
+    def test_verified_true_verifies_an_address_only_with_its_tick_and_never_a_phone_number(self):
+        """A verified address is a sign-in factor, so marking one verified is its own tick (R9), off by default. A phone
+        number is never marked verified, ticked or not: the Phone Verified column is ignored."""
         cells_row = row("ada@example.com", Secondary_Verified="TRUE", Phone_Verified="TRUE", **self.named)
 
         analysis = self.analyse_one(cells_row)
         (unticked,) = self.apply([cells_row])
 
-        items = {item["code"]: item for item in analysis.risky[str(self.ada.pk)]}
-        self.assertEqual((analysis.status, sorted(items)), ("no_change", ["R9"]))
+        items = [item["id"] for item in analysis.risky[str(self.ada.pk)]]
+        self.assertEqual((analysis.status, items), ("no_change", [f"R9:{self.work.pk}"]))
         self.assertEqual(unticked.outcome, "no_change")
         self.work.refresh_from_db()
         self.mobile.refresh_from_db()
         self.assertEqual((self.work.verified, self.mobile.verified), (False, False))
 
+        # A forged tick for the number reaches the planner here (the review refuses it on save): still ignored.
         (ticked,) = self.apply([cells_row], {2: ("update", [f"R9:{self.work.pk}", f"R9:{self.mobile.pk}"])})
 
         self.assertEqual(ticked.outcome, "updated")
         self.work.refresh_from_db()
         self.mobile.refresh_from_db()
-        self.assertEqual((self.work.verified, self.mobile.verified), (True, True))
-        self.assertIn("Marks ada.work@example.com verified", ticked.changes)
-        self.assertIn("Marks +12095550101 verified", ticked.changes)
+        self.assertEqual((self.work.verified, self.mobile.verified), (True, False))
+        self.assertEqual(ticked.changes, ["Marks ada.work@example.com verified"])
+        self.assertEqual(ticked.listed["verified"], ["ada.work@example.com"])
 
     def test_subscribed_false_unsubscribes_without_a_tick(self):
         cells = {"Primary_Subscribed": "FALSE", "Secondary_Subscribed": "FALSE", "Phone_Subscribed": "FALSE"}
@@ -201,7 +204,7 @@ class SafeDirectionTests(ImportTestCase):
         self.assertEqual((theirs.member, theirs.verified, theirs.subscribe), (grace, False, True))
         self.assertEqual((phone.member, phone.verified), (grace, False))
 
-    def test_a_new_member_trusts_the_sheet_flags(self):
+    def test_a_new_member_trusts_the_sheet_email_flags_but_never_phone_verified(self):
         cells = {
             "Primary_Verified": "TRUE",
             "Primary_Subscribed": "FALSE",
@@ -222,8 +225,9 @@ class SafeDirectionTests(ImportTestCase):
         )
         self.assertEqual(
             list(outcome.member.contact_phones.values_list("phone_number", "verified", "subscribe")),
-            [("2095550155", True, True)],
+            [("2095550155", False, True)],
         )
+        self.assertIn("Phone +12095550155 (unverified, subscribed)", outcome.changes)
         self.assertEqual(mail.outbox, [])
 
 

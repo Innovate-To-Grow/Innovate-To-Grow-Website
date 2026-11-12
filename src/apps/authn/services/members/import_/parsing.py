@@ -67,8 +67,20 @@ HEADER_MAP = {
     "company": "organization",
     "org": "organization",
 }
-# Columns that old sheets and the template carry for information only: recognised, listed, never imported.
-INFORMATIONAL_KEYS = frozenset({"last_updated", "primary_expired", "secondary_expired", "secondary_bounced"})
+PHONE_VERIFIED_IGNORED = (
+    "Phone Verified column ignored: an import never verifies or un-verifies a phone number. New numbers are saved "
+    "unverified and stored numbers keep their status; members verify their own numbers with a one-time code sent by "
+    "SMS."
+)
+# Columns a sheet may have (Export to Excel writes them) that the import recognises but never reads, by key, with
+# the note shown once per file. A verified phone number is a sign-in factor, so only the member's own one-time code
+# may produce one: a sheet cell is no proof that the number is theirs.
+IGNORED_COLUMNS = {"phone_verified": PHONE_VERIFIED_IGNORED}
+# Columns that old sheets and the template carry for information only, and the ignored ones: recognised, listed,
+# never imported.
+INFORMATIONAL_KEYS = frozenset(
+    {"last_updated", "primary_expired", "secondary_expired", "secondary_bounced", *IGNORED_COLUMNS}
+)
 # Every column the import reads.
 IMPORTED_KEYS = frozenset(HEADER_MAP.values()) - INFORMATIONAL_KEYS
 # The TRUE/FALSE columns, by the key ``normalize_header`` maps them to, with the header an admin sees.
@@ -80,7 +92,6 @@ FLAG_COLUMNS = {
     "secondary_verified": "Secondary Verified",
     "secondary_subscribed": "Secondary Subscribed",
     "phone_subscribed": "Phone Subscribed",
-    "phone_verified": "Phone Verified",
 }
 TRUE_TEXT = frozenset({"true", "yes", "y", "1", "active"})
 FALSE_TEXT = frozenset({"false", "no", "n", "0", "inactive"})
@@ -135,6 +146,11 @@ def cell_text(value) -> str:
     if isinstance(value, float) and value.is_integer():
         return str(int(value))
     return str(value).strip()
+
+
+def column_notes(headers) -> list[str]:
+    """The notes for the ``IGNORED_COLUMNS`` among ``headers`` (normalised): what the import does instead."""
+    return [note for key, note in IGNORED_COLUMNS.items() if key in headers]
 
 
 def parse_flag(value) -> bool | None:

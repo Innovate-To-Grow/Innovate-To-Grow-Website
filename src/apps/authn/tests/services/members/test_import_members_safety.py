@@ -15,8 +15,9 @@ from django.test import TestCase
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.authn.services.members.export_excel import export_members_to_excel
 from apps.authn.services.members.import_ import import_members_from_excel
+from apps.authn.services.members.import_.parsing import PHONE_VERIFIED_IGNORED
 
-from .import_sheets import FULL_HEADERS, build_sheet, full_row
+from .import_sheets import FULL_HEADERS, PHONE_VERIFIED_HEADERS, build_sheet, full_row
 
 
 class _ImportCase(TestCase):
@@ -263,10 +264,16 @@ class PhoneIsNeverDeletedOrOverwrittenTests(_ImportCase):
         )
 
     def test_new_number_starts_unverified_whatever_the_sheet_says(self):
-        result = self._update({"Phone Number": "+12095550002", "Phone Verified": "TRUE"})
+        result = self._update(
+            full_row(
+                "ada@example.com", {"Phone Number": "+12095550002", "Phone Verified": "TRUE"}, PHONE_VERIFIED_HEADERS
+            ),
+            headers=PHONE_VERIFIED_HEADERS,
+        )
 
         self.assertFalse(ContactPhone.objects.get(phone_number="2095550002").verified)
-        self.assertIn("+12095550002 is added unverified", result.warnings[0])
+        # The column is reported once for the file; the row itself has nothing to say about it.
+        self.assertEqual(result.warnings, [PHONE_VERIFIED_IGNORED])
 
     def test_number_owned_by_another_member_is_never_moved(self):
         other = self._other_member()
@@ -440,7 +447,7 @@ class RoundTripTests(_ImportCase):
         )
         return emails, phones, members
 
-    def test_export_then_reimport_writes_nothing_and_reports_nothing(self):
+    def test_export_then_reimport_writes_nothing_and_reports_only_the_ignored_phone_verified_column(self):
         # Ada: two secondaries (the export writes only one), a verified phone.
         self._email("one@example.com", verified=True)
         self._email("two@example.com", subscribe=True)
@@ -473,7 +480,8 @@ class RoundTripTests(_ImportCase):
         self.assertEqual(len(result.errors), 2)
         self.assertTrue(any("Missing primary email" in error for error in result.errors))
         self.assertTrue(any("You do not have permission to update Staff Er" in error for error in result.errors))
-        self.assertEqual(result.warnings, [])
+        # The export writes a Phone Verified column; the import says once that it ignored it, and nothing else.
+        self.assertEqual(result.warnings, [PHONE_VERIFIED_IGNORED])
         self.assertEqual(mail.outbox, [])
         sms.assert_not_called()
 

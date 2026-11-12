@@ -148,6 +148,7 @@ class ColumnTests(ImportTestCase):
                 "ignored": ["Notes"],
                 "keys": ["primary_email", "first_name", "member_uuid", "phone_number"],
                 "has_member_uuid": True,
+                "notes": [],
             },
         )
         self.assertEqual(sheet.warnings, [])
@@ -312,7 +313,8 @@ class ParseRowTests(ImportTestCase):
         )
 
         self.assertEqual((parsed["primary_verified"], parsed["is_active"], parsed["is_staff"]), (None, True, None))
-        self.assertIsNone(parsed["phone_verified"])
+        # The Phone Verified column is ignored: not parsed, never a V5 warning.
+        self.assertNotIn("phone_verified", parsed)
         self.assertEqual(
             parsed["warnings"],
             [

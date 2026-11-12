@@ -6,7 +6,8 @@ the apply, which re-plans from freshly read records (the fingerprint check makes
 An update writes, in this order: the profile fields the row changes; the Primary Email cell's flags (on that address
 only, and only when the member owns it); a promotion, when chosen; the Secondary Email cell; the Phone Number cell;
 the Active and Staff cells, when ticked; and last, the ticked removals. A new member is created as before: the
-sheet's flags are trusted for a brand-new member's own addresses.
+sheet's flags are trusted for a brand-new member's own email addresses. Its phone number is always saved unverified:
+the Phone Verified column is ignored, because only the member's own one-time code may verify a number.
 """
 
 from __future__ import annotations
@@ -131,10 +132,9 @@ def _create_phone(plan: RowPlan, values: dict, snapshot: Snapshot) -> None:
     e164 = f"+{region.split('-')[0]}{national}"
     record = snapshot.phones.get(national)
     if record is None:
-        verified = bool(values.get("phone_verified"))
         subscribe = bool(values.get("phone_subscribed"))
-        data = {"number": national, "region": region, "verified": verified, "subscribe": subscribe}
-        plan.add(Op("add_phone", data=data), f"Phone {e164} ({_flags(verified, subscribe)})")
+        data = {"number": national, "region": region, "subscribe": subscribe}
+        plan.add(Op("add_phone", data=data), f"Phone {e164} ({_flags(False, subscribe)})")
         return
     holder = snapshot.member(record.member) if record.member else None
     who = holder.label if holder else "a contact phone that is not linked to any member"

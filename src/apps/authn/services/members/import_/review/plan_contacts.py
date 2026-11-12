@@ -4,7 +4,9 @@ Without a tick a row never deletes, re-subscribes, un-verifies or verifies anyth
 contact, a new address or number is added next to the old ones (unverified), and an address or number another member
 holds is never moved. The flag cells apply only to the contact the cell names, and only when the member owns it: FALSE
 unsubscribes (an opt-out); TRUE verifies (R9), FALSE un-verifies (R6) and TRUE re-subscribes (R5) only when ticked.
-Removals (R1–R4) are planned here and written last, after every addition.
+A phone number has no Verified cell, ticked or not: the Phone Verified column is ignored, so an import never changes
+whether a number is verified (only the member's own one-time code does). Removals (R1–R4) are planned here and written
+last, after every addition.
 
 ``ContactState`` follows the member's contacts through the planned writes, so a later step sees an earlier one (a
 promotion demotes the old primary before the Secondary cell is read) and the last-sign-in-contact rule can be checked
@@ -91,7 +93,8 @@ def claimed_subscribe(
 
 
 def plan_flags(plan: RowPlan, state: ContactState, record, column: str, cells: tuple, ticks: set[str]) -> None:
-    """Apply a contact's Verified/Subscribed cells (``cells``) to ``record``, an email or phone the member owns."""
+    """Apply a contact's Verified/Subscribed cells (``cells``) to ``record``, an email or phone the member owns. A phone
+    number's Verified cell is always None (the column is ignored)."""
     verified, subscribe = cells
     kind, label = ("phone_flags", record.e164) if hasattr(record, "e164") else ("email_flags", record.address)
     data, changes = {}, []
@@ -281,7 +284,8 @@ def plan_phone(plan, state, values: dict, snapshot: Snapshot, ticks: set[str]) -
         plan.notes.append(_holder_note("Phone Number", e164, record, snapshot))
         return
     if record is not None:
-        plan_flags(plan, state, record, "Phone", (values["phone_verified"], values["phone_subscribed"]), ticks)
+        # No Verified cell: the Phone Verified column is ignored, so a stored number keeps its status.
+        plan_flags(plan, state, record, "Phone", (None, values["phone_subscribed"]), ticks)
         return
     subscribe = new_contact_subscribe(
         values.get("phone_subscribed"),
@@ -296,8 +300,6 @@ def plan_phone(plan, state, values: dict, snapshot: Snapshot, ticks: set[str]) -
     if kept:
         change += f"; keeps {', '.join(phone.e164 for phone in kept)} (an import never replaces a number in place)"
     plan.changes.append(change)
-    if values.get("phone_verified"):
-        plan.notes.append(f"{e164} is added unverified ({STARTS_UNVERIFIED})")
     for phone in member.phones:
         if f"R4:{phone.id}" in ticks:
             state.remove("delete_phone", phone.id, f"phone {phone.e164}", "phones_deleted")

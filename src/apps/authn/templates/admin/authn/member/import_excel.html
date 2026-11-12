@@ -42,8 +42,8 @@
                     decision (for example, its address is someone's <em>secondary</em> email, or the name differs) is
                     skipped until you choose what to do.</li>
                 <li><strong>Risky changes</strong> are never made unless you tick them one by one: removing an address or
-                    phone number, re-subscribing, verifying or un-verifying (a verified address or number is a working
-                    sign-in), (de)activating, staff status.</li>
+                    phone number, re-subscribing, verifying or un-verifying an email address (a verified address is a
+                    working sign-in), (de)activating, staff status.</li>
                 <li><strong>Confirm</strong> by typing <code class="bg-white dark:bg-base-900 px-1.5 py-0.5 rounded text-xs">import</code>.
                     Every row is written in one go; if anything the review showed changed in the meantime, nothing is
                     written and you review those rows again.</li>
@@ -52,6 +52,9 @@
                 <li><strong>Primary Email</strong> is the only required column; a new member also needs First and Last
                     Name. TRUE/FALSE cells accept TRUE, FALSE, Yes, No, Y, N, 1 and 0; other text is ignored.
                     <strong>Last Updated</strong> and <strong>Primary Expired</strong> are not imported.</li>
+                <li><strong>Phone Verified</strong> is ignored: imported phone numbers are saved unverified, and numbers
+                    already stored keep their status. Members verify their own numbers with a one-time code sent by
+                    SMS.</li>
                 <li>One import takes up to {{ max_rows }} rows. An import left in review is deleted after
                     {{ lifetime_hours }} hours.</li>
             </ul>

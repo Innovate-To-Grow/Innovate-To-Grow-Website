@@ -15,7 +15,7 @@ try:
 except ImportError:  # pragma: no cover - openpyxl is a hard dependency; guarded for the import error message
     load_workbook = None
 
-from .parsing import FLAG_COLUMNS, IMPORTED_KEYS, INFORMATIONAL_KEYS, normalize_header, parse_row
+from .parsing import FLAG_COLUMNS, IMPORTED_KEYS, INFORMATIONAL_KEYS, column_notes, normalize_header, parse_row
 
 EMPTY_FILE = "Excel file is empty"
 NO_PRIMARY_EMAIL_COLUMN = "Excel file must contain a 'Primary Email' column"
@@ -171,6 +171,8 @@ def _describe_columns(raw_headers, headers: list[str]) -> dict:
         "ignored": ignored,
         "keys": keys,
         "has_member_uuid": "member_uuid" in keys,
+        # What the import does instead of reading an ignored column (Phone Verified), shown once for the file.
+        "notes": column_notes(headers),
     }
 
 

@@ -2,8 +2,8 @@
 
 - An I2G Master who applies another admin's import never lends it master rights (rights are the uploader's and the
   applier's together), and rows that changed go back to review on Skip.
-- Marking a contact verified makes it a sign-in factor, so it needs its own tick (R9) and is listed on Confirm, like
-  every change to a staff or superuser account.
+- Marking an address verified makes it a sign-in factor, so it needs its own tick (R9) and is listed on Confirm, like
+  every change to a staff or superuser account. A phone number is never marked verified (Phone Verified is ignored).
 - An unfinished self-service sign-up can't be activated or verified by an import.
 - Retention blanks everything that names a person; reading a sheet stops at the caps; over-long names can't be
   imported; the import without a review leaves staff accounts alone unless the caller is an I2G Master.
@@ -131,36 +131,33 @@ class AppliedByAnotherAdminTests(_FlowCase):
 
 
 class SignInFactorTests(_FlowCase):
-    def test_marking_a_contact_verified_needs_its_tick_and_is_listed_on_confirm(self):
-        phone = self.phone(self.ada, "2025550123", verified=False)
-        batch = self.upload_as(
-            self.master, [row("ada@example.com", Phone_Number="+12025550123", Phone_Verified="TRUE")]
-        )
+    def test_marking_an_address_verified_needs_its_tick_and_is_listed_on_confirm(self):
+        work = self.email(self.ada, "ada.work@example.com", verified=False)
+        cells = {"Secondary_Email": "ada.work@example.com", "Secondary_Verified": "TRUE"}
+        batch = self.upload_as(self.master, [row("ada@example.com", **cells)])
         staged = batch.rows.get()
         r9 = next(item for item in staged.risky[str(self.ada.pk)] if item["code"] == "R9")
         self.assertTrue(r9["enabled"])
 
         self.confirm_as(self.master, batch)
-        phone.refresh_from_db()
-        self.assertFalse(phone.verified)
+        work.refresh_from_db()
+        self.assertFalse(work.verified)
         self.assertIn(
-            "Phone Verified is TRUE, but +12025550123 is unverified; left unverified",
+            "Secondary Verified is TRUE, but ada.work@example.com is unverified; left unverified",
             staged.__class__.objects.get(pk=staged.pk).outcome_detail,
         )
 
-        again = self.upload_as(
-            self.master, [row("ada@example.com", Phone_Number="+12025550123", Phone_Verified="TRUE")]
-        )
+        again = self.upload_as(self.master, [row("ada@example.com", **cells)])
         review = reverse("admin:authn_member_import_review", args=[again.pk])
         self.client.post(
             review, {"version": 0, "ready-2": "update", "ticks-2": "1", "tick-2": r9["id"], "action": "save"}
         )
         page = self.client.get(reverse("admin:authn_member_import_confirm", args=[again.pk]))
-        self.assertContains(page, "Marked verified (each becomes a sign-in factor) (1)")
+        self.assertContains(page, "Email addresses marked verified (each becomes a sign-in factor) (1)")
 
         self.confirm_as(self.master, again)
-        phone.refresh_from_db()
-        self.assertTrue(phone.verified)
+        work.refresh_from_db()
+        self.assertTrue(work.verified)
 
     def test_every_change_to_a_staff_account_is_listed_on_confirm(self):
         staff = self.member("Sam", "Staff", "sam@example.com", is_staff=True)

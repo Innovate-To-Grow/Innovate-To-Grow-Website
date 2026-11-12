@@ -261,11 +261,8 @@ class NewNumberTests(RiskyTestCase):
             "in place)",
             outcome.changes,
         )
-        self.assertIn(
-            "+12095550199 is added unverified (contacts added to an existing member start unverified; the member "
-            "verifies them on /account)",
-            outcome.notes,
-        )
+        # The sheet's Phone Verified TRUE is ignored, not reported row by row.
+        self.assertFalse(any("Phone Verified" in note or "added unverified" in note for note in outcome.notes))
 
     def test_ticked_the_old_number_is_removed_and_the_new_one_never_inherits_verified(self):
         self.ticked(self.new_number, f"R4:{self.mobile.pk}")
@@ -391,10 +388,12 @@ class UnverifyTests(RiskyTestCase):
         self.assertFalse(self.primary.verified)
         self.assertEqual(ticked.listed["unverified"], ["ada@example.com"])
 
-    def test_the_phone(self):
-        items = self.items(self.analyse_one(row("ada@example.com", Phone_Number="2095550101", Phone_Verified="FALSE")))
+    def test_a_phone_number_is_never_offered(self):
+        """The Phone Verified column is ignored: a stored number keeps its status, so there is nothing to tick."""
+        analysis = self.analyse_one(row("ada@example.com", Phone_Number="2095550101", Phone_Verified="FALSE"))
 
-        self.assertItem(items[f"R6:{self.mobile.pk}"], "Mark +12095550101 unverified")
+        self.assertEqual(self.items(analysis), {})
+        self.assertEqual(analysis.status, "no_change")
 
     def test_the_only_verified_contact_cannot_be_unverified(self):
         self.mobile.delete()
