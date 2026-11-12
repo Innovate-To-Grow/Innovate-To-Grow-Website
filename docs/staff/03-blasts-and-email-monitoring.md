@@ -287,7 +287,8 @@ address itself.
 there, the address shows **left the organisation 1** in its counts. Open the address to see when it came, the
 address the notice names instead (their new address, or who to contact), and, if you hold the Helpdesk app, a link
 to the notice itself. Only replies to our own mail count, and **out-of-office replies never do** (a notice that
-mentions an absence is treated as one). Nothing changes on its own: read the notice, then use **Replace email** or
+mentions an absence, a holiday closure or travel is treated as one, and "this mailbox is not monitored" alone does
+not say that anyone left). Nothing changes on its own: read the notice, then use **Replace email** or
 **Mark undeliverable** yourself. The Replace email page shows the named address as a reminder, but you type the new
 address: confirm it with the member or their organisation first, since anyone can write such a notice.
 

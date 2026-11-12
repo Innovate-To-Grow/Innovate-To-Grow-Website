@@ -7,10 +7,11 @@ systems set, and the automatic-reply subject prefixes they write) put a message 
 the verdict is human, because a person's message hidden as automated costs more than an automated one shown:
 content-only signs become hints on a human verdict (``possible_auto_reply``, ``possible_left_org``, …), never a class.
 
-The caller says whether the message replies to an email the site sent (``Evidence.replies_to_site_mail``, from its
-In-Reply-To and References). Such a reply is not list or bulk mail on weak bulk signals alone (a person answering a
-campaign from a CRM tool), but an automatic reply stays one whatever it answers: the flag never makes automated mail
-a person's. Every verdict on such a reply carries the hint ``replies_to_site_mail``.
+The caller says whether the message replies to the site's own mail (``Evidence.replies_to_site_mail``, from its
+In-Reply-To and References: an email the site sent, or a message of a conversation with a person the caller already
+holds). Such a reply is not list or bulk mail on weak bulk signals alone (a person answering a campaign from a CRM
+tool), but an automatic reply stays one whatever it answers: the flag never makes automated mail a person's. Every
+verdict on such a reply carries the hint ``replies_to_site_mail``.
 """
 
 from dataclasses import dataclass, replace
@@ -44,8 +45,13 @@ from .rules import (
 # How much of the decoded text the content rules read.
 TEXT_HEAD_CHARS = autoreply.TEXT_HEAD_CHARS
 REPLY_HINT = "replies_to_site_mail"
-# A person's message that must never be answered automatically (RFC 3834: a list, a bulk sender, a request for none).
+# A person's message that must never be answered automatically: RFC 3834's markers (a list, a bulk sender, a request
+# for none), or the hints below that it may be automated after all or forged: when unsure, an automatic answer could
+# start a mail loop with a responder that marks nothing.
 NO_AUTO_RESPONSE = "no_auto_response"
+_DOUBTFUL = frozenset(
+    {"possible_auto_reply", "possible_left_org", "possible_receipt", "possible_system_mail", "claims_own_address"}
+)
 
 
 @dataclass(frozen=True)
@@ -166,7 +172,6 @@ def _hints(evidence: Evidence, own_addresses) -> tuple[str, ...]:
     content = f"{subject}\n{autoreply.own_text(evidence.text_head)}"
     headers = evidence.headers
     checks = (
-        (NO_AUTO_RESPONSE, not autoreply.response_allowed(evidence)),
         ("possible_auto_reply", AUTO_REPLY_HINT_RE.search(subject) or VACATION_RE.search(content)),
         ("possible_left_org", LEFT_ORG_RE.search(content) or UNMONITORED_RE.search(content)),
         ("possible_receipt", RECEIPT_SUBJECT_RE.match(evidence.subject)),
@@ -176,7 +181,10 @@ def _hints(evidence: Evidence, own_addresses) -> tuple[str, ...]:
         ("claims_own_address", evidence.from_address in own_addresses),
         ("exchange_rule_generated", any(name in headers for name in EXCHANGE_RULE_HEADERS)),
     )
-    return tuple(name for name, found in checks if found)
+    hints = tuple(name for name, found in checks if found)
+    if not autoreply.response_allowed(evidence) or _DOUBTFUL.intersection(hints):
+        hints = (NO_AUTO_RESPONSE, *hints)  # first: the ticket's signal list is cut at 20
+    return hints
 
 
 def auth_summary(headers) -> dict:

@@ -12,6 +12,11 @@
 The classifier then knows the message answers the site's own mail (weak bulk signals no longer hide a person's
 answer), and a left-the-organisation notice is matched to the address the site mailed. The telemetry keeps outgoing
 emails for ``EMAIL_MONITORING["retention_days"]`` (180) days: a reply to older mail is not recognised.
+
+``answers_a_person`` covers the rest of a conversation: a message whose In-Reply-To or References name a message of a
+person's ticket answers the site's mail too (most often an answer staff wrote from the mailbox in Outlook, which the
+site never records), so a person's follow-up from a CRM tool is not hidden as bulk mail either. It only says so; it
+names no email the site sent, so it never attributes a notice to an address.
 """
 
 import re
@@ -22,6 +27,7 @@ from apps.core.models import EmailCategory, OutboundEmail
 from apps.core.services.email.inbound.rules import AUTO_REPLY_SUBJECT_RE
 from apps.core.services.email.telemetry import text
 
+from ...models import Ticket, TicketMessage
 from .matching import references_of
 from .parse import ParsedMessage
 
@@ -84,3 +90,13 @@ def site_mail_replied(parsed: ParsedMessage, *, received_at: datetime, window: t
         .first()
     )
     return Replied(inferred, INFERRED) if inferred is not None else None
+
+
+def answers_a_person(parsed: ParsedMessage) -> bool:
+    """Whether ``parsed`` names a message of a person's ticket (neither automated mail nor spam) in its In-Reply-To or
+    References: a message answering automated mail proves nothing."""
+    references = references_of(parsed)
+    if not references:
+        return False
+    messages = TicketMessage.objects.filter(internet_message_id__in=references, ticket__automated=False)
+    return messages.exclude(ticket__status=Ticket.Status.SPAM).exists()

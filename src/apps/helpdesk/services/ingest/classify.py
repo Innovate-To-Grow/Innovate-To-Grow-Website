@@ -1,10 +1,11 @@
 """The helpdesk's verdict on one message: ``core``'s header classifier, then the Mail app's rule-based scam score.
 
 The header classifier decides whether a message is automated (``apps.core.services.email.inbound.classify``). It is
-told first whether the message replies to an email the site sent (``replies.site_mail_replied``), so a person who
-answers a campaign from a CRM or sales tool (whose mail carries bulk headers) is still a person; list mail that
-replies to the site's mail (a reply sent to a whole mailing list) stays list mail, flagged ``reply_to_our_mail`` so
-staff find it among the automated tickets. A message it leaves as human (which includes "uncertain") is also scored by
+told first whether the message replies to the site's mail: an email the site sent (``replies.site_mail_replied``), or
+a message of a person's ticket (``replies.answers_a_person``: a follow-up in a conversation, typically to an answer
+staff sent from Outlook). So a person who answers from a CRM or sales tool (whose mail carries bulk headers) is still
+a person; list mail that replies to an email the site sent (a reply sent to a whole mailing list) stays list mail,
+flagged ``reply_to_our_mail`` so staff find it among the automated tickets. A message it leaves as human (which includes "uncertain") is also scored by
 the scam detector's deterministic rules (``analyze_email``; never the optional Bedrock second opinion, so no message
 text leaves the site): a high score makes it spam, a medium one keeps it a normal ticket flagged suspicious, as does a
 message that claims the site's own address without proof.
@@ -111,7 +112,9 @@ def site_reply_of(replied: replies.Replied | None, sender: str) -> SiteReply | N
     return SiteReply(email.pk, recipient, replied.method, email.campaign_id)
 
 
-def _verdict(parsed: ParsedMessage, own: frozenset, settings: HelpdeskSettings, replied: SiteReply | None) -> Verdict:
+def _verdict(
+    parsed: ParsedMessage, own: frozenset, settings: HelpdeskSettings, replied: SiteReply | None, *, answers: bool
+) -> Verdict:
     evidence = Evidence(
         headers=parsed.headers,
         from_address=parsed.from_address,
@@ -121,7 +124,7 @@ def _verdict(parsed: ParsedMessage, own: frozenset, settings: HelpdeskSettings, 
         report_type=parsed.report_type,
         has_calendar=parsed.has_calendar,
         text_head=parsed.text_head(),
-        replies_to_site_mail=replied is not None,
+        replies_to_site_mail=answers,
     )
     verdict = classify(
         evidence,
@@ -140,7 +143,8 @@ def classify_message(
     window = timedelta(days=int(settings.reply_match_window_days))
     found = replies.site_mail_replied(parsed, received_at=received_at, window=window)
     replied = site_reply_of(found, parsed.from_address)
-    verdict = _verdict(parsed, own_addresses(mailbox), settings, replied)
+    answers = replied is not None or replies.answers_a_person(parsed)
+    verdict = _verdict(parsed, own_addresses(mailbox), settings, replied, answers=answers)
     auth = auth_summary(parsed.headers)
     if verdict.automated:
         flags = (REPLY_FLAG,) if verdict.classification == BULK and replied is not None else ()

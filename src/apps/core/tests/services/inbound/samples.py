@@ -28,7 +28,11 @@ QUOTED_CAMPAIGN = (
 )
 
 
-def message(*, sender, subject, text, message_id, to=SITE, reply=True, references=None, headers=None) -> bytes:
+def message(
+    *, sender, subject, text, message_id, to=SITE, reply=True, references=None, headers=None, html=None, parent=None
+) -> bytes:
+    """``html``: an HTML-only message instead of ``text`` (as some CRM tools send); ``parent``: the Message-ID it
+    answers (the campaign email's by default)."""
     mail = EmailMessage(policy=SMTP)
     mail["From"] = sender
     mail["To"] = to
@@ -37,11 +41,14 @@ def message(*, sender, subject, text, message_id, to=SITE, reply=True, reference
     if message_id:
         mail["Message-ID"] = message_id
     if reply:
-        mail["In-Reply-To"] = CAMPAIGN_MESSAGE_ID
-        mail["References"] = references or CAMPAIGN_MESSAGE_ID
+        mail["In-Reply-To"] = parent or CAMPAIGN_MESSAGE_ID
+        mail["References"] = references or parent or CAMPAIGN_MESSAGE_ID
     for name, value in (headers or {}).items():
         mail[name] = value
-    mail.set_content(text)
+    if html is not None:
+        mail.set_content(html, subtype="html")
+    else:
+        mail.set_content(text)
     return mail.as_bytes()
 
 
@@ -189,12 +196,59 @@ def crm_reply_about_judging(*, reply: bool = True) -> bytes:
         "details.\n\nBest regards,\nMorgan Diaz\nSenior Engineer, Acme Industries\n\n" + QUOTED_CAMPAIGN,
         message_id="<crm-morgan-1@acme-industries.example>",
         reply=reply,
-        headers={
-            "X-SFDC-LK": "00D5e000000FAKE0",
-            "X-SFDC-User": "0055e000000FAKE1",
-            "List-Unsubscribe": "<mailto:unsubscribe@acme-industries.example?subject=unsubscribe>",
-            "X-Microsoft-Antispam": "BCL:7;",
-        },
+        headers=CRM_HEADERS,
+    )
+
+
+CRM_HEADERS = {
+    "X-SFDC-LK": "00D5e000000FAKE0",
+    "X-SFDC-User": "0055e000000FAKE1",
+    "List-Unsubscribe": "<mailto:unsubscribe@acme-industries.example?subject=unsubscribe>",
+    "X-Microsoft-Antispam": "BCL:7;",
+}
+# The Message-ID Exchange gave an answer staff wrote to Morgan from the mailbox in Outlook (the site never records it).
+STAFF_ANSWER_ID = "<SA1PR12MB0003AABBCCDDEEFF0011@SA1PR12MB0003.namprd12.prod.outlook.com>"
+
+
+def crm_follow_up_about_judging() -> bytes:
+    """Morgan's next message in the same conversation, from the same CRM: it answers staff's answer from Outlook, and
+    its References keep only the last two messages (Morgan's first reply and that answer), not the campaign email."""
+    return message(
+        sender="Morgan Diaz <morgan.diaz@acme-industries.example>",
+        subject=f"RE: RE: {CAMPAIGN_SUBJECT}",
+        text="Thank you! December 5 works for me. Do judges need to bring anything?\n\nMorgan",
+        message_id="<crm-morgan-2@acme-industries.example>",
+        parent=STAFF_ANSWER_ID,
+        references=f"<crm-morgan-1@acme-industries.example> {STAFF_ANSWER_ID}",
+        headers=CRM_HEADERS,
+    )
+
+
+def html_reply_about_judging() -> bytes:
+    """A person's HTML-only answer (no plain-text part), quoting the campaign under Outlook's header block."""
+    return message(
+        sender="Robin Ellis <robin.ellis@northwind.example>",
+        subject=f"RE: {CAMPAIGN_SUBJECT}",
+        text="",
+        html="<html><body><p>Hi team,</p><p>Count me in as a judge for December.</p><p>Robin</p>"
+        '<hr style="display:inline-block;width:98%"><div id="divRplyFwdMsg"><b>From:</b> Innovate to Grow '
+        f"&lt;{SITE}&gt;<br>\n<b>Sent:</b> Tuesday, November 10, 2026 9:00 AM<br>\n<b>Subject:</b> "
+        f"{CAMPAIGN_SUBJECT}</div><p>We are looking for judges for the December showcase. If you are out of the "
+        "office that week, or no longer with your company, just let us know.</p></body></html>",
+        message_id="<html-robin-1@northwind.example>",
+    )
+
+
+def holiday_closure_notice() -> bytes:
+    """An out-of-office reply for a holiday closure that says nobody reads the mailbox meanwhile: no "until" date, no
+    "out of the office", so only the wider absence wording tells it from a left-the-organisation notice."""
+    return message(
+        sender="Casey Nguyen <casey.nguyen@contoso.example>",
+        subject=f"Automatic reply: {CAMPAIGN_SUBJECT}",
+        text="Thank you for your email. Our office is closed for the Thanksgiving holiday, and this inbox is not being "
+        "monitored. For urgent matters, please write to help@contoso.example.",
+        message_id="<oof-casey-1@contoso.example>",
+        headers={"Auto-Submitted": "auto-generated", "X-Auto-Response-Suppress": "All"},
     )
 
 

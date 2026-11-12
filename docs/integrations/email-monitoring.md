@@ -228,7 +228,8 @@ subscription, and every change is a staff action with a confirmation page and an
   attributed to nobody), with the first and latest notice, the address the latest one names instead (a hint from its text, never verified) and its helpdesk
   ticket. Only such matched notices count, as decided: one that answers nothing the site sent says nothing about an
   address it mails, and anyone can write one. **Out-of-office replies never count**: a notice that mentions an absence
-  is classified as one, even when it also says someone left. Notices are read from `core.InboundMessage` in
+  (a closure, travel or a return included: holidays, a break, weekends, "until the 20th") is classified as one, even
+  when it also says someone left, and "this mailbox is not monitored" alone is no notice that someone left. Notices are read from `core.InboundMessage` in
   processing order from their own cursor (they stay counted after the inbound queue's 90-day retention), and counting
   starts with the notices imported after this release (earlier ones did not record the email they answer).
 - **Reports without a category** (saved by the previous release while a deploy rolled out) are classified before each

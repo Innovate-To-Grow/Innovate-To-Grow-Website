@@ -89,8 +89,10 @@ its thread lands on the person's ticket.
      References name an email the site sent (the telemetry's `OutboundEmail`, kept 180 days), or, for an email sent
      without a Message-ID the site knows (Graph JSON: campaign mail carrying a sign-in link), a reply from the address
      it went to with the same subject once "RE:", "Automatic reply:" and gateway tags such as "[EXTERNAL]" come off,
-     sent at most `reply_match_window_days` (30) before. Such a reply is never list or bulk mail on **weak** signals
-     alone: `List-Unsubscribe` and the other unsubscribe headers, an email service provider's or CRM's own headers
+     sent at most `reply_match_window_days` (30) before. A message whose In-Reply-To or References name a message of
+     a **person's ticket** (not automated mail or spam) counts too: a follow-up in the conversation, most often to an
+     answer staff wrote from the mailbox in Outlook, which the site never records (it names no email the site sent,
+     so it is attributed to no address). Such a reply is never list or bulk mail on **weak** signals alone: `List-Unsubscribe` and the other unsubscribe headers, an email service provider's or CRM's own headers
      (SendGrid, Mailchimp, HubSpot, Salesforce `X-SFDC-*`, …), `Precedence: bulk`, a no-reply sender, or Exchange's
      bulk complaint level. Those become hints on it (`bulk_headers_on_reply`), so a person who answers a campaign
      from a CRM tool lands in the queue. A list's **distribution** (`List-Id`, `List-Post`, `Precedence: list`) still
@@ -105,20 +107,27 @@ its thread lands on the person's ticket.
      languages. Exchange's rule markers (`X-MS-Exchange-Inbox-Rules-Loop`, `X-MS-Exchange-Generated-Message-Source`)
      make a message an automatic reply only with a notice's wording, since a rule may also redirect a person's
      message. What the reply says chooses its subtype, read only above the quoted original (Outlook's header block,
-     "On … wrote:", `>` lines, an original-message banner), so the site's own campaign text, quoted back, never
-     decides: an **absence** (out of office, vacation, leave, "until Monday", in English, Spanish, French, German,
-     Portuguese, Italian and Dutch) makes it a vacation reply, and only otherwise does wording that the person
-     **left** (no longer with, has left, retired, mailbox closed, "ya no trabaja", "ne fait plus partie", "nicht mehr
-     im Unternehmen", …) or that nobody reads the mailbox make it a left-the-organisation notice. An out-of-office
-     reply is therefore never evidence against an address. A notice's **named address** (a new address or someone to
+     also as an HTML-only message's text gives it, "On … wrote:", `>` lines, an original-message banner), so the
+     site's own campaign text, quoted back, never decides: an **absence** (out of office, vacation, leave, "until
+     Monday", in English, Spanish, French, German, Portuguese, Italian and Dutch) makes it a vacation reply, and only
+     otherwise does wording that the person **left** (no longer with, has left, retired, mailbox closed, "ya no
+     trabaja", "ne fait plus partie", "nicht mehr im Unternehmen", …) make it a left-the-organisation notice. A notice
+     that says someone left but also mentions a closure, travel or a return (holidays, a break, weekends, "until the
+     20th", "upon my return", …) is a vacation reply too, and wording that says only that **nobody reads the
+     mailbox** ("this inbox is not monitored") is no notice at all: holiday, weekend and shared mailboxes say so too.
+     An out-of-office reply is therefore never evidence against an address (the price: a real notice that also
+     mentions a holiday is not counted). A notice's **named address** (a new address or someone to
      contact instead, by the words before it) is kept as a hint, never verified; the sender's, the site's, no-reply
      and report addresses and the address the site mailed are never one.
    - **Loop protection.** Replying to the site's mail never turns an automatic reply into a person's message, so an
      automatic reply to an automatic reply stays automated (it joins its thread and changes nothing). A person's
-     message that must not be answered automatically (RFC 3834: it came through a list or a bulk sender, asks for no
-     automatic reply, or has no return path) carries the hint `no_auto_response`. `shadow.automatic_reply_allowed` is
-     the gate any later acknowledgement or notification must pass: false in shadow mode, for automated mail and for
-     such messages.
+     message that must not be answered automatically carries the hint `no_auto_response`: RFC 3834's markers (it
+     came through a list or a bulk sender, asks for no automatic reply, or has no return path), and also a message
+     whose own text looks automated (an absence, a left-the-organisation notice, a system acknowledgement, a receipt)
+     or that claims the site's address without proof, since a responder that marks nothing would answer an
+     acknowledgement with another. `shadow.automatic_reply_allowed` is the gate any later acknowledgement or
+     notification must pass: false in shadow mode, for automated mail, for a message on a ticket that is automated or
+     spam, and for such messages.
 4. **Threading** (`matching.py`), first match wins: `In-Reply-To`/`References` naming a message of a ticket (a
    reply to a campaign email instead opens a ticket linked to the campaign); the subject token `[I2G-#1234]`
    (also without brackets) **only if the sender is a participant** of that ticket (anyone can type a number); the
@@ -268,9 +277,11 @@ saves every column and would overwrite a running scan's lease.
   ([Email monitoring, Limitations](email-monitoring.md#limitations)).
 - **Inline images are not shown** in the message (they are listed as attachments).
 - **Replies are recognised only to mail the telemetry still holds** (180 days) and, for mail sent without a
-  Message-ID, only from the address mailed with the same subject; a reply to older mail, or from another address of
-  the person, is classified on its own headers. A reply through a **mailing list** stays list mail (flagged; decision
-  to confirm).
+  Message-ID, only from the address mailed with the same subject, or by a message of a person's ticket they name; a
+  reply to older mail, or from another address of the person, is classified on its own headers. So is a first answer
+  to an email staff wrote in Outlook (the site never records those), which a CRM tool's bulk headers can still hide
+  as bulk mail: check **Automated & Spam**. A reply through a **mailing list** stays list mail (flagged; decision to
+  confirm).
 - **Notice wording is read in seven languages** (English, Spanish, French, German, Portuguese, Italian, Dutch); in
   others an automatic reply is still recognised by its headers and subject prefix, as "other". The named address of a
   notice is whatever its text gives: a hint for staff to check, never used on its own.

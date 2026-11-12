@@ -52,9 +52,12 @@ CALENDAR_SUBJECT_RE = re.compile(
 
 # Wording that says the person left, retired or changed address, or that the address is closed: the
 # bounced-addresses evidence (counted only for a notice matched to the site's mail, and never beside an absence).
+# "Has left" is not "left a message" or "left the office" (for the day).
 LEFT_ORG_RE = re.compile(
     r"\bno longer (?:with|at|employed|affiliated|part of|works?|working|in use|active|valid|available|checked|"
-    r"monitored|being monitored)\b|\b(?:has|have) (?:left|retired|departed)\b|\bretired (?:from|as of|in|on)\b|"
+    r"monitored|being monitored)\b|\b(?:has|have) (?:left|retired|departed)\b(?! (?:a|an|you|me|it|this|that|word|"
+    r"messages?|voice ?mails?|feedback|comments?|details|early|already|the (?:office|building))\b)|"
+    r"\bretired (?:from|as of|in|on)\b|"
     r"\bleft the (?:company|organi[sz]ation|university|college|firm|agency|district|school|department|city|county)\b|"
     r"\b(?:my|his|her|their) last day (?:at|with) |\blast day of (?:employment|work)\b|"
     r"\bnew e-?mail address\b|\bchanged (?:my|his|her|their) e-?mail\b|\bplease (?:update|use) (?:my|the) new\b|"
@@ -75,8 +78,8 @@ LEFT_ORG_RE = re.compile(
     r"\bniet meer (?:werkzaam|in dienst|actief)\b|\buit dienst\b|\bnieuwe? (?:e-?mail)?adres\b",
     re.IGNORECASE,
 )
-# Wording that says only that nobody reads the mailbox: a seasonal notice says so too, so it means "left" only in a
-# notice that mentions no absence.
+# Wording that says only that nobody reads the mailbox: an out-of-office, holiday, weekend or shared mailbox's notice
+# says so too, so it is a hint (``possible_left_org``), never a left-the-organisation notice on its own.
 UNMONITORED_RE = re.compile(
     r"\b(?:is|are) not (?:being |currently )?(?:monitored|checked|read)\b|\bnot monitored\b|"
     r"\bno (?:es|est[áa]) (?:monitoreado|supervisado)\b|\bno se revisa\b|\bn[’']est pas (?:surveill|consult)[ée]e?\b|"
@@ -85,7 +88,7 @@ UNMONITORED_RE = re.compile(
 )
 # Wording of an absence with a return: out of office, vacation, leave, travel ("will return your call" is not one).
 VACATION_RE = re.compile(
-    r"\bout of (?:the )?office\b|\booo\b|\bon (?:vacation|holidays?|leave|annual leave|parental leave|maternity leave|"
+    r"\bout[- ]of[- ](?:the[- ])?office\b|\booo\b|\bon (?:vacation|holidays?|leave|annual leave|parental leave|maternity leave|"
     r"paternity leave|medical leave|sick leave|sabbatical|pto|business travel|a business trip)\b|"
     r"\baway from (?:the |my )?(?:office|desk|e-?mail)\b|\b(?:currently|presently) (?:away|traveling|travelling|out)\b|"
     r"\b(?:limited|no) access to (?:my )?e-?mail\b|\b(?:will|i[’']?ll) be back\b|\bback in the office\b|"
@@ -100,6 +103,30 @@ VACATION_RE = re.compile(
     r"\bfora do escrit[óo]rio\b|\bde f[ée]rias\b|\bvoltarei\b|\bestarei (?:fora|ausente)\b|\bfuori (?:ufficio|sede)\b|"
     r"\bin ferie\b|\bassente (?:fino|dal)\b|\brientrer[òo]\b|\bmet vakantie\b|\bniet op kantoor\b|\bafwezig\b|"
     r"\bweer aanwezig\b",
+    re.IGNORECASE,
+)
+# Wider wording of an absence or a closure: holidays, breaks, weekends, travel, leave, "until the 20th", "upon my
+# return". A person may write it too, so it never makes a message an automatic reply: it names one already known to
+# be one, and it keeps a notice that also says someone left from counting (an out-of-office reply is never evidence).
+ABSENCE_RE = re.compile(
+    r"\b(?:holidays?|vacations?|break|recess|weekends?|after[- ]hours|time off|pto|for the (?:day|evening|night)|"
+    r"outside (?:of )?(?:our |normal |regular )?(?:office|business|working) hours|leave of absence|out sick|"
+    r"(?:annual|parental|maternity|paternity|medical|sick|family|study|personal|bereavement) leave|sick day|"
+    r"out of (?:town|the country)|travell?ing|on the road|business trip|temporar(?:y|ily)|"
+    r"(?:at|attending) (?:a |an |the )?(?:conference|meeting|workshop|training)|"
+    r"(?:offices?|campus|university|school|building) (?:is |are |will be )?(?:closed|closing)|"
+    r"(?:until|till|through) (?:the )?\d{1,4}(?:st|nd|rd|th)?|(?:upon|on|after|until) (?:my|our|his|her|their) return|"
+    r"when (?:i|we|he|she|they)(?:'re|’re|'m|’m| am| are| is)? (?:back|return|get back|come back)|"
+    r"back (?:on|in|after|from)|(?:i|we)(?:'m|’m|'re|’re| am| are) (?:currently |presently |now )?(?:away|out)|"
+    r"(?:i|we)(?:'ll|’ll| will) be (?:away|out|off|travell?ing)|vacaciones|receso|d[íi]as? festivos?|feriados?|"
+    r"de (?:permiso|licencia|viaje)|incapacidad|fin de semana|(?:a|tras|despu[ée]s de) mi regreso|"
+    r"hasta (?:el |mi )?(?:\d{1,4}|regreso|vuelta)|oficinas? (?:est[áa]n? |permanecer[áa]n? )?cerrad[ao]s?|vacances|"
+    r"cong[ée]s?|jours? f[ée]ri[ée]s?|fermeture (?:annuelle|estivale|des bureaux|du bureau)|d[ée]placement|"
+    r"absente?|jusqu(?:’|')?(?:au|à|a)|(?:à|a|d[èe]s) mon retour|urlaub|ferien|feiertag\w*|dienstreise|abwesen\w*|"
+    r"elternzeit|krank\w*|bis (?:zum |zur )?\d{1,4}|nach meiner r[üu]ckkehr|f[ée]rias|recesso|de viagem|licen[çc]a|"
+    r"at[ée] (?:o |a |dia )?\d{1,4}|ap[óo]s (?:o )?meu retorno|ferie|vacanz[ae]|festivit[àa]|in viaggio|trasferta|"
+    r"malattia|fino al|al mio rientro|vakantie|verlof|feestdag\w*|op reis|ziek\w*|tot (?:en met )?\d{1,4}|"
+    r"na mijn terugkeer)\b",
     re.IGNORECASE,
 )
 # Other systems' automatic acknowledgements, challenge-response and quarantine notices.
