@@ -162,9 +162,10 @@ class OverviewTests(TestCase):
 
     def test_the_overview_never_reads_aws(self):
         # SES is the sender and AWS credentials are set, so an AWS read (CloudWatch, the suppression list, a Secrets
-        # Manager key) would get as far as building a boto3 client. Check that no client is built at all: an
-        # exception raised from one would not prove anything, because the SES dashboard turns every AWS failure into
-        # a notice and the page would still load.
+        # Manager key) would get as far as building a boto3 client. Check that no client is built at all. Building one
+        # raises, so a read fails at once (a stand-in client would page CloudWatch forever), but the raise alone proves
+        # nothing: the SES dashboard turns every AWS failure into a notice and the page would still load.
+        no_client = AssertionError("the Overview must not build an AWS client")
         AWSCredentialConfig.objects.create(
             name="Primary AWS",
             is_active=True,
@@ -176,7 +177,10 @@ class OverviewTests(TestCase):
             name="Primary Sender", is_active=True, provider="ses", from_email="sender@example.com", max_send_rate=0
         )
 
-        with patch("boto3.client") as client, patch("boto3.session.Session.client") as session_client:
+        with (
+            patch("boto3.client", side_effect=no_client) as client,
+            patch("boto3.session.Session.client", side_effect=no_client) as session_client,
+        ):
             page = self.client.get(self.url)
             data = self.client.get(reverse("admin:mail_email_monitoring_data"))
 
