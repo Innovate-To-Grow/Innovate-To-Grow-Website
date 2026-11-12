@@ -68,8 +68,10 @@ organization and title. On top of that:
 - **Exact matches first.** Results are ordered by a `search_rank` alias, then by the list's own order:
   - 0: an address equal to the term, in any letter case;
   - 1: an address that starts with the term (a single word without `@` counts as the part before the `@`:
-    `jdoe` ranks `jdoe@…` above `jdoe2@…`), or, for members and phones, a phone equal to the term's digits;
+    `jdoe` ranks `jdoe@…` above `jdoe2@…`), or, for members, a phone equal to the term's digits;
   - 2: everything else.
+
+  Contact Phones has no addresses: the number equal to the term's digits is its tier 0, then everything else.
 
   A column sort the user picks (`?o=`) replaces the rank. `alias()` keeps the rank out of the paginator's
   `count()`. The rank's `EXISTS` subqueries are correlated on the indexed `member_id` foreign keys. On 6,000
