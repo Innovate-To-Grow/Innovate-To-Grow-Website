@@ -1,23 +1,30 @@
 """Outbox handler that sends one SMS campaign recipient through AWS End User Messaging, on the bulk delivery lane
-(``core.services.aws.sms_send`` paces it; a deferral reruns the job at its slot without using up an attempt)."""
+(``core.services.aws.sms_send`` paces it; a deferral reruns the job at its slot without using up an attempt).
+
+Before anything is claimed, SMS quiet hours defer the job to their end (its attempt refunded). A number on the SMS
+opt-out list, checked again before sending (and refused by AWS as opted out), is recorded as "Opted out", and a
+message whose links were turned off meanwhile as failed with that reason; both end the job without a provider call.
+"""
 
 from django.utils import timezone
 
 from apps.core.models import AWSCredentialConfig
+from apps.core.services.aws.sms_errors import SmsOptedOut
 from apps.core.services.aws.sms_send import resolve_sender, send_text_message
-from apps.core.services.background_jobs import (
-    DeferredJobError,
-    JobClaimLost,
-    PermanentJobError,
-    UncertainJobError,
-)
-from apps.core.services.background_jobs.delivery import deferral_of
+from apps.core.services.background_jobs import DeferredJobError, JobClaimLost, PermanentJobError, UncertainJobError
+from apps.core.services.background_jobs.delivery import deferral_of, provider_call_guard
 from apps.core.services.delivery_rates import Lane
-from apps.mail.models import SmsRecipientLog
-from apps.mail.services.campaign.personalize import personalize
+from apps.mail.models import SmsConfig, SmsRecipientLog
+from apps.mail.services.sms.compose import CampaignLinks, render_campaign_text
+from apps.mail.services.sms.errors import SmsSendRefused
+from apps.mail.services.sms.opt_outs import is_opted_out
+from apps.mail.services.sms.quiet_hours import HELD_LOG_MESSAGE, held_until
+from apps.mail.services.sms.sender import skip_opted_out_log
 
 from .channels import SMS, aggregate_sms_campaign, mark_log_processing, release_failed_log
 from .failures import _classify_pre_provider_error, _classify_sms_job_error, _delivery_failure_values
+
+CLAIM_LOST_MESSAGE = "Background job claim was lost before SNS invocation."
 
 
 def _send_via_sms(*, config, phone_number: str, message: str, before_provider_call) -> str:
@@ -63,37 +70,73 @@ def _record_sms_sent(log, job, message_id: str) -> None:
         )
 
 
+def _defer_for_quiet_hours(log, config) -> None:
+    """Inside SMS quiet hours: note it on the log and run the job again when they end (attempt refunded)."""
+    until = held_until(config=config)
+    if until is None:
+        return
+    SmsRecipientLog.objects.filter(pk=log.pk, status__in=("pending", "retry")).update(
+        status="retry", error_message=HELD_LOG_MESSAGE, available_at=until, updated_at=timezone.now()
+    )
+    raise DeferredJobError(HELD_LOG_MESSAGE, until=until)
+
+
+def _recipient(log) -> dict:
+    member = log.member
+    return {
+        "member_id": log.member_id,
+        "phone": log.phone_number,
+        "first_name": getattr(member, "first_name", "") if member else "",
+        "last_name": getattr(member, "last_name", "") if member else "",
+        "full_name": log.recipient_name,
+    }
+
+
+def _end_without_sending(log, job, *, refused: SmsSendRefused | None = None) -> None:
+    """The job decided not to send (opted out, or a policy refusal): record it on the log it holds and succeed, so
+    the outbox never replaces that reason with a generic failure."""
+    if refused is None:
+        skip_opted_out_log(log, claim_token=job.claim_token)
+    else:
+        release_failed_log(SMS, log, job, status="failed", error_message=str(refused), uncertain_at=None)
+    aggregate_sms_campaign(log.campaign_id)
+
+
 def send_sms_recipient_job(job) -> None:
-    log = SmsRecipientLog.objects.select_related("campaign", "member").get(pk=job.payload["recipient_log_id"])
-    if log.status == "sent":
+    log = SmsRecipientLog.objects.select_related("campaign", "campaign__event", "member").get(
+        pk=job.payload["recipient_log_id"]
+    )
+    if log.status in SMS.terminal_statuses:
         aggregate_sms_campaign(log.campaign_id)
         return
+    sms_config = SmsConfig.load()
+    _defer_for_quiet_hours(log, sms_config)
     if not mark_log_processing(SMS, log, job):
         raise PermanentJobError("SMS recipient log is no longer eligible for delivery.")
+    if is_opted_out(log.phone_number):
+        _end_without_sending(log, job)
+        return
     try:
         config = AWSCredentialConfig.load()
         if not config.sns_configured:
             raise RuntimeError("SMS delivery is not configured.")
-        context = {
-            "first_name": getattr(log.member, "first_name", "") if log.member else "",
-            "last_name": getattr(log.member, "last_name", "") if log.member else "",
-            "full_name": log.recipient_name,
-        }
-        message = personalize(log.campaign.message, context)
-
-        def begin_provider_call():
-            if not job.begin_provider_call():
-                raise JobClaimLost("Background job claim was lost before SNS invocation.")
-
+        links = CampaignLinks(log.campaign, sms_config)
+        message = render_campaign_text(log.campaign, _recipient(log), links=links, config=sms_config)
         message_id = _send_via_sms(
             config=config,
             phone_number=log.phone_number,
             message=message,
-            before_provider_call=begin_provider_call,
+            before_provider_call=provider_call_guard(job, CLAIM_LOST_MESSAGE),
         )
         _record_sms_sent(log, job, message_id)
     except JobClaimLost:
         raise
+    except SmsOptedOut:
+        _end_without_sending(log, job)
+        return
+    except SmsSendRefused as refused:
+        _end_without_sending(log, job, refused=refused)
+        return
     except Exception as exc:
         classified = _classified_sms_failure(exc, job)
         log_status, error_message, uncertain_at = _delivery_failure_values(classified)

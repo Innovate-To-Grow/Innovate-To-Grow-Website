@@ -28,6 +28,8 @@ from django.utils import timezone
 from apps.authn.models import PhoneVerificationChallenge
 from apps.authn.services.email.challenges.degradation import FAILURE_WINDOW, max_attempts_for
 from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_PERMANENT, PROVIDER_OUTCOME_UNCERTAIN
+from apps.core.services.aws.sms_errors import SmsOptedOut
+from apps.core.services.aws.sms_opt_outs import refuse_if_opted_out
 from apps.core.services.aws.sms_send import (
     SmsDeliveryError,
     SmsRateDeferred,
@@ -51,6 +53,7 @@ from .errors import (
     OTP_TTL_SECONDS,
     VERIFIABLE_STATUSES,
     VERIFIED_GRANT_TTL_SECONDS,
+    PhoneNumberOptedOut,
     PhoneVerificationBusy,
     PhoneVerificationDeliveryError,
     PhoneVerificationError,
@@ -70,6 +73,7 @@ __all__ = [
     "OTP_TTL_SECONDS",
     "VERIFIABLE_STATUSES",
     "VERIFIED_GRANT_TTL_SECONDS",
+    "PhoneNumberOptedOut",
     "PhoneVerificationBusy",
     "PhoneVerificationDeliveryError",
     "PhoneVerificationError",
@@ -105,7 +109,10 @@ def _assert_configured():
 
 
 def _verification_error(exc: SmsDeliveryError) -> PhoneVerificationError:
-    """The OTP error for a failed SMS send: held back (by the limiter or AWS) is ``PhoneVerificationBusy``."""
+    """The OTP error for a failed SMS send: held back (by the limiter or AWS) is ``PhoneVerificationBusy``, a number
+    that opted out ``PhoneNumberOptedOut``."""
+    if isinstance(exc, SmsOptedOut):
+        return PhoneNumberOptedOut()
     if isinstance(exc, SmsRateDeferred) or exc.held_back:
         return PhoneVerificationBusy(exc.retry_after)
     if exc.code == "ValidationException":
@@ -218,6 +225,15 @@ def _refuse_capped_number(phone_number: str, *, now) -> None:
         raise PhoneVerificationThrottled(TOO_MANY_ATTEMPTS)
 
 
+def _refuse_opted_out_number(phone_number: str) -> None:
+    """A number on the SMS opt-out list is refused before it takes the shared SMS slot, the hourly cap or a unit of
+    the daily budget (the send itself checks again)."""
+    try:
+        refuse_if_opted_out(phone_number)
+    except SmsDeliveryError as exc:
+        raise _verification_error(exc) from exc
+
+
 def _render_otp_message(aws_config, code: str) -> str:
     # Rendered before anything is reserved: a broken template costs neither an hourly slot nor an SMS budget unit.
     try:
@@ -322,7 +338,8 @@ def start_phone_verification(
     provider call keeps it). Raises ``SendThrottled`` (from ``send_verification``) when the budget is spent; nothing
     is stored or sent in that case.
 
-    A number already at its hourly cap is refused first, with a plain read, so it never takes the shared SMS slot.
+    A number on the SMS opt-out list is refused first (``PhoneNumberOptedOut``), and one already at its hourly cap
+    next, with a plain read, so neither takes the shared SMS slot.
     The slot is taken next, before the number is locked or anything is reserved: an SMS delivery held back raises
     ``PhoneVerificationBusy`` and spends neither the hourly cap nor the daily budget. A refusal after that (the cap
     reached meanwhile, the budget) gives the slot back.
@@ -332,6 +349,7 @@ def start_phone_verification(
     aws_config = _assert_configured()
     code = _random_code()
     message = _render_otp_message(aws_config, code)
+    _refuse_opted_out_number(phone_number)
     _refuse_capped_number(phone_number, now=timezone.now())
     admission = _admit_otp(aws_config, message)
     try:

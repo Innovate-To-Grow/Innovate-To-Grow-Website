@@ -23,3 +23,4 @@ from .integrations.delivery_rates import *  # noqa: F403  # per-channel rate see
 from .integrations.request_limits import *  # noqa: F403  # inbound request-limit scopes, tiers, Smart limiting
 from .integrations.email_monitoring import *  # noqa: F403  # email telemetry, retention, bounce processing
 from .integrations.member_import import *  # noqa: F403  # member import review: upload cap, batch retention
+from .integrations.sms import *  # noqa: F403  # SMS policy bounds: quiet hours switch, links, opt-out sync
