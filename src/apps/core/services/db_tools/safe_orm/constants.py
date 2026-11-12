@@ -87,9 +87,11 @@ DENIED_MODEL_NAME_PARTS = ("credential", "config", "permission", "session", "log
 # Readable, never written by a proposed record write. Contact rows are sign-in factors: a verified address or number
 # signs in to its account, so they change only in the Members admin, under its owner guards and #732's code-only rule
 # for phones. Verification challenges are the proof of a one-time code: a challenge set to "verified" is a grant that
-# event registration accepts as a verified phone. (The CLI denies the whole authn app.)
+# event registration accepts as a verified phone. Accepting an admin invitation makes its address's member staff, so
+# only the I2G Master writes invitations (in the admin). (The CLI denies the whole authn app.)
 DENIED_WRITE_MODEL_LABELS = frozenset(
     {
+        "authn.admininvitation",
         "authn.contactemail",
         "authn.contactphone",
         "authn.emailauthchallenge",

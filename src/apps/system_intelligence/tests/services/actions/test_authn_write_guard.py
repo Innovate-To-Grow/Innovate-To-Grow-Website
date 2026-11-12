@@ -18,7 +18,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import TestCase, TransactionTestCase
 from django.utils import timezone
 
-from apps.authn.models import ContactEmail, ContactPhone, Member, PhoneVerificationChallenge
+from apps.authn.models import AdminInvitation, ContactEmail, ContactPhone, Member, PhoneVerificationChallenge
 from apps.event.tests.helpers import make_admin, make_member, make_superuser
 from apps.system_intelligence.models import ChatConversation, SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
@@ -147,6 +147,32 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
         self.assertEqual(str(error.exception), WRITE_REFUSED.format("PhoneVerificationChallenge"))
         challenge.refresh_from_db()
         self.assertEqual(challenge.status, "expired")
+
+    def test_an_admin_invitation_cannot_be_created_or_redirected(self):
+        # Accepting one makes the member who owns its address staff: the admin lets only the I2G Master write them.
+        invitation = AdminInvitation.objects.create(
+            email="invitee@example.com",
+            token=AdminInvitation.generate_token(),
+            invited_by=self.master,
+            expires_at=timezone.now() + timedelta(days=3),
+        )
+        with acting_as(self.staffer):
+            with self.assertRaises(actions.ActionRequestError) as redirected:
+                actions.propose_db_update(
+                    "authn", "AdminInvitation", str(invitation.pk), {"email": "member@example.com"}
+                )
+            with self.assertRaises(actions.ActionRequestError) as created:
+                actions.propose_db_create(
+                    "authn",
+                    "AdminInvitation",
+                    {"email": "member@example.com", "expires_at": (timezone.now() + timedelta(days=3)).isoformat()},
+                )
+
+        for error in (redirected, created):
+            self.assertEqual(str(error.exception), WRITE_REFUSED.format("AdminInvitation"))
+        invitation.refresh_from_db()
+        self.assertEqual(invitation.email, "invitee@example.com")
+        self.assertEqual(AdminInvitation.objects.count(), 1)
 
     def test_contact_rows_stay_readable(self):
         with acting_as(self.staffer):

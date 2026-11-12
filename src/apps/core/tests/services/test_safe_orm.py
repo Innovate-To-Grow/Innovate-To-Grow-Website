@@ -10,7 +10,13 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
-from apps.authn.models import ContactEmail, ContactPhone, EmailAuthChallenge, PhoneVerificationChallenge
+from apps.authn.models import (
+    AdminInvitation,
+    ContactEmail,
+    ContactPhone,
+    EmailAuthChallenge,
+    PhoneVerificationChallenge,
+)
 from apps.cms.models import CMSAsset, CMSBlock
 from apps.core.services.db_tools.safe_orm import (
     DENIED_WRITE_MODEL_LABELS,
@@ -138,9 +144,10 @@ class SafetyTests(TestCase):
 
 
 class AuthnWriteDenylistTests(TestCase):
-    """Contact rows (sign-in factors) and verification challenges (proofs of a code) can be read, never written."""
+    """Contact rows (sign-in factors), verification challenges (proofs of a code) and admin invitations (they make
+    staff) can be read, never written."""
 
-    WRITE_DENIED = (ContactEmail, ContactPhone, EmailAuthChallenge, PhoneVerificationChallenge)
+    WRITE_DENIED = (AdminInvitation, ContactEmail, ContactPhone, EmailAuthChallenge, PhoneVerificationChallenge)
 
     def test_each_model_is_listed_by_its_label(self):
         self.assertEqual(DENIED_WRITE_MODEL_LABELS, {model._meta.label_lower for model in self.WRITE_DENIED})
