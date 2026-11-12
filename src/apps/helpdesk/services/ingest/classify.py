@@ -37,7 +37,9 @@ FLAGGED_HINTS = frozenset({"possible_auto_reply", "possible_left_org"})
 @dataclass(frozen=True)
 class SiteReply:
     """The email the site sent that a message answers, how it was found (``replies``), its campaign, and the address
-    it went to that the message speaks for ("" when it had several recipients and the sender is none of them)."""
+    it went to that the message speaks for: the sender when the email went to them, else its only recipient when the
+    sender is of the same organisation (an alias, or the mailbox that answers for a departed person); "" otherwise
+    (several recipients, or a third party the email was redirected to)."""
 
     email_id: uuid.UUID
     recipient: str = ""
@@ -89,13 +91,23 @@ def _scam_input(parsed: ParsedMessage) -> dict:
     }
 
 
+def same_organisation(first: str, second: str) -> bool:
+    """Whether two addresses share a domain, or one's domain is a subdomain of the other's."""
+    one, two = first.rpartition("@")[2], second.rpartition("@")[2]
+    return bool(one and two) and (one == two or one.endswith(f".{two}") or two.endswith(f".{one}"))
+
+
 def site_reply_of(replied: replies.Replied | None, sender: str) -> SiteReply | None:
     if replied is None:
         return None
     email: OutboundEmail = replied.email
     recipients = list(dict.fromkeys(filter(None, map(normalize_address, email.recipients or [email.recipient]))))
     sender = normalize_address(sender)
-    recipient = sender if sender in recipients else (recipients[0] if len(recipients) == 1 else "")
+    if sender in recipients:
+        recipient = sender
+    else:
+        only = recipients[0] if len(recipients) == 1 else ""
+        recipient = only if only and same_organisation(sender, only) else ""
     return SiteReply(email.pk, recipient, replied.method, email.campaign_id)
 
 

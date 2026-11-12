@@ -24,7 +24,7 @@ from apps.mail.models import EmailCampaign
 
 from ..models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
 from ..services import shadow
-from ..services.ingest.classify import REPLY_FLAG
+from ..services.ingest.classify import REPLY_FLAG, same_organisation
 from ..services.ingest.parse import ParsedMessage
 from ..services.ingest.replies import site_mail_replied, subject_stages
 from .helpers import FakeReader, ingest, queue
@@ -158,6 +158,22 @@ class AutomaticReplyTests(SiteMailMixin, TestCase):
             (row.result["named_contact"], row.result["named_contact_kind"]),
             ("jordan.park@newco.example", "new_address"),
         )
+
+    def test_a_notice_from_another_organisation_is_attributed_to_nobody(self):
+        # The email was redirected to someone elsewhere, whose mailbox answered: it says nothing about the address mailed.
+        self.sent("morgan.diaz@acme-industries.example")
+
+        _ticket, row = self.receive(samples.left_with_contact())
+
+        self.assertEqual(row.classification, "left_org")
+        self.assertIn("site_mail", row.result)
+        self.assertNotIn("site_recipient", row.result)
+
+    def test_an_organisation_and_its_subdomains_are_one(self):
+        self.assertTrue(same_organisation("it@mail.contoso.example", "jordan@contoso.example"))
+        self.assertTrue(same_organisation("jordan@contoso.example", "it@mail.contoso.example"))
+        self.assertFalse(same_organisation("jordan@contoso.example", "jordan@notcontoso.example"))
+        self.assertFalse(same_organisation("", "jordan@contoso.example"))
 
     def test_an_email_to_several_people_matches_the_sender_or_nobody(self):
         self.sent("a@contoso.example", recipients=["a@contoso.example", "Jordan.Park@contoso.example"])
