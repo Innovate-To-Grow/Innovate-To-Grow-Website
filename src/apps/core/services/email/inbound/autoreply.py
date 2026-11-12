@@ -2,7 +2,8 @@
 address a left-the-organisation notice names instead, and whether a message may ever be answered automatically.
 
 A reply's quoted original (Outlook's header block, "On … wrote:", ">" lines, an original- or forwarded-message
-banner) is cut off before any phrase is read, so the site's own campaign text, quoted back, never decides anything. A
+banner) is cut off before any phrase is read, and a reply's or automatic reply's subject ("RE: …", "Automatic reply:
+…") adds no words, so the site's own campaign text and subject, sent back, never decide anything. A
 notice that mentions an absence is an out-of-office reply even when it also says someone left: an out-of-office reply
 is never evidence against an address. The address a notice names is a hint only: never verified, never applied.
 Pure functions: no database, no network.
@@ -22,6 +23,7 @@ from .rules import (
     LEFT_ORG_RE,
     LIST_HEADERS,
     NOREPLY_RE,
+    REPLY_SUBJECT_RE,
     REPORT_SENDERS,
     SYSTEM,
     UNMONITORED_RE,
@@ -86,6 +88,12 @@ def own_text(text: str) -> str:
     return text[: match.start()] if match else text
 
 
+def own_subject(subject: str) -> str:
+    """A subject's own words: none for a reply's or an automatic reply's, whose rest is the original's subject."""
+    subject = str(subject or "")
+    return "" if AUTO_REPLY_SUBJECT_RE.match(subject) or REPLY_SUBJECT_RE.match(subject) else subject
+
+
 def kind_of(text: str) -> str:
     """``vacation``, ``left_org`` or ``other``: what a notice's own words say. An absence wins over "left": an
     out-of-office reply that mentions a colleague who left is still an out-of-office reply."""
@@ -147,7 +155,7 @@ def detect(evidence, own_addresses) -> Notice | None:
     if not signals and not exchange:
         return None
     text = own_text(evidence.text_head)
-    kind = kind_of(f"{evidence.subject}\n{text}")
+    kind = kind_of(f"{own_subject(evidence.subject)}\n{text}")
     if not signals and kind == OTHER:
         return None
     found = tuple(signals + exchange)

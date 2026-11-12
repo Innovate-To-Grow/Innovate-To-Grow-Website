@@ -7,7 +7,7 @@ Pure: no database."""
 from django.test import SimpleTestCase
 
 from apps.core.services.email.inbound import NO_AUTO_RESPONSE, REPLY_HINT, classify
-from apps.core.services.email.inbound.autoreply import kind_of, named_contact, own_text, response_allowed
+from apps.core.services.email.inbound.autoreply import kind_of, named_contact, own_subject, own_text, response_allowed
 
 from . import samples
 from .test_classify import OWN, evidence
@@ -184,6 +184,63 @@ class QuotedOriginalTests(SimpleTestCase):
         )
 
         self.assertEqual((verdict.classification, verdict.subtype), ("auto_reply", "other"))
+
+
+class OriginalSubjectTests(SimpleTestCase):
+    """A reply's subject is mostly the site's own campaign subject: its words are not the sender's."""
+
+    def test_a_reply_or_an_automatic_reply_subject_has_no_words_of_its_own(self):
+        for subject in (
+            "Automatic reply: Register until Monday",
+            "RE: Register until Monday",
+            "[EXTERNAL] RE: Register until Monday",
+            "AW[2]: Register until Monday",
+            "Respuesta automática: Inscripciones hasta el lunes",
+        ):
+            with self.subTest(subject):
+                self.assertEqual(own_subject(subject), "")
+        self.assertEqual(own_subject("Jordan Park has left Contoso"), "Jordan Park has left Contoso")
+        self.assertEqual(own_subject("Regarding: judges"), "Regarding: judges")
+
+    def test_the_campaigns_subject_never_decides_what_a_notice_says(self):
+        left = classify(
+            evidence(
+                {"Auto-Submitted": "auto-generated"},
+                subject="Automatic reply: Register until Monday",
+                text_head="Jordan Park no longer works at Contoso.",
+            ),
+            own_addresses=OWN,
+        )
+        away = classify(
+            evidence(
+                {"Auto-Submitted": "auto-replied"},
+                subject="Automatic reply: Our new email address for the showcase",
+                text_head="I am out of the office until Monday.",
+            ),
+            own_addresses=OWN,
+        )
+
+        self.assertEqual((left.classification, away.subtype), ("left_org", "vacation"))
+
+    def test_a_notices_own_subject_still_counts(self):
+        verdict = classify(
+            evidence(
+                {"X-MS-Exchange-Inbox-Rules-Loop": "jordan.park@contoso.example"},
+                subject="Jordan Park has left Contoso",
+                text_head="Please write to partnerships@contoso.example.",
+            ),
+            own_addresses=OWN,
+        )
+
+        self.assertEqual((verdict.classification, verdict.contact), ("left_org", "partnerships@contoso.example"))
+
+    def test_a_persons_reply_is_not_flagged_by_the_campaigns_subject(self):
+        verdict = classify(
+            evidence(subject="RE: [EXTERNAL] Judges wanted until Friday", text_head="Count me in!"),
+            own_addresses=OWN,
+        )
+
+        self.assertEqual(verdict.hints, ())
 
 
 class NamedContactTests(SimpleTestCase):

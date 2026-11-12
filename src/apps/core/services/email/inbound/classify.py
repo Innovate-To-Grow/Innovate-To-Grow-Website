@@ -162,11 +162,12 @@ def _system(evidence: Evidence, _own_addresses) -> Verdict | None:
 
 
 def _hints(evidence: Evidence, own_addresses) -> tuple[str, ...]:
-    content = f"{evidence.subject}\n{autoreply.own_text(evidence.text_head)}"
+    subject = autoreply.own_subject(evidence.subject)
+    content = f"{subject}\n{autoreply.own_text(evidence.text_head)}"
     headers = evidence.headers
     checks = (
         (NO_AUTO_RESPONSE, not autoreply.response_allowed(evidence)),
-        ("possible_auto_reply", AUTO_REPLY_HINT_RE.search(evidence.subject) or VACATION_RE.search(content)),
+        ("possible_auto_reply", AUTO_REPLY_HINT_RE.search(subject) or VACATION_RE.search(content)),
         ("possible_left_org", LEFT_ORG_RE.search(content) or UNMONITORED_RE.search(content)),
         ("possible_receipt", RECEIPT_SUBJECT_RE.match(evidence.subject)),
         ("possible_system_mail", SYSTEM_TEXT_RE.search(content)),

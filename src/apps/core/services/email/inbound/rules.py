@@ -34,6 +34,13 @@ AUTO_REPLY_SUBJECT_RE = re.compile(
     r"自动回复|自動回覆|自動応答|자동 회신)\s*[:：]",
     re.IGNORECASE,
 )
+# A reply's or forward's subject prefix ("RE:", "AW:", "Fwd:"), after any gateway tags ("[EXTERNAL]"): the rest of such
+# a subject is the original's (often the site's own), so its words are not the sender's.
+REPLY_SUBJECT_RE = re.compile(
+    r"^\s*(?:\[[^\]\n]{1,40}\]\s*){0,3}"
+    r"(?:re|aw|sv|antw|vs|r|odp|ynt|res|rv|fwd?|fw|wg|tr|enc)\s*(?:\[\d{1,3}\])?\s*[:：]",
+    re.IGNORECASE,
+)
 # Subjects that are only a hint on their own (a person may write them too).
 AUTO_REPLY_HINT_RE = re.compile(r"\b(?:out of (?:the )?office|on vacation|on leave|away from (?:my|the) )", re.I)
 RECEIPT_SUBJECT_RE = re.compile(r"^\s*(?:read|not read|delivered|read receipt|lu|gelesen|le[íi]do)\s*:", re.I)
