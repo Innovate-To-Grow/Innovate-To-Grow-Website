@@ -1,13 +1,15 @@
 """Campaign send status views."""
 
 import logging
+import uuid
 
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count
-from django.http import JsonResponse
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
 from django.urls import reverse
+from unfold.decorators import action
 
 from apps.core.services.delivery_rates import Family, active_target, channel_status
 from apps.mail.models import EmailCampaign, RecipientLog
@@ -19,6 +21,15 @@ QUEUED_STATUSES = ("pending", "processing", "retry")
 
 
 class CampaignStatusMixin:
+    @action(description="Delivery monitoring", url_path="delivery-monitoring", icon="monitoring")
+    def delivery_monitoring_action(self, request, object_id):
+        """Mail → Delivery Operations → Email Monitoring for this campaign (shown once it has been sent)."""
+        try:
+            campaign_id = uuid.UUID(str(object_id))
+        except ValueError:
+            raise Http404("Campaign not found.") from None
+        return HttpResponseRedirect(reverse("admin:mail_email_monitoring_campaign", args=[campaign_id]))
+
     def send_campaign_status_view(self, request, object_id):
         """Live send progress page."""
         # ``admin_view`` only enforces is_staff, so this custom URL must re-check

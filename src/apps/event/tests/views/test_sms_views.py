@@ -5,6 +5,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.authn.services.sms import (
+    PhoneNumberOptedOut,
     PhoneVerificationDeliveryError,
     PhoneVerificationInvalid,
     PhoneVerificationThrottled,
@@ -43,6 +44,17 @@ class SendPhoneCodeViewTest(TestCase):
         )
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data["detail"], "Invalid phone number.")
+
+    @patch("apps.authn.services.sms.start_phone_verification", side_effect=PhoneNumberOptedOut())
+    def test_opted_out_number_returns_400_with_the_reason(self, _mock_start):
+        response = self.client.post(
+            "/event/send-phone-code/",
+            self._payload(phone="5551234567", region="1-US"),
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["code"], "phone_opted_out")
+        self.assertIn("opted out", response.data["detail"])
 
     @patch(
         "apps.authn.services.sms.start_phone_verification",

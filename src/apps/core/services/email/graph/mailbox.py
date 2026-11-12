@@ -10,6 +10,7 @@ Every request is paced on the ``graph_read`` delivery channel, which shares its 
 import json
 import logging
 import re
+from datetime import UTC, datetime
 from urllib.parse import quote
 
 from django.conf import settings
@@ -29,6 +30,12 @@ logger = logging.getLogger(__name__)
 # Well-known folder names (Microsoft Graph "mailFolder resource type").
 FOLDERS = {"INBOX": "inbox", "SENT": "sentitems"}
 LIST_FIELDS = "id,subject,from,toRecipients,receivedDateTime,bodyPreview,isRead"
+# What the incremental scans read of each message: bounce processing's (no preview: it opens only report candidates)
+# and the helpdesk's intake (it opens none). The conversation id lets the helpdesk thread a reply whose headers say
+# nothing.
+SCAN_FIELDS = "id,subject,from,receivedDateTime,internetMessageId,conversationId"
+# Asks for ids that survive a move to another folder (EMAIL_MONITORING["graph_immutable_ids"], off by default).
+IMMUTABLE_ID_PREFERENCE = 'IdType="ImmutableId"'
 # Graph message IDs are URL-safe base64; anything else is refused before it can become part of a URL.
 _MESSAGE_ID_RE = re.compile(r"[A-Za-z0-9_=-]{1,512}")
 
@@ -66,7 +73,21 @@ class GraphMailboxReader:
         folder_name = FOLDERS.get(str(folder).upper(), FOLDERS["INBOX"])
         top = max(1, min(int(limit), settings.GRAPH_INBOX_MAX_LIST_LIMIT))
         query = f"$top={top}&$select={LIST_FIELDS}&$orderby=receivedDateTime%20desc"
-        path = f"{self._user_path()}/mailFolders/{folder_name}/messages?{query}"
+        return self._message_list(f"{self._user_path()}/mailFolders/{folder_name}/messages?{query}")
+
+    def list_received_since(self, folder: str, since: datetime, limit: int) -> list[dict]:
+        """Up to *limit* messages of a well-known folder received at or after *since*, oldest first, with
+        ``SCAN_FIELDS`` only: the incremental scans (bounce processing's and the helpdesk's intake), which never list
+        the whole folder."""
+        folder_name = FOLDERS.get(str(folder).upper(), FOLDERS["INBOX"])
+        top = max(1, min(int(limit), settings.GRAPH_INBOX_MAX_LIST_LIMIT))
+        stamp = since.astimezone(UTC).strftime("%Y-%m-%dT%H%%3A%M%%3A%SZ")
+        query = (
+            f"$top={top}&$select={SCAN_FIELDS}&$filter=receivedDateTime%20ge%20{stamp}&$orderby=receivedDateTime%20asc"
+        )
+        return self._message_list(f"{self._user_path()}/mailFolders/{folder_name}/messages?{query}")
+
+    def _message_list(self, path: str) -> list[dict]:
         response = self._get(path, settings.GRAPH_INBOX_LIST_MAX_BYTES)
         try:
             messages = json.loads(response.body)["value"]
@@ -78,14 +99,18 @@ class GraphMailboxReader:
 
     def fetch_mime(self, message_id: str) -> bytes:
         """The message exactly as received (RFC 5322 MIME), including Authentication-Results and threading headers."""
+        body, truncated = self.fetch_mime_head(message_id, settings.GRAPH_INBOX_MESSAGE_MAX_BYTES)
+        if truncated:
+            raise GraphReadError("The message is too large to display here; open it in Outlook.")
+        return body
+
+    def fetch_mime_head(self, message_id: str, max_bytes: int) -> tuple[bytes, bool]:
+        """At most *max_bytes* of a message's raw MIME, and whether it was cut off (a bounce report's status part
+        precedes the returned original message, so the head of a long report is enough)."""
         if not is_message_id(message_id):
             raise GraphMessageNotFound("Message not found.")
-        response = self._get(
-            f"{self._user_path()}/messages/{message_id}/$value", settings.GRAPH_INBOX_MESSAGE_MAX_BYTES
-        )
-        if response.truncated:
-            raise GraphReadError("The message is too large to display here; open it in Outlook.")
-        return response.body
+        response = self._get(f"{self._user_path()}/messages/{message_id}/$value", max_bytes)
+        return response.body, response.truncated
 
     def _user_path(self) -> str:
         return f"/v1.0/users/{quote(self.mailbox, safe='@')}"
@@ -123,6 +148,8 @@ class GraphMailboxReader:
         except EmailDeliveryError as exc:
             raise GraphReadError(str(exc)) from exc
         headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/json"}
+        if settings.EMAIL_MONITORING.get("graph_immutable_ids"):
+            headers["Prefer"] = IMMUTABLE_ID_PREFERENCE
         try:
             return transport.get(GRAPH_HOST, path, headers, timeout=self.timeout, max_bytes=max_bytes)
         except (transport.ConnectFailed, transport.ResponseLost) as exc:

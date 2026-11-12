@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.forms.models import BaseInlineFormSet, InlineForeignKeyField
@@ -8,6 +9,7 @@ from apps.core.admin import AppAccessInlineMixin
 from apps.core.utils.access import user_can_manage_member
 
 from ...models import ContactEmail, ContactPhone, Member
+from .contact.phone_verification import ContactPhoneAdminForm, sms_sign_in_status
 
 PRIMARY_EMAIL_INLINE_EDIT_ERROR = (
     "The current primary email's address and type cannot be edited directly. "
@@ -211,11 +213,21 @@ class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInl
 
 
 class ContactPhoneInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
-    """Inline admin for contact phone records."""
+    """Inline admin for contact phone records.
+
+    ``verified`` can be switched off here but never on: only an SMS code verifies a number, and a changed number
+    starts unverified (``ContactPhoneAdminForm``). The SMS sign-in column links unverified numbers to the staff
+    "Verify by SMS code" page.
+    """
 
     model = ContactPhone
+    form = ContactPhoneAdminForm
     extra = 0
     verbose_name = "Contact Phone"
     verbose_name_plural = "Contact Phones"
-    fields = ("phone_number", "region", "verified", "subscribe", "created_at")
-    readonly_fields = ("created_at",)
+    fields = ("phone_number", "region", "verified", "sms_sign_in_status", "subscribe", "created_at")
+    readonly_fields = ("sms_sign_in_status", "created_at")
+
+    @admin.display(description="SMS sign-in")
+    def sms_sign_in_status(self, obj):
+        return sms_sign_in_status(obj)

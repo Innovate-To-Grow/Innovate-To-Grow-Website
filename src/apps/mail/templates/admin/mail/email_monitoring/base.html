@@ -1,0 +1,86 @@
+{% extends "admin/base_site.html" %}
+{% load static unfold %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}{{ page_title }}{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'mail/css/email-monitoring.css' %}?v=20261112-rescan-addresses">
+{% block monitoring_head %}{% endblock %}
+{% endblock %}
+
+{% block content %}
+{% tab_list "mail_delivery_operations" %}
+
+<div id="i2g-monitor-root" class="i2g-monitor">
+  <nav class="i2g-monitor-subnav" aria-label="Email monitoring sections">
+    <a href="{% url 'admin:mail_email_monitoring' %}{% if scope_query %}?{{ scope_query }}{% endif %}" {% if section == "overview" %}aria-current="page"{% endif %}>
+      <span class="material-symbols-outlined" aria-hidden="true">monitoring</span>Overview
+    </a>
+    <a href="{% url 'admin:mail_email_monitoring_emails' %}{% if scope_query %}?{{ scope_query }}{% endif %}" {% if section == "emails" %}aria-current="page"{% endif %}>
+      <span class="material-symbols-outlined" aria-hidden="true">list_alt</span>Email log
+    </a>
+    <a href="{% url 'admin:mail_email_monitoring_bounces' %}{% if scope_query %}?{{ scope_query }}{% endif %}" {% if section == "bounces" %}aria-current="page"{% endif %}>
+      <span class="material-symbols-outlined" aria-hidden="true">assignment_return</span>Bounce reports
+    </a>
+    <a href="{% url 'admin:mail_email_monitoring_addresses' %}" {% if section == "addresses" %}aria-current="page"{% endif %}>
+      <span class="material-symbols-outlined" aria-hidden="true">unsubscribe</span>Bounced addresses
+    </a>
+  </nav>
+
+  <div class="i2g-monitor-notice" role="note">
+    <span class="material-symbols-outlined" aria-hidden="true">info</span>
+    <p>
+      {% if health.monitoring_began %}
+        Monitoring began <strong>{{ health.monitoring_began|date:"M j, Y, H:i" }}</strong>. Emails sent before then were not recorded, and nothing here is reconstructed from other data.
+      {% else %}
+        Monitoring has not recorded any email yet: it starts with the first email sent after this feature was deployed.
+      {% endif %}
+      “API accepted” means Microsoft Graph queued the message (HTTP 202); it is never shown as delivered. Delivery failures are known only from bounce reports.
+      {% if not health.telemetry_enabled %}<strong>Telemetry is switched off (EMAIL_TELEMETRY_ENABLED): new emails are not recorded.</strong>{% endif %}
+    </p>
+  </div>
+
+  {% if scope %}
+  <form method="get" class="i2g-monitor-filters" aria-label="Time range and filters">
+    <label class="i2g-monitor-field">
+      <span>Range</span>
+      <select name="range" data-monitor-range>
+        {% for preset in presets %}
+          <option value="{{ preset.key }}" {% if scope.key == preset.key %}selected{% endif %}>{{ preset.label }}</option>
+        {% endfor %}
+        <option value="custom" {% if scope.key == "custom" %}selected{% endif %}>Custom range</option>
+      </select>
+    </label>
+    <label class="i2g-monitor-field" data-monitor-custom>
+      <span>From</span>
+      <input type="date" name="start" value="{{ scope.start_date }}">
+    </label>
+    <label class="i2g-monitor-field" data-monitor-custom>
+      <span>To</span>
+      <input type="date" name="end" value="{{ scope.end_date }}">
+    </label>
+    <label class="i2g-monitor-field">
+      <span>Provider</span>
+      <select name="provider">
+        <option value="">All providers</option>
+        {% for key, label in providers.items %}
+          <option value="{{ key }}" {% if scope.provider == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    {% block extra_filters %}{% endblock %}
+    <button type="submit" class="i2g-monitor-button">
+      <span class="material-symbols-outlined" aria-hidden="true">filter_alt</span>Apply
+    </button>
+  </form>
+  {% for error in scope.errors %}
+    <p class="i2g-monitor-error" role="alert">{{ error }} Showing {{ scope.label|lower }} instead.</p>
+  {% endfor %}
+  {% endif %}
+
+  {% block monitoring_content %}{% endblock %}
+</div>
+<script src="{% static 'mail/js/email-monitoring.js' %}?v=20261109-monitoring" defer></script>
+{% endblock %}

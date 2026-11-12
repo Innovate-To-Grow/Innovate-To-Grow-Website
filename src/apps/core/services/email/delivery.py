@@ -4,6 +4,9 @@ Every message goes through the delivery-rate limiter: it is admitted on its lane
 campaigns pass ``lane=Lane.BULK``), waits for its slot outside any transaction, is handed to the provider, and the
 provider's answer is recorded. Admission comes before the caller's ``before_provider_call``, so an
 ``EmailRateDeferred`` always means "certainly not sent".
+
+Every call is also recorded by the email telemetry (``telemetry.DeliveryTracker``): the logical email, and one
+attempt per admitted provider call. Recording is best effort and changes nothing about how the message is sent.
 """
 
 import logging
@@ -31,6 +34,7 @@ from .exceptions import (
     with_signal,
 )
 from .registry import resolve_provider
+from .telemetry import DeliveryTracker
 
 logger = logging.getLogger(__name__)
 
@@ -61,24 +65,27 @@ class EmailDeliveryService:
     def send(
         self, message: EmailMessage, *, before_provider_call=None, lane: str = Lane.TRANSACTIONAL, **provider_options
     ) -> DeliveryResult:
-        if not getattr(self.config, "is_active", False):
-            raise PermanentEmailDeliveryError("No active email service configuration exists.")
-        provider = resolve_provider(self.config, **provider_options)
-        admission = _admit(provider, message, lane)
-        boundary = _Boundary(before_provider_call)
-        try:
-            result = provider.send(message, before_provider_call=boundary)
-        except EmailDeliveryError as exc:
-            settled = _settle_failure(admission, exc, boundary.entered)
-            if settled is exc:
+        with DeliveryTracker(message, provider=getattr(self.config, "provider", "")) as tracker:
+            if not getattr(self.config, "is_active", False):
+                raise PermanentEmailDeliveryError("No active email service configuration exists.")
+            provider = resolve_provider(self.config, **provider_options)
+            tracker.resolved(provider)
+            admission = _admit(provider, message, lane)
+            boundary = _Boundary(before_provider_call)
+            tracker.attempting(boundary)
+            try:
+                result = provider.send(message, before_provider_call=boundary)
+            except EmailDeliveryError as exc:
+                settled = _settle_failure(admission, exc, boundary.entered)
+                if settled is exc:
+                    raise
+                raise settled from exc
+            except BaseException:
+                # The caller's callback refused (a lost job claim) or the provider failed unexpectedly.
+                _settle(admission, uncertain("exception") if boundary.entered else None)
                 raise
-            raise settled from exc
-        except BaseException:
-            # The caller's callback refused (a lost job claim) or the provider failed unexpectedly.
-            _settle(admission, uncertain("exception") if boundary.entered else None)
-            raise
-        _settle(admission, ok())
-        return result
+            _settle(admission, ok())
+            return result
 
 
 def _admit(provider, message: EmailMessage, lane: str):

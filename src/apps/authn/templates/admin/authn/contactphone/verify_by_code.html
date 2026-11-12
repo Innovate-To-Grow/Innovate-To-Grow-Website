@@ -1,0 +1,73 @@
+{% extends "admin/base_site.html" %}
+{% load i18n admin_urls %}
+
+{% block title %}Verify by SMS code{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; <a href="{% url 'admin:app_list' app_label='authn' %}">Authn</a>
+        &rsaquo; <a href="{% url 'admin:authn_contactphone_changelist' %}">Contact Phones</a>
+        &rsaquo; <a href="{{ change_url }}">{{ contact.get_formatted_number }}</a>
+        &rsaquo; Verify by SMS code
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="max-w-3xl mx-auto py-8 px-4">
+        <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Verify by SMS code</h1>
+        <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-6">
+            {{ contact.get_formatted_number }} on {{ contact.member }} &middot; {{ status }}
+        </p>
+
+        <div class="bg-white dark:bg-base-900 border border-base-200 dark:border-base-700 rounded-default p-6 mb-6 text-sm text-font-default-light dark:text-font-default-dark">
+            <p class="mb-3">
+                A verified number can sign in to this account with a texted code, so it is verified only when the
+                member shows they hold the phone. Never mark it verified on someone's word alone.
+            </p>
+            <ol class="list-decimal ml-5 space-y-1">
+                <li>Talk to the member: in person, or on a call to them at a contact you already trust.</li>
+                <li>Send the code. It goes to this number only, works for 10 minutes and allows 5 tries.</li>
+                <li>Ask the member to read the code to you, and enter it below.</li>
+            </ol>
+            <p class="mt-3 text-font-subtle-light dark:text-font-subtle-dark">
+                If they never get it, the number is probably wrong: correct it with them (a changed number starts
+                unverified) and send a new code. A member who can sign in by email can also verify the number
+                themselves on their account page.
+            </p>
+        </div>
+
+        {% if contact.verified %}
+            <p class="text-sm mb-6">This number is already verified.</p>
+        {% else %}
+            <form method="post" class="mb-6">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="send">
+                <button type="submit"
+                        class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors">
+                    Send code to {{ contact.get_formatted_number }}
+                </button>
+            </form>
+
+            <form method="post" class="flex flex-wrap items-end gap-3 mb-6">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="verify">
+                <label class="flex flex-col text-sm font-medium text-font-default-light dark:text-font-default-dark">
+                    Code the member read to you
+                    <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}"
+                           maxlength="6" required
+                           class="mt-1 border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 rounded-default px-3 py-2 w-40 font-mono">
+                </label>
+                <button type="submit"
+                        class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors">
+                    Verify
+                </button>
+            </form>
+        {% endif %}
+
+        <a href="{{ change_url }}"
+           class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500 transition-colors">
+            Back to the phone
+        </a>
+    </div>
+{% endblock %}

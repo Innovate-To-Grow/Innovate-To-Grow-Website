@@ -13,7 +13,13 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 
 from apps.core.services.aws.provider_outcomes import NO_PROVIDER_RETRIES, ProviderDeliveryError
-from apps.core.services.email import EmailAttachment, EmailDeliveryError, EmailMessage, deliver_email
+from apps.core.services.email import (
+    EmailAttachment,
+    EmailDeliveryError,
+    EmailMessage,
+    deliver_email,
+    email_tracking,
+)
 from apps.event.models import EventRegistration
 from apps.event.services.ticket.assets import generate_ticket_barcode_png_bytes
 from apps.event.services.ticket.calendar import build_google_calendar_url, generate_ics
@@ -226,7 +232,9 @@ def _deliver_ticket(delivery: _TicketDelivery, *, before_token_mutation) -> None
         # its provisional link valid even for a direct/admin resend.
         "raise_provider_errors": True,
     }
-    if not _send_via_ses(**send_kwargs):
+    with email_tracking(category="event_ticket", source_type="event.eventregistration", source_id=registration.pk):
+        sent = _send_via_ses(**send_kwargs)
+    if not sent:
         raise RuntimeError("Ticket email delivery provider failed or is not configured.")
     delivery.provider_accepted = True
     logger.info("Ticket email accepted for registration %s", registration.pk)
