@@ -3,7 +3,6 @@ Member admin configuration.
 """
 
 import logging
-import re
 import uuid
 from urllib.parse import unquote
 
@@ -11,7 +10,6 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
@@ -38,12 +36,13 @@ from .helpers import (
     normalize_inline_uuid_none_values,
 )
 from .inlines import ContactEmailInline, ContactPhoneInline
+from .search import RankedSearchMixin, member_search_rank
 
 logger = logging.getLogger(__name__)
 
 
 @admin.register(Member)
-class MemberAdmin(BaseModelAdmin, UserAdmin):
+class MemberAdmin(RankedSearchMixin, BaseModelAdmin, UserAdmin):
     """Custom admin for Member with profile, contact, import, and export tooling."""
 
     # URL names whose views only render list rows, and so never need the multi-megabyte
@@ -82,6 +81,11 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         "organization",
         "title",
     )
+    # Every email address, names, organization, title and Member UUID, plus a phone number typed on its own; the
+    # exact address comes first, here and in every member picker (``search.RankedSearchMixin``).
+    phone_search_field = "contact_phones__phone_number"
+    search_rank = staticmethod(member_search_rank)
+    search_help_text = "Email, name, phone, organization or UUID"
     ordering = ("-date_joined",)
     readonly_fields = ("member_uuid", "registration_pending", "date_joined", "last_login")
     fieldsets = (
@@ -297,31 +301,6 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
             locked.extend(self.protected_target_fields)
         readonly.extend(field for field in dict.fromkeys(locked) if field not in readonly)
         return readonly
-
-    def get_search_results(self, request, queryset, search_term):
-        """Extend the default search (email/name/id/...) with phone-number matching.
-
-        Phones are stored as national digits via ``ContactPhone.phone_number``, so the
-        query is reduced to digits and an 11-digit ``1XXXXXXXXXX`` is also tried as the
-        national ``XXXXXXXXXX`` — letting ``+1 555 123 4567``, ``15551234567``,
-        ``5551234567``, and partials like ``555123`` / ``1234567`` all find the same
-        member. Phone matches are taken from the same base queryset so list filters
-        still apply, and ``may_have_duplicates`` makes the changelist de-duplicate
-        members that own several matching phones.
-        """
-        base = queryset
-        queryset, may_have_duplicates = super().get_search_results(request, base, search_term)
-
-        digits = re.sub(r"\D", "", search_term or "")
-        if digits:
-            national = digits[1:] if len(digits) == 11 and digits.startswith("1") else digits
-            phone_q = Q(contact_phones__phone_number__icontains=national)
-            if national != digits:
-                phone_q |= Q(contact_phones__phone_number__icontains=digits)
-            queryset |= base.filter(phone_q)
-            may_have_duplicates = True
-
-        return queryset, may_have_duplicates
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}
