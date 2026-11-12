@@ -432,8 +432,9 @@ account.
   member owns it: FALSE unsubscribes; verifying, un-verifying and re-subscribing need their ticks.
 - The **Phone Verified** column is ignored: an import never verifies or un-verifies a phone number. Every number it
   adds, for a new or an existing member, is saved unverified, and a stored number keeps its status. A verified number
-  is a sign-in factor, so only the member's own one-time code (sent by SMS) verifies it. Export to Excel still writes
-  the column: the review lists it under "Not imported". The download template no longer has it.
+  is a sign-in factor, so only the member's own one-time code (sent by SMS) verifies it; there is no override, for
+  an I2G Master either. Export to Excel still writes the column: the review lists it under "Not imported", and the
+  review, confirm and result pages say it was ignored. The download template no longer has it.
 - A new address or number on an existing member starts unverified; a new secondary becomes the secondary and the old
   one becomes "other"; a new number is added next to the old ones. A contact email that belongs to no member is
   attached (unverified), or taken by a new member (C8), and keeps its Subscribed flag: the sheet can unsubscribe it

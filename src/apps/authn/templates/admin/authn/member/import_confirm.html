@@ -18,6 +18,7 @@
     <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Confirm import</h1>
     {% include "admin/authn/member/_import_steps.html" with step=3 %}
     <p class="text-sm mb-4"><strong>{{ batch.file_name }}</strong> · {{ batch.row_count }} rows · uploaded by {{ batch.created_by|default:"a deleted admin" }} on {{ batch.created_at|date:"Y-m-d H:i" }}</p>
+    {% for note in batch.columns.notes %}<p class="text-sm mb-4 text-primary-600 dark:text-primary-400"><strong>Note:</strong> {{ note }}</p>{% endfor %}
 
     <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
         <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ rows_summary.created|default:0 }}</div><div class="text-xs mt-1">Will create</div></div>

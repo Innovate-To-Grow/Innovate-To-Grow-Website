@@ -20,6 +20,7 @@
     <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-5 mb-6 text-sm space-y-1">
         <p><strong>{{ batch.file_name }}</strong> · SHA-256 <span class="font-mono">{{ batch.file_sha256|slice:":12" }}</span> · sheet "{{ batch.sheet_name }}" · {{ batch.row_count }} rows · {{ batch.get_mode_display }} for matching rows</p>
         <p>Uploaded by {{ batch.created_by|default:"a deleted admin" }} on {{ batch.created_at|date:"Y-m-d H:i" }}{% if batch.applied_at %} · applied by {{ batch.applied_by|default:"a deleted admin" }} on {{ batch.applied_at|date:"Y-m-d H:i" }}{% endif %}</p>
+        {% for note in batch.columns.notes %}<p class="text-primary-600 dark:text-primary-400"><strong>Note:</strong> {{ note }}</p>{% endfor %}
         {% if batch.status == "review" %}<p><a class="underline font-medium" href="{% url 'admin:authn_member_import_review' batch.pk %}">This import is still in review: open it</a></p>{% endif %}
         {% if batch.status == "expired" %}<p>This review expired before it was applied. Nothing was written; upload the file again to start over.</p>{% endif %}
         {% if batch.status == "discarded" %}<p>This import was discarded. Nothing was written.</p>{% endif %}

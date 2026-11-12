@@ -54,7 +54,7 @@ and at `max_rows_read` rows read (blank ones included), so a compressed workbook
 | `grouping.py` | Cross-row checks: V2/V4/V7/V8 cells set aside; C1 groups (same member, or same new address) |
 | `analysis.py` | Per row: Member UUID → Primary Email in any role → unlinked contact → new member; conflicts C2–C9 in precedence order; status |
 | `choices.py`, `describe.py` | Options per conflict, bulk-safe choices, and the sentences shown |
-| `risky.py` | R1–R9 items per target member, with the disabled reasons (R9 "mark verified": a verified contact is a sign-in factor) |
+| `risky.py` | R1–R9 items per target member, with the disabled reasons (R9 "mark verified": a verified address is a sign-in factor). R6/R9 cover email addresses only |
 | `plan.py`, `plan_contacts.py` | What a choice writes, in order, with one line per change; `ContactState` follows the member's contacts through the plan |
 | `selection.py` | Posted choices checked against the row's options (a forged POST fails); cross-row problems that block the apply |
 | `apply.py`, `execute.py` | The transaction and the writes; `contacts.py` holds the guarded contact writes |
@@ -62,6 +62,14 @@ and at `max_rows_read` rows read (blank ones included), so a compressed workbook
 
 Every conflict starts on Skip. The suggested choice is marked; bulk controls set a choice for a whole conflict group
 only where it is allowed on each row.
+
+**Phone Verified is ignored.** A verified phone number is a sign-in factor, so only the member's own one-time code
+produces one. `parsing.IGNORED_COLUMNS` makes the column informational: it is not parsed, not stored in `values`, and
+listed as "Not imported". The reader puts its note in `columns["notes"]`, which the review, confirm and result pages
+and the one-step result (`ImportResult.note_file`) show. A new member's number is planned and written unverified
+(`plan._create_phone`, `execute.execute_creations`). A stored number gets no Verified cell (`plan_contacts.plan_phone`)
+and no R6/R9 item (`risky._owned_cells`), so an R6/R9 tick for a phone is a forged POST. `contacts.set_phone_flags`
+refuses any flag but `subscribe`.
 
 ## Apply
 
@@ -83,4 +91,5 @@ conflict skipped, no ticks.
 Recorded in the PR that introduced the review (stacked on the Phase 0 hotfix #726): DB batch tables, all-or-nothing
 apply, make-primary for verified addresses only, new contacts on existing members start unverified, Skip preselected on
 every conflict, the plan's name rule, settings-only retention, the non-interactive API kept, contacts never moved
-between members, a 2,000-row cap, and ready updates applied without a per-row click.
+between members, a 2,000-row cap, and ready updates applied without a per-row click. Decided on 2026-11-12 (#726):
+the Phone Verified column is ignored, with no tick and no I2G Master override.

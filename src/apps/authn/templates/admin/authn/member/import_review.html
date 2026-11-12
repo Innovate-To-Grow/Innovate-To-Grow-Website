@@ -25,6 +25,7 @@
             {% if batch.columns.informational %} Not imported: {{ batch.columns.informational|join:", " }}.{% endif %}
             {% if batch.columns.ignored %} Ignored (not recognised): {{ batch.columns.ignored|join:", " }}.{% endif %}</p>
         {% if batch.columns.has_member_uuid %}<p>Member UUID column found: rows are matched by Member UUID first.</p>{% endif %}
+        {% for note in batch.columns.notes %}<p class="text-primary-600 dark:text-primary-400"><strong>Note:</strong> {{ note }}</p>{% endfor %}
         {% for warning in batch.file_warnings %}<p class="text-yellow-800 dark:text-yellow-300">⚠ {{ warning }}</p>{% endfor %}
         {% for other in repeats %}
             <p class="text-yellow-800 dark:text-yellow-300">⚠ The same file is {% if other.status == "review" %}also in review (<a class="underline" href="{% url 'admin:authn_member_import_review' other.pk %}">uploaded {{ other.created_at|date:"Y-m-d H:i" }} by {{ other.created_by|default:"a deleted admin" }}</a>){% else %}already imported (<a class="underline" href="{% url 'admin:authn_member_import_result' other.pk %}">{{ other.applied_at|date:"Y-m-d H:i" }} by {{ other.applied_by|default:"a deleted admin" }}</a>){% endif %}.</p>

@@ -6,7 +6,8 @@ own services do the promotions and deletions, so their guards hold: an unverifie
 member's last verified sign-in contact can't be removed.
 
 Nothing here sends mail or SMS: addresses are written directly, never through ``create_contact_email``, which emails a
-verification code and a security notice. ``create_contact_phone`` sends nothing and stores numbers unverified.
+verification code and a security notice. ``create_contact_phone`` sends nothing and stores numbers unverified, and a
+stored number's flags are limited to Subscribed: only the member's own one-time code verifies a number.
 """
 
 from __future__ import annotations
@@ -24,6 +25,9 @@ from apps.authn.services.contacts.contact_phones import (
 )
 
 _EMAIL_MAX_LENGTH = ContactEmail._meta.get_field("email_address").max_length
+# The only flag an import may write on a stored phone number. "verified" is not one: a verified number is a sign-in
+# factor, and the Phone Verified column is ignored.
+_PHONE_FLAGS = frozenset({"subscribe"})
 
 
 class ContactWriteError(Exception):
@@ -64,6 +68,9 @@ def set_email_flags(member, ref: str, data: dict) -> None:
 
 
 def set_phone_flags(member, ref: str, data: dict) -> None:
+    refused = sorted(set(data) - _PHONE_FLAGS)
+    if refused:
+        raise ContactWriteError(f"an import may not change a phone number's {', '.join(refused)} flag")
     phone = ContactPhone.objects.select_for_update().filter(pk=ref, member=member).first()
     if phone is None:
         raise ContactWriteError("a phone number the review showed no longer belongs to this member")
