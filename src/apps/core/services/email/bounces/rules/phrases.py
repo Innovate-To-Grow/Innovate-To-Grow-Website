@@ -104,6 +104,11 @@ PHRASES = (
     _phrase(TRANSIENT, "Mail routing loop", r"\bmail loop\b|\bloop(?:ing)? detected\b|\bhop count\b|\btoo many hops\b"),
     _phrase(
         TRANSIENT,
+        "The recipient is receiving mail too fast: a temporary limit",
+        r"\breceiving (?:mail|messages|e-?mails?) (?:too (?:quickly|fast)|at a rate)\b",
+    ),
+    _phrase(
+        TRANSIENT,
         "Temporary failure: the server asked to try again later",
         r"\b(?:try|come back|retry)(?: again)? later\b|\btry again\b|\btemporar(?:y|ily)\b|\bdeferr?(?:ed|al)\b",
         r"\bgr[ae]y ?-?list|\brate ?-?limit|\bthrottl|\btoo many (?:connections|messages|recipients|concurrent|sessions)\b|\bserver (?:is )?busy\b",

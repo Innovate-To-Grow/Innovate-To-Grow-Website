@@ -23,6 +23,10 @@ from .helpers import count_now, make_bounce, make_campaign, make_row, make_ses_l
 Category = EmailBounce.Category
 Suggestion = BouncedAddress.Suggestion
 TIMEOUT = "550 5.0.0 connect to mail.example.net[203.0.113.25]:25: Connection timed out"
+GMAIL_RECEIVING_RATE = (
+    "550-5.2.1 The user you are trying to contact is receiving mail at a rate that prevents additional messages from "
+    "being delivered. For more information, go to https://support.google.com/mail/?p=ReceivingRatePerm - gsmtp"
+)
 parking_migration = importlib.import_module("apps.mail.migrations.0026_bounced_address_categories")
 
 
@@ -70,6 +74,32 @@ class CategoryCountingTests(TestCase):
         row = row_for("t@example.org")
         self.assertEqual((row.category_counts, row.hard_count, row.soft_count), ({"transient": 1}, 0, 1))
         self.assertEqual(row.suggestion, "")
+
+    def test_a_gmail_receiving_rate_limit_neither_suggests_replacing_the_address_nor_reopens_it(self):
+        make_row(
+            "busy@example.org",
+            hard_count=0,
+            soft_count=1,
+            status=BouncedAddress.Status.DISMISSED,
+            reviewed_at=timezone.now() - timezone.timedelta(minutes=1),
+        )
+        # Gmail's 5.2.1 for a recipient receiving mail too fast, saved without a category (as the previous release
+        # would): classified before it is counted.
+        make_bounce(
+            recipient="busy@example.org",
+            category="",
+            classification="hard",
+            status_code="5.2.1",
+            diagnostic_code=GMAIL_RECEIVING_RATE,
+            match_method="message_id",
+        )
+
+        count_now()
+
+        row = row_for("busy@example.org")
+        self.assertEqual((row.category_counts, row.hard_count), ({"transient": 2}, 0))
+        self.assertEqual((row.status, row.suggestion), (BouncedAddress.Status.DISMISSED, ""))
+        self.assertFalse(row.actions.filter(action=BouncedAddressAction.Action.REOPEN).exists())
 
     def test_a_report_saved_without_a_category_is_classified_before_it_is_counted(self):
         bounce = make_bounce(recipient="u@example.org", category="", status_code="5.1.1")

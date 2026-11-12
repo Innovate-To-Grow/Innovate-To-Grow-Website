@@ -132,9 +132,9 @@ against an address; everything else is temporary, about our own sending, about t
 | Category | Coarse classification | Decided by (examples) | What it means |
 |---|---|---|---|
 | **Address does not exist** (`hard`) | Hard bounce | `5.1.1`, `5.1.2`, `5.1.3`, `5.1.6`, `5.1.10`; `5.4.1` (Exchange: no such recipient in the tenant), `5.4.4`, `5.4.310`; text such as "user unknown", "no such user", "does not exist", "doesn't have a … account" on a generic code | Strong evidence: mark it undeliverable or replace it. |
-| **Mailbox disabled** (`mailbox_disabled`) | Hard bounce | `5.2.1`; text such as "account is disabled", "inactive mailbox", Yahoo's `554.30`; a **0 KB size limit** | Strong evidence: replace the address, or mark it undeliverable. |
+| **Mailbox disabled** (`mailbox_disabled`) | Hard bounce | `5.2.1` (unless its text makes it temporary, see Rules); text such as "account is disabled", "inactive mailbox", Yahoo's `554.30`; a **0 KB size limit** | Strong evidence: replace the address, or mark it undeliverable. |
 | **Mailbox full** (`mailbox_full`) | Soft bounce | `5.2.2`, `4.2.2`; "over quota", "mailbox full" | Temporary: counts toward the repeated-failure threshold only. |
-| **Temporary failure** (`transient`) | Soft bounce | every other `4.x.x`; `5.4.x` expiry, DNS and connection codes (`5.4.300`, `5.4.312`, `5.4.316`, `5.4.7`, `5.4.14` …); `5.3.x`, `5.6.x`, `5.2.3`/`5.3.4` (message too large); text such as "connection timed out", "connection refused", "DNS query failed", "try again later" on a generic code | The address is probably fine; Exchange already retried. Counts toward the threshold only; the next campaign tries again. |
+| **Temporary failure** (`transient`) | Soft bounce | every other `4.x.x`; `5.4.x` expiry, DNS and connection codes (`5.4.300`, `5.4.312`, `5.4.316`, `5.4.7`, `5.4.14` …); `5.3.x`, `5.6.x`, `5.2.3`/`5.3.4` (message too large); text such as "connection timed out", "connection refused", "DNS query failed", "try again later" on a generic code, or Gmail's "receiving mail at a rate" on a `5.2.1` | The address is probably fine; Exchange already retried. Counts toward the threshold only; the next campaign tries again. |
 | **Spam or reputation rejection** (`spam_rejected`) | Rejected | `5.7.9` (Yahoo "policy reasons"), `5.7.20`–`5.7.29` (SPF, DKIM, DMARC, reverse DNS), `5.7.350`, `5.7.501`–`5.7.503`, `5.7.506`–`5.7.509`, `5.7.511`, `5.7.513`, `5.7.606`–`5.7.649`, `5.7.700`–`5.7.749`, `5.7.750`, `5.1.7`/`5.1.8` (our sender address); text such as "spam", "block list", "reputation", "Spamhaus", Yahoo `TSS04` | **Our sending side:** reputation, sender authentication or content. Not the contact. |
 | **Relay denied** (`relay_denied`) | Rejected | `5.7.54`, `5.7.57`, `5.7.60`, `5.7.64`; text such as "relay access denied", "unable to relay" | **Our sending side:** the sending route or authorisation (connector, sending mailbox, SPF). Not the contact. |
 | **Recipient policy rejection** (`policy_rejected`) | Rejected | any other `5.7.x` (restricted groups `5.7.12`, `5.7.124`, `5.7.133`–`5.7.136`, a generic `5.7.1`); text such as "not authorized", "access denied" | The recipient's server rules; no action on the contact. |
@@ -145,7 +145,9 @@ against an address; everything else is temporary, about our own sending, about t
 
 - **Specific codes win.** The diagnostic text refines only a generic code (`x.0.x`, `x.y.0`, `5.5.x`, `5.7.1`, `4.7.x`)
   or a report with no code, so a spam word can never turn a `5.1.1` into a rejection, and an expiry code is never read
-  as a missing address. `5.4.1` and `5.4.4` (used for more than one thing) may only be made temporary by the text.
+  as a missing address. `5.2.1`, `5.4.1` and `5.4.4` (used for more than one thing) may only be made temporary by
+  the text: Gmail returns `5.2.1` both for a disabled account and for a recipient "receiving mail at a rate that
+  prevents additional messages from being delivered", a receiving limit that typically lifts within a day.
 - **A temporary `4.x.x` is never a missing address or a disabled mailbox**, whatever the text says; text may only make
   it a spam or relay rejection or a full mailbox.
 - **A generic status quoting a specific code**: a report whose status is generic (`5.0.0`) but whose diagnostic quotes
