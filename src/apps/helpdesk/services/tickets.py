@@ -9,10 +9,12 @@ when the classifier was wrong.
 A merge never goes into automated mail or spam (Hongzhe's decision of 2026-11-12: people's messages would be hidden
 in it), and spam is never merged at all: ``merge`` raises ``MergeRefused`` before it changes anything. Automated mail
 merged into a person's ticket changes nothing on it but its timeline, like automated mail that threads there by
-itself (``ingest.store``), and stays hidden: still automated, now merged.
+itself (``ingest.store``), and stays hidden: still automated, now merged. A merge is final: no status change, spam
+mark or move to the queue un-merges a ticket, and only ``merge`` makes one merged.
 """
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.services.email.inbound import LABELS, scrub_links
@@ -58,14 +60,20 @@ def _status_values(ticket: Ticket, status: str, now) -> dict:
 
 
 def update_ticket(ticket: Ticket, *, actor, **changes) -> list[str]:
-    """Apply staff's changes to status, priority, category and assignee; the names of the fields that changed."""
+    """Apply staff's changes to status, priority, category and assignee; the names of the fields that changed.
+
+    A merge is final, and only ``merge`` makes one: a merged ticket keeps its status, and no ticket is set to merged
+    here. Either change would leave ``merged_into`` out of step with the status: an empty ticket back in the queue
+    whose mail still goes to the ticket it was merged into, or a ticket "merged" into nothing. It is ignored.
+    """
     now = timezone.now()
     values, changed = {}, []
     with transaction.atomic():
         current = Ticket.objects.select_for_update().get(pk=ticket.pk)
-        if "status" in changes and changes["status"] != current.status:
-            values.update(_status_values(current, changes["status"], now))
-            events.record(current, Kind.STATUS, actor=actor, **{"from": current.status, "to": changes["status"]})
+        status = changes.get("status", current.status)
+        if status != current.status and Status.MERGED not in (status, current.status):
+            values.update(_status_values(current, status, now))
+            events.record(current, Kind.STATUS, actor=actor, **{"from": current.status, "to": status})
         if "priority" in changes and changes["priority"] != current.priority:
             values["priority"] = changes["priority"]
             events.record(current, Kind.PRIORITY, actor=actor, **{"from": current.priority, "to": changes["priority"]})
@@ -118,26 +126,33 @@ def mark_spam(tickets, *, actor) -> int:
     for ticket in tickets:
         if ticket.status in (Status.SPAM, Status.MERGED):
             continue
-        update_ticket(ticket, actor=actor, status=Status.SPAM)
-        events.record(ticket, Kind.SPAM, actor=actor)
-        count += 1
+        # ``update_ticket`` judges the locked row again: a ticket merged (or marked spam) meanwhile is left alone.
+        if "status" in update_ticket(ticket, actor=actor, status=Status.SPAM):
+            events.record(ticket, Kind.SPAM, actor=actor)
+            count += 1
     return count
 
 
 def move_to_queue(tickets, *, actor) -> int:
     """Automated (or spam) tickets the classifier got wrong become normal open, unread tickets. A merged one stays as
-    it is: its messages are on the ticket it was merged into, so it would only be an empty ticket in the queue."""
+    it is: its messages are on the ticket it was merged into, so it would only be an empty ticket in the queue. The
+    update checks the row itself, so a ticket merged (or moved) since the list was shown is left alone."""
     now = timezone.now()
     count = 0
     for ticket in tickets:
         if not ticket.is_automated_or_spam or ticket.status == Status.MERGED:
             continue
         with transaction.atomic():
-            Ticket.objects.filter(pk=ticket.pk).update(
-                automated=False, status=Status.OPEN, closed_at=None, resolved_at=None, unread=True, updated_at=now
+            moved = (
+                Ticket.objects.filter(Q(automated=True) | Q(status=Status.SPAM), pk=ticket.pk)
+                .exclude(status=Status.MERGED)
+                .update(
+                    automated=False, status=Status.OPEN, closed_at=None, resolved_at=None, unread=True, updated_at=now
+                )
             )
-            events.record(ticket, Kind.RECLASSIFIED, actor=actor, **{"from": ticket.classification, "to": "human"})
-        count += 1
+            if moved:
+                events.record(ticket, Kind.RECLASSIFIED, actor=actor, **{"from": ticket.classification, "to": "human"})
+        count += moved
     return count
 
 

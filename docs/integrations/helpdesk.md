@@ -29,7 +29,8 @@ name) narrow the queue.
 
 **The ticket page** edits status, priority, category and assignee (no typed confirmation; every change is in the
 ticket's timeline and the admin history), shows the timeline (messages, internal notes, field changes) and has
-the internal-note form. Notes are seen only by staff with the Helpdesk app and are never sent. Opening a ticket
+the internal-note form. A merged ticket's status cannot be changed, and **Merged** is not in the Status list: only a
+merge makes a ticket merged. Notes are seen only by staff with the Helpdesk app and are never sent. Opening a ticket
 marks it read.
 
 - Message HTML was sanitized when it was imported and is shown in a sandboxed frame without scripts; images are
@@ -42,8 +43,8 @@ marks it read.
 - Automated messages in a thread are collapsed.
 
 **Bulk actions:** assign to me, unassign, close, reopen (never an automated ticket), mark as read, move to the
-queue (never a merged ticket: its messages are on the ticket it was merged into), and, behind a typed confirmation
-(`MERGE`, `SPAM`), **merge** and **mark as spam**.
+queue, and, behind a typed confirmation (`MERGE`, `SPAM`), **merge** and **mark as spam**. None of them changes a
+merged ticket's status (a merge is final: its messages are on the ticket it was merged into, and so is its mail).
 
 **Merging** puts every selected ticket into the oldest one; nothing is deleted. It never goes into automated mail or
 spam (a person's messages would be hidden there), and spam is never merged: when the oldest selected ticket is

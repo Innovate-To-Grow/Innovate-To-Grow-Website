@@ -3,7 +3,8 @@
 The list opens on people's open tickets: automated mail and spam are hidden unless the Mail filter asks for them
 (the sidebar's "Automated & spam"). The ticket page edits status, priority, category and assignee (each change goes
 to the ticket's audit trail; no typed confirmation, which would be noise on every status change) and shows the
-timeline with the note form below the form. Merging and marking spam do need a typed confirmation. A merge into
+timeline with the note form below the form. A merged ticket's status is read-only, and the Status list has no
+"Merged": only a merge makes one. Merging and marking spam do need a typed confirmation. A merge into
 automated mail or spam is refused before that confirmation (and again by the service when it runs), and the
 "Automated & spam" view, where every ticket is one, offers no merge. Tickets are created only from mail, and deleted
 only by retention or an I2G Master (behind the typed confirmation). Nothing here sends anything.
@@ -182,7 +183,18 @@ class TicketAdmin(BaseModelAdmin):
             if obj is not None and obj.assignee_id:
                 allowed.add(obj.assignee_id)
             assignee.queryset = assignee.queryset.filter(pk__in=allowed)
+        status = form.base_fields.get("status")
+        if status is not None:
+            # Only a merge makes a ticket merged (it moves the messages and links the ticket it went into).
+            status.choices = [choice for choice in status.choices if choice[0] != Status.MERGED]
         return form
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = super().get_readonly_fields(request, obj)
+        if obj is not None and obj.status == Status.MERGED:
+            # A merge is final: the ticket's messages are on the one it was merged into, where its mail goes too.
+            return (*fields, "status")
+        return fields
 
     @display(description="Ticket", ordering="number")
     def number_column(self, obj):
