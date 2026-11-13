@@ -2,9 +2,10 @@
 
 Every message that reaches the Inbox of the site's Microsoft Graph mailbox (`i2g@ucmerced.edu`) becomes a
 ticket in the Django admin (**Helpdesk** section), or joins the ticket of its conversation. Automated mail
-(out-of-office replies, bounce reports, read receipts, list mail and newsletters, spam, the site's own mail)
-also becomes a ticket, but one that is closed at once, hidden from the default queue, never notifies anyone and
-never reopens.
+(out-of-office replies, left-the-organisation notices, bounce reports, read receipts, list mail and newsletters,
+spam, the site's own mail) also becomes a ticket, but one that is closed at once, hidden from the default queue,
+never notifies anyone and never reopens. A person's answer to the site's own mail stays a person's, even when it
+was sent from a CRM or marketing tool.
 
 The helpdesk ships in **shadow mode**: it reads the mailbox and writes tickets, and **sends nothing**. There is no
 reply composer, no acknowledgement and no notification, and nothing in Outlook changes (no mail is marked read,
@@ -19,7 +20,7 @@ only phase H1 plus merge and spam from H2 is built.
 |---|---|
 | **Queue** | People's open tickets (new, open, pending), most recent activity first. A dot marks an unread customer message. |
 | **My Tickets** / **Unassigned** | The same list, assigned to you / to nobody. |
-| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here. There is no merge here: nothing is merged into automated mail or spam. |
+| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here. A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
 | **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry**. |
 | **Categories**, **Settings** | Ticket categories; the helpdesk's limits, retention periods and switches, under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
 
@@ -83,7 +84,50 @@ its thread lands on the person's ticket.
    make a message automated; **anything uncertain is human**. Content-only signs become hints (flags such as
    `possible_auto_reply`). A human message is also scored by the Mail app's rule-based scam checks (never the
    optional Bedrock review): high → spam, medium → a "suspicious" flag. A message that claims the site's address
-   without proof is flagged suspicious.
+   without proof is flagged suspicious. In more detail:
+   - **Replies to the site's mail** (`ingest/replies.py`, before classifying): a message whose In-Reply-To or
+     References name an email the site sent (the telemetry's `OutboundEmail`, kept 180 days), or, for an email sent
+     without a Message-ID the site knows (Graph JSON: campaign mail carrying a sign-in link), a reply from the address
+     it went to with the same subject once "RE:", "Automatic reply:" and gateway tags such as "[EXTERNAL]" come off,
+     sent at most `reply_match_window_days` (30) before. A message whose In-Reply-To or References name a message of
+     a **person's ticket** (not automated mail or spam) counts too: a follow-up in the conversation, most often to an
+     answer staff wrote from the mailbox in Outlook, which the site never records (it names no email the site sent,
+     so it is attributed to no address). Such a reply is never list or bulk mail on **weak** signals alone: `List-Unsubscribe` and the other unsubscribe headers, an email service provider's or CRM's own headers
+     (SendGrid, Mailchimp, HubSpot, Salesforce `X-SFDC-*`, …), `Precedence: bulk`, a no-reply sender, or Exchange's
+     bulk complaint level. Those become hints on it (`bulk_headers_on_reply`), so a person who answers a campaign
+     from a CRM tool lands in the queue. A list's **distribution** (`List-Id`, `List-Post`, `Precedence: list`) still
+     makes it list mail, flagged `reply to our mail` (decision to confirm), and the spam checks always apply. Every
+     verdict on a reply carries the hint `replies_to_site_mail`, and a reply to a campaign email opens a ticket
+     linked to that campaign either way.
+   - **Bulk complaint level.** Exchange's BCL (`X-Microsoft-Antispam: BCL:n`) at or above `bulk_bcl_threshold` (7,
+     Exchange Online's own default) makes a message list or bulk mail (a weak signal); it is shown with the
+     authentication results.
+   - **Automatic replies** (`autoreply.py`): `Auto-Submitted` (not `no`), `X-Autoreply`, `X-Autorespond` and the
+     other responder headers, `Precedence: auto_reply`, and the automatic-reply subject prefixes in about twenty
+     languages. Exchange's rule markers (`X-MS-Exchange-Inbox-Rules-Loop`, `X-MS-Exchange-Generated-Message-Source`)
+     make a message an automatic reply only with a notice's wording, since a rule may also redirect a person's
+     message. What the reply says chooses its subtype, read only above the quoted original (Outlook's header block,
+     also as an HTML-only message's text gives it, "On … wrote:", `>` lines, an original-message banner), so the
+     site's own campaign text, quoted back, never decides: an **absence** (out of office, vacation, leave, "until
+     Monday", in English, Spanish, French, German, Portuguese, Italian and Dutch) makes it a vacation reply, and only
+     otherwise does wording that the person **left** (no longer with, has left, retired, mailbox closed, "ya no
+     trabaja", "ne fait plus partie", "nicht mehr im Unternehmen", …) make it a left-the-organisation notice. A notice
+     that says someone left but also mentions a closure, travel or a return (holidays, a break, weekends, "until the
+     20th", "upon my return", …) is a vacation reply too, and wording that says only that **nobody reads the
+     mailbox** ("this inbox is not monitored") is no notice at all: holiday, weekend and shared mailboxes say so too.
+     An out-of-office reply is therefore never evidence against an address (the price: a real notice that also
+     mentions a holiday is not counted). A notice's **named address** (a new address or someone to
+     contact instead, by the words before it) is kept as a hint, never verified; the sender's, the site's, no-reply
+     and report addresses and the address the site mailed are never one.
+   - **Loop protection.** Replying to the site's mail never turns an automatic reply into a person's message, so an
+     automatic reply to an automatic reply stays automated (it joins its thread and changes nothing). A person's
+     message that must not be answered automatically carries the hint `no_auto_response`: RFC 3834's markers (it
+     came through a list or a bulk sender, asks for no automatic reply, or has no return path), and also a message
+     whose own text looks automated (an absence, a left-the-organisation notice, a system acknowledgement, a receipt)
+     or that claims the site's address without proof, since a responder that marks nothing would answer an
+     acknowledgement with another. `shadow.automatic_reply_allowed` is the gate any later acknowledgement or
+     notification must pass: false in shadow mode, for automated mail, for a message on a ticket that is automated or
+     spam, and for such messages.
 4. **Threading** (`matching.py`), first match wins: `In-Reply-To`/`References` naming a message of a ticket (a
    reply to a campaign email instead opens a ticket linked to the campaign); the subject token `[I2G-#1234]`
    (also without brackets) **only if the sender is a participant** of that ticket (anyone can type a number); the
@@ -116,7 +160,12 @@ takes the highest number plus one. Display: `I2G-#1234`.
 | Bodies of automated mail / of spam | | 90 / 30 days after arrival |
 | Tickets (number, subject, requester, dates, audit trail) | `helpdesk.Ticket`, `TicketEvent` | 1,095 days after closing |
 
-The raw MIME is never kept: the mailbox holds the original. The worker's hourly maintenance runs the purge
+The inbound queue row also keeps what the import made of a message (`result`): its ticket and, for a reply to the
+site's mail, the email it answers (`site_mail`), how that was found (`site_match`: `message_id` or
+`recipient_subject`) and the address that email went to (`site_recipient`); for a left-the-organisation notice, the
+address it names instead (`named_contact`, `named_contact_kind`). Email Monitoring → Bounced addresses counts the
+notices from these ([Email monitoring](email-monitoring.md#counting)). The raw MIME is never kept: the mailbox holds
+the original. The worker's hourly maintenance runs the purge
 ("Helpdesk retention") and restarts the ingest chain if mail waits ("Helpdesk ingest scheduling"). Every helpdesk
 model and `core.inboundmessage` are in `safe_orm`'s `DENIED_MODEL_LABELS`: the AI assistant and `/admin-api/` can
 neither read nor write them.
@@ -150,6 +199,8 @@ intake's own controls ([Intake controls](#intake-controls)).
 | `reopen_window_days` | 14 | A reply within this many days after closing reopens the ticket. |
 | `flood_threshold`, `flood_window_minutes` | 10, 60 | Grouping of many new tickets from one sender. |
 | `spam_scl_threshold` | 5 | Exchange spam confidence level from which mail is spam. |
+| `bulk_bcl_threshold` | 7 | Exchange bulk complaint level from which mail is list or bulk mail (Exchange Online's own default bulk threshold); never on its own for a reply to the site's mail. |
+| `reply_match_window_days` | 30 | How long after an email the site sent without a Message-ID (one carrying a sign-in link) a reply to it is recognised by its sender and subject (at most 180, the telemetry's retention). |
 | `backfill_age_hours` | 24 | Mail imported later than this after it arrived is marked backfilled. |
 | `automated_retention_days`, `spam_retention_days`, `closed_body_retention_days`, `attachment_retention_days`, `ticket_retention_days` | 90, 30, 730, 365, 1095 | Retention (above). |
 
@@ -201,8 +252,9 @@ saves every column and would overwrite a running scan's lease.
 ## Deployment
 
 1. Migrations `core.0046_inbound_message` (the queue table), `helpdesk.0001_initial` (the helpdesk tables and,
-   on PostgreSQL, the ticket number sequence) and `helpdesk.0002_intake_state` (the intake's state table). No data
-   migration.
+   on PostgreSQL, the ticket number sequence), `helpdesk.0002_intake_state` (the intake's state table) and
+   `helpdesk.0003_reply_detection_settings` (`bulk_bcl_threshold` and `reply_match_window_days`, with database
+   defaults for the rolling deploy). No data migration: messages imported before the release keep their verdicts.
 2. The background worker (`itg-background-worker`) and `BACKGROUND_JOBS_ENABLED` are required: the scan and the
    import are background jobs. Nothing happens without them.
 3. The Microsoft Graph mailbox scope must grant **read** on the sending mailbox, as for bounce processing. No new
@@ -224,6 +276,15 @@ saves every column and would overwrite a running scan's lease.
 - **A very dense Inbox stalls the intake's catch-up** as it does bounce processing's: it lists with the same bounds
   ([Email monitoring, Limitations](email-monitoring.md#limitations)).
 - **Inline images are not shown** in the message (they are listed as attachments).
+- **Replies are recognised only to mail the telemetry still holds** (180 days) and, for mail sent without a
+  Message-ID, only from the address mailed with the same subject, or by a message of a person's ticket they name; a
+  reply to older mail, or from another address of the person, is classified on its own headers. So is a first answer
+  to an email staff wrote in Outlook (the site never records those), which a CRM tool's bulk headers can still hide
+  as bulk mail: check **Automated & Spam**. A reply through a **mailing list** stays list mail (flagged; decision to
+  confirm).
+- **Notice wording is read in seven languages** (English, Spanish, French, German, Portuguese, Italian, Dutch); in
+  others an automatic reply is still recognised by its headers and subject prefix, as "other". The named address of a
+  notice is whatever its text gives: a hint for staff to check, never used on its own.
 - **Graph `conversationId`** can change when an outsider replies, and every reply to one blast may share it; it is
   only a fallback, and only for participants.
 - No full-text search over bodies, no link of a ticket to an event or registration, no blocked-sender list (plan

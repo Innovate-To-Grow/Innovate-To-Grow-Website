@@ -73,7 +73,9 @@ provider call, retries included; 429 incidents and response times are attempt fi
    (every `bounce_scan_interval_seconds`, default 10 minutes, never under a minute; after 2 minutes when it
    stopped at its message budget; later when Microsoft sent a longer `Retry-After`). The worker's hourly
    maintenance ("Email bounce scan scheduling") restarts the chain at start-up or if it broke. **Scan now** on the
-   dashboard queues one at once. Finished scan jobs older than a week are deleted. The card shows the interval and
+   dashboard queues one at once; while processing is paused, switched off or cannot read the mailbox it queues
+   nothing and says why (the card greys the button out or hides it then). Finished scan jobs older than a week are
+   deleted. The card shows the interval and
    the catch-up the scans really follow (it reads them from the code that schedules them), and lists every other
    app that reads the same Inbox on its own schedule, with its cadence, state and a link to its own controls: the
    [helpdesk](helpdesk.md)'s intake, every 2 minutes (`inbox_scan_interval_seconds`).
@@ -102,10 +104,9 @@ provider call, retries included; 429 incidents and response times are attempt fi
    input is treated as hostile: parsing uses the `compat32` policy, every header is cut to 998 characters before
    it is decoded, at most 50 recipients are read per report, texts are read only up to 64 KB, and a report the
    database refuses is skipped and counted instead of blocking later scans.
-5. **Classification** (RFC 3463): `delayed` action → Delivery delayed; `5.7.x` → Rejected; other `5.x.x` →
-   Hard bounce, except passing conditions (mailbox full `5.2.2`, too large `5.3.4`/`5.2.3`, expired
-   `5.4.7`/`5.4.300`, routing loop `5.4.6`, content `5.6.x`, mail system `5.3.x`) → Soft bounce; a failed
-   `4.x.x` → Soft bounce; no status code → Unknown delivery status. "Permanent" follows the status class.
+5. **Classification**: each failed or delayed recipient gets a **category** (what went wrong) from its SMTP reply
+   code and enhanced status code, the diagnostic text refining only a generic code, and the coarse classification
+   (hard, soft, rejected, delayed, unknown) derived from the category. See [Bounce categories](#bounce-categories).
 6. **Matching, without guessing.** *Exact*: the report quotes the original `Message-ID` and a recorded email
    carries it (every MIME send). *Inferred*: no `Message-ID` can match (Graph's JSON form, used for mail that
    carries a credential, returns none) and exactly one recorded email went to the same recipient with the same
@@ -123,6 +124,60 @@ provider call, retries included; 429 incidents and response times are attempt fi
 A matched bounce changes only the email's **delivery status** (its API status stays "accepted"). The site does
 **not** resend, suppress or unsubscribe anyone because of a bounce, and does not change the campaign's recipient
 log: those are business decisions for staff, made on the **Bounced addresses** page (below).
+
+### Bounce categories
+
+`apps/core/services/email/bounces/classify.py`, with its tables in `bounces/rules/codes.py` (status codes) and
+`bounces/rules/phrases.py` (diagnostic phrases). Only **Address does not exist** and **Mailbox disabled** are evidence
+against an address; everything else is temporary, about our own sending, about the recipient's policy, or unclear.
+
+| Category | Coarse classification | Decided by (examples) | What it means |
+|---|---|---|---|
+| **Address does not exist** (`hard`) | Hard bounce | `5.1.1`, `5.1.2`, `5.1.3`, `5.1.6`, `5.1.10`; `5.4.1` (Exchange: no such recipient in the tenant), `5.4.4`, `5.4.310`; text such as "user unknown", "no such user", "does not exist", "doesn't have a … account" on a generic code | Strong evidence: mark it undeliverable or replace it. |
+| **Mailbox disabled** (`mailbox_disabled`) | Hard bounce | `5.2.1` (unless its text makes it temporary, see Rules); text such as "account is disabled", "inactive mailbox", Yahoo's `554.30`; a **0 KB size limit**; a rejection saying the person **left the organisation** ("is no longer with Contoso", "has left the company", "address is no longer valid", "mailbox has been retired") | Strong evidence: replace the address, or mark it undeliverable. |
+| **Mailbox full** (`mailbox_full`) | Soft bounce | `5.2.2`, `4.2.2`; "over quota", "mailbox full" | Temporary: counts toward the repeated-failure threshold only. |
+| **Temporary failure** (`transient`) | Soft bounce | every other `4.x.x`; `5.4.x` expiry, DNS and connection codes (`5.4.300`, `5.4.312`, `5.4.316`, `5.4.7`, `5.4.14` …); `5.3.x`, `5.6.x`, `5.2.3`/`5.3.4` (message too large); text such as "connection timed out", "connection refused", "DNS query failed", "try again later" on a generic code, or Gmail's "receiving mail at a rate" on a `5.2.1` | The address is probably fine; Exchange already retried. Counts toward the threshold only; the next campaign tries again. |
+| **Spam or reputation rejection** (`spam_rejected`) | Rejected | `5.7.9` (Yahoo "policy reasons"), `5.7.20`–`5.7.29` (SPF, DKIM, DMARC, reverse DNS), `5.7.350`, `5.7.501`–`5.7.503`, `5.7.506`–`5.7.509`, `5.7.511`, `5.7.513`, `5.7.606`–`5.7.649`, `5.7.700`–`5.7.749`, `5.7.750`, `5.1.7`/`5.1.8` (our sender address); text such as "spam", "block list", "reputation", "Spamhaus", Yahoo `TSS04` | **Our sending side:** reputation, sender authentication or content. Not the contact. |
+| **Relay denied** (`relay_denied`) | Rejected | `5.7.54`, `5.7.57`, `5.7.60`, `5.7.64`; text such as "relay access denied", "unable to relay" | **Our sending side:** the sending route or authorisation (connector, sending mailbox, SPF). Not the contact. |
+| **Recipient policy rejection** (`policy_rejected`) | Rejected | any other `5.7.x` (restricted groups `5.7.12`, `5.7.124`, `5.7.133`–`5.7.136`, a generic `5.7.1`); text such as "not authorized", "access denied" | The recipient's server rules; no action on the contact. |
+| **Delayed** (`delayed`) | Delivery delayed | the DSN action `delayed` | Still retrying, not a failure. |
+| **Unknown failure** (`unknown`) | Unknown delivery status | no code; a generic code (a bare `5.0.0`, Exchange's `5.0.350` "remote server returned an error") or an unrecognised one with no recognisable reason | Unclear: counts toward the threshold only. Read the diagnostic. |
+
+**Rules.**
+
+- **Specific codes win.** The diagnostic text refines only a generic code (`x.0.x`, `x.y.0`, `5.5.x`, `5.7.1`, `4.7.x`)
+  or a report with no code, so a spam word can never turn a `5.1.1` into a rejection, and an expiry code is never read
+  as a missing address. `5.2.1`, `5.4.1` and `5.4.4` (used for more than one thing) may only be made temporary by
+  the text: Gmail returns `5.2.1` both for a disabled account and for a recipient "receiving mail at a rate that
+  prevents additional messages from being delivered", a receiving limit that typically lifts within a day.
+- **A temporary `4.x.x` is never a missing address or a disabled mailbox**, whatever the text says; text may only make
+  it a spam or relay rejection or a full mailbox.
+- **A generic status quoting a specific code**: a report whose status is generic (`5.0.0`) but whose diagnostic quotes
+  the receiving server's specific code of the same class (`550 5.1.1 …`) is decided by that code.
+- **A rejection saying the person left is a disabled mailbox.** An organisation that refuses a departed employee's
+  mail (a transport rule's "Jordan is no longer with Contoso" on `5.7.1`, or such text on a generic code) has closed
+  the address, so it is **Mailbox disabled**. A temporary code with that text stays temporary, a specific code still
+  decides, and "no longer valid" about our own sending (a certificate, say) stays a policy refusal. An *automatic
+  reply* saying so is not a bounce report: the helpdesk classifies it, and Bounced addresses counts it as a
+  [left-the-organisation notice](#counting).
+- **A 0 KB size limit is a disabled mailbox.** A "message too large" report (`5.2.3`, `5.3.4`, or a generic code with
+  size wording) whose diagnostic gives a maximum size of 0 (servers disable a mailbox that way) is **Mailbox disabled**;
+  any other size limit is a temporary message problem.
+- **Yahoo.** "This user doesn't have a yahoo.com account" is a missing address, "This mailbox is disabled (554.30)" a
+  disabled mailbox, and "Message not accepted for policy reasons" (`5.7.9`, `PH01`) a spam or reputation rejection;
+  a bare `554 delivery error` with no reason (or Exchange's `5.0.350` wrapping one) is **unknown**.
+- **Phrase order** when a generic code's text matches several: relay, spam or reputation, disabled mailbox (then left
+  the organisation), missing address, full mailbox, message too large, temporary, policy. A sender-side rejection is checked first, so text
+  naming both spam and a missing address is never strong evidence against the address.
+- "Mailbox unavailable" alone is **not** a missing address: RFC 5321 gives it for policy refusals too.
+- The phrases follow Exchange Online, Gmail, Yahoo and gateway wording and are matched case-insensitively against at
+  most 1,000 characters with bounded patterns, so hostile input stays linear. **Tune them from real reports**: filter
+  Bounce Reports by category (for example *Unknown failure*) and read the diagnostics.
+
+**Stored per report:** `category`, `smtp_code` (the reply code, such as `550`), the derived `classification`,
+`is_permanent` (whether the address itself will not work: true for a missing address or a disabled mailbox, false for
+the rest, empty when unknown) and the reason shown. An email's worst classification (hard, rejected, soft, unknown)
+is still kept on the email.
 
 ### Reading older mail again
 
@@ -163,10 +218,28 @@ subscription, and every change is a staff action with a confirmation page and an
 
 ### Counting
 
-- **Sources.** Microsoft Graph bounce reports (`core.EmailBounce`): hard, soft, rejected, delayed and unknown, each
-  counted once. Amazon SES events on campaign recipient logs (`RecipientLog`): permanent (shown as hard), transient
-  (soft) and undetermined (unknown) bounces, and spam **complaints**. "Left the company" auto-replies are not counted
-  yet: they need the helpdesk's inbound queue.
+- **Sources.** Microsoft Graph bounce reports (`core.EmailBounce`), each counted once, by coarse classification (hard,
+  soft, rejected, delayed, unknown) and by [category](#bounce-categories) (`BouncedAddress.category_counts`, with the
+  latest report's `last_category`). Amazon SES events on campaign recipient logs (`RecipientLog`): permanent (shown as
+  hard), transient (soft) and undetermined (unknown) bounces, and spam **complaints**. **Left-the-organisation
+  notices** (the `inbound` source, `addresses/notices.py`): automatic replies the helpdesk classified as "left the
+  organisation" (the person left, retired or changed address, or the mailbox is closed;
+  [Helpdesk](helpdesk.md#how-a-message-becomes-a-ticket)) that answer an email the site sent, counted against **the
+  address that email went to** (the notice may come from another address of the same organisation, such as an alias
+  or the mailbox answering for a departed person; one from another organisation, where the email was redirected, is
+  attributed to nobody), with the first and latest notice, the address the latest one names instead (a hint from its text, never verified) and its helpdesk
+  ticket. Only such matched notices count, as decided: one that answers nothing the site sent says nothing about an
+  address it mails, and anyone can write one. **Out-of-office replies never count**: a notice that mentions an absence
+  (a closure, travel or a return included: holidays, a break, weekends, "until the 20th") is classified as one, even
+  when it also says someone left, and "this mailbox is not monitored" alone is no notice that someone left. Notices are read from `core.InboundMessage` in
+  processing order from their own cursor (they stay counted after the inbound queue's 90-day retention), and counting
+  starts with the notices imported after this release (earlier ones did not record the email they answer).
+- **Reports without a category** (saved by the previous release while a deploy rolled out) are classified before each
+  Graph batch is counted. A **parked** Graph cursor (far in the future: no report is past it, so a release that
+  predates categories counts nothing) makes the next count start the Graph counts again from the stored reports,
+  recorded as an automatic rebuild. `mail.0026` parks it (see Deployment), and so does the hourly refresh when an
+  address's Graph counts by classification and by category do not add up to the same number (every report counted by
+  this release adds one to each, so only a report counted by the previous release during a rollout can cause that).
 - **Kept after purges.** Counts are stored on the row, so they outlive the 365-day bounce retention; a deleted
   campaign keeps its SES counts too.
 - **Incremental and exactly once.** Each source is read from a stored cursor (`mail.BounceAggregationState`), one
@@ -181,32 +254,56 @@ subscription, and every change is a staff action with a confirmation page and an
   reports matched to an email the site sent (exactly or inferred). An address whose reports are all unmatched (and
   with no SES event, which AWS signs) is marked "unmatched", its suggestion says to check the reports first, and the
   **Evidence** filter separates the two.
-- **Reopening.** A matched hard or rejected bounce (or an SES permanent bounce or complaint) that arrives after an
-  address was dismissed sets it back to *Open*: queue state only. An unmatched report never reopens anything.
-- **Rebuild counts…** (I2G Master only) starts every count again from the records still stored (review state,
-  suppressions and the history stay). Counts of purged reports cannot be rebuilt; the confirmation page says so. It
-  leaves an audit row and an admin history line.
+- **Reopening.** Only strong evidence reopens a dismissed address (queue state only): a report that the address does not
+  exist or that its mailbox is disabled, matched to an email the site sent, or an SES permanent bounce or complaint,
+  arriving after the dismissal. Temporary failures, rejections (spam, relay, policy), delays and unknown failures
+  never reopen anything, and neither does an unmatched report or a left-the-organisation notice.
+- **Rebuild counts…** (I2G Master only) first classifies every stored Graph report again with the current rules (so a
+  change to the rules reaches the reports already received), then starts every count again from the records still
+  stored (review state, suppressions and the history stay). Left-the-organisation notices are kept as counted: a notice
+  is never classified again, and the inbound queue keeps only 90 days. Counts of purged reports cannot be rebuilt; the
+  confirmation page says so. It leaves an audit row (with how many reports changed) and an admin history line.
 - **Member links** are re-checked hourly for at most `address_refresh_rows_per_run` addresses per run, continuing
   where the last run stopped, so a very long list is covered over several runs.
 
 ### The list and one address
 
-- **Columns:** counts by type, first and last report, the last code and reason with the remote server, the member
+- **Columns:** counts by category (Graph), by type (SES) and of left-the-organisation notices, first and last report
+  (or notice), the latest report's **category**
+  with what it means, the last code and reason with the remote server, the member
   (linked for staff who also hold the Members app) with Active / Inactive / Staff badges, the address's **role**
   (primary, secondary, other, unlinked contact, not a contact, or **ambiguous** when one address is saved in several
   letter cases), verified / subscribed / suppression flags, campaigns, review status and a text-only suggestion.
-- **Filters:** status tabs (Open by default), type, role, member (has a member, none, active, inactive, staff),
-  suppressed, evidence (matched to the site's mail, or unmatched reports only), suggestion, campaign, last-report date
+- **Filters:** status tabs (Open by default), type (including "Has a left-the-organisation notice"), **category** (has a report of that category; for a missing address,
+  a temporary failure and an unknown failure, also the SES permanent, transient and undetermined bounces), role,
+  member (has a member, none, active, inactive, staff),
+  suppressed, evidence (matched to the site's mail, which every counted notice is, or unmatched reports only),
+  suggestion, campaign, last-report date
   range and a search on the address or member name; sortable
   columns; **Export these rows (.xlsx)** writes the filtered list (every cell formula-safe, at most
   `address_export_max_rows` rows). Roles and members are read live on every page; the filters use the values last
   refreshed (on each page, after each count and hourly).
-- **One address** shows the Graph reports still stored, the SES events, the campaigns, the member card (name,
+- **One address** shows the Graph reports still stored, the SES events, its left-the-organisation notices (how many,
+  the latest, the address the latest one names and what it says that address is, and a link to the notice's helpdesk
+  ticket for staff who hold the Helpdesk app), the campaigns, the member card (name,
   status, registrations; their other addresses with their flags, and their phones, only for staff who also hold the
   Members app, as on the Member admin), every action with why it is unavailable, and the history.
-- **Suggestions** (never applied): a complaint → unsubscribe; a hard bounce → mark undeliverable or replace; at
-  least `address_soft_bounce_repeats` soft bounces over `address_soft_bounce_days` days → consider undeliverable;
-  rejections only (5.7.x) → probably our reputation or policy, no action.
+- **Suggestions** (never applied; the first that applies wins):
+
+  | Suggestion | When |
+  |---|---|
+  | Unsubscribe: they reported us as spam | A spam complaint. |
+  | Mark undeliverable or replace the address | A report that the address does not exist, or an SES permanent bounce. |
+  | Replace the address (the mailbox is disabled), or mark it undeliverable | A disabled-mailbox report. |
+  | May have left: an automatic reply says so. Check the notice, then replace the address or mark it undeliverable | A left-the-organisation notice (none of the above). The Replace email page shows the address the notice names as a hint; nothing is filled in. |
+  | Consider marking undeliverable (repeated temporary failures) | At least `address_soft_bounce_repeats` temporary failures (temporary, full-mailbox and unknown reports, SES transient and undetermined bounces) over at least `address_soft_bounce_days` days. |
+  | Our sending side: relay denied … | A relay refusal and none of the above. |
+  | Our sending side: spam or reputation rejection … | A spam or reputation rejection and none of the above. |
+  | Their server's policy refused the message, not the address: no action | A policy rejection and none of the above. |
+
+  A temporary failure (a connection timeout, a DNS failure, an expired delivery, a full mailbox) never suggests
+  marking an address undeliverable on its own. "Unmatched reports only: check them first" is shown only beside a
+  suggestion about the address itself.
 
 ### Actions
 
@@ -261,10 +358,10 @@ bulk-mail suppression list (`apps.mail.services.suppression`). Addresses compare
 | Overview data (JSON) | `/admin/mail/email-monitoring/data/` |
 | Email log | `/admin/mail/email-monitoring/emails/` (search, category, API status, delivery, last error, retried, campaign, sort, page size) |
 | One email | `/admin/mail/email-monitoring/emails/<uuid>/` |
-| Bounce reports | `/admin/mail/email-monitoring/bounces/` (classification, match method, search) |
+| Bounce reports | `/admin/mail/email-monitoring/bounces/` (`category`, classification, match method, search on recipient, codes, reason, diagnostic and subject) |
 | One campaign | `/admin/mail/email-monitoring/campaigns/<campaign uuid>/`, or **Delivery monitoring** on a sent campaign |
 | Bounce processing controls | POST `/admin/mail/email-monitoring/bounce-processing/` (`action=scan|pause|resume`; `action=rescan&since=YYYY-MM-DDTHH:MM`; `action=lookback&lookback_hours=N`, empty for the default) |
-| Bounced addresses | `/admin/mail/email-monitoring/addresses/` (status, type, role, member, suppressed, suggestion, campaign, `start`/`end`, `q`, sort, page size) |
+| Bounced addresses | `/admin/mail/email-monitoring/addresses/` (status, type, `category`, role, member, suppressed, suggestion, campaign, `start`/`end`, `q`, sort, page size) |
 | Bounced addresses export | `/admin/mail/email-monitoring/addresses/export/` (the same filters) |
 | One bounced address | `/admin/mail/email-monitoring/addresses/<uuid>/` |
 | Bounced-address action | POST `/admin/mail/email-monitoring/addresses/<uuid>/<action>/` (`step=confirm`, then `step=apply` with the page's `fingerprint`) |
@@ -301,7 +398,7 @@ The pages are a tab of **Delivery Operations** in the Broadcast Delivery section
 | `ndr_subject_prefixes`, `ndr_sender_local_parts` | see the file | How a listed message is recognised as a report candidate. |
 | `address_batch_size`, `address_page_rows` | `500`, `1000` | Bounced addresses: rows counted per transaction, and at most this many when the list loads. |
 | `address_settle_seconds` | `120` | A report is counted only once it is this old (a late-committing transaction is never skipped). |
-| `address_soft_bounce_repeats`, `address_soft_bounce_days` | `3`, `7` | When "consider marking undeliverable" is suggested for soft bounces. |
+| `address_soft_bounce_repeats`, `address_soft_bounce_days` | `3`, `7` | When "consider marking undeliverable" is suggested: this many temporary failures (temporary, full-mailbox and unknown reports, SES transient and undetermined bounces) over at least this many days. A temporary failure never suggests more on its own. |
 | `address_export_max_rows`, `address_bulk_max_rows` | `10000`, `500` | Rows in one Bounced addresses export; addresses one bulk action may change. |
 | `address_refresh_rows_per_run` | `5000` | Addresses whose member links the hourly maintenance re-checks per run. |
 
@@ -327,6 +424,30 @@ form saves every column and would overwrite a running scan's lease.
 4. Check **Email Monitoring → Bounce processing** after ~10 minutes: "Running" with a recent successful scan.
 5. Migration `mail.0023_bounced_address` adds the four Bounced addresses tables (no data migration). The first page
    load and the worker's next hourly maintenance count the bounce reports and SES events already stored.
+6. Bounce categories: `core.0047_email_bounce_category` adds `EmailBounce.category` and `smtp_code` and classifies
+   every stored report again (a frozen copy of the rules); each matched email's worst classification is set again.
+   `mail.0026_bounced_address_categories` adds the category counts and the new suggestions and, when Graph reports
+   were counted before, **parks** the Graph counting cursor far in the future (`aggregate.PARKED`). The release
+   still running during the rollout then counts no Graph report, and the first Graph count by the new release (the
+   Bounced addresses page, or the worker's hourly maintenance) starts the Graph counts again from the stored
+   reports, once, and records it as an automatic rebuild. SES counts, review state, suppressions and the history
+   stay; nothing is lost while every report is younger than `bounce_retention_days`. The new columns have database
+   defaults, so the previous release keeps saving reports during the rollout; whatever it saves without a category is
+   classified before the new release counts it. No manual step is needed; **Rebuild counts…** is there if the counts
+   ever look off.
+7. Left-the-organisation notices: `mail.0027_bounced_address_left_org` adds the notice counts (database defaults for
+   the rolling deploy) and the "May have left" suggestion; `helpdesk.0003_reply_detection_settings` adds the
+   helpdesk's bulk and reply settings. No backfill: the helpdesk records the email a notice answers from this release
+   on, so notices are counted from the first import after the deploy (the page and the worker's hourly maintenance
+   count them). A left-the-organisation **rejection** (a bounce report) is a disabled mailbox from this release on;
+   **Rebuild counts…** applies that to the reports already stored.
+
+   **Image rollback** (an ECS rollback never reverses DDL): an image from before categories finds every column it
+   reads (the new ones have database defaults), but it never unparks the Graph cursor. If it takes over before the new
+   release has counted once, its Bounced addresses page counts no new Graph report and says "Not counted yet: none"
+   (Bounce Reports still lists them). Press **Rebuild counts…** once on that release. Deploying the new release again
+   needs no step: the Graph counts start again at its first count when the cursor is still parked, or after the hourly
+   refresh finds counts made without categories (they do not add up).
 
 Access: every page requires the **Mail** app (`Member.admin_apps`, or superuser), like the Delivery
 Dashboard; the controls are POST with CSRF. Bounced-address actions that change a contact email or a member also need
@@ -361,6 +482,16 @@ writes, so a suppression can only be set or lifted on the page, under its guards
 - **History.** Emails sent before monitoring began are not in the telemetry and nothing is reconstructed.
   A campaign page shows how much of the campaign the telemetry covers and, beside it, the campaign's own
   recipient-log counts as recorded at the time.
+- **Categories come from the report's codes and, for generic codes, its wording.** The phrase lists follow the usual
+  wording of the big providers and gateways; a server that words a failure differently may land in *Unknown failure*
+  (which only counts toward the threshold). Only the delivery-status part is read for a structured report (a "0 KB"
+  size limit given only in the human-readable text is not seen), and an old-style bounce whose text has no `x.y.z`
+  code stays unknown. Check the diagnostics on Bounce Reports and tune `bounces/rules/phrases.py`; then **Rebuild
+  counts…** applies the new rules to the stored reports.
+- **Left-the-organisation notices** are counted only when they answer an email the site sent (exactly, or from the
+  address mailed with the same subject when the email had no Message-ID) and the helpdesk is on: with the helpdesk
+  switched off or its intake paused, none are classified. A notice is evidence to check, never applied, and the
+  address it names is a hint from its text.
 - **Reports can be forged.** Anyone can send the mailbox a message shaped like a bounce report. A forged report
   can only change the dashboard (it cannot resend, suppress or change any campaign record), an exact match
   needs the original `Message-ID` (known only to the email's recipients) and an inferred one the recipient and
@@ -382,6 +513,8 @@ writes, so a suppression can only be set or lifted on the page, under its guards
 | "No recent successful scan" | The worker is not running, or every scan is held back (see the last error and the next scan time). |
 | "Last scan failed" with `403` | The Exchange restriction changed; run the access check. |
 | Many unmatched bounce reports | Reports about mail staff sent from Outlook, mail sent before monitoring began, or ambiguous JSON sends. |
+| A report's category looks wrong (for example a timeout shown as anything but *Temporary failure*) | Read its status code and diagnostic on Bounce Reports. A specific code decides on its own; for a generic code, add or adjust the wording in `bounces/rules/phrases.py` (with a test), deploy, then **Rebuild counts…**. |
+| Many *Spam or reputation rejection* or *Relay denied* reports | Our sending, not the contacts: check the sending domain's SPF, DKIM and DMARC, block lists, the Microsoft 365 connectors and sending mailbox, and the campaign's content. |
 | An attempt "Interrupted: outcome unknown" | The process stopped mid-send (deploy, crash); treat as possibly sent. |
 | "A scan of … is running, so the checkpoint was not moved" | Wait for the scan to finish (the card shows "running now"; at most `bounce_lease_seconds`), then rescan again. |
 | A rescan reads nothing new | The reports were already recorded (the card's last scan counts them as "already recorded" or "duplicates skipped"), or they were deleted or moved out of the Inbox. |

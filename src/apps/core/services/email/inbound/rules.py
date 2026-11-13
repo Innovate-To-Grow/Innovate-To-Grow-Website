@@ -2,7 +2,8 @@
 
 Only header-level signals (and the auto-reply subject prefixes, which mail systems write themselves) put a message
 in an automated class; phrases in the text only choose the subtype of a message already known to be an automatic
-reply, or add a hint to a human one. Everything is compared case-insensitively.
+reply (or, with one of Exchange's rule markers, make it one), or add a hint to a human one. Everything is compared
+case-insensitively; the phrases cover English, Spanish, French, German, Portuguese, Italian and Dutch.
 """
 
 import re
@@ -33,6 +34,13 @@ AUTO_REPLY_SUBJECT_RE = re.compile(
     r"自动回复|自動回覆|自動応答|자동 회신)\s*[:：]",
     re.IGNORECASE,
 )
+# A reply's or forward's subject prefix ("RE:", "AW:", "Fwd:"), after any gateway tags ("[EXTERNAL]"): the rest of such
+# a subject is the original's (often the site's own), so its words are not the sender's.
+REPLY_SUBJECT_RE = re.compile(
+    r"^\s*(?:\[[^\]\n]{1,40}\]\s*){0,3}"
+    r"(?:re|aw|sv|antw|vs|r|odp|ynt|res|rv|fwd?|fw|wg|tr|enc)\s*(?:\[\d{1,3}\])?\s*[:：]",
+    re.IGNORECASE,
+)
 # Subjects that are only a hint on their own (a person may write them too).
 AUTO_REPLY_HINT_RE = re.compile(r"\b(?:out of (?:the )?office|on vacation|on leave|away from (?:my|the) )", re.I)
 RECEIPT_SUBJECT_RE = re.compile(r"^\s*(?:read|not read|delivered|read receipt|lu|gelesen|le[íi]do)\s*:", re.I)
@@ -42,19 +50,83 @@ CALENDAR_SUBJECT_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Wording of automatic replies that say the address no longer reaches the person (the bounced-addresses evidence).
+# Wording that says the person left, retired or changed address, or that the address is closed: the
+# bounced-addresses evidence (counted only for a notice matched to the site's mail, and never beside an absence).
+# "Has left" is not "left a message" or "left the office" (for the day).
 LEFT_ORG_RE = re.compile(
-    r"\b(?:no longer (?:with|at|work(?:s|ing)? (?:at|for)|employed|in use|active|valid|monitored|being monitored|"
-    r"available|checked)|has left|have left|left the (?:company|organi[sz]ation|university|firm)|"
-    r"(?:is|are) not (?:being )?monitored|not monitored|new (?:e-?mail|email) address|"
-    r"changed (?:my|his|her|their) (?:e-?mail|email)|please (?:update|use) (?:my|the) new|"
-    r"(?:my|this) (?:e-?mail|email) (?:address )?(?:has changed|will be deactivated|is being retired))",
+    r"\bno longer (?:with|at|employed|affiliated|part of|works?|working|in use|active|valid|available|checked|"
+    r"monitored|being monitored)\b|\b(?:has|have) (?:left|retired|departed)\b(?! (?:a|an|you|me|it|this|that|word|"
+    r"messages?|voice ?mails?|feedback|comments?|details|early|already|the (?:office|building))\b)|"
+    r"\bretired (?:from|as of|in|on)\b|"
+    r"\bleft the (?:company|organi[sz]ation|university|college|firm|agency|district|school|department|city|county)\b|"
+    r"\b(?:my|his|her|their) last day (?:at|with) |\blast day of (?:employment|work)\b|"
+    r"\bnew e-?mail address\b|\bchanged (?:my|his|her|their) e-?mail\b|\bplease (?:update|use) (?:my|the) new\b|"
+    r"\b(?:my|this) e-?mail (?:address )?(?:has changed|will be deactivated|is being retired)\b|"
+    r"\b(?:account|mailbox|address|inbox) (?:is|has been|was|will be) (?:closed|deactivated|terminated|retired)\b|"
+    r"\bya no (?:trabaja|labora|forma parte|pertenece|es parte|est[áa] (?:con|en)|se encuentra (?:con|en))\b|"
+    r"\bdej[óo] de (?:trabajar|laborar|formar parte|pertenecer)\b|\bse jubil[óo]\b|"
+    r"\b(?:correo|cuenta|direcci[óo]n)\b[^.\n]{0,40}?\bya no (?:est[áa]|es|se)\b|"
+    r"\bnuev[oa] (?:correo|direcci[óo]n|e-?mail)\b|\bne (?:fait|travaille) plus\b|"
+    r"\ba quitt[ée] (?:la soci[ée]t[ée]|l[’']entreprise|l[’']organisation|l[’']universit[ée]|nos services)\b|"
+    r"\bn[’']est plus (?:en poste|actif|active|valide|utilis[ée]e?|consult[ée]e?)\b|\bnouvelle adresse\b|"
+    r"\bnicht mehr (?:im unternehmen|bei|f[üu]r|t[äa]tig|besch[äa]ftigt|aktiv|g[üu]ltig)\b|"
+    r"\b(?:hat|haben) (?:das unternehmen|die firma|uns) verlassen\b|\bausgeschieden\b|\bneue (?:e-?mail-?)?adresse\b|"
+    r"\bn[ãa]o (?:trabalha|faz parte) mais\b|\bj[áa] n[ãa]o (?:trabalha|faz parte)\b|"
+    r"\bdeixou a (?:empresa|organiza[çc][ãa]o|universidade)\b|\bnov[oa] (?:e-?mail|endere[çc]o)\b|"
+    r"\bnon (?:lavora|fa) pi[ùu]\b|\bnon [èe] pi[ùu] (?:attiv|valid|in uso)|\bnuovo indirizzo\b|"
+    r"\bha lasciato (?:l[’']azienda|la societ[àa]|l[’']universit[àa])\b|"
+    r"\bniet meer (?:werkzaam|in dienst|actief)\b|\buit dienst\b|\bnieuwe? (?:e-?mail)?adres\b",
     re.IGNORECASE,
 )
+# Wording that says only that nobody reads the mailbox: an out-of-office, holiday, weekend or shared mailbox's notice
+# says so too, so it is a hint (``possible_left_org``), never a left-the-organisation notice on its own.
+UNMONITORED_RE = re.compile(
+    r"\b(?:is|are) not (?:being |currently )?(?:monitored|checked|read)\b|\bnot monitored\b|"
+    r"\bno (?:es|est[áa]) (?:monitoreado|supervisado)\b|\bno se revisa\b|\bn[’']est pas (?:surveill|consult)[ée]e?\b|"
+    r"\bwird nicht (?:gelesen|[üu]berwacht)\b",
+    re.IGNORECASE,
+)
+# Wording of an absence with a return: out of office, vacation, leave, travel ("will return your call" is not one).
 VACATION_RE = re.compile(
-    r"\b(?:out of (?:the )?office|on (?:vacation|holiday|leave|annual leave|parental leave)|away from|"
-    r"limited access to (?:my )?e-?mail|will (?:be )?(?:back|return)|return(?:ing)? on|until (?:mon|tue|wed|thu|"
-    r"fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|currently (?:away|traveling|travelling))",
+    r"\bout[- ]of[- ](?:the[- ])?office\b|\booo\b|\bon (?:vacation|holidays?|leave|annual leave|parental leave|maternity leave|"
+    r"paternity leave|medical leave|sick leave|sabbatical|pto|business travel|a business trip)\b|"
+    r"\baway from (?:the |my )?(?:office|desk|e-?mail)\b|\b(?:currently|presently) (?:away|traveling|travelling|out)\b|"
+    r"\b(?:limited|no) access to (?:my )?e-?mail\b|\b(?:will|i[’']?ll) be back\b|\bback in the office\b|"
+    r"\b(?:will|i[’']?ll) return (?:on|to the office|by|in|after)\b|\breturn(?:ing)? (?:to the office )?on\b|"
+    r"\buntil (?:mon|tue|wed|thu|fri|sat|sun|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d{1,2}[/.-])|"
+    r"\bfuera de (?:la )?oficina\b|\bde vacaciones\b|\b(?:estar[ée]|me encuentro|estoy) (?:fuera|ausente|de viaje|"
+    r"de permiso|de licencia)\b|\b(?:regreso|regresar[ée]|volver[ée]|retorno) (?:el|a la oficina)\b|"
+    r"\bacceso limitado (?:a mi|al) correo\b|\bhasta el (?:lunes|martes|mi[ée]rcoles|jueves|viernes|s[áa]bado|"
+    r"domingo|\d)|\babsente? (?:du bureau|jusqu)|\ben (?:cong[ée]s?|vacances|d[ée]placement)\b|\bhors du bureau\b|"
+    r"\bde retour (?:le|au bureau|lundi|mardi|mercredi|jeudi|vendredi)\b|\bnicht im (?:b[üu]ro|haus)\b|"
+    r"\bau[ßs]er haus\b|\babwesend\b|\bim urlaub\b|\bwieder (?:im b[üu]ro|erreichbar|da)\b|"
+    r"\bfora do escrit[óo]rio\b|\bde f[ée]rias\b|\bvoltarei\b|\bestarei (?:fora|ausente)\b|\bfuori (?:ufficio|sede)\b|"
+    r"\bin ferie\b|\bassente (?:fino|dal)\b|\brientrer[òo]\b|\bmet vakantie\b|\bniet op kantoor\b|\bafwezig\b|"
+    r"\bweer aanwezig\b",
+    re.IGNORECASE,
+)
+# Wider wording of an absence or a closure: holidays, breaks, weekends, travel, leave, "until the 20th", "upon my
+# return". A person may write it too, so it never makes a message an automatic reply: it names one already known to
+# be one, and it keeps a notice that also says someone left from counting (an out-of-office reply is never evidence).
+ABSENCE_RE = re.compile(
+    r"\b(?:holidays?|vacations?|break|recess|weekends?|after[- ]hours|time off|pto|for the (?:day|evening|night)|"
+    r"outside (?:of )?(?:our |normal |regular )?(?:office|business|working) hours|leave of absence|out sick|"
+    r"(?:annual|parental|maternity|paternity|medical|sick|family|study|personal|bereavement) leave|sick day|"
+    r"out of (?:town|the country)|travell?ing|on the road|business trip|temporar(?:y|ily)|"
+    r"(?:at|attending) (?:a |an |the )?(?:conference|meeting|workshop|training)|"
+    r"(?:offices?|campus|university|school|building) (?:is |are |will be )?(?:closed|closing)|"
+    r"(?:until|till|through) (?:the )?\d{1,4}(?:st|nd|rd|th)?|(?:upon|on|after|until) (?:my|our|his|her|their) return|"
+    r"when (?:i|we|he|she|they)(?:'re|’re|'m|’m| am| are| is)? (?:back|return|get back|come back)|"
+    r"back (?:on|in|after|from)|(?:i|we)(?:'m|’m|'re|’re| am| are) (?:currently |presently |now )?(?:away|out)|"
+    r"(?:i|we)(?:'ll|’ll| will) be (?:away|out|off|travell?ing)|vacaciones|receso|d[íi]as? festivos?|feriados?|"
+    r"de (?:permiso|licencia|viaje)|incapacidad|fin de semana|(?:a|tras|despu[ée]s de) mi regreso|"
+    r"hasta (?:el |mi )?(?:\d{1,4}|regreso|vuelta)|oficinas? (?:est[áa]n? |permanecer[áa]n? )?cerrad[ao]s?|vacances|"
+    r"cong[ée]s?|jours? f[ée]ri[ée]s?|fermeture (?:annuelle|estivale|des bureaux|du bureau)|d[ée]placement|"
+    r"absente?|jusqu(?:’|')?(?:au|à|a)|(?:à|a|d[èe]s) mon retour|urlaub|ferien|feiertag\w*|dienstreise|abwesen\w*|"
+    r"elternzeit|krank\w*|bis (?:zum |zur )?\d{1,4}|nach meiner r[üu]ckkehr|f[ée]rias|recesso|de viagem|licen[çc]a|"
+    r"at[ée] (?:o |a |dia )?\d{1,4}|ap[óo]s (?:o )?meu retorno|ferie|vacanz[ae]|festivit[àa]|in viaggio|trasferta|"
+    r"malattia|fino al|al mio rientro|vakantie|verlof|feestdag\w*|op reis|ziek\w*|tot (?:en met )?\d{1,4}|"
+    r"na mijn terugkeer)\b",
     re.IGNORECASE,
 )
 # Other systems' automatic acknowledgements, challenge-response and quarantine notices.
@@ -74,8 +146,24 @@ QUARANTINE_LOCAL_RE = re.compile(r"(?:quarantine|spam[-_.]?digest|postmaster-dig
 
 # Headers an RFC 3834 automatic responder (or a vendor's) sets.
 AUTO_REPLY_HEADERS = ("x-autoreply", "x-autorespond", "x-autoreply-from", "x-mail-autoreply")
-# Mailing lists and bulk senders (RFC 2369/2919, and the large email service providers' own headers).
-LIST_HEADERS = ("list-id", "list-unsubscribe", "list-post", "list-help", "list-owner")
+# Exchange's markers on mail one of its Inbox rules or agents generated (a rule's automatic reply, a redirect): they
+# make a message an automatic reply only with the wording of one, as a redirected message can be a person's.
+EXCHANGE_RULE_HEADERS = ("x-ms-exchange-inbox-rules-loop", "x-ms-exchange-generated-message-source")
+# Mailing lists (RFC 2369/2919, 8058)...
+LIST_HEADERS = (
+    "list-id",
+    "list-post",
+    "list-unsubscribe",
+    "list-unsubscribe-post",
+    "list-help",
+    "list-owner",
+    "list-subscribe",
+    "list-archive",
+)
+# ...of which these say a list distributed the message (the others only that its sender offers a way out, which CRM
+# and sales tools add to one-to-one mail too).
+DISTRIBUTION_HEADERS = ("list-id", "list-post")
+# The large email service providers' and CRMs' own headers (Salesforce's on mail sent from a CRM record too).
 ESP_HEADERS = (
     "x-mailchimp-id",
     "x-mc-user",
@@ -93,10 +181,15 @@ ESP_HEADERS = (
     "x-csa-complaints",
     "x-pm-message-id",
     "x-mandrill-user",
+    "x-sfdc-lk",
+    "x-sfdc-user",
+    "x-msfbl",
 )
 BULK_PRECEDENCE = ("bulk", "list", "junk")
 
 SCL_RE = re.compile(r"(?:^|;)\s*SCL\s*:\s*(-?\d+)", re.IGNORECASE)
+# Exchange Online's bulk complaint level, in X-Microsoft-Antispam ("BCL:7;").
+BCL_RE = re.compile(r"(?:^|;)\s*BCL\s*:\s*(\d+)", re.IGNORECASE)
 SPAM_VERDICT_RE = re.compile(r"(?:^|;)\s*SFV\s*:\s*(?:SPM|SKS|SKB)\b", re.IGNORECASE)
 AUTH_RESULT_RE = re.compile(r"\b(spf|dkim|dmarc|compauth)\s*=\s*([a-z]+)", re.IGNORECASE)
 DKIM_PASS_DOMAIN_RE = re.compile(r"\bdkim\s*=\s*pass\b[^;]*?\bheader\.(?:d|i)\s*=\s*@?([A-Za-z0-9.-]+)", re.I)

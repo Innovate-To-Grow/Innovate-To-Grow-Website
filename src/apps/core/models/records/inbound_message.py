@@ -6,7 +6,10 @@ pending rows and turns each into a ticket. Bounce processing reads the same Inbo
 here. ``core`` itself never reads a message body.
 
 Only what the folder listing returns is kept: the subject is cleaned and scrubbed of personal sign-in links and
-token-shaped runs, and no body, recipient list or attachment is ever stored here.
+token-shaped runs, and no body, recipient list or attachment is ever stored here. ``result`` holds what the consumer
+made of the message: for the helpdesk, its ticket, the email the site sent that it answers and the address that email
+went to, and for a left-the-organisation notice the one address its text names instead (Bounced addresses counts
+those notices).
 """
 
 from django.db import models

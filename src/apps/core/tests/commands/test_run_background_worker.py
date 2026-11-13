@@ -19,7 +19,7 @@ from apps.core.services.delivery_rates.maintenance import MaintenanceResult
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
 NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)
 NO_IMPORTS_PURGED = {"expired": 0, "blanked": 0, "deleted": 0}
-NOTHING_COUNTED = {"graph": 0, "ses": 0, "busy": False}
+NOTHING_COUNTED = {"graph": 0, "ses": 0, "inbound": 0, "busy": False}
 
 
 HELPDESK_NOTHING_PURGED = {
@@ -524,14 +524,38 @@ class MaintenanceTaskTests(SimpleTestCase):
     def test_bounced_address_counts_are_logged_only_when_something_changed(self):
         with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
             self.run_patched(
-                count_bounced_addresses=lambda **_kwargs: {"graph": 3, "ses": 1, "busy": False},
+                count_bounced_addresses=lambda **_kwargs: {"graph": 3, "ses": 1, "inbound": 2, "busy": False},
                 refresh_bounced_address_links=lambda **_kwargs: 2,
             )
 
         self.assertEqual(
             logs.output,
-            [f"INFO:{LOGGER_NAME}:Bounced addresses: counted 3 bounce reports and 1 SES events; refreshed 2 addresses"],
+            [
+                f"INFO:{LOGGER_NAME}:Bounced addresses: counted 3 bounce reports, 1 SES events and 2 "
+                "left-the-organisation notices; refreshed 2 addresses"
+            ],
         )
+
+    def test_left_the_organisation_notices_alone_are_logged_and_an_older_result_still_reads(self):
+        with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
+            self.run_patched(
+                count_bounced_addresses=lambda **_kwargs: {"graph": 0, "ses": 0, "inbound": 1, "busy": False},
+                refresh_bounced_address_links=lambda **_kwargs: 0,
+            )
+        with self.assertLogs(LOGGER_NAME, level="INFO") as older:
+            self.run_patched(
+                count_bounced_addresses=lambda **_kwargs: {"graph": 1, "ses": 0, "busy": False},
+                refresh_bounced_address_links=lambda **_kwargs: 0,
+            )
+
+        self.assertEqual(
+            logs.output,
+            [
+                f"INFO:{LOGGER_NAME}:Bounced addresses: counted 0 bounce reports, 0 SES events and 1 "
+                "left-the-organisation notices; refreshed 0 addresses"
+            ],
+        )
+        self.assertIn("counted 1 bounce reports, 0 SES events and 0 left-the-organisation notices", older.output[0])
 
     def test_a_stop_request_skips_the_remaining_tasks(self):
         ran = []

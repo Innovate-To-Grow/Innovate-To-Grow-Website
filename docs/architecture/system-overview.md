@@ -119,8 +119,13 @@ in [Microsoft Graph email](../integrations/microsoft-graph-email.md).
   member's own verified phone, and switching personal links (or links in texts) off revokes every one already
   sent, for good.
 - SMS sending is paced like email. A daily SMS limit can be set; none is set until it has been calibrated.
-- The site only sends. It does not receive text messages, so replies such as STOP are not yet synced back to a
-  member's phone settings.
+- The site only sends. It does not receive text messages: AWS answers replies such as STOP and refuses any later text
+  to a number that replied STOP, but until pull request #731 ships a STOP is not synced back to the member's phone
+  settings. Coming with pull request #731: every hour the site reads AWS's list of opted-out numbers into **SMS
+  Opt-outs** (staff can add a number too), never texts a listed number and sets the member's phone to not subscribed
+  (replying START does not subscribe it again); Broadcast SMS and ticket texts get the footer "Reply STOP to opt
+  out." unless they already say how to opt out (on by default, set in **SMS Settings**) and wait out quiet hours
+  (20:00 to 09:00 Pacific by default). Sign-in and verification codes are never held.
 
 ## How the admin works
 

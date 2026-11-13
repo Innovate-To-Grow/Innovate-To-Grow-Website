@@ -49,6 +49,8 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
                     "flood_threshold",
                     "flood_window_minutes",
                     "spam_scl_threshold",
+                    "bulk_bcl_threshold",
+                    "reply_match_window_days",
                     "backfill_age_hours",
                 )
             },

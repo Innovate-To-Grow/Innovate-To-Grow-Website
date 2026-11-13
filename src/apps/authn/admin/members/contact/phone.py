@@ -17,7 +17,7 @@ from .normalization import (
     build_normalization_message,
     compute_phone_changes,
 )
-from .phone_verification import ContactPhoneAdminForm, StaffPhoneCodeMixin, sms_sign_in_status
+from .phone_verification import ContactPhoneAdminForm, StaffPhoneCodeMixin, same_member, sms_sign_in_status
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +72,15 @@ class ContactPhoneAdmin(RankedSearchMixin, StaffPhoneCodeMixin, PrivilegedOwnerA
     @admin.display(description="SMS sign-in")
     def sms_sign_in_status(self, obj):
         return sms_sign_in_status(obj)
+
+    def save_model(self, request, obj, form, change):
+        # Backstop for ContactPhoneAdminForm's rule, should ``verified`` ever not be a form field: a number moved to
+        # another member (or to none) never keeps the verification its previous owner proved.
+        if change and obj.verified:
+            stored = list(ContactPhone.objects.filter(pk=obj.pk).values_list("member_id", flat=True))
+            if stored and not same_member(stored[0], obj.member_id):
+                obj.verified = False
+        super().save_model(request, obj, form, change)
 
     def _report_skipped(self, request, skipped):
         if skipped:

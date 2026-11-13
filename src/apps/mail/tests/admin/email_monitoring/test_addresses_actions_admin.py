@@ -232,7 +232,8 @@ class RebuildTests(TestCase):
         row = BouncedAddress.objects.get(address="r@example.org")
         self.assertEqual((row.hard_count, row.status), (1, Status.DISMISSED))
         audit = BouncedAddressAction.objects.get(action="rebuild")
-        self.assertEqual(audit.details, {"counted": 1})
+        # The stored report had no reason: classifying it again with the current rules gave it one.
+        self.assertEqual(audit.details, {"counted": 1, "reclassified": 1})
         state = BounceAggregationState.objects.get(source="graph")
         entry = LogEntry.objects.get(object_id=str(state.pk))
         self.assertIn("Bounced addresses: rebuilt the counts from the stored records (1 counted)", entry.change_message)

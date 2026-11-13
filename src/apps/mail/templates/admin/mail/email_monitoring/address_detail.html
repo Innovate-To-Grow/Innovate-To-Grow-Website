@@ -8,11 +8,15 @@
   <dl class="i2g-monitor-facts">
     <div><dt>Status</dt><dd>{% include "admin/mail/email_monitoring/_address_status.html" %}{% if row.reviewed_at %}<br><span class="i2g-monitor-muted">{{ row.reviewed_at|date:"M j, Y H:i" }}{% if row.reviewed_by %} by {{ row.reviewed_by }}{% endif %}{% if row.review_note %}: {{ row.review_note }}{% endif %}</span>{% endif %}</dd></div>
     <div><dt>Campaign mail</dt><dd>{% if row.suppressed_at %}<strong>{{ row.get_suppression_display }}</strong> {{ row.suppressed_at|date:"M j, Y H:i" }}{% if row.suppressed_by %} by {{ row.suppressed_by }}{% endif %}{% if row.suppressed_reason %}<br><span class="i2g-monitor-muted">{{ row.suppressed_reason }}</span>{% endif %}<br><span class="i2g-monitor-muted">Every campaign skips this address; sign-in codes, tickets and notifications still go.</span>{% else %}Not suppressed{% endif %}</dd></div>
-    <div><dt>Suggestion</dt><dd>{{ row.get_suggestion_display|default:"None" }}<br><span class="i2g-monitor-muted">Text only: nothing is applied automatically.{% if row.suggestion and row.suggestion != "policy" and not row.has_matched_evidence %} No report matched an email the site sent (anyone can mail a report-shaped message): check the reports first.{% endif %}</span></dd></div>
+    <div><dt>Suggestion</dt><dd>{{ row.get_suggestion_display|default:"None" }}<br><span class="i2g-monitor-muted">Text only: nothing is applied automatically.{% if row.suggests_address_action and not row.has_matched_evidence %} No report matched an email the site sent (anyone can mail a report-shaped message): check the reports first.{% endif %}</span></dd></div>
     <div><dt>First / last report</dt><dd>{{ row.first_bounce_at|date:"M j, Y H:i"|default:"–" }} / {{ row.last_bounce_at|date:"M j, Y H:i"|default:"–" }}</dd></div>
+    <div><dt>Last category</dt><dd>{% if row.graph_is_latest and row.last_category %}<strong>{{ row.last_category_label }}</strong><br><span class="i2g-monitor-muted">{{ row.last_category_guidance }}</span>{% else %}{% include "admin/mail/email_monitoring/_address_category.html" %}{% endif %}</dd></div>
     <div><dt>Last reason</dt><dd>{% include "admin/mail/email_monitoring/_address_reason.html" %}{% if row.graph_is_latest and row.last_diagnostic %}<br><span class="i2g-monitor-muted">{{ row.last_diagnostic|truncatechars:300 }}</span>{% endif %}</dd></div>
-    <div><dt>Microsoft Graph reports</dt><dd>hard {{ row.hard_count }} · soft {{ row.soft_count }} · rejected {{ row.rejected_count }} · delayed {{ row.delayed_count }} · unknown {{ row.unknown_count }}<br><span class="i2g-monitor-muted">{{ row.matched_count }} matched to an email the site sent</span></dd></div>
+    <div><dt>Microsoft Graph reports</dt><dd>{% for item in row.category_items %}{% if not forloop.first %} · {% endif %}{{ item.title|lower }} {{ item.count }}{% empty %}hard {{ row.hard_count }} · soft {{ row.soft_count }} · rejected {{ row.rejected_count }} · delayed {{ row.delayed_count }} · unknown {{ row.unknown_count }}{% endfor %}<br><span class="i2g-monitor-muted">{{ row.matched_count }} matched to an email the site sent</span></dd></div>
     <div><dt>Amazon SES events</dt><dd>permanent {{ row.ses_permanent_count }} · transient {{ row.ses_transient_count }} · undetermined {{ row.ses_undetermined_count }} · complaints {{ row.complaint_count }}</dd></div>
+    {% if row.left_org_count %}
+    <div><dt>Left-the-organisation notices</dt><dd>{{ row.left_org_count }} automatic repl{{ row.left_org_count|pluralize:"y,ies" }} to the site's mail saying the person left or the address changed; the latest {{ row.left_org_last_at|date:"M j, Y H:i" }}{% if notice_link %} (<a href="{{ notice_link }}">open it in the helpdesk</a>){% endif %}{% if row.left_org_contact %}<br>It names <strong>{{ row.left_org_contact }}</strong>: {{ row.left_org_contact_label }}.{% endif %}<br><span class="i2g-monitor-muted">Evidence to check, from the notice's text: anyone can write one, and an address it names is not verified. Out-of-office replies are never counted here.</span></dd></div>
+    {% endif %}
   </dl>
 </section>
 
@@ -76,6 +80,7 @@
 <section class="i2g-monitor-section" aria-labelledby="address-reports">
   <h2 id="address-reports" class="i2g-monitor-heading">Bounce reports <span>Microsoft Graph reports still stored ({{ report_count }}{% if report_count > shown %}, newest {{ shown }} shown{% endif %}); older ones were purged, but stay counted above</span></h2>
   <div class="i2g-monitor-card">
+    {% include "admin/mail/email_monitoring/_category_legend.html" %}
     {% include "admin/mail/email_monitoring/_bounce_table.html" with bounces=reports show_email=True empty="No Microsoft Graph report for this address is still stored." %}
   </div>
 </section>

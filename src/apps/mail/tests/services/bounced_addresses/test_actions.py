@@ -134,7 +134,9 @@ class SuppressionTests(ActionTestCase):
 
         row.refresh_from_db()
         self.assertEqual((row.suppression, row.role), ("undeliverable", Role.PRIMARY))
-        self.assertIn("marked undeliverable member@example.org (hard bounce 5.1.1, 1 report)", history(member)[0])
+        self.assertIn(
+            "marked undeliverable member@example.org (address does not exist 5.1.1, 1 report)", history(member)[0]
+        )
         entry = BouncedAddressAction.objects.get(action=Action.MARK_UNDELIVERABLE)
         self.assertEqual((entry.member, entry.member_ref, entry.role_before), (member, member.pk, Role.PRIMARY))
         self.assert_refused(self.mail_authn, row, Action.MARK_UNDELIVERABLE, "already")

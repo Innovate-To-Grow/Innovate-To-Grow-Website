@@ -48,8 +48,9 @@ test.describe('maintenance styles without the server stylesheet', () => {
     const container = page.locator('.maintenance-container');
     await expect(container).toBeVisible();
     await expect(container).toHaveCSS('position', 'fixed');
-    // --itg-color-primary from the fallback tokens (#0f2d52).
-    await expect(page.locator('.maintenance-bar')).toHaveCSS('background-color', 'rgb(15, 45, 82)');
+    await expect(container).toHaveCSS('background-color', 'rgb(15, 45, 82)');
+    await expect(page.locator('.maintenance-card')).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.08)');
+    await expect(page.locator('.maintenance-alert')).toHaveCSS('border-top-color', 'rgb(242, 169, 0)');
     await expect(page.locator('.maintenance-title')).toHaveText('Service Unavailable');
     await expect(page.locator('.maintenance-lead')).toHaveText('Back soon');
     expect(failedSheets.length).toBeGreaterThan(0);
@@ -76,11 +77,11 @@ test.describe('maintenance styles without the server stylesheet', () => {
     const footerLinks = container.locator('.maintenance-footer-links');
     const link = footerLinks.getByRole('link', {name: 'UC Merced'});
     await expect(link).toBeFocused();
-    // :focus-visible rule of the fallback layer, --itg-color-secondary from the fallback tokens (#005487).
+    // The card's gold focus ring stays visible against the navy background.
     await expect(link).toHaveCSS('outline-style', 'solid');
     await expect(link).toHaveCSS('outline-width', '2px');
-    await expect(link).toHaveCSS('outline-color', 'rgb(0, 84, 135)');
-    await expect(link).toHaveCSS('outline-offset', '2px');
+    await expect(link).toHaveCSS('outline-color', 'rgb(242, 169, 0)');
+    await expect(link).toHaveCSS('outline-offset', '3px');
 
     // Past "School of Engineering" to the staff bypass toggle, a button.
     await page.keyboard.press('Tab');
@@ -90,17 +91,14 @@ test.describe('maintenance styles without the server stylesheet', () => {
     await expect(toggle).toBeFocused();
     await expect(toggle).toHaveCSS('outline-style', 'solid');
     await expect(toggle).toHaveCSS('outline-width', '2px');
-    await expect(toggle).toHaveCSS('outline-color', 'rgb(0, 84, 135)');
+    await expect(toggle).toHaveCSS('outline-color', 'rgb(242, 169, 0)');
 
-    // Back up past both footer links to the logo link in the navy bar, whose ring is white.
-    for (let i = 0; i < 3; i += 1) {
-      await page.keyboard.press('Shift+Tab');
-    }
-    const logoLink = container.locator('.maintenance-bar a');
-    await expect(logoLink).toBeFocused();
-    await expect(logoLink).toHaveCSS('outline-style', 'solid');
-    await expect(logoLink).toHaveCSS('outline-width', '2px');
-    await expect(logoLink).toHaveCSS('outline-color', 'rgb(255, 255, 255)');
+    await page.keyboard.press('Enter');
+    const password = page.getByLabel('Bypass password');
+    await expect(password).toBeFocused();
+    await expect(password).toHaveCSS('outline-style', 'solid');
+    await expect(password).toHaveCSS('outline-width', '2px');
+    await expect(password).toHaveCSS('outline-color', 'rgb(242, 169, 0)');
     expect(failedSheets.length).toBeGreaterThan(0);
   });
 

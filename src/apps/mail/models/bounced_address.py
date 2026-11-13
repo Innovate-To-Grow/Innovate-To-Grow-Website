@@ -3,9 +3,13 @@ set on it, and the append-only log of what staff did (Mail → Delivery Operatio
 addresses).
 
 The counts come from the bounce records (``core.EmailBounce`` for Microsoft Graph reports, ``RecipientLog`` for
-Amazon SES events) through ``apps.mail.services.email_monitoring.addresses.aggregate``. They are stored here, so they
-outlive the bounce records' retention. Counting never changes a member, a contact email or a subscription: every
-change is an explicit staff action, recorded in ``BouncedAddressAction``.
+Amazon SES events) and from the helpdesk's "left the organisation" automatic replies that answer an email the site
+sent (``core.InboundMessage``), through ``apps.mail.services.email_monitoring.addresses.aggregate``. They are stored
+here, so they outlive the records' retention. Graph reports are counted by coarse classification and by category (what
+went wrong); only a missing address or a disabled mailbox is evidence against the address on its own, and a
+left-the-organisation notice is evidence to check (an out-of-office reply is never counted). Counting never changes a
+member, a contact email or a subscription: every change is an explicit staff action, recorded in
+``BouncedAddressAction``.
 
 ``suppressed_at`` is the site's one bulk-mail suppression list: every campaign audience skips a suppressed address
 (``apps.mail.services.suppression``). Transactional mail (sign-in codes, tickets, notifications) is never suppressed.
@@ -14,7 +18,23 @@ change is an explicit staff action, recorded in ``BouncedAddressAction``.
 from django.conf import settings
 from django.db import models
 
-from apps.core.models import ProjectControlModel
+from apps.core.models import EmailBounce, ProjectControlModel
+
+Category = EmailBounce.Category
+# The categories that count toward "repeated temporary failures" (with SES transient and undetermined bounces).
+TEMPORARY_CATEGORIES = (Category.TRANSIENT, Category.MAILBOX_FULL, Category.UNKNOWN)
+# Short labels for the counts column, in the order shown.
+CATEGORY_SHORT_LABELS = {
+    Category.HARD: "not found",
+    Category.MAILBOX_DISABLED: "disabled",
+    Category.MAILBOX_FULL: "full",
+    Category.TRANSIENT: "temporary",
+    Category.SPAM_REJECTED: "spam / reputation",
+    Category.RELAY_DENIED: "relay denied",
+    Category.POLICY_REJECTED: "policy",
+    Category.DELAYED: "delayed",
+    Category.UNKNOWN: "unknown",
+}
 
 
 class BouncedAddress(ProjectControlModel):
@@ -38,8 +58,32 @@ class BouncedAddress(ProjectControlModel):
     class Suggestion(models.TextChoices):
         UNSUBSCRIBE = "unsubscribe", "Unsubscribe: they reported us as spam"
         UNDELIVERABLE = "undeliverable", "Mark undeliverable or replace the address"
-        CONSIDER = "consider", "Consider marking undeliverable (repeated soft bounces)"
-        POLICY = "policy", "Probably our reputation or policy, not the address: no action"
+        REPLACE = "replace", "Replace the address (the mailbox is disabled), or mark it undeliverable"
+        CONSIDER = "consider", "Consider marking undeliverable (repeated temporary failures)"
+        RELAY = "relay", "Our sending side: relay denied. Check our sending route and authorisation, not the address"
+        REPUTATION = (
+            "reputation",
+            (
+                "Our sending side: spam or reputation rejection. Check reputation, authentication and content, not the "
+                "address"
+            ),
+        )
+        POLICY = "policy", "Their server's policy refused the message, not the address: no action"
+        LEFT_ORG = (
+            "left_org",
+            "May have left: an automatic reply says so. Check the notice, then replace the address or mark it "
+            "undeliverable",
+        )
+
+    # The suggestions about the address itself (the others point at our sending or at the recipient's policy).
+    ADDRESS_SUGGESTIONS = frozenset(
+        {Suggestion.UNSUBSCRIBE, Suggestion.UNDELIVERABLE, Suggestion.REPLACE, Suggestion.LEFT_ORG, Suggestion.CONSIDER}
+    )
+    CONTACT_KINDS = {
+        "new_address": "their new address, the notice says",
+        "contact": "who to contact instead, the notice says",
+        "mentioned": "an address the notice names",
+    }
 
     address = models.CharField(max_length=254, unique=True, help_text="Lower-case address.")
 
@@ -52,9 +96,18 @@ class BouncedAddress(ProjectControlModel):
     # Of those, the reports matched to an email the site sent (exactly, or inferred from recipient and subject). Anyone
     # can mail the mailbox a report-shaped message, so an address with only unmatched reports is shown as such.
     matched_count = models.PositiveIntegerField(default=0)
+    # The same reports by category ({category: count}; a category with no report is left out). Database defaults
+    # too: the release before categories may still be counting while a deploy rolls out.
+    category_counts = models.JSONField(
+        default=dict,
+        db_default={},
+        blank=True,
+        help_text="Microsoft Graph reports by category (what went wrong), each counted once.",
+    )
     graph_first_at = models.DateTimeField(null=True, blank=True)
     graph_last_at = models.DateTimeField(null=True, blank=True)
     last_classification = models.CharField(max_length=16, blank=True, default="")
+    last_category = models.CharField(max_length=24, blank=True, default="", db_default="")
     last_status_code = models.CharField(max_length=16, blank=True, default="")
     last_reason = models.CharField(max_length=255, blank=True, default="")
     last_diagnostic = models.CharField(max_length=1000, blank=True, default="")
@@ -69,7 +122,29 @@ class BouncedAddress(ProjectControlModel):
     ses_last_at = models.DateTimeField(null=True, blank=True)
     ses_last = models.JSONField(default=dict, blank=True)
 
-    # Across both sources, for sorting and filtering.
+    # "Left the organisation" automatic replies (the person left, retired or changed address) that answer an email the
+    # site sent to this address, each counted once. Evidence to check, never applied; an out-of-office reply is never
+    # counted. Database defaults: the release before may still save rows while a deploy rolls out.
+    left_org_count = models.PositiveIntegerField(
+        default=0,
+        db_default=0,
+        help_text="Automatic replies to the site's mail saying the person left or the address changed.",
+    )
+    left_org_first_at = models.DateTimeField(null=True, blank=True)
+    left_org_last_at = models.DateTimeField(null=True, blank=True)
+    left_org_contact = models.CharField(
+        max_length=254,
+        blank=True,
+        default="",
+        db_default="",
+        help_text="The address the latest notice names instead (a hint from its text: never verified).",
+    )
+    left_org_contact_kind = models.CharField(max_length=16, blank=True, default="", db_default="")
+    left_org_ticket = models.PositiveIntegerField(
+        null=True, blank=True, help_text="The helpdesk ticket that holds the latest notice."
+    )
+
+    # Across every source, for sorting and filtering.
     first_bounce_at = models.DateTimeField(null=True, blank=True, db_index=True)
     last_bounce_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
@@ -124,16 +199,59 @@ class BouncedAddress(ProjectControlModel):
     def unknown_total(self) -> int:
         return self.unknown_count + self.ses_undetermined_count
 
+    def category_count(self, category: str) -> int:
+        """How many Microsoft Graph reports of ``category`` were counted."""
+        return int((self.category_counts or {}).get(category) or 0)
+
+    @property
+    def category_items(self) -> list[dict]:
+        """The Graph reports by category, in a fixed order (categories with none left out)."""
+        return [
+            {"category": category, "label": short, "title": Category(category).label, "count": count}
+            for category, short in CATEGORY_SHORT_LABELS.items()
+            if (count := self.category_count(category))
+        ]
+
+    @property
+    def temporary_total(self) -> int:
+        """Temporary failures: Graph reports of a temporary, full-mailbox or unknown category, and SES transient and
+        undetermined bounces. They only ever count toward "repeated temporary failures"."""
+        graph = sum(self.category_count(category) for category in TEMPORARY_CATEGORIES)
+        return graph + self.ses_transient_count + self.ses_undetermined_count
+
+    @property
+    def last_category_label(self) -> str:
+        return dict(Category.choices).get(self.last_category, self.last_category)
+
+    @property
+    def last_category_guidance(self) -> str:
+        return EmailBounce.guidance_for(self.last_category)
+
+    @property
+    def last_category_hint(self) -> str:
+        return EmailBounce.hint_for(self.last_category)
+
+    @property
+    def suggests_address_action(self) -> bool:
+        """Whether the suggestion is about the address itself (not our sending side or the recipient's policy)."""
+        return self.suggestion in self.ADDRESS_SUGGESTIONS
+
     @property
     def has_matched_evidence(self) -> bool:
-        """Whether a report matched an email the site sent, or an Amazon SES event (signed by AWS) names the address."""
+        """Whether a report or notice matched an email the site sent, or an Amazon SES event (signed by AWS) names the
+        address."""
         return bool(
             self.matched_count
+            or self.left_org_count
             or self.ses_permanent_count
             or self.ses_transient_count
             or self.ses_undetermined_count
             or self.complaint_count
         )
+
+    @property
+    def left_org_contact_label(self) -> str:
+        return self.CONTACT_KINDS.get(self.left_org_contact_kind, "an address the notice names")
 
     @property
     def graph_is_latest(self) -> bool:

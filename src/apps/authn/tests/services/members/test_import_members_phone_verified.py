@@ -178,7 +178,7 @@ class NewMemberPhoneTests(TestCase):
             result.warnings,
             [
                 PHONE_VERIFIED_IGNORED,
-                "Row 3: Phone Number +12095550001 is also in row 2; only that row adds it",
+                "Row 3: Phone Number +12095550001 is also in row 2; only that row can add it; if that row is skipped, no row adds it",
             ],
         )
 
