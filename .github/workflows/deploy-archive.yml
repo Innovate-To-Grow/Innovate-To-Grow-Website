@@ -89,12 +89,43 @@ jobs:
       - name: Build archive image
         run: docker build -t "itg-archive-ci:${{ inputs.deploy_sha }}" archive/page/
 
+      # trivy-action's own installer downloads through get.trivy.dev, which the
+      # runners could not reach on 2026-11-03/04 (UTC); it failed this job then.
+      # Install the pinned release from GitHub releases with its checksum
+      # verified, as ci.yml's image scans do (scripts/ci/validate_tool_versions.py
+      # keeps every TRIVY_VERSION equal).
+      - name: Install Trivy from GitHub releases
+        env:
+          TRIVY_VERSION: "0.70.0"
+        run: |
+          set -euo pipefail
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          dir="${RUNNER_TEMP}/trivy-bin"
+          mkdir -p "$dir"
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL --retry 3 --retry-all-errors -o "${dir}/${tarball}" "${base}/${tarball}" \
+                && curl -fsSL --retry 3 --retry-all-errors -o "${dir}/checksums.txt" "${base}/trivy_${TRIVY_VERSION}_checksums.txt"; then
+              break
+            fi
+            echo "Trivy download attempt ${attempt} failed; retrying" >&2
+            sleep $((attempt * 10))
+          done
+          (cd "$dir" && grep " ${tarball}\$" checksums.txt | sha256sum -c -)
+          tar -xzf "${dir}/${tarball}" -C "$dir" trivy
+          echo "$dir" >> "$GITHUB_PATH"
+          "${dir}/trivy" --version
+
+      # CI's Archive Docker Build and Scan uses the same settings, so a finding
+      # that would stop this step already fails CI before the approval.
       - name: Scan archive image before publishing
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: itg-archive-ci:${{ inputs.deploy_sha }}
-          # Install locally; hosted binary caches contain absolute paths.
+          # The binary is installed above; no action cache (its binary cache
+          # holds absolute hosted-runner paths).
           cache: false
+          skip-setup-trivy: true
           severity: CRITICAL,HIGH
           exit-code: "1"
           ignore-unfixed: true

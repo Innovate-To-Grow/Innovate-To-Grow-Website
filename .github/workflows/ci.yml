@@ -1597,12 +1597,142 @@ jobs:
       - name: Run the static-site smoke suite
         run: python -m pytest tests
 
+  archive-docker-build:
+    name: Archive Docker Build and Scan
+    # Builds the archive image the way deploy-archive.yml does and scans it with
+    # the same Trivy settings, so a fixable CVE fails CI before a production
+    # deploy is approved. Until 2026-11 the image was built and scanned only
+    # inside Deploy Production, in parallel with the backend rollout: a zlib1g
+    # CVE in its base image failed every approved deploy from 2026-11-11 while
+    # main CI stayed green. About a minute of work, so a GitHub-hosted runner.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    needs: changes
+    if: ${{ needs.changes.outputs.archive == 'true' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Lint Dockerfile (hadolint)
+        uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
+        with:
+          dockerfile: archive/page/Dockerfile
+          failure-threshold: error
+
+      # deploy-archive.yml's build command, with no layer cache, so the image's
+      # apt-get upgrade takes the same Debian security updates the deploy will.
+      - name: Build archive Docker image
+        run: docker build -t "itg-archive-ci:${GITHUB_SHA}" archive/page/
+
+      # The checks deploy-archive.yml runs against the live site over HTTPS,
+      # here against the container. No SHEETS_API_KEY: neither /healthz nor the
+      # event pages call Google.
+      - name: Smoke-test archive Docker runtime
+        env:
+          IMAGE: itg-archive-ci:${{ github.sha }}
+        run: |
+          set -euo pipefail
+          container="itg-archive-smoke-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          cleanup() {
+            status=$?
+            if [ "$status" -ne 0 ]; then
+              docker logs "$container" || true
+            fi
+            docker rm -f "$container" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker run -d --name "$container" -p 127.0.0.1:5001:5001 "$IMAGE"
+          ready=false
+          for _ in {1..60}; do
+            if curl --fail --silent http://127.0.0.1:5001/healthz >/dev/null; then
+              ready=true
+              break
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' "$container")" != "true" ]; then
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != "true" ]; then
+            echo "::error::The archive container never answered /healthz."
+            exit 1
+          fi
+
+          page="$(curl --fail --silent --show-error http://127.0.0.1:5001/2025-fall-event.html)"
+          if ! grep -q '/static/js/i2g-embed.js' <<<"$page"; then
+            echo "::error::The event page is missing the embed helper."
+            exit 1
+          fi
+          if grep -q 'AIzaSy' <<<"$page"; then
+            echo "::error::API key leaked into a served page!"
+            exit 1
+          fi
+          echo "Archive container smoke check passed."
+
+      # The same daily key as Backend Docker Build and Scan, so the two jobs
+      # share one cached vulnerability database instead of saving two.
+      - name: Pick the Trivy database cache key
+        id: trivy-cache-date
+        run: echo "today=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Trivy vulnerability database
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.cache/trivy
+          key: trivy-db-${{ steps.trivy-cache-date.outputs.today }}
+          restore-keys: |
+            trivy-db-
+
+      # As in Backend Docker Build and Scan: the pinned release from GitHub
+      # releases, checksum verified, instead of trivy-action's get.trivy.dev
+      # installer. scripts/ci/validate_tool_versions.py keeps every
+      # TRIVY_VERSION equal.
+      - name: Install Trivy from GitHub releases
+        env:
+          TRIVY_VERSION: "0.70.0"
+        run: |
+          set -euo pipefail
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          dir="${RUNNER_TEMP}/trivy-bin"
+          mkdir -p "$dir"
+          for attempt in 1 2 3 4 5; do
+            if curl -fsSL --retry 3 --retry-all-errors -o "${dir}/${tarball}" "${base}/${tarball}" \
+                && curl -fsSL --retry 3 --retry-all-errors -o "${dir}/checksums.txt" "${base}/trivy_${TRIVY_VERSION}_checksums.txt"; then
+              break
+            fi
+            echo "Trivy download attempt ${attempt} failed; retrying" >&2
+            sleep $((attempt * 10))
+          done
+          (cd "$dir" && grep " ${tarball}\$" checksums.txt | sha256sum -c -)
+          tar -xzf "${dir}/${tarball}" -C "$dir" trivy
+          echo "$dir" >> "$GITHUB_PATH"
+          "${dir}/trivy" --version
+
+      # deploy-archive.yml's scan settings, so this fails exactly when the
+      # deploy's scan would (ArchiveImageScanTests keeps them equal).
+      - name: Scan archive image (Trivy CRITICAL/HIGH)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        env:
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
+        with:
+          image-ref: itg-archive-ci:${{ github.sha }}
+          # The binary is installed above; the vulnerability database is cached above.
+          cache: false
+          skip-setup-trivy: true
+          format: table
+          severity: CRITICAL,HIGH
+          exit-code: "1"
+          ignore-unfixed: true
+
   archive-required-result:
     name: Archive Required Result
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs:
       - archive-tests
+      - archive-docker-build
     if: ${{ always() }}
     steps:
       - name: Checkout CI scripts
