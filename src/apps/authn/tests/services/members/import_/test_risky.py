@@ -1,4 +1,4 @@
-"""Risky changes (R1–R8): opt-in ticks, off by default, some of which can't be ticked at all.
+"""Risky changes (R1–R9): opt-in ticks, off by default, some of which can't be ticked at all.
 
 Without a tick an import never deletes a contact, re-subscribes or un-verifies one, or changes Active or Staff; with
 the tick the change is made. An item that may not be ticked says why: the address the row matched on, the member's

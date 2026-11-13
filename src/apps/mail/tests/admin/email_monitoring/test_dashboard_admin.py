@@ -7,10 +7,23 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core.models import BackgroundJob, EmailCategory, EmailMonitorState, EmailServiceConfig, OutboundEmail
+from apps.core.models import (
+    BackgroundJob,
+    EmailCategory,
+    EmailMonitorState,
+    EmailServiceConfig,
+    MicrosoftGraphMailboxScope,
+    OutboundEmail,
+)
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND
+from apps.core.services.email.bounces.state import set_paused
 from apps.core.tests.graph_helpers import create_graph_config
-from apps.core.tests.services.email_monitoring.helpers import make_attempt, make_bounce, make_email
+from apps.core.tests.services.email_monitoring.helpers import (
+    make_attempt,
+    make_bounce,
+    make_email,
+    monitoring_settings,
+)
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog
 
@@ -225,6 +238,37 @@ class PageTests(TestCase):
         self.assertTrue(EmailMonitorState.objects.get(mailbox="i2g@ucmerced.edu").paused)
         self.client.post(url, {"action": "resume"})
         self.assertFalse(EmailMonitorState.objects.get(mailbox="i2g@ucmerced.edu").paused)
+
+    def test_scan_now_queues_nothing_while_paused_switched_off_or_unreadable(self):
+        # The card greys Scan now out in these cases; a stale page or a second tab gets the reason and no job, as the
+        # helpdesk intake card does. A paused mailbox's scan would read nothing.
+        mailbox = "i2g@ucmerced.edu"
+        create_graph_config(scope=(mailbox,), is_active=True, mailbox=mailbox)
+        EmailServiceConfig.objects.create(name="Mail", is_active=True, provider="graph", from_email=mailbox)
+        url = reverse("admin:mail_email_monitoring_bounce_processing")
+
+        def scan() -> list[str]:
+            response = self.client.post(url, {"action": "scan"}, follow=True)
+            return [str(message) for message in response.context["messages"]]
+
+        set_paused(mailbox, True)
+        paused = scan()
+        set_paused(mailbox, False)
+        with monitoring_settings(bounce_processing_enabled=False):
+            off = scan()
+        MicrosoftGraphMailboxScope.objects.update(permission=MicrosoftGraphMailboxScope.Permission.SEND)
+        unreadable = scan()
+
+        self.assertEqual(paused, [f"Bounce processing for {mailbox} is paused: resume it to scan."])
+        self.assertEqual(off, ["Bounce processing is turned off (EMAIL_BOUNCE_PROCESSING_ENABLED)."])
+        self.assertEqual(
+            unreadable, [f"The Microsoft Graph mailbox scope does not grant read permission on {mailbox}."]
+        )
+        self.assertFalse(BackgroundJob.objects.filter(kind=BOUNCE_SCAN_JOB_KIND).exists())
+
+        MicrosoftGraphMailboxScope.objects.update(permission=MicrosoftGraphMailboxScope.Permission.SEND_AND_READ)
+        self.assertEqual(scan(), ["A bounce scan was queued; the background worker runs it within a minute."])
+        self.assertEqual(BackgroundJob.objects.filter(kind=BOUNCE_SCAN_JOB_KIND).count(), 1)
 
     def test_an_unknown_action_is_refused_with_the_reason(self):
         response = self.client.post(

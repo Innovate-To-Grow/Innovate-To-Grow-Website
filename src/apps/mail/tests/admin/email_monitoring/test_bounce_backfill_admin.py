@@ -409,6 +409,16 @@ class CardTests(BackfillTestCase):
         self.assertTrue(response.context["health"]["bounces"]["scan_running"])
         self.assertContains(response, "running now (started")
 
+    def test_a_mailbox_paused_before_its_first_scan_shows_as_paused(self):
+        state.set_paused(SENDER, True)  # no scan has finished yet: the row only holds a checkpoint
+
+        response = self.client.get(self.overview)
+
+        self.assertEqual(response.context["health"]["bounces"]["level"], "paused")
+        self.assertContains(response, "<strong>Paused</strong>")
+        self.assertNotContains(response, "Waiting for the first scan")
+        self.assertContains(response, '<input type="hidden" name="action" value="resume">')
+
     def test_the_rescan_button_is_disabled_when_the_mailbox_cannot_be_read(self):
         self.send_only_scope()
 

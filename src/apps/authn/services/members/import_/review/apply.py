@@ -120,13 +120,15 @@ def _write_row(analysis, plan, created: dict, members: dict, known: dict) -> Row
 
 
 def changed_rows(stored_rows, fresh) -> list[int]:
-    """Rows whose records changed since the review, or whose choice or ticks are no longer allowed."""
+    """Rows whose records changed since the review, whose warnings differ from the ones the review showed (a cell set
+    aside differently, for example by a newer rule), or whose choice or ticks are no longer allowed."""
     changed = []
     for row, analysis in zip(stored_rows, fresh, strict=True):
         enabled = {item["id"] for item in tick_items(analysis, row.choice) if item["enabled"]}
         if (
             row.fingerprint != analysis.fingerprint
             or (row.status, row.conflict) != (analysis.status, analysis.conflict)
+            or (row.warnings or []) != analysis.warnings
             or (analysis.status != INVALID and row.choice not in allowed_values(analysis.options))
             or not set(row.ticks) <= enabled
         ):

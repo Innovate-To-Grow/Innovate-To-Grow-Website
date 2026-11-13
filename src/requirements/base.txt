@@ -1,7 +1,7 @@
 # Django Backend Dependencies — base (shared across all environments)
 
 # Core Framework
-Django>=5.2.18,<5.3
+Django>=5.2.19,<5.3
 djangorestframework==3.18.3
 djangorestframework-simplejwt>=5.5.1
 
@@ -22,7 +22,7 @@ openpyxl>=3.1.5
 
 # Google APIs
 google-api-python-client>=2.201.0
-google-auth>=2.62.0
+google-auth>=2.62.1
 gspread>=6.2.1
 
 # AI Runtime
