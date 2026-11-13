@@ -95,7 +95,19 @@ def make_attempt(email, number=1, **values) -> OutboundEmailAttempt:
     return OutboundEmailAttempt.objects.create(email=email, attempt_number=number, **{**defaults, **values})
 
 
+# The category a test's coarse classification stands for, when the test names none.
+CATEGORY_OF = {
+    "hard": EmailBounce.Category.HARD,
+    "soft": EmailBounce.Category.TRANSIENT,
+    "rejected": EmailBounce.Category.POLICY_REJECTED,
+    "delayed": EmailBounce.Category.DELAYED,
+    "unknown": EmailBounce.Category.UNKNOWN,
+}
+
+
 def make_bounce(**values) -> EmailBounce:
+    """A stored bounce report; its category follows its classification unless given (pass ``category=""`` for one
+    the previous release saved)."""
     now = timezone.now()
     defaults = {
         "dedupe_key": values.pop("dedupe_key", None) or uuid.uuid4().hex,
@@ -106,7 +118,9 @@ def make_bounce(**values) -> EmailBounce:
         "classification": EmailBounce.Classification.HARD,
         "status_code": "5.1.1",
     }
-    return EmailBounce.objects.create(**{**defaults, **values})
+    merged = {**defaults, **values}
+    merged.setdefault("category", CATEGORY_OF.get(merged["classification"], EmailBounce.Category.UNKNOWN))
+    return EmailBounce.objects.create(**merged)
 
 
 def minutes_ago(minutes: int):

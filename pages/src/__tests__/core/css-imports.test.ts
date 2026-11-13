@@ -155,7 +155,8 @@ describe('maintenance page styles are bundled with the app', () => {
 
   it.each([
     ['.maintenance-container', /position:\s*fixed/],
-    ['.maintenance-bar', /background:\s*var\(--itg-color-primary\)/],
+    ['.maintenance-container', /background:\s*var\(--maintenance-blue\)/],
+    ['.maintenance-card', /border-radius:\s*16px/],
     ['.service-degraded-banner', /background:\s*var\(--itg-color-highlight\)/],
   ])('MaintenanceMode.css defines %s', (selector, declaration) => {
     const body = ruleBody(selector);

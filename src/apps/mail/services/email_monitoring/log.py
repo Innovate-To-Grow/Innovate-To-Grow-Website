@@ -28,6 +28,7 @@ EMAIL_SORTS = {
 BOUNCE_SORTS = {
     "received": "received_at",
     "recipient": "recipient",
+    "category": "category",
     "classification": "classification",
     "status": "status_code",
     "match": "match_method",
@@ -122,6 +123,7 @@ def bounce_listing(params) -> Listing:
     filters = {
         "q": str(params.get("q") or "").strip()[:200],
         "classification": _choice(params, "classification", EmailBounce.Classification.values),
+        "category": _choice(params, "category", EmailBounce.Category.values),
         "match": _choice(params, "match", EmailBounce.MatchMethod.values),
     }
     return _listing(params, BOUNCE_SORTS, "received", filters)
@@ -132,6 +134,8 @@ def bounce_rows(scope: Scope, listing: Listing):
     rows = scope.bounces().select_related("email")
     if filters["classification"]:
         rows = rows.filter(classification=filters["classification"])
+    if filters["category"]:
+        rows = rows.filter(category=filters["category"])
     if filters["match"]:
         rows = rows.filter(match_method=filters["match"])
     if filters["q"]:
@@ -139,7 +143,8 @@ def bounce_rows(scope: Scope, listing: Listing):
         if as_uuid is not None:
             rows = rows.filter(Q(pk=as_uuid) | Q(email_id=as_uuid) | Q(campaign_id=as_uuid))
         else:
-            rows = _search(rows, filters["q"], ("recipient", "status_code", "reason", "original_subject"))
+            fields = ("recipient", "status_code", "smtp_code", "reason", "diagnostic_code", "original_subject")
+            rows = _search(rows, filters["q"], fields)
     return _ordered(rows, BOUNCE_SORTS, listing)
 
 

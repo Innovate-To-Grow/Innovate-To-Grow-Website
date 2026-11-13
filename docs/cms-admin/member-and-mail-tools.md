@@ -10,8 +10,10 @@ Member management, email campaigns, and contact administration.
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | UUID | Primary key (not auto-increment) |
-| `email` | EmailField | Primary login identifier |
+| `id` | UUID | Primary key (not auto-increment); `USERNAME_FIELD`, there is no username |
+| `email` | EmailField | Unused: inherited from `AbstractUser` and left blank. Sign-in uses the verified contact emails (below) |
+| `is_active` | BooleanField | **Account active** in the admin: the account can sign in, and is in the All subscribers / All active members / Staff audiences. Independent of the contact flags |
+| `registration_pending` | BooleanField | **Unfinished sign-up** (read-only): a self-service registration not yet completed |
 | `first_name`, `last_name` | CharField | Required |
 | `middle_name` | CharField | Optional |
 | `organization` | CharField | Optional |
@@ -23,8 +25,17 @@ There is no member-level subscription field: newsletter subscription is the `sub
 ### Admin capabilities
 
 In Django admin → Members & Auth → Members:
-- Search by name, email
-- Filter by active status, staff status, date joined (subscription is filtered per address in the Contact Emails admin)
+- Search by email address (the exact address first, then addresses starting with it), name, organization, title or
+  Member UUID; a phone number typed on its own (any format, at least 3 digits) searches phone numbers. Member pickers
+  on other pages search the same way. See [Member and contact admin search](django-admin.md#member-and-contact-admin-search)
+- Filters (`src/apps/authn/admin/members/filters.py`): **Account active** (yes / no / unfinished sign-up), **Primary
+  email** (verified / unverified / none), **Unverified emails**, **Newsletter (All subscribers)** (subscribed at the
+  primary / at another address only / nowhere), **Phone** (verified / unverified only / none), staff status, date
+  joined. Contact Emails: **Verified (sign-in)** (incl. unverified emails and unverified primaries), **Subscribed
+  (newsletters)**, email type, **Member account** (active / inactive / staff or I2G Master / unlinked), with an
+  **Account active** column; Contact Phones: **Member account** too
+- **Switch primary email** on the member page (and **Make primary…** on each verified Contact Emails row): see
+  [Switching the primary email](#switching-the-primary-email)
 - Inline contact emails and phones
 - Import/export members via Excel (openpyxl)
 
@@ -43,6 +54,51 @@ Members can have multiple contact emails and phones:
 
 Contact verification uses the email challenge system or AWS SNS SMS.
 
+### Account active, Verified and Subscribed
+
+Three independent flags; none changes another, and none is changed by a bounce report:
+
+| Flag | Belongs to | Read by | Not read by |
+|---|---|---|---|
+| **Account active** (`Member.is_active`) | The account | Every sign-in path; the All subscribers, All active members and Staff audiences (email), All members and Staff (SMS) | Selected Members, Manual Emails and event audiences, which include inactive members (the SMS Subscribers audience does too: unchanged, a known inconsistency) |
+| **Verified** (`ContactEmail.verified`, `ContactPhone.verified`) | One address / number | Sign-in (email code and password with any verified address; admin codes with a staff member's verified primary; SMS sign-in with a verified number); only a verified address can become primary; the recovery-contact count | No email audience |
+| **Subscribed** (`ContactEmail.subscribe`) | One address | The All subscribers audience only ("primary only" uses the primary's flag) | All active members, Staff, Selected Members and event audiences; transactional mail |
+
+To stop campaign mail to one bad address, use Email Monitoring → Bounced addresses → **Mark undeliverable** (every
+campaign audience skips it, at resolution and at send time). Unticking Verified stops sign-in only; deactivating the
+account stops sign-in and the member audiences for every address.
+
+The admin labels and help text say this on every Members form (`src/apps/authn/admin/members/help_texts.py`). They
+are set through the forms' `Meta.labels` / `Meta.help_texts`, which Django also applies to read-only fields, so the
+models (and their migrations) are unchanged. Unticking a member's last verified email or phone, deleting it, or
+moving it to another member is allowed but warned about (`sign_in_warning.py`): after the save or delete, and for an
+edit (including removing the row on the member page) already on the type-to-confirm page; the delete confirmation of
+the Contact Emails / Contact Phones admin shows no warning row. The member then cannot sign in with a code or a
+password until one is verified again; only a personal sign-in link from an email (`LoginLinkToken`, which checks an
+active account and expiry only) still works. The member API still refuses to delete that last contact.
+
+### Switching the primary email
+
+`MemberAdmin`'s **Switch primary email** (an Unfold detail action, `/admin/authn/member/<id>/switch-primary/`) and the
+**Make primary…** link on each verified Contact Emails row open the same page. A GET changes nothing: it lists the
+member's addresses with their type before and after, and spells out what the switch changes for signing in and for
+campaigns. The POST (CSRF, the typed word `switch` while `ADMIN_REQUIRE_CONFIRMATION` is on) calls
+`apps.authn.services.contacts.primary_switch.switch_primary_email`, which:
+
+- locks the member row and refuses (`StaleSwitch`) when the member or their addresses differ from the page's
+  fingerprint, so a stale page never switches;
+- refuses an address that is not the member's or not verified, with what to do instead;
+- calls the existing `make_contact_email_primary` in the same transaction (old primary → `secondary`, old secondary
+  → `other`), then reads back every changed type.
+
+`log_switch` writes a History line on the member ("Primary email switched from … to …") and one on each changed
+address, inside the switch's transaction (`switch_primary_email(..., actor=..., via=...)`), so a switch is never
+committed without its History; the application log gets ids only. The Contact Emails action **Make selected email primary** uses the same
+service and history. Subscriptions, verification and sessions never change, and nothing is sent; the page warns when
+the switch changes who receives "primary only" campaigns. Permission: the `authn` app plus `user_can_manage_member`
+(on a staff or superuser account, the I2G Master or the account holder); the button and links are hidden from
+anyone else, and the view re-checks both.
+
 ### Phone numbers and SMS sign-in
 
 Only a **verified** phone number can be used to sign in with a texted code (passwordless sign-in, password sign-in
@@ -57,7 +113,10 @@ A number becomes verified only with a code; there is no tick for it:
   **Unverified · no SMS sign-in**; the member list adds `(unverified)` to an unverified primary phone.
 - The **Verified** box can be unticked (or use **Mark selected phones as unverified**) to stop SMS sign-in, but not
   ticked: a phone added in the admin starts unverified, and changing a number's digits makes it unverified again
-  (writing the same number differently does not).
+  (writing the same number differently does not), as does moving it to another member (or to none) on the phone's
+  own page: its code proved that someone holds the phone, not that the new member does. Until it is verified again it
+  can't sign in, and Broadcast SMS audiences and ticket texts skip it as one of the member's numbers. The typed
+  confirmation and the admin history list the change as **Verified**.
 - **Verify by SMS code** (the link next to an unverified number) is the staff path for a member who cannot sign in
   another way, for example a phone-only member whose only number is unverified: talk to the member (in person, or on a
   call to them at a contact you already trust), **Send code**, ask them to read it to you, and enter it. The code goes

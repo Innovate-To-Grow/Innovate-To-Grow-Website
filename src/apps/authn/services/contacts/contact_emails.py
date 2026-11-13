@@ -223,10 +223,13 @@ def make_contact_email_primary(*, member, contact_email_id):
     )
     if old_primary:
         # Demote existing secondary to "other" before the old primary takes its slot
+        # The newest secondary; ``pk`` breaks a tie on equal timestamps, so the choice is deterministic and the admin's
+        # preview (``primary_switch.plan_primary_switch``) names the same row.
         existing_secondary = (
             ContactEmail.objects.select_for_update()
             .filter(member=member, email_type="secondary")
             .exclude(pk=contact.pk)
+            .order_by("-created_at", "-pk")
             .first()
         )
         if existing_secondary:

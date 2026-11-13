@@ -185,15 +185,16 @@ def failure_reasons(scope: Scope) -> list[dict]:
 
 
 def bounce_reasons(scope: Scope) -> list[dict]:
-    labels = dict(Classification.choices)
+    """The most frequent (category, status code, reason) of the failed recipients (delays left out)."""
+    labels = dict(EmailBounce.Category.choices)
     rows = (
         scope.bounces()
         .exclude(classification=Classification.DELAYED)
-        .values("classification", "status_code", "reason")
+        .values("category", "classification", "status_code", "reason")
         .annotate(count=Count("pk"), last_seen=Max("received_at"))
         .order_by("-count", "status_code")[:TOP_REASONS]
     )
-    return [{"label": labels.get(row["classification"], ""), **row} for row in rows]
+    return [{"label": labels.get(row["category"], "Not classified yet"), **row} for row in rows]
 
 
 def charts(scope: Scope) -> dict:

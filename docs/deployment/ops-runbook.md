@@ -87,7 +87,7 @@ ops doc.
 |---|---|---|
 | Email is not sending | **Delivery Rates** status line (paused or stopped?), **Email Monitoring** last error, the provider's access check | [Delivery rates](../integrations/delivery-rates.md), [Graph error reference](../integrations/microsoft-graph-email.md#error-reference) |
 | A blast went to the wrong people or with the wrong content | Stop further sends (**TODO:** the procedure), **Revoke login links** on the campaign, tell the program lead | [Login link tokens](../cms-admin/member-and-mail-tools.md#login-link-tokens) |
-| Many bounces or rejections after a blast | **Email Monitoring → Bounce reports**, the share of **Rejected** | [Email monitoring](../integrations/email-monitoring.md) |
+| Many bounces or rejections after a blast | **Email Monitoring → Bounce reports** filtered by category: many *Spam or reputation rejection* or *Relay denied* reports point at our sending (SPF/DKIM/DMARC, block lists, connectors, content), not at the contacts | [Bounce categories](../integrations/email-monitoring.md#bounce-categories) |
 | A credential may have leaked (Graph key, AWS key, Gmail key, admin account) | Revoke first, then investigate; CloudTrail; Admin Log | [Emergency revocation](../integrations/microsoft-graph-email.md#emergency-revocation) |
 | The site is down or slow | Health checks, recent deploys, request limits | [Request limits](../integrations/request-limits.md) |
 | SMS stopped (spend limit, throttling) | **Delivery Rates → SMS · AWS End User Messaging** card | [Delivery rates](../integrations/delivery-rates.md) |

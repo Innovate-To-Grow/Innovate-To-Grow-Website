@@ -28,7 +28,7 @@ It is the third choice of the **Provider** setting:
 | Transport | SES API, raw MIME | SMTP submission | HTTPS `sendMail`: base64 MIME, or JSON for credential mail |
 | Message ID recorded | SES message ID | MIME `Message-ID` | MIME `Message-ID` (none for a JSON send) |
 | Delivery events | Yes, through the [SNS webhook](ses-event-tracking.md) | No | Failures only: bounce reports read from the sending mailbox ([Email monitoring](email-monitoring.md)) |
-| Bounced and complained addresses skipped | Yes, by the SES account-level suppression list | No | No: the site keeps no suppression list of its own, so addresses SES suppressed are mailed again |
+| Bounced and complained addresses skipped | Yes, by the SES account-level suppression list; campaigns also skip the addresses staff suppressed on [Bounced addresses](email-monitoring.md#bounced-addresses) | Campaigns only: the addresses staff suppressed on [Bounced addresses](email-monitoring.md#bounced-addresses) | Campaigns only: the addresses staff suppressed on [Bounced addresses](email-monitoring.md#bounced-addresses). Nothing is suppressed automatically, so addresses SES suppressed are mailed again until staff suppress them there too |
 | Provider limits | SES account quotas | The SMTP server's | Per mailbox: 30 messages per minute, 10,000 recipients per day, and the tenant's own policies ([Limits](#limits)) |
 
 - **One provider for all app email.** Login codes, ticket emails, admin invitations, inbox replies,
@@ -101,14 +101,16 @@ go-live.
 10. **Disclosures to InfoSec.** The AI scam review sends some Inbox mail to Amazon Bedrock
     ([Admin inbox](#admin-inbox)); campaign messages with `{{login_link}}` are sent without a Sent Items
     copy and therefore without the one-click `List-Unsubscribe` header
-    ([Sent Items](#sent-items-and-credential-mail)); addresses SES suppressed are mailed again under Graph.
+    ([Sent Items](#sent-items-and-credential-mail)); addresses SES suppressed are mailed again under Graph until
+    staff suppress them on [Bounced addresses](email-monitoring.md#bounced-addresses).
     Agree with InfoSec which records count as the logging record (admin history, recorded access checks,
     CloudTrail) and their retention ([Retention](#retention)).
 
 Known gaps that remain (not fixed by this change): a campaign the web process is already sending keeps its
 provider when the provider is switched ([Emergency revocation](#emergency-revocation)); the inbox cache keys
 do not include the mailbox; the site does not log which admin opened which message; the AI scam review's
-request carries the admin assistant's tool definitions; there is no app-level bounce suppression.
+request carries the admin assistant's tool definitions; a bounce never suppresses an address by itself: staff
+suppress it on [Bounced addresses](email-monitoring.md#bounced-addresses), and only campaigns skip it.
 
 ## Prerequisites
 

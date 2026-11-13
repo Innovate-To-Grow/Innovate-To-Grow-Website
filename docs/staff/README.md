@@ -33,8 +33,9 @@ is needed. For how the system is built, see the [System overview](../architectur
 
 ### 2. Members & import (written)
 
-Finding and editing members, email roles (primary, secondary, other), verified and subscribed, exporting, and
-importing a spreadsheet, including why a row is skipped ("Row 5") and the review step that is coming.
+Finding and editing members, email roles (primary, secondary, other), **Account active** versus verified and
+subscribed, switching the primary email, what to do with a bounced address, exporting, and importing a spreadsheet,
+including why a row is skipped ("Row 5") and the review step that is coming.
 
 ### 3. Blasts & email monitoring (written)
 
@@ -49,10 +50,10 @@ nothing):
 
 - Where replies to blasts go, and reading them in Outlook or in the admin's inbox page.
 - The helpdesk: every message that arrives in the i2g@ucmerced.edu Inbox becomes a ticket, or joins the ticket of
-  its conversation. Automated mail (out-of-office replies, bounce reports, read receipts, newsletters, spam) becomes
-  a ticket that is closed at once and hidden by default; a message from a person, or one the system is unsure about,
-  becomes a normal ticket. Mail that never reaches the Inbox (Junk, or moved or deleted in Outlook first) is not
-  seen.
+  its conversation. Automated mail (out-of-office replies, left-the-organisation notices, bounce reports, read
+  receipts, newsletters, spam) becomes a ticket that is closed at once and hidden by default; a message from a person
+  (including an answer to our email, or a follow-up in their conversation, sent from a sales or marketing tool), or
+  one the system is unsure about, becomes a normal ticket. Mail that never reaches the Inbox (Junk, or moved or deleted in Outlook first) is not seen.
 - Working a ticket: status, priority, category, assignee, notes; the member is linked from the sender's address;
   what shadow mode does not do yet (no replies, no notifications).
 - The scam warning shown on suspicious messages, and why a message can be marked as spam.
@@ -94,10 +95,10 @@ Collected from the chapters as questions come in.
 |---|---|
 | Member | One person's account. Each member has a **Member UUID**, a long ID shown on the member page and in exports. |
 | Contact email | An email address saved on a member. An address belongs to one member at most. An address with no member is an **unlinked contact**. |
-| Primary / secondary / other | The role of an email address. A member's main address is the **primary**; their other addresses are **secondary** (a backup, often a former primary) or **other** (any further address, for example a former secondary). |
-| Verified | The person proved the address or phone number is theirs by entering a code (or staff marked it verified). Only a verified address can be used to sign in with an emailed code or a password. A texted code works for any phone number saved on a member, verified or not, until pull request #732 ships; then only a verified number signs in, and a number becomes verified only with the member's own code, never through an import (chapter 2). |
-| Subscribed | Set per address and per phone number. For an email address: whether it receives newsletters (the **All subscribers** audience); the unsubscribe link in a newsletter turns it off for every address of that member. For a phone number: whether it receives SMS sent to subscribers. |
-| Active / inactive | An inactive member cannot sign in and is left out of the **All subscribers**, **All active members** and **Staff Members** email audiences (the other audiences do not check: see chapter 3). Their history stays. |
+| Primary / secondary / other | The role of an email address. A member's main address is the **primary**; their other addresses are **secondary** (a backup, often a former primary) or **other** (any further address, for example a former secondary). **Switch primary email** on the member page makes another verified address the primary (chapter 2). |
+| Verified | The person proved the address or phone number is theirs by entering a code (or staff marked it verified). Only a verified address can be used to sign in with an emailed code or a password. Unticking it stops sign-in with that address; it stops no mail. A texted code works for any phone number saved on a member, verified or not, until pull request #732 ships; then only a verified number signs in, and a number becomes verified only with the member's own code, never through an import (chapter 2). |
+| Subscribed | Set per address and per phone number. For an email address: whether it receives newsletters (the **All subscribers** audience, the only one that reads it); the unsubscribe link in a newsletter turns it off for every address of that member. For a phone number: whether it receives SMS sent to subscribers. |
+| Account active / inactive | The account's own flag (**Account active** on the member page), not a flag of an address. An inactive member cannot sign in and is left out of the **All subscribers**, **All active members** and **Staff Members** email audiences (the other audiences do not check: see chapter 3). Their addresses and history stay as they are. A bounced address is handled in **Bounced addresses** (**Mark undeliverable**), not by deactivating the account (chapter 2). |
 | Unfinished sign-up | Someone started creating an account and never finished. |
 | Staff / I2G Master | A staff account can open the admin, limited to the sections it was granted. The I2G Master account (superuser) can do everything, including changing other staff accounts. |
 | Campaign, blast | An email sent from **Broadcast Email** to an audience. |

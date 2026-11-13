@@ -86,6 +86,10 @@ def set_paused(mailbox: str, paused: bool) -> None:
     EmailMonitorState.objects.filter(mailbox=mailbox).update(paused=paused, updated_at=timezone.now())
 
 
+def is_paused(mailbox: str) -> bool:
+    return EmailMonitorState.objects.filter(mailbox=mailbox, paused=True).exists()
+
+
 def max_lookback_days() -> int:
     """How far back a scan can be sent: ``bounce_max_lookback_days``, never past ``bounce_retention_days``."""
     config = settings.EMAIL_MONITORING

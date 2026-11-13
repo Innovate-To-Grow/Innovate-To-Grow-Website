@@ -95,7 +95,7 @@
       <h3>Top bounce reasons</h3>
       {% if bounce_reasons %}
       <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
-        <thead><tr><th scope="col">Count</th><th scope="col">Classification</th><th scope="col">Status</th><th scope="col">Reason</th></tr></thead>
+        <thead><tr><th scope="col">Count</th><th scope="col">Bounce category</th><th scope="col">Status</th><th scope="col">Reason</th></tr></thead>
         <tbody>{% for row in bounce_reasons %}
           <tr><td class="num">{{ row.count }}</td><td>{{ row.label }}</td><td><code>{{ row.status_code|default:"–" }}</code></td><td>{{ row.reason|default:"–" }}</td></tr>
         {% endfor %}</tbody>

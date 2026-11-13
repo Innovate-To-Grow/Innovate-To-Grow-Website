@@ -1,0 +1,6 @@
+{# The latest report's category and what it means (Graph), or the latest SES event's type. #}
+{% if row.graph_is_latest and row.last_category %}
+  <strong>{{ row.last_category_label }}</strong>{% if row.last_category_hint %}<br><span class="i2g-monitor-muted">{{ row.last_category_hint }}</span>{% endif %}
+{% elif row.ses_last %}
+  SES {{ row.ses_last.event|default:"bounce" }}{% if row.ses_last.type %}<br><span class="i2g-monitor-muted">{{ row.ses_last.type }}</span>{% endif %}
+{% else %}–{% endif %}

@@ -120,15 +120,19 @@ def _schedule_bounce_scans(should_stop=None) -> None:
 
 
 def _count_bounced_addresses(should_stop=None) -> None:
-    # Count new bounce reports and SES events per address (Email Monitoring → Bounced addresses) before the retention
-    # purge deletes old reports, then re-check every address's member links. Never changes a member or a contact.
+    # Count new bounce reports, SES events and left-the-organisation notices per address (Email Monitoring → Bounced
+    # addresses) before the retention purges delete old records, then re-check every address's member links. Never
+    # changes a member or a contact.
     result = count_bounced_addresses(should_stop=should_stop)
     refreshed = refresh_bounced_address_links(should_stop=should_stop)
-    if result["graph"] or result["ses"] or refreshed:
+    notices = result.get("inbound", 0)
+    if result["graph"] or result["ses"] or notices or refreshed:
         logger.info(
-            "Bounced addresses: counted %d bounce reports and %d SES events; refreshed %d addresses",
+            "Bounced addresses: counted %d bounce reports, %d SES events and %d left-the-organisation notices; "
+            "refreshed %d addresses",
             result["graph"],
             result["ses"],
+            notices,
             refreshed,
         )
 

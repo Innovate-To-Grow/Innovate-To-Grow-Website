@@ -151,7 +151,16 @@
   };
 
   app.updateAction = async function (action, operation) {
-    const payload = await app.fetchJson(app.urlFor(operation, action.id), { method: "POST", body: "{}" });
+    let payload;
+    try {
+      payload = await app.fetchJson(app.urlFor(operation, action.id), { method: "POST", body: "{}" });
+      app.showAlert("");
+    } catch (error) {
+      // A refused or failed approval answers with the reason and the request's new state (failed): show both.
+      app.showAlert(error.message);
+      payload = error.payload;
+    }
+    if (!payload || !payload.action_request) return;
     document.querySelector(`[data-action-id="${action.id}"]`)?.replaceWith(app.renderActionCard(payload.action_request));
   };
 

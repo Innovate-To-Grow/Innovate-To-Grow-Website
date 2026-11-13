@@ -225,6 +225,12 @@ class HealthTests(TestCase):
         self.assertEqual(self.level(), "ok")
         self.assertEqual(health._level(None, active=False, now=timezone.now()), "inactive")
 
+    def test_a_mailbox_paused_before_its_first_scan_is_paused_not_waiting(self):
+        # Its first scan waits for Resume: "waiting for the first scan" would hide that someone paused it.
+        never_scanned = {"last_run_finished_at": None, "last_success_at": None}
+        self.assertEqual(self.level(paused=True, **never_scanned), "paused")
+        self.assertEqual(self.level(paused=False, **never_scanned), "waiting")
+
     @monitoring_settings(bounce_processing_enabled=False)
     def test_switched_off_is_inactive(self):
         self.assertEqual(self.level(), "inactive")

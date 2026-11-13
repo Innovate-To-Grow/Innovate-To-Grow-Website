@@ -3,7 +3,6 @@ Member admin configuration.
 """
 
 import logging
-import re
 import uuid
 from urllib.parse import unquote
 
@@ -11,7 +10,6 @@ from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect
 from django.urls import path
@@ -24,6 +22,7 @@ from apps.core.utils.access import user_can_manage_member
 from ...models import ImpersonationToken, Member
 from ...services.members.profile_image import ALLOWED_CONTENT_TYPES, ProfileImageError, split_data_uri
 from . import import_views
+from .filters import MEMBER_FILTERS
 from .forms import MemberChangeForm, MemberCreationForm
 from .helpers import (
     activate_members,
@@ -38,13 +37,22 @@ from .helpers import (
     normalize_inline_uuid_none_values,
 )
 from .inlines import ContactEmailInline, ContactPhoneInline
+from .primary_switch import PrimarySwitchAdminMixin
+from .search import RankedSearchMixin, member_search_rank
+from .sign_in_warning import lost_sign_in, member_page_row
 
 logger = logging.getLogger(__name__)
 
 
 @admin.register(Member)
-class MemberAdmin(BaseModelAdmin, UserAdmin):
-    """Custom admin for Member with profile, contact, import, and export tooling."""
+class MemberAdmin(PrimarySwitchAdminMixin, RankedSearchMixin, BaseModelAdmin, UserAdmin):
+    """Custom admin for Member with profile, contact, import, and export tooling.
+
+    **Account active** (``is_active``) is the account's own flag; each email address and phone has its own Verified
+    (a way to sign in) and Subscribed (newsletters). The filters and labels keep the two apart (``filters``,
+    ``help_texts``), and a save that leaves the member no verified email or phone is warned about, not refused
+    (``sign_in_warning``). The primary email is switched on its own page (``primary_switch``).
+    """
 
     # URL names whose views only render list rows, and so never need the multi-megabyte
     # base64 ``profile_image`` (or the password hash) that a bare SELECT would pull for every row.
@@ -68,11 +76,11 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         "get_primary_email_display",
         "get_primary_phone_display",
         "organization",
-        "is_active",
+        "account_active",
         "is_staff",
         "date_joined",
     )
-    list_filter = ("is_active", "is_staff", "date_joined")
+    list_filter = (*MEMBER_FILTERS, "is_staff", "date_joined")
     search_fields = (
         "contact_emails__email_address",
         "first_name",
@@ -82,10 +90,16 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         "organization",
         "title",
     )
+    # Every email address, names, organization, title and Member UUID, plus a phone number typed on its own; the
+    # exact address comes first, here and in every member picker (``search.RankedSearchMixin``).
+    phone_search_field = "contact_phones__phone_number"
+    search_rank = staticmethod(member_search_rank)
+    search_help_text = "Email, name, phone, organization or UUID"
     ordering = ("-date_joined",)
     readonly_fields = ("member_uuid", "registration_pending", "date_joined", "last_login")
     fieldsets = (
         (_("Member Info"), {"fields": ("member_uuid",)}),
+        (_("Account"), {"fields": ("is_active", "registration_pending")}),
         (None, {"fields": ("password",)}),
         (
             _("Personal Info"),
@@ -94,7 +108,7 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         (
             _("Permissions"),
             {
-                "fields": ("is_active", "registration_pending", "is_staff", "admin_apps"),
+                "fields": ("is_staff", "admin_apps"),
                 "classes": ("collapse",),
             },
         ),
@@ -141,6 +155,10 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     @admin.display(description="Full Name")
     def get_full_name_display(self, obj):
         return get_full_name_display(obj)
+
+    @admin.display(description="Account active", boolean=True, ordering="is_active")
+    def account_active(self, obj):
+        return obj.is_active
 
     @admin.action(description="Activate selected members")
     def activate_members(self, request, queryset):
@@ -298,31 +316,6 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
         readonly.extend(field for field in dict.fromkeys(locked) if field not in readonly)
         return readonly
 
-    def get_search_results(self, request, queryset, search_term):
-        """Extend the default search (email/name/id/...) with phone-number matching.
-
-        Phones are stored as national digits via ``ContactPhone.phone_number``, so the
-        query is reduced to digits and an 11-digit ``1XXXXXXXXXX`` is also tried as the
-        national ``XXXXXXXXXX`` — letting ``+1 555 123 4567``, ``15551234567``,
-        ``5551234567``, and partials like ``555123`` / ``1234567`` all find the same
-        member. Phone matches are taken from the same base queryset so list filters
-        still apply, and ``may_have_duplicates`` makes the changelist de-duplicate
-        members that own several matching phones.
-        """
-        base = queryset
-        queryset, may_have_duplicates = super().get_search_results(request, base, search_term)
-
-        digits = re.sub(r"\D", "", search_term or "")
-        if digits:
-            national = digits[1:] if len(digits) == 11 and digits.startswith("1") else digits
-            phone_q = Q(contact_phones__phone_number__icontains=national)
-            if national != digits:
-                phone_q |= Q(contact_phones__phone_number__icontains=digits)
-            queryset |= base.filter(phone_q)
-            may_have_duplicates = True
-
-        return queryset, may_have_duplicates
-
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}
         # Only surface the impersonate button when the request may actually use it
@@ -348,6 +341,16 @@ class MemberAdmin(BaseModelAdmin, UserAdmin):
     def save_model(self, request, obj, form, change):
         self._ensure_new_member_uuid(obj, change)
         super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        # Unticking Verified (or removing a row) on the last verified email or phone is allowed, with a warning.
+        with lost_sign_in(request, [form.instance.pk] if change else []):
+            super().save_related(request, form, formsets, change)
+
+    def get_confirmation_diff(self, request, obj, form, formsets, action_type):
+        diff = super().get_confirmation_diff(request, obj, form, formsets, action_type)
+        warning = member_page_row(obj, formsets) if action_type == "change" and diff else None
+        return [*diff, warning] if warning else diff
 
     @staticmethod
     def _ensure_new_member_uuid(obj, change):

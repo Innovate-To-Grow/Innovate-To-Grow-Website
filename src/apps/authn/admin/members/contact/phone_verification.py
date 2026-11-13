@@ -8,7 +8,7 @@ becomes verified only by proving possession with a one-time code, never by a tic
   (in person, or on a call to them), enter it. A code that went to a mistyped or recycled number never comes back.
 
 Staff can still switch verification off (untick, or "Mark selected phones as unverified"), and a number whose digits
-are changed here starts unverified again.
+are changed here, or that is moved to another member, starts unverified again.
 """
 
 from __future__ import annotations
@@ -34,6 +34,7 @@ from ....services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
 from ....services.send_verification.exceptions import SendVerificationError
 from ....services.send_verification.quotas import reserve_send_quotas
 from ....services.sms import PhoneVerificationError, PhoneVerificationInvalid, PhoneVerificationThrottled
+from ..help_texts import PHONE_SUBSCRIBED
 
 VERIFIED_HELP = (
     "Only a verified number can be used to sign in with a texted code. A number becomes verified only with an SMS "
@@ -43,17 +44,26 @@ VERIFY_URL_NAME = "authn_contactphone_verify_by_code"
 _CODE = re.compile(r"\d{6}")
 
 
+def same_member(first, second) -> bool:
+    """Whether two member ids name the same member (or both none). Compared as UUIDs: the member page's inline gets
+    its member's pk as a string, while a stored phone's ``member_id`` is a UUID."""
+    to_python = ContactPhone._meta.get_field("member").target_field.to_python
+    return (None if first is None else to_python(first)) == (None if second is None else to_python(second))
+
+
 def _e164(phone_number: str, region: str) -> str:
     country_code = region.split("-")[0] if "-" in region else region
     return f"+{country_code}{ContactPhone._to_national_digits(phone_number, region)}"
 
 
 class ContactPhoneAdminForm(forms.ModelForm):
-    """``verified`` may be switched off here but never on (that takes a code), and changing the number unverifies it."""
+    """``verified`` may be switched off here but never on (that takes a code), and changing the number, or the member it
+    belongs to, unverifies it."""
 
     class Meta:
         model = ContactPhone
         fields = "__all__"
+        help_texts = {"subscribe": PHONE_SUBSCRIBED}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -65,10 +75,20 @@ class ContactPhoneAdminForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if "verified" in self.fields and self._number_changed(cleaned):
-            # A different number has proven nothing yet.
+        if "verified" in self.fields and (self._number_changed(cleaned) or self._member_changed(cleaned)):
+            # A different number has proven nothing yet, and neither has the same number on another account: its
+            # code proved that someone holds the phone, not that the new member does.
+            if self.instance.verified and "verified" not in self.changed_data:
+                # The box was left ticked: name the flip, so the typed confirmation and the history show it.
+                self.changed_data.append("verified")
             cleaned["verified"] = False
         return cleaned
+
+    def _member_changed(self, cleaned) -> bool:
+        # The inline's member is its parent (unchanged); on the phone's own page staff may pick another member.
+        if self.instance._state.adding or "member" not in cleaned:
+            return False
+        return not same_member(getattr(cleaned["member"], "pk", None), self.instance.member_id)
 
     def _number_changed(self, cleaned) -> bool:
         if self.instance._state.adding or not self.instance.phone_number:
