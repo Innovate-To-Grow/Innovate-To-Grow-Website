@@ -115,9 +115,13 @@ complained status there. Graph's later non-delivery reports arrive in the
 sender mailbox, where bounce processing reads and records them and marks the matched email's delivery as failed
 ([Email monitoring](../integrations/email-monitoring.md)); the recipient log is not changed and nothing acts on them
 automatically. The SES
-account-level suppression list applies only to SES sends, and the application keeps
-no suppression list of its own, so under SMTP or Graph previously bounced or
-complaining addresses are mailed again.
+account-level suppression list applies only to SES sends. The site's own bulk-mail
+suppression list is the one staff keep on Email Monitoring → Bounced addresses
+(**Suppress address**, **Mark undeliverable**): every campaign skips those addresses,
+whatever the provider, and transactional mail is never suppressed. Nothing is added to
+it automatically, so under SMTP, Microsoft Graph or the Gmail API an address that bounced
+or complained is mailed again until staff suppress it
+([Email monitoring](../integrations/email-monitoring.md#bounced-addresses)).
 
 ## AWS End User Messaging (SMS)
 
