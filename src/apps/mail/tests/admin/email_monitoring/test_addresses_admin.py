@@ -117,7 +117,7 @@ class ListTests(TestCase):
             response = self.client.get(reverse(LIST))
 
         self.assertContains(response, "listed@example.org")
-        self.assertContains(response, "hard 1")
+        self.assertContains(response, "not found 1")
         self.assertContains(response, "Recipient mailbox does not exist")
         self.assertContains(response, reverse("admin:authn_member_change", args=[member.pk]))
         self.assertContains(response, "Mark undeliverable or replace the address")

@@ -190,8 +190,9 @@ def addresses_bulk_view(request):
 
 @require_POST
 def addresses_rebuild_view(request):
-    """Start counting again from the records still stored (review state and suppression are kept). I2G Master only:
-    the counts of reports already purged cannot be rebuilt."""
+    """Classify the stored reports again with the current rules, then start counting again from the records still
+    stored (review state and suppression are kept). I2G Master only: the counts of reports already purged cannot be
+    rebuilt."""
     require_mail_access(request)
     if not request.user.is_superuser:
         raise PermissionDenied("Only an I2G Master may rebuild the bounced-address counts.")
@@ -204,11 +205,12 @@ def addresses_rebuild_view(request):
             addresses=BouncedAddress.objects.count(),
         )
         return TemplateResponse(request, f"{TEMPLATES}/address_rebuild.html", context)
-    aggregate.rebuild()
+    reclassified = aggregate.rebuild()
     counted = aggregate.run(max_rows=int(settings.EMAIL_MONITORING["address_page_rows"]))
-    audit.record_rebuild(request, {"counted": counted["graph"] + counted["ses"]})
+    audit.record_rebuild(request, {"counted": counted["graph"] + counted["ses"], "reclassified": reclassified})
     messages.success(
         request,
-        "The counts are being rebuilt from the stored records; the rest is counted as the page reloads and hourly.",
+        f"The stored bounce reports were classified again with the current rules ({reclassified} changed). The counts "
+        "are being rebuilt from the stored records; the rest is counted as the page reloads and hourly.",
     )
     return HttpResponseRedirect(back)

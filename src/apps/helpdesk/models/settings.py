@@ -94,6 +94,20 @@ class HelpdeskSettings(ProjectControlModel):
         validators=_bounded(1, 9),
         help_text="Exchange's spam confidence level (SCL) from which a message counts as spam.",
     )
+    bulk_bcl_threshold = models.PositiveSmallIntegerField(
+        default=7,
+        db_default=7,
+        validators=_bounded(1, 9),
+        help_text="Exchange's bulk complaint level (BCL) from which a message counts as list or bulk mail (Exchange "
+        "Online's own default bulk threshold is 7). A reply to an email the site sent is never bulk on this alone.",
+    )
+    reply_match_window_days = models.PositiveSmallIntegerField(
+        default=30,
+        db_default=30,
+        validators=_bounded(1, 180),
+        help_text="A reply to an email the site sent without a Message-ID it knows (one carrying a sign-in link) is "
+        "recognised by its sender and subject when that email went out at most this many days before.",
+    )
     automated_retention_days = models.PositiveSmallIntegerField(
         default=90, validators=_bounded(1, 3650), help_text="Days the bodies of automated mail are kept."
     )

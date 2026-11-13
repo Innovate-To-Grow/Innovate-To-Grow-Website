@@ -53,6 +53,7 @@
     <span>New email address</span>
     <input type="email" name="new_address" value="{{ values.new_address }}" required maxlength="254" autocomplete="off">
   </label>
+  {% if row.left_org_contact %}<p class="i2g-monitor-muted">The latest left-the-organisation notice names <strong>{{ row.left_org_contact }}</strong> ({{ row.left_org_contact_label }}). It comes from the notice's text and is not verified: confirm it with the member or their organisation before you use it.</p>{% endif %}
   <fieldset class="i2g-monitor-fieldset">
     <legend>Add it as</legend>
     <label class="i2g-monitor-check"><input type="radio" name="new_role" value="secondary" {% if secondary_taken %}disabled{% elif values.new_role == "secondary" or not values.new_role %}checked{% endif %}> Secondary{% if secondary_taken %} (the member already has one){% endif %}</label>

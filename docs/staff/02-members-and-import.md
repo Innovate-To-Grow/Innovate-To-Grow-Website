@@ -67,9 +67,10 @@ each phone number). None of them changes another:
 account, whether or not the number is ticked **Verified** (it becomes verified when used). Whoever has that phone
 can sign in, so add a phone number to a member only when you are sure it is theirs.
 
-> **Coming soon** (pull request #732, not live yet; details may change). Only a **verified** number signs in. For a
-> number that is saved on an account but not verified, the sign-in page answers as if a code had been sent (so it
-> never reveals which numbers have an account), and no text is sent. A number becomes verified only with a code:
+> **Coming soon** (pull requests #732 and #735, not live yet; details may change). Only a **verified** number signs
+> in. For a number that is saved on an account but not verified, the sign-in page answers as if a code had been sent
+> (so it never reveals which numbers have an account), and no text is sent. A number becomes verified only with a
+> code:
 >
 > - **The member** verifies it on their account page: **Account → Phone Numbers → Verify**. An unverified number
 >   there says "Verify this number to use it to sign in with a texted code".
@@ -81,7 +82,9 @@ can sign in, so add a phone number to a member only when you are sure it is thei
 >   the I2G Master.
 > - **Verified** can no longer be ticked by hand, and **Mark selected phones as verified** is gone. Unticking it
 >   (or **Mark selected phones as unverified (stops SMS sign-in)**) still works. A phone added in the admin starts
->   unverified, and changing a number's digits makes it unverified again.
+>   unverified, and changing a number's digits, or moving it to another member (#735), makes it unverified again.
+>   Until it is verified again it can't be used to sign in, and Broadcast SMS and ticket texts skip it as one of the
+>   member's numbers: use **Verify by SMS code**. The confirmation and the history list the change as **Verified**.
 > - Phone rows show **Verified · SMS sign-in on** or **Unverified · no SMS sign-in**, and the Members list adds
 >   "(unverified)" to an unverified number in its **Primary Phone** column.
 

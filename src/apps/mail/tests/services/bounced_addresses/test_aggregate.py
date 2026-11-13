@@ -168,13 +168,14 @@ class ReopenTests(TestCase):
             status=Status.DISMISSED, resolution="dismiss", reviewed_at=self.dismissed_at
         )
 
-    def test_a_new_matched_hard_or_rejected_bounce_reopens_a_dismissed_address(self):
-        for classification, match in (("hard", "message_id"), ("rejected", "recipient")):
-            with self.subTest(classification=classification):
+    def test_a_new_matched_missing_address_or_disabled_mailbox_reopens_a_dismissed_address(self):
+        for category, status_code, match in (
+            ("hard", "5.1.1", "message_id"),
+            ("mailbox_disabled", "5.2.1", "recipient"),
+        ):
+            with self.subTest(category=category):
                 BouncedAddress.objects.filter(address="d@example.org").update(status=Status.DISMISSED)
-                make_bounce(
-                    recipient="d@example.org", classification=classification, status_code="5.1.1", match_method=match
-                )
+                make_bounce(recipient="d@example.org", category=category, status_code=status_code, match_method=match)
 
                 count_now()
 
@@ -211,6 +212,26 @@ class ReopenTests(TestCase):
         count_now()
 
         self.assertEqual(BouncedAddress.objects.get(address="d@example.org").status, Status.DISMISSED)
+
+    def test_matched_rejections_temporary_failures_and_unknowns_leave_it_dismissed(self):
+        # Only strong evidence against the address reopens it; a rejection points at our sending or their policy.
+        for category, classification in (
+            ("spam_rejected", "rejected"),
+            ("relay_denied", "rejected"),
+            ("policy_rejected", "rejected"),
+            ("transient", "soft"),
+            ("mailbox_full", "soft"),
+            ("unknown", "unknown"),
+        ):
+            make_bounce(
+                recipient="d@example.org", category=category, classification=classification, match_method="message_id"
+            )
+
+        count_now()
+
+        row = BouncedAddress.objects.get(address="d@example.org")
+        self.assertEqual((row.status, row.matched_count), (Status.DISMISSED, 6))
+        self.assertFalse(row.actions.filter(action=BouncedAddressAction.Action.REOPEN).exists())
 
     def test_a_new_ses_permanent_bounce_or_complaint_reopens_it(self):
         campaign = make_campaign()

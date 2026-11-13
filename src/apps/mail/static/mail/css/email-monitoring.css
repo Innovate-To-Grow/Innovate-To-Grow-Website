@@ -339,6 +339,20 @@
     overflow-wrap: anywhere;
 }
 
+.i2g-monitor-legend {
+    margin: 8px 0 12px;
+}
+
+.i2g-monitor-legend summary {
+    color: var(--i2g-m-accent);
+    cursor: pointer;
+    font-size: 0.8125rem;
+}
+
+.i2g-monitor-legend .i2g-monitor-facts {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
 .i2g-monitor-actions {
     display: flex;
     flex-wrap: wrap;

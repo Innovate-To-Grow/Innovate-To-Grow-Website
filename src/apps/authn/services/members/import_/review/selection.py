@@ -3,7 +3,8 @@
 A posted choice must be one of the row's enabled options, and a posted tick an enabled risky item of the member the
 choice updates; anything else is a forged POST and the whole save is refused. Ticks of a member the new choice no
 longer updates are dropped. ``selection_problems`` lists what must be fixed before the apply: two rows changing one
-member, two rows of a repeat group both used, or ticks that would remove a member's last verified sign-in contact.
+member, two rows creating a member with the same address (ignoring letter case), two rows of a repeat group both used,
+or ticks that would remove a member's last verified sign-in contact.
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ from collections import Counter, defaultdict
 
 from .actions import CREATE, CREATE_CLAIM, SKIP, UPDATE, RowPlan, resolve_action
 from .choices import allowed_values
-from .lookup import Snapshot, snapshot_from_slice
+from .lookup import Snapshot, address_key, snapshot_from_slice
 from .plan import plan_row
 
 INVALID = "invalid"
@@ -68,6 +69,7 @@ def selection_problems(analyses, selections: dict, snapshot: Snapshot | None = N
     claimed: dict[tuple, list[int]] = defaultdict(list)
     labels: dict[tuple, str] = {}
     used: dict[tuple, list[int]] = defaultdict(list)
+    creates: dict[str, dict[int, tuple]] = defaultdict(dict)
     for analysis in analyses:
         if analysis.status == INVALID:
             continue
@@ -82,6 +84,7 @@ def selection_problems(analyses, selections: dict, snapshot: Snapshot | None = N
             key = ("claim", action.claim)
             claimed[key].append(number)
             labels[key] = f"the contact email {analysis.values.get('primary_email')}"
+        _note_create(creates, analysis, action)
         if choice == "use_row":
             used[tuple(analysis.facts.get("group", []))].append(number)
         plan = plan_for(analysis, choice, ticks, snapshot)
@@ -91,9 +94,48 @@ def selection_problems(analyses, selections: dict, snapshot: Snapshot | None = N
             problems.append(
                 f"Rows {_rows(rows)} would all change {labels[key]}. Choose one of them and skip the others."
             )
+    problems.extend(_duplicate_creates(creates))
     for group, rows in used.items():
         if len(rows) > 1:
             problems.append(f"Rows {_rows(rows)} are the same person; use only one of them (rows {_rows(group)}).")
+    return problems
+
+
+def _note_create(creates: dict, analysis, action) -> None:
+    """Key a row that creates a member by its Primary Email, ignoring letter case.
+
+    A repeat group catches rows that are ready to create one address, but not a row that creates only through a choice:
+    "Ignore the Member UUID" (C5 rows are never grouped), or claiming one of several unlinked records that differ only
+    in letter case (C3). Two such creates fail the apply on the unique constraint or, in different letter case, make
+    two members whose addresses differ only in case.
+    """
+    if action.kind not in (CREATE, CREATE_CLAIM):
+        return
+    address = analysis.values.get("primary_email") or ""
+    group = tuple(analysis.facts.get("group", []))
+    creates[address_key(address)][analysis.row_number] = (address, group, action.claim)
+
+
+def _reported_elsewhere(entries) -> bool:
+    """Rows of one repeat group that are all used ("the same person"), or rows that all claim one unlinked record
+    ("would all change the contact email"), already have their own sentence."""
+    groups = {group for _address, group, _claim in entries}
+    claims = {claim for _address, _group, claim in entries}
+    return (len(groups) == 1 and bool(next(iter(groups)))) or (len(claims) == 1 and next(iter(claims)) is not None)
+
+
+def _duplicate_creates(creates: dict[str, dict[int, tuple]]) -> list[str]:
+    """One sentence for each address that two or more rows would create a member with."""
+    problems = []
+    for by_row in creates.values():
+        if len(by_row) < 2 or _reported_elsewhere(by_row.values()):
+            continue
+        spellings = list(dict.fromkeys(address for address, _group, _claim in by_row.values()))
+        address = " / ".join(spellings) + (" (the same address in different letter case)" if len(spellings) > 1 else "")
+        problems.append(
+            f"Rows {_rows(sorted(by_row))} would all create a new member with {address}. Choose one of them and skip "
+            "the others."
+        )
     return problems
 
 

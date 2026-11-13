@@ -14,7 +14,7 @@ The rules (Hongzhe's decision of 2026-11-11 on top of item2-helpdesk-bounces-pla
 - The site's own messages keep no body or attachment (they may hold sign-in codes).
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from django.db import transaction
@@ -60,6 +60,10 @@ def store(
         if duplicate is not None:
             return Stored(duplicate.ticket, None, duplicate=True, rule="duplicate")
         match = matching.find(parsed, conversation_id=row.conversation_id, prefer_human=not classified.automated)
+        reply = classified.site_reply
+        if match.campaign_id is None and reply is not None and reply.campaign_id is not None:
+            # A reply to a campaign email sent without a Message-ID (found by its sender and subject).
+            match = replace(match, campaign_id=reply.campaign_id)
         ticket, created, rule = _target(match, parsed, classified, settings, row.received_at, own)
         message = _add_message(ticket, row, parsed, classified, settings, fingerprint)
         if not created:

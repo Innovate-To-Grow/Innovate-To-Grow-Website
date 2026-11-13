@@ -72,6 +72,11 @@ def _by_references(references: list[str], *, prefer_human: bool) -> Ticket | Non
     return ranked[0] if ranked else None
 
 
+def references_of(parsed: ParsedMessage) -> list[str]:
+    """The Message-IDs a message names in In-Reply-To and References, unique, in order."""
+    return [item for item in dict.fromkeys([*parsed.references, parsed.in_reply_to]) if item]
+
+
 def _campaign(references: list[str]) -> uuid.UUID | None:
     email = (
         OutboundEmail.objects.filter(internet_message_id__in=references, campaign_id__isnull=False)
@@ -107,7 +112,7 @@ def _by_conversation(conversation_id: str, sender: str, *, prefer_human: bool) -
 
 
 def find(parsed: ParsedMessage, *, conversation_id: str = "", prefer_human: bool = True) -> Match:
-    references = [item for item in dict.fromkeys([*parsed.references, parsed.in_reply_to]) if item]
+    references = references_of(parsed)
     campaign_id = None
     if references:
         ticket = _by_references(references, prefer_human=prefer_human)

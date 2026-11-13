@@ -3,7 +3,14 @@
 {% block extra_filters %}
 <label class="i2g-monitor-field i2g-monitor-field--wide">
   <span>Search</span>
-  <input type="search" name="q" value="{{ listing.filters.q }}" placeholder="Recipient, status code, reason, subject or id">
+  <input type="search" name="q" value="{{ listing.filters.q }}" placeholder="Recipient, codes, reason, diagnostic, subject or id">
+</label>
+<label class="i2g-monitor-field">
+  <span>Category</span>
+  <select name="category">
+    <option value="">Any</option>
+    {% for value, label in categories %}<option value="{{ value }}" {% if listing.filters.category == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
 </label>
 <label class="i2g-monitor-field">
   <span>Classification</span>
@@ -34,6 +41,12 @@
     A report is matched exactly when it quotes the original Message-ID; otherwise only when exactly one email went to that
     recipient with that subject shortly before (inferred). Anything else stays unmatched rather than guessed.
   </p>
+  <p class="i2g-monitor-muted">
+    The <strong>category</strong> comes from the SMTP reply code and the enhanced status code; the diagnostic text only refines a generic code.
+    Only "Address does not exist" and "Mailbox disabled" are evidence against an address; a temporary failure (a connection timeout, a DNS failure, a delivery that expired after retries) never is.
+    If a diagnostic looks misread, note its code and text: the phrase lists are tuned from these reports.
+  </p>
+  {% include "admin/mail/email_monitoring/_category_legend.html" %}
   {% include "admin/mail/email_monitoring/_bounce_table.html" with bounces=page.object_list show_email=True sortable=True empty="No bounce reports match these filters." %}
   {% include "admin/mail/email_monitoring/_pagination.html" %}
 </div>

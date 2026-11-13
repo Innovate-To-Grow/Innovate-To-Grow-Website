@@ -128,29 +128,31 @@ class ParseReportTests(SimpleTestCase):
 
 
 class ClassifyTests(SimpleTestCase):
+    """The coarse classification and ``is_permanent`` ("the address itself will not work"); the categories behind them
+    are tested in ``test_bounce_categories``."""
+
     def test_hard_bounces(self):
-        for status in ("5.1.1", "5.1.10", "5.1.2", "5.2.1", "5.4.1", "5.4.4", "5.0.0"):
+        for status in ("5.1.1", "5.1.10", "5.1.2", "5.2.1", "5.4.1", "5.4.4"):
             with self.subTest(status=status):
                 verdict = classify("failed", status)
                 self.assertEqual((verdict.classification, verdict.is_permanent), (Classification.HARD, True))
 
-    def test_soft_bounces(self):
-        for action, status, permanent in (
-            ("failed", "5.2.2", True),
-            ("failed", "5.3.4", True),
-            ("failed", "5.4.300", True),
-            ("failed", "4.4.7", False),
-            ("failed", "4.2.2", False),
-            ("failed", "5.6.1", True),
-        ):
+    def test_a_bare_generic_code_is_unknown_not_hard(self):
+        verdict = classify("failed", "5.0.0")
+
+        self.assertEqual((verdict.classification, verdict.is_permanent), (Classification.UNKNOWN, None))
+
+    def test_soft_bounces_never_say_the_address_will_not_work(self):
+        for status in ("5.2.2", "5.3.4", "5.4.300", "4.4.7", "4.2.2", "5.6.1"):
             with self.subTest(status=status):
-                verdict = classify(action, status)
-                self.assertEqual((verdict.classification, verdict.is_permanent), (Classification.SOFT, permanent))
+                verdict = classify("failed", status)
+                self.assertEqual((verdict.classification, verdict.is_permanent), (Classification.SOFT, False))
 
     def test_policy_rejections(self):
         for status in ("5.7.1", "5.7.509", "5.7.606"):
             with self.subTest(status=status):
-                self.assertEqual(classify("failed", status).classification, Classification.REJECTED)
+                verdict = classify("failed", status)
+                self.assertEqual((verdict.classification, verdict.is_permanent), (Classification.REJECTED, False))
 
     def test_a_delay_is_never_a_failure(self):
         verdict = classify("delayed", "4.4.7")

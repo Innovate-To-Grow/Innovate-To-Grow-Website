@@ -192,6 +192,14 @@ class ScannerTests(TestCase):
         self.assertEqual(self.scan(reader).status, "paused")
         self.assertEqual(reader.opened, [])
 
+    def test_is_paused_says_whether_the_dashboard_paused_the_mailbox(self):
+        self.assertFalse(state.is_paused(SENDER))  # no state row yet
+        state.set_paused(SENDER, True)
+        self.assertTrue(state.is_paused(SENDER))
+        self.assertFalse(state.is_paused("other@ucmerced.edu"))
+        state.set_paused(SENDER, False)
+        self.assertFalse(state.is_paused(SENDER))
+
     def test_a_running_scan_holds_the_mailbox(self):
         state.state_for(SENDER)
         self.assertIsNotNone(state.acquire_lease(SENDER, self.now))
