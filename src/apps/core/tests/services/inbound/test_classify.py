@@ -43,7 +43,8 @@ class HumanTests(SimpleTestCase):
         verdict = verdict_of({"X-Auto-Response-Suppress": "All", "Return-Path": "<>"})
 
         self.assertEqual(verdict.classification, HUMAN)
-        self.assertEqual(set(verdict.hints), {"auto_response_suppress", "null_return_path"})
+        # Both also mean the message must never be answered automatically (RFC 3834).
+        self.assertEqual(set(verdict.hints), {"auto_response_suppress", "null_return_path", "no_auto_response"})
 
     def test_auto_submitted_no_is_a_person(self):
         self.assertEqual(verdict_of({"Auto-Submitted": "no"}).classification, HUMAN)

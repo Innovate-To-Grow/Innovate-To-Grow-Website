@@ -14,6 +14,9 @@
     <div><dt>Last reason</dt><dd>{% include "admin/mail/email_monitoring/_address_reason.html" %}{% if row.graph_is_latest and row.last_diagnostic %}<br><span class="i2g-monitor-muted">{{ row.last_diagnostic|truncatechars:300 }}</span>{% endif %}</dd></div>
     <div><dt>Microsoft Graph reports</dt><dd>{% for item in row.category_items %}{% if not forloop.first %} · {% endif %}{{ item.title|lower }} {{ item.count }}{% empty %}hard {{ row.hard_count }} · soft {{ row.soft_count }} · rejected {{ row.rejected_count }} · delayed {{ row.delayed_count }} · unknown {{ row.unknown_count }}{% endfor %}<br><span class="i2g-monitor-muted">{{ row.matched_count }} matched to an email the site sent</span></dd></div>
     <div><dt>Amazon SES events</dt><dd>permanent {{ row.ses_permanent_count }} · transient {{ row.ses_transient_count }} · undetermined {{ row.ses_undetermined_count }} · complaints {{ row.complaint_count }}</dd></div>
+    {% if row.left_org_count %}
+    <div><dt>Left-the-organisation notices</dt><dd>{{ row.left_org_count }} automatic repl{{ row.left_org_count|pluralize:"y,ies" }} to the site's mail saying the person left or the address changed; the latest {{ row.left_org_last_at|date:"M j, Y H:i" }}{% if notice_link %} (<a href="{{ notice_link }}">open it in the helpdesk</a>){% endif %}{% if row.left_org_contact %}<br>It names <strong>{{ row.left_org_contact }}</strong>: {{ row.left_org_contact_label }}.{% endif %}<br><span class="i2g-monitor-muted">Evidence to check, from the notice's text: anyone can write one, and an address it names is not verified. Out-of-office replies are never counted here.</span></dd></div>
+    {% endif %}
   </dl>
 </section>
 

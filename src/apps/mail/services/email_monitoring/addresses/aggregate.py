@@ -8,14 +8,17 @@ late can then never fall behind the cursor.
 
 It runs when the Bounced addresses page loads (a bounded batch) and in the background worker's hourly maintenance,
 before the email telemetry retention purge, so counts are complete before reports are deleted. Counting only writes
-``BouncedAddress`` rows and their campaign rows: never a member, a contact email or a subscription.
+``BouncedAddress`` rows and their campaign rows: never a member, a contact email or a subscription. The sources are
+Microsoft Graph bounce reports (``graph``), Amazon SES events (``ses``) and the helpdesk's left-the-organisation
+notices that answer the site's mail (``inbound``, see ``notices``).
 
 Before each Graph batch, the reports saved without a category (by the previous release while a deploy rolled out)
 are classified. ``mail.0026`` parks the Graph cursor (``PARKED``, far in the future) when Graph reports had been
 counted before categories existed: the previous release, still running while the deploy rolls out, then counts no
 Graph report, and the first count by this release starts the Graph counts again from the stored reports, so every
 address gets its category counts (recorded like a rebuild). **Rebuild counts** classifies every stored report again
-with the current rules first, so a change to the rules reaches the reports and the counts.
+with the current rules first, so a change to the rules reaches the reports and the counts; it leaves the
+left-the-organisation notices counted (they are never classified again, and the inbound queue keeps only 90 days).
 """
 
 import uuid
@@ -25,6 +28,7 @@ from datetime import UTC, datetime, timedelta
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F, Q
+from django.db.models.functions import Coalesce, Greatest, Least
 from django.utils import timezone
 
 from apps.core.models import EmailBounce
@@ -37,11 +41,11 @@ from apps.mail.models import (
     RecipientLog,
 )
 
-from . import sources
+from . import notices, sources
 from .matching import match_addresses, refresh_cached_links
 from .suggestions import suggest
 
-GRAPH, SES = "graph", "ses"
+GRAPH, SES, INBOUND = "graph", "ses", "inbound"
 # The state row whose cursor says where the hourly re-check of cached links continues.
 LINKS = "links"
 # A Graph cursor here or later is parked (``mail.0026``, ``park_graph``): no report is past it, so a release that
@@ -50,6 +54,15 @@ PARKED = datetime(9999, 12, 31, tzinfo=UTC)
 # Its id half: the cursor query compares ids too (``sources.after_cursor``), so it must never be empty.
 PARKED_ID = uuid.UUID(int=2**128 - 1)
 GRAPH_COUNT_FIELDS = ("hard_count", "soft_count", "rejected_count", "delayed_count", "unknown_count")
+# The counts a rebuild starts again (the left-the-organisation notices stay).
+REBUILT_COUNT_FIELDS = (
+    *GRAPH_COUNT_FIELDS,
+    "matched_count",
+    "ses_permanent_count",
+    "ses_transient_count",
+    "ses_undetermined_count",
+    "complaint_count",
+)
 COUNTED_FIELDS = [
     "hard_count",
     "soft_count",
@@ -73,6 +86,12 @@ COUNTED_FIELDS = [
     "ses_first_at",
     "ses_last_at",
     "ses_last",
+    "left_org_count",
+    "left_org_first_at",
+    "left_org_last_at",
+    "left_org_contact",
+    "left_org_contact_kind",
+    "left_org_ticket",
     "first_bounce_at",
     "last_bounce_at",
     "status",
@@ -111,13 +130,25 @@ def _ses_rows(state, until=None):
 SOURCES = {
     GRAPH: (_graph_rows, sources.GRAPH_FIELDS, sources.count_graph, "created_at"),
     SES: (_ses_rows, sources.SES_FIELDS, sources.count_ses, "updated_at"),
+    INBOUND: (notices.rows, notices.FIELDS, notices.count, "processed_at"),
 }
+
+
+def _earliest(*fields):
+    """The earliest non-null of the date ``fields``, or null (``Least`` alone is null on SQLite when any is)."""
+    values = [Coalesce(field, *(other for other in fields if other != field)) for field in fields]
+    return Least(*values)
+
+
+def _latest(*fields):
+    values = [Coalesce(field, *(other for other in fields if other != field)) for field in fields]
+    return Greatest(*values)
 
 
 def finish(row: BouncedAddress) -> None:
     """Derive the cross-source dates and the suggestion from the counts."""
-    firsts = [at for at in (row.graph_first_at, row.ses_first_at) if at is not None]
-    lasts = [at for at in (row.graph_last_at, row.ses_last_at) if at is not None]
+    firsts = [at for at in (row.graph_first_at, row.ses_first_at, row.left_org_first_at) if at is not None]
+    lasts = [at for at in (row.graph_last_at, row.ses_last_at, row.left_org_last_at) if at is not None]
     row.first_bounce_at = min(firsts, default=None)
     row.last_bounce_at = max(lasts, default=None)
     row.suggestion = suggest(row)
@@ -140,8 +171,8 @@ def _reset_graph_counts() -> None:
         **dict.fromkeys(("last_classification", "last_category", "last_status_code", "last_reason"), ""),
         last_diagnostic="",
         last_remote_mta="",
-        first_bounce_at=F("ses_first_at"),
-        last_bounce_at=F("ses_last_at"),
+        first_bounce_at=_earliest("ses_first_at", "left_org_first_at"),
+        last_bounce_at=_latest("ses_last_at", "left_org_last_at"),
         suggestion="",
     )
 
@@ -209,7 +240,7 @@ def _drain(source: str, result: dict, *, max_rows, wait: bool, should_stop) -> N
     while not (should_stop is not None and should_stop()):
         size = _batch_size()
         if max_rows is not None:
-            size = min(size, max_rows - result[GRAPH] - result[SES])
+            size = min(size, max_rows - sum(result[name] for name in SOURCES))
         if size <= 0:
             return
         batch = count_batch(source, wait=wait, size=size)
@@ -224,8 +255,8 @@ def run(*, max_rows: int | None = None, wait: bool = True, should_stop=None) -> 
 
     Returns how many rows each source counted and whether a source was busy (held by another run).
     """
-    result = {GRAPH: 0, SES: 0, "busy": False}
-    for source in (GRAPH, SES):
+    result = {GRAPH: 0, SES: 0, INBOUND: 0, "busy": False}
+    for source in (GRAPH, SES, INBOUND):
         _drain(source, result, max_rows=max_rows, wait=wait, should_stop=should_stop)
     return result
 
@@ -278,9 +309,9 @@ def refresh_all(*, should_stop=None) -> int:
 
 def rebuild() -> int:
     """Classify every stored report again with the current rules, then start counting again from the records still
-    stored: the counts of reports already purged are lost; review state, suppression and the action log stay as they
-    are. Returns how many reports changed category or classification."""
-    zero = {name: 0 for name in COUNTED_FIELDS if name.endswith("_count")}
+    stored: the counts of reports already purged are lost; review state, suppression, the action log and the
+    left-the-organisation notices stay as they are. Returns how many reports changed category or classification."""
+    zero = dict.fromkeys(REBUILT_COUNT_FIELDS, 0)
     blank = dict.fromkeys(("last_classification", "last_category", "last_status_code", "last_reason"), "")
     with transaction.atomic():
         states = {source: _locked_state(source, wait=True) for source in (GRAPH, SES)}
@@ -297,9 +328,12 @@ def rebuild() -> int:
             ses_first_at=None,
             ses_last_at=None,
             ses_last={},
-            first_bounce_at=None,
-            last_bounce_at=None,
+            first_bounce_at=F("left_org_first_at"),
+            last_bounce_at=F("left_org_last_at"),
             suggestion="",
+        )
+        BouncedAddress.objects.filter(left_org_count__gt=0, suppressed_at__isnull=True).update(
+            suggestion=BouncedAddress.Suggestion.LEFT_ORG
         )
         for state in states.values():
             state.cursor_at = state.cursor_id = None

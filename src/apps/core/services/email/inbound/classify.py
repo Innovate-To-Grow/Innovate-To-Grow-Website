@@ -1,27 +1,63 @@
 """Telling automated mail from mail a person wrote, from headers and the first few KB of text only.
 
 Pure functions: no database, no network. ``classify`` tries the classes in order and the first match wins: the
-site's own message, bounce report, receipt, automatic reply (subtypes vacation, left the organisation, other), other
-system mail, list or bulk mail, spam, and otherwise human. Only strong signals (headers that mail systems set, and
-the automatic-reply subject prefixes they write) put a message in an automated class. When unsure the verdict is
-human, because a person's message hidden as automated costs more than an automated one shown: content-only signs
-become hints on a human verdict (``possible_auto_reply``, ``possible_left_org``, …), never a class.
+site's own message, bounce report, receipt, automatic reply (``autoreply``: vacation, left the organisation, other),
+other system mail, list or bulk mail (``bulk``), spam, and otherwise human. Only strong signals (headers that mail
+systems set, and the automatic-reply subject prefixes they write) put a message in an automated class. When unsure
+the verdict is human, because a person's message hidden as automated costs more than an automated one shown:
+content-only signs become hints on a human verdict (``possible_auto_reply``, ``possible_left_org``, …), never a class.
+
+The caller says whether the message replies to the site's own mail (``Evidence.replies_to_site_mail``, from its
+In-Reply-To and References: an email the site sent, or a message of a conversation with a person the caller already
+holds). Such a reply is not list or bulk mail on weak bulk signals alone (a person answering a campaign from a CRM
+tool), but an automatic reply stays one whatever it answers: the flag never makes automated mail a person's. Every
+verdict on such a reply carries the hint ``replies_to_site_mail``.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
-from . import rules
+from . import autoreply, bulk
+from .bulk import spam_confidence_level
 from .headers import first, joined
-from .rules import AUTO_REPLY, AUTOMATED, BOUNCE, BULK, HUMAN, LEFT_ORG, OWN, RECEIPT, SPAM, SYSTEM
+from .rules import (
+    AUTH_RESULT_RE,
+    AUTO_REPLY_HINT_RE,
+    AUTOMATED,
+    BOUNCE,
+    BULK,
+    CALENDAR_SUBJECT_RE,
+    DKIM_PASS_DOMAIN_RE,
+    EXCHANGE_RULE_HEADERS,
+    HUMAN,
+    LEFT_ORG_RE,
+    OWN,
+    QUARANTINE_LOCAL_RE,
+    RECEIPT,
+    RECEIPT_SUBJECT_RE,
+    REPORT_SENDERS,
+    SPAM,
+    SYSTEM,
+    SYSTEM_TEXT_RE,
+    UNMONITORED_RE,
+    VACATION_RE,
+)
 
 # How much of the decoded text the content rules read.
-TEXT_HEAD_CHARS = 4096
+TEXT_HEAD_CHARS = autoreply.TEXT_HEAD_CHARS
+REPLY_HINT = "replies_to_site_mail"
+# A person's message that must never be answered automatically: RFC 3834's markers (a list, a bulk sender, a request
+# for none), or the hints below that it may be automated after all or forged: when unsure, an automatic answer could
+# start a mail loop with a responder that marks nothing.
+NO_AUTO_RESPONSE = "no_auto_response"
+_DOUBTFUL = frozenset(
+    {"possible_auto_reply", "possible_left_org", "possible_receipt", "possible_system_mail", "claims_own_address"}
+)
 
 
 @dataclass(frozen=True)
 class Evidence:
     """What the classifier reads of one message: its headers (lower-case names → raw values) and a few facts its
-    parser found."""
+    parser (and the caller) found."""
 
     headers: dict
     from_address: str = ""
@@ -31,6 +67,7 @@ class Evidence:
     report_type: str = ""
     has_calendar: bool = False
     text_head: str = ""
+    replies_to_site_mail: bool = False
 
 
 @dataclass(frozen=True)
@@ -39,21 +76,37 @@ class Verdict:
     subtype: str = ""
     signals: tuple[str, ...] = ()
     hints: tuple[str, ...] = ()
+    # The address a left-the-organisation notice names instead of the one mailed, and how (``autoreply``): a hint
+    # for staff, never verified and never applied.
+    contact: str = ""
+    contact_kind: str = ""
 
     @property
     def automated(self) -> bool:
         return self.classification in AUTOMATED
 
 
-def classify(evidence: Evidence, *, own_addresses=frozenset(), scl_threshold: int = 5) -> Verdict:
-    for check in (_own, _bounce, _receipt, _auto_reply, _system, _bulk):
+def classify(
+    evidence: Evidence, *, own_addresses=frozenset(), scl_threshold: int = 5, bcl_threshold: int = 7
+) -> Verdict:
+    verdict = _decide(evidence, own_addresses, scl_threshold, bcl_threshold)
+    if evidence.replies_to_site_mail and REPLY_HINT not in verdict.hints:
+        verdict = replace(verdict, hints=(REPLY_HINT, *verdict.hints))
+    return verdict
+
+
+def _decide(evidence: Evidence, own_addresses, scl_threshold: int, bcl_threshold: int) -> Verdict:
+    for check in (_own, _bounce, _receipt, _auto_reply, _system):
         verdict = check(evidence, own_addresses)
         if verdict is not None:
             return verdict
-    spam = _spam(evidence.headers, scl_threshold)
+    found, overridden = bulk.detect(evidence, bcl_threshold=bcl_threshold)
+    if found is not None:
+        return Verdict(BULK, found.subtype, found.signals)
+    spam = bulk.spam(evidence.headers, scl_threshold)
     if spam is not None:
-        return spam
-    return Verdict(HUMAN, hints=_hints(evidence, own_addresses))
+        return Verdict(SPAM, spam.subtype, spam.signals)
+    return Verdict(HUMAN, hints=_hints(evidence, own_addresses) + overridden)
 
 
 def _local(address: str) -> str:
@@ -68,7 +121,7 @@ def authenticated_as_own(evidence: Evidence, own_addresses) -> bool:
     if first(evidence.headers, "x-ms-exchange-organization-authas").strip().lower() == "internal":
         return True
     domain = evidence.from_address.partition("@")[2]
-    signed = rules.DKIM_PASS_DOMAIN_RE.findall(joined(evidence.headers, "authentication-results"))
+    signed = DKIM_PASS_DOMAIN_RE.findall(joined(evidence.headers, "authentication-results"))
     return any(domain == item.lower() or domain.endswith("." + item.lower()) for item in signed)
 
 
@@ -80,13 +133,13 @@ def _own(evidence: Evidence, own_addresses) -> Verdict | None:
 
 def _bounce(evidence: Evidence, _own_addresses) -> Verdict | None:
     if evidence.content_type == "multipart/report" and evidence.report_type == "delivery-status":
-        if rules.RECEIPT_SUBJECT_RE.match(evidence.subject):
+        if RECEIPT_SUBJECT_RE.match(evidence.subject):
             return Verdict(RECEIPT, "delivery", ("delivery_status_report", "receipt_subject"))
         return Verdict(BOUNCE, signals=("delivery_status_report",))
     if first(evidence.headers, "x-failed-recipients"):
         return Verdict(BOUNCE, signals=("x_failed_recipients",))
     local = _local(evidence.from_address)
-    if local in rules.REPORT_SENDERS or local.startswith("microsoftexchange"):
+    if local in REPORT_SENDERS or local.startswith("microsoftexchange"):
         return Verdict(BOUNCE, signals=("report_sender",))
     return None
 
@@ -94,98 +147,53 @@ def _bounce(evidence: Evidence, _own_addresses) -> Verdict | None:
 def _receipt(evidence: Evidence, _own_addresses) -> Verdict | None:
     if evidence.report_type == "disposition-notification":
         return Verdict(RECEIPT, "read", ("disposition_notification",))
-    if evidence.content_type == "multipart/report" and rules.RECEIPT_SUBJECT_RE.match(evidence.subject):
+    if evidence.content_type == "multipart/report" and RECEIPT_SUBJECT_RE.match(evidence.subject):
         return Verdict(RECEIPT, signals=("report", "receipt_subject"))
     return None
 
 
-def _auto_reply_signals(evidence: Evidence) -> tuple[list[str], bool]:
-    """The automatic-reply signals present, and whether they say "reply" (rather than only "auto-generated")."""
-    headers = evidence.headers
-    auto_submitted = first(headers, "auto-submitted").strip().lower()
-    signals = ["auto_submitted"] if auto_submitted and not auto_submitted.startswith("no") else []
-    vendor = [name for name in rules.AUTO_REPLY_HEADERS if name in headers]
-    if first(headers, "x-autogenerated").strip().lower().startswith("reply"):
-        vendor.append("x-autogenerated")
-    precedence = first(headers, "precedence").strip().lower() == "auto_reply"
-    subject = bool(rules.AUTO_REPLY_SUBJECT_RE.match(evidence.subject))
-    signals += vendor + (["precedence_auto_reply"] if precedence else []) + (["auto_reply_subject"] if subject else [])
-    replied = auto_submitted.startswith("auto-replied") or bool(vendor) or precedence or subject
-    return signals, replied
-
-
-def _auto_reply(evidence: Evidence, _own_addresses) -> Verdict | None:
-    signals, replied = _auto_reply_signals(evidence)
-    if not signals:
+def _auto_reply(evidence: Evidence, own_addresses) -> Verdict | None:
+    notice = autoreply.detect(evidence, own_addresses)
+    if notice is None:
         return None
-    content = f"{evidence.subject}\n{evidence.text_head[:TEXT_HEAD_CHARS]}"
-    if rules.LEFT_ORG_RE.search(content):
-        return Verdict(LEFT_ORG, "left_org", tuple(signals))
-    vacation = bool(rules.VACATION_RE.search(content))
-    if not replied and not vacation:
-        return Verdict(SYSTEM, "auto_generated", tuple(signals))
-    return Verdict(AUTO_REPLY, "vacation" if vacation else "other", tuple(signals))
+    return Verdict(notice.classification, notice.subtype, notice.signals, (), notice.contact, notice.contact_kind)
 
 
 def _system(evidence: Evidence, _own_addresses) -> Verdict | None:
-    if evidence.has_calendar and rules.CALENDAR_SUBJECT_RE.match(evidence.subject):
+    if evidence.has_calendar and CALENDAR_SUBJECT_RE.match(evidence.subject):
         return Verdict(SYSTEM, "calendar", ("calendar_reply",))
-    if rules.QUARANTINE_LOCAL_RE.search(_local(evidence.from_address)):
+    if QUARANTINE_LOCAL_RE.search(_local(evidence.from_address)):
         return Verdict(SYSTEM, "quarantine", ("quarantine_sender",))
     return None
 
 
-def _bulk(evidence: Evidence, _own_addresses) -> Verdict | None:
-    headers = evidence.headers
-    lists = [name for name in rules.LIST_HEADERS if name in headers]
-    providers = [name for name in rules.ESP_HEADERS if name in headers]
-    precedence = first(headers, "precedence").strip().lower() in rules.BULK_PRECEDENCE
-    noreply = bool(rules.NOREPLY_RE.match(_local(evidence.from_address)))
-    signals = lists + providers + (["precedence_bulk"] if precedence else []) + (["noreply_sender"] if noreply else [])
-    if not signals:
-        return None
-    return Verdict(
-        BULK, "list" if lists else ("noreply" if noreply and not providers else "newsletter"), tuple(signals)
-    )
-
-
-def spam_confidence_level(headers) -> int | None:
-    """Exchange Online's spam confidence level (SCL), the highest one the headers give; None when none does."""
-    values = [first(headers, "x-ms-exchange-organization-scl")]
-    values += rules.SCL_RE.findall(joined(headers, "x-forefront-antispam-report"))
-    levels = [int(value) for value in (item.strip() for item in values) if value.lstrip("-").isdigit()]
-    return max(levels) if levels else None
-
-
-def _spam(headers, scl_threshold: int) -> Verdict | None:
-    scl = spam_confidence_level(headers)
-    if scl is not None and scl >= scl_threshold:
-        return Verdict(SPAM, "scl", (f"scl_{scl}",))
-    if rules.SPAM_VERDICT_RE.search(joined(headers, "x-forefront-antispam-report")):
-        return Verdict(SPAM, "filter_verdict", ("exchange_spam_verdict",))
-    return None
-
-
 def _hints(evidence: Evidence, own_addresses) -> tuple[str, ...]:
-    content = f"{evidence.subject}\n{evidence.text_head[:TEXT_HEAD_CHARS]}"
+    subject = autoreply.own_subject(evidence.subject)
+    content = f"{subject}\n{autoreply.own_text(evidence.text_head)}"
+    headers = evidence.headers
     checks = (
-        ("possible_auto_reply", rules.AUTO_REPLY_HINT_RE.search(evidence.subject) or rules.VACATION_RE.search(content)),
-        ("possible_left_org", rules.LEFT_ORG_RE.search(content)),
-        ("possible_receipt", rules.RECEIPT_SUBJECT_RE.match(evidence.subject)),
-        ("possible_system_mail", rules.SYSTEM_TEXT_RE.search(content)),
-        ("auto_response_suppress", "x-auto-response-suppress" in evidence.headers),
-        ("null_return_path", first(evidence.headers, "return-path").strip() == "<>"),
+        ("possible_auto_reply", AUTO_REPLY_HINT_RE.search(subject) or VACATION_RE.search(content)),
+        ("possible_left_org", LEFT_ORG_RE.search(content) or UNMONITORED_RE.search(content)),
+        ("possible_receipt", RECEIPT_SUBJECT_RE.match(evidence.subject)),
+        ("possible_system_mail", SYSTEM_TEXT_RE.search(content)),
+        ("auto_response_suppress", "x-auto-response-suppress" in headers),
+        ("null_return_path", first(headers, "return-path").strip() == "<>"),
         ("claims_own_address", evidence.from_address in own_addresses),
+        ("exchange_rule_generated", any(name in headers for name in EXCHANGE_RULE_HEADERS)),
     )
-    return tuple(name for name, found in checks if found)
+    hints = tuple(name for name, found in checks if found)
+    if not autoreply.response_allowed(evidence) or _DOUBTFUL.intersection(hints):
+        hints = (NO_AUTO_RESPONSE, *hints)  # first: the ticket's signal list is cut at 20
+    return hints
 
 
 def auth_summary(headers) -> dict:
-    """SPF, DKIM, DMARC and composite-authentication results (the first of each) and the SCL, for display."""
+    """SPF, DKIM, DMARC and composite-authentication results (the first of each), and Exchange's spam confidence and
+    bulk complaint levels, for display."""
     summary: dict = {}
-    for method, result in rules.AUTH_RESULT_RE.findall(joined(headers, "authentication-results")):
+    for method, result in AUTH_RESULT_RE.findall(joined(headers, "authentication-results")):
         summary.setdefault(method.lower(), result.lower()[:16])
-    scl = spam_confidence_level(headers)
-    if scl is not None:
-        summary["scl"] = scl
+    for name, level in (("scl", spam_confidence_level(headers)), ("bcl", bulk.bulk_complaint_level(headers))):
+        if level is not None:
+            summary[name] = level
     return summary

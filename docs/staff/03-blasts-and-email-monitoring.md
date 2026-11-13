@@ -250,8 +250,10 @@ Both change bounce processing only; the helpdesk has its own (3.5). Both changes
 > **Coming soon** (pull request #727, not live yet; details may change).
 
 A new **Bounced addresses** page in Email Monitoring lists every address that has bounced, one row per address,
-with what you may do about it. **Nothing on it happens by itself:** the counts never change a member, an address
-or a subscription. Every change is a staff action with a confirmation page, and it is recorded. (Only the list's
+with what you may do about it. It also lists addresses whose automatic reply to our mail said the person **left the
+organisation** (or retired, or changed address): those are evidence to check, not proof. **Nothing on it happens by
+itself:** the counts never change a member, an address or a subscription. Every change is a staff action with a
+confirmation page, and it is recorded. (Only the list's
 own review state moves on its own: a new matched report that the address does not exist or that its mailbox is
 disabled, or a spam complaint, puts a dismissed address back on the **Open** tab. Temporary failures and rejections
 never do.)
@@ -275,10 +277,20 @@ never do.)
 | **Our sending side: relay denied…** | Relay refusals and none of the above: our sending route or authorisation, not the address. |
 | **Our sending side: spam or reputation rejection…** | Spam or reputation rejections and none of the above: our reputation, sender checks or content, not the address. |
 | **Their server's policy refused the message, not the address: no action** | Policy rejections and none of the above. |
+| **May have left: an automatic reply says so. Check the notice, then replace the address or mark it undeliverable** | An automatic reply to our mail said the person left the organisation, retired or changed address (and none of the first three rows applies). |
 
 A single temporary failure, such as a connection timeout, never suggests marking an address undeliverable. A row
 whose reports are all unmatched says "unmatched reports only: check them first" beside a suggestion about the
 address itself.
+
+**Left-the-organisation notices.** When someone's automatic reply to one of our emails says they no longer work
+there, the address shows **left the organisation 1** in its counts. Open the address to see when it came, the
+address the notice names instead (their new address, or who to contact), and, if you hold the Helpdesk app, a link
+to the notice itself. Only replies to our own mail count, and **out-of-office replies never do** (a notice that
+mentions an absence, a holiday closure or travel is treated as one, and "this mailbox is not monitored" alone does
+not say that anyone left). Nothing changes on its own: read the notice, then use **Replace email** or
+**Mark undeliverable** yourself. The Replace email page shows the named address as a reminder, but you type the new
+address: confirm it with the member or their organisation first, since anyone can write such a notice.
 
 ### Actions
 
@@ -316,7 +328,8 @@ person fixes their mailbox.
 1. Wait a day for the reports to come in.
 2. Open **Bounced addresses** on the **Open** tab and filter by suggestion.
 3. **Address does not exist** or **Mailbox disabled**: open the member, look for a better address, then **Replace
-   email**, **Use another address as primary**, or **Mark undeliverable**.
+   email**, **Use another address as primary**, or **Mark undeliverable**. **May have left**: read the notice first
+   (it names who to contact or their new address), then do the same.
 4. Complaints: **Unsubscribe this address**.
 5. **Temporary failures** (timeouts, full mailboxes, unknown): leave them; act only on **Consider marking
    undeliverable**, after they repeat.
@@ -330,7 +343,10 @@ Replies arrive in the i2g@ucmerced.edu Inbox. Read them in Outlook or on **Broad
 despite its name, that page shows the i2g@ucmerced.edu mailbox when Microsoft Graph is set up to read it, and it
 warns about suspicious messages. Replies often quote the original email, including the
 person's own sign-in link: do not forward replies outside the I2G team. A helpdesk that turns each message into a
-ticket is being built (chapter 4).
+ticket is being built (chapter 4). It hides automatic replies, newsletters and other automated mail, but a person's
+answer to our email stays in its queue even when they sent it from a sales or marketing tool (such as Salesforce) that
+adds newsletter-style headers. An answer sent to a whole mailing list is the exception for now: it is filed with the
+automated mail, marked **reply to our mail**, so check those too.
 
 ## 3.9 Troubleshooting
 

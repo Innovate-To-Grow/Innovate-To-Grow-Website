@@ -126,7 +126,7 @@ def _process(row: InboundMessage, reader, settings: HelpdeskSettings, own: froze
         return
     try:
         parsed = parse(raw, truncated=truncated)
-        classified = classify_message(parsed, mailbox=reader.mailbox, settings=settings)
+        classified = classify_message(parsed, mailbox=reader.mailbox, settings=settings, received_at=row.received_at)
         stored = store(row, parsed, classified, settings, own=own)
     except Exception as exc:  # noqa: BLE001 - one bad message must not stop the queue: it is retried, then listed.
         # The type and where it was raised, never the exception's text or traceback: those can quote the message (a
@@ -137,7 +137,9 @@ def _process(row: InboundMessage, reader, settings: HelpdeskSettings, own: froze
         return
     result = {"ticket": stored.ticket.number, "created": stored.created, "rule": stored.rule}
     if stored.duplicate:
-        result["duplicate"] = True
+        result["duplicate"] = True  # a second copy: its facts were kept with the first (counted once)
+    else:
+        result.update(classified.result())
     verdict = classified.verdict
     consume.done(row, classification=verdict.classification, subtype=verdict.subtype, result=result)
     outcome.tickets += int(stored.created)

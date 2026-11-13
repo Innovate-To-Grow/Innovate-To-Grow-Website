@@ -10,7 +10,7 @@
   <p>First, every stored Microsoft Graph bounce report is classified again with the current rules (its category, classification and reason), so a change to the rules reaches the reports already received.</p>
   <p>Then every count starts again from the records still stored: the Microsoft Graph bounce reports of the last {{ retention_days }} days and the Amazon SES events on campaign recipient logs.
     <strong>Reports already purged cannot be counted again</strong>, so an address may end with lower counts than now.</p>
-  <p>Review status, suppressions, members and the action history stay exactly as they are. Nothing is sent and no member or contact email changes.</p>
+  <p>Review status, suppressions, members and the action history stay exactly as they are, and so do the left-the-organisation notices counted from automatic replies (they are never classified again). Nothing is sent and no member or contact email changes.</p>
   <div class="i2g-monitor-actions">
     <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>Rebuild the counts</button>
     <a class="i2g-monitor-button" href="{{ back_url }}">Cancel</a>

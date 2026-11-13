@@ -134,7 +134,7 @@ against an address; everything else is temporary, about our own sending, about t
 | Category | Coarse classification | Decided by (examples) | What it means |
 |---|---|---|---|
 | **Address does not exist** (`hard`) | Hard bounce | `5.1.1`, `5.1.2`, `5.1.3`, `5.1.6`, `5.1.10`; `5.4.1` (Exchange: no such recipient in the tenant), `5.4.4`, `5.4.310`; text such as "user unknown", "no such user", "does not exist", "doesn't have a … account" on a generic code | Strong evidence: mark it undeliverable or replace it. |
-| **Mailbox disabled** (`mailbox_disabled`) | Hard bounce | `5.2.1` (unless its text makes it temporary, see Rules); text such as "account is disabled", "inactive mailbox", Yahoo's `554.30`; a **0 KB size limit** | Strong evidence: replace the address, or mark it undeliverable. |
+| **Mailbox disabled** (`mailbox_disabled`) | Hard bounce | `5.2.1` (unless its text makes it temporary, see Rules); text such as "account is disabled", "inactive mailbox", Yahoo's `554.30`; a **0 KB size limit**; a rejection saying the person **left the organisation** ("is no longer with Contoso", "has left the company", "address is no longer valid", "mailbox has been retired") | Strong evidence: replace the address, or mark it undeliverable. |
 | **Mailbox full** (`mailbox_full`) | Soft bounce | `5.2.2`, `4.2.2`; "over quota", "mailbox full" | Temporary: counts toward the repeated-failure threshold only. |
 | **Temporary failure** (`transient`) | Soft bounce | every other `4.x.x`; `5.4.x` expiry, DNS and connection codes (`5.4.300`, `5.4.312`, `5.4.316`, `5.4.7`, `5.4.14` …); `5.3.x`, `5.6.x`, `5.2.3`/`5.3.4` (message too large); text such as "connection timed out", "connection refused", "DNS query failed", "try again later" on a generic code, or Gmail's "receiving mail at a rate" on a `5.2.1` | The address is probably fine; Exchange already retried. Counts toward the threshold only; the next campaign tries again. |
 | **Spam or reputation rejection** (`spam_rejected`) | Rejected | `5.7.9` (Yahoo "policy reasons"), `5.7.20`–`5.7.29` (SPF, DKIM, DMARC, reverse DNS), `5.7.350`, `5.7.501`–`5.7.503`, `5.7.506`–`5.7.509`, `5.7.511`, `5.7.513`, `5.7.606`–`5.7.649`, `5.7.700`–`5.7.749`, `5.7.750`, `5.1.7`/`5.1.8` (our sender address); text such as "spam", "block list", "reputation", "Spamhaus", Yahoo `TSS04` | **Our sending side:** reputation, sender authentication or content. Not the contact. |
@@ -154,14 +154,20 @@ against an address; everything else is temporary, about our own sending, about t
   it a spam or relay rejection or a full mailbox.
 - **A generic status quoting a specific code**: a report whose status is generic (`5.0.0`) but whose diagnostic quotes
   the receiving server's specific code of the same class (`550 5.1.1 …`) is decided by that code.
+- **A rejection saying the person left is a disabled mailbox.** An organisation that refuses a departed employee's
+  mail (a transport rule's "Jordan is no longer with Contoso" on `5.7.1`, or such text on a generic code) has closed
+  the address, so it is **Mailbox disabled**. A temporary code with that text stays temporary, a specific code still
+  decides, and "no longer valid" about our own sending (a certificate, say) stays a policy refusal. An *automatic
+  reply* saying so is not a bounce report: the helpdesk classifies it, and Bounced addresses counts it as a
+  [left-the-organisation notice](#counting).
 - **A 0 KB size limit is a disabled mailbox.** A "message too large" report (`5.2.3`, `5.3.4`, or a generic code with
   size wording) whose diagnostic gives a maximum size of 0 (servers disable a mailbox that way) is **Mailbox disabled**;
   any other size limit is a temporary message problem.
 - **Yahoo.** "This user doesn't have a yahoo.com account" is a missing address, "This mailbox is disabled (554.30)" a
   disabled mailbox, and "Message not accepted for policy reasons" (`5.7.9`, `PH01`) a spam or reputation rejection;
   a bare `554 delivery error` with no reason (or Exchange's `5.0.350` wrapping one) is **unknown**.
-- **Phrase order** when a generic code's text matches several: relay, spam or reputation, disabled mailbox, missing
-  address, full mailbox, message too large, temporary, policy. A sender-side rejection is checked first, so text
+- **Phrase order** when a generic code's text matches several: relay, spam or reputation, disabled mailbox (then left
+  the organisation), missing address, full mailbox, message too large, temporary, policy. A sender-side rejection is checked first, so text
   naming both spam and a missing address is never strong evidence against the address.
 - "Mailbox unavailable" alone is **not** a missing address: RFC 5321 gives it for policy refusals too.
 - The phrases follow Exchange Online, Gmail, Yahoo and gateway wording and are matched case-insensitively against at
@@ -215,8 +221,19 @@ subscription, and every change is a staff action with a confirmation page and an
 - **Sources.** Microsoft Graph bounce reports (`core.EmailBounce`), each counted once, by coarse classification (hard,
   soft, rejected, delayed, unknown) and by [category](#bounce-categories) (`BouncedAddress.category_counts`, with the
   latest report's `last_category`). Amazon SES events on campaign recipient logs (`RecipientLog`): permanent (shown as
-  hard), transient (soft) and undetermined (unknown) bounces, and spam **complaints**. "Left the company" auto-replies
-  are not counted yet: they need the helpdesk's inbound queue.
+  hard), transient (soft) and undetermined (unknown) bounces, and spam **complaints**. **Left-the-organisation
+  notices** (the `inbound` source, `addresses/notices.py`): automatic replies the helpdesk classified as "left the
+  organisation" (the person left, retired or changed address, or the mailbox is closed;
+  [Helpdesk](helpdesk.md#how-a-message-becomes-a-ticket)) that answer an email the site sent, counted against **the
+  address that email went to** (the notice may come from another address of the same organisation, such as an alias
+  or the mailbox answering for a departed person; one from another organisation, where the email was redirected, is
+  attributed to nobody), with the first and latest notice, the address the latest one names instead (a hint from its text, never verified) and its helpdesk
+  ticket. Only such matched notices count, as decided: one that answers nothing the site sent says nothing about an
+  address it mails, and anyone can write one. **Out-of-office replies never count**: a notice that mentions an absence
+  (a closure, travel or a return included: holidays, a break, weekends, "until the 20th") is classified as one, even
+  when it also says someone left, and "this mailbox is not monitored" alone is no notice that someone left. Notices are read from `core.InboundMessage` in
+  processing order from their own cursor (they stay counted after the inbound queue's 90-day retention), and counting
+  starts with the notices imported after this release (earlier ones did not record the email they answer).
 - **Reports without a category** (saved by the previous release while a deploy rolled out) are classified before each
   Graph batch is counted. A **parked** Graph cursor (far in the future: no report is past it, so a release that
   predates categories counts nothing) makes the next count start the Graph counts again from the stored reports,
@@ -240,30 +257,35 @@ subscription, and every change is a staff action with a confirmation page and an
 - **Reopening.** Only strong evidence reopens a dismissed address (queue state only): a report that the address does not
   exist or that its mailbox is disabled, matched to an email the site sent, or an SES permanent bounce or complaint,
   arriving after the dismissal. Temporary failures, rejections (spam, relay, policy), delays and unknown failures
-  never reopen anything, and neither does an unmatched report.
+  never reopen anything, and neither does an unmatched report or a left-the-organisation notice.
 - **Rebuild counts…** (I2G Master only) first classifies every stored Graph report again with the current rules (so a
   change to the rules reaches the reports already received), then starts every count again from the records still
-  stored (review state, suppressions and the history stay). Counts of purged reports cannot be rebuilt; the
+  stored (review state, suppressions and the history stay). Left-the-organisation notices are kept as counted: a notice
+  is never classified again, and the inbound queue keeps only 90 days. Counts of purged reports cannot be rebuilt; the
   confirmation page says so. It leaves an audit row (with how many reports changed) and an admin history line.
 - **Member links** are re-checked hourly for at most `address_refresh_rows_per_run` addresses per run, continuing
   where the last run stopped, so a very long list is covered over several runs.
 
 ### The list and one address
 
-- **Columns:** counts by category (Graph) and by type (SES), first and last report, the latest report's **category**
+- **Columns:** counts by category (Graph), by type (SES) and of left-the-organisation notices, first and last report
+  (or notice), the latest report's **category**
   with what it means, the last code and reason with the remote server, the member
   (linked for staff who also hold the Members app) with Active / Inactive / Staff badges, the address's **role**
   (primary, secondary, other, unlinked contact, not a contact, or **ambiguous** when one address is saved in several
   letter cases), verified / subscribed / suppression flags, campaigns, review status and a text-only suggestion.
-- **Filters:** status tabs (Open by default), type, **category** (has a report of that category; for a missing address,
+- **Filters:** status tabs (Open by default), type (including "Has a left-the-organisation notice"), **category** (has a report of that category; for a missing address,
   a temporary failure and an unknown failure, also the SES permanent, transient and undetermined bounces), role,
   member (has a member, none, active, inactive, staff),
-  suppressed, evidence (matched to the site's mail, or unmatched reports only), suggestion, campaign, last-report date
+  suppressed, evidence (matched to the site's mail, which every counted notice is, or unmatched reports only),
+  suggestion, campaign, last-report date
   range and a search on the address or member name; sortable
   columns; **Export these rows (.xlsx)** writes the filtered list (every cell formula-safe, at most
   `address_export_max_rows` rows). Roles and members are read live on every page; the filters use the values last
   refreshed (on each page, after each count and hourly).
-- **One address** shows the Graph reports still stored, the SES events, the campaigns, the member card (name,
+- **One address** shows the Graph reports still stored, the SES events, its left-the-organisation notices (how many,
+  the latest, the address the latest one names and what it says that address is, and a link to the notice's helpdesk
+  ticket for staff who hold the Helpdesk app), the campaigns, the member card (name,
   status, registrations; their other addresses with their flags, and their phones, only for staff who also hold the
   Members app, as on the Member admin), every action with why it is unavailable, and the history.
 - **Suggestions** (never applied; the first that applies wins):
@@ -273,6 +295,7 @@ subscription, and every change is a staff action with a confirmation page and an
   | Unsubscribe: they reported us as spam | A spam complaint. |
   | Mark undeliverable or replace the address | A report that the address does not exist, or an SES permanent bounce. |
   | Replace the address (the mailbox is disabled), or mark it undeliverable | A disabled-mailbox report. |
+  | May have left: an automatic reply says so. Check the notice, then replace the address or mark it undeliverable | A left-the-organisation notice (none of the above). The Replace email page shows the address the notice names as a hint; nothing is filled in. |
   | Consider marking undeliverable (repeated temporary failures) | At least `address_soft_bounce_repeats` temporary failures (temporary, full-mailbox and unknown reports, SES transient and undetermined bounces) over at least `address_soft_bounce_days` days. |
   | Our sending side: relay denied … | A relay refusal and none of the above. |
   | Our sending side: spam or reputation rejection … | A spam or reputation rejection and none of the above. |
@@ -412,6 +435,12 @@ form saves every column and would overwrite a running scan's lease.
    defaults, so the previous release keeps saving reports during the rollout; whatever it saves without a category is
    classified before the new release counts it. No manual step is needed; **Rebuild counts…** is there if the counts
    ever look off.
+7. Left-the-organisation notices: `mail.0027_bounced_address_left_org` adds the notice counts (database defaults for
+   the rolling deploy) and the "May have left" suggestion; `helpdesk.0003_reply_detection_settings` adds the
+   helpdesk's bulk and reply settings. No backfill: the helpdesk records the email a notice answers from this release
+   on, so notices are counted from the first import after the deploy (the page and the worker's hourly maintenance
+   count them). A left-the-organisation **rejection** (a bounce report) is a disabled mailbox from this release on;
+   **Rebuild counts…** applies that to the reports already stored.
 
    **Image rollback** (an ECS rollback never reverses DDL): an image from before categories finds every column it
    reads (the new ones have database defaults), but it never unparks the Graph cursor. If it takes over before the new
@@ -459,6 +488,10 @@ writes, so a suppression can only be set or lifted on the page, under its guards
   size limit given only in the human-readable text is not seen), and an old-style bounce whose text has no `x.y.z`
   code stays unknown. Check the diagnostics on Bounce Reports and tune `bounces/rules/phrases.py`; then **Rebuild
   counts…** applies the new rules to the stored reports.
+- **Left-the-organisation notices** are counted only when they answer an email the site sent (exactly, or from the
+  address mailed with the same subject when the email had no Message-ID) and the helpdesk is on: with the helpdesk
+  switched off or its intake paused, none are classified. A notice is evidence to check, never applied, and the
+  address it names is a hint from its text.
 - **Reports can be forged.** Anyone can send the mailbox a message shaped like a bounce report. A forged report
   can only change the dashboard (it cannot resend, suppress or change any campaign record), an exact match
   needs the original `Message-ID` (known only to the email's recipients) and an inferred one the recipient and

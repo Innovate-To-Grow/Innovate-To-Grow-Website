@@ -76,7 +76,7 @@ def after_cursor(rows, state, field: str):
     return rows.order_by(field, "pk")
 
 
-def _locked_row(address: str) -> BouncedAddress:
+def locked_row(address: str) -> BouncedAddress:
     row, _created = BouncedAddress.objects.get_or_create(address=address)
     return BouncedAddress.objects.select_for_update().get(pk=row.pk)
 
@@ -191,7 +191,7 @@ def count_graph(batch) -> list[BouncedAddress]:
     # Rows are locked in address order, as every counting batch does, so two batches never wait on each other in a
     # cycle.
     for address, bounces in sorted(grouped.items()):
-        row = _locked_row(address)
+        row = locked_row(address)
         for bounce in bounces:
             _add_graph_bounce(row, bounce)
             if bounce["campaign_id"]:
@@ -269,7 +269,7 @@ def count_ses(batch) -> list[BouncedAddress]:
             grouped[address].append(log)
     touched = []
     for address, logs in sorted(grouped.items()):
-        row = _locked_row(address)
+        row = locked_row(address)
         for log in logs:
             _upsert_ses(row, log)
         recount_ses(row)

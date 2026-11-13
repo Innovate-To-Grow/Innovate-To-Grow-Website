@@ -3,10 +3,13 @@ set on it, and the append-only log of what staff did (Mail → Delivery Operatio
 addresses).
 
 The counts come from the bounce records (``core.EmailBounce`` for Microsoft Graph reports, ``RecipientLog`` for
-Amazon SES events) through ``apps.mail.services.email_monitoring.addresses.aggregate``. They are stored here, so they
-outlive the bounce records' retention. Graph reports are counted by coarse classification and by category (what went
-wrong); only a missing address or a disabled mailbox is evidence against the address. Counting never changes a member,
-a contact email or a subscription: every change is an explicit staff action, recorded in ``BouncedAddressAction``.
+Amazon SES events) and from the helpdesk's "left the organisation" automatic replies that answer an email the site
+sent (``core.InboundMessage``), through ``apps.mail.services.email_monitoring.addresses.aggregate``. They are stored
+here, so they outlive the records' retention. Graph reports are counted by coarse classification and by category (what
+went wrong); only a missing address or a disabled mailbox is evidence against the address on its own, and a
+left-the-organisation notice is evidence to check (an out-of-office reply is never counted). Counting never changes a
+member, a contact email or a subscription: every change is an explicit staff action, recorded in
+``BouncedAddressAction``.
 
 ``suppressed_at`` is the site's one bulk-mail suppression list: every campaign audience skips a suppressed address
 (``apps.mail.services.suppression``). Transactional mail (sign-in codes, tickets, notifications) is never suppressed.
@@ -66,11 +69,21 @@ class BouncedAddress(ProjectControlModel):
             ),
         )
         POLICY = "policy", "Their server's policy refused the message, not the address: no action"
+        LEFT_ORG = (
+            "left_org",
+            "May have left: an automatic reply says so. Check the notice, then replace the address or mark it "
+            "undeliverable",
+        )
 
     # The suggestions about the address itself (the others point at our sending or at the recipient's policy).
     ADDRESS_SUGGESTIONS = frozenset(
-        {Suggestion.UNSUBSCRIBE, Suggestion.UNDELIVERABLE, Suggestion.REPLACE, Suggestion.CONSIDER}
+        {Suggestion.UNSUBSCRIBE, Suggestion.UNDELIVERABLE, Suggestion.REPLACE, Suggestion.LEFT_ORG, Suggestion.CONSIDER}
     )
+    CONTACT_KINDS = {
+        "new_address": "their new address, the notice says",
+        "contact": "who to contact instead, the notice says",
+        "mentioned": "an address the notice names",
+    }
 
     address = models.CharField(max_length=254, unique=True, help_text="Lower-case address.")
 
@@ -109,7 +122,29 @@ class BouncedAddress(ProjectControlModel):
     ses_last_at = models.DateTimeField(null=True, blank=True)
     ses_last = models.JSONField(default=dict, blank=True)
 
-    # Across both sources, for sorting and filtering.
+    # "Left the organisation" automatic replies (the person left, retired or changed address) that answer an email the
+    # site sent to this address, each counted once. Evidence to check, never applied; an out-of-office reply is never
+    # counted. Database defaults: the release before may still save rows while a deploy rolls out.
+    left_org_count = models.PositiveIntegerField(
+        default=0,
+        db_default=0,
+        help_text="Automatic replies to the site's mail saying the person left or the address changed.",
+    )
+    left_org_first_at = models.DateTimeField(null=True, blank=True)
+    left_org_last_at = models.DateTimeField(null=True, blank=True)
+    left_org_contact = models.CharField(
+        max_length=254,
+        blank=True,
+        default="",
+        db_default="",
+        help_text="The address the latest notice names instead (a hint from its text: never verified).",
+    )
+    left_org_contact_kind = models.CharField(max_length=16, blank=True, default="", db_default="")
+    left_org_ticket = models.PositiveIntegerField(
+        null=True, blank=True, help_text="The helpdesk ticket that holds the latest notice."
+    )
+
+    # Across every source, for sorting and filtering.
     first_bounce_at = models.DateTimeField(null=True, blank=True, db_index=True)
     last_bounce_at = models.DateTimeField(null=True, blank=True, db_index=True)
 
@@ -203,14 +238,20 @@ class BouncedAddress(ProjectControlModel):
 
     @property
     def has_matched_evidence(self) -> bool:
-        """Whether a report matched an email the site sent, or an Amazon SES event (signed by AWS) names the address."""
+        """Whether a report or notice matched an email the site sent, or an Amazon SES event (signed by AWS) names the
+        address."""
         return bool(
             self.matched_count
+            or self.left_org_count
             or self.ses_permanent_count
             or self.ses_transient_count
             or self.ses_undetermined_count
             or self.complaint_count
         )
+
+    @property
+    def left_org_contact_label(self) -> str:
+        return self.CONTACT_KINDS.get(self.left_org_contact_kind, "an address the notice names")
 
     @property
     def graph_is_latest(self) -> bool:

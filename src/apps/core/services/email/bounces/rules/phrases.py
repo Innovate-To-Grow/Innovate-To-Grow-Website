@@ -65,6 +65,16 @@ PHRASES = (
         r"(?<!sender )(?<!your )\b(?:account|mailbox|user|inbox) (?:disabled|deactivated|suspended|inactive)\b",
         r"\b(?:disabled|deactivated|suspended|inactive) (?:account|mailbox|user|inbox)\b|\b554\.30\b",
     ),
+    # A rejection that says the person left (an organisation's rule refusing a departed employee's mail): the address
+    # no longer reaches them, like a disabled mailbox.
+    _phrase(
+        DISABLED,
+        "The recipient's server says the person left the organisation or the address was retired",
+        r"\bno longer (?:with|at|employed (?:at|by|with)|works? (?:at|for|here)|working (?:at|for|here))\b",
+        r"\b(?:has|have) left (?:the |our )?(?:company|organi[sz]ation|university|firm|agency|district|school)\b",
+        r"\b(?:address|account|mailbox|recipient|user)\b[^.;:]{0,40}?\b(?:is no longer (?:valid|active|in use)|"
+        r"(?:has been|is|was) retired)\b",
+    ),
     _phrase(
         HARD,
         "Recipient address does not exist",
