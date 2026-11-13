@@ -14,14 +14,14 @@ describe('MaintenanceMode', () => {
     expect(screen.getByText(/temporarily down for maintenance/)).toBeInTheDocument();
   });
 
-  it('draws its own UC Merced page chrome around the message', () => {
-    render(<MaintenanceMode />);
+  it('renders the UC Merced maintenance card around the message', () => {
+    const {container} = render(<MaintenanceMode />);
 
     const title = screen.getByRole('heading', {name: 'Service Unavailable', level: 1});
-    // Page head as on every site page: the title, then its italic meta line.
-    expect(title.nextElementSibling).toHaveTextContent('Scheduled maintenance');
+    expect(container.querySelector('.maintenance-card')).toContainElement(title);
+    expect(container.querySelector('.maintenance-alert')).toContainElement(screen.getByRole('status'));
+    expect(container.querySelector('.maintenance-gear svg')).toBeInTheDocument();
     expect(screen.getByAltText('UC Merced')).toBeInTheDocument();
-    expect(screen.getByText('Innovate To Grow')).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: 'What happened?'})).toBeInTheDocument();
     expect(screen.getByRole('heading', {name: 'What can I do?'})).toBeInTheDocument();
   });

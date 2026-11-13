@@ -73,7 +73,9 @@ provider call, retries included; 429 incidents and response times are attempt fi
    (every `bounce_scan_interval_seconds`, default 10 minutes, never under a minute; after 2 minutes when it
    stopped at its message budget; later when Microsoft sent a longer `Retry-After`). The worker's hourly
    maintenance ("Email bounce scan scheduling") restarts the chain at start-up or if it broke. **Scan now** on the
-   dashboard queues one at once. Finished scan jobs older than a week are deleted. The card shows the interval and
+   dashboard queues one at once; while processing is paused, switched off or cannot read the mailbox it queues
+   nothing and says why (the card greys the button out or hides it then). Finished scan jobs older than a week are
+   deleted. The card shows the interval and
    the catch-up the scans really follow (it reads them from the code that schedules them), and lists every other
    app that reads the same Inbox on its own schedule, with its cadence, state and a link to its own controls: the
    [helpdesk](helpdesk.md)'s intake, every 2 minutes (`inbox_scan_interval_seconds`).

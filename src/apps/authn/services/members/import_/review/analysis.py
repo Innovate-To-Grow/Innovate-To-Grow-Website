@@ -90,8 +90,11 @@ class RowAnalysis:
 
 def analyse_rows(rows: list[dict], snapshot: Snapshot, ctx: Context) -> list[RowAnalysis]:
     """Analyse parsed ``rows`` against ``snapshot`` (``lookup.load_snapshot(rows)``)."""
-    drops = cross_row_drops(rows, snapshot)
-    resolutions = [resolve_row(apply_drops(row, drops.get(row["row"], {})), snapshot, ctx) for row in rows]
+    # Resolving reads no Secondary Email or Phone Number cell, so it comes first: a row that can't be imported then
+    # never takes a cell another row could add (V8).
+    resolutions = [resolve_row(row, snapshot, ctx) for row in rows]
+    invalid = {row["row"] for row, resolution in zip(rows, resolutions, strict=True) if resolution.status == INVALID}
+    drops = cross_row_drops(rows, snapshot, invalid)
     groups = duplicate_groups(rows, resolutions)
     return [
         _finish(row, resolution, snapshot, ctx, drops=drops.get(row["row"], {}), group=groups.get(row["row"], []))
