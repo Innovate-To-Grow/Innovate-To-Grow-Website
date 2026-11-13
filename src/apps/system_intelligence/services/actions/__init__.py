@@ -3,11 +3,12 @@ from .cms import get_cms_page_detail, propose_cms_page_update
 from .constants import COMPARISON_TEXT_LIMIT
 from .context import reset_action_context, set_action_context
 from .db import propose_db_create, propose_db_delete, propose_db_update
-from .exceptions import ActionRequestError
+from .exceptions import ActionRefused, ActionRequestError
 from .records import get_model_schema, get_record, list_database_models, search_records
 from .serialization import serialize_action_request
 
 __all__ = [
+    "ActionRefused",
     "ActionRequestError",
     "COMPARISON_TEXT_LIMIT",
     "approve_action_request",
