@@ -63,13 +63,29 @@ can sign in, so add a phone number to a member only when you are sure it is thei
 ## 2.2 Find a member
 
 1. Go to **Members & Authentication → Members**.
-2. Type in the search box. It searches every email address of every member (primary, secondary and other), phone
-   numbers, names, organization, title and the Member UUID.
+2. Type in the search box and press Enter. It searches every email address of every member (primary, secondary and
+   other), names, organization, title and the Member UUID, and phone numbers when you type a number on its own.
 3. Narrow the list with the filters **Active**, **Staff status** and **Date joined**.
 
+What you can type:
+
+| You type | You get |
+|---|---|
+| A whole address, such as `jdoe@example.edu` | The member with exactly that address first, in any letter case. Members whose address only contains it (`xjdoe@example.edu`) follow. |
+| The part before the @, such as `jdoe` | The member whose address is `jdoe@…` first, then other addresses containing it (`jdoe2@…`, `ajdoe@…`). |
+| Several words, such as `Jane Doe` | Members matching every word, for example the first and the last name. |
+| A phone number on its own, written any way: `2095550100`, `(209) 555-0100`, `209.555.0100`, `+1 209 555 0100` | The member with that number first. Part of a number works too (`555-0100`, or an area code such as `209`), as long as it has at least 3 digits. |
+
+- A number is searched only when the box holds nothing else. `Jane 209` finds members matching both words in their
+  names, addresses and other details, not in their phone numbers. To search by phone, type the number alone.
+- Clicking a column title sorts the results by that column instead of best match first.
+- The **Member** pickers on other pages search the same way and list the best match first: on a contact email, a
+  phone number or an event registration, start typing an address, a name or a number.
+
 To find an address that may belong to nobody, use **Members & Authentication → Emails & Phones → Emails** and search
-for it. An unlinked contact has an empty member column. The filters there show addresses by type, verified and
-subscribed.
+for it. The exact address comes first there too, and an unlinked contact has an empty member column. The filters
+there show addresses by type, verified and subscribed. **Emails & Phones → Phones** finds a number in any of the
+formats above.
 
 ## 2.3 Change a member
 

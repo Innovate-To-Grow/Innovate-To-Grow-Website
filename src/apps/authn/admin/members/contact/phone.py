@@ -10,6 +10,7 @@ from unfold.decorators import display
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactPhone
+from ..search import RankedSearchMixin, contact_phone_search_rank
 from .guards import PrivilegedOwnerAdminMixin
 from .normalization import (
     apply_phone_changes,
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 @admin.register(ContactPhone)
-class ContactPhoneAdmin(StaffPhoneCodeMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin):
+class ContactPhoneAdmin(RankedSearchMixin, StaffPhoneCodeMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin):
     """Admin for ContactPhone model.
 
     ``verified`` is never set by hand here: only an SMS code verifies a number (see ``phone_verification``).
@@ -41,6 +42,11 @@ class ContactPhoneAdmin(StaffPhoneCodeMixin, PrivilegedOwnerAdminMixin, BaseMode
     )
     list_filter = ("region", "verified", "subscribe", "created_at")
     search_fields = ("phone_number", "member__first_name", "member__last_name")
+    # Numbers are stored as national digits, so a formatted number ("(209) 555-0100", "+1 …") is searched by its
+    # digits; the number equal to them comes first (``search.RankedSearchMixin``).
+    phone_search_field = "phone_number"
+    search_rank = staticmethod(contact_phone_search_rank)
+    search_help_text = "Phone number or member name"
     readonly_fields = ("sms_sign_in_status", "created_at", "updated_at")
     list_editable = ("subscribe",)
     autocomplete_fields = ["member"]

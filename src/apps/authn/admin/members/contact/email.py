@@ -9,6 +9,7 @@ from apps.authn.services.email.challenges import AuthChallengeInvalid
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactEmail, Member
+from ..search import RankedSearchMixin, contact_email_search_rank
 from .guards import PrivilegedOwnerAdminMixin
 
 PRIMARY_EMAIL_EDIT_ERROR = _(
@@ -67,7 +68,7 @@ class ContactEmailAdminForm(forms.ModelForm):
 
 
 @admin.register(ContactEmail)
-class ContactEmailAdmin(PrivilegedOwnerAdminMixin, BaseModelAdmin):
+class ContactEmailAdmin(RankedSearchMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin):
     """Admin for ContactEmail model."""
 
     form = ContactEmailAdminForm
@@ -81,6 +82,9 @@ class ContactEmailAdmin(PrivilegedOwnerAdminMixin, BaseModelAdmin):
     )
     list_filter = ("email_type", "verified", "subscribe", "created_at")
     search_fields = ("email_address", "member__first_name", "member__last_name")
+    # The address equal to the search comes first, then addresses that start with it (``jdoe`` → ``jdoe@…``).
+    search_rank = staticmethod(contact_email_search_rank)
+    search_help_text = "Email address or member name"
     readonly_fields = ("created_at", "updated_at")
     list_editable = ("verified", "subscribe")
     autocomplete_fields = ["member"]
