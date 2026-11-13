@@ -1,7 +1,9 @@
 import uuid
 
+from django.apps import apps as django_apps
 from django.test import TestCase
 
+from apps.cli_admin.auth.constants import CLI_EXTRA_DENIED_MODEL_LABELS
 from apps.cli_admin.models import CliAuditLog
 from apps.cli_admin.services.audit import write_audit
 from apps.cli_admin.services.crud import (
@@ -12,7 +14,7 @@ from apps.cli_admin.services.crud import (
     cli_update,
 )
 from apps.cli_admin.services.resolve import CliAppAccessDenied, cli_get_object, resolve_cli_model
-from apps.core.services.db_tools.safe_orm import ActionRequestError, serialize_model_instance
+from apps.core.services.db_tools.safe_orm import ActionRequestError, is_model_denied, serialize_model_instance
 from apps.event.tests.helpers import make_admin, make_member, make_superuser
 from apps.projects.models import Project, Semester
 
@@ -253,6 +255,14 @@ class ResolveServiceTests(TestCase):
     def test_cli_get_object_bad_pk_raises_action_error(self):
         with self.assertRaises(ActionRequestError):
             cli_get_object(Semester, "not-a-valid-uuid")
+
+    def test_every_table_the_cli_keeps_from_itself_is_write_denied_to_the_assistant_too(self):
+        # The shared layer also serves the admin assistant's record writes. A table the CLI keeps out of its own reach
+        # (its sign-in codes and tokens, its audit log, login links, invitations) must not be writable there either:
+        # a written authorization code is a CLI session as whoever it names.
+        for label in sorted(CLI_EXTRA_DENIED_MODEL_LABELS):
+            with self.subTest(label=label):
+                self.assertTrue(is_model_denied(django_apps.get_model(label), write=True))
 
 
 class AuditServiceTests(TestCase):

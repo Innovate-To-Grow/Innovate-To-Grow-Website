@@ -42,13 +42,15 @@ def list_database_models() -> str:
 def get_model_schema(app_label: str, model_name: str) -> str:
     """Return readable/writable fields for a safe ORM model."""
     model = resolve_model(app_label, model_name, write=False)
+    # A model that may be read but never written (for example a contact row) has no writable field.
+    writable = [] if is_model_denied(model, write=True) else safe_model_fields(model, write=True)
     return _truncate(
         json.dumps(
             {
                 "model": model._meta.label,
                 "primary_key": model._meta.pk.name,
                 "readable_fields": [field_schema(field) for field in safe_model_fields(model, write=False)],
-                "writable_fields": [field_schema(field) for field in safe_model_fields(model, write=True)],
+                "writable_fields": [field_schema(field) for field in writable],
                 "write_rules": "Create/update/delete require a pending action request and human approval.",
             },
             indent=2,

@@ -11,6 +11,7 @@ from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
 from .cms import apply_cms_page_update
 from .db import apply_db_create, apply_db_delete, apply_db_update
+from .db.member_guard import check_member_action
 from .exceptions import ActionRequestError
 from .orm import check_model_permission, resolve_model
 
@@ -115,12 +116,15 @@ def apply_action(action: SystemIntelligenceActionRequest, user) -> None:
     model = resolve_model(action.target_app_label, action.target_model, write=True)
     if action.action_type == SystemIntelligenceActionRequest.ACTION_DB_CREATE:
         check_model_permission(user, model, "add")
+        check_member_action(user, model, action)
         apply_db_create(action, model)
     elif action.action_type == SystemIntelligenceActionRequest.ACTION_DB_UPDATE:
         check_model_permission(user, model, "change")
+        check_member_action(user, model, action)
         apply_db_update(action, model)
     elif action.action_type == SystemIntelligenceActionRequest.ACTION_DB_DELETE:
         check_model_permission(user, model, "delete")
+        check_member_action(user, model, action)
         apply_db_delete(action, model)
     else:
         raise ActionRequestError(f"Unsupported action type: {action.action_type}")
