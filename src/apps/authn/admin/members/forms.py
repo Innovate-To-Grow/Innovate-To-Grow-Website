@@ -13,6 +13,7 @@ from unfold.forms import UserChangeForm, UserCreationForm
 
 from ...models import Member
 from ...services.members.profile_image import ALLOWED_CONTENT_TYPES, ProfileImageError, encode_profile_image
+from .help_texts import MEMBER_HELP_TEXTS, MEMBER_LABELS
 
 
 def admin_app_choices():
@@ -132,6 +133,8 @@ class MemberCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = Member
         fields = ()
+        labels = MEMBER_LABELS
+        help_texts = MEMBER_HELP_TEXTS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -196,6 +199,10 @@ class MemberChangeForm(UserChangeForm):
     class Meta(UserChangeForm.Meta):
         model = Member
         fields = "__all__"
+        # "Account active" rather than the inherited "Active", so it is not read as a flag of an address. Meta (not
+        # the model) also labels the read-only display, and needs no migration.
+        labels = MEMBER_LABELS
+        help_texts = MEMBER_HELP_TEXTS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

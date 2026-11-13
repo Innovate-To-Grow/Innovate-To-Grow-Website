@@ -10,7 +10,9 @@ from unfold.decorators import display
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactPhone
+from ..filters import MemberAccountFilter
 from ..search import RankedSearchMixin, contact_phone_search_rank
+from ..sign_in_warning import SignInWarningAdminMixin, lost_sign_in
 from .guards import PrivilegedOwnerAdminMixin
 from .normalization import (
     apply_phone_changes,
@@ -23,7 +25,9 @@ logger = logging.getLogger(__name__)
 
 
 @admin.register(ContactPhone)
-class ContactPhoneAdmin(RankedSearchMixin, StaffPhoneCodeMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin):
+class ContactPhoneAdmin(
+    RankedSearchMixin, StaffPhoneCodeMixin, SignInWarningAdminMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin
+):
     """Admin for ContactPhone model.
 
     ``verified`` is never set by hand here: only an SMS code verifies a number (see ``phone_verification``).
@@ -40,7 +44,7 @@ class ContactPhoneAdmin(RankedSearchMixin, StaffPhoneCodeMixin, PrivilegedOwnerA
         "subscribe",
         "created_at",
     )
-    list_filter = ("region", "verified", "subscribe", "created_at")
+    list_filter = ("region", "verified", "subscribe", MemberAccountFilter, "created_at")
     search_fields = ("phone_number", "member__first_name", "member__last_name")
     # Numbers are stored as national digits, so a formatted number ("(209) 555-0100", "+1 …") is searched by its
     # digits; the number equal to them comes first (``search.RankedSearchMixin``).
@@ -96,7 +100,8 @@ class ContactPhoneAdmin(RankedSearchMixin, StaffPhoneCodeMixin, PrivilegedOwnerA
     def mark_unverified(self, request, queryset):
         # ``queryset.update`` bypasses save_model, so re-apply the owner guard.
         allowed, skipped = self.manageable(request, queryset)
-        updated = allowed.update(verified=False)
+        with lost_sign_in(request, set(allowed.values_list("member_id", flat=True))):
+            updated = allowed.update(verified=False)
         self.message_user(request, f"{updated} phone(s) marked as unverified.")
         self._report_skipped(request, skipped)
 

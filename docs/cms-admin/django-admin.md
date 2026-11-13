@@ -87,6 +87,26 @@ organization and title. On top of that:
 `pg_trgm` GIN index is a possible future optimization. Not changed: the `id` field still matches any part of the
 Member UUID, so a short term made only of the letters a–f and digits can also match a few UUIDs.
 
+### Member flags, list filters and the primary-email switch
+
+Also in `src/apps/authn/admin/members/` (details in
+[Member & Mail Tools](member-and-mail-tools.md#account-active-verified-and-subscribed)):
+
+- `filters.py`: `SimpleListFilter`s built on `EXISTS` subqueries over the member's own rows, so a filter never
+  duplicates a member. Members: Account active, Primary email, Unverified emails, Newsletter, Phone. Contact Emails:
+  Verified (sign-in), Subscribed (newsletters), Member account; Contact Phones: Member account.
+- `help_texts.py`: the "Account active" label and the help text of every flag, applied through the admin forms'
+  `Meta.labels` / `Meta.help_texts` (Django uses them for read-only fields too), so no model field or migration
+  changes.
+- `sign_in_warning.py`: warns, never blocks, when a save, a bulk "mark unverified" or a delete leaves a member with no
+  verified email or phone. `get_confirmation_diff` adds the warning as a row of the type-to-confirm page; `save_related`
+  / `save_model` / the actions add a message after the write.
+- `primary_switch.py` (+ `primary_switch_notes.py`, template `admin/authn/member/switch_primary.html`): the **Switch
+  primary email** detail action and its page. `get_actions_detail` hides the button unless
+  `user_can_manage_member` allows it, and the view re-checks, because Unfold wraps a detail-action URL only in
+  `admin_view`. The write goes through `apps.authn.services.contacts.primary_switch` (member lock, fingerprint,
+  history).
+
 ### Email campaign admin
 
 `EmailCampaignAdmin` (`src/apps/mail/admin/campaign/admin.py`) provides:

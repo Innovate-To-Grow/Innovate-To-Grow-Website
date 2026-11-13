@@ -327,9 +327,11 @@ person fixes their mailbox.
 
 1. Wait a day for the reports to come in.
 2. Open **Bounced addresses** on the **Open** tab and filter by suggestion.
-3. **Address does not exist** or **Mailbox disabled**: open the member, look for a better address, then **Replace
-   email**, **Use another address as primary**, or **Mark undeliverable**. **May have left**: read the notice first
-   (it names who to contact or their new address), then do the same.
+3. **Address does not exist** or **Mailbox disabled**: open the member, look for a better address, then
+   **Replace email**, **Use another address as primary**, or **Mark undeliverable**. **May have left**: read the
+   notice first (it names who to contact or their new address), then do the same. Do not deactivate the account
+   for a bad address, and do not untick **Verified** to stop mail: it stops sign-in, not mail (chapter 2, "A
+   bounced address: what to do").
 4. Complaints: **Unsubscribe this address**.
 5. **Temporary failures** (timeouts, full mailboxes, unknown): leave them; act only on **Consider marking
    undeliverable**, after they repeat.

@@ -14,13 +14,19 @@ Open **Members & Authentication → Members** and click a name. The page has:
 
 - **Member Info:** the **Member UUID**, the member's permanent ID. It is also the first column of an export.
 - **Personal Info:** first, middle and last name, organization, title, profile image.
-- **Permissions** (folded): **Active**, whether a self-service sign-up is still unfinished (read-only), the staff
-  flag, and the sections a staff account may use. Only the I2G Master can change the last two.
-- **Contact Emails:** every email address of the member, each with its **Email Type**, **Verified** and
-  **Subscribed**.
+- **Account:** **Account active**, and **Unfinished sign-up** (read-only: someone started a self-service sign-up
+  and never finished it).
+- **Permissions** (folded): the staff flag and the sections a staff account may use. Only the I2G Master can
+  change them.
+- **Contact Emails:** every email address of the member, each with its **Email Type**, **Verified (sign-in)** and
+  **Subscribed (newsletters)**, and a **Primary email** column: **Make primary…** on a verified address,
+  **Verify first** on an unverified one. The **?** next to a column title explains it.
 - **Contact Phones:** phone numbers (US only), each with **Verified** and **Subscribed**.
-- **History** (top right): the changes saved on this page, with who made them and when. Bulk actions run from a
-  list (for example **Deactivate selected members**) and the spreadsheet import are not recorded there.
+- **Switch primary email** (at the top, next to **History**): makes another verified address the primary (2.3).
+- **History** (top right): the changes saved on this page, with who made them and when, and every switch of the
+  primary email made in the admin (a switch the member makes on their own account page is not recorded). Actions
+  run from a list (for example **Deactivate selected members**) and the spreadsheet import are not recorded there;
+  **Make selected email primary** is the exception.
 
 ### Email addresses: role, verified, subscribed
 
@@ -28,12 +34,34 @@ Open **Members & Authentication → Members** and click a name. The page has:
 |---|---|---|
 | **Primary** | The member's main address. (A member who signed up with a phone number may have no email address at all.) | Campaigns with **Send to: Primary email only**; a new event registration copies the primary address at the time of registering. |
 | **Secondary** | A backup address, often added during event registration or on the account page. When another address becomes the primary, the old primary becomes the secondary. | Campaigns with **Send to: All emails**; sign-in if verified. |
-| **Other** | Any further address, for example a former secondary moved aside when a new primary was set. | As secondary. |
-| **Verified** | The person entered a code sent to that address, or staff marked it verified. | Only a verified address can be used to sign in with an emailed code or a password. Only a verified address can become primary. |
-| **Subscribed** | This address receives newsletters (**All subscribers** campaigns). | Set per address. Turning off one address leaves the others as they are. The unsubscribe link in a newsletter turns off every address of that member. |
+| **Other** | Any further address, for example a former secondary moved aside when a new primary was set. | As secondary, except that event registration forms offer only the primary and the secondary. |
+| **Verified** | The person entered a code sent to that address, or staff marked it verified. | Only a verified address can be used to sign in with an emailed code or a password, and only a verified address can become primary. A staff member's admin sign-in codes go to their verified primary only. **Unticking it stops sign-in with that address, not mail.** |
+| **Subscribed** | This address receives newsletters (**All subscribers** campaigns). | Set per address. Turning off one address leaves the others as they are. The unsubscribe link in a newsletter turns off every address of that member. Only **All subscribers** reads it: **All active members**, **Staff Members**, **Selected Members** and the event audiences mail the address whatever it says. Sign-in codes and other account mail are never affected. |
 
 An address can belong to one member only. An address can also exist with no member at all (an **unlinked
 contact**), for example one entered by hand or left over from old data.
+
+### Account active is not an address flag
+
+**Account active** belongs to the account, not to an address. Verified and Subscribed belong to each address (and
+each phone number). None of them changes another:
+
+| Flag | Belongs to | What it does | What it does not do |
+|---|---|---|---|
+| **Account active** | The member | The member can sign in at all, and is included in **All subscribers**, **All active members** and **Staff Members**. | Changes no address or phone number. It is not the tool for a bounced address (see "A bounced address" in 2.3). |
+| **Verified** | One address or phone number | That address or number can be used to sign in. | Stops no mail. |
+| **Subscribed** | One address (or phone number, for SMS) | Newsletters: the **All subscribers** audience. | The other audiences ignore it, and sign-in codes are never affected. |
+
+- Unticking **Account active** leaves every address verified and subscribed: the member can no longer sign in and
+  leaves the member audiences above, nothing else.
+- Unticking **Verified** on a member's last verified address or phone number is allowed, but the member then cannot
+  sign in with a code or a password: only a personal sign-in link from an email they already received still works,
+  until it expires. Without one they cannot reach their account page to verify an address either. The admin warns
+  you, on the confirmation page and again after saving: "… now has no verified email address or phone number, so
+  they cannot sign in with a code or a password until one is verified". If that was a mistake, tick **Verified**
+  again on an email address that is theirs, or verify their phone with **Verify by SMS code** (2.1).
+- The Members list shows **Account active** as a column. The Emails list shows the **Account active** of each
+  address's member next to the address's own **Verified** and **Subscribed** (empty for an unlinked contact).
 
 **Phone numbers work differently:** a code texted to *any* number saved on a member signs in to that member's
 account, whether or not the number is ticked **Verified** (it becomes verified when used). Whoever has that phone
@@ -65,7 +93,18 @@ can sign in, so add a phone number to a member only when you are sure it is thei
 1. Go to **Members & Authentication → Members**.
 2. Type in the search box and press Enter. It searches every email address of every member (primary, secondary and
    other), names, organization, title and the Member UUID, and phone numbers when you type a number on its own.
-3. Narrow the list with the filters **Active**, **Staff status** and **Date joined**.
+3. Narrow the list with the filters:
+   - **Account active:** **Yes**, **No**, or **Unfinished sign-up** (also inactive).
+   - **Primary email:** **Verified**, **Unverified** (the member cannot sign in with it), or **No primary email**.
+   - **Unverified emails:** members with at least one unverified address, or none.
+   - **Newsletter (All subscribers):** **Subscribed at the primary**, **Subscribed at another address only** (reached
+     only by campaigns sent to all emails), or **Not subscribed at any address**. This reads the addresses only: the
+     audience also leaves out inactive accounts, so add **Account active: Yes** to see who it reaches.
+   - **Phone:** **Verified (SMS sign-in)**, **Unverified only**, or **No phone**.
+   - **Staff status** and **Date joined**.
+
+   Filters combine: for example **Account active: Yes** and **Primary email: Unverified** lists active members who
+   cannot sign in with their main address.
 
 What you can type:
 
@@ -84,8 +123,10 @@ What you can type:
 
 To find an address that may belong to nobody, use **Members & Authentication → Emails & Phones → Emails** and search
 for it. The exact address comes first there too, and an unlinked contact has an empty member column. The filters
-there show addresses by type, verified and subscribed. **Emails & Phones → Phones** finds a number in any of the
-formats above.
+there are **Verified (sign-in)** (**Verified**, **Unverified emails**, **Unverified primary emails**),
+**Subscribed (newsletters)**, **Email Type** and **Member account** (**Account active**, **Account inactive**,
+**Staff or I2G Master**, **No member (unlinked)**). **Emails & Phones → Phones** finds a number in any of the formats
+above, and has the **Member account** filter too.
 
 ## 2.3 Change a member
 
@@ -97,21 +138,82 @@ ask for a confirmation word the same way.
 |---|---|
 | Fix a name, title or organization | Edit the field on the member page and save. |
 | Add an address | Add a row under **Contact Emails**, set its **Email Type** to **Secondary** (or **Other** if the member already has a secondary) and save: a new row starts as **Primary**, which the page refuses. Leave **Verified** unticked: the member verifies the address from their account page. |
-| Make another address the primary | **Emails & Phones → Emails**, tick that one address, choose the action **Make selected email primary**, then **Run**. The address must be verified. The old primary becomes secondary and the old secondary becomes "other"; nothing is deleted. The member page cannot do this: there the primary address cannot be changed or deleted. |
+| Make another address the primary | On the member page, click **Switch primary email** at the top, or **Make primary…** on that address's row. See "Switch the primary email" below. (**Emails & Phones → Emails** → **Make selected email primary** does the same, and is recorded in History too.) |
+| Correct a mistyped primary address | The primary's own address cannot be edited in place: its **Verified** would carry over to an address nobody proved. Add the right address as **Secondary**, have it verified, then **Switch primary email**. The old address stays as the secondary; delete it afterwards if it is useless. |
 | Unsubscribe one address | Untick **Subscribed** on that address and save. (**Toggle subscription status** on the Emails list flips every selected address, so it also re-subscribes any that were off: select only subscribed ones.) Re-subscribe an address only when the person asked for it. |
 | Mark an address verified | **Emails & Phones → Emails** → **Mark selected emails as verified**. Do this only when you are sure the address belongs to this person: a verified address can sign in to their account. |
-| Stop someone from signing in | **Members**, tick the member, action **Deactivate selected members**. Undo with **Activate selected members**. |
+| Unverify an address | Untick **Verified (sign-in)** and save, or **Mark selected emails as unverified (stops sign-in with them, not mail)** on the Emails list. It stops sign-in with that address and nothing else. The admin warns you when it was the member's last verified address or phone number (2.1). |
+| Stop someone from signing in | **Members**, tick the member, action **Deactivate selected members** (or untick **Account active** on the member page). Undo with **Activate selected members**. |
 | Remove a member | Deactivate instead. Deleting a member is permanent and also deletes their event registrations and check-ins. |
 
-On a staff or superuser account other than your own, only the I2G Master can change **Active** and the contact
-addresses and phone numbers: the member page shows them read-only, and list actions skip such accounts with "… only
-an I2G Master may change those".
+On a staff or superuser account other than your own, only the I2G Master can change **Account active**, the
+contact addresses and phone numbers, and the primary email: the member page shows them read-only (without **Switch
+primary email**), and list actions skip such accounts with "… only an I2G Master may change those".
 
 An address that belongs to no member (an **unlinked contact**) can be linked to a member, changed or deleted only by
 the I2G Master.
 
 Changing a member's primary address does not change event registrations they made earlier: those keep the address
 they were made with.
+
+### Switch the primary email
+
+**Needs:** the Members section; on a staff or superuser account, the I2G Master (or that account's own holder).
+
+1. Open the member and click **Switch primary email** at the top (next to **History**), or **Make primary…** on the
+   row of the address you want. **Verify first** on a row means that address is not verified and cannot become the
+   primary.
+2. The page that opens changes nothing yet. It lists the member's addresses with their type now and **After the
+   switch**, then what the switch means for signing in and for campaigns. With several verified addresses, pick one
+   first.
+3. Read the warnings, type `switch` and click **Switch primary email**. You are back on the member page with a
+   message saying what changed.
+
+What happens:
+
+- The chosen address becomes the primary, the old primary becomes the **secondary**, and the old secondary becomes
+  **other**. Nothing is deleted, **no address is verified, unverified, subscribed or unsubscribed**, and nothing is
+  sent to anyone.
+- **Signing in:** emailed codes and passwords work with every verified address of the member, whatever its type, so
+  both addresses keep working. A staff member's **admin sign-in codes** go to the verified primary only: after the
+  switch they go to the new primary, and the old one no longer receives them. Codes to change the password or to
+  delete the account go to the new primary too. A forgotten-password code goes to whichever verified address or
+  phone number the member types, the old primary included.
+- **Campaigns:** a campaign sent to the **primary email only** now goes to the new primary: **All subscribers** only
+  if the new primary is subscribed; **All active members**, **Staff Members** and **Selected Members** whatever it
+  says. The page warns when the switch changes who gets **All subscribers** campaigns: the new primary is
+  unsubscribed while the old one was subscribed (the member stops getting those newsletters), or the other way round
+  (they start getting them). Change **Subscribed** yourself only if the member asked for it. Campaigns sent to all of
+  a member's addresses are not affected.
+- The member's profile, the Members list, exports and the member sheet show the new primary. Event registrations
+  keep the address they were made with.
+- **History:** the member's History says "Primary email switched from … to …", and each address whose type changed
+  has a line in its own History.
+- **Undo:** switch back; the old primary stays verified as the secondary. If the switch moved the old secondary to
+  **other**, switching back does not move it back (the address you switched to becomes the secondary instead): swap
+  their **Email Type** on the member page if needed. Event registration forms offer only the primary and the
+  secondary.
+
+If someone changed the member's addresses while the page was open, nothing is switched: the page says so and shows
+the current addresses. Confirm again.
+
+### A bounced address: what to do
+
+A bounce report never changes a member by itself (chapter 3). When an address bounces:
+
+| You want to | Use | What it does |
+|---|---|---|
+| Stop campaigns to that one address | **Email Monitoring → Bounced addresses → Mark undeliverable** | Every campaign skips the address. Sign-in codes, tickets and notifications still reach it, the account stays active, and the member's other addresses still get campaigns. Undo with **Clear suppression**. |
+| Stop only newsletters to it | Untick **Subscribed** on the address (or **Unsubscribe this address** in Bounced addresses) | Only **All subscribers** skips it; other audiences still mail it. |
+| Use another of the member's addresses as their main one | **Switch primary email** here (or **Use another address as primary** in Bounced addresses) | As above; switching alone does not stop campaigns sent to all emails from mailing the bad address, so mark it undeliverable too. |
+| Replace it with a new address | **Replace email** in Bounced addresses | Adds the new address and marks the old one undeliverable (or deletes it). |
+
+- **Do not deactivate the account** because one address bounces. **Account active** is for people who should no
+  longer sign in at all: it removes them from the member audiences and stops their sign-in, even with their other,
+  working addresses.
+- **Do not untick Verified to stop mail:** it stops no mail. Untick it only when the address must no longer sign in,
+  for example when its domain no longer exists or the provider gives old usernames to new people (someone else could
+  then receive sign-in codes). The admin warns you if it was the member's last verified address or phone number.
 
 ## 2.4 Export members
 
@@ -227,7 +329,7 @@ ignored and reported, never read as FALSE.
 
 | Message (start) | What it means | What to do |
 |---|---|---|
-| "no member has … as their primary email: it is the **secondary** (or **other**) email of …" (with **Update Existing Members** ticked), or "… already exists: it is the **secondary** (or **other**) email of …" (without it) | The address belongs to a member, but it is not their primary. This is the "Row 5" case below. | Use the member's primary address in the Primary Email cell, or make this address their primary first with **Make selected email primary** in **Emails** (2.3; the member page cannot do it). Then import that row again with **Update Existing Members** ticked. |
+| "no member has … as their primary email: it is the **secondary** (or **other**) email of …" (with **Update Existing Members** ticked), or "… already exists: it is the **secondary** (or **other**) email of …" (without it) | The address belongs to a member, but it is not their primary. This is the "Row 5" case below. | Use the member's primary address in the Primary Email cell, or make this address their primary first with **Switch primary email** on the member page (2.3; it must be verified). Then import that row again with **Update Existing Members** ticked. |
 | "… it is a contact email that is not linked to any member" | The address exists with no member. | Ask the I2G Master to link it to the right member or delete it (only the I2G Master can change an unlinked contact), then import again. |
 | "… matches 2 contact emails that differ only in letter case" | Old duplicate records of the same address. | Ask the web team to merge them, then import again. |
 | "Member with email … already exists: … Skipped because "Update Existing Members" is off" | The person already has an account. | Import again with **Update Existing Members** ticked, if you meant to update them. |
@@ -272,7 +374,7 @@ Nothing about Jane changed. To finish:
 2. Decide which address should be her primary:
    - **Keep `jdoe@example.com`:** change the Primary Email cell of row 5 to `jdoe@example.com` and import that row
      again.
-   - **Use `jane.doe@partner.example`:** make it her primary with **Make selected email primary** in **Emails**
+   - **Use `jane.doe@partner.example`:** make it her primary with **Switch primary email** on her member page
      (2.3; it must be verified), then import the row again.
 3. If **Open member** shows somebody else (for example an assistant who saved Jane's address as their own backup),
    do not import the row. Sort it out with the people involved. Moving an address to another member is done by hand
@@ -357,7 +459,10 @@ Also new:
 | "File size cannot exceed 5MB" | Split the sheet into smaller files. |
 | "Excel file must contain a 'Primary Email' column" | The file was saved with another tab open (for example Instructions), or row 1 does not hold the column names. Open the members tab, check row 1, save, upload again. |
 | Everything was skipped with "… already exists: … Skipped because "Update Existing Members" is off" | **Update Existing Members** was not ticked. (Rows that say "… already exists: it is the secondary email of …" are the "Row 5" case instead.) |
-| A member says they cannot sign in with their address | Check on their member page that the address is **Verified** and the member is **Active**. Only mark it verified if you are sure it is theirs. |
-| A member cannot sign in with their phone | Check on their member page that the number is right and the member is **Active**. Once pull request #732 ships, the number must also be verified (an unverified number gets no text): they verify it on their account page, or you use **Verify by SMS code** with them (2.1). The safe import (2.5) never verifies a number, whatever the sheet's **Phone Verified** said. |
+| A member says they cannot sign in with their address | Check on their member page that the address is **Verified** and **Account active** is ticked. Only mark it verified if you are sure it is theirs. **Primary email: Unverified** on the Members list finds members in this state. |
+| "The current primary email's address and type cannot be edited directly" | The primary is changed with **Switch primary email** (2.3), never by editing the row. To correct its address, add the right one as a secondary, have it verified, then switch. |
+| **Switch primary email** says the member has no other verified address | Add the new address as **Secondary**, let the member verify it from their account page (or tick **Verified** if you are sure it is theirs), then switch. |
+| "… now has no verified email address or phone number" after a save | You unticked (or removed) their last verified address or phone number: they cannot sign in with a code or a password. If that was a mistake, tick **Verified** again on an email address that is theirs, or verify their phone with **Verify by SMS code**. |
+| A member cannot sign in with their phone | Check on their member page that the number is right and **Account active** is ticked. Once pull request #732 ships, the number must also be verified (an unverified number gets no text): they verify it on their account page, or you use **Verify by SMS code** with them (2.1). The safe import (2.5) never verifies a number, whatever the sheet's **Phone Verified** said. |
 | A member's name changed after an import | A filled name cell replaces the stored name when a row matches by primary email. Correct it on the member page; check the sheet before importing it again. |
 | You need to undo an import | There is no undo, and this import leaves nothing in a member's **History**. Compare with the **Export Excel** you took before (see Good practice) and fix members by hand. Importing again cannot remove what an import added or verified. |

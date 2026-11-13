@@ -380,7 +380,8 @@ class ContactEmailAdminTests(_AdminTestBase):
         self.assertEqual(self.email.email_type, "secondary")
         self.assertEqual(secondary.email_type, "primary")
         self.assertIn(
-            "secondary@example.com is now the primary email.",
+            "secondary@example.com is now the primary email of C E. c@example.com is now the secondary. "
+            "No subscription or verification changed, and nothing was sent.",
             self._messages(request),
         )
 

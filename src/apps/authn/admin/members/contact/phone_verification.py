@@ -34,6 +34,7 @@ from ....services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
 from ....services.send_verification.exceptions import SendVerificationError
 from ....services.send_verification.quotas import reserve_send_quotas
 from ....services.sms import PhoneVerificationError, PhoneVerificationInvalid, PhoneVerificationThrottled
+from ..help_texts import PHONE_SUBSCRIBED
 
 VERIFIED_HELP = (
     "Only a verified number can be used to sign in with a texted code. A number becomes verified only with an SMS "
@@ -62,6 +63,7 @@ class ContactPhoneAdminForm(forms.ModelForm):
     class Meta:
         model = ContactPhone
         fields = "__all__"
+        help_texts = {"subscribe": PHONE_SUBSCRIBED}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
