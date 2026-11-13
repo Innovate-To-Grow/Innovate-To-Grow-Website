@@ -278,8 +278,8 @@ class NewMemberMessageTests(TestCase):
         self.assertEqual(
             result.warnings,
             [
-                "Row 3: Secondary Email shared@example.com is also in row 2; only that row adds it",
-                "Row 3: Phone Number +12095550001 is also in row 2; only that row adds it",
+                "Row 3: Secondary Email shared@example.com is also in row 2; only that row can add it; if that row is skipped, no row adds it",
+                "Row 3: Phone Number +12095550001 is also in row 2; only that row can add it; if that row is skipped, no row adds it",
             ],
         )
 
