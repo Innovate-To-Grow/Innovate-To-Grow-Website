@@ -179,6 +179,26 @@ class ApplyTests(ApplyTestCase):
 
         self.assertEqual(self.confirm(self.batch).status, "applied")
 
+    def test_a_warning_that_changed_since_the_review_sends_its_row_back(self):
+        # A review staged under an older rule showed no warning on row 3; the apply's fresh analysis sets its Secondary
+        # Email aside (V8). The row goes back to review instead of applying a plan nobody saw.
+        ContactEmail.objects.create(member=None, email_address="lab@example.com", email_type="primary")
+        rows = [
+            row("one@example.com", First_Name="One", Secondary_Email="lab@example.com"),
+            row("two@example.com", First_Name="Two", Secondary_Email="lab@example.com"),
+        ]
+        batch = self.stage(rows, self.admin)
+        batch.rows.filter(row_number=3).update(warnings=[])
+
+        result = self.confirm(batch)
+
+        self.assertEqual((result.status, result.rows), ("stale", [3]))
+        self.assertFalse(Member.objects.filter(first_name__in=["One", "Two"]).exists())
+        stale = batch.rows.get(row_number=3)
+        self.assertEqual((stale.choice, stale.changed_since_review), ("skip", True))
+        self.assertEqual([warning["code"] for warning in stale.warnings], ["V8"])
+        self.assertFalse(batch.rows.get(row_number=2).changed_since_review)
+
     def test_choices_with_a_problem_are_refused(self):
         batch = self.stage(
             [row("ada@example.com", Organization="A"), row("ADA@example.com", Organization="B")], self.admin
