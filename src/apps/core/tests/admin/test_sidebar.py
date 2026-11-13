@@ -1,11 +1,32 @@
 import re
+import uuid
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.conf import settings
 from django.test import RequestFactory, SimpleTestCase, TestCase
 from django.urls import NoReverseMatch, reverse
 
+from apps.core.services.aws.credentials import AwsCredentialsError
 from apps.event.tests.helpers import make_superuser
+
+# Every page of the Delivery Operations tabs: Email Monitoring (each of its tabs and drill-downs), Notification
+# Delivery and Delivery Rates. Email Monitoring → Amazon SES is the former Delivery Dashboard.
+_SOME_ID = uuid.UUID(int=1)
+DELIVERY_OPERATIONS_PATHS = (
+    "/admin/mail/email-monitoring/",
+    "/admin/mail/email-monitoring/emails/",
+    f"/admin/mail/email-monitoring/emails/{_SOME_ID}/",
+    "/admin/mail/email-monitoring/bounces/",
+    f"/admin/mail/email-monitoring/campaigns/{_SOME_ID}/",
+    "/admin/mail/email-monitoring/addresses/",
+    f"/admin/mail/email-monitoring/addresses/{_SOME_ID}/",
+    f"/admin/mail/email-monitoring/addresses/{_SOME_ID}/dismiss/",
+    "/admin/mail/email-monitoring/ses/",
+    "/admin/mail/settings/",
+    "/admin/mail/settings/test-email/",
+    "/admin/mail/settings/rates/",
+)
 
 
 class AdminSidebarNavigationTest(SimpleTestCase):
@@ -207,35 +228,29 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         mail_section = next(section for section in navigation if section["title"] == "Broadcast Delivery")
         items_by_title = {item["title"]: item for item in mail_section["items"]}
 
-        self.assertEqual(items_by_title["Delivery Operations"]["link"], "/admin/mail/delivery-dashboard/")
+        self.assertEqual(items_by_title["Delivery Operations"]["link"], "/admin/mail/email-monitoring/")
         self.assertEqual(items_by_title["Email Sending Method"]["link"], "/admin/mail/sending-method/")
         self.assertEqual(items_by_title["Gmail Inbox"]["link"], "/admin/mail/inbox/")
         self.assertEqual(items_by_title["Broadcast Campaigns"]["link"], "/admin/mail/emailcampaign/")
         self.assertNotIn("Delivery Status & Settings", items_by_title)
         self.assertNotIn("Delivery Dashboard", items_by_title)
+        self.assertNotIn("Email Monitoring", items_by_title)
         self.assertNotIn("Notification Delivery", items_by_title)
         self.assertNotIn("Broadcast Email", items_by_title)
         self.assertNotIn("Broadcast SMS", items_by_title)
         self.assertNotIn("Scam Detection", items_by_title)
 
-    def test_mail_delivery_operations_sidebar_active_state_includes_dashboard_and_settings(self):
+    def test_mail_delivery_operations_sidebar_is_active_on_every_delivery_page(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
         mail_section = next(section for section in navigation if section["title"] == "Broadcast Delivery")
         items_by_title = {item["title"]: item for item in mail_section["items"]}
         factory = RequestFactory()
 
-        dashboard_request = factory.get("/admin/mail/delivery-dashboard/")
-        settings_request = factory.get("/admin/mail/settings/")
-        rates_request = factory.get("/admin/mail/settings/rates/")
-        inbox_request = factory.get("/admin/mail/inbox/")
-
-        self.assertTrue(items_by_title["Delivery Operations"]["active"](dashboard_request))
-        self.assertTrue(items_by_title["Delivery Operations"]["active"](settings_request))
-        self.assertTrue(items_by_title["Delivery Operations"]["active"](rates_request))
-        self.assertTrue(
-            items_by_title["Delivery Operations"]["active"](factory.get("/admin/mail/email-monitoring/emails/"))
-        )
-        self.assertFalse(items_by_title["Delivery Operations"]["active"](inbox_request))
+        for path in DELIVERY_OPERATIONS_PATHS:
+            self.assertTrue(items_by_title["Delivery Operations"]["active"](factory.get(path)), path)
+        # The old Delivery Dashboard address renders nothing (it redirects to Email Monitoring → Amazon SES).
+        for path in ("/admin/mail/inbox/", "/admin/mail/emailcampaign/", "/admin/mail/delivery-dashboard/"):
+            self.assertFalse(items_by_title["Delivery Operations"]["active"](factory.get(path)), path)
         # Email Sending Method has its own entry: it, not Delivery Operations, is highlighted on its pages.
         for path in (
             "/admin/mail/sending-method/",
@@ -254,7 +269,6 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertEqual(
             [{key: item[key] for key in ("title", "link")} for item in delivery_tab["items"]],
             [
-                {"title": "Delivery Dashboard", "link": "/admin/mail/delivery-dashboard/"},
                 {"title": "Email Monitoring", "link": "/admin/mail/email-monitoring/"},
                 {"title": "Notification Delivery", "link": "/admin/mail/settings/"},
                 {"title": "Delivery Rates", "link": "/admin/mail/settings/rates/"},
@@ -326,6 +340,9 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertFalse(item["active"](SimpleNamespace(path="/admin/core/sitemaintenancecontrol/")))
 
     def test_mail_settings_route_is_registered_under_mail_app(self):
+        self.assertEqual(reverse("admin:mail_email_monitoring_ses"), "/admin/mail/email-monitoring/ses/")
+        self.assertEqual(reverse("admin:mail_email_monitoring_ses_data"), "/admin/mail/email-monitoring/ses/data/")
+        # The Delivery Dashboard's names still reverse (the page redirects, the JSON still answers).
         self.assertEqual(reverse("admin:mail_delivery_dashboard"), "/admin/mail/delivery-dashboard/")
         self.assertEqual(reverse("admin:mail_delivery_dashboard_data"), "/admin/mail/delivery-dashboard/data/")
         self.assertEqual(reverse("admin:mail_settings"), "/admin/mail/settings/")
@@ -407,9 +424,19 @@ class AdminIndexNavigationTest(TestCase):
         sidebar_html = html.split('<div id="main"', maxsplit=1)[0]
         self.assertNotIn("Member Sheet Sync", sidebar_html)
 
-    def test_mail_delivery_operations_render_as_admin_tabs(self):
+    # Email Monitoring → Amazon SES reads AWS: here both clients report "not configured", without a network.
+    @patch("apps.mail.services.campaign.dashboard._sesv2_client", side_effect=AwsCredentialsError("not configured"))
+    @patch(
+        "apps.mail.services.campaign.dashboard._cloudwatch_client", side_effect=AwsCredentialsError("not configured")
+    )
+    def test_mail_delivery_operations_render_as_admin_tabs(self, _cloudwatch, _sesv2):
+        monitoring = "/admin/mail/email-monitoring/"
         for url, active_href in (
-            (reverse("admin:mail_delivery_dashboard"), "/admin/mail/delivery-dashboard/"),
+            (reverse("admin:mail_email_monitoring"), monitoring),
+            (reverse("admin:mail_email_monitoring_emails"), monitoring),
+            (reverse("admin:mail_email_monitoring_bounces"), monitoring),
+            (reverse("admin:mail_email_monitoring_addresses"), monitoring),
+            (reverse("admin:mail_email_monitoring_ses"), monitoring),
             (reverse("admin:mail_settings"), "/admin/mail/settings/"),
             (reverse("admin:mail_delivery_rates"), "/admin/mail/settings/rates/"),
         ):
@@ -418,13 +445,14 @@ class AdminIndexNavigationTest(TestCase):
 
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'id="tabs-items"')
-                self.assertContains(response, 'href="/admin/mail/delivery-dashboard/"')
+                self.assertContains(response, 'href="/admin/mail/email-monitoring/"')
                 self.assertContains(response, 'href="/admin/mail/settings/"')
                 self.assertContains(response, 'href="/admin/mail/settings/rates/"')
+                self.assertNotContains(response, 'href="/admin/mail/delivery-dashboard/"')
                 self.assertContains(response, f'href="{active_href}" class="active"')
                 self.assertContains(response, 'class="active"', count=1)
 
-        response = self.client.get(reverse("admin:mail_delivery_dashboard"))
+        response = self.client.get(reverse("admin:mail_email_monitoring_ses"))
         html = response.content.decode()
         sidebar_html = html.split('<div id="main"', maxsplit=1)[0]
         broadcast_sidebar_html = sidebar_html.rsplit("Broadcast Delivery", maxsplit=1)[-1].split(
@@ -449,11 +477,13 @@ class AdminIndexNavigationTest(TestCase):
             with self.subTest(url=url):
                 classes = sidebar_link_classes(url)
                 self.assertIn("font-semibold", classes["/admin/mail/sending-method/"])
-                self.assertNotIn("font-semibold", classes["/admin/mail/delivery-dashboard/"])
+                self.assertNotIn("font-semibold", classes["/admin/mail/email-monitoring/"])
 
-        classes = sidebar_link_classes(reverse("admin:mail_settings"))
-        self.assertIn("font-semibold", classes["/admin/mail/delivery-dashboard/"])
-        self.assertNotIn("font-semibold", classes["/admin/mail/sending-method/"])
+        for url in (reverse("admin:mail_settings"), reverse("admin:mail_email_monitoring")):
+            with self.subTest(url=url):
+                classes = sidebar_link_classes(url)
+                self.assertIn("font-semibold", classes["/admin/mail/email-monitoring/"])
+                self.assertNotIn("font-semibold", classes["/admin/mail/sending-method/"])
 
     def test_projects_and_semesters_render_as_admin_tabs(self):
         for url, active_href in (

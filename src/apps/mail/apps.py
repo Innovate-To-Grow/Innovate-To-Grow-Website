@@ -13,7 +13,6 @@ class MailConfig(AppConfig):
         register_background_jobs()
         register_sms_policy()
 
-        from .admin.delivery_dashboard import get_delivery_dashboard_urls
         from .admin.email_monitoring import get_email_monitoring_urls
         from .admin.inbox import get_inbox_urls
         from .admin.settings import get_mail_settings_urls
@@ -26,8 +25,7 @@ class MailConfig(AppConfig):
 
             def patched_get_urls(site_self):
                 return (
-                    get_delivery_dashboard_urls()
-                    + get_email_monitoring_urls()
+                    get_email_monitoring_urls()
                     + get_inbox_urls()
                     + get_mail_settings_urls()
                     + original_get_urls(site_self)

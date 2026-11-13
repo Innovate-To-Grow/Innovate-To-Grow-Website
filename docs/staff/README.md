@@ -40,7 +40,8 @@ including why a row is skipped ("Row 5") and the review step that is coming.
 ### 3. Blasts & email monitoring (written)
 
 Writing, testing and sending a broadcast email, choosing the audience, personal sign-in links, what "API accepted"
-means, the Email Monitoring dashboard, bounce reports, reading older reports again, and the Bounced addresses page.
+means, the Email Monitoring dashboard (one page with tabs, including Amazon SES, the former Delivery Dashboard),
+bounce reports, reading older reports again, and the Bounced addresses page.
 
 ### 4. Replies, the i2g@ Inbox and the helpdesk (planned)
 

@@ -6,15 +6,23 @@
 
 "API accepted" means the provider queued the message (Microsoft Graph ``202 Accepted``), never that it was
 delivered: only a bounce report proves anything about delivery, and then only a failure.
+
+Beside the figures, the Overview shows the email channel's delivery rate now (``send_rate``), the line the Delivery
+Dashboard used to show.
 """
+
+import logging
 
 from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import Coalesce
 
 from apps.core.models import EmailBounce, OutboundEmail, OutboundEmailAttempt
 from apps.core.services.email.telemetry import kind_label
+from apps.mail.services.campaign.pacing import email_send_rate_line
 
 from .scope import Scope
+
+logger = logging.getLogger(__name__)
 
 Status = OutboundEmail.Status
 DeliveryStatus = OutboundEmail.DeliveryStatus
@@ -128,3 +136,13 @@ def overview(scope: Scope) -> dict:
         "bounces": bounces,
         "latest_error": latest_error(attempts),
     }
+
+
+def send_rate() -> str:
+    """The active email channel's delivery-rate status line ("Now: … · Smart · …", as Notification Delivery and
+    Delivery Rates show it), or "" when it cannot be read: the Overview never fails on it."""
+    try:
+        return email_send_rate_line()
+    except Exception:  # noqa: BLE001 - a status line must never break the dashboard.
+        logger.warning("The email send rate could not be read for Email Monitoring", exc_info=True)
+        return ""

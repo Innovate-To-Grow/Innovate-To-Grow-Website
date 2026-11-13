@@ -3,6 +3,8 @@
 Operator runbook for **Mail → Delivery Operations → Email Monitoring**: what the site records about every
 outgoing email, how Microsoft Graph bounce reports are read and matched, what each figure on the dashboard
 means (and does not mean), the configuration, deployment, retention and access rules, and the limits.
+Email Monitoring is the one delivery page: it took in the former Delivery Dashboard, whose figures (Amazon SES's
+own, from AWS) are its [Amazon SES tab](#amazon-ses-tab).
 
 ## What it is
 
@@ -19,9 +21,11 @@ means (and does not mean), the configuration, deployment, retention and access r
   mailbox (`i2g@ucmerced.edu`). The background worker reads those reports, read-only, and records one
   `EmailBounce` per failed or delayed recipient, matched to the email it reports on when a reliable
   identifier allows it.
-- **Dashboard.** Overview figures by level, trends, breakdowns, an email log with server-side search, filters,
-  sorting and pagination, each email's full history, the bounce reports (including unmatched ones), and a
-  page per broadcast campaign (also reached from a sent campaign's **Delivery monitoring** button).
+- **Dashboard.** Five tabs: the **Overview** (the bounce-processing card, one strip of key figures, the recipient
+  and API-attempt figures, trends, breakdowns and the broadcast campaigns), the **Email log** with server-side
+  search, filters, sorting and pagination and each email's full history, the **Bounce reports** (including
+  unmatched ones), **Bounced addresses**, and **Amazon SES**; plus a page per broadcast campaign (also reached
+  from a sent campaign's **Delivery monitoring** button).
 
 ## Statuses: what is and is not known
 
@@ -350,6 +354,35 @@ bulk-mail suppression list (`apps.mail.services.suppression`). Addresses compare
 - **Transactional mail is never suppressed:** sign-in and verification codes, password codes, event tickets,
   notifications and inbox replies still go, since the person may have fixed their mailbox.
 
+## Amazon SES tab
+
+**Email Monitoring → Amazon SES** (`/admin/mail/email-monitoring/ses/`) is the former Delivery Dashboard. Its
+figures are Amazon's, read from AWS each time the tab loads (with the active AWS credentials), never the site's
+telemetry:
+
+- **Counts.** Daily sums of the AWS CloudWatch `AWS/SES` metrics of the account (or of the configuration set
+  `SES_CONFIGURATION_SET_NAME`) over the chosen **Range**: the last 7 days, 3 months, 6 months (the default) or
+  12 months (`days` = 7, 90, 183 or 365). They count every message sent through SES from that AWS account and
+  region, not only the site's, and exist only for mail sent through SES. **SES attempts** is the `Send` metric
+  (never fewer than the outcomes); **Delivered by SES** is SES's own delivery event (the receiving server accepted
+  the message), which Microsoft Graph never reports; **SES errors** are the bounces, complaints, rejects and
+  rendering failures, broken down by type beside a daily chart, and the failure rate is errors ÷ attempts.
+  Delivery delays are listed apart: they are not errors.
+- **Suppressed recipients.** The SES account suppression list (`ses:ListSuppressedDestinations`): the addresses
+  SES itself refuses to send to, last updated in the range, with a search, a status filter and **Export the rows
+  shown** (CSV, TSV, JSON or an Excel sheet; spreadsheet cells are neutralised as in the Bounced addresses export).
+  It is AWS's list. The site's own is [Bounced addresses](#bounced-addresses).
+- **One notice** says why figures are missing, checked in this order: another provider is active (Graph, SMTP and
+  the Gmail API produce no SES events: their sends are on the Overview and in the Email log), SES is not
+  configured, CloudWatch cannot be read (`cloudwatch:ListMetrics`, `cloudwatch:GetMetricData`), or the suppression
+  list cannot be read (`ses:ListSuppressedDestinations`, `ses:GetSuppressedDestination`).
+
+The Overview and this tab count different things, so their numbers do not match: the Overview (with **Provider:
+Amazon SES** for the site's SES sends only) is the site's own record of what it submitted; this tab is what AWS
+counted. Each number appears once: the old page's **Bounce / Complaint** tile (bounces plus complaints) and its
+Delivery Mix rows **Sent** and **Delivered** repeated other figures and are gone, and the email channel's send
+rate it showed is on the Overview. The JSON (`ses/data/`) is the old payload, unchanged.
+
 ## Dashboard entry points
 
 | Page | URL |
@@ -366,8 +399,12 @@ bulk-mail suppression list (`apps.mail.services.suppression`). Addresses compare
 | One bounced address | `/admin/mail/email-monitoring/addresses/<uuid>/` |
 | Bounced-address action | POST `/admin/mail/email-monitoring/addresses/<uuid>/<action>/` (`step=confirm`, then `step=apply` with the page's `fingerprint`) |
 | Bulk action / counts rebuild | POST `/admin/mail/email-monitoring/addresses/bulk/`, `/admin/mail/email-monitoring/addresses/rebuild/` |
+| Amazon SES | `/admin/mail/email-monitoring/ses/` (`days` = 7, 90, 183 or 365; anything else reads 183) |
+| Amazon SES data (JSON) | `/admin/mail/email-monitoring/ses/data/` (the same `days`) |
+| Old Delivery Dashboard | `/admin/mail/delivery-dashboard/` redirects (302, query string kept) to the Amazon SES tab; `/admin/mail/delivery-dashboard/data/` still answers with the same JSON as `ses/data/`, so scripts keep working. Both URL names (`admin:mail_delivery_dashboard`, `admin:mail_delivery_dashboard_data`) still reverse. |
 
-The pages are a tab of **Delivery Operations** in the Broadcast Delivery section.
+The pages are the **Email Monitoring** tab of **Delivery Operations** in the Broadcast Delivery section, beside
+Notification Delivery and Delivery Rates; the sidebar's **Delivery Operations** entry opens the Overview.
 
 ## Configuration
 
@@ -449,8 +486,8 @@ form saves every column and would overwrite a running scan's lease.
    needs no step: the Graph counts start again at its first count when the cursor is still parked, or after the hourly
    refresh finds counts made without categories (they do not add up).
 
-Access: every page requires the **Mail** app (`Member.admin_apps`, or superuser), like the Delivery
-Dashboard; the controls are POST with CSRF. Bounced-address actions that change a contact email or a member also need
+Access: every page, the Amazon SES tab and its JSON included, requires the **Mail** app (`Member.admin_apps`, or
+superuser); the controls are POST with CSRF. Bounced-address actions that change a contact email or a member also need
 the **Members** (`authn`) app and a manageable member (see the actions table). The telemetry tables and the four
 Bounced addresses tables are denied to the CLI and the assistant (`safe_orm` `DENIED_MODEL_LABELS`) for reads and
 writes, so a suppression can only be set or lifted on the page, under its guards.
@@ -500,8 +537,9 @@ writes, so a suppression can only be set or lifted on the page, under its guards
   unsubscribing, suppressing) is a staff decision made on the Bounced addresses page; the site makes none
   automatically.
 - **Other providers.** SES, SMTP and the Gmail API are recorded at the facade (one attempt per call, error
-  kind "Provider error"), without Graph's HTTP-level detail; SES delivery events remain in the SES dashboard
-  and the recipient log ([SES event tracking](ses-event-tracking.md)).
+  kind "Provider error"), without Graph's HTTP-level detail. SES's own counts are on the
+  [Amazon SES tab](#amazon-ses-tab), and its delivery events on the recipient log
+  ([SES event tracking](ses-event-tracking.md)).
 
 ## Troubleshooting
 

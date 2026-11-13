@@ -120,7 +120,7 @@ Record each decision with its date and where it was approved; ticket numbers →
 
 | When | Check |
 |---|---|
-| After every blast | **Email Monitoring** campaign row; bounce reports; (when live) **Bounced addresses** |
+| After every blast | **Email Monitoring** campaign row; bounce reports; (when live) **Bounced addresses**; the **Amazon SES** tab if the blast went through SES |
 | Weekly | **Bounce processing** is **Running**; no stuck **Queued** campaigns; delivery limits not stopped |
 | Monthly | The Graph certificate's expiry badge, and the key rotation dates in the private ops doc; CloudTrail access to the key secrets; AWS costs |
 | Every term | Admin access review; campus IP set; this runbook and the staff handbook |

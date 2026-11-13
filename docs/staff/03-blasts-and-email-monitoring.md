@@ -143,18 +143,29 @@ The campaign's own recipient list shows **Sent** for an email Microsoft accepted
 
 ## 3.4 The Email Monitoring dashboard
 
-Open **Broadcast Delivery → Delivery Operations → Email Monitoring**, pick a **Range** and **Apply**. (**Delivery
-monitoring** on a sent campaign opens the same figures for that one campaign.) The pages:
+Open **Broadcast Delivery → Delivery Operations**: it opens **Email Monitoring**, the one page about email
+delivery. Pick a **Range** and **Apply**. (**Delivery monitoring** on a sent campaign opens the same figures for that
+one campaign.) Its tabs:
 
-- **Overview:** the **Bounce processing** card (3.5); counts of messages, recipients and API attempts; charts; the
-  most common failure and bounce reasons; and **Broadcast campaigns**, one row per campaign with its emails, API
-  accepted, failed / not sent, outcome unknown, confirmed bounces, bounce rate and retries.
+- **Overview:** the **Bounce processing** card (3.5); one row of key figures (emails sent, API accepted, API failed,
+  the API success rate, confirmed bounced emails, emails retried) with the current send rate under it; the
+  recipient and API-attempt counts; charts; the most common failure and bounce reasons; and **Broadcast
+  campaigns**, one row per campaign with its emails, API accepted, failed / not sent, outcome unknown, confirmed
+  bounces, bounce rate and retries.
 - **Email log:** every email the site sent, with search (an address, for example) and filters. Click one to see its
   full history. It starts on the last 7 days: widen the **Range** for older emails.
 - **Bounce reports:** one row per failed recipient in each report, with its category (what went wrong) and match.
 
-The note at the top of every page gives the date of the oldest email on record. Monitoring began in November 2026,
-and emails are kept for 180 days, so anything older is not there.
+The note at the top of every page except **Amazon SES** gives the date of the oldest email on record. Monitoring
+began in November 2026, and emails are kept for 180 days, so anything older is not there.
+
+Two more tabs: **Bounced addresses** (3.7) and **Amazon SES**. **Amazon SES** is the old **Delivery Dashboard**
+page (its old address opens this tab). It shows Amazon's own figures for mail sent through Amazon SES, one of the
+providers **Email Sending Method** can choose (the site never switches to it by itself): attempts, deliveries and
+errors by type, with a daily chart (**Range**: 7 days to 12 months), and Amazon's suppression list, the addresses
+Amazon refuses to send to, with a search and **Export the rows shown**. These numbers come from Amazon, not from the
+site's own record, so they do not match the Overview. Its own note at the top says where its figures come from;
+while Microsoft Graph sends the site's mail, a second note says so.
 
 ### Bounce reports
 
