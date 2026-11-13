@@ -63,7 +63,12 @@ def action_reject_view(request, action_id):
 def _action_error_response(exc, *, action):
     """Build a JsonResponse using a class-derived literal and log full detail."""
     action_id = getattr(action, "id", None)
-    if isinstance(exc, actions_api.system_intelligence_actions.ActionRequestError):
+    if isinstance(exc, actions_api.system_intelligence_actions.ActionRefused):
+        # A rule refused the change and the request is now failed. Its reason is fixed text we wrote, persisted by the
+        # failed approval: show that, not "not found" (the request exists, and stays visible as failed).
+        actions_api.logger.info("Action %s refused", action_id)
+        message = getattr(action, "error_message", "") or actions_api.GENERIC_REFUSAL_ERROR
+    elif isinstance(exc, actions_api.system_intelligence_actions.ActionRequestError):
         actions_api.logger.warning("Action %s rejected by validation", action_id, exc_info=exc)
         message = actions_api.GENERIC_ACTION_ERROR
     elif isinstance(exc, PermissionDenied):

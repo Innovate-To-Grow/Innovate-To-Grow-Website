@@ -20,6 +20,7 @@ from ..orm import (
 )
 from ..serialization import proposal_tool_response
 from .cascade import cascade_summary, collect_cascade_impact
+from .member_guard import check_member_write
 
 
 def propose_db_create(app_label: str, model_name: str, fields: dict[str, Any], summary: str | None = None):
@@ -30,6 +31,7 @@ def propose_db_create(app_label: str, model_name: str, fields: dict[str, Any], s
     if not isinstance(fields, dict) or not fields:
         raise ActionRequestError("fields must be a non-empty object.")
     clean_fields = validate_write_payload(model, fields)
+    check_member_write(current_user(), model, fields=clean_fields)
     obj = model()
     assign_model_fields(obj, clean_fields)
     obj.full_clean()
@@ -66,6 +68,7 @@ def propose_db_update(app_label: str, model_name: str, pk: str, changes: dict[st
     if not isinstance(changes, dict) or not changes:
         raise ActionRequestError("changes must be a non-empty object.")
     clean_changes = validate_write_payload(model, changes)
+    check_member_write(current_user(), model, fields=clean_changes, target=obj)
     before = serialize_model_instance(obj, write=True)
     proposed_obj = clone_model_instance(obj)
     assign_model_fields(proposed_obj, clean_changes)
@@ -102,6 +105,7 @@ def propose_db_delete(app_label: str, model_name: str, pk: str, summary: str | N
     model = resolve_model(app_label, model_name, write=True)
     check_model_permission(current_user(), model, "view")
     obj = get_object(model, pk)
+    check_member_write(current_user(), model, target=obj)
     before = serialize_model_instance(obj, write=True)
     cascade = collect_cascade_impact(obj)
     comparison = build_db_comparison(model, before, {}, mode="delete")
