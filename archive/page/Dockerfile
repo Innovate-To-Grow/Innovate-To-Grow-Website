@@ -23,7 +23,16 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN groupadd --system app \
+# The python:3.11-slim tag lags Debian security releases: in 2026-11 it still
+# shipped zlib1g 1:1.3.dfsg+really1.3.1-1+b1 after trixie-security had fixed
+# CVE-2026-85091 and CVE-2026-76844 in +deb13u1, and the image scan (CI and
+# deploy-archive.yml) fails on any CRITICAL/HIGH finding that has a fix. Take
+# the current Debian builds whenever the image is built, so a fix Debian has
+# shipped is in the image even before the base tag is rebuilt.
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system app \
  && useradd --system --gid app --home /app --shell /usr/sbin/nologin app
 
 WORKDIR /app
