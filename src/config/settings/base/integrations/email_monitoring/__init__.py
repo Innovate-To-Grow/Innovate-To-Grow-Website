@@ -128,7 +128,10 @@ EMAIL_MONITORING = {
     "address_settle_seconds": 120,
     # The hourly maintenance re-checks at most this many addresses' member links per run (continuing where it stopped).
     "address_refresh_rows_per_run": 5000,
-    # "Consider marking undeliverable" is suggested after this many soft bounces spread over at least this many days.
+    # "Consider marking undeliverable" is suggested after this many temporary failures spread over at least this many
+    # days: Graph reports of a temporary, full-mailbox or unknown category, and SES transient or undetermined bounces.
+    # A temporary failure (a connection timeout, a DNS failure, an expired delivery) never suggests more on its own;
+    # only a missing address or a disabled mailbox does.
     "address_soft_bounce_repeats": 3,
     "address_soft_bounce_days": 7,
     # Rows written to one spreadsheet export of the list (the filtered rows, newest bounce first), and addresses one

@@ -135,6 +135,8 @@ def bounce_list_view(request):
         listing=listing,
         **_listing_queries(current, listing),
         classifications=EmailBounce.Classification.choices,
+        categories=EmailBounce.Category.choices,
+        category_legend=EmailBounce.category_legend(),
         match_methods=EmailBounce.MatchMethod.choices,
         page_sizes=log.PAGE_SIZES,
         sorts=log.BOUNCE_SORTS,

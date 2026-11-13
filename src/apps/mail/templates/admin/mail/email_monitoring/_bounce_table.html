@@ -1,14 +1,14 @@
-{# Bounce report rows. ``show_email`` adds the matched email's link (the bounce list); the email page omits it. #}
+{# Bounce report rows. ``show_email`` adds the matched email's link (the bounce list); the email page omits it. The category's hint says whether it is evidence against the address or about our sending. #}
 {% if bounces %}
 <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
   <thead><tr>
     {% if sortable %}
       {% include "admin/mail/email_monitoring/_sort_header.html" with column="received" label="Received" %}
       {% include "admin/mail/email_monitoring/_sort_header.html" with column="recipient" label="Recipient" %}
-      {% include "admin/mail/email_monitoring/_sort_header.html" with column="classification" label="Classification" %}
+      {% include "admin/mail/email_monitoring/_sort_header.html" with column="category" label="Category" %}
       {% include "admin/mail/email_monitoring/_sort_header.html" with column="status" label="Status code" %}
     {% else %}
-      <th scope="col">Received</th><th scope="col">Recipient</th><th scope="col">Classification</th><th scope="col">Status code</th>
+      <th scope="col">Received</th><th scope="col">Recipient</th><th scope="col">Category</th><th scope="col">Status code</th>
     {% endif %}
     <th scope="col">Reason and diagnostic</th><th scope="col">Reporting server</th>
     {% if sortable %}{% include "admin/mail/email_monitoring/_sort_header.html" with column="match" label="Match" %}{% else %}<th scope="col">Match</th>{% endif %}
@@ -17,8 +17,8 @@
     <tr>
       <td>{{ bounce.received_at|date:"M j, H:i" }}{% if bounce.bounced_at %}<br><span class="i2g-monitor-muted">reported {{ bounce.bounced_at|date:"M j, H:i" }}</span>{% endif %}</td>
       <td>{{ bounce.recipient|default:"(not named)" }}</td>
-      <td>{{ bounce.get_classification_display }}<br><span class="i2g-monitor-muted">{% if bounce.is_permanent %}permanent{% elif bounce.is_permanent is None %}permanence unknown{% else %}temporary{% endif %}</span></td>
-      <td><code>{{ bounce.status_code|default:"–" }}</code>{% if bounce.action %}<br><span class="i2g-monitor-muted">{{ bounce.action }}</span>{% endif %}</td>
+      <td><strong>{{ bounce.get_category_display|default:"Not classified yet" }}</strong><br><span class="i2g-monitor-muted">{{ bounce.get_classification_display }}{% if bounce.category_hint %} · {{ bounce.category_hint }}{% endif %}</span></td>
+      <td><code>{% if bounce.smtp_code %}{{ bounce.smtp_code }} {% endif %}{{ bounce.status_code|default:"–" }}</code>{% if bounce.action %}<br><span class="i2g-monitor-muted">{{ bounce.action }}</span>{% endif %}</td>
       <td>{{ bounce.reason|default:"–" }}{% if bounce.diagnostic_code %}<br><span class="i2g-monitor-muted">{{ bounce.diagnostic_code|truncatechars:200 }}</span>{% endif %}</td>
       <td>{{ bounce.reporting_mta|default:"–" }}{% if bounce.remote_mta %}<br><span class="i2g-monitor-muted">remote {{ bounce.remote_mta }}</span>{% endif %}</td>
       <td>{{ bounce.get_match_method_display }}{% if show_email and bounce.email_id %}<br><a href="{% url 'admin:mail_email_monitoring_email' bounce.email_id %}">open email</a>{% endif %}{% if bounce.match_note %}<br><span class="i2g-monitor-muted">{{ bounce.match_note }}</span>{% endif %}</td>
