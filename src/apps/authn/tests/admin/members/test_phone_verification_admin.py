@@ -17,7 +17,7 @@ from rest_framework.test import APIClient
 
 from apps.authn.admin.members.contact.phone import ContactPhoneAdmin
 from apps.authn.admin.members.contact.phone_verification import same_member, sms_sign_in_status
-from apps.authn.models import ContactPhone, Member, PhoneVerificationChallenge
+from apps.authn.models import ContactEmail, ContactPhone, Member, PhoneVerificationChallenge
 from apps.authn.services.sms import PhoneVerificationDeliveryError
 from apps.authn.tests.sms_provider import SMS_CODE, WRONG_CODE, patch_sms_provider
 from apps.core.admin.mixins.confirm_on_save import SESSION_KEY_PREFIX
@@ -94,6 +94,13 @@ class AdminPhoneTestCase(TestCase):
     def mark_verified(self, phone):
         ContactPhone.objects.filter(pk=phone.pk).update(verified=True)
         phone.refresh_from_db()
+
+    def keep_a_way_to_sign_in(self, member):
+        """Give ``member`` a verified email, so moving their number away leaves them able to sign in: the test then
+        sees only the move itself, not what the admin says about a member who can no longer sign in."""
+        ContactEmail.objects.create(
+            member=member, email_address="mem.ber@example.com", email_type="primary", verified=True
+        )
 
 
 class ContactPhoneVerifiedFieldTests(AdminPhoneTestCase):
@@ -219,6 +226,7 @@ class ContactPhoneVerifiedFieldTests(AdminPhoneTestCase):
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
     def test_the_typed_confirmation_lists_the_unverify_of_a_move(self):
         self.mark_verified(self.phone)
+        self.keep_a_way_to_sign_in(self.member)
         other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
 
         self.post_phone(self.phone, verified=True, member=str(other.pk))
@@ -233,6 +241,7 @@ class ContactPhoneVerifiedFieldTests(AdminPhoneTestCase):
     def test_saving_backstops_a_move_the_form_left_verified(self):
         # As if ``verified`` were not a form field: the save itself drops a verification the new member never proved.
         self.mark_verified(self.phone)
+        self.keep_a_way_to_sign_in(self.member)
         other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
         request = RequestFactory().post("/")
         request.user = self.admin
