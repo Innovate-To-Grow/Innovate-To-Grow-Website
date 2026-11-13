@@ -115,17 +115,23 @@ class MemberImportPageTests(TestCase):
         self.assertFalse(MemberImportBatch.objects.exists())
 
     def test_the_same_file_twice_warns_before_a_second_batch_is_made(self):
-        rows = [["new@example.com", "New", "Person", None]]
-        self.client.post(self.url, {"excel_file": _upload(rows), "mode": "update_existing"})
+        # The same bytes each time: openpyxl stamps the save time (to the second) into the file, so two builds
+        # straddling a second boundary hash differently and are not the same file.
+        data = build_sheet(HEADERS, [["new@example.com", "New", "Person", None]]).getvalue()
 
-        response = self.client.post(self.url, {"excel_file": _upload(rows), "mode": "update_existing"})
+        def same_file():
+            return SimpleUploadedFile("members.xlsx", data, content_type=XLSX)
+
+        self.client.post(self.url, {"excel_file": same_file(), "mode": "update_existing"})
+
+        response = self.client.post(self.url, {"excel_file": same_file(), "mode": "update_existing"})
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "This file was uploaded before:")
         self.assertContains(response, "continue that one")
         self.assertEqual(MemberImportBatch.objects.count(), 1)
         again = self.client.post(
-            self.url, {"excel_file": _upload(rows), "mode": "update_existing", "upload_anyway": "on"}
+            self.url, {"excel_file": same_file(), "mode": "update_existing", "upload_anyway": "on"}
         )
         self.assertEqual(again.status_code, 302)
         self.assertEqual(MemberImportBatch.objects.count(), 2)

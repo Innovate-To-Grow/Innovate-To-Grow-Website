@@ -115,13 +115,19 @@ complained status there. Graph's later non-delivery reports arrive in the
 sender mailbox, where bounce processing reads and records them and marks the matched email's delivery as failed
 ([Email monitoring](../integrations/email-monitoring.md)); the recipient log is not changed and nothing acts on them
 automatically. The SES
-account-level suppression list applies only to SES sends, and the application keeps
-no suppression list of its own, so under SMTP or Graph previously bounced or
-complaining addresses are mailed again.
+account-level suppression list applies only to SES sends. The site's own bulk-mail
+suppression list is the one staff keep on Email Monitoring → Bounced addresses
+(**Suppress address**, **Mark undeliverable**): every campaign skips those addresses,
+whatever the provider, and transactional mail is never suppressed. Nothing is added to
+it automatically, so under SMTP, Microsoft Graph or the Gmail API an address that bounced
+or complained is mailed again until staff suppress it
+([Email monitoring](../integrations/email-monitoring.md#bounced-addresses)).
 
 ## AWS End User Messaging (SMS)
 
-Used for phone number verification during event registration and contact management.
+Used for sign-in and verification codes (phone sign-up, phone sign-in with a number verified on the account, password
+reset and password create/change codes, and the account and event-registration phone checks), the admin's test SMS,
+Broadcast SMS and ticket texts.
 
 | Concern | Implementation |
 |---------|---------------|
@@ -138,7 +144,9 @@ phone, optional member, and context, with persistent attempt/send limits and
 one-time consumption. The origination number is auto-detected from the
 account's End User Messaging phone numbers (`DescribePhoneNumbers`), or set
 manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
-`sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`.
+`sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`, plus `sms-voice:DescribeOptedOutNumbers` for the
+hourly opt-out sync (without it each sync is recorded as failed; sending is unaffected). The opt-out list, footer,
+quiet hours, links in texts and ticket texts are in [AWS SMS](../integrations/aws-sms.md).
 
 Every SMS (codes, the admin test SMS, campaigns) is sent by `send_text_message` on the `sms_send` delivery
 channel, for the identity `<region>:<origination>`; the SendTextMessage quota is per account and Region, so a
@@ -172,6 +180,7 @@ try again. A cached list or message never takes a slot.
 | Public spend limits | Per-visitor/member and global token budgets in PostgreSQL, set on the same config; see [Assistant and AI search limits](../integrations/assistant-limits.md) |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | Runtime | `src/apps/system_intelligence/services/bedrock/` |
+| Record writes (admin assistant) | Single-record writes through `core`'s `safe_orm`, proposed by the assistant and applied only when the conversation's owner approves (`src/apps/system_intelligence/services/actions/`). Readable but never written (`DENIED_WRITE_MODEL_LABELS`): contact emails and phones, the email and phone verification challenges, admin invitations, the RSA sign-in key, the CLI audit log and background jobs; Django's auto-created many-to-many tables are never written either. Neither read nor written (`DENIED_MODEL_LABELS`): the CLI's authorization codes and access tokens, and the assistant's exports. Member writes are stricter than `MemberAdmin`: through the assistant, only the I2G Master changes or deletes another staff or superuser account, or writes `MemberAdmin.superuser_only_fields` (`db/member_guard.py`). A refused approval fails the request and shows the reason in the chat panel. |
 
 Known Claude models with fixed sampling (including Fable 5) omit `temperature` in both Converse and agent calls. Older models retain the configured value. The admin connectivity test also omits optional sampling settings and reads text after any reasoning blocks. See [Anthropic sampling limits](https://platform.claude.com/docs/en/about-claude/models/extended-thinking-models).
 

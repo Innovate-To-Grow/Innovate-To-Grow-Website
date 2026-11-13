@@ -50,7 +50,11 @@
       ...options,
     });
     const payload = await response.json();
-    if (!response.ok) throw new Error(payload.error || "Request failed.");
+    if (!response.ok) {
+      const error = new Error(payload.error || "Request failed.");
+      error.payload = payload;
+      throw error;
+    }
     return payload;
   };
 

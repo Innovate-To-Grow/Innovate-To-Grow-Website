@@ -1,23 +1,32 @@
 """Phone verification in the admin: a number becomes verified only with an SMS code, never with a tick.
 
 A verified number signs in to its account with a texted code, so staff may switch verification off but not on; a
-number whose digits change starts unverified; the state is shown as a badge; and the staff path for a member who
-cannot sign in another way is **Verify by SMS code** (send a code, the member reads it back, staff enter it).
+number whose digits change, or that moves to another member, starts unverified; the state is shown as a badge; and the
+staff path for a member who cannot sign in another way is **Verify by SMS code** (send a code, the member reads it
+back, staff enter it).
 """
 
 from html.parser import HTMLParser
 
+from django.contrib import admin
 from django.contrib.admin.models import LogEntry
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from rest_framework.test import APIClient
 
-from apps.authn.admin.members.contact.phone_verification import sms_sign_in_status
-from apps.authn.models import ContactPhone, Member, PhoneVerificationChallenge
+from apps.authn.admin.members.contact.phone import ContactPhoneAdmin
+from apps.authn.admin.members.contact.phone_verification import same_member, sms_sign_in_status
+from apps.authn.models import ContactEmail, ContactPhone, Member, PhoneVerificationChallenge
 from apps.authn.services.sms import PhoneVerificationDeliveryError
 from apps.authn.tests.sms_provider import SMS_CODE, WRONG_CODE, patch_sms_provider
+from apps.core.admin.mixins.confirm_on_save import SESSION_KEY_PREFIX
 
 NUMBER = "2095550111"
+
+
+def _last_change_message(phone) -> str:
+    return LogEntry.objects.filter(object_id=str(phone.pk)).latest("action_time").get_change_message()
 
 
 def _change_url(phone):
@@ -86,6 +95,13 @@ class AdminPhoneTestCase(TestCase):
         ContactPhone.objects.filter(pk=phone.pk).update(verified=True)
         phone.refresh_from_db()
 
+    def keep_a_way_to_sign_in(self, member):
+        """Give ``member`` a verified email, so moving their number away leaves them able to sign in: the test then
+        sees only the move itself, not what the admin says about a member who can no longer sign in."""
+        ContactEmail.objects.create(
+            member=member, email_address="mem.ber@example.com", email_type="primary", verified=True
+        )
+
 
 class ContactPhoneVerifiedFieldTests(AdminPhoneTestCase):
     def test_ticking_verified_on_an_unverified_number_changes_nothing(self):
@@ -128,6 +144,125 @@ class ContactPhoneVerifiedFieldTests(AdminPhoneTestCase):
         self.phone.refresh_from_db()
         self.assertEqual((self.phone.phone_number, self.phone.verified), (NUMBER, True))
 
+    def test_a_verified_number_moved_to_another_member_starts_unverified(self):
+        # Its code proved that someone holds the phone, not that the new member does.
+        self.mark_verified(self.phone)
+        other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
+
+        response = self.post_phone(self.phone, verified=True, member=str(other.pk))
+
+        self.assertEqual(response.status_code, 302)
+        self.phone.refresh_from_db()
+        self.assertEqual((self.phone.member_id, self.phone.verified), (other.pk, False))
+
+    def test_a_verified_number_unlinked_from_its_member_starts_unverified(self):
+        self.mark_verified(self.phone)
+
+        self.assertEqual(self.post_phone(self.phone, verified=True, member="").status_code, 302)
+
+        self.phone.refresh_from_db()
+        self.assertEqual((self.phone.member_id, self.phone.verified), (None, False))
+
+    def test_the_holder_of_a_moved_number_cannot_sign_in_to_the_new_members_account(self):
+        publish = patch_sms_provider(self)
+        self.mark_verified(self.phone)
+        other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
+        self.assertEqual(self.post_phone(self.phone, verified=True, member=str(other.pk)).status_code, 302)
+
+        api = APIClient()
+        requested = api.post("/authn/phone-auth/request-code/", {"phone_number": NUMBER}, format="json")
+        signed_in = api.post(
+            "/authn/phone-auth/verify-code/",
+            {"phone_number": NUMBER, "challenge_id": requested.data["challenge_id"], "code": SMS_CODE},
+            format="json",
+        )
+
+        # A withheld code: answered like a send, nothing texted, and no code signs in to the new member's account.
+        self.assertEqual(requested.status_code, 202)
+        publish.assert_not_called()
+        self.assertEqual(signed_in.status_code, 400)
+        self.assertNotIn("access", signed_in.data)
+
+    def test_a_member_less_verified_number_attached_to_a_member_starts_unverified(self):
+        ContactPhone.objects.filter(pk=self.phone.pk).update(member=None, verified=True)
+        self.phone.refresh_from_db()
+
+        self.assertEqual(self.post_phone(self.phone, verified=True, member=str(self.member.pk)).status_code, 302)
+
+        self.phone.refresh_from_db()
+        self.assertEqual((self.phone.member_id, self.phone.verified), (self.member.pk, False))
+
+    def test_the_history_names_the_unverify_of_a_move(self):
+        self.mark_verified(self.phone)
+        other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
+
+        self.post_phone(self.phone, verified=True, member=str(other.pk))
+
+        self.assertEqual(_last_change_message(self.phone), "Changed Member and Verified.")
+
+    def test_the_history_names_the_unverify_of_a_changed_number(self):
+        self.mark_verified(self.phone)
+
+        self.post_phone(self.phone, verified=True, phone_number="2095550199")
+
+        self.assertEqual(_last_change_message(self.phone), "Changed Phone number and Verified.")
+
+    def test_moving_an_unverified_number_changes_only_its_member(self):
+        other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
+
+        self.post_phone(self.phone, verified=False, member=str(other.pk))
+
+        self.assertEqual(_last_change_message(self.phone), "Changed Member.")
+
+    def test_an_unrelated_save_leaves_the_number_verified(self):
+        self.mark_verified(self.phone)
+
+        self.post_phone(self.phone, verified=True, subscribe="on")
+
+        self.phone.refresh_from_db()
+        self.assertEqual((self.phone.member_id, self.phone.verified), (self.member.pk, True))
+        self.assertEqual(_last_change_message(self.phone), "Changed Subscribed.")
+
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_the_typed_confirmation_lists_the_unverify_of_a_move(self):
+        self.mark_verified(self.phone)
+        self.keep_a_way_to_sign_in(self.member)
+        other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
+
+        self.post_phone(self.phone, verified=True, member=str(other.pk))
+
+        pending = self.client.session[f"{SESSION_KEY_PREFIX}_authn_contactphone"]
+        rows = {row["field"]: (row["old_value"], row["new_value"]) for row in pending["diff"]}
+        self.assertEqual(sorted(rows), ["member", "verified"])
+        self.assertEqual(rows["verified"], ("Yes", "No"))
+        self.phone.refresh_from_db()
+        self.assertEqual((self.phone.member_id, self.phone.verified), (self.member.pk, True))  # Not saved yet.
+
+    def test_saving_backstops_a_move_the_form_left_verified(self):
+        # As if ``verified`` were not a form field: the save itself drops a verification the new member never proved.
+        self.mark_verified(self.phone)
+        self.keep_a_way_to_sign_in(self.member)
+        other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
+        request = RequestFactory().post("/")
+        request.user = self.admin
+        moved = ContactPhone.objects.get(pk=self.phone.pk)
+        moved.member = other
+
+        ContactPhoneAdmin(ContactPhone, admin.site).save_model(request, moved, form=None, change=True)
+
+        self.phone.refresh_from_db()
+        self.assertEqual((self.phone.member_id, self.phone.verified), (other.pk, False))
+
+    def test_saving_an_unmoved_verified_number_keeps_it_verified(self):
+        self.mark_verified(self.phone)
+        request = RequestFactory().post("/")
+        request.user = self.admin
+
+        ContactPhoneAdmin(ContactPhone, admin.site).save_model(request, self.phone, form=None, change=True)
+
+        self.phone.refresh_from_db()
+        self.assertTrue(self.phone.verified)
+
     def test_a_phone_added_here_starts_unverified(self):
         response = self.client.post(
             reverse("admin:authn_contactphone_add"),
@@ -162,6 +297,30 @@ class ContactPhoneVerifiedFieldTests(AdminPhoneTestCase):
         self.assertNotContains(response, _verify_url(self.phone))
 
 
+class AuthnStaffMoveTests(AdminPhoneTestCase):
+    """The reported path: a staffer who is not the I2G Master, with only the Members (authn) grant."""
+
+    # noinspection PyPep8Naming,PyAttributeOutsideInit
+    def setUp(self):
+        super().setUp()
+        self.staffer = Member.objects.create_user(password=None, first_name="Staff", last_name="Er", is_active=True)
+        self.staffer.is_staff = True
+        self.staffer.admin_apps = ["authn"]
+        self.staffer.save(update_fields=["is_staff", "admin_apps"])
+        self.client.force_login(self.staffer)
+
+    def test_a_verified_number_moved_between_two_members_starts_unverified(self):
+        self.mark_verified(self.phone)
+        other = Member.objects.create_user(password=None, first_name="New", last_name="Owner", is_active=True)
+
+        response = self.post_phone(self.phone, verified=True, member=str(other.pk))
+
+        self.assertEqual(response.status_code, 302)
+        self.phone.refresh_from_db()
+        self.assertEqual((self.phone.member_id, self.phone.verified), (other.pk, False))
+        self.assertEqual(_last_change_message(self.phone), "Changed Member and Verified.")
+
+
 class MemberPageTests(AdminPhoneTestCase):
     def post_member(self, **phone_fields):
         url = reverse("admin:authn_member_change", args=[self.member.pk])
@@ -186,6 +345,29 @@ class MemberPageTests(AdminPhoneTestCase):
         self.assertEqual(response.status_code, 302, response.content[:2000])
         self.phone.refresh_from_db()
         self.assertEqual((self.phone.phone_number, self.phone.verified), ("2095550144", False))
+
+    def test_saving_the_member_page_keeps_a_verified_number_verified(self):
+        # The inline's member is the page's own member: saving it moves nothing.
+        self.mark_verified(self.phone)
+
+        response = self.post_member(verified="on")
+
+        self.assertEqual(response.status_code, 302, response.content[:2000])
+        self.phone.refresh_from_db()
+        self.assertEqual((self.phone.member_id, self.phone.verified), (self.member.pk, True))
+
+    def test_changing_another_field_in_the_inline_keeps_a_verified_number_verified(self):
+        # The row is saved this time (Subscribed changed), so its member must still compare as unchanged: the inline
+        # gets its member's pk as a string, the stored phone a UUID.
+        self.mark_verified(self.phone)
+
+        response = self.post_member(verified="on", subscribe="on")
+
+        self.assertEqual(response.status_code, 302, response.content[:2000])
+        self.phone.refresh_from_db()
+        self.assertEqual(
+            (self.phone.member_id, self.phone.verified, self.phone.subscribe), (self.member.pk, True, True)
+        )
 
     def test_unticking_in_the_inline_stops_sms_sign_in(self):
         self.mark_verified(self.phone)
@@ -362,6 +544,16 @@ class StaffVerifyByCodeTests(AdminPhoneTestCase):
 
         self.assertEqual(response.status_code, 302)
         self.assertIn("/admin/login/", response.url)
+
+
+class SameMemberTests(TestCase):
+    def test_a_uuid_and_its_string_name_the_same_member(self):
+        member = Member.objects.create_user(password=None, is_active=True)
+
+        self.assertTrue(same_member(member.pk, str(member.pk)))
+        self.assertTrue(same_member(None, None))
+        self.assertFalse(same_member(member.pk, None))
+        self.assertFalse(same_member(str(member.pk), Member.objects.create_user(password=None, is_active=True).pk))
 
 
 class SmsSignInStatusTests(TestCase):
