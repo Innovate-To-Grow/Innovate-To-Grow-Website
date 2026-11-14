@@ -109,7 +109,7 @@ class WithheldChallengeTests(TestCase):
     def test_it_waits_like_a_send_after_giving_the_slot_back(self):
         order = []
         with (
-            patch("apps.authn.services.sms.sns_verify.release", side_effect=lambda _a: order.append("release")),
+            patch("apps.authn.services.sms.provider.release", side_effect=lambda _a: order.append("release")),
             patch.object(latency, "wait_like_a_send", side_effect=lambda: order.append("wait")),
         ):
             self.withhold()

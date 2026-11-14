@@ -12,7 +12,7 @@ from rest_framework.test import APITestCase
 from apps.authn.models import PhoneVerificationChallenge
 from apps.authn.services.sms import PhoneNumberOptedOut, publish_plain_sms, start_phone_verification
 from apps.authn.services.sms.errors import OPTED_OUT_MESSAGE
-from apps.authn.services.sms.sns_verify import _verification_error
+from apps.authn.services.sms.provider import _verification_error
 from apps.authn.tests.sms_provider import sms_budget_used
 from apps.authn.views.helpers import challenge_error_response
 from apps.core.models import AWSCredentialConfig
