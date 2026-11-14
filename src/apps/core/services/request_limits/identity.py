@@ -11,8 +11,8 @@
 - **Destination**: a key an app registers for a scope with ``register_identity_resolver`` (for example the hashed
   phone number of a code request), falling back to the member.
 
-Each scope's ``identity`` picks one (see ``config/settings/base/integrations/request_limits/scopes.py``): sign-in
-and code flows never fall back to the IP, because most users share one campus address.
+Each scope's ``identity`` picks one (see ``config/settings/base/integrations/request_limits/defaults/scopes.py``):
+sign-in and code flows never fall back to the IP, because most users share one campus address.
 
 A caller without a verified identity (no member token, no admin session) also has a **source**, its client IP. A
 scope with a ``source_cap`` counts such callers per source too, as a flood ceiling only (``source_key``).
