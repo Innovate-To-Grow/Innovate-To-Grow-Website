@@ -14,7 +14,7 @@ from apps.authn.serializers.email_code.auth import (
     UnifiedEmailAuthRequestSerializer,
     UnifiedEmailAuthVerifySerializer,
 )
-from apps.authn.serializers.helpers import decrypt_field, decrypt_password_pair
+from apps.authn.serializers.shared.encrypted_passwords import decrypt_field, decrypt_password_pair
 
 Member = get_user_model()
 
@@ -45,14 +45,17 @@ class DecryptFieldTests(TestCase):
         import base64
 
         fake = base64.b64encode(b"\x00" * 256).decode()
-        with patch("apps.authn.serializers.helpers.is_encrypted_password", return_value=True):
+        with patch("apps.authn.serializers.shared.encrypted_passwords.is_encrypted_password", return_value=True):
             with self.assertRaises(serializers.ValidationError):
                 decrypt_field(fake)
 
 
 class DecryptPasswordPairTests(TestCase):
     def test_password_decrypt_error_wrapped(self):
-        with patch("apps.authn.serializers.helpers.decrypt_field", side_effect=serializers.ValidationError("x")):
+        with patch(
+            "apps.authn.serializers.shared.encrypted_passwords.decrypt_field",
+            side_effect=serializers.ValidationError("x"),
+        ):
             with self.assertRaises(serializers.ValidationError):
                 decrypt_password_pair({"new_password": "a", "new_password_confirm": "b"})
 
@@ -65,7 +68,7 @@ class DecryptPasswordPairTests(TestCase):
                 raise serializers.ValidationError("bad confirm")
             return value
 
-        with patch("apps.authn.serializers.helpers.decrypt_field", side_effect=fake_decrypt):
+        with patch("apps.authn.serializers.shared.encrypted_passwords.decrypt_field", side_effect=fake_decrypt):
             with self.assertRaises(serializers.ValidationError):
                 decrypt_password_pair({"new_password": "GoodPass123!", "new_password_confirm": "confirmval"})
 

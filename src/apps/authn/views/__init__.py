@@ -3,13 +3,12 @@ Authn views export.
 """
 
 from .account.change_password import ChangePasswordView
-from .account.contact_emails import (
-    ContactEmailDetailView,
-    ContactEmailListCreateView,
+from .account.contact_email_actions import (
     ContactEmailMakePrimaryView,
     ContactEmailRequestVerificationView,
     ContactEmailVerifyCodeView,
 )
+from .account.contact_emails import ContactEmailDetailView, ContactEmailListCreateView
 from .account.contact_phones import (
     ContactPhoneDetailView,
     ContactPhoneListCreateView,

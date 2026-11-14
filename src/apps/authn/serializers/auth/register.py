@@ -20,7 +20,7 @@ from apps.authn.services import (
     registration_email_conflicts,
 )
 
-from ..helpers import decrypt_password_pair
+from ..shared.encrypted_passwords import decrypt_password_pair
 from .pending_member import PendingMemberMixin
 
 Member = get_user_model()

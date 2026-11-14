@@ -54,7 +54,7 @@ class ContactEmailViewEdgeTests(APITestCase):
         resp = self.client.post(f"/authn/contact-emails/{verified.pk}/request-verification/")
         self.assertEqual(resp.status_code, 400)
 
-    @patch("apps.authn.views.account.contact_emails.resend_contact_email_verification")
+    @patch("apps.authn.views.account.contact_email_actions.resend_contact_email_verification")
     def test_request_verification_delivery_error_returns_503(self, mock_resend):
         mock_resend.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         unverified = ContactEmail.objects.create(
@@ -63,7 +63,7 @@ class ContactEmailViewEdgeTests(APITestCase):
         resp = self.client.post(f"/authn/contact-emails/{unverified.pk}/request-verification/")
         self.assertEqual(resp.status_code, 503)
 
-    @patch("apps.authn.views.account.contact_emails.resend_contact_email_verification")
+    @patch("apps.authn.views.account.contact_email_actions.resend_contact_email_verification")
     def test_request_verification_auth_invalid_returns_400(self, mock_resend):
         mock_resend.side_effect = AuthChallengeInvalid("nope")
         unverified = ContactEmail.objects.create(
@@ -85,7 +85,7 @@ class ContactEmailViewEdgeTests(APITestCase):
         resp = self.client.post(f"/authn/contact-emails/{contact.pk}/verify-code/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    @patch("apps.authn.views.account.contact_emails.verify_contact_email_code")
+    @patch("apps.authn.views.account.contact_email_actions.verify_contact_email_code")
     def test_verify_code_auth_invalid_returns_400(self, mock_verify):
         mock_verify.side_effect = AuthChallengeInvalid("bad code")
         contact = ContactEmail.objects.create(
@@ -94,7 +94,7 @@ class ContactEmailViewEdgeTests(APITestCase):
         resp = self.client.post(f"/authn/contact-emails/{contact.pk}/verify-code/", {"code": "123456"}, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    @patch("apps.authn.views.account.contact_emails.verify_contact_email_code")
+    @patch("apps.authn.views.account.contact_email_actions.verify_contact_email_code")
     def test_verify_code_delivery_error_returns_503(self, mock_verify):
         mock_verify.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         contact = ContactEmail.objects.create(
@@ -115,7 +115,7 @@ class ContactEmailViewEdgeTests(APITestCase):
         resp = self.client.post(f"/authn/contact-emails/{uuid.uuid4()}/make-primary/")
         self.assertEqual(resp.status_code, 404)
 
-    @patch("apps.authn.views.account.contact_emails.make_contact_email_primary")
+    @patch("apps.authn.views.account.contact_email_actions.make_contact_email_primary")
     def test_make_primary_auth_invalid_returns_400(self, mock_make):
         mock_make.side_effect = AuthChallengeInvalid("not verified")
         contact = ContactEmail.objects.create(
@@ -124,7 +124,7 @@ class ContactEmailViewEdgeTests(APITestCase):
         resp = self.client.post(f"/authn/contact-emails/{contact.pk}/make-primary/")
         self.assertEqual(resp.status_code, 400)
 
-    @patch("apps.authn.views.account.contact_emails.make_contact_email_primary")
+    @patch("apps.authn.views.account.contact_email_actions.make_contact_email_primary")
     def test_make_primary_delivery_error_returns_503(self, mock_make):
         mock_make.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         contact = ContactEmail.objects.create(

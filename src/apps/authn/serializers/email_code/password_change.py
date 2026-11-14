@@ -22,7 +22,7 @@ from apps.authn.services import (
     verify_sms_password_code_and_mint,
 )
 
-from ..helpers import decrypt_password_pair
+from ..shared.encrypted_passwords import decrypt_password_pair
 from .base import PURPOSE
 
 
