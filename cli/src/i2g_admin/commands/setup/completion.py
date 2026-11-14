@@ -8,8 +8,8 @@ install, prefer the built-in ``i2g-admin --install-completion``.
 import typer
 from click.shell_completion import get_completion_class
 
-from ..core import runtime
-from ..core.errors import CliError
+from ...core import runtime
+from ...core.errors import CliError
 
 # AWS-CLI-style supported shells. We validate against this fixed set rather than
 # the global Click registry alone, because Typer mutates that registry (adding
@@ -39,7 +39,7 @@ def completion_show(shell: str = typer.Argument(..., help="Shell to target: bash
             raise CliError(f"Unsupported shell {shell!r}. Use bash, zsh, or fish.")
         # Runtime import: the app module is fully loaded by the time this runs,
         # and importing it at module load would create an app<->commands cycle.
-        from ..app import app as typer_app
+        from ...app import app as typer_app
 
         cli = typer.main.get_command(typer_app)
         comp_cls = get_completion_class(shell)

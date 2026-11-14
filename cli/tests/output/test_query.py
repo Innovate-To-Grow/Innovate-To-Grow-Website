@@ -1,6 +1,6 @@
 import pytest
 from i2g_admin.core.errors import CliError
-from i2g_admin.output.query import run_query
+from i2g_admin.output.projection.query import run_query
 
 
 def test_run_query_passthrough_when_no_expression():
