@@ -13,7 +13,7 @@ from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services import login_guard
 from apps.authn.services.email.challenges import AuthChallengeDeliveryError, AuthChallengeThrottled
-from apps.authn.views.admin.login_helpers import (
+from apps.authn.views.admin.login.state import (
     LAST_ADMIN_LOGIN_COOKIE_NAME,
     get_admin_login_member,
     get_last_admin_login_member,

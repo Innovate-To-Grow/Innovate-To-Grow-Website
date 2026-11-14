@@ -124,7 +124,7 @@ def _resolve_change_password(request, data: dict) -> tuple[str, str]:
 
 def _resolve_admin_login(request, operation: str, data: dict) -> str:
     from apps.authn.services.email.auth_email import normalize_email
-    from apps.authn.views.admin.login_helpers import get_admin_login_state, get_last_admin_login_member
+    from apps.authn.views.admin.login.state import get_admin_login_state, get_last_admin_login_member
 
     supplied = normalize_email(str(data.get("destination") or data.get("email") or ""))
     if operation == OP_ADMIN_LOGIN_REQUEST_CODE:

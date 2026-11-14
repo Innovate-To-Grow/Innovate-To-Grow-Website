@@ -289,25 +289,25 @@ class ContactEmailInlinePrimaryFormsetTests(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# views/admin/invitation.py:36  (_get_unfold_context no each_context)
+# views/admin/invitation/view.py:24  (_get_unfold_context no each_context)
 # ---------------------------------------------------------------------------
 class UnfoldContextTests(SimpleTestCase):
     def test_get_unfold_context_returns_empty_without_each_context(self):
-        """invitation.py:36 — site without each_context returns {}."""
-        from apps.authn.views.admin import invitation
+        """invitation/view.py:24 — site without each_context returns {}."""
+        from apps.authn.views.admin.invitation import view
 
         request = RequestFactory().get("/")
 
         class _Site:
             pass
 
-        with patch.object(invitation.admin, "site", _Site()):
-            ctx = invitation._get_unfold_context(request)
+        with patch.object(view.admin, "site", _Site()):
+            ctx = view._get_unfold_context(request)
         self.assertEqual(ctx, {})
 
 
 # ---------------------------------------------------------------------------
-# views/admin/login/password.py:36 and views/admin/login/email_code.py:112-113
+# views/admin/login/password.py:36 and views/admin/login/code_sending.py:98-99
 # ---------------------------------------------------------------------------
 @override_settings(ROOT_URLCONF="config.routing.urls")
 class AdminPasswordFormInvalidTests(TestCase):

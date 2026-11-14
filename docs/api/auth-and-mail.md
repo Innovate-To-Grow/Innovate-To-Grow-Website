@@ -703,7 +703,7 @@ Token-based paths for email-originated actions:
 
 | Endpoint | Token source | Service |
 |----------|-------------|---------|
-| `POST /authn/impersonate-login/` | Five-minute admin-issued impersonation token | `src/apps/authn/views/admin/impersonate_login.py` |
+| `POST /authn/impersonate-login/` | Five-minute admin-issued impersonation token | `src/apps/authn/views/auth/session/impersonate_login.py` |
 | `POST /mail/login-link/` | Login link in campaign and ticket emails (`LoginLinkToken`) | `src/apps/mail/views/login_link.py` |
 | `POST /mail/magic-login/` | Legacy alias of `/mail/login-link/` for already-sent emails | `src/apps/mail/views/login_link.py` |
 

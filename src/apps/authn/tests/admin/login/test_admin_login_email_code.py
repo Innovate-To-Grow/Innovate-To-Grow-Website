@@ -18,7 +18,7 @@ from apps.authn.services.email.challenges import (
     AuthChallengeInvalid,
     AuthChallengeThrottled,
 )
-from apps.authn.views.admin.login_helpers import LAST_ADMIN_LOGIN_COOKIE_NAME, set_last_admin_login_cookie
+from apps.authn.views.admin.login.state import LAST_ADMIN_LOGIN_COOKIE_NAME, set_last_admin_login_cookie
 
 Member = get_user_model()
 LOGIN_URL = "/admin/login/"
@@ -341,7 +341,7 @@ class AdminLoginViewTest(TestCase):
         ):
             with self.subTest(status_code=status_code):
                 with patch(
-                    "apps.authn.views.admin.login.email_code.guarded_send",
+                    "apps.authn.views.admin.login.code_sending.guarded_send",
                     return_value=Response(body, status=status_code),
                 ):
                     resp = self.client.post(LOGIN_URL, {"email": "admin@example.com"})
