@@ -28,7 +28,7 @@ vi.mock('@/features/assistant/api', () => ({
     hoisted.sendAssistantMessage(message, history, sessionId),
 }));
 
-import {AssistantWidget} from '@/features/assistant/components/AssistantWidget';
+import {AssistantWidget} from '@/features/assistant/components/widget/AssistantWidget';
 
 const okResult = (reply: string): AssistantChatResult => ({
   status: 'ok',

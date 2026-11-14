@@ -1,6 +1,6 @@
 import type {AssistantChatMessage} from '@/features/assistant/api';
 
-import {loadTranscript} from '../utils/sessionStore';
+import {loadTranscript} from '../../utils/sessionStore';
 import type {DisplayMessage} from './types';
 
 /** Max conversation turns sent to the backend (keeps payloads bounded). */

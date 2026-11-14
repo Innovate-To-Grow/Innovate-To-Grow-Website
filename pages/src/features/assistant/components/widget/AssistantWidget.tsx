@@ -2,9 +2,9 @@ import {useCallback, useRef, useState} from 'react';
 
 import type {AssistantConfig} from '@/features/assistant/api';
 
-import {MessageInput} from './MessageInput';
-import {MessageList} from './MessageList';
-import {useAssistantChat} from './useAssistantChat';
+import {MessageInput} from '../chat/MessageInput';
+import {MessageList} from '../chat/MessageList';
+import {useAssistantChat} from '../chat/useAssistantChat';
 import {useAssistantConfig} from './useAssistantConfig';
 import {useLauncherYield} from './useLauncherYield';
 
