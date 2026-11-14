@@ -1,0 +1,6 @@
+/* SchedulePage.css, split into ordered sections. They are imported in their original cascade order
+   (later files override earlier ones at equal specificity), so do not reorder this list;
+   add new rules to the file that owns them. */
+@import './scheduleSections.css';
+@import './scheduleWinners.css';
+@import './schedulePresentations.css';

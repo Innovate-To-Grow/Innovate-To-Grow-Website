@@ -1,0 +1,49 @@
+@layer itg.components {
+/* Moved verbatim from the CMS "page-events" stylesheet. */
+
+/* ---- SchedulePage.css ---- */
+.schedule-page-header {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-page-header > :last-child {
+  margin-bottom: 0;
+}
+
+.schedule-page-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 24px page gap + 12px = the reference's 36px above each title, 12px below. */
+.schedule-page-section-title {
+  margin: 12px 0 0;
+  text-align: center;
+}
+
+.schedule-page-section-text {
+  margin: 0;
+  text-align: center;
+}
+
+/* The reference leaves 48px above each class label (an empty line under the
+   PRESENTATIONS title, then the label). */
+.schedule-page-section-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+  margin-top: 36px;
+}
+
+/* "Engineering Capstone (CAP)": the reference's centred bold navy line. */
+.schedule-class-label {
+  margin: 0;
+  color: var(--itg-color-primary);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+}
+}
