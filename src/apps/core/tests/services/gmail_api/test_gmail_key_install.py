@@ -11,9 +11,10 @@ from django.utils import timezone
 
 from apps.core.models import DeliveryRateState, EmailServiceConfig, GmailApiProviderConfig
 from apps.core.services.credential_store import CredentialStoreError, get_store
-from apps.core.services.email.gmail.key import install, parsing, removal, stored_key
+from apps.core.services.email.gmail.key import install, removal
 from apps.core.services.email.gmail.key.install import KeyChangeError
-from apps.core.services.email.gmail.key.parsing import KeyInputError, parse_key
+from apps.core.services.email.gmail.service_account import parsing, stored_key
+from apps.core.services.email.gmail.service_account.parsing import KeyInputError, parse_key
 from apps.core.tests.gmail_api_helpers import (
     CLIENT_ID,
     KEY_ID,

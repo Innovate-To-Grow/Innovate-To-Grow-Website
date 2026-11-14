@@ -142,8 +142,8 @@ def gmail_error(status: int, *, reason="", message="", status_text="", details_r
 
 def stored_config(**fields) -> GmailApiProviderConfig:
     """``make_config`` whose pointer names a real stored key in the memory credential store."""
-    from apps.core.services.email.gmail.assertion import load_signing_key
-    from apps.core.services.email.gmail.key import stored_key
+    from apps.core.services.email.gmail.service_account import stored_key
+    from apps.core.services.email.gmail.service_account.assertion import load_signing_key
 
     payload = key_file()
     stored = stored_key.store_key(payload, load_signing_key(payload["private_key"]))
@@ -169,7 +169,7 @@ class FakePost:
     def install(self, test):
         from unittest.mock import patch
 
-        patcher = patch("apps.core.services.email.gmail.transport.post", self)
+        patcher = patch("apps.core.services.email.gmail.client.transport.post", self)
         patcher.start()
         test.addCleanup(patcher.stop)
         return self

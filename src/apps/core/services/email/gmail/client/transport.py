@@ -9,8 +9,8 @@ import threading
 
 from django.conf import settings
 
-from ..exceptions import PermanentEmailDeliveryError
-from ..transport import ConnectFailed, HttpResponse, ResponseLost, request
+from ...exceptions import PermanentEmailDeliveryError
+from ...transport import ConnectFailed, HttpResponse, ResponseLost, request
 
 USER_AGENT = "i2g-gmail-client/1"
 TOKEN_HOST = "oauth2.googleapis.com"  # nosec B105 - a host name, not a credential

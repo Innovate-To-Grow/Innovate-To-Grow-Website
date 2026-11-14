@@ -15,7 +15,7 @@ from unfold.widgets import (
     UnfoldBooleanWidget,
 )
 
-from apps.core.services.email.gmail.key.parsing import KeyInputError, parse_key
+from apps.core.services.email.gmail.service_account.parsing import KeyInputError, parse_key
 
 from .microsoft_graph_certificate_forms import REMOVE_WORD, REMOVE_WORD_REQUIRED, WriteOnlyTextarea
 

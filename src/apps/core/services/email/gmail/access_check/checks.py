@@ -10,10 +10,10 @@ from apps.core.services.delivery_rates import RateDeferred, controlled
 from ...contracts import EmailMessage
 from ...exceptions import EmailDeliveryError, PermanentEmailDeliveryError
 from ...registry import resolve_provider
-from .. import auth, transport
-from ..access import GmailScopeError, require_subject
-from ..errors import DELEGATION_PENDING_CODES, GmailTokenRefused
-from ..provider import GmailProvider
+from ..client import auth, transport
+from ..client.access import GmailScopeError, require_subject
+from ..client.errors import DELEGATION_PENDING_CODES, GmailTokenRefused
+from ..client.provider import GmailProvider
 from .report import BREADTH, FAIL, KEY, PASS, REFUSAL, SEND, TOKEN, CheckResult
 
 # A canary set of broader scopes, each requested alone: Google must refuse every one (unauthorized_client or

@@ -6,7 +6,7 @@ allow-list, so a mistyped From address or a tampered value never reaches Google.
 only, not against someone who holds the key.
 """
 
-from ..exceptions import PermanentEmailDeliveryError
+from ...exceptions import PermanentEmailDeliveryError
 from . import subject as subjects
 from .auth import GmailCredential
 

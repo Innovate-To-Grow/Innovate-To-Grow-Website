@@ -14,7 +14,7 @@ from django.views.decorators.debug import sensitive_variables
 
 from apps.core.services.credential_store import CredentialStoreError, StoredVersion, get_store, version_token_for
 
-from ..assertion import SigningKeyError, load_signing_key
+from .assertion import SigningKeyError, load_signing_key
 
 KEY_NAME = "gmail_api_service_account_key"
 PAYLOAD_FIELDS = ("type", "client_email", "client_id", "private_key_id", "private_key", "project_id")

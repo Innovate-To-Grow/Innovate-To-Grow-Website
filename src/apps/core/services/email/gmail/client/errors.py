@@ -12,13 +12,13 @@ from apps.core.services.delivery_rates import SignalKind, code_in
 from apps.core.services.delivery_rates.adapters.gmail_api import retry_after, send_signal, token_signal
 from apps.core.services.delivery_rates.rules.defaults import signal_patterns
 
-from ..exceptions import (
+from ...exceptions import (
     PermanentEmailDeliveryError,
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
     with_signal,
 )
-from ..transport import HttpResponse
+from ...transport import HttpResponse
 
 _CODE_RE = re.compile(r"[A-Za-z][A-Za-z0-9_.-]{1,63}")
 # Documented Gmail API and Google error reasons besides the rate-relevant ones in the settings' signal patterns:

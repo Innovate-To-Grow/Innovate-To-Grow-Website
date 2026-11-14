@@ -94,7 +94,7 @@ def _gmail_factory(config: object, **provider_options) -> GmailProvider:
     del provider_options
     from apps.core.models import GmailApiProviderConfig
 
-    from .gmail.access import credential_for, require_subject
+    from .gmail.client.access import credential_for, require_subject
 
     gmail = GmailApiProviderConfig.load()
     if not gmail.is_configured:
