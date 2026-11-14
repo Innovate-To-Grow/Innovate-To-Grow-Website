@@ -1,0 +1,119 @@
+@layer itg.components {
+.project-grid-table .project-grid-select-col {
+  width: 2.75rem;
+}
+
+.project-grid-table th.project-grid-select-col,
+.project-grid-table td.project-grid-select-col {
+  padding: 8px 10px;
+}
+
+.project-grid-table .project-grid-select-col input,
+.project-grid-mobile-card-select input {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  vertical-align: middle;
+  accent-color: var(--itg-color-primary);
+}
+
+.project-grid-table .project-grid-col-class_code {
+  width: 5.75rem;
+  white-space: nowrap;
+}
+
+.project-grid-table .project-grid-col-semester_label {
+  width: 7.5rem;
+}
+
+.project-grid-table .project-grid-col-organization {
+  width: 22%;
+}
+
+.project-grid-table .project-grid-col-industry {
+  width: 15%;
+}
+
+/* "Details" column: a plain header, the square Details button centred under it (and "Remove" in curated lists). */
+.project-grid-table .project-grid-actions-col {
+  width: 6.25rem;
+}
+
+.project-grid-table.has-remove .project-grid-actions-col {
+  width: 8.5rem;
+}
+
+.project-grid-table td.project-grid-actions-col {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.project-grid-table td.project-grid-actions-col .project-grid-delete-button {
+  margin-left: 10px;
+  vertical-align: middle;
+}
+
+/* Details: a 40px square outline button in primary (44px on touch screens, projectsResponsive.css), like the
+   site's other flat buttons; it fills navy on keyboard focus and under a hovering pointer. Its arrow points down to
+   open and turns up once the row is open. */
+.project-grid-detail-icon-button {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: var(--itg-radius-button);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  vertical-align: middle;
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
+}
+
+.project-grid-detail-icon-button:focus-visible {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+/* A touch screen keeps :hover on the button last tapped, so a tapped Details stayed navy, open or closed, and only
+   its arrow told the two apart: only a pointer that can hover fills it. */
+@media (hover: hover) {
+  .project-grid-detail-icon-button:hover {
+    background: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
+}
+
+.project-grid-detail-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin-left: -1px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.project-grid-detail-icon-button[aria-expanded='true'] .project-grid-detail-icon {
+  transform: rotate(180deg);
+}
+
+.project-grid-term,
+.project-grid-team-code {
+  display: block;
+}
+
+td.project-grid-col-semester_label {
+  white-space: nowrap;
+}
+
+.project-grid-title-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+}

@@ -1,0 +1,116 @@
+@layer itg.components {
+/* ---------- 3. Copyright bar ---------- */
+.footer-bottom {
+  padding: 16px;
+  background: var(--itg-color-footer-bar);
+  border-top: 3px solid var(--itg-color-footer-bar-rule);
+  color: var(--itg-color-white);
+  font-size: 14px;
+  line-height: 21px;
+  text-align: center;
+}
+
+.footer-bottom > .footer-container {
+  padding: 0;
+}
+
+/* Navy bar: light text, whatever the global heading and link colours are. */
+.footer-bottom :where(a, h1, h2, h3, h4, h5, h6, p) {
+  color: inherit;
+}
+
+.footer-bottom :focus-visible {
+  outline-color: var(--itg-color-white);
+}
+
+.footer-meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: 0 10px;
+  list-style: none;
+}
+
+.footer-meta li {
+  padding: 10px;
+  color: var(--itg-color-white);
+  line-height: 24px;
+}
+
+.footer-meta a {
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+.footer-meta a:hover,
+.footer-meta a:focus-visible {
+  color: var(--itg-color-white);
+  text-decoration: underline;
+}
+
+/* ---------- Phones: columns stacked and centred ---------- */
+@media (max-width: 979px) {
+  .footer-column {
+    flex-basis: 50%;
+  }
+}
+
+@media (max-width: 768px) {
+  .footer-container {
+    padding: 0 var(--itg-page-gutter-mobile, 20px);
+  }
+
+  .footer-main {
+    padding: 36px 24px 40px;
+  }
+
+  .footer-columns {
+    padding-top: 20px;
+  }
+
+  .footer-column {
+    flex: 1 1 100%;
+    max-width: 342px;
+    padding-right: 12px;
+  }
+
+  /* 44px touch targets for the stacked links */
+  .footer-links li {
+    line-height: 20px;
+  }
+
+  .footer-links a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .footer-social-link {
+    width: 44px;
+    height: 44px;
+  }
+
+  .footer-meta li {
+    padding: 0 10px;
+  }
+
+  .footer-meta a,
+  .footer-meta-copyright {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Room under the last links for the floating chat and accessibility buttons (56px + 16px). */
+  .footer-bottom {
+    padding-bottom: 88px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-footer-cta-link {
+    transition: none;
+  }
+}
+}

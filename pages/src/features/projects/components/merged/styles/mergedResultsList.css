@@ -1,0 +1,83 @@
+@layer itg.components {
+/* Saved Merged Results and its "Share this list" panel.
+   Imported in order by projects.css; see the note there. */
+
+/* ---- Saved Merged Results ---------------------------------------------------- */
+
+.project-grid-merged {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.project-grid-card-count {
+  margin: 0;
+}
+
+.project-grid-card-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+}
+
+/* The builder's save at the top of the card, with a line saying the list is not saved yet. */
+.project-grid-save-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.project-grid-draft-note {
+  margin: 0;
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-merged > .project-grid-card-header {
+  align-items: flex-start;
+}
+
+.project-grid-merged .project-grid-controls.itg-well {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.project-grid-merged .project-grid-table-wrap {
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-page);
+}
+
+.project-grid-merged .project-grid-mobile-cards {
+  background: var(--itg-color-bg-page);
+}
+
+/* The disclosure that folds the saved list away on phones; wider screens always show the list. */
+.project-grid-phone-list-toggle {
+  display: none;
+}
+
+.project-grid-narrowed-hint {
+  margin: 0;
+}
+
+.project-grid-status {
+  margin: 0;
+  color: var(--itg-color-primary);
+}
+
+/* A status line stays in the page while empty, so screen readers announce the first message put in it; empty,
+   it takes no room (or gap) in its flex column. A loading line ("Loading past projects…") is one too. */
+.project-grid-status:empty,
+.past-projects-loading-line:empty {
+  position: absolute;
+  padding: 0;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+}
