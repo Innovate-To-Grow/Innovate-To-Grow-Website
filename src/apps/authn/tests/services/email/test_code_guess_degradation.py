@@ -31,7 +31,7 @@ from apps.authn.services.email.challenges.degradation import (
     recent_email_failures,
 )
 from apps.authn.services.email.challenges.issue import create_challenge_record
-from apps.authn.services.sms import sns_verify
+from apps.authn.services.sms import challenges, sns_verify
 from apps.authn.services.sms.sns_verify import (
     MAX_SENDS_PER_HOUR,
     PhoneVerificationInvalid,
@@ -365,7 +365,7 @@ class SmsDegradationTests(DegradationTestCase):
             self.assertEqual(self.guess(challenge, CODE), "approved")
             self.clock.advance(minutes=2)
 
-        self.assertEqual(sns_verify._recent_phone_failures(self.PHONE, now=self.clock.now), 9)
+        self.assertEqual(challenges._recent_phone_failures(self.PHONE, now=self.clock.now), 9)
         self.assertEqual(self.issue().max_attempts, sns_verify.MAX_VERIFY_ATTEMPTS)
 
     def test_the_failure_count_is_one_query(self):
@@ -373,7 +373,7 @@ class SmsDegradationTests(DegradationTestCase):
         self.record_failures(4, phone="+12025550199")
 
         with self.assertNumQueries(1):
-            self.assertEqual(sns_verify._recent_phone_failures(self.PHONE, now=self.clock.now), 10)
+            self.assertEqual(challenges._recent_phone_failures(self.PHONE, now=self.clock.now), 10)
 
     def attacker_hour(self):
         issued = []

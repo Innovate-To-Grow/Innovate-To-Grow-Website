@@ -146,7 +146,7 @@ class WithheldCodeAnswersLikeARealSendTests(VerifiedOnlyTestCase):
         sleep.assert_called_once_with(0.321)
 
     def test_the_delivery_slot_is_given_back(self):
-        with patch("apps.authn.services.sms.sns_verify.release") as release:
+        with patch("apps.authn.services.sms.provider.release") as release:
             self.assertEqual(self.request_code(UNVERIFIED).status_code, 202)
         release.assert_called_once()
 
