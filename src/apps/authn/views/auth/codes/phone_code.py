@@ -28,8 +28,8 @@ from apps.authn.services.send_verification import OP_PHONE_AUTH_REQUEST_CODE
 from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
 from apps.authn.services.sms import check_phone_verification
 
-from ..auth.email_code_helpers import protected_save
-from ..helpers import build_auth_success_payload
+from ...shared.code_requests import protected_save
+from ...shared.responses import build_auth_success_payload
 
 
 class PhoneAuthRequestCodeView(APIView):

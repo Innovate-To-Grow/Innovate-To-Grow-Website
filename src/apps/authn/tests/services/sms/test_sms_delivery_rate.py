@@ -18,7 +18,7 @@ from apps.authn.services.send_verification.outcomes import SendOutcome
 from apps.authn.services.sms import PhoneVerificationBusy, PhoneVerificationThrottled, start_phone_verification
 from apps.authn.services.sms.sns_verify import MAX_SENDS_PER_HOUR
 from apps.authn.tests.sms_provider import patch_sms_provider, sms_budget_used
-from apps.authn.views.helpers import challenge_error_response
+from apps.authn.views.shared.responses import challenge_error_response
 from apps.core.models import AWSCredentialConfig, DeliveryRateState
 from apps.core.services.delivery_rates.runtime import context
 

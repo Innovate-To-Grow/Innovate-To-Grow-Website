@@ -28,18 +28,18 @@ class PhoneAuthEdgeCaseTests(APITestCase):
         self.addCleanup(cache.clear)
 
     # ── Verify error mapping ─────────────────────────────
-    @patch("apps.authn.views.auth.phone_code.check_phone_verification", side_effect=PhoneVerificationInvalid())
+    @patch("apps.authn.views.auth.codes.phone_code.check_phone_verification", side_effect=PhoneVerificationInvalid())
     def test_invalid_or_consumed_code_returns_400(self, _check, _start):
         response = self.client.post(VERIFY_URL, {"phone_number": "2025550123", "code": "000000"}, format="json")
         self.assertEqual(response.status_code, 400)
 
-    @patch("apps.authn.views.auth.phone_code.check_phone_verification", side_effect=PhoneVerificationThrottled())
+    @patch("apps.authn.views.auth.codes.phone_code.check_phone_verification", side_effect=PhoneVerificationThrottled())
     def test_verify_too_many_attempts_returns_429(self, _check, _start):
         response = self.client.post(VERIFY_URL, {"phone_number": "2025550123", "code": "000000"}, format="json")
         self.assertEqual(response.status_code, 429)
 
     @patch(
-        "apps.authn.views.auth.phone_code.check_phone_verification",
+        "apps.authn.views.auth.codes.phone_code.check_phone_verification",
         side_effect=PhoneVerificationDeliveryError(outcome="permanent"),
     )
     def test_verify_when_sms_unconfigured_returns_503(self, _check, _start):

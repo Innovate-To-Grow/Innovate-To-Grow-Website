@@ -107,9 +107,9 @@ class RegisterSerializerRaceTests(TestCase):
             self.assertTrue(serializer.is_valid(), serializer.errors)
 
         with (
-            patch("apps.authn.serializers.auth.register.claim_unclaimed_contact_email", return_value=None),
+            patch("apps.authn.serializers.auth.pending_member.claim_unclaimed_contact_email", return_value=None),
             patch(
-                "apps.authn.serializers.auth.register.get_pending_registration_member",
+                "apps.authn.serializers.auth.pending_member.get_pending_registration_member",
                 return_value=pending,
             ),
             patch("apps.authn.serializers.auth.register.issue_email_challenge"),
@@ -134,9 +134,9 @@ class RegisterSerializerRaceTests(TestCase):
             self.assertTrue(serializer.is_valid(), serializer.errors)
 
         with (
-            patch("apps.authn.serializers.auth.register.claim_unclaimed_contact_email", return_value=None),
+            patch("apps.authn.serializers.auth.pending_member.claim_unclaimed_contact_email", return_value=None),
             patch(
-                "apps.authn.serializers.auth.register.get_pending_registration_member",
+                "apps.authn.serializers.auth.pending_member.get_pending_registration_member",
                 side_effect=[None, pending],
             ),
             patch("apps.authn.models.ContactEmail.objects.create", side_effect=IntegrityError("dup")),
@@ -159,9 +159,9 @@ class RegisterSerializerRaceTests(TestCase):
             self.assertTrue(serializer.is_valid(), serializer.errors)
 
         with (
-            patch("apps.authn.serializers.auth.register.claim_unclaimed_contact_email", return_value=None),
+            patch("apps.authn.serializers.auth.pending_member.claim_unclaimed_contact_email", return_value=None),
             patch(
-                "apps.authn.serializers.auth.register.get_pending_registration_member",
+                "apps.authn.serializers.auth.pending_member.get_pending_registration_member",
                 side_effect=[None, None],
             ),
             patch("apps.authn.models.ContactEmail.objects.create", side_effect=IntegrityError("dup")),

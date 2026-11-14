@@ -16,7 +16,7 @@ from apps.authn.services.email import (
     send_notification_email,
     send_verification_email,
 )
-from apps.authn.views.helpers import challenge_error_response
+from apps.authn.views.shared.responses import challenge_error_response
 from apps.core.models import AWSCredentialConfig, DeliveryRateState, EmailServiceConfig
 from apps.core.services.delivery_rates import Lane, ses_identity
 from apps.core.tests.services.delivery_rates.helpers import FakeClock, spy_on_email_admissions

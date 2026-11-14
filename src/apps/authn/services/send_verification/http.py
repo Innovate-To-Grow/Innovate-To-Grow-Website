@@ -169,7 +169,7 @@ def _outcome_from_response(payload, http_status: int) -> SendOutcome:
 
 def _outcome_from_exception(exc: Exception, record) -> SendOutcome:
     """Map a send that raised to the response the caller sees and what is known about delivery."""
-    from apps.authn.views.helpers import challenge_error_response
+    from apps.authn.views.shared.responses import challenge_error_response
 
     challenge_id = str(getattr(exc, "challenge_id", "") or record.otp_challenge_id)
     try:

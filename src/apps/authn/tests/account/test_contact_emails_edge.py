@@ -160,7 +160,7 @@ class AccountEmailCodeViewEdgeTests(APITestCase):
         resp = self.client.post("/authn/change-password/request-code/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    @patch("apps.authn.serializers.email_code.passwords.ChangePasswordCodeRequestSerializer.save")
+    @patch("apps.authn.serializers.email_code.password_change.ChangePasswordCodeRequestSerializer.save")
     def test_change_password_request_delivery_error_returns_503(self, mock_save):
         mock_save.side_effect = AuthChallengeDeliveryError("ses rejected", outcome="permanent")
         resp = self.client.post(
@@ -178,7 +178,7 @@ class AccountEmailCodeViewEdgeTests(APITestCase):
         resp = self.client.post("/authn/change-password/confirm/", {}, format="json")
         self.assertEqual(resp.status_code, 400)
 
-    @patch("apps.authn.serializers.email_code.passwords.ChangePasswordCodeConfirmSerializer.save")
+    @patch("apps.authn.serializers.email_code.password_change.ChangePasswordCodeConfirmSerializer.save")
     def test_change_password_confirm_auth_invalid_returns_400(self, mock_save):
         mock_save.side_effect = AuthChallengeInvalid("expired")
         resp = self.client.post(

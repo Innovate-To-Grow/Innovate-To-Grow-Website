@@ -256,7 +256,7 @@ class PasswordResetAnswerIsBudgetBlindTests(SmsBudgetTestCase):
         """The stored outcome is the neutral 202 too (not a 429 that only the public projection hides)."""
         self.spend_budget()
 
-        with self.assertLogs("apps.authn.serializers.email_code.passwords", level="WARNING") as logs:
+        with self.assertLogs("apps.authn.serializers.email_code.password_reset_request", level="WARNING") as logs:
             response = self.reset(self.KNOWN)
 
         record = SendVerificationRequest.objects.get(destination_normalized=e164(self.KNOWN))

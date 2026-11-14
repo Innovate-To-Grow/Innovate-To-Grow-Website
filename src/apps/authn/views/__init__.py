@@ -29,28 +29,25 @@ from .account.profile import ProfileView
 from .admin.impersonate_login import ImpersonateLoginView
 from .admin.invitation import AcceptInvitationView
 from .admin.login import AdminLoginView
-from .auth.email_code import (
+from .auth.codes.email_code import (
     EmailAuthRequestCodeView,
     EmailAuthVerifyCodeView,
     LoginCodeRequestView,
     LoginCodeVerifyView,
-    PasswordResetConfirmView,
-    PasswordResetRequestView,
-    PasswordResetVerifyView,
-    RegisterResendCodeView,
-    RegisterVerifyCodeView,
 )
-from .auth.login import LoginView
-from .auth.logout import LogoutView
-from .auth.phone_code import (
+from .auth.codes.password_reset import PasswordResetConfirmView, PasswordResetRequestView, PasswordResetVerifyView
+from .auth.codes.phone_code import (
     PhoneAuthRequestCodeView,
     PhoneAuthVerifyCodeView,
 )
-from .auth.public_key import PublicKeyView
-from .auth.register import RegisterView
-from .auth.send_verification import SendVerificationChallengeView, SendVerificationRequestStatusView
-from .auth.session import SessionView
-from .auth.token import PublicTokenRefreshView
+from .auth.codes.registration import RegisterResendCodeView, RegisterVerifyCodeView
+from .auth.codes.send_verification import SendVerificationChallengeView, SendVerificationRequestStatusView
+from .auth.password.login import LoginView
+from .auth.password.public_key import PublicKeyView
+from .auth.password.register import RegisterView
+from .auth.session.logout import LogoutView
+from .auth.session.session import SessionView
+from .auth.session.token import PublicTokenRefreshView
 
 __all__ = [
     "RegisterView",

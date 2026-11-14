@@ -18,7 +18,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.authn.views.helpers import build_auth_success_payload, read_body_string
+from apps.authn.views.shared.responses import build_auth_success_payload, read_body_string
 from apps.mail.services.sms.links import open_link
 from apps.mail.services.sms.register_link import register_destination
 

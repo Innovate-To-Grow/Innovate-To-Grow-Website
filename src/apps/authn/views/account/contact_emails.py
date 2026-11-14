@@ -45,7 +45,7 @@ from apps.authn.services.send_verification import (
 )
 from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
 
-from ..helpers import challenge_error_response
+from ..shared.responses import challenge_error_response
 
 Member = get_user_model()
 
