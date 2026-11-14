@@ -315,7 +315,7 @@ class RememberedFormLockoutTests(AdminLockoutTestCase):
         self.assertSignedIn(remembered, self.remembered_login(remembered, PASSWORD))
 
         self.assertEqual(login_guard.retry_after(remembered_admin_guard_key(self.alice)), 0)
-        self.assertEqual(counted_digests(), {login_guard._identifier_digest(ALICE)})
+        self.assertEqual(counted_digests(), {login_guard.guard._identifier_digest(ALICE)})
         # The typed form kept its nine failures: one more locks it, where a cleared counter would not.
         self.assertEqual(self.errors(self.password_login(typed, ALICE)), [INVALID_EMAIL_OR_PASSWORD])
         self.assertEqual(self.errors(self.password_login(typed, ALICE, PASSWORD)), [LOCKED])
@@ -337,7 +337,7 @@ class RememberedFormLockoutTests(AdminLockoutTestCase):
         # and nothing counted under the member's public email.
         self.assertEqual(LoginFailureWindow.objects.count(), 3)
         self.assertEqual(counted_digests(), {key.digest()})
-        self.assertNotIn(login_guard._identifier_digest(ALICE), counted_digests())
+        self.assertNotIn(login_guard.guard._identifier_digest(ALICE), counted_digests())
 
     def test_thirty_failures_in_a_day_lock_the_form_until_the_next_utc_day(self):
         client = self.browser(remembered=self.alice)
@@ -367,7 +367,7 @@ class RememberedFormLockoutTests(AdminLockoutTestCase):
     def test_a_spray_through_remembered_forms_raises_the_spike_warning(self):
         client = self.browser(remembered=self.alice)
         with (
-            patch.object(login_guard, "SPRAY_ALERT_THRESHOLD", 3),
+            patch.object(login_guard.guard, "SPRAY_ALERT_THRESHOLD", 3),
             self.assertLogs("apps.authn.services.login_guard", level="WARNING") as logs,
         ):
             for _ in range(3):

@@ -263,7 +263,7 @@ class ScopedKeyTests(GuardTestCase):
     def test_no_typed_identifier_has_the_digest_of_the_scoped_key(self):
         for text in TYPED_AT_THE_SCOPED_KEY:
             with self.subTest(typed=text):
-                self.assertNotEqual(login_guard._identifier_digest(text), self.key.digest())
+                self.assertNotEqual(login_guard.guard._identifier_digest(text), self.key.digest())
 
     def test_failures_for_typed_identifiers_never_count_against_the_scoped_key(self):
         for text in TYPED_AT_THE_SCOPED_KEY:
@@ -286,15 +286,15 @@ class ScopedKeyTests(GuardTestCase):
         """The two kinds are HMACs under different keys: even the scoped key's own text, typed, is another row."""
         scoped_text = f"{SCOPE}:{SUBJECT}"
 
-        with patch.object(login_guard, "normalize_identifier", return_value=scoped_text):
-            self.assertNotEqual(login_guard._identifier_digest("anything"), self.key.digest())
+        with patch.object(login_guard.guard, "normalize_identifier", return_value=scoped_text):
+            self.assertNotEqual(login_guard.guard._identifier_digest("anything"), self.key.digest())
             self.record(10, "anything")
             self.assertGreater(login_guard.retry_after("anything"), 0)
 
             self.assertEqual(login_guard.retry_after(self.key), 0)
 
-        self.assertNotEqual(login_guard._HASH_SALT, login_guard._SCOPE_HASH_SALT)
-        self.assertNotEqual(login_guard._digest(scoped_text), self.key.digest())
+        self.assertNotEqual(login_guard.counters._HASH_SALT, login_guard.counters._SCOPE_HASH_SALT)
+        self.assertNotEqual(login_guard.counters._digest(scoped_text), self.key.digest())
 
     def test_every_normalised_identifier_is_blank_or_one_of_the_three_typed_kinds(self):
         for text in (*TYPED_AT_THE_SCOPED_KEY, "", "   ", None, 2095551234, "@", ":", "x:y@z", "\tscope:a:b\n"):
