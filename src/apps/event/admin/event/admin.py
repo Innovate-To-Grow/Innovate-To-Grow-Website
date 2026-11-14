@@ -1,24 +1,19 @@
 from django.contrib import admin, messages
-from django.core.exceptions import ValidationError
-from django.http import Http404
 from unfold.decorators import display
 
 from apps.core.admin import BaseModelAdmin
-from apps.core.admin.mixins.confirm_on_save_utils import compute_formsets_diff
-from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 
-from ...models import Event, Question, Ticket
-from ...services.template import EventCopyTemplate, build_event_copy_template
+from ...models import Event
 from ...services.ticket.date_ranges import format_event_date_range
-from ..registration.sheet_sync import RegistrationSheetSyncAdminMixin
+from ..registration_sheet.controls import RegistrationSheetSyncAdminMixin
+from .confirmation import EventConfirmationMixin
+from .copy_template import EventCopyTemplateMixin
 from .forms import EventAdminForm
-from .inlines import COPY_INLINE_INITIAL_ATTR, QuestionInline, TicketInline
-
-COPY_TEMPLATE_ATTR = "_event_admin_copy_template"
+from .inlines import QuestionInline, TicketInline
 
 
 @admin.register(Event)
-class EventAdmin(RegistrationSheetSyncAdminMixin, BaseModelAdmin):
+class EventAdmin(EventCopyTemplateMixin, EventConfirmationMixin, RegistrationSheetSyncAdminMixin, BaseModelAdmin):
     change_form_template = "admin/event/event/change_form.html"
     form = EventAdminForm
     list_display = (
@@ -92,155 +87,6 @@ class EventAdmin(RegistrationSheetSyncAdminMixin, BaseModelAdmin):
             },
         ),
     )
-
-    @staticmethod
-    def _get_site_settings_context():
-        from apps.core.models import AWSCredentialConfig
-
-        email_config = EmailServiceConfig.load()
-        google_config = GoogleCredentialConfig.load()
-        aws_config = AWSCredentialConfig.load()
-        return {
-            "email_config": email_config if email_config.pk else None,
-            "google_config": google_config if google_config.pk else None,
-            "google_configured": google_config.is_configured,
-            "aws_config": aws_config if aws_config.pk else None,
-        }
-
-    def change_view(self, request, object_id, form_url="", extra_context=None):
-        extra_context = {**(extra_context or {}), **self._get_site_settings_context()}
-        return super().change_view(request, object_id, form_url, extra_context)
-
-    def add_view(self, request, form_url="", extra_context=None):
-        copy_template = self._prepare_copy_template(request)
-        copy_source_events = [
-            {
-                "pk": event.pk,
-                "name": event.name,
-                "date_range": format_event_date_range(event.date, event.effective_end_date),
-            }
-            for event in Event.objects.order_by("-date", "name")
-        ]
-        extra_context = {
-            **(extra_context or {}),
-            **self._get_site_settings_context(),
-            "copy_template": copy_template,
-            "copy_source_events": copy_source_events,
-        }
-        return super().add_view(request, form_url, extra_context)
-
-    def _prepare_copy_template(self, request) -> EventCopyTemplate | None:
-        if hasattr(request, COPY_TEMPLATE_ATTR):
-            return getattr(request, COPY_TEMPLATE_ATTR)
-
-        copy_template = None
-        inline_initial = {}
-
-        # ``copy_from`` is only a GET-time template selector. Once the browser
-        # has loaded the snapshot, POSTed Event and inline values are the source
-        # of truth. This also lets a reviewed form save if the source is deleted
-        # in the meantime.
-        if request.method == "GET":
-            source_id = request.GET.get("copy_from", "").strip()
-            if source_id:
-                try:
-                    source = Event.objects.prefetch_related("tickets", "questions").get(pk=source_id)
-                except (Event.DoesNotExist, ValidationError, ValueError) as exc:
-                    raise Http404("The Event selected as a copy source does not exist.") from exc
-
-                copy_template = build_event_copy_template(source)
-                inline_initial = {
-                    Ticket: copy_template.ticket_initial(),
-                    Question: copy_template.question_initial(),
-                }
-
-        setattr(request, COPY_TEMPLATE_ATTR, copy_template)
-        setattr(request, COPY_INLINE_INITIAL_ATTR, inline_initial)
-        return copy_template
-
-    def get_changeform_initial_data(self, request):
-        initial = super().get_changeform_initial_data(request)
-        copy_template = self._prepare_copy_template(request)
-        if copy_template is None:
-            return initial
-
-        initial.update(copy_template.event_initial)
-        return initial
-
-    def get_formset_kwargs(self, request, obj, inline, prefix):
-        kwargs = super().get_formset_kwargs(request, obj, inline, prefix)
-        if request.method == "GET" and (obj is None or obj._state.adding):
-            self._prepare_copy_template(request)
-            initial_by_model = getattr(request, COPY_INLINE_INITIAL_ATTR, {})
-            if inline.model in initial_by_model:
-                kwargs["initial"] = initial_by_model[inline.model]
-        return kwargs
-
-    # The add confirmation renders its own, richer per-inline rows below, so skip the generic
-    # inline summary ConfirmOnSaveMixin would add — otherwise every ticket and question is listed
-    # twice. Change confirmations re-add the generic rows in get_confirmation_diff: they are the
-    # only inline coverage there, and an inline-only edit must still produce a non-empty diff or
-    # the mixin's no-diff short-circuit saves it with no confirmation at all.
-    include_inlines_in_confirmation_diff = False
-
-    def get_confirmation_diff(self, request, obj, form, formsets, action_type):
-        diff = super().get_confirmation_diff(request, obj, form, formsets, action_type)
-        for row in diff:
-            if row["field"] in {"collect_phone", "verify_phone", "require_phone"}:
-                row["label"] = f"Phone Number: {row['label']}"
-            elif row["field"] in {"allow_secondary_email", "verify_secondary_email", "require_secondary_email"}:
-                row["label"] = f"Secondary Email: {row['label']}"
-        if action_type != "add":
-            return diff + compute_formsets_diff(formsets)
-
-        formsets_by_model = {formset.model: formset for formset in formsets}
-        ticket_rows = self._active_inline_rows(formsets_by_model.get(Ticket))
-        question_rows = self._active_inline_rows(formsets_by_model.get(Question))
-
-        if ticket_rows:
-            ticket_rows.sort(key=lambda row: (row.get("order", 0), row.get("name", "")))
-            diff.extend(
-                {
-                    "field": f"tickets.{index}",
-                    "label": f"Ticket type {index}",
-                    "new_value": f"{row['name']} — order {row.get('order', 0)}",
-                }
-                for index, row in enumerate(ticket_rows, start=1)
-            )
-        else:
-            diff.append({"field": "tickets", "label": "Ticket types", "new_value": "None"})
-
-        if question_rows:
-            question_rows.sort(key=lambda row: (row.get("order", 0), row.get("text", "")))
-            diff.extend(
-                {
-                    "field": f"questions.{index}",
-                    "label": f"Question {index}",
-                    "new_value": (
-                        f"{row['text']} — required: {'Yes' if row.get('is_required') else 'No'}; "
-                        f"order {row.get('order', 0)}"
-                    ),
-                }
-                for index, row in enumerate(question_rows, start=1)
-            )
-        else:
-            diff.append({"field": "questions", "label": "Questions", "new_value": "None"})
-
-        return diff
-
-    @staticmethod
-    def _active_inline_rows(formset):
-        if formset is None:
-            return []
-        rows = []
-        for inline_form in formset.forms:
-            cleaned_data = getattr(inline_form, "cleaned_data", None) or {}
-            if cleaned_data.get("DELETE"):
-                continue
-            if inline_form.empty_permitted and not inline_form.has_changed():
-                continue
-            rows.append(cleaned_data)
-        return rows
 
     @admin.action(description="Sync registrations to Google Sheet")
     def sync_registrations_to_sheet(self, request, queryset):

@@ -1,8 +1,10 @@
-from .checkin import CheckInAdmin, CheckInRecordAdmin
-from .current_project import CurrentProjectAdmin, CurrentProjectScheduleAdmin
 from .event import EventAdmin
-from .registration import EventRegistrationAdmin, RegistrationSheetSyncLogAdmin
-from .schedule import ScheduleSyncLogAdmin
+from .registration import EventRegistrationAdmin
+from .registration.checkin import CheckInAdmin, CheckInRecordAdmin
+from .registration_sheet.sync_log import RegistrationSheetSyncLogAdmin
+from .schedule.current_projects import CurrentProjectAdmin
+from .schedule.project_schedule import CurrentProjectScheduleAdmin
+from .schedule.sync_log import ScheduleSyncLogAdmin
 
 __all__ = [
     "CheckInAdmin",
