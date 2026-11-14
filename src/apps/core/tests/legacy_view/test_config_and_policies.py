@@ -1,14 +1,14 @@
 from django.core.exceptions import ImproperlyConfigured
 from django.test import RequestFactory, SimpleTestCase, override_settings
 
-from apps.core.legacy_view.config import gateway_request_is_trusted, get_gateway_config, legacy_view_enabled
-from apps.core.legacy_view.policies import (
+from apps.core.legacy_view.origin.config import gateway_request_is_trusted, get_gateway_config, legacy_view_enabled
+from apps.core.legacy_view.origin.policies import (
     InvalidLegacyPath,
     PathDecision,
     canonicalize_legacy_path,
     classify_legacy_path,
-    filter_query_string,
 )
+from apps.core.legacy_view.origin.query import filter_query_string
 
 SECRET = "a-random-cloudfront-origin-value-with-32-characters"
 GATEWAY_SETTINGS = {

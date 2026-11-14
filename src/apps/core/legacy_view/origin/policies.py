@@ -1,14 +1,12 @@
-"""Audited path and query-string policy for the read-only gateway."""
+"""Audited path policy for the read-only gateway (query strings: ``query``)."""
 
 from __future__ import annotations
 
 import re
 from enum import Enum
-from urllib.parse import parse_qsl, unquote, urlencode
+from urllib.parse import unquote
 
 MAX_PATH_LENGTH = 2048
-MAX_QUERY_LENGTH = 2048
-MAX_QUERY_FIELDS = 50
 
 
 class InvalidLegacyPath(ValueError):
@@ -114,22 +112,6 @@ _UUID_PATH_PATTERN = re.compile(
     r"^/past-projects/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
 
-_ALLOWED_QUERY_KEYS = {
-    "_",
-    "filter",
-    "format",
-    "order",
-    "page",
-    "q",
-    "query",
-    "search",
-    "semester",
-    "sort",
-    "team",
-    "track",
-    "year",
-}
-
 
 def canonicalize_legacy_path(raw_path: str) -> str:
     """Decode once-to-stability and reject traversal or separator ambiguity."""
@@ -186,21 +168,3 @@ def classify_legacy_path(canonical_path: str) -> PathDecision:
     if _UUID_PATH_PATTERN.fullmatch(path):
         return PathDecision.ALLOW
     return PathDecision.UNKNOWN
-
-
-def filter_query_string(raw_query_string: str) -> str:
-    """Forward only bounded, presentation-only query parameters."""
-
-    if not raw_query_string or len(raw_query_string) > MAX_QUERY_LENGTH:
-        return ""
-    try:
-        pairs = parse_qsl(
-            raw_query_string,
-            keep_blank_values=True,
-            strict_parsing=False,
-            max_num_fields=MAX_QUERY_FIELDS,
-        )
-    except (UnicodeDecodeError, ValueError):
-        return ""
-    filtered = [(key, value) for key, value in pairs if key in _ALLOWED_QUERY_KEYS]
-    return urlencode(filtered, doseq=True)

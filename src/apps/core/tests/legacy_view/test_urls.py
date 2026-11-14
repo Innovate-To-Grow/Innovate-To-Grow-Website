@@ -2,7 +2,7 @@ from django.test import SimpleTestCase, override_settings
 from django.urls import include, path, resolve
 
 from apps.core.legacy_view import get_legacy_view_urls
-from apps.core.legacy_view.views import legacy_access_exchange_gateway, legacy_proxy_view
+from apps.core.legacy_view.gateway.views import legacy_access_exchange_gateway, legacy_proxy_view
 
 urlpatterns = [path("legacy-view/", include(get_legacy_view_urls()))]
 

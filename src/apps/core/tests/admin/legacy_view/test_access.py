@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.core.admin.legacy_view import get_legacy_view_admin_urls
-from apps.core.legacy_view.views import legacy_access_exchange_gateway, legacy_proxy_view
+from apps.core.legacy_view.gateway.views import legacy_access_exchange_gateway, legacy_proxy_view
 from apps.core.middleware.csp_middleware import ContentSecurityPolicyMiddleware
 from apps.core.models import LegacyAccessGrant
 from apps.core.services.legacy_access import (
@@ -194,7 +194,7 @@ class LegacyAccessAdminTests(TestCase):
             b"<a href='/about'>About</a></body></html>",
             headers={"Content-Type": "text/html; charset=utf-8"},
         )
-        with patch("apps.core.legacy_view.views.open_legacy_origin", return_value=origin) as open_origin:
+        with patch("apps.core.legacy_view.gateway.views.open_legacy_origin", return_value=origin) as open_origin:
             page_url = reverse("legacy_gateway_proxy", kwargs={"legacy_path": "about"})
             self.assertEqual(viewer.get(page_url, secure=True).status_code, 404)
             page = viewer.get(page_url, headers=origin_header, secure=True)

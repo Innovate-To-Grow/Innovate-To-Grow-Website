@@ -16,19 +16,18 @@ from django.http import (
 )
 from django.views.decorators.csrf import csrf_exempt
 
-from . import auth as legacy_auth
-from .config import gateway_request_is_trusted, get_gateway_config
-from .policies import InvalidLegacyPath, PathDecision, canonicalize_legacy_path, classify_legacy_path
-
 # ``MAX_HTML_BYTES`` and ``_LEGACY_CSP`` are re-exported: callers and tests import them from here.
-from .responses import (
+from ..content.headers import (
     _LEGACY_CSP as _LEGACY_CSP,
 )
-from .responses import (
+from ..content.headers import (
+    _apply_gateway_headers,
+)
+from ..content.link_rewriting import InvalidLegacyURL
+from ..content.responses import (
     MAX_HTML_BYTES as MAX_HTML_BYTES,
 )
-from .responses import (
-    _apply_gateway_headers,
+from ..content.responses import (
     _origin_content_type,
     _plain_error,
     _render_head_or_empty,
@@ -36,10 +35,13 @@ from .responses import (
     _render_redirect,
     _render_stream,
 )
-from .rewriting import InvalidLegacyURL
-from .transport import LegacyOriginUnavailable, open_legacy_origin
+from ..origin.config import gateway_request_is_trusted, get_gateway_config
+from ..origin.policies import InvalidLegacyPath, PathDecision, canonicalize_legacy_path, classify_legacy_path
+from ..origin.transport import LegacyOriginUnavailable, open_legacy_origin
+from . import auth as legacy_auth
 
-logger = logging.getLogger(__name__)
+# Keep the logger name this module had before it moved into ``gateway/`` (``content/responses.py`` logs under it too).
+logger = logging.getLogger("apps.core.legacy_view.views")
 
 
 def _log_response(

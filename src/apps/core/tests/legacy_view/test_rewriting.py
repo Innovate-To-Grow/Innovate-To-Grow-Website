@@ -5,14 +5,14 @@ from zipfile import ZipFile
 from bs4 import BeautifulSoup
 from django.test import SimpleTestCase
 
-from apps.core.legacy_view.rewriting import (
+from apps.core.legacy_view.content.html_rewriting import rewrite_legacy_html
+from apps.core.legacy_view.content.link_rewriting import (
     InvalidLegacyURL,
     RewrittenURL,
     rewrite_document_url,
-    rewrite_legacy_html,
     rewrite_location,
 )
-from apps.core.legacy_view.views import _LEGACY_CSP
+from apps.core.legacy_view.gateway.views import _LEGACY_CSP
 
 VIEWER_URL = "https://d111111abcdef8.cloudfront.net"
 ORIGIN_HOST = "172.31.69.63"
@@ -192,7 +192,7 @@ class LegacyURLRewritingEdgeCaseTest(SimpleTestCase):
         self.assertEqual(self.rewrite("http://[broken"), RewrittenURL("#", blocked=True))
 
     def test_failure_while_resolving_relative_url_is_blocked(self):
-        with patch("apps.core.legacy_view.rewriting.urljoin", side_effect=ValueError("bad")):
+        with patch("apps.core.legacy_view.content.link_rewriting.urljoin", side_effect=ValueError("bad")):
             self.assertEqual(self.rewrite("/about"), RewrittenURL("#", blocked=True))
 
     def test_internal_url_with_encoded_traversal_is_blocked_as_internal(self):
