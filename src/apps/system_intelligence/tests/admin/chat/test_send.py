@@ -7,7 +7,8 @@ from asgiref.sync import async_to_sync
 from django.core.handlers.asgi import ASGIRequest
 from django.urls import reverse
 
-from apps.system_intelligence.admin.stream import _STREAM_HEARTBEAT, _with_heartbeats, build_stream_response
+from apps.system_intelligence.admin.stream.heartbeats import _STREAM_HEARTBEAT, _with_heartbeats
+from apps.system_intelligence.admin.stream.send import build_stream_response
 from apps.system_intelligence.models import ChatMessage, SystemIntelligenceActionRequest
 from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
 
@@ -87,7 +88,7 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
             yield {"type": "usage", "inputTokens": 2, "outputTokens": 3, "totalTokens": 5}
 
         with patch(
-            "apps.system_intelligence.admin.stream._async_stream_callable",
+            "apps.system_intelligence.admin.stream.async_events._async_stream_callable",
             return_value=fake_stream,
         ) as stream_callable:
             body = async_to_sync(_consume_stream)(build_stream_response(request, self.conversation))
@@ -111,7 +112,9 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
             later_event_seen.append(True)
             yield {"type": "text", "chunk": "never sent"}
 
-        with patch("apps.system_intelligence.admin.stream._async_stream_callable", return_value=fake_stream):
+        with patch(
+            "apps.system_intelligence.admin.stream.async_events._async_stream_callable", return_value=fake_stream
+        ):
             body = async_to_sync(_consume_stream)(build_stream_response(request, self.conversation))
 
         self.assertIn("event: error", body)
@@ -142,7 +145,9 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
             received_messages.extend(messages)
             yield {"type": "text", "chunk": "Waiting for approval."}
 
-        with patch("apps.system_intelligence.admin.stream._async_stream_callable", return_value=fake_stream):
+        with patch(
+            "apps.system_intelligence.admin.stream.async_events._async_stream_callable", return_value=fake_stream
+        ):
             body = async_to_sync(_consume_stream)(build_stream_response(request, self.conversation))
 
         self.assertIn("event: done", body)
@@ -252,7 +257,7 @@ class SystemIntelligenceAdminSendTests(SystemIntelligenceAdminBase):
         self.assertEqual(detail.json()["messages"][-1]["action_requests"][0]["id"], str(action.id))
 
     def test_send_rejects_messages_above_length_cap(self):
-        from apps.system_intelligence.admin.stream import USER_MESSAGE_MAX_CHARS
+        from apps.system_intelligence.admin.stream.send import USER_MESSAGE_MAX_CHARS
 
         oversized = "x" * (USER_MESSAGE_MAX_CHARS + 1)
         response = self.client.post(

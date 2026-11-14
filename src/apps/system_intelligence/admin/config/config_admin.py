@@ -1,6 +1,7 @@
+"""The System Intelligence configuration admin: model, budgets, and which row is active."""
+
 import logging
 
-from django import forms
 from django.contrib import admin, messages
 from django.http import HttpResponseRedirect
 from django.urls import reverse
@@ -8,67 +9,14 @@ from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
 from unfold.decorators import action, display
-from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget
 
 from apps.core.admin.common.base import BaseModelAdmin
-from apps.system_intelligence.models import SystemIntelligenceActionRequest, SystemIntelligenceConfig
+from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.public_assistant import global_budget_usage
 
+from .forms import SystemIntelligenceConfigForm
+
 logger = logging.getLogger(__name__)
-
-
-class SystemIntelligenceConfigForm(forms.ModelForm):
-    default_model_id = forms.TypedChoiceField(
-        coerce=str,
-        required=False,
-        label="Default AI Model",
-        help_text="Site-wide default Bedrock model or inference profile ID.",
-        widget=UnfoldAdminSelectWidget,
-    )
-    public_assistant_model_id = forms.TypedChoiceField(
-        coerce=str,
-        required=False,
-        label="Public Assistant Model",
-        help_text="Bedrock model/inference profile ID for the public assistant. Falls back to the Default AI Model.",
-        widget=UnfoldAdminSelectWidget,
-    )
-
-    class Meta:
-        model = SystemIntelligenceConfig
-        fields = "__all__"
-        widgets = {
-            "system_prompt": UnfoldAdminTextareaWidget(attrs={"rows": 8}),
-            "public_assistant_system_prompt": UnfoldAdminTextareaWidget(attrs={"rows": 8}),
-            "public_assistant_unavailable_message": UnfoldAdminTextareaWidget(attrs={"rows": 3}),
-            "public_assistant_welcome_message": UnfoldAdminTextareaWidget(attrs={"rows": 3}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._populate_model_choices("default_model_id", empty_label="---------")
-        self._populate_model_choices("public_assistant_model_id", empty_label="Use Default AI Model")
-
-    def _populate_model_choices(self, field_name, *, empty_label):
-        """Populate a model-id field with the live Bedrock catalog, grouped by provider."""
-        current = self.initial.get(field_name, "") or getattr(self.instance, field_name, "") or ""
-        try:
-            from apps.system_intelligence.services.bedrock import get_available_models
-
-            grouped = get_available_models()
-            choices = [("", empty_label)]
-            seen_model_ids = set()
-            for group, models in grouped:
-                seen_model_ids.update(model_id for model_id, _name in models)
-                choices.append((group, list(models)))
-            if current and current not in seen_model_ids:
-                choices.append(("Configured Model", [(current, current)]))
-            self.fields[field_name].choices = choices
-        except Exception:
-            logger.debug("Could not fetch Bedrock models for System Intelligence config choices", exc_info=True)
-            if current:
-                self.fields[field_name].choices = [("", empty_label), (current, current)]
-            else:
-                self.fields[field_name].choices = [("", empty_label)]
 
 
 @admin.register(SystemIntelligenceConfig)
@@ -212,52 +160,3 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         actions = super().get_actions(request)
         actions.pop("delete_selected", None)
         return actions
-
-
-@admin.register(SystemIntelligenceActionRequest)
-class SystemIntelligenceActionRequestAdmin(BaseModelAdmin):
-    list_display = ("title", "action_type", "status", "target_model", "target_pk", "created_by", "created_at")
-    list_filter = ("status", "action_type", "target_app_label", "target_model")
-    search_fields = ("title", "summary", "target_repr", "target_pk")
-    ordering = ("-created_at",)
-    readonly_fields = (
-        "id",
-        "conversation",
-        "assistant_message",
-        "created_by",
-        "reviewed_by",
-        "action_type",
-        "status",
-        "target_app_label",
-        "target_model",
-        "target_pk",
-        "target_repr",
-        "title",
-        "summary",
-        "payload",
-        "before_snapshot",
-        "after_snapshot",
-        "diff",
-        "preview_token",
-        "preview_url",
-        "preview_expires_at",
-        "error_message",
-        "created_at",
-        "updated_at",
-        "reviewed_at",
-        "applied_at",
-    )
-    fieldsets = (
-        (None, {"fields": ("id", "title", "summary", "action_type", "status")}),
-        (_("Target"), {"fields": ("target_app_label", "target_model", "target_pk", "target_repr")}),
-        (_("Conversation"), {"fields": ("conversation", "assistant_message", "created_by", "reviewed_by")}),
-        (_("Preview"), {"fields": ("preview_url", "preview_token", "preview_expires_at")}),
-        (_("Payload and Audit"), {"fields": ("payload", "before_snapshot", "after_snapshot", "diff", "error_message")}),
-        (_("Timestamps"), {"fields": ("created_at", "updated_at", "reviewed_at", "applied_at")}),
-    )
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False

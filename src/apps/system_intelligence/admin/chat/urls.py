@@ -1,13 +1,13 @@
 from django.contrib import admin
 from django.urls import path
 
-from .actions import action_approve_view, action_full_preview_view, action_preview_view, action_reject_view
+from ..actions import action_approve_view, action_full_preview_view, action_preview_view, action_reject_view
+from ..stream.send import chat_send_view
+from ..usage.dashboard import usage_dashboard_data_view, usage_dashboard_view
 from .commands import chat_command_view
 from .context import chat_list_view
 from .conversations import chat_delete_view, chat_rename_view, chat_view, conversations_fragment, new_conversation_view
-from .dashboard import usage_dashboard_data_view, usage_dashboard_view
 from .exports import export_download_view
-from .stream import chat_send_view
 
 # (path, view, URL name), in match order.
 _ROUTES = (

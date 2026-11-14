@@ -72,7 +72,7 @@ class SystemIntelligenceCommandTests(SystemIntelligenceAdminBase):
             )
 
         with patch(
-            "apps.system_intelligence.admin.commands.ensure_context_summary",
+            "apps.system_intelligence.admin.chat.commands.ensure_context_summary",
             return_value=("summary text", {"summarized_messages": 4, "summary_failed": False}),
         ) as summarize:
             response = self.client.post(
@@ -88,7 +88,7 @@ class SystemIntelligenceCommandTests(SystemIntelligenceAdminBase):
 
     def test_compact_command_returns_friendly_notice_when_too_short(self):
         ChatMessage.objects.create(conversation=self.conversation, role="user", content="hi")
-        with patch("apps.system_intelligence.admin.commands.ensure_context_summary") as summarize:
+        with patch("apps.system_intelligence.admin.chat.commands.ensure_context_summary") as summarize:
             response = self.client.post(
                 _command_url(self.conversation.id),
                 data=json.dumps({"command": "compact"}),
