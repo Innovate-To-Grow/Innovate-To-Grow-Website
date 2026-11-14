@@ -92,7 +92,7 @@ class SwitchOffInTheAdminTests(SwitchTestCase):
         with connection.cursor() as cursor:  # Turned off outside the app: nothing revoked then.
             cursor.execute("UPDATE mail_smsconfig SET personal_links_enabled = %s", [False])
 
-        with self.assertLogs("apps.mail.models.sms.config", level="WARNING"):
+        with self.assertLogs("apps.mail.models.sms.personal_links", level="WARNING"):
             response = self.client.post(self.change_url, links_on(), follow=True)
 
         self.assertContains(response, "Revoked 1 personal sign-in link(s) that still worked although")

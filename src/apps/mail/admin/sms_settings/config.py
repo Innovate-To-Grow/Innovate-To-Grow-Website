@@ -15,7 +15,7 @@ from unfold.widgets import UnfoldAdminSelectWidget
 
 from apps.core.admin import BaseModelAdmin
 from apps.mail.models import SmsConfig, SmsLinkRevocation, SmsLinkToken, SmsOptOutSyncState
-from apps.mail.models.sms.config import DEFAULT_REGISTER_PATH
+from apps.mail.models.sms.config_rules import DEFAULT_REGISTER_PATH
 from apps.mail.redirects import get_login_redirect_choices
 from apps.mail.services.sms.quiet_hours import held_until
 from apps.mail.services.sms.register_link import register_qr, register_url

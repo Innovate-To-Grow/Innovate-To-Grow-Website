@@ -7,7 +7,7 @@ from unfold.decorators import display
 
 from apps.core.admin import ReadOnlyModelAdmin
 from apps.mail.models import SmsConfig, SmsLinkRevocation, SmsLinkToken, TicketSms
-from apps.mail.models.sms.config import SETTINGS_PK
+from apps.mail.models.sms.personal_links import SETTINGS_PK
 from apps.mail.services.sms.links import revoke_links
 
 
