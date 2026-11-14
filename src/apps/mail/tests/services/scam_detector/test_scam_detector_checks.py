@@ -9,8 +9,10 @@ from apps.mail.services.scam_detector.checks import (
     check_address_alignment,
     check_authentication,
     check_body,
-    check_links,
     check_sender,
+)
+from apps.mail.services.scam_detector.links import (
+    check_links,
     displayed_domain,
     extract_links,
     extract_text_urls,
@@ -41,7 +43,7 @@ class ExtractLinksTests(SimpleTestCase):
 
     def test_unparseable_href_domain_is_blank(self):
         html = '<a href="https://example.com/path">x</a>'
-        with patch("apps.mail.services.scam_detector.checks.urlparse", side_effect=ValueError("bad url")):
+        with patch("apps.mail.services.scam_detector.links.urlparse", side_effect=ValueError("bad url")):
             links = extract_links(html)
         self.assertEqual(links[0]["href_domain"], "")
 
@@ -150,7 +152,7 @@ class ExtractTextUrlsTests(SimpleTestCase):
         self.assertEqual(extract_text_urls(""), [])
 
     def test_unparseable_url_domain_blank(self):
-        with patch("apps.mail.services.scam_detector.checks.urlparse", side_effect=ValueError("bad")):
+        with patch("apps.mail.services.scam_detector.links.urlparse", side_effect=ValueError("bad")):
             links = extract_text_urls("visit https://example.com now")
         self.assertEqual(links[0]["href_domain"], "")
 
