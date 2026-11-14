@@ -5,8 +5,8 @@ from apps.core.utils.http_cache import public_json_response
 
 from ..pagination import ChainedRows, CompactPastProjectsPagination
 from ..serializers import AllProjectsArchiveRowSerializer, PastProjectQuerySerializer
-from ..services.all_projects import current_catalog
-from ..services.catalog_filters import archive_queryset
+from ..services.catalog.all_projects import current_catalog
+from ..services.catalog.filters import archive_queryset
 
 
 class AllProjectsAPIView(APIView):

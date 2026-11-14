@@ -10,7 +10,7 @@ from unfold.admin import TabularInline
 from apps.core.admin import BaseModelAdmin
 
 from ..models import Project, Semester
-from ..services.csv_import import import_projects_from_csv
+from ..services.catalog.csv_import import import_projects_from_csv
 from ..signals import _clear_project_caches
 
 

@@ -67,7 +67,7 @@ class _SearchTurn:
     query: str
     ip_hash: str
     model_id: str
-    # "past" or "all" (apps.projects.services.ai_search_candidates). The audit log does not record it.
+    # "past" or "all" (apps.projects.services.ai_search.candidates). The audit log does not record it.
     scope: str
 
     def log(self, status_value, **extra) -> None:

@@ -12,7 +12,7 @@ export interface CurationBranding {
   filePrefix: string;
   /**
    * The name of a curation saved without one or any note text of its owner's, as the server gives it
-   * (share_names.default_share_name), and what one stored with a blank name is shown as.
+   * (shares.names.default_share_name), and what one stored with a blank name is shown as.
    */
   defaultName: string;
   /** Where the shared page sends a visitor who wants to make a list of their own, and the link's words. */

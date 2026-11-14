@@ -4,7 +4,7 @@ from apps.projects.models import PastProjectShare
 from apps.projects.serializers.past_project_share import (
     PastProjectShareSerializer,
 )
-from apps.projects.services.share_names import DEFAULT_SHARE_NAME
+from apps.projects.services.shares.names import DEFAULT_SHARE_NAME
 
 from .share_helpers import PastProjectShareTestCase, sample_payload, sample_row
 

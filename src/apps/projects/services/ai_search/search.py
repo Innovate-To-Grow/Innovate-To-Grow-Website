@@ -1,132 +1,18 @@
-import json
-import logging
-import re
-import uuid
-from collections.abc import Iterable
+"""Preparing and running a past-project AI search: the candidates, the prompt, the model call and its budget."""
+
 from dataclasses import dataclass
 
 from apps.core.models import AWSCredentialConfig
-
-# The candidates and the results have their own module. Its names are re-exported here, so callers, and the tests
-# that patch find_ai_search_candidates, keep naming this one.
-from apps.projects.services.ai_search_candidates import (  # noqa: F401 (re-exported)
-    AI_SEARCH_SCOPES,
-    SCOPE_ALL,
-    SCOPE_PAST,
-    AISearchCandidate,
-    ai_search_results,
-    find_ai_search_candidates,
-    past_project_ai_queryset,
-)
+from apps.projects.services.ai_search.candidates import SCOPE_PAST, find_ai_search_candidates
+from apps.projects.services.ai_search.prompt import _SYSTEM_TEXT, _build_prompt, _parse_ids
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.agents import run_tool_free_agent
 from apps.system_intelligence.services.bedrock import BedrockError, normalize_bedrock_model_id
 from apps.system_intelligence.services.public_assistant import estimate_prompt_input_tokens
 
-logger = logging.getLogger(__name__)
-
 DEFAULT_AI_SEARCH_LIMIT = 10
 MAX_AI_SEARCH_LIMIT = 10
 _MAX_OUTPUT_TOKENS = 700
-_SYSTEM_TEXT = (
-    "You are a read-only project search assistant for Innovate to Grow. "
-    "Your only job is to select matching project IDs from the supplied candidate list."
-)
-# What the prompt asks for, by scope: the archive's past projects, or this semester's projects as well.
-_PROMPT_SUBJECTS = {
-    SCOPE_PAST: "the past Innovate to Grow projects",
-    SCOPE_ALL: "the Innovate to Grow projects, this semester's and past ones,",
-}
-
-
-def _candidate_line(candidate: AISearchCandidate) -> str:
-    abstract = (candidate.abstract or "").replace("\n", " ").strip()
-    if len(abstract) > 420:
-        abstract = abstract[:420].rstrip() + "..."
-    parts = [
-        f"id={candidate.id}",
-        f"title={candidate.project_title}",
-        f"semester={candidate.semester_label}",
-        f"class={candidate.class_code}",
-        f"team_number={candidate.team_number}",
-        f"team_name={candidate.team_name}",
-        f"organization={candidate.organization}",
-        f"industry={candidate.industry}",
-    ]
-    if abstract:
-        parts.append(f"abstract={abstract}")
-    return " | ".join(parts)
-
-
-def _build_prompt(*, query: str, candidates: list[AISearchCandidate], limit: int, scope: str) -> str:
-    candidate_lines = "\n".join(f"- {_candidate_line(candidate)}" for candidate in candidates)
-    return (
-        f"Choose {_PROMPT_SUBJECTS[scope]} that best match the user's search query.\n"
-        "Use ONLY the candidate project IDs below. Do not invent IDs. Do not include explanations.\n"
-        "Each ID is the UUID after id= in a candidate line; return the UUID alone, without the id= prefix.\n"
-        f'Return valid JSON only in this exact shape: {{"ids": ["<candidate UUID>"], "reason": "short summary"}}.\n'
-        f"Return at most {limit} IDs, ordered from most relevant to least relevant.\n\n"
-        f"Search query: {query}\n\n"
-        f"Candidate projects:\n{candidate_lines}"
-    )
-
-
-def _json_fragment(text: str):
-    stripped = text.strip()
-    if stripped.startswith("{") or stripped.startswith("["):
-        return stripped
-    object_start = stripped.find("{")
-    object_end = stripped.rfind("}")
-    if object_start != -1 and object_end > object_start:
-        return stripped[object_start : object_end + 1]
-    list_start = stripped.find("[")
-    list_end = stripped.rfind("]")
-    if list_start != -1 and list_end > list_start:
-        return stripped[list_start : list_end + 1]
-    return stripped
-
-
-_ID_PREFIX_RE = re.compile(r"^id\s*[=:]\s*", re.IGNORECASE)
-
-
-def canonical_project_ids(values: Iterable, allowed: frozenset[str] | None = None) -> list[str]:
-    """The project UUIDs among ``values`` (model output), canonical and de-duplicated, in order.
-
-    Anything else the model may return (the prompt's placeholder, an echoed "id=" prefix, a number, an object) is
-    dropped rather than reaching a UUID lookup, and with ``allowed`` so is any id that was not a candidate.
-    """
-    ids: list[str] = []
-    for value in values:
-        if not isinstance(value, str | uuid.UUID):
-            continue
-        try:
-            project_id = str(uuid.UUID(_ID_PREFIX_RE.sub("", str(value).strip())))
-        except ValueError:
-            continue
-        if project_id in ids or (allowed is not None and project_id not in allowed):
-            continue
-        ids.append(project_id)
-    return ids
-
-
-def _parse_ids(text: str, allowed: frozenset[str] | None = None) -> list[str]:
-    try:
-        payload = json.loads(_json_fragment(text))
-    except json.JSONDecodeError:
-        logger.warning("Past project AI search returned non-JSON output: %s", text[:500])
-        return []
-    if isinstance(payload, dict):
-        raw_ids = payload.get("ids") or payload.get("project_ids") or payload.get("results") or []
-    else:
-        raw_ids = payload
-    if not isinstance(raw_ids, list):
-        return []
-    ids = canonical_project_ids(raw_ids, allowed)
-    if len(ids) < len(raw_ids):
-        logger.warning(
-            "Past project AI search dropped ids that are repeated or not candidate UUIDs: %s", str(raw_ids)[:500]
-        )
-    return ids
 
 
 def _estimate_usage(system_text: str, prompt: str, reply_text: str) -> dict:

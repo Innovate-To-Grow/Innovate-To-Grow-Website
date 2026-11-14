@@ -6,7 +6,7 @@ from apps.core.utils.http_cache import public_json_response
 
 from ..models import Project
 from ..serializers import ProjectDetailSerializer
-from ..services.current_project_links import resolve_current_project_link
+from ..services.catalog.current_project_links import resolve_current_project_link
 
 
 class ProjectDetailAPIView(RetrieveAPIView):

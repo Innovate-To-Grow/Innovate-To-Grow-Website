@@ -49,7 +49,7 @@ def _team_records(projects: list[CurrentProject]) -> dict:
     what the sheet held before the team handed anything in, and the row of the schedule the team presents in (same
     class, Team# and title) carries its students and slot. Team numbers are reused every semester, so the title
     must match too. "Only listed" is read from is_presenting, which the sync sets from Track; the archive match in
-    apps.projects.services.current_project_links goes by the slot instead (see docs/api/projects.md).
+    apps.projects.services.catalog.current_project_links goes by the slot instead (see docs/api/projects.md).
     """
     records = {project.pk: project for project in projects}
     listed = [project for project in projects if not (project.is_presenting or project.schedule.is_active)]

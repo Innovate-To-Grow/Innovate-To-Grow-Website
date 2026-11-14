@@ -3,14 +3,14 @@
 
 /**
  * Title of a share saved without a name or any note text of the owner's own. Mirrors the backend
- * default (src/apps/projects/services/share_names.py DEFAULT_SHARE_NAME); also the display fallback for
+ * default (src/apps/projects/services/shares/names.py DEFAULT_SHARE_NAME); also the display fallback for
  * legacy shares stored with a blank name.
  */
 export const DEFAULT_PAST_PROJECT_SHARE_NAME = 'Past Project Curation';
 
 /**
  * The same title for a share holding a current-semester project (a row with `catalog: 'current'`), which is not a
- * list of past projects. Mirrors share_names.py DEFAULT_PROJECT_SHARE_NAME; curationBranding picks between the two.
+ * list of past projects. Mirrors shares/names.py DEFAULT_PROJECT_SHARE_NAME; curationBranding picks between the two.
  */
 export const DEFAULT_PROJECT_SHARE_NAME = 'Project Curation';
 

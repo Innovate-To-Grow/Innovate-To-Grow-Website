@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 from apps.event.models import CurrentProject, CurrentProjectSchedule
 from apps.event.services import sync_schedule
 from apps.projects.models import Project, Semester
-from apps.projects.services.current_project_links import (
+from apps.projects.services.catalog.current_project_links import (
     active_current_project_links,
     resolve_current_project_link,
     resolve_current_project_links,
