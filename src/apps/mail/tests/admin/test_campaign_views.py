@@ -418,7 +418,7 @@ class CampaignInlineTests(TestCase):
         self.assertFalse(inline.has_add_permission(request))
 
     def test_audience_type_filter_lookups(self):
-        from apps.mail.models.campaign import ALL_AUDIENCE_CHOICES
+        from apps.mail.models.email.campaign_options import ALL_AUDIENCE_CHOICES
 
         instance = AudienceTypeFilter.__new__(AudienceTypeFilter)
         self.assertEqual(instance.lookups(request=None, model_admin=None), ALL_AUDIENCE_CHOICES)

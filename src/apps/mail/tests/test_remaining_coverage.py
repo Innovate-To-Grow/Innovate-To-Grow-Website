@@ -14,9 +14,9 @@ from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.admin.recipient_log import RecipientLogAdmin
 from apps.mail.admin.sms_campaign import SmsCampaignAdmin
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign
-from apps.mail.models.campaign import EmailCampaign as CampaignModel
-from apps.mail.models.recipient_log import RecipientLog as RecipientLogModel
-from apps.mail.models.sms_campaign import SmsCampaign as SmsModel
+from apps.mail.models.email.campaign import EmailCampaign as CampaignModel
+from apps.mail.models.email.recipient_log import RecipientLog as RecipientLogModel
+from apps.mail.models.sms.campaign import SmsCampaign as SmsModel
 
 
 def _request_with_messages(factory, user):

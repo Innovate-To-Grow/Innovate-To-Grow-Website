@@ -1,6 +1,6 @@
 from apps.authn.models import ContactPhone, Member
 from apps.event.models import EventRegistration
-from apps.mail.models.sms_campaign import E164_RE, parse_manual_sms_phones
+from apps.mail.models.sms.campaign_options import E164_RE, parse_manual_sms_phones
 
 from .opt_outs import split_opted_out
 

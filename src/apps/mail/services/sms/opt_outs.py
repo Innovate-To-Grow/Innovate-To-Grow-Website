@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from apps.authn.models import ContactPhone
 from apps.mail.models import SmsOptOut
-from apps.mail.models.sms_campaign import E164_RE
+from apps.mail.models.sms.campaign_options import E164_RE
 
 US_COUNTRY_CODE = "1"
 US_REGION = "1-US"

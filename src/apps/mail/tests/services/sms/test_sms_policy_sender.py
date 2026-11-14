@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from apps.authn.services.sms import PhoneNumberOptedOut
 from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import SmsCampaign, SmsRecipientLog
-from apps.mail.models.sms_campaign import LINKS_OFF_MESSAGE
+from apps.mail.models.sms.campaign_options import LINKS_OFF_MESSAGE
 from apps.mail.services.campaign.dispatch import dispatch_sms_campaign, resume_paused_sms_recipients
 from apps.mail.services.sms.audience import get_sms_recipients
 from apps.mail.services.sms.errors import LinksDisabled, QuietHoursActive

@@ -1,11 +1,13 @@
-from .bounced_address import BounceAggregationState, BouncedAddress, BouncedAddressAction, BouncedAddressCampaign
-from .campaign import EmailCampaign
-from .login_link import LoginLinkToken
-from .recipient_log import RecipientLog
-from .sms_campaign import SmsCampaign, SmsRecipientLog
-from .sms_config import SmsConfig, SmsOptOutSyncState
-from .sms_link import SmsLinkRevocation, SmsLinkToken, TicketSms
-from .sms_opt_out import SmsOptOut
+from .email.bounce_records import BounceAggregationState, BouncedAddressAction, BouncedAddressCampaign
+from .email.bounced_address import BouncedAddress
+from .email.campaign import EmailCampaign
+from .email.login_link import LoginLinkToken
+from .email.recipient_log import RecipientLog
+from .sms.campaign import SmsCampaign
+from .sms.campaign_recipients import SmsRecipientLog
+from .sms.config import SmsConfig, SmsOptOutSyncState
+from .sms.links import SmsLinkRevocation, SmsLinkToken, TicketSms
+from .sms.opt_out import SmsOptOut
 
 __all__ = [
     "BounceAggregationState",
