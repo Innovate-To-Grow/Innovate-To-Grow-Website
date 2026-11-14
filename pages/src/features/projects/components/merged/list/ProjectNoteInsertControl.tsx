@@ -1,6 +1,9 @@
 import {useId, useState} from 'react';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {PAST_PROJECT_NOTE_INSERT_FIELDS, type PastProjectNoteInsertField} from '../../richText/content/pastProjectsDetailText';
+import {
+    PAST_PROJECT_NOTE_INSERT_FIELDS,
+    type PastProjectNoteInsertField,
+} from '../../richText/content/pastProjectsNoteInsert';
 
 interface ProjectNoteInsertControlProps {
   rows: ProjectGridRow[];

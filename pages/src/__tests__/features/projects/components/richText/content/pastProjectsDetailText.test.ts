@@ -1,8 +1,6 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {
-    appendPastProjectsNoteInsertHtml,
-    buildPastProjectsNoteInsertHtml,
     copyPastProjectsDetailToClipboard,
     markMemberNoteLinks,
     normalizePastProjectsDetailHtml,
@@ -11,6 +9,10 @@ import {
     sanitizePastProjectsDetailHtml,
     stripPastProjectsDetailMarkup,
 } from '@/features/projects/components/richText/content/pastProjectsDetailText';
+import {
+    appendPastProjectsNoteInsertHtml,
+    buildPastProjectsNoteInsertHtml,
+} from '@/features/projects/components/richText/content/pastProjectsNoteInsert';
 import type {ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
 
 const makeRow = (overrides: Partial<ProjectGridRow> = {}): ProjectGridRow => ({
