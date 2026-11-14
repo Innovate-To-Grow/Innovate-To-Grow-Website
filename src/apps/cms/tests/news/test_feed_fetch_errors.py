@@ -6,12 +6,8 @@ from urllib.error import HTTPError, URLError
 
 from django.test import SimpleTestCase
 
-from apps.cms.services.news.feed_parser import (
-    _ERROR_BODY_BYTES,
-    FEED_REQUEST_HEADERS,
-    FeedFetchError,
-    fetch_feed,
-)
+from apps.cms.services.news.feed_errors import _ERROR_BODY_BYTES, FeedFetchError
+from apps.cms.services.news.feed_parser import FEED_REQUEST_HEADERS, fetch_feed
 
 
 def _http_error(
