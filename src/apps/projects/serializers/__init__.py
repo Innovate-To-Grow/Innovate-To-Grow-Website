@@ -1,10 +1,10 @@
 from .ai_search import PastProjectAISearchResultSerializer, PastProjectAISearchSerializer
 from .past_project_share import (
     PastProjectShareListSerializer,
-    PastProjectShareRowSerializer,
     PastProjectShareSerializer,
     StalePastProjectShareSnapshot,
 )
+from .past_project_share_row import PastProjectShareRowSerializer
 from .project import (
     AllProjectsArchiveRowSerializer,
     CompactPastProjectSerializer,
