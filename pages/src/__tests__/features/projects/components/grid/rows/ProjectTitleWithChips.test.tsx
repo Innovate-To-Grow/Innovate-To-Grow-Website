@@ -2,7 +2,7 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
 import type {ProjectGridLinkScope, ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
-import {ProjectTitleWithChips} from '@/features/projects/components/grid/table/ProjectTitleWithChips';
+import {ProjectTitleWithChips} from '@/features/projects/components/grid/rows/ProjectTitleWithChips';
 
 const row: ProjectGridRow = {
   id: '33333333-3333-4333-8333-333333333333',
