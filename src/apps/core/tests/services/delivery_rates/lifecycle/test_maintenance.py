@@ -9,7 +9,7 @@ from django.utils import timezone
 from apps.core.models import DeliveryRateState, DeliveryUsageBucket
 from apps.core.services.delivery_rates import families, maintenance
 
-THIS = "apps.core.tests.services.delivery_rates.test_maintenance"
+THIS = "apps.core.tests.services.delivery_rates.lifecycle.test_maintenance"
 
 
 def active_ses():

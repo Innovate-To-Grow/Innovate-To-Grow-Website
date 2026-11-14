@@ -9,7 +9,7 @@ from django.test import SimpleTestCase
 from apps.core.models import DeliveryRateState
 from apps.core.services.delivery_rates.rules import controller, signals
 
-from .helpers import START, Channel, spec_for, state_for
+from ..helpers import START, Channel, spec_for, state_for
 
 SMART = DeliveryRateState.Mode.SMART
 

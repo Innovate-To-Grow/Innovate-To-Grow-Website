@@ -28,7 +28,7 @@ from apps.core.tests.gmail_api_helpers import (
     token_response,
 )
 
-from .helpers import Channel, FakeClock, set_policy
+from ..helpers import Channel, FakeClock, set_policy
 
 MAIL_SENDING = "User-rate limit exceeded (Mail sending)"
 

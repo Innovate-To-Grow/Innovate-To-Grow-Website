@@ -14,7 +14,7 @@ from apps.core.models import DeliveryRateState
 from apps.core.services import delivery_rates as rates
 from apps.core.services.delivery_rates.runtime import context
 
-from .helpers import START, Channel, set_policy
+from ..helpers import START, Channel, set_policy
 
 MAILBOX = "i2g@example.edu"
 WORKERS = 6
