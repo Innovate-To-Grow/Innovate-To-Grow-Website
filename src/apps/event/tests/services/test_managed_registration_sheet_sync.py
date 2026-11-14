@@ -22,9 +22,9 @@ from apps.event.services.registration_sheet_sync import (
     inspect_registration_sheet,
     sync_registrations_to_sheet,
 )
-from apps.event.services.registration_sheet_sync.provider import METADATA_PREFIX
-from apps.event.services.registration_sheet_sync.schema import registration_fields, registration_values
-from apps.event.services.registration_sheet_sync.sheets import RegistrationSyncConflict, RegistrationSyncError
+from apps.event.services.registration_sheet_sync.plan.schema import registration_fields, registration_values
+from apps.event.services.registration_sheet_sync.worksheet.sheets import RegistrationSyncConflict, RegistrationSyncError
+from apps.event.services.registration_sheet_sync.worksheet.snapshot import METADATA_PREFIX
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 from apps.event.tests.services.sheet_fakes import FakeWorksheet
 
@@ -315,7 +315,7 @@ class ManagedRegistrationSheetTests(TestCase):
 
     def test_provider_success_then_db_failure_retries_by_id_without_duplicate(self):
         with patch(
-            "apps.event.services.registration_sheet_sync.engine._record_success",
+            "apps.event.services.registration_sheet_sync.sync.engine._record_success",
             side_effect=RuntimeError("db unavailable"),
         ):
             with self.assertRaises(RegistrationSyncError):
@@ -368,7 +368,7 @@ class ManagedRegistrationSheetTests(TestCase):
         self.assertGreater(self.sheet.col_count, 2)
 
     def test_failure_does_not_replace_later_success_status(self):
-        from apps.event.services.registration_sheet_sync.logs import record_sync_failure
+        from apps.event.services.registration_sheet_sync.sync.logs import record_sync_failure
 
         earlier = timezone.now()
         Event.objects.filter(pk=self.event.pk).update(
@@ -407,20 +407,22 @@ class ManagedRegistrationSheetTests(TestCase):
         self.assertEqual(self.sheet.protections[0]["editors"], {"users": ["service@example.com"]})
 
     def test_settings_are_reloaded_after_waiting_for_event_lock(self):
-        from apps.event.services.registration_sheet_sync.scheduler import begin_sync
+        from apps.event.services.registration_sheet_sync.schedule.state import begin_sync
 
         def change_after_snapshot(event_id, **kwargs):
             state = begin_sync(event_id, **kwargs)
             RegistrationSheetSyncConfig.objects.filter(event_id=event_id).update(header_row=3)
             return state
 
-        with patch("apps.event.services.registration_sheet_sync.engine.begin_sync", side_effect=change_after_snapshot):
+        with patch(
+            "apps.event.services.registration_sheet_sync.sync.engine.begin_sync", side_effect=change_after_snapshot
+        ):
             sync_registrations_to_sheet(self.event)
         self.assertEqual(self.sheet.values[:2], [[], []])
         self.assertIn(str(self.registration.pk), self.sheet.values[3])
 
     def test_failure_after_same_generation_success_keeps_event_success(self):
-        from apps.event.services.registration_sheet_sync.logs import record_sync_failure
+        from apps.event.services.registration_sheet_sync.sync.logs import record_sync_failure
 
         RegistrationSheetSyncConfig.objects.filter(pk=self.config.pk).update(
             requested_generation=9, completed_generation=9
@@ -432,7 +434,8 @@ class ManagedRegistrationSheetTests(TestCase):
     def test_failed_create_keeps_destination_and_reports_backup_and_populated_new_sheet(self):
         preview = inspect_registration_sheet(self.event)
         with patch(
-            "apps.event.services.registration_sheet_sync.engine._record_success", side_effect=RuntimeError("DB failed")
+            "apps.event.services.registration_sheet_sync.sync.create._record_success",
+            side_effect=RuntimeError("DB failed"),
         ):
             with self.assertRaises(RegistrationSyncError):
                 create_registration_worksheet(self.event, expected_fingerprint=preview["fingerprint"])
@@ -446,7 +449,8 @@ class ManagedRegistrationSheetTests(TestCase):
 
     def test_deleted_source_after_interrupted_write_requires_explicit_recovery(self):
         with patch(
-            "apps.event.services.registration_sheet_sync.engine._record_success", side_effect=RuntimeError("DB failed")
+            "apps.event.services.registration_sheet_sync.sync.engine._record_success",
+            side_effect=RuntimeError("DB failed"),
         ):
             with self.assertRaises(RegistrationSyncError):
                 sync_registrations_to_sheet(self.event)

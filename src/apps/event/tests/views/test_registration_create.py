@@ -139,7 +139,7 @@ class EventRegistrationCreateViewTest(TestCase):
                 "apps.event.views.registration.create_support.notifications.start_in_process_task",
                 return_value=MagicMock(),
             ) as start_task,
-            patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync") as start_sync,
+            patch("apps.event.services.registration_sheet_sync.sync.append._schedule_in_process_sync") as start_sync,
             self.captureOnCommitCallbacks(execute=True),
         ):
             response = self._post()

@@ -6,7 +6,7 @@ import uuid
 from collections import Counter
 from dataclasses import dataclass, field
 
-from .columns import _bind_columns, _cell, normalized_label
+from ..worksheet.columns import _bind_columns, _cell, normalized_label
 
 
 @dataclass

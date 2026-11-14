@@ -5,7 +5,7 @@ import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 
-from .provider import METADATA_PREFIX
+from .snapshot import METADATA_PREFIX
 
 
 def normalized_label(value):

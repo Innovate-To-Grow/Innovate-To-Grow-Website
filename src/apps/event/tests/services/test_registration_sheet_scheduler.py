@@ -17,14 +17,14 @@ from apps.event.models import (
     RegistrationSheetSyncConfig,
     RegistrationSheetSyncRecord,
 )
-from apps.event.services.registration_sheet_sync.scheduler import (
+from apps.event.services.registration_sheet_sync.schedule.batching import schedule_registration_sync
+from apps.event.services.registration_sheet_sync.schedule.state import (
     JOB_KIND,
     begin_sync,
     complete_sync,
     fail_sync,
     job_should_run,
     mirror_job_state,
-    schedule_registration_sync,
 )
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 
@@ -53,7 +53,7 @@ class RegistrationSheetSchedulerTest(TestCase):
     @override_settings(BACKGROUND_JOBS_ENABLED=False)
     def test_requests_are_durable_even_without_in_process_worker(self):
         now = timezone.now()
-        with patch("apps.event.services.registration_sheet_sync.scheduler.timezone.now", return_value=now):
+        with patch("apps.event.services.registration_sheet_sync.schedule.batching.timezone.now", return_value=now):
             job = schedule_registration_sync(self.event)
         self.assertEqual(job.available_at, now + timedelta(seconds=15))
         self.assertEqual(self.config().requested_generation, 1)
@@ -61,7 +61,7 @@ class RegistrationSheetSchedulerTest(TestCase):
 
     @override_settings(BACKGROUND_JOBS_ENABLED=False)
     def test_without_worker_an_in_process_sync_starts_after_commit(self):
-        with patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync") as start:
+        with patch("apps.event.services.registration_sheet_sync.sync.append._schedule_in_process_sync") as start:
             with self.captureOnCommitCallbacks(execute=True):
                 schedule_registration_sync(self.event)
             start.assert_called_once_with(str(self.event.pk), 15.0, False)
@@ -74,13 +74,13 @@ class RegistrationSheetSchedulerTest(TestCase):
 
     @override_settings(BACKGROUND_JOBS_ENABLED=True)
     def test_with_worker_no_in_process_sync_starts(self):
-        with patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync") as start:
+        with patch("apps.event.services.registration_sheet_sync.sync.append._schedule_in_process_sync") as start:
             with self.captureOnCommitCallbacks(execute=True):
                 schedule_registration_sync(self.event)
         start.assert_not_called()
 
     def test_in_process_timer_runs_only_pending_work(self):
-        from apps.event.services.registration_sheet_sync import append
+        from apps.event.services.registration_sheet_sync.sync import append
 
         event_id = str(self.event.pk)
         RegistrationSheetSyncConfig.objects.create(event=self.event)
@@ -121,7 +121,7 @@ class RegistrationSheetSchedulerTest(TestCase):
         start = timezone.now()
         for seconds in (0, 10, 20, 40, 55, 59):
             now = start + timedelta(seconds=seconds)
-            with patch("apps.event.services.registration_sheet_sync.scheduler.timezone.now", return_value=now):
+            with patch("apps.event.services.registration_sheet_sync.schedule.batching.timezone.now", return_value=now):
                 job = schedule_registration_sync(self.event)
         self.assertEqual(BackgroundJob.objects.filter(kind=JOB_KIND).count(), 1)
         self.assertEqual(job.available_at, start + timedelta(seconds=60))
@@ -131,12 +131,12 @@ class RegistrationSheetSchedulerTest(TestCase):
         start = timezone.now()
         RegistrationSheetSyncConfig.objects.create(event=self.event, sync_mode="interval", last_success_at=start)
         with patch(
-            "apps.event.services.registration_sheet_sync.scheduler.timezone.now",
+            "apps.event.services.registration_sheet_sync.schedule.batching.timezone.now",
             return_value=start + timedelta(seconds=20),
         ):
             first = schedule_registration_sync(self.event)
         with patch(
-            "apps.event.services.registration_sheet_sync.scheduler.timezone.now",
+            "apps.event.services.registration_sheet_sync.schedule.batching.timezone.now",
             return_value=start + timedelta(minutes=4),
         ):
             second = schedule_registration_sync(self.event)
@@ -154,10 +154,10 @@ class RegistrationSheetSchedulerTest(TestCase):
 
     def test_automatic_change_does_not_postpone_manual_sync_now(self):
         start = timezone.now()
-        with patch("apps.event.services.registration_sheet_sync.scheduler.timezone.now", return_value=start):
+        with patch("apps.event.services.registration_sheet_sync.schedule.batching.timezone.now", return_value=start):
             first = schedule_registration_sync(self.event, immediate=True)
         with patch(
-            "apps.event.services.registration_sheet_sync.scheduler.timezone.now",
+            "apps.event.services.registration_sheet_sync.schedule.batching.timezone.now",
             return_value=start + timedelta(seconds=1),
         ):
             second = schedule_registration_sync(self.event)
@@ -313,7 +313,7 @@ class RegistrationSheetSchedulerConcurrencyTest(TransactionTestCase):
     def setUp(self):
         cache.clear()
         # Real commits would start the no-worker fallback thread, which races teardown.
-        fallback = patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync")
+        fallback = patch("apps.event.services.registration_sheet_sync.sync.append._schedule_in_process_sync")
         fallback.start()
         self.addCleanup(fallback.stop)
         if connection.vendor != "postgresql":

@@ -19,8 +19,8 @@ def register_background_jobs():
 
     register_job_kind(
         "event.registration_sheet_sync",
-        handler="apps.event.services.registration_sheet_sync.jobs.sync_registration_sheet_job",
-        state_handler="apps.event.services.registration_sheet_sync.jobs.sync_registration_sheet_job_state",
+        handler="apps.event.services.registration_sheet_sync.sync.jobs.sync_registration_sheet_job",
+        state_handler="apps.event.services.registration_sheet_sync.sync.jobs.sync_registration_sheet_job_state",
     )
     # A ticket carries the attendee's login link: transactional mail, claimed before campaign jobs.
     register_job_kind(
