@@ -9,7 +9,7 @@ from django.urls import reverse
 from apps.core.models import BackgroundJob, InboundMessage
 
 from ..models import HelpdeskSettings, Ticket, TicketAttachment, TicketEvent, TicketMessage
-from ..services.ingest import jobs
+from ..services.ingest.pipeline import jobs
 from . import corpus
 from .helpers import FakeReader, helpdesk_staff, make_admin, queue, receive
 

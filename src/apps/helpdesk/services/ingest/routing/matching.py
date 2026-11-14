@@ -19,9 +19,9 @@ from dataclasses import dataclass
 from apps.authn.models import ContactEmail
 from apps.core.models import OutboundEmail
 
-from ...models import Ticket, TicketMessage
-from .. import numbering
-from .parse import ParsedMessage
+from ....models import Ticket, TicketMessage
+from ...tickets import numbering
+from ..reading.message import ParsedMessage
 
 MERGE_HOPS = 10
 CANDIDATE_TICKETS = 20

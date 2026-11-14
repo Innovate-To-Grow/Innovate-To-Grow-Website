@@ -10,7 +10,7 @@ from django.utils import timezone
 from config.settings.base.integrations.admin import navigation
 
 from ..models import Ticket, TicketEvent
-from ..services import numbering
+from ..services.tickets import numbering
 from .helpers import helpdesk_staff, make_admin, make_superuser
 
 Status = Ticket.Status

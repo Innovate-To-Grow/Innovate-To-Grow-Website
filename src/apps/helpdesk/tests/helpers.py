@@ -13,10 +13,10 @@ from apps.core.services.email.telemetry import text
 from apps.event.tests.helpers import make_admin, make_superuser
 
 from ..models import HelpdeskSettings, Ticket
-from ..services.ingest import runner
+from ..services.ingest.pipeline import runner
 from .corpus import SITE
 
-READER = "apps.helpdesk.services.ingest.runner.active_reader"
+READER = "apps.helpdesk.services.ingest.pipeline.runner.active_reader"
 _graph_ids = itertools.count(1)
 
 

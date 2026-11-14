@@ -16,7 +16,7 @@ from apps.core.services.email.graph.mailbox import GraphMessageNotFound, GraphRe
 from apps.mail.models import EmailCampaign
 
 from ..models import HelpdeskSettings, Ticket
-from ..services.ingest import jobs, runner
+from ..services.ingest.pipeline import jobs, runner
 from ..services.intake import state as intake_state
 from . import corpus
 from .helpers import FakeReader, graph_reader, ingest, queue
@@ -108,8 +108,8 @@ class RunnerTests(TestCase):
         row = queue(corpus.message(), reader=self.reader)
 
         with (
-            patch("apps.helpdesk.services.ingest.runner.store", side_effect=ValueError("secret detail")),
-            self.assertLogs("apps.helpdesk.services.ingest.runner", level="ERROR") as logs,
+            patch("apps.helpdesk.services.ingest.pipeline.runner.store", side_effect=ValueError("secret detail")),
+            self.assertLogs("apps.helpdesk.services.ingest.pipeline.runner", level="ERROR") as logs,
         ):
             ingest(self.reader)
 
@@ -143,7 +143,7 @@ class RunnerTests(TestCase):
         by_count = ingest(self.reader, HelpdeskSettings(ingest_batch_size=2))
         self.assertEqual((by_count.stopped, by_count.processed), ("budget", 2))
 
-        with patch("apps.helpdesk.services.ingest.runner.time.monotonic", side_effect=[0.0, 1000.0]):
+        with patch("apps.helpdesk.services.ingest.pipeline.runner.time.monotonic", side_effect=[0.0, 1000.0]):
             by_time = ingest(self.reader, HelpdeskSettings(ingest_max_seconds=5))
         self.assertEqual((by_time.stopped, by_time.processed), ("time", 0))
 

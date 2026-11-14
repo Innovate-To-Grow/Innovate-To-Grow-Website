@@ -1,6 +1,6 @@
 """Writing a ticket's audit trail (``TicketEvent``) and describing an event in one line for the timeline."""
 
-from ..models import Ticket, TicketEvent
+from ...models import Ticket, TicketEvent
 
 Kind = TicketEvent.Kind
 _STATUS = dict(Ticket.Status.choices)

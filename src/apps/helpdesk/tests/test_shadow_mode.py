@@ -13,7 +13,7 @@ from django.core.cache import cache
 from django.test import TestCase
 
 from ..models import HelpdeskSettings, Ticket
-from ..services import shadow
+from ..services.tickets import shadow
 from . import corpus
 from .helpers import FakeReader, ingest, queue
 

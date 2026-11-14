@@ -27,9 +27,9 @@ from apps.core.models import EmailCategory, OutboundEmail
 from apps.core.services.email.inbound.rules import AUTO_REPLY_SUBJECT_RE
 from apps.core.services.email.telemetry import text
 
-from ...models import Ticket, TicketMessage
+from ....models import Ticket, TicketMessage
+from ..reading.message import ParsedMessage
 from .matching import references_of
-from .parse import ParsedMessage
 
 MAX_TAGS = 10
 EXACT, INFERRED = "message_id", "recipient_subject"

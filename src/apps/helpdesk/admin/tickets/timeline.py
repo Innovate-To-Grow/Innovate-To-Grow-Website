@@ -14,9 +14,9 @@ from django.urls import reverse
 from apps.core.services.email.inbound import LABELS
 
 from ...models import HelpdeskSettings, Ticket, TicketAttachment, TicketEvent, TicketMessage
-from ...services import events
-from ...services.ingest import attachments as files
-from ...services.ingest.sanitize import frame_document
+from ...services.ingest.reading import attachments as files
+from ...services.ingest.reading.sanitize import frame_document
+from ...services.tickets import events
 
 # Events that repeat what a message entry already shows.
 _IMPLIED_BY_MESSAGES = (TicketEvent.Kind.CUSTOMER_MESSAGE, TicketEvent.Kind.AUTOMATED_MESSAGE, TicketEvent.Kind.NOTE)

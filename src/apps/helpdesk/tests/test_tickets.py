@@ -19,7 +19,8 @@ from ..models import (
     TicketEvent,
     TicketMessage,
 )
-from ..services import events, numbering, retention, tickets
+from ..services import tickets
+from ..services.tickets import events, numbering, retention
 from . import corpus
 from .helpers import FakeReader, helpdesk_staff, make_admin, make_superuser, receive
 

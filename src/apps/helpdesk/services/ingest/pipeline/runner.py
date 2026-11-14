@@ -23,10 +23,10 @@ from apps.core.services.email.bounces import active_reader
 from apps.core.services.email.graph.mailbox import GraphMessageNotFound, GraphReadBusy, GraphReadError
 from apps.core.services.email.inbound import consume
 
-from ...models import HelpdeskSettings, TicketMessage
-from ..intake import state as intake_state
-from .classify import classify_message, own_addresses
-from .parse import parse
+from ....models import HelpdeskSettings, TicketMessage
+from ...intake import state as intake_state
+from ..reading.parse import parse
+from ..routing.classify import classify_message, own_addresses
 from .store import store
 
 logger = logging.getLogger(__name__)

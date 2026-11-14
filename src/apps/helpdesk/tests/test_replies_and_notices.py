@@ -28,10 +28,10 @@ from apps.mail.models import BouncedAddress, EmailCampaign
 from apps.mail.tests.services.bounced_addresses.helpers import count_now
 
 from ..models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
-from ..services import shadow
-from ..services.ingest.classify import REPLY_FLAG, same_organisation
-from ..services.ingest.parse import ParsedMessage
-from ..services.ingest.replies import site_mail_replied, subject_stages
+from ..services.ingest.reading.message import ParsedMessage
+from ..services.ingest.routing.classify import REPLY_FLAG, same_organisation
+from ..services.ingest.routing.replies import site_mail_replied, subject_stages
+from ..services.tickets import shadow
 from .helpers import FakeReader, ingest, queue
 
 Status = Ticket.Status

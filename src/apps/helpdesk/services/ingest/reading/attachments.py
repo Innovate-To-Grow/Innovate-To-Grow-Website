@@ -10,8 +10,8 @@ incomplete). Downloads are always ``Content-Disposition: attachment`` with ``X-C
 
 import hashlib
 
-from ...models import HelpdeskSettings, TicketAttachment
-from .parse import ParsedAttachment
+from ....models import HelpdeskSettings, TicketAttachment
+from .message import ParsedAttachment
 
 # Leading bytes of the formats worth recognising (the declared type and the file name are the sender's claim).
 _SIGNATURES = (

@@ -24,9 +24,9 @@ from apps.core.services.email.inbound import Evidence, Verdict, auth_summary, cl
 from apps.mail.services.scam_detector import analyze_email
 from apps.mail.services.suppression import normalize_address
 
-from ...models import HelpdeskSettings
+from ....models import HelpdeskSettings
+from ..reading.message import ParsedMessage
 from . import replies
-from .parse import ParsedMessage
 
 SPAM = "spam"
 BULK = "bulk"

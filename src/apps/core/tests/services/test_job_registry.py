@@ -22,7 +22,7 @@ EXPECTED_KINDS = {
     "core.email_bounce_scan",
     "event.registration_sheet_sync",
     "event.ticket_email",
-    # The helpdesk's import of inbound mail (apps.helpdesk.services.ingest.jobs) and its own Inbox scan
+    # The helpdesk's import of inbound mail (apps.helpdesk.services.ingest.pipeline.jobs) and its own Inbox scan
     # (apps.helpdesk.services.intake.jobs); neither sends anything.
     "helpdesk.ingest_inbound",
     "helpdesk.intake_scan",

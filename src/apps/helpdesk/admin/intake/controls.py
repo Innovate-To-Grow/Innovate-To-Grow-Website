@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from apps.core.services.email.bounces import active_reader
 from apps.core.services.email.inbound import format_interval
 
-from ...services.ingest import jobs as ingest_jobs
+from ...services.ingest.pipeline import jobs as ingest_jobs
 from ...services.intake import jobs as intake_jobs
 from ...services.intake import state as intake_state
 from ..tickets.views import require_helpdesk_access

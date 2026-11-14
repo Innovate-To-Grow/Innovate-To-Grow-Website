@@ -26,7 +26,7 @@ from apps.core.tests.services.email_monitoring.helpers import monitoring_setting
 
 from ..admin.intake.controls import when
 from ..models import HelpdeskSettings, IntakeState
-from ..services.ingest import jobs as ingest_jobs
+from ..services.ingest.pipeline import jobs as ingest_jobs
 from ..services.intake import jobs as intake_jobs
 from ..services.intake import state as intake_state
 from . import corpus
