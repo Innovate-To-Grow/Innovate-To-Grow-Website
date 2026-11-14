@@ -143,7 +143,7 @@ describe('withVerifiedSend', () => {
 
   // The server binds these operations to the signed-in member, and every other
   // one to the browser's Django session cookie (AUTHENTICATED_OPERATIONS in
-  // apps/authn/services/send_verification/constants.py). A change of the stored
+  // apps/authn/services/send_verification/rules/constants.py). A change of the stored
   // JWT session matters to the first kind only.
   const OPERATIONS: Array<[SendVerificationOperation, 'member' | 'anonymous']> = [
     ['email_auth.request_code', 'anonymous'],

@@ -136,8 +136,8 @@ def get_unresolved_admin_send(request):
     if not request_id:
         return None
     from apps.authn.models import SendVerificationRequest
-    from apps.authn.services.send_verification.exceptions import SendVerificationError
     from apps.authn.services.send_verification.guard import lookup_request
+    from apps.authn.services.send_verification.rules.exceptions import SendVerificationError
 
     try:
         record = lookup_request(request, uuid.UUID(str(request_id)))
@@ -154,8 +154,8 @@ def get_unresolved_admin_send(request):
 
 
 def render_admin_login(request, *, form, step: str, email: str = "", **extra):
-    from apps.authn.services.send_verification.constants import OP_ADMIN_LOGIN_REQUEST_CODE
-    from apps.authn.services.send_verification.principal import principal_from_request
+    from apps.authn.services.send_verification.proofs.principal import principal_from_request
+    from apps.authn.services.send_verification.rules.constants import OP_ADMIN_LOGIN_REQUEST_CODE
 
     unresolved = get_unresolved_admin_send(request)
     if unresolved is not None:

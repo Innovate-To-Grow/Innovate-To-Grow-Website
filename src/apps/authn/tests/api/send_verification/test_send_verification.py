@@ -8,7 +8,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail, Member, SendVerificationChallenge
-from apps.authn.services.send_verification.constants import (
+from apps.authn.services.send_verification.rules.constants import (
     FIELD_CHALLENGE_ID,
     FIELD_PAYLOAD,
     FIELD_REQUEST_ID,

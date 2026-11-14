@@ -10,14 +10,14 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import resolve
 from rest_framework.test import APIClient
 
-from apps.authn.services.send_verification import priority as proof_check
-from apps.authn.services.send_verification.constants import (
+from apps.authn.services.send_verification.proofs import priority as proof_check
+from apps.authn.services.send_verification.proofs.priority import carries_valid_proof
+from apps.authn.services.send_verification.rules.constants import (
     FIELD_CHALLENGE_ID,
     FIELD_PAYLOAD,
     FIELD_REQUEST_ID,
     OP_EMAIL_AUTH_REQUEST_CODE,
 )
-from apps.authn.services.send_verification.priority import carries_valid_proof
 from apps.authn.tests.send_verification import mint_send_verification
 from apps.core.services.request_limits import priority, scopes
 from apps.core.tests.request_limits.helpers import isolate
@@ -135,7 +135,7 @@ class CodeRequestClassificationTests(TestCase):
     def test_the_check_is_registered_for_code_sends(self):
         self.assertEqual(
             priority.registered_checks()["auth-code-send"],
-            "apps.authn.services.send_verification.priority.carries_valid_proof",
+            "apps.authn.services.send_verification.proofs.priority.carries_valid_proof",
         )
 
     def test_a_user_initiated_request_is_p0_and_a_scripted_one_is_not(self):

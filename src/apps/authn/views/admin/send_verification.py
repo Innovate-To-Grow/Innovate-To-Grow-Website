@@ -3,7 +3,7 @@
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect
 
-from apps.authn.services.send_verification.constants import (
+from apps.authn.services.send_verification.rules.constants import (
     OP_ADMIN_LOGIN_REMEMBERED_CODE,
     OP_ADMIN_LOGIN_REQUEST_CODE,
     OP_ADMIN_LOGIN_RESEND,

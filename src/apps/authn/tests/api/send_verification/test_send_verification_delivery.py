@@ -10,8 +10,8 @@ from rest_framework.test import APITestCase
 from apps.authn.models import ContactEmail, ContactPhone, Member, PhoneVerificationChallenge, SendVerificationRequest
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email.challenges import AuthChallengeDeliveryError, issue_email_challenge, verify_email_code
-from apps.authn.services.send_verification.constants import OP_PASSWORD_RESET_REQUEST_CODE
-from apps.authn.services.send_verification.http import serialize_request_status
+from apps.authn.services.send_verification.guard.http import serialize_request_status
+from apps.authn.services.send_verification.rules.constants import OP_PASSWORD_RESET_REQUEST_CODE
 from apps.authn.services.sms import PhoneVerificationDeliveryError
 from apps.authn.tests.send_verification import mint_send_verification
 from apps.authn.tests.services.send_verification.test_send_verification_concurrency import verified_request
@@ -96,7 +96,7 @@ class SendVerificationDeliveryTests(APITestCase):
 
     def test_reset_reference_is_stable_before_and_after_otp_link(self):
         from apps.authn.services.send_verification.guard import consume_and_reserve
-        from apps.authn.services.send_verification.hashing import hash_value
+        from apps.authn.services.send_verification.rules.hashing import hash_value
 
         request = verified_request(operation=OP_PASSWORD_RESET_REQUEST_CODE, destination="+12025550100", kind="phone")
         lease = consume_and_reserve(
@@ -144,7 +144,7 @@ class SendVerificationDeliveryTests(APITestCase):
     def test_admin_persists_recovery_before_provider_and_keeps_code_entry_on_unknown(self):
         from django.contrib.sessions.backends.db import SessionStore
 
-        from apps.authn.services.send_verification.constants import OP_ADMIN_LOGIN_REQUEST_CODE
+        from apps.authn.services.send_verification.rules.constants import OP_ADMIN_LOGIN_REQUEST_CODE
 
         proof = mint_send_verification(self.client, OP_ADMIN_LOGIN_REQUEST_CODE, {"email": "admin@example.com"})
         session_key = self.client.session.session_key

@@ -9,7 +9,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail, Member, SendVerificationRequest
-from apps.authn.services.send_verification.constants import FIELD_REQUEST_ID, OP_LOGIN_REQUEST_CODE
+from apps.authn.services.send_verification.rules.constants import FIELD_REQUEST_ID, OP_LOGIN_REQUEST_CODE
 from apps.authn.tests.send_verification import mint_send_verification
 
 

@@ -22,8 +22,8 @@ from django.utils import timezone
 
 from apps.authn.models import SendVerificationChallenge, SendVerificationRequest
 
-from .config import load_settings
-from .metrics import emit
+from ..rules.config import load_settings
+from ..rules.metrics import emit
 
 DEFAULT_BATCH_SIZE = 1000
 

@@ -15,8 +15,8 @@ from django.core.management import call_command
 from django.db import close_old_connections, connection
 from django.test import SimpleTestCase, TestCase, TransactionTestCase, override_settings
 
-from apps.authn.services.send_verification.config import require_ready
-from apps.authn.services.send_verification.exceptions import SendVerificationUnavailable
+from apps.authn.services.send_verification.rules.config import require_ready
+from apps.authn.services.send_verification.rules.exceptions import SendVerificationUnavailable
 from apps.core.models import SendVerificationConfig
 
 _PRODUCTION_POLICY = {

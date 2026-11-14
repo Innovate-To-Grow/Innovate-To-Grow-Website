@@ -9,11 +9,12 @@ from rest_framework.response import Response
 
 from apps.authn.models import SendVerificationRequest
 
-from .constants import OP_PASSWORD_RESET_REQUEST_CODE
-from .exceptions import SendVerificationError
-from .guard import claim_for_dispatch, consume_and_reserve, finalize_send_request
-from .metrics import emit
+from ..rules.constants import OP_PASSWORD_RESET_REQUEST_CODE
+from ..rules.exceptions import SendVerificationError
+from ..rules.metrics import emit
+from .consume import consume_and_reserve
 from .outcomes import SendOutcome, delivery_context, failure_status, public_reset_payload
+from .requests import claim_for_dispatch, finalize_send_request
 
 logger = logging.getLogger(__name__)
 

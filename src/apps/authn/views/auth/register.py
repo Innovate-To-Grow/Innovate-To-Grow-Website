@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 
 from apps.authn.serializers import RegisterSerializer
 from apps.authn.services.send_verification import OP_REGISTER, fingerprint_payload, guarded_send
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_EMAIL
 
 
 class RegisterView(APIView):

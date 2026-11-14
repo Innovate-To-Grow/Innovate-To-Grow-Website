@@ -12,8 +12,8 @@ from apps.authn.admin.send_verification import (
     SendVerificationConfigAdmin,
     SendVerificationConfigForm,
 )
-from apps.authn.services.send_verification.config import load_settings, require_ready
-from apps.authn.services.send_verification.exceptions import SendPaused, SendVerificationUnavailable
+from apps.authn.services.send_verification.rules.config import load_settings, require_ready
+from apps.authn.services.send_verification.rules.exceptions import SendPaused, SendVerificationUnavailable
 from apps.core.models import SendVerificationConfig
 from config.settings.base.integrations import api
 

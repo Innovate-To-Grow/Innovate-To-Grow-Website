@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.authn.services.send_verification import cleanup_expired_records
-from apps.authn.services.send_verification.cleanup import DEFAULT_BATCH_SIZE
+from apps.authn.services.send_verification.guard.cleanup import DEFAULT_BATCH_SIZE
 
 
 class Command(BaseCommand):

@@ -42,7 +42,7 @@ from apps.authn.services.send_verification import (
     fingerprint_payload,
     guarded_send,
 )
-from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
+from apps.authn.services.send_verification.rules.constants import KIND_PHONE, SMS_CHANNEL
 
 
 class ContactPhoneListCreateView(APIView):

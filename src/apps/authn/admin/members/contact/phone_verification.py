@@ -29,10 +29,10 @@ from django.utils.html import format_html
 from ....models import ContactPhone
 from ....services.contacts.contact_phones import request_phone_verification, verify_phone_code
 from ....services.email.challenges import AuthChallengeInvalid
-from ....services.send_verification.config import load_settings
-from ....services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
-from ....services.send_verification.exceptions import SendVerificationError
-from ....services.send_verification.quotas import reserve_send_quotas
+from ....services.send_verification.guard.quotas import reserve_send_quotas
+from ....services.send_verification.rules.config import load_settings
+from ....services.send_verification.rules.constants import KIND_PHONE, SMS_CHANNEL
+from ....services.send_verification.rules.exceptions import SendVerificationError
 from ....services.sms import PhoneVerificationError, PhoneVerificationInvalid, PhoneVerificationThrottled
 from ..help_texts import PHONE_SUBSCRIBED
 

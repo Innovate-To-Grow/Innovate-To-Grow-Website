@@ -4,16 +4,16 @@ from datetime import timedelta
 
 from django.utils import timezone
 
-from .config import SendVerificationSettings, require_ready
-from .constants import ALL_OPERATIONS, KIND_EMAIL, KIND_PHONE, SMS_OPERATIONS
-from .exceptions import (
+from ..rules.config import SendVerificationSettings, require_ready
+from ..rules.constants import ALL_OPERATIONS, KIND_EMAIL, KIND_PHONE, SMS_OPERATIONS
+from ..rules.exceptions import (
     SendVerificationConsumed,
     SendVerificationContextMismatch,
     SendVerificationExpired,
     SendVerificationInvalid,
 )
-from .hashing import fingerprint_payload
-from .metrics import emit
+from ..rules.hashing import fingerprint_payload
+from ..rules.metrics import emit
 from .principal import principal_from_request, principals_match
 
 
