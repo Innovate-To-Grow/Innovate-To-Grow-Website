@@ -1,189 +1,23 @@
 import {useId, useState, type ReactNode} from 'react';
 import {useMediaQuery} from '@/features/layout';
-import {ProjectGridTable} from '../../grid/table/ProjectGridTable';
-import {PastProjectsDialog} from '../../builder/dialog/PastProjectsDialog';
-import {PAST_PROJECT_GRID_COLUMNS, type ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {pluralize} from '../../shared/utils/saveResults';
 import {SaveStatusAnnouncer, VisibleSaveStatus} from '../controls/SaveStatus';
 import {SaveControls, SearchTableToolbar} from '../controls/SearchTableToolbar';
-import type {MergeSelectedHandler, SaveOrigin} from '../state/types';
+import type {SaveOrigin} from '../state/types';
 import {useSearchTableRows} from '../state/useSearchTableRows';
 import {useSearchTableSave} from '../state/useSearchTableSave';
 import {useSearchTableSelection} from '../state/useSearchTableSelection';
+import {type SearchTableCardProps, withCardDefaults} from './searchTableCardProps';
+import {
+  LargeSaveDialog,
+  SearchTableCardHeader,
+  SearchTableGrid,
+  SelectionAnnouncer,
+} from './SearchTableCardParts';
 
 export type {SearchTableSaveHelpers, SearchTableSaveResult} from '../state/types';
 
-interface SearchTableCardProps {
-  canRemove: boolean;
-  className?: string;
-  description?: string;
-  emptyMessage?: string;
-  initialRows: ProjectGridRow[];
-  /** Search to start the table with. */
-  initialSearch?: string;
-  /**
-   * Changing it replaces the rows with `initialRows` and starts the table over (search, sort, selection), as a
-   * reload (Refresh, new AI results). A save that is running carries on and reports its outcome here.
-   */
-  resetKey?: string | number;
-  resultsMotionKey?: string | number;
-  searchControl?: ReactNode;
-  controlsStatus?: ReactNode;
-  tableId: string;
-  title: string;
-  /** Label for the per-table merge button (e.g. "Add to Curation" in the builder). */
-  mergeLabel?: string;
-  /** Verb for the merge ("Add" -> "Add 120 Projects" in the large-save confirmation). */
-  mergeVerb?: string;
-  /** Verb shown while that merge runs ("Adding" -> "Adding…" / "Adding 3 projects…"). */
-  mergingVerb?: string;
-  /** Disable the merge button (e.g. while an async add from another table is in flight). */
-  mergeDisabled?: boolean;
-  /** Marks rows that are already in the saved results (e.g. with an "Added" chip). */
-  isRowSaved?: (row: ProjectGridRow) => boolean;
-  savedRowLabel?: string;
-  /** Scroll to the saved results; offered next to a save's outcome. */
-  onViewMergedResults?: () => void;
-  viewMergedResultsLabel?: string;
-  /**
-   * Told which checked rows this table has not submitted yet, so the page can mention selections another
-   * table left unsaved.
-   */
-  onSelectionChange?: (tableId: string, rows: ProjectGridRow[], title: string) => void;
-  onRemove: (tableId: string) => void;
-  onRefresh?: (tableId: string) => void;
-  /**
-   * Push this table's checked rows into the merged results, and resolve to a SearchTableSaveResult to report
-   * the outcome inside this table. Submitted rows are unchecked afterwards except the retained ones, so rows
-   * checked while a save runs stay checked.
-   */
-  onMergeSelected: MergeSelectedHandler;
-}
-
 // Long pages get a second Save button under the table, where the eye is after checking rows.
 const BOTTOM_ACTIONS_MIN_ROWS = 6;
-
-function withCardDefaults({
-  description = 'Search this table, check the projects you want, then click Add to Curation to add them to the curation draft.',
-  emptyMessage = 'No rows available in this search table.',
-  mergeLabel = 'Add to Curation',
-  mergeVerb = 'Add',
-  mergingVerb = 'Adding',
-  mergeDisabled = false,
-  viewMergedResultsLabel = 'View Curation Draft',
-  ...rest
-}: SearchTableCardProps) {
-  return {...rest, description, emptyMessage, mergeLabel, mergeVerb, mergingVerb, mergeDisabled, viewMergedResultsLabel};
-}
-
-type CardProps = ReturnType<typeof withCardDefaults>;
-type TableRows = ReturnType<typeof useSearchTableRows>;
-type Save = ReturnType<typeof useSearchTableSave>;
-type Selection = ReturnType<typeof useSearchTableSelection>;
-
-const SearchTableCardHeader = ({card, headingId, isSaving}: {card: CardProps; headingId: string; isSaving: boolean}) => (
-  <div className="project-grid-card-header search-table-card-header">
-    {/* Focusable from script: deleting the table next to this one moves focus here. */}
-    <h3 id={headingId} className="project-grid-card-title" tabIndex={-1}>
-      {card.title}
-    </h3>
-    {card.canRemove ? (
-      <button
-        type="button"
-        className="itg-btn itg-btn-text search-table-remove-button"
-        aria-label={`Delete Table: ${card.title}`}
-        onClick={() => card.onRemove(card.tableId)}
-        disabled={isSaving}
-      >
-        Delete Table
-      </button>
-    ) : null}
-  </div>
-);
-
-/**
- * How many rows are checked, for screen readers. Select All and the header checkbox check every row the search
- * matches, on every page, so a few visible rows can mean hundreds checked. A polite live region like the table's
- * count line; the card's status is its save outcome.
- */
-const SelectionAnnouncer = ({selectedCount, hiddenSelectedCount}: {selectedCount: number; hiddenSelectedCount: number}) => (
-  <p className="sr-only" aria-live="polite">
-    {selectedCount
-      ? `${pluralize(selectedCount, 'project')} selected` +
-        (hiddenSelectedCount ? `, ${hiddenSelectedCount} of them not shown by the current search` : '')
-      : ''}
-  </p>
-);
-
-/** Confirms saving a large selection, whose details all have to be loaded first. */
-const LargeSaveDialog = ({save, mergeVerb, hiddenSelectedCount}: {save: Save; mergeVerb: string; hiddenSelectedCount: number}) =>
-  save.pendingLargeSave ? (
-    <PastProjectsDialog
-      title={`${mergeVerb} ${pluralize(save.pendingLargeSave.rows.length, 'project')}?`}
-      confirmLabel={`${mergeVerb} ${pluralize(save.pendingLargeSave.rows.length, 'Project')}`}
-      onCancel={save.cancelLargeSave}
-      onConfirm={save.confirmLargeSave}
-    >
-      <p>
-        {hiddenSelectedCount ? `${hiddenSelectedCount} of them are not shown by the current search. ` : ''}
-        Each project&apos;s details are loaded first, which can take a while. Did you mean to select this many?
-      </p>
-    </PastProjectsDialog>
-  ) : null;
-
-interface SearchTableGridProps {
-  card: CardProps;
-  tableRows: TableRows;
-  selection: Selection;
-  toolbar: ReactNode;
-}
-
-const SearchTableGrid = ({card, tableRows, selection, toolbar}: SearchTableGridProps) => {
-  const {rows, table} = tableRows;
-  return (
-    <ProjectGridTable
-      loadMissingDetails
-      linkScope="past"
-      columns={PAST_PROJECT_GRID_COLUMNS}
-      rows={rows}
-      pagedRows={table.pagedRows}
-      filteredCount={table.filteredRows.length}
-      totalCount={rows.length}
-      tableLabel={card.title}
-      search={table.search}
-      serverSearch={table.serverSearch}
-      searchPlaceholder="Team, project, organization…"
-      searchControl={card.searchControl}
-      controlsStatus={card.controlsStatus}
-      // The card is titled with an h3.
-      noResultsHeadingLevel={4}
-      sortField={table.sortField}
-      sortDirection={table.sortDirection}
-      onSearchChange={table.setSearch}
-      onSortChange={table.toggleSort}
-      expandedKeys={table.expandedKeys}
-      onToggleExpanded={table.toggleExpanded}
-      onToggleAllDetails={table.toggleAllDetails}
-      allDetailsExpanded={table.allDetailsExpanded}
-      page={table.page}
-      totalPages={table.totalPages}
-      onPageChange={table.setPage}
-      pageSize={table.pageSize}
-      pageSizeOptions={table.pageSizeOptions}
-      onPageSizeChange={table.setPageSize}
-      emptyMessage={card.emptyMessage}
-      countLabel="projects"
-      selectable
-      selectedKeys={table.selectedKeys}
-      selectAllStateRows={table.filteredRows}
-      onToggleSelected={selection.handleToggleSelected}
-      onToggleSelectAll={selection.handleToggleSelectAllShown}
-      isRowSaved={card.isRowSaved}
-      savedRowLabel={card.savedRowLabel}
-      toolbar={toolbar}
-    />
-  );
-};
 
 /**
  * One search table of the past-projects builder: search the rows, check projects, and save them into the

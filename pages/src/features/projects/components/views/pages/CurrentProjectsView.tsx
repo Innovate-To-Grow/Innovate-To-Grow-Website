@@ -1,6 +1,6 @@
 import {useId, useMemo, type ReactNode} from 'react';
 import {Link} from 'react-router';
-import {useProjectGridFilters, type ProjectGridFilterOption} from '../../../hooks/useProjectGridFilters';
+import {useProjectGridFilters} from '../../../hooks/useProjectGridFilters';
 import {useListScrollPosition} from '../../../hooks/useListScrollPosition';
 import {
   PROJECT_LIST_URL_DEFAULTS,
@@ -8,98 +8,17 @@ import {
   useProjectListStateKey,
   useProjectListUrlSync,
 } from '../../../hooks/useProjectListUrlState';
-import {ProjectGridTable, type ProjectGridSortOption} from '../../grid/table/ProjectGridTable';
+import {ProjectGridTable} from '../../grid/table/ProjectGridTable';
 import {
   PROJECT_GRID_COLUMNS,
   createProjectGridItems,
-  formatTermForProse,
-  getPredominantTerm,
   type ProjectGridItem,
   type ProjectGridRow,
 } from '../../grid/contracts/projectGrid';
-import {pluralize} from '../../shared/utils/saveResults';
 import {useProjectGridTable} from '../../grid/state/useProjectGridTable';
 import {ActiveFilterChips} from './ActiveFilterChips';
-
-const CURRENT_SORT_OPTIONS: ProjectGridSortOption[] = [
-  {field: 'class_code', label: 'Team number'},
-  {field: 'project_title', label: 'Project title'},
-  {field: 'organization', label: 'Organization'},
-];
-
-interface FilterSelectProps {
-  /** The select's id: the filter chips focus it when its chip goes (ActiveFilterChips). */
-  id: string;
-  label: string;
-  allLabel: string;
-  value: string;
-  options: ProjectGridFilterOption[];
-  onChange: (value: string) => void;
-}
-
-const FilterSelect = ({id, label, allLabel, value, options, onChange}: FilterSelectProps) => (
-  <div className="itg-field project-grid-filter">
-    <label className="project-grid-field-label" htmlFor={id}>
-      {label}
-    </label>
-    <select
-      id={id}
-      className="itg-select project-grid-select"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      <option value="">{allLabel}</option>
-      {options.map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
-
-interface CurrentProjectsFiltersProps {
-  filters: ReturnType<typeof useProjectGridFilters>;
-  changeFilter: (setter: (value: string) => void) => (value: string) => void;
-  selectIds: {class: string; industry: string};
-}
-
-/** The Class and Industry selects. */
-const CurrentProjectsFilters = ({filters, changeFilter, selectIds}: CurrentProjectsFiltersProps) => (
-  <>
-    <FilterSelect
-      id={selectIds.class}
-      label="Class"
-      allLabel="All classes"
-      value={filters.classCode}
-      options={filters.classOptions}
-      onChange={changeFilter(filters.setClassCode)}
-    />
-    <FilterSelect
-      id={selectIds.industry}
-      label="Industry"
-      allLabel="All industries"
-      value={filters.industry}
-      options={filters.industryOptions}
-      onChange={changeFilter(filters.setIndustry)}
-    />
-  </>
-);
-
-/** The line under the title: the term, the count, and how many teams present. */
-const metaLine = (rows: ProjectGridRow[], countLabel: 'projects' | 'teams') => {
-  const term = formatTermForProse(getPredominantTerm(rows));
-  const presentingCount = rows.filter((row) => row.is_presenting === 'Yes').length;
-  const meta =
-    countLabel === 'teams'
-      ? [term, `${pluralize(rows.length, 'team')} presenting`]
-      : [
-          term,
-          pluralize(rows.length, 'project'),
-          presentingCount ? `${pluralize(presentingCount, 'team')} presenting at the showcase` : '',
-        ];
-  return meta.filter(Boolean).join(' · ');
-};
+import {CURRENT_SORT_OPTIONS, metaLine} from './currentProjectsListing';
+import {CurrentProjectsFilters} from './CurrentProjectsFilters';
 
 interface CurrentProjectsViewProps {
   title: string;
