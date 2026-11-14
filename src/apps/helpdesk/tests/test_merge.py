@@ -19,7 +19,7 @@ from django.utils import timezone
 from apps.core.services.db_tools.safe_orm import ActionRequestError, resolve_model
 from apps.core.services.email.inbound import AUTOMATED, LABELS
 
-from ..admin import timeline
+from ..admin.tickets import timeline
 from ..models import Ticket, TicketEvent, TicketMessage
 from ..services import numbering, tickets
 from . import corpus

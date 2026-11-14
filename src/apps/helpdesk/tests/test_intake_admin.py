@@ -24,7 +24,7 @@ from apps.core.services.email.bounces import state as bounce_state
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.email_monitoring.helpers import monitoring_settings
 
-from ..admin.intake import when
+from ..admin.intake.controls import when
 from ..models import HelpdeskSettings, IntakeState
 from ..services.ingest import jobs as ingest_jobs
 from ..services.intake import jobs as intake_jobs
