@@ -22,10 +22,10 @@ from apps.authn.models import (
     SendVerificationChallenge,
     SendVerificationRequest,
 )
-from apps.authn.services.send_verification.config import load_settings
-from apps.authn.services.send_verification.constants import OP_LOGIN_REQUEST_CODE, OP_PHONE_AUTH_REQUEST_CODE
-from apps.authn.services.send_verification.hashing import hash_value
-from apps.authn.services.send_verification.http import guarded_send
+from apps.authn.services.send_verification.guard.http import guarded_send
+from apps.authn.services.send_verification.rules.config import load_settings
+from apps.authn.services.send_verification.rules.constants import OP_LOGIN_REQUEST_CODE, OP_PHONE_AUTH_REQUEST_CODE
+from apps.authn.services.send_verification.rules.hashing import hash_value
 from apps.authn.services.sms import start_phone_verification
 
 SMS_BUDGET_SPENT_ANSWER = {
@@ -115,7 +115,7 @@ class SendVerificationPostgresLockTests(TransactionTestCase):
         cache.clear()
 
     def parallel(self, calls):
-        from apps.authn.services.send_verification.guard import _load_existing_request
+        from apps.authn.services.send_verification.guard.consume import _load_existing_request
 
         barrier = Barrier(len(calls))
         missed_lookup = Barrier(len(calls))
@@ -144,7 +144,8 @@ class SendVerificationPostgresLockTests(TransactionTestCase):
 
         with (
             patch(
-                "apps.authn.services.send_verification.guard._load_existing_request", side_effect=synchronized_lookup
+                "apps.authn.services.send_verification.guard.consume._load_existing_request",
+                side_effect=synchronized_lookup,
             ),
             ThreadPoolExecutor(max_workers=len(calls)) as pool,
         ):
@@ -211,7 +212,7 @@ class SendVerificationPostgresLockTests(TransactionTestCase):
         with (
             patch("apps.authn.services.sms.sns_verify._assert_configured", return_value=aws_config),
             patch("apps.authn.services.sms.sns_verify._publish_sms", return_value="message-id") as publish,
-            patch("apps.authn.services.send_verification.quotas._sms_budget_spent", return_value=False),
+            patch("apps.authn.services.send_verification.guard.quotas._sms_budget_spent", return_value=False),
         ):
             responses = self.parallel(
                 [lambda i=i: send_sms(requests[i], destinations[i]) for i in range(len(destinations))]

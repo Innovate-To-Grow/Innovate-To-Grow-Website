@@ -22,10 +22,10 @@ from django.utils import timezone
 
 from apps.authn.models import SendDestinationState, SendQuotaWindow, SendVerificationRequest
 
-from .config import SendVerificationSettings, load_settings
-from .constants import EMAIL_CHANNEL, MODE_ENFORCE, SMS_CHANNEL
-from .exceptions import SendThrottled, SendVerificationUnavailable
-from .metrics import emit
+from ..rules.config import SendVerificationSettings, load_settings
+from ..rules.constants import EMAIL_CHANNEL, MODE_ENFORCE, SMS_CHANNEL
+from ..rules.exceptions import SendThrottled, SendVerificationUnavailable
+from ..rules.metrics import emit
 
 SMS_DAILY_SCOPE = "sms:global"
 SMS_BUDGET_SPENT_DETAIL = "The SMS sending budget for today has been reached."

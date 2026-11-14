@@ -72,8 +72,8 @@ class PasswordResetRequestSerializer(serializers.Serializer):
 
     def save(self):
         from apps.authn.models import SendVerificationRequest
-        from apps.authn.services.send_verification.exceptions import SendVerificationError
-        from apps.authn.services.send_verification.outcomes import SendOutcome, public_reset_payload
+        from apps.authn.services.send_verification.guard.outcomes import SendOutcome, public_reset_payload
+        from apps.authn.services.send_verification.rules.exceptions import SendVerificationError
 
         challenge_id = str(uuid.uuid4())
         resolved = self.validated_data["resolved"]
@@ -115,8 +115,8 @@ def _send_reset_code(resolved) -> str | None:
 def _reset_failure_outcome(exc: Exception):
     """Throttles, invalid numbers and a spent SMS budget sent nothing; other errors are classified."""
     from apps.authn.models import SendVerificationRequest
-    from apps.authn.services.send_verification.exceptions import SendVerificationError
-    from apps.authn.services.send_verification.outcomes import failure_status
+    from apps.authn.services.send_verification.guard.outcomes import failure_status
+    from apps.authn.services.send_verification.rules.exceptions import SendVerificationError
 
     definitely_failed = (
         AuthChallengeThrottled,
@@ -147,7 +147,7 @@ class PasswordResetVerifySerializer(serializers.Serializer):
         # old clients may continue supplying the actual phone challenge UUID.
         if attrs.get("challenge_id"):
             from apps.authn.models import SendVerificationRequest
-            from apps.authn.services.send_verification.constants import OP_PASSWORD_RESET_REQUEST_CODE
+            from apps.authn.services.send_verification.rules.constants import OP_PASSWORD_RESET_REQUEST_CODE
 
             record = SendVerificationRequest.objects.filter(request_id=attrs["challenge_id"]).first()
             if record is not None:

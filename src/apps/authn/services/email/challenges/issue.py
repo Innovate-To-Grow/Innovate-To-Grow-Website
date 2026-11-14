@@ -99,7 +99,7 @@ def issue_email_challenge(
 ) -> EmailAuthChallenge:
     import apps.authn.services.email.challenges as api
     from apps.authn.services.email.send_email import send_verification_email
-    from apps.authn.services.send_verification.outcomes import record_otp_challenge
+    from apps.authn.services.send_verification.guard.outcomes import record_otp_challenge
     from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_UNCERTAIN
 
     challenge, plain_code = create_challenge_record(

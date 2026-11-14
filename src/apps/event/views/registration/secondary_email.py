@@ -20,7 +20,7 @@ from apps.authn.services.send_verification import (
     fingerprint_payload,
     guarded_send,
 )
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_EMAIL
 from apps.event.models import Event
 from apps.event.throttles import EmailCodeUserRequestThrottle, SecondaryEmailCodeVerifyThrottle
 

@@ -11,9 +11,9 @@ from apps.authn.services.send_verification import (
     OP_ADMIN_LOGIN_RESEND,
     fingerprint_payload,
 )
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
-from apps.authn.services.send_verification.http import guarded_send
-from apps.authn.services.send_verification.outcomes import active_send_request_id
+from apps.authn.services.send_verification.guard.http import guarded_send
+from apps.authn.services.send_verification.guard.outcomes import active_send_request_id
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_EMAIL
 from apps.authn.views.admin.login_helpers import (
     clear_admin_login_session,
     get_admin_login_state,

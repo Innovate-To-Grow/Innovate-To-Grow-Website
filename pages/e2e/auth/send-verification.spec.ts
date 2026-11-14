@@ -97,7 +97,7 @@ test('Python-issued ALTCHA challenge is solved by the browser widget and verifie
   const verify = [
     'import django, sys',
     'django.setup()',
-    'from apps.authn.services.send_verification.config import load_settings',
+    'from apps.authn.services.send_verification.rules.config import load_settings',
     'from apps.authn.services.send_verification.proofs import verify_payload',
     'verify_payload(sys.argv[1], load_settings())',
   ].join('\n');

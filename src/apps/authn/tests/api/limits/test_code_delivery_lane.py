@@ -12,7 +12,7 @@ from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.authn.models import ContactEmail, Member
-from apps.authn.services.send_verification.constants import (
+from apps.authn.services.send_verification.rules.constants import (
     FIELD_PAYLOAD,
     OP_EMAIL_AUTH_REQUEST_CODE,
     OP_PHONE_AUTH_REQUEST_CODE,

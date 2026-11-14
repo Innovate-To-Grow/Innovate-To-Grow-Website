@@ -4,9 +4,9 @@ import base64
 import json
 import logging
 
-from .config import SendVerificationSettings
-from .constants import ALLOWED_ALGORITHMS
-from .exceptions import SendVerificationContextMismatch, SendVerificationExpired, SendVerificationInvalid
+from ..rules.config import SendVerificationSettings
+from ..rules.constants import ALLOWED_ALGORITHMS
+from ..rules.exceptions import SendVerificationContextMismatch, SendVerificationExpired, SendVerificationInvalid
 
 logger = logging.getLogger("apps.authn.send_verification")
 

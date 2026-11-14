@@ -9,8 +9,8 @@ from django.test import TestCase, override_settings
 
 from apps.authn.models import SendDestinationState, SendVerificationChallenge, SendVerificationRequest
 from apps.authn.services.email.challenges import AuthChallengeDeliveryError
-from apps.authn.services.send_verification.constants import OP_REGISTER_RESEND_CODE
-from apps.authn.services.send_verification.outcomes import record_otp_challenge
+from apps.authn.services.send_verification.guard.outcomes import record_otp_challenge
+from apps.authn.services.send_verification.rules.constants import OP_REGISTER_RESEND_CODE
 from apps.authn.tests.services.send_verification.test_send_verification_concurrency import send, verified_request
 
 
@@ -35,7 +35,7 @@ class SendVerificationOutcomeTests(TestCase):
 
     def test_pending_request_cannot_be_dispatched_by_another_operation(self):
         from apps.authn.services.send_verification.guard import consume_and_reserve
-        from apps.authn.services.send_verification.hashing import hash_value
+        from apps.authn.services.send_verification.rules.hashing import hash_value
 
         request = verified_request()
         consume_and_reserve(
@@ -60,7 +60,9 @@ class SendVerificationOutcomeTests(TestCase):
             SendDestinationState.objects.create(**values)
             SendDestinationState.objects.create(**values)
 
-        with patch("apps.authn.services.send_verification.guard.reserve_send_quotas", side_effect=fail_quota):
+        with patch(
+            "apps.authn.services.send_verification.guard.reservation.reserve_send_quotas", side_effect=fail_quota
+        ):
             response = send(request, provider)
         self.assertEqual(response.status_code, 409)
         self.assertEqual(SendVerificationRequest.objects.count(), 0)
@@ -93,7 +95,8 @@ class SendVerificationOutcomeTests(TestCase):
         request = verified_request()
         provider = Mock(return_value={"message": "sent"})
         with patch(
-            "apps.authn.services.send_verification.http.finalize_send_request", side_effect=RuntimeError("db down")
+            "apps.authn.services.send_verification.guard.http.finalize_send_request",
+            side_effect=RuntimeError("db down"),
         ):
             first = send(request, provider)
         self.assertEqual(first.status_code, 409)
