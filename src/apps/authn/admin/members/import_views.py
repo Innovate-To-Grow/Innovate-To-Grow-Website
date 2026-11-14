@@ -25,14 +25,9 @@ from ...services.members.import_.review import (
     save_choices,
 )
 from ...services.members.import_.review.analysis import Context
-from ...services.members.import_.review.batches import (
-    StaleVersion,
-    import_setting,
-    is_expired,
-    mark_expired,
-    repeat_uploads,
-)
-from ...services.members.import_.review.selection import ForgedSelection
+from ...services.members.import_.review.staging.batches import import_setting, is_expired, mark_expired, repeat_uploads
+from ...services.members.import_.review.staging.saving import StaleVersion
+from ...services.members.import_.review.staging.selection import ForgedSelection
 from .import_context import confirm_lines, review_sections, risky_lines
 from .import_forms import ImportConfirmForm, MemberImportForm, parse_review_post
 

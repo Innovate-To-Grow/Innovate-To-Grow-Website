@@ -4,10 +4,10 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail, ContactPhone
-from apps.authn.services.members.import_.review.actions import UPDATE, Action
-from apps.authn.services.members.import_.review.execute import execute_update
+from apps.authn.services.members.import_.review.apply.execute import execute_update
 from apps.authn.services.members.import_.review.lookup import load_snapshot
 from apps.authn.services.members.import_.review.plan import STAFF_IGNORED, plan_row
+from apps.authn.services.members.import_.review.plan.actions import UPDATE, Action
 
 Member = get_user_model()
 

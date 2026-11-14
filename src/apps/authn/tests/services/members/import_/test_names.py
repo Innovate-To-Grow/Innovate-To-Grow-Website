@@ -1,6 +1,6 @@
 """The name rule: when a sheet's name and a member's name can be the same person, and when it is a decision (C6)."""
 
-from apps.authn.services.members.import_.review.names import names_agree, normalize_name
+from apps.authn.services.members.import_.review.lookup.names import names_agree, normalize_name
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row
 
 

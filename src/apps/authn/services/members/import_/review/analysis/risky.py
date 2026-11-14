@@ -12,7 +12,7 @@ email). The planner re-checks the ticks together against the last-sign-in-contac
 
 from __future__ import annotations
 
-from .lookup import MemberRecord, Snapshot, address_key, us_phone
+from ..lookup.records import MemberRecord, Snapshot, address_key, us_phone
 
 RISKY_TYPES = {
     "R1": "Remove secondary emails: the Secondary Email cell is blank",

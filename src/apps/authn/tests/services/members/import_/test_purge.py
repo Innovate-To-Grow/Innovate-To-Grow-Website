@@ -13,8 +13,9 @@ from django.test import override_settings
 from django.utils import timezone
 
 from apps.authn.models import Member, MemberImportBatch, MemberImportRow
-from apps.authn.services.members.import_.review import discard_batch, purge, purge_member_imports
-from apps.authn.services.members.import_.review.batches import is_expired, mark_expired, repeat_uploads
+from apps.authn.services.members.import_.review import discard_batch, purge_member_imports
+from apps.authn.services.members.import_.review.staging import purge
+from apps.authn.services.members.import_.review.staging.batches import is_expired, mark_expired, repeat_uploads
 from apps.authn.tests.services.members.import_.helpers import ImportTestCase, row
 
 Status = MemberImportBatch.Status

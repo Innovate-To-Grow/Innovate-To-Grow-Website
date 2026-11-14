@@ -25,8 +25,8 @@ from apps.authn.services.members.import_.review import (
     save_choices,
     stored_analysis,
 )
-from apps.authn.services.members.import_.review.execute import RowWriteError, log_batch, log_member_changes
-from apps.authn.services.members.import_.review.selection import selection_problems
+from apps.authn.services.members.import_.review.apply.execute import RowWriteError, log_batch, log_member_changes
+from apps.authn.services.members.import_.review.staging.selection import selection_problems
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, read, row
 
 
@@ -219,7 +219,7 @@ class ApplyTests(ApplyTestCase):
         self.assertIsNone(self.ada.organization)
 
     @patch(
-        "apps.authn.services.members.import_.review.execute.contacts.add_phone",
+        "apps.authn.services.members.import_.review.apply.execute.contacts.add_phone",
         side_effect=ContactWriteError("the number was taken after the review"),
     )
     def test_a_row_that_fails_to_write_rolls_everything_back(self, _add_phone):
@@ -261,7 +261,7 @@ class ApplyTests(ApplyTestCase):
         )
 
         with (
-            patch("apps.authn.services.members.import_.review.execute.contacts.add_email", racing_add_email),
+            patch("apps.authn.services.members.import_.review.apply.execute.contacts.add_email", racing_add_email),
             self.assertLogs("apps.authn.services.members.import_.review.apply", level="ERROR"),
         ):
             result = self.confirm(batch)

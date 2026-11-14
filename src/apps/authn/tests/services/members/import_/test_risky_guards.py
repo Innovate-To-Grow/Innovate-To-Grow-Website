@@ -9,8 +9,8 @@ from django.core import mail
 from django.db import transaction
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
-from apps.authn.services.members.import_.review.execute import RowWriteError
-from apps.authn.services.members.import_.review.selection import selection_problems
+from apps.authn.services.members.import_.review.apply.execute import RowWriteError
+from apps.authn.services.members.import_.review.staging.selection import selection_problems
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row
 
 UUID_HEADERS = [*HEADERS, "Member UUID"]

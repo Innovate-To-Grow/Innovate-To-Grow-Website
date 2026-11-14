@@ -14,8 +14,8 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
 
-from .. import contacts
-from .actions import RowPlan
+from ... import contacts
+from ..plan.actions import RowPlan
 
 BATCH_SIZE = 500
 

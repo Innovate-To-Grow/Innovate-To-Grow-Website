@@ -8,7 +8,7 @@ import uuid
 
 from apps.authn.models import ContactEmail
 from apps.authn.services.members.import_.review.analysis import SKIP_EXISTING
-from apps.authn.services.members.import_.review.choices import NEEDS_NAMES, NO_CHANGE_PERMISSION, PRIVILEGED
+from apps.authn.services.members.import_.review.analysis.choices import NEEDS_NAMES, NO_CHANGE_PERMISSION, PRIVILEGED
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row
 
 UUID_HEADERS = [*HEADERS, "Member UUID"]

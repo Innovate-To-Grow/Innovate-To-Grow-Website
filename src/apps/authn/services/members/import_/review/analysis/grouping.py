@@ -15,8 +15,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from ..contacts import valid_new_address
-from .lookup import Snapshot, address_key, us_phone
+from ...contacts import valid_new_address
+from ..lookup.records import Snapshot, address_key, us_phone
 
 _GROUPABLE_STATUSES = frozenset({"ready_create", "ready_update"})
 _GROUPABLE_CONFLICTS = frozenset({"name_differs", "address_not_primary", "unlinked_address", "exists_but_skip_mode"})

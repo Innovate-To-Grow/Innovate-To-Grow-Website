@@ -8,11 +8,11 @@ from django.urls import NoReverseMatch, reverse
 
 from ...services.members.import_.reader import COLUMN_LABELS
 from ...services.members.import_.review import stored_analysis
-from ...services.members.import_.review.choices import BULK_CHOICES, BULK_LABELS
-from ...services.members.import_.review.describe import PRECEDENCE, conflict_code, conflict_title
+from ...services.members.import_.review.analysis.choices import BULK_CHOICES, BULK_LABELS
+from ...services.members.import_.review.analysis.describe import PRECEDENCE, conflict_code, conflict_title
+from ...services.members.import_.review.analysis.risky import RISKY_TYPES
 from ...services.members.import_.review.lookup import snapshot_from_slice
-from ...services.members.import_.review.risky import RISKY_TYPES
-from ...services.members.import_.review.selection import plan_for, selection_problems, summarize, tick_items
+from ...services.members.import_.review.staging.selection import plan_for, selection_problems, summarize, tick_items
 
 CELL_ORDER = (
     "member_uuid",

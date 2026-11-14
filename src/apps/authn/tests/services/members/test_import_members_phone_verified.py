@@ -23,10 +23,10 @@ from apps.authn.services.members.import_.parsing import (
     normalize_header,
     parse_row,
 )
-from apps.authn.services.members.import_.review.actions import UPDATE, Action
-from apps.authn.services.members.import_.review.execute import execute_update
+from apps.authn.services.members.import_.review.apply.execute import execute_update
 from apps.authn.services.members.import_.review.lookup import load_snapshot
 from apps.authn.services.members.import_.review.plan import plan_row
+from apps.authn.services.members.import_.review.plan.actions import UPDATE, Action
 from apps.authn.services.members.import_.types import ImportResult
 
 from .import_sheets import PHONE_VERIFIED_HEADERS, build_sheet, full_row

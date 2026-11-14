@@ -3,10 +3,10 @@
 import uuid
 
 from apps.authn.models import ContactEmail
-from apps.authn.services.members.import_.review.actions import Action, resolve_action
-from apps.authn.services.members.import_.review.describe import conflict_code, conflict_title, describe_action, why
+from apps.authn.services.members.import_.review.analysis import conflict_code, conflict_title, describe_action, why
 from apps.authn.services.members.import_.review.lookup import Snapshot
-from apps.authn.services.members.import_.review.selection import (
+from apps.authn.services.members.import_.review.plan.actions import Action, resolve_action
+from apps.authn.services.members.import_.review.staging.selection import (
     ForgedSelection,
     clean_selection,
     selection_problems,

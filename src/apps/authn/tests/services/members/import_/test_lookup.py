@@ -81,7 +81,7 @@ class SnapshotTests(ImportTestCase):
         self.assertEqual(snapshot.uuids, {str(self.ada.pk): str(self.ada.pk), unknown: None})
         self.assertIn(str(self.ada.pk), snapshot.members)
 
-    @patch("apps.authn.services.members.import_.review.lookup.CHUNK", 1)
+    @patch("apps.authn.services.members.import_.review.lookup.load.CHUNK", 1)
     def test_lookups_run_in_chunks_without_losing_records(self):
         grace = self.member("Grace", "Hopper", "grace@example.com")
         self.phone(self.ada, "2095550101")
