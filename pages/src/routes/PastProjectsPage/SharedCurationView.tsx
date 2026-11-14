@@ -8,7 +8,7 @@ import {ProjectCatalogContext, type ProjectCatalog} from '@/features/projects/ca
 import {curationBranding} from '@/features/projects/components/merged/list/curationBranding';
 import {useRetryInPlace} from '@/features/projects/components/shared/utils/useRetryInPlace';
 import {SharedListLoadFailed, SharedListUnavailable} from './SharedListMessages';
-import {shareDisplayTitle} from './useSharedListMutations';
+import {shareDisplayTitle} from './sharedListMutationParts';
 
 interface SharedCurationViewProps {
   status: {loading: boolean; error: string | null; notFound: boolean; retry: () => void};
