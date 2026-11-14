@@ -1,69 +1,14 @@
+"""The rows a confirmation page shows for an admin add, change or delete, inline rows included."""
+
 import logging
-import re
-import uuid
-from datetime import date, datetime
 
-from django import forms
 from django.db import models
-from django.http import QueryDict
-from django.utils.timezone import is_aware
 
-logger = logging.getLogger(__name__)
+from .post_data import REDACTED, is_sensitive_field
+from .values import format_field_value, summarize_large_value
 
-REDACTED = "********"
-
-# Mirrors apps.core.services.db_tools.safe_orm.constants.SENSITIVE_FIELD_RE, which is already the
-# project's policy for the CLI / AI data path. The confirmation diff is rendered to HTML *and*
-# JSON-serialized into the DB-backed session, so a raw value here is exposed twice over.
-SENSITIVE_FIELD_RE = re.compile(
-    r"(password|passwd|secret|token|api_?key|private_?key|credential|salt|hash|signature)",
-    re.IGNORECASE,
-)
-
-# Names that match the regex but are not secrets worth protecting. ``csrfmiddlewaretoken`` is in
-# every admin POST and already lives in the session and cookies; treating it as sensitive pushed
-# EVERY confirmation's payload into the short-TTL secrets cache, so a plain text edit expired with
-# EXPIRED_PENDING_ERROR once CACHE_FILE_TTL elapsed.
-SENSITIVE_FIELD_EXEMPTIONS = frozenset({"csrfmiddlewaretoken"})
-
-
-def is_sensitive_field(name, form=None) -> bool:
-    """Whether a field's value must be masked in a confirmation diff or stored payload."""
-    if name in SENSITIVE_FIELD_EXEMPTIONS:
-        return False
-    if name and SENSITIVE_FIELD_RE.search(str(name)):
-        return True
-    if form is not None:
-        field = form.fields.get(name)
-        # Covers unfold.widgets.UnfoldAdminPasswordWidget, which subclasses PasswordInput.
-        if field is not None and isinstance(field.widget, forms.PasswordInput):
-            return True
-    return False
-
-
-def serialize_post_data(post):
-    """Serialize a QueryDict to a JSON-safe dict preserving multi-value keys.
-
-    Sensitive keys are dropped rather than stored: this payload is replayed from the DB-backed
-    session, so keeping a plaintext password here left it at rest for the session's lifetime
-    (``SESSION_COOKIE_AGE`` is 8 hours in production). Dropping them means a confirmed *add* cannot
-    replay a password — see ``ConfirmOnSaveMixin.changeform_view``, which restores them from the
-    confirm POST instead.
-    """
-    return {key: post.getlist(key) for key in post if not is_sensitive_field(key)}
-
-
-def extract_sensitive_post_data(post):
-    """Return only the sensitive keys, for storage outside the session."""
-    return {key: post.getlist(key) for key in post if is_sensitive_field(key)}
-
-
-def deserialize_post_data(data):
-    """Reconstruct a mutable QueryDict from serialized data."""
-    qd = QueryDict(mutable=True)
-    for key, values in data.items():
-        qd.setlist(key, values)
-    return qd
+# The historical logger name: these functions used to live in ``mixins.confirm_on_save_utils``.
+logger = logging.getLogger("apps.core.admin.mixins.confirm_on_save_utils")
 
 
 def compute_add_diff(form):
@@ -211,55 +156,3 @@ def compute_delete_diff(obj):
         except Exception as exc:
             logger.debug("Skipping field %s in delete diff: %s", field.name, exc)
     return diff
-
-
-def summarize_large_value(value):
-    """Format a value, replacing a long blob with a size summary instead of a truncated prefix.
-
-    A 200-char slice of a base64 ``data:`` URI is noise that crowds out the fields an admin actually
-    needs to read on a delete-confirmation page.
-    """
-    if isinstance(value, str) and len(value) > 200:
-        if value.startswith("data:"):
-            kind = value[5 : value.find(";")] or "binary"
-            return f"<{kind} data, {len(value) // 1024} KB>"
-        return f"<{len(value)} characters>"
-    return format_field_value(value)
-
-
-def _format_structured(value) -> str:
-    import json
-
-    try:
-        return json.dumps(value, ensure_ascii=False, default=str)[:200]
-    except (TypeError, ValueError):
-        return str(value)[:200]
-
-
-def _format_datetime(value: datetime) -> str:
-    fmt = "%Y-%m-%d %H:%M:%S"
-    if is_aware(value):
-        fmt += " %Z"
-    return value.strftime(fmt)
-
-
-def format_field_value(value):
-    """Format a field value for human-readable display."""
-    if value is None:
-        return "-"
-    if isinstance(value, bool):
-        return "Yes" if value else "No"
-    if isinstance(value, datetime):
-        return _format_datetime(value)
-    if isinstance(value, date):
-        return value.strftime("%Y-%m-%d")
-    if isinstance(value, uuid.UUID | models.Model):
-        return str(value)
-    if isinstance(value, list | dict):
-        return _format_structured(value)
-    if isinstance(value, models.QuerySet):
-        return ", ".join(str(v) for v in value[:10])
-    value_str = str(value)
-    if len(value_str) > 200:
-        return value_str[:200] + "..."
-    return value_str

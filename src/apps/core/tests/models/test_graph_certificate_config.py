@@ -7,7 +7,7 @@ from django.db import IntegrityError, connection, transaction
 from django.test import TestCase
 from django.utils import timezone
 
-from apps.core.admin.mixins.confirm_on_save_utils import SENSITIVE_FIELD_RE as CONFIRM_SENSITIVE_FIELD_RE
+from apps.core.admin.confirmation.post_data import SENSITIVE_FIELD_RE as CONFIRM_SENSITIVE_FIELD_RE
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.services.db_tools.safe_orm import SENSITIVE_FIELD_RE as SAFE_ORM_SENSITIVE_FIELD_RE
 from apps.core.tests.graph_helpers import create_graph_config, install_test_certificate
