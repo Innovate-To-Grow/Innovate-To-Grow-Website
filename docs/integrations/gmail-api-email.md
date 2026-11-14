@@ -35,7 +35,7 @@ the access check), `src/apps/core/models/base/service_credentials/gmail_api.py` 
 - **Rates.** Channel `gmail_api_send` on **Mail → Delivery Rates**, Smart rate on: 60 messages/min ceiling, 2,000
   messages, 3,000 recipients and 2,000 external recipients per rolling 24 hours, with a 0.9 budget headroom and a 25 %
   reserve for sign-in codes and tickets. The limits include mail people send from the account in Gmail, which the
-  site cannot see. Values and sources: `config/settings/base/integrations/delivery_rates/channels.py`; how Smart rate
+  site cannot see. Values and sources: `config/settings/base/integrations/delivery_rates/defaults/` (`sending_channels.py`, sources in `channels.py`); how Smart rate
   and the budgets work: [Delivery rates](delivery-rates.md).
 
 Items marked **[CONFIRM LIVE]** are taken from Google's documentation and were not observed: nothing in this change

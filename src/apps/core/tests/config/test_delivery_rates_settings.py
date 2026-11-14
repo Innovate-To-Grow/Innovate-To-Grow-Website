@@ -62,7 +62,7 @@ class DeliveryRatesDefaultsTests(SimpleTestCase):
         profiles = channels["smtp_send"]["host_profiles"]
         self.assertEqual(profiles["smtp.gmail.com"], {"daily_message_limit": 2_000})
         self.assertEqual(profiles["smtp-relay.gmail.com"], {"daily_message_limit": 10_000, "daily_limit": 10_000})
-        text = Path(rates_settings.channels.__file__).read_text(encoding="utf-8")
+        text = Path(rates_settings.defaults.channels.__file__).read_text(encoding="utf-8")
         for url in (
             "learn.microsoft.com",
             "docs.aws.amazon.com",
