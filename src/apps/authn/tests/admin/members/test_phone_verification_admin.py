@@ -20,7 +20,7 @@ from apps.authn.admin.members.contact.phone_verification import same_member, sms
 from apps.authn.models import ContactEmail, ContactPhone, Member, PhoneVerificationChallenge
 from apps.authn.services.sms import PhoneVerificationDeliveryError
 from apps.authn.tests.sms_provider import SMS_CODE, WRONG_CODE, patch_sms_provider
-from apps.core.admin.mixins.confirm_on_save import SESSION_KEY_PREFIX
+from apps.core.admin.confirmation.pending import SESSION_KEY_PREFIX
 
 NUMBER = "2095550111"
 

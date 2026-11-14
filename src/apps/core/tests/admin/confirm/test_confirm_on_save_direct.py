@@ -21,7 +21,7 @@ from django.http import HttpResponseRedirect, QueryDict
 from django.test import RequestFactory, TestCase, override_settings
 
 from apps.cms.models import CMSAsset, CMSEmbedAllowedHost
-from apps.core.admin.mixins.confirm_on_save import CACHE_FILE_PREFIX
+from apps.core.admin.confirmation.pending import CACHE_FILE_PREFIX
 from apps.projects.models import Semester
 
 User = get_user_model()
@@ -268,11 +268,11 @@ class FileUploadCachingTest(TestCase):
         with (
             patch.object(admin_obj, "get_form", return_value=lambda *a, **k: fake_form),
             patch(
-                "apps.core.admin.mixins.confirm_on_save.compute_add_diff",
+                "apps.core.admin.confirmation.on_save.compute_add_diff",
                 return_value=[{"field": "title", "label": "Title", "new_value": "My Asset"}],
             ),
             patch(
-                "apps.core.admin.mixins.confirm_on_save.serialize_post_data",
+                "apps.core.admin.confirmation.pending.serialize_post_data",
                 return_value={"title": ["My Asset"]},
             ),
         ):

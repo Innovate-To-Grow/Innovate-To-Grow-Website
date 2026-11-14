@@ -1,4 +1,4 @@
-"""Tests for confirm_on_save_utils helper functions."""
+"""Tests for the confirmation diff, POST-data and value helpers (``core.admin.confirmation``)."""
 
 import uuid
 from datetime import date, datetime
@@ -8,17 +8,15 @@ from django.http import QueryDict
 from django.test import TestCase
 from django.utils import timezone
 
-import apps.core.admin.mixins.confirm_on_save_utils as logger_module
-from apps.core.admin.mixins.confirm_on_save_utils import (
-    compute_add_diff,
-    compute_change_diff,
-    compute_delete_diff,
+import apps.core.admin.confirmation.diff as logger_module
+from apps.core.admin.confirmation.diff import compute_add_diff, compute_change_diff, compute_delete_diff
+from apps.core.admin.confirmation.post_data import (
     deserialize_post_data,
     extract_sensitive_post_data,
-    format_field_value,
     is_sensitive_field,
     serialize_post_data,
 )
+from apps.core.admin.confirmation.values import format_field_value
 
 
 class SensitiveFieldTest(TestCase):

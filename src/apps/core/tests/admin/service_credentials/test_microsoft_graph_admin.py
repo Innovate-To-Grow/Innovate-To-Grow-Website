@@ -14,12 +14,8 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.admin.common.base import BaseModelAdmin
-from apps.core.admin.mixins.confirm_on_save_utils import (
-    compute_change_diff,
-    compute_delete_diff,
-    extract_sensitive_post_data,
-    is_sensitive_field,
-)
+from apps.core.admin.confirmation.diff import compute_change_diff, compute_delete_diff
+from apps.core.admin.confirmation.post_data import extract_sensitive_post_data, is_sensitive_field
 from apps.core.admin.service_credentials.microsoft_graph import (
     APPLICATION_FIELDS,
     GRAPH_FORM_FIELDS,
