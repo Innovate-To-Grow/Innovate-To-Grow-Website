@@ -6,7 +6,7 @@ from django.test import TestCase
 
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.models.config import PUBLIC_ASSISTANT_SYSTEM_PROMPT
-from apps.system_intelligence.services.public_assistant.invoke import answer_public_question
+from apps.system_intelligence.services.public_assistant.chat.invoke import answer_public_question
 
 AGENT_RESPONSE = MagicMock(
     text="Here is some public info.",
@@ -28,10 +28,10 @@ class ToolFreeInvocationTests(TestCase):
     def _run_with_mock_agent(self, **kwargs):
         with (
             patch(
-                "apps.system_intelligence.services.public_assistant.invoke.run_tool_free_agent",
+                "apps.system_intelligence.services.public_assistant.chat.invoke.run_tool_free_agent",
                 return_value=AGENT_RESPONSE,
             ) as mock_agent,
-            patch("apps.system_intelligence.services.public_assistant.invoke.AWSCredentialConfig") as mock_aws,
+            patch("apps.system_intelligence.services.public_assistant.chat.invoke.AWSCredentialConfig") as mock_aws,
         ):
             mock_aws.load.return_value = MagicMock()
             result = answer_public_question(
@@ -78,10 +78,10 @@ class ToolFreeInvocationTests(TestCase):
         # request still carries only the public, refusal-oriented system prompt.
         with (
             patch(
-                "apps.system_intelligence.services.public_assistant.invoke.run_tool_free_agent",
+                "apps.system_intelligence.services.public_assistant.chat.invoke.run_tool_free_agent",
                 return_value=AGENT_RESPONSE,
             ) as mock_agent,
-            patch("apps.system_intelligence.services.public_assistant.invoke.AWSCredentialConfig") as mock_aws,
+            patch("apps.system_intelligence.services.public_assistant.chat.invoke.AWSCredentialConfig") as mock_aws,
         ):
             mock_aws.load.return_value = MagicMock()
             answer_public_question(

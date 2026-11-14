@@ -8,7 +8,7 @@ The chat path is graceful: when the assistant is disabled or the backing
 AWS/model is not configured it returns HTTP 200 with ``available: false`` so
 the frontend widget can render an unavailable state instead of erroring.
 
-Limits are keyed on the ACTOR (see ``services/public_assistant/actors.py``),
+Limits are keyed on the ACTOR (see ``services/public_assistant/chat/actors.py``),
 never on the client IP: ``GET /assistant/config/`` hands the browser a signed
 ``visitor_token`` and the widget returns it in the chat request body. A chat
 request without a usable one is still answered, in the shared ``legacy``

@@ -9,7 +9,8 @@ from django.contrib.auth.models import AnonymousUser
 from django.core import signing
 from django.test import SimpleTestCase, override_settings
 
-from apps.system_intelligence.services.public_assistant import actors, budget
+from apps.system_intelligence.services.public_assistant import budget
+from apps.system_intelligence.services.public_assistant.chat import actors
 
 DAY = 24 * 60 * 60
 

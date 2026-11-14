@@ -14,7 +14,8 @@ from apps.system_intelligence.models import (
     PublicAssistantTokenBudget,
     SystemIntelligenceConfig,
 )
-from apps.system_intelligence.services.public_assistant import actors, budget
+from apps.system_intelligence.services.public_assistant import budget
+from apps.system_intelligence.services.public_assistant.chat import actors
 
 MOCK_RESULT = {
     "text": "Innovate to Grow connects student teams with industry partners.",
