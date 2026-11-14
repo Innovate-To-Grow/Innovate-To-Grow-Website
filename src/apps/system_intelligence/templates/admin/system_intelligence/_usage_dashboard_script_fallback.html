@@ -1,0 +1,87 @@
+  function renderFallbackBars(canvasId, rows, datasets, options) {
+    rows = rows || [];
+    options = options || {};
+    const activeRows = rows.filter(function (row) {
+      return datasets.some(function (dataset) { return Number(row[dataset.key] || 0) > 0; });
+    });
+    if (!activeRows.length) {
+      fallbackEmpty(canvasId, options.emptyMessage || 'No chart data available yet.');
+      return;
+    }
+
+    const colors = palette();
+    const width = 640;
+    const height = 240;
+    const margin = { top: 26, right: 18, bottom: 42, left: 58 };
+    const plotWidth = width - margin.left - margin.right;
+    const plotHeight = height - margin.top - margin.bottom;
+    const maxValue = Math.max.apply(null, activeRows.map(function (row) {
+      if (options.stacked) {
+        return datasets.reduce(function (sum, dataset) { return sum + Number(row[dataset.key] || 0); }, 0);
+      }
+      return Math.max.apply(null, datasets.map(function (dataset) { return Number(row[dataset.key] || 0); }));
+    }));
+    const safeMax = maxValue || 1;
+    const band = plotWidth / activeRows.length;
+    const barWidth = Math.max(4, Math.min(26, band * 0.55));
+    const labelEvery = Math.max(1, Math.ceil(activeRows.length / 7));
+    let svg = '<svg class="si-usage-fallback-svg" viewBox="0 0 ' + width + ' ' + height + '" role="img" aria-label="' + escapeHtml(options.label || 'Usage chart') + '">';
+    [0, 0.5, 1].forEach(function (part) {
+      const y = margin.top + plotHeight - part * plotHeight;
+      const value = safeMax * part;
+      svg += '<line class="si-usage-fallback-grid" x1="' + margin.left + '" x2="' + (width - margin.right) + '" y1="' + y + '" y2="' + y + '"></line>';
+      svg += '<text class="si-usage-fallback-axis" x="' + (margin.left - 10) + '" y="' + (y + 4) + '" text-anchor="end">' + escapeHtml(value ? fmt(Math.round(value)) : '0') + '</text>';
+    });
+    datasets.forEach(function (dataset, i) {
+      const legendX = margin.left + i * 112;
+      svg += '<rect x="' + legendX + '" y="8" width="10" height="10" rx="2" fill="' + dataset.color + '"></rect>';
+      svg += '<text class="si-usage-fallback-legend" x="' + (legendX + 16) + '" y="17">' + escapeHtml(dataset.label) + '</text>';
+    });
+    activeRows.forEach(function (row, index) {
+      const x = margin.left + index * band + (band - barWidth) / 2;
+      let yStack = margin.top + plotHeight;
+      datasets.forEach(function (dataset) {
+        const value = Number(row[dataset.key] || 0);
+        const barHeight = (value / safeMax) * plotHeight;
+        const y = yStack - barHeight;
+        if (value > 0) {
+          svg += '<rect class="si-usage-fallback-bar" x="' + x + '" y="' + y + '" width="' + barWidth + '" height="' + Math.max(1, barHeight) + '" rx="3" fill="' + dataset.color + '"></rect>';
+        }
+        if (options.stacked) yStack = y;
+      });
+      if (index % labelEvery === 0 || index === activeRows.length - 1) {
+        svg += '<text class="si-usage-fallback-axis" x="' + (x + barWidth / 2) + '" y="' + (height - 16) + '" text-anchor="middle">' + escapeHtml(row.label) + '</text>';
+      }
+    });
+    svg += '</svg>';
+    const wrap = fallbackFrame(canvasId);
+    if (wrap) wrap.innerHTML = svg;
+  }
+
+  function renderBanner(cloudwatch) {
+    const banner = document.getElementById('si-usage-banner');
+    if (cloudwatch && cloudwatch.available) {
+      banner.classList.add('hidden');
+      return;
+    }
+    document.getElementById('si-usage-banner-reason').textContent = (cloudwatch && cloudwatch.reason) || 'unknown';
+    banner.classList.remove('hidden');
+  }
+
+  function renderStatCards(cloudwatch) {
+    const totals = (cloudwatch && cloudwatch.totals) || {};
+    setStatLabel('today_input', 'Input Tokens (30d)');
+    setStatLabel('today_output', 'Output Tokens (30d)');
+    setStatLabel('today_invocations', 'Invocations (30d)');
+    setStat('today_input', totals.input_tokens);
+    setStat('today_output', totals.output_tokens);
+    setStat('today_invocations', totals.invocations);
+    setStatDetail('today_input', 'CloudWatch Bedrock total');
+    setStatDetail('today_output', 'CloudWatch Bedrock total');
+    setStatDetail('today_invocations', 'CloudWatch Bedrock total');
+  }
+
+  function destroyChart(key) {
+    if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+  }
+
