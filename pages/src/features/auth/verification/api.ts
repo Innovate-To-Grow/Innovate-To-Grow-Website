@@ -1,4 +1,4 @@
-import {authApi} from '../api/client';
+import {authApi} from '../api/session/client';
 
 import type {
   ChallengeResponse,

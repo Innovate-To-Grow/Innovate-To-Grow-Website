@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
 import {getContactEmails, getContactPhones, getProfile, updateContactEmail, updateContactPhone, updateProfileFields} from '@/features/auth';
-import type {ContactEmail, ContactPhone, ProfileResponse} from '@/features/auth/api/types';
+import type {ContactEmail, ContactPhone, ProfileResponse} from '@/features/auth/api/contracts/types';
 import {getSubscribeErrorMessage} from '../steps/helpers';
 import type {LoadState, SubscribeWizardStep} from './types';
 

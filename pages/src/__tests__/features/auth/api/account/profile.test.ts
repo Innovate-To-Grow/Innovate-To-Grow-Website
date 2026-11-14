@@ -7,19 +7,19 @@ const mocks = vi.hoisted(() => ({
   updateStoredUser: vi.fn(),
 }));
 
-vi.mock('@/features/auth/api/client', () => ({
+vi.mock('@/features/auth/api/session/client', () => ({
   authApi: {
     get: mocks.get,
     patch: mocks.patch,
   },
 }));
 
-vi.mock('@/features/auth/api/storage', () => ({
+vi.mock('@/features/auth/api/session/storage', () => ({
   getStoredSession: mocks.getStoredSession,
   updateStoredUser: mocks.updateStoredUser,
 }));
 
-import {getAccountEmails, getProfile, updateProfileFields, uploadProfileImage} from '@/features/auth/api/profile';
+import {getAccountEmails, getProfile, updateProfileFields, uploadProfileImage} from '@/features/auth/api/account/profile';
 
 describe('profile API', () => {
   beforeEach(() => {

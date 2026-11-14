@@ -26,9 +26,9 @@ vi.mock('@/features/auth/verification/solve', () => ({
   solveAltchaChallenge: vi.fn(),
 }));
 
-import {authApi} from '@/features/auth/api/client';
-import {captureAuthCallbackParams} from '@/features/auth/api/callbackParams';
-import {getStoredSession, persistAuthSession} from '@/features/auth/api/storage';
+import {authApi} from '@/features/auth/api/session/client';
+import {captureAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
+import {getStoredSession, persistAuthSession} from '@/features/auth/api/session/storage';
 import {AuthProvider} from '@/features/auth/components/AuthContext';
 import {solveAltchaChallenge} from '@/features/auth/verification/solve';
 import {LoginLinkPage} from '@/routes/LoginLinkPage/LoginLinkPage';

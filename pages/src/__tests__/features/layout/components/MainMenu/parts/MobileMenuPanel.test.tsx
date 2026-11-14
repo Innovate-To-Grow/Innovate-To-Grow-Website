@@ -8,7 +8,7 @@ import {
   within,
 } from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import type {User} from '@/features/auth/api/types';
+import type {User} from '@/features/auth/api/contracts/types';
 import type {MenuItem} from '@/features/layout/api';
 import type {LayoutLoadState} from '@/features/layout/components/LayoutProvider/context';
 import {MobileMenuPanel} from '@/features/layout/components/MainMenu/parts/MobileMenuPanel';

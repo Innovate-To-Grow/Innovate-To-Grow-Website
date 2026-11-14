@@ -6,7 +6,7 @@ import type {Page} from '@playwright/test';
 import type {
   ContactEmail,
   ContactPhone,
-} from '../../../src/features/auth/api/types';
+} from '../../../src/features/auth/api/contracts/types';
 import type {Registration} from '../../../src/features/events/api';
 import {mockSendVerification} from './authFlows';
 import {json} from './json';

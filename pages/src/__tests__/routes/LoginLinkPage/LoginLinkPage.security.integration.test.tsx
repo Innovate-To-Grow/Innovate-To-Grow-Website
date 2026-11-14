@@ -13,12 +13,12 @@ import {cleanup, render, screen, waitFor} from '@testing-library/react';
 import {MemoryRouter, Route, Routes} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 
-import {authApi} from '@/features/auth/api/client';
+import {authApi} from '@/features/auth/api/session/client';
 import {
   captureAuthCallbackParams,
   readAuthCallbackParams,
-} from '@/features/auth/api/callbackParams';
-import {getStoredSession, persistAuthSession} from '@/features/auth/api/storage';
+} from '@/features/auth/api/navigation/callbackParams';
+import {getStoredSession, persistAuthSession} from '@/features/auth/api/session/storage';
 import {AuthProvider, useAuth} from '@/features/auth/components/AuthContext';
 import {LoginLinkPage} from '@/routes/LoginLinkPage/LoginLinkPage';
 

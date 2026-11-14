@@ -3,7 +3,7 @@ import {
   captureAuthCallbackParams,
   clearAuthCallbackParams,
   readAuthCallbackParams,
-} from '@/features/auth/api/callbackParams';
+} from '@/features/auth/api/navigation/callbackParams';
 
 describe('auth callback parameter handoff', () => {
   afterEach(() => {

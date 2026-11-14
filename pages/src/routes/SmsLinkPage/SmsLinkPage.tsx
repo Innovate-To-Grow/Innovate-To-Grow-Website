@@ -9,7 +9,7 @@ import {
   openSmsLink,
   type LoginLinkFailure,
 } from '@/features/auth/api';
-import {clearAuthCallbackParams, readAuthCallbackParams} from '@/features/auth/api/callbackParams';
+import {clearAuthCallbackParams, readAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
 import {dispatchAuthStateChange} from '@/features/auth/components/context/shared';
 
 const NOTICES: Record<LoginLinkFailure['kind'], string> = {

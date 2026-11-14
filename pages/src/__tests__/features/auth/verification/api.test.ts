@@ -1,7 +1,7 @@
 import {beforeEach, expect, it, vi} from 'vitest';
 
 const client = vi.hoisted(() => ({post: vi.fn(), get: vi.fn()}));
-vi.mock('@/features/auth/api/client', () => ({authApi: client}));
+vi.mock('@/features/auth/api/session/client', () => ({authApi: client}));
 import {createSendChallenge, fetchSendRequestStatus} from '@/features/auth/verification/api';
 
 beforeEach(() => vi.clearAllMocks());

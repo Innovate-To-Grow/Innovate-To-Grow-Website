@@ -4,8 +4,8 @@ import {describe, expect, it} from 'vitest';
 import {
   MalformedLoginResponseError,
   SessionNotSavedError,
-} from '@/features/auth/api/errors';
-import {classifyLoginLinkFailure} from '@/features/auth/api/loginLinkFailure';
+} from '@/features/auth/api/contracts/errors';
+import {classifyLoginLinkFailure} from '@/features/auth/api/navigation/loginLinkFailure';
 
 const httpError = (status: number, data?: unknown) =>
   new AxiosError(

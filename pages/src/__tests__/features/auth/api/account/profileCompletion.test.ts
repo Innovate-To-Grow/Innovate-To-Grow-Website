@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
+import {hasRequiredNameFields} from '@/features/auth/api/account/profileCompletion';
 
 describe('hasRequiredNameFields', () => {
   it('returns true when both names are present', () => {

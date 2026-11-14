@@ -3,15 +3,15 @@ import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library
 import {MemoryRouter, Route, Routes} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {captureAuthCallbackParams, readAuthCallbackParams} from '@/features/auth/api/callbackParams';
+import {captureAuthCallbackParams, readAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
 import {SmsLinkPage} from '@/routes/SmsLinkPage/SmsLinkPage';
 
 const mockOpenSmsLink = vi.fn();
 const mockNavigate = vi.fn();
 const mockDispatchAuthStateChange = vi.fn();
 
-vi.mock('@/features/auth/api/session', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/auth/api/session')>()),
+vi.mock('@/features/auth/api/signin/session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/auth/api/signin/session')>()),
   openSmsLink: (...args: unknown[]) => mockOpenSmsLink(...args),
 }));
 

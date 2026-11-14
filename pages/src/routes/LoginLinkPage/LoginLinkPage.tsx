@@ -13,7 +13,7 @@ import {dispatchAuthStateChange} from '@/features/auth/components/context/shared
 import {
   clearAuthCallbackParams,
   readAuthCallbackParams,
-} from '@/features/auth/api/callbackParams';
+} from '@/features/auth/api/navigation/callbackParams';
 import {LoginLinkFallback} from './LoginLinkFallback';
 
 const NOT_SAVED_MESSAGE =

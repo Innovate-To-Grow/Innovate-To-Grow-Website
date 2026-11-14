@@ -1,17 +1,17 @@
 import { withVerifiedSend } from '@/features/auth/verification';
-import { authApi } from './client';
+import { authApi } from '../session/client';
 import type {
   ContactEmail,
   ContactPhone,
   MessageResponse,
   SmsChallengeResponse,
-} from './types';
+} from '../contracts/types';
 import {
   contactPhoneChallengeScope,
   forgetSmsChallenge,
   readSmsChallenge,
   rememberSmsChallenge,
-} from './smsChallenges';
+} from '../session/smsChallenges';
 
 export const getContactPhones = async (): Promise<ContactPhone[]> => {
   const response = await authApi.get<ContactPhone[]>('/authn/contact-phones/');

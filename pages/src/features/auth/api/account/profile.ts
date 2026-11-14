@@ -1,6 +1,6 @@
-import { authApi } from './client';
-import {getStoredSession, updateStoredUser} from './storage';
-import type { AccountEmailsResponse, ProfileResponse } from './types';
+import { authApi } from '../session/client';
+import {getStoredSession, updateStoredUser} from '../session/storage';
+import type { AccountEmailsResponse, ProfileResponse } from '../contracts/types';
 
 export const getProfile = async (): Promise<ProfileResponse> => {
   const response = await authApi.get<ProfileResponse>('/authn/profile/');

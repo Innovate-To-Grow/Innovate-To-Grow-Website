@@ -1,6 +1,6 @@
 import './styles/layers.css';
 import './index.css';
-import {captureAuthCallbackParams} from '@/features/auth/api/callbackParams';
+import {captureAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
 import {mountApp} from '@/app/providers';
 import {installPreloadErrorRecovery} from '@/app/pageReload';
 import {

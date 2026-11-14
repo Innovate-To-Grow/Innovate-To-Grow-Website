@@ -21,9 +21,9 @@ import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/reac
 import {MemoryRouter, Route, Routes} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {authApi} from '@/features/auth/api/client';
-import {captureAuthCallbackParams} from '@/features/auth/api/callbackParams';
-import {getStoredSession, persistAuthSession} from '@/features/auth/api/storage';
+import {authApi} from '@/features/auth/api/session/client';
+import {captureAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
+import {getStoredSession, persistAuthSession} from '@/features/auth/api/session/storage';
 import {AuthProvider} from '@/features/auth/components/AuthContext';
 import {LoginLinkPage} from '@/routes/LoginLinkPage/LoginLinkPage';
 
@@ -32,8 +32,8 @@ const mockRequestLoginCode = vi.fn();
 // The code request runs a proof-of-work challenge against three extra endpoints;
 // that machinery has its own tests. Everything after it (verify, storage, the
 // provider, the event) is real.
-vi.mock('@/features/auth/api/flows', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/auth/api/flows')>()),
+vi.mock('@/features/auth/api/signin/flows', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/auth/api/signin/flows')>()),
   requestLoginCode: (...args: unknown[]) => mockRequestLoginCode(...args),
 }));
 

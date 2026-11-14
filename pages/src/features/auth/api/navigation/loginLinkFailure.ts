@@ -1,6 +1,6 @@
 import {isAxiosError} from 'axios';
 
-import {SessionNotSavedError} from './errors';
+import {SessionNotSavedError} from '../contracts/errors';
 import {getSafeInternalRedirectPath} from './redirects';
 
 export type LoginLinkFailureKind =

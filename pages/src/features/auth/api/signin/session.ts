@@ -1,5 +1,5 @@
-import {authApi, isDefinitiveAuthFailure} from './client';
-import {MalformedLoginResponseError} from './errors';
+import {authApi, isDefinitiveAuthFailure} from '../session/client';
+import {MalformedLoginResponseError} from '../contracts/errors';
 import {
   clearTokens,
   getAccessToken,
@@ -7,8 +7,8 @@ import {
   persistAuthSession,
   updateStoredSessionProfile,
   type StoredAuthSession,
-} from './storage';
-import type {LoginResponse, User} from './types';
+} from '../session/storage';
+import type {LoginResponse, User} from '../contracts/types';
 
 /**
  * A 2xx answer is only a login when it carries the fields a session is built

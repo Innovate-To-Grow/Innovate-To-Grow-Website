@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
   delete: vi.fn(),
 }));
 
-vi.mock('@/features/auth/api/client', () => ({
+vi.mock('@/features/auth/api/session/client', () => ({
   authApi: {
     get: mocks.get,
     post: mocks.post,
@@ -30,7 +30,7 @@ import {
   updateContactPhone,
   verifyContactEmailCode,
   verifyContactPhoneCode,
-} from '@/features/auth/api/contacts';
+} from '@/features/auth/api/account/contacts';
 
 describe('contacts API', () => {
   beforeEach(() => {

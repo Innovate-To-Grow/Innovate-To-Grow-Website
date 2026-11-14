@@ -2,20 +2,20 @@
 
 import { encryptPasswordWithCurrentKey } from '@/lib/security';
 import { withVerifiedSend } from '@/features/auth/verification';
-import { authApi } from './client';
+import { authApi } from '../session/client';
 import type {
   MessageResponse,
   PasswordChangeRequestResponse,
   SmsChallengeResponse,
   VerificationTokenResponse,
-} from './types';
+} from '../contracts/types';
 import {
   forgetSmsChallenge,
   passwordChangeChallengeScope,
   passwordResetChallengeScope,
   readSmsChallenge,
   rememberSmsChallenge,
-} from './smsChallenges';
+} from '../session/smsChallenges';
 
 export const requestPasswordReset = async (
   email: string,

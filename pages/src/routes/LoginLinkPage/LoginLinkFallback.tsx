@@ -4,7 +4,7 @@ import {useEffect, useRef, useState, type FormEvent, type RefObject} from 'react
 import {Icon} from '@/components/Icon/Icon';
 import {useAuth} from '@/features/auth';
 import type {LoginLinkFailureKind} from '@/features/auth/api';
-import {clearAuthCallbackParams} from '@/features/auth/api/callbackParams';
+import {clearAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
 import {isSafeMessage} from '@/features/auth/components/context/shared';
 import {VerifyEmailPageContent} from '@/features/auth/components/pages/VerifyEmailPage';
 import {identifyLoginInput} from '@/features/auth/components/sections/internal/identifyLoginInput';

@@ -1,4 +1,4 @@
-import {buildLoginPath} from '@/features/auth/api/redirects';
+import {buildLoginPath} from '@/features/auth/api/navigation/redirects';
 import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {PastProjectsDialog} from '../dialog/PastProjectsDialog';

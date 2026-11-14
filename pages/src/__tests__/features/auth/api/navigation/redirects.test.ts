@@ -6,7 +6,7 @@ import {
   getEmailAuthSourcePath,
   getPostAuthPath,
   getSafeInternalRedirectPath,
-} from '@/features/auth/api/redirects';
+} from '@/features/auth/api/navigation/redirects';
 
 describe('auth redirects', () => {
   it('builds a complete-profile URL with a safe returnTo', () => {

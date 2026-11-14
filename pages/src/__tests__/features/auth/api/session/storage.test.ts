@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import type {User} from '@/features/auth/api/types';
+import type {User} from '@/features/auth/api/contracts/types';
 
 const mockUser: User = {
   member_uuid: 'uuid-123',
@@ -36,20 +36,20 @@ describe('storage', () => {
   });
 
   it('stores and retrieves tokens', async () => {
-    const {setTokens, getAccessToken, getRefreshToken} = await import('@/features/auth/api/storage');
+    const {setTokens, getAccessToken, getRefreshToken} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'acc-token', refresh: 'ref-token'}, mockUser);
     expect(getAccessToken()).toBe('acc-token');
     expect(getRefreshToken()).toBe('ref-token');
   });
 
   it('returns null when no tokens stored', async () => {
-    const {getAccessToken, getRefreshToken} = await import('@/features/auth/api/storage');
+    const {getAccessToken, getRefreshToken} = await import('@/features/auth/api/session/storage');
     expect(getAccessToken()).toBeNull();
     expect(getRefreshToken()).toBeNull();
   });
 
   it('clears all tokens', async () => {
-    const {setTokens, clearTokens, getAccessToken, getRefreshToken, getStoredUser} = await import('@/features/auth/api/storage');
+    const {setTokens, clearTokens, getAccessToken, getRefreshToken, getStoredUser} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'acc', refresh: 'ref'}, mockUser);
     clearTokens();
     expect(getAccessToken()).toBeNull();
@@ -58,7 +58,7 @@ describe('storage', () => {
   });
 
   it('stores and retrieves user', async () => {
-    const {setTokens, getStoredUser} = await import('@/features/auth/api/storage');
+    const {setTokens, getStoredUser} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
     const stored = getStoredUser();
     expect(stored).toEqual(mockUser);
@@ -66,24 +66,24 @@ describe('storage', () => {
 
   it('returns null for invalid JSON user', async () => {
     mockLocalStorage.setItem('i2g_user', 'invalid json');
-    const {getStoredUser} = await import('@/features/auth/api/storage');
+    const {getStoredUser} = await import('@/features/auth/api/session/storage');
     expect(getStoredUser()).toBeNull();
   });
 
   it('returns null when no user set', async () => {
-    const {getStoredUser} = await import('@/features/auth/api/storage');
+    const {getStoredUser} = await import('@/features/auth/api/session/storage');
     expect(getStoredUser()).toBeNull();
   });
 
   it('updates user in storage', async () => {
-    const {setTokens, updateStoredUser, getStoredUser} = await import('@/features/auth/api/storage');
+    const {setTokens, updateStoredUser, getStoredUser} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
     updateStoredUser((user) => ({...user, email: 'updated@test.com'}));
     expect(getStoredUser()?.email).toBe('updated@test.com');
   });
 
   it('keeps null and omitted profile images identical across session and profile updates', async () => {
-    const {setTokens, getStoredSession, updateStoredUser, updateStoredSessionProfile} = await import('@/features/auth/api/storage');
+    const {setTokens, getStoredSession, updateStoredUser, updateStoredSessionProfile} = await import('@/features/auth/api/session/storage');
     const withoutImage = {...mockUser, profile_image: null} as unknown as User;
     const session = setTokens({access: 'a', refresh: 'r'}, withoutImage);
     const original = mockLocalStorage.getItem('i2g_auth_session');
@@ -100,7 +100,7 @@ describe('storage', () => {
   });
 
   it('normalizes old null images on read and persists real image changes', async () => {
-    const {setTokens, getStoredSession, updateStoredUser} = await import('@/features/auth/api/storage');
+    const {setTokens, getStoredSession, updateStoredUser} = await import('@/features/auth/api/session/storage');
     const session = setTokens({access: 'a', refresh: 'r'}, mockUser);
     mockLocalStorage.setItem('i2g_auth_session', JSON.stringify({...session, user: {...mockUser, profile_image: null}}));
     expect(getStoredSession()?.user).not.toHaveProperty('profile_image');
@@ -109,25 +109,25 @@ describe('storage', () => {
   });
 
   it('updateStoredUser does nothing when no user stored', async () => {
-    const {updateStoredUser, getStoredUser} = await import('@/features/auth/api/storage');
+    const {updateStoredUser, getStoredUser} = await import('@/features/auth/api/session/storage');
     updateStoredUser((user) => ({...user, first_name: 'Updated'}));
     expect(getStoredUser()).toBeNull();
   });
 
   it('profile completion defaults to false', async () => {
-    const {isProfileCompletionRequired} = await import('@/features/auth/api/storage');
+    const {isProfileCompletionRequired} = await import('@/features/auth/api/session/storage');
     expect(isProfileCompletionRequired()).toBe(false);
   });
 
   it('sets profile completion to true', async () => {
-    const {setTokens, setProfileCompletionRequired, isProfileCompletionRequired} = await import('@/features/auth/api/storage');
+    const {setTokens, setProfileCompletionRequired, isProfileCompletionRequired} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
     setProfileCompletionRequired(true);
     expect(isProfileCompletionRequired()).toBe(true);
   });
 
   it('clears profile completion when set to false', async () => {
-    const {setTokens, setProfileCompletionRequired, isProfileCompletionRequired} = await import('@/features/auth/api/storage');
+    const {setTokens, setProfileCompletionRequired, isProfileCompletionRequired} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
     setProfileCompletionRequired(true);
     setProfileCompletionRequired(false);
@@ -135,7 +135,7 @@ describe('storage', () => {
   });
 
   it('persistAuthSession stores tokens and user', async () => {
-    const {persistAuthSession, getAccessToken, getRefreshToken, getStoredUser, isProfileCompletionRequired} = await import('@/features/auth/api/storage');
+    const {persistAuthSession, getAccessToken, getRefreshToken, getStoredUser, isProfileCompletionRequired} = await import('@/features/auth/api/session/storage');
     persistAuthSession({
       access: 'new-access',
       refresh: 'new-refresh',
@@ -149,7 +149,7 @@ describe('storage', () => {
   });
 
   it('persistAuthSession sets profile completion flag', async () => {
-    const {persistAuthSession, isProfileCompletionRequired} = await import('@/features/auth/api/storage');
+    const {persistAuthSession, isProfileCompletionRequired} = await import('@/features/auth/api/session/storage');
     persistAuthSession({
       access: 'a',
       refresh: 'r',
@@ -160,7 +160,7 @@ describe('storage', () => {
   });
 
   it('stores auth state in one versioned record', async () => {
-    const {persistAuthSession} = await import('@/features/auth/api/storage');
+    const {persistAuthSession} = await import('@/features/auth/api/session/storage');
     persistAuthSession({
       access: 'one-access',
       refresh: 'one-refresh',
@@ -184,7 +184,7 @@ describe('storage', () => {
   });
 
   it('rejects a replacement session when the atomic storage write fails', async () => {
-    const {getStoredSession, persistAuthSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession, persistAuthSession} = await import('@/features/auth/api/session/storage');
     const original = persistAuthSession({
       access: 'original-access',
       refresh: 'original-refresh',
@@ -212,8 +212,8 @@ describe('storage', () => {
   });
 
   it('reports an unwritable session with the typed error the login-link page relies on', async () => {
-    const {persistAuthSession} = await import('@/features/auth/api/storage');
-    const {SessionNotSavedError} = await import('@/features/auth/api/errors');
+    const {persistAuthSession} = await import('@/features/auth/api/session/storage');
+    const {SessionNotSavedError} = await import('@/features/auth/api/contracts/errors');
     vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
       throw new DOMException('Storage is unavailable', 'QuotaExceededError');
     });
@@ -242,7 +242,7 @@ describe('storage', () => {
     mockLocalStorage.setItem('i2g_user', JSON.stringify(mockUser));
     mockSessionStorage.setItem('i2g_profile_completion_required', 'true');
 
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     const session = getStoredSession();
 
     expect(session).toEqual(expect.objectContaining({
@@ -265,7 +265,7 @@ describe('storage', () => {
       updateSessionTokens,
       clearTokens,
       getStoredSession,
-    } = await import('@/features/auth/api/storage');
+    } = await import('@/features/auth/api/session/storage');
     const oldSession = setTokens({access: 'old-a', refresh: 'old-r'}, mockUser);
     const currentSession = setTokens(
       {access: 'new-a', refresh: 'new-r'},
@@ -289,7 +289,7 @@ describe('storage', () => {
       clearProfileCompletionRequired,
       getStoredSession,
       persistAuthSession,
-    } = await import('@/features/auth/api/storage');
+    } = await import('@/features/auth/api/session/storage');
     const oldSession = persistAuthSession({
       access: 'old-a',
       refresh: 'old-r',
@@ -315,7 +315,7 @@ describe('storage', () => {
 
   it('falls back to a timestamp-based generation when crypto is unavailable', async () => {
     vi.stubGlobal('crypto', {});
-    const {setTokens, getStoredSession} = await import('@/features/auth/api/storage');
+    const {setTokens, getStoredSession} = await import('@/features/auth/api/session/storage');
     const session = setTokens({access: 'a', refresh: 'r'}, mockUser);
     expect(session.generation).toBeTruthy();
     expect(getStoredSession()?.generation).toBe(session.generation);
@@ -325,7 +325,7 @@ describe('storage', () => {
     vi.mocked(mockLocalStorage.getItem).mockImplementation(() => {
       throw new DOMException('Storage is denied', 'SecurityError');
     });
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     expect(getStoredSession()).toBeNull();
   });
 
@@ -336,7 +336,7 @@ describe('storage', () => {
     vi.mocked(mockSessionStorage.getItem).mockImplementation(() => {
       throw new DOMException('Storage is denied', 'SecurityError');
     });
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     const session = getStoredSession();
     expect(session).toEqual(expect.objectContaining({
       access: 'legacy-access',
@@ -346,21 +346,21 @@ describe('storage', () => {
 
   it('removes and ignores an unparseable session record', async () => {
     mockLocalStorage.setItem('i2g_auth_session', 'not-json');
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     expect(getStoredSession()).toBeNull();
     expect(mockLocalStorage.getItem('i2g_auth_session')).toBeNull();
   });
 
   it('ignores a stored session record that is not an object', async () => {
     mockLocalStorage.setItem('i2g_auth_session', JSON.stringify('just-a-string'));
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     expect(getStoredSession()).toBeNull();
     expect(mockLocalStorage.getItem('i2g_auth_session')).toBeNull();
   });
 
   it('removes incomplete legacy keys and returns null', async () => {
     mockLocalStorage.setItem('i2g_access_token', 'legacy-access');
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     expect(getStoredSession()).toBeNull();
     expect(mockLocalStorage.getItem('i2g_access_token')).toBeNull();
   });
@@ -369,7 +369,7 @@ describe('storage', () => {
     mockLocalStorage.setItem('i2g_access_token', 'legacy-access');
     mockLocalStorage.setItem('i2g_refresh_token', 'legacy-refresh');
     mockLocalStorage.setItem('i2g_user', 'invalid json');
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     expect(getStoredSession()).toBeNull();
     expect(mockLocalStorage.getItem('i2g_user')).toBeNull();
   });
@@ -378,7 +378,7 @@ describe('storage', () => {
     mockLocalStorage.setItem('i2g_access_token', 'legacy-access');
     mockLocalStorage.setItem('i2g_refresh_token', 'legacy-refresh');
     mockLocalStorage.setItem('i2g_user', JSON.stringify('not-a-user'));
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     expect(getStoredSession()).toBeNull();
   });
 
@@ -386,7 +386,7 @@ describe('storage', () => {
     mockLocalStorage.setItem('i2g_access_token', 'legacy-access');
     mockLocalStorage.setItem('i2g_refresh_token', 'legacy-refresh');
     mockLocalStorage.setItem('i2g_user', JSON.stringify({email: 'x@y.com'}));
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     expect(getStoredSession()).toBeNull();
   });
 
@@ -397,12 +397,12 @@ describe('storage', () => {
     vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
       throw new DOMException('Storage is full', 'QuotaExceededError');
     });
-    const {getStoredSession} = await import('@/features/auth/api/storage');
+    const {getStoredSession} = await import('@/features/auth/api/session/storage');
     expect(getStoredSession()).toBeNull();
   });
 
   it('matches the current session only when generation and refresh agree', async () => {
-    const {setTokens, isCurrentSession} = await import('@/features/auth/api/storage');
+    const {setTokens, isCurrentSession} = await import('@/features/auth/api/session/storage');
     const session = setTokens({access: 'a', refresh: 'r'}, mockUser);
     expect(isCurrentSession({generation: session.generation, refresh: 'r'})).toBe(true);
     expect(isCurrentSession({generation: session.generation, refresh: 'other'})).toBe(false);
@@ -411,7 +411,7 @@ describe('storage', () => {
   });
 
   it('cannot set profile completion when no session is stored', async () => {
-    const {setProfileCompletionRequired} = await import('@/features/auth/api/storage');
+    const {setProfileCompletionRequired} = await import('@/features/auth/api/session/storage');
     expect(setProfileCompletionRequired(true)).toBe(false);
   });
 
@@ -422,7 +422,7 @@ describe('storage', () => {
       setProfileCompletionRequired,
       clearProfileCompletionRequired,
       isProfileCompletionRequired,
-    } = await import('@/features/auth/api/storage');
+    } = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
     setProfileCompletionRequired(true);
 
@@ -432,7 +432,7 @@ describe('storage', () => {
   });
 
   it('returns false when clearing profile completion cannot be persisted', async () => {
-    const {setTokens, setProfileCompletionRequired, clearProfileCompletionRequired} = await import('@/features/auth/api/storage');
+    const {setTokens, setProfileCompletionRequired, clearProfileCompletionRequired} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
     setProfileCompletionRequired(true);
     vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
@@ -442,7 +442,7 @@ describe('storage', () => {
   });
 
   it('rotates access and refresh tokens for the current generation', async () => {
-    const {setTokens, updateSessionTokens, getStoredSession} = await import('@/features/auth/api/storage');
+    const {setTokens, updateSessionTokens, getStoredSession} = await import('@/features/auth/api/session/storage');
     const session = setTokens({access: 'old-a', refresh: 'old-r'}, mockUser);
     const updated = updateSessionTokens(
       {generation: session.generation, refresh: 'old-r'},
@@ -454,7 +454,7 @@ describe('storage', () => {
   });
 
   it('returns null when updating tokens cannot be persisted', async () => {
-    const {setTokens, updateSessionTokens} = await import('@/features/auth/api/storage');
+    const {setTokens, updateSessionTokens} = await import('@/features/auth/api/session/storage');
     const session = setTokens({access: 'old-a', refresh: 'old-r'}, mockUser);
     vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
       throw new DOMException('Storage is full', 'QuotaExceededError');
@@ -468,7 +468,7 @@ describe('storage', () => {
   });
 
   it('updates the stored user and completion flag for the current generation', async () => {
-    const {setTokens, updateStoredSessionProfile, getStoredSession} = await import('@/features/auth/api/storage');
+    const {setTokens, updateStoredSessionProfile, getStoredSession} = await import('@/features/auth/api/session/storage');
     const session = setTokens({access: 'a', refresh: 'r'}, mockUser);
     const newUser = {...mockUser, email: 'updated@example.com'};
     const updated = updateStoredSessionProfile(
@@ -482,7 +482,7 @@ describe('storage', () => {
   });
 
   it('rejects a profile update for a mismatched generation', async () => {
-    const {setTokens, updateStoredSessionProfile} = await import('@/features/auth/api/storage');
+    const {setTokens, updateStoredSessionProfile} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
     expect(
       updateStoredSessionProfile({generation: 'other', refresh: 'r'}, mockUser, false),
@@ -490,7 +490,7 @@ describe('storage', () => {
   });
 
   it('returns null when updating the profile cannot be persisted', async () => {
-    const {setTokens, updateStoredSessionProfile} = await import('@/features/auth/api/storage');
+    const {setTokens, updateStoredSessionProfile} = await import('@/features/auth/api/session/storage');
     const session = setTokens({access: 'a', refresh: 'r'}, mockUser);
     vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
       throw new DOMException('Storage is full', 'QuotaExceededError');
@@ -501,7 +501,7 @@ describe('storage', () => {
   });
 
   it('does not clear profile completion for a rotated refresh token', async () => {
-    const {persistAuthSession, clearProfileCompletionRequired, getStoredSession} = await import('@/features/auth/api/storage');
+    const {persistAuthSession, clearProfileCompletionRequired, getStoredSession} = await import('@/features/auth/api/session/storage');
     const session = persistAuthSession({
       access: 'a',
       refresh: 'r',
@@ -514,7 +514,7 @@ describe('storage', () => {
   });
 
   it('does not update the stored user for a mismatched generation', async () => {
-    const {setTokens, updateStoredUser} = await import('@/features/auth/api/storage');
+    const {setTokens, updateStoredUser} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
 
     expect(
@@ -523,7 +523,7 @@ describe('storage', () => {
   });
 
   it('returns null when updating the stored user cannot be persisted', async () => {
-    const {setTokens, updateStoredUser} = await import('@/features/auth/api/storage');
+    const {setTokens, updateStoredUser} = await import('@/features/auth/api/session/storage');
     setTokens({access: 'a', refresh: 'r'}, mockUser);
     vi.mocked(mockLocalStorage.setItem).mockImplementation(() => {
       throw new DOMException('Storage is full', 'QuotaExceededError');
@@ -533,7 +533,7 @@ describe('storage', () => {
   });
 
   it('does not clear tokens for a rotated refresh token', async () => {
-    const {setTokens, clearTokens, getStoredSession} = await import('@/features/auth/api/storage');
+    const {setTokens, clearTokens, getStoredSession} = await import('@/features/auth/api/session/storage');
     const session = setTokens({access: 'a', refresh: 'r'}, mockUser);
 
     expect(clearTokens({generation: session.generation, refresh: 'other'})).toBe(false);

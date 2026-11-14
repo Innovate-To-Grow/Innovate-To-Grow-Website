@@ -1,5 +1,5 @@
-import {SessionNotSavedError} from './errors';
-import type {AuthTokens, LoginResponse, User} from './types';
+import {SessionNotSavedError} from '../contracts/errors';
+import type {AuthTokens, LoginResponse, User} from '../contracts/types';
 
 export const AUTH_SESSION_KEY = 'i2g_auth_session';
 const AUTH_SESSION_VERSION = 1;

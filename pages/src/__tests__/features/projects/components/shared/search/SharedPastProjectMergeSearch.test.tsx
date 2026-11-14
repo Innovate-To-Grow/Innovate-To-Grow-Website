@@ -19,8 +19,8 @@ vi.mock('@/features/auth', async (importOriginal) => {
   };
 });
 
-vi.mock('@/features/auth/api/redirects', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/auth/api/redirects')>();
+vi.mock('@/features/auth/api/navigation/redirects', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/auth/api/navigation/redirects')>();
   return {
     ...actual,
     buildLoginPath: (...args: unknown[]) => mockBuildLoginPath(...args),

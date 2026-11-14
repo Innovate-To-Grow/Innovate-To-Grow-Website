@@ -21,7 +21,7 @@ vi.mock('@/lib/security', () => ({
   }),
 }));
 
-import {authApi} from '@/features/auth/api/client';
+import {authApi} from '@/features/auth/api/session/client';
 import {AuthProvider} from '@/features/auth/components/AuthContext';
 import {LoginForm} from '@/features/auth/components/forms/LoginForm';
 import {VerifiedSendStatus} from '@/features/auth/verification/VerifiedSendStatus';

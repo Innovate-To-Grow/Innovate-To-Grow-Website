@@ -2,8 +2,8 @@ import axios from 'axios';
 
 import { clearKeyCache, encryptPasswordWithCurrentKey } from '@/lib/security';
 import { withVerifiedSend } from '@/features/auth/verification';
-import { authApi } from './client';
-import {persistAuthSession} from './storage';
+import { authApi } from '../session/client';
+import {persistAuthSession} from '../session/storage';
 import type {
   EmailAuthRequestResponse,
   EmailAuthSource,
@@ -13,13 +13,13 @@ import type {
   PhoneAuthRequestResponse,
   PhoneAuthSource,
   RegisterResponse,
-} from './types';
+} from '../contracts/types';
 import {
   forgetSmsChallenge,
   phoneAuthChallengeScope,
   readSmsChallenge,
   rememberSmsChallenge,
-} from './smsChallenges';
+} from '../session/smsChallenges';
 
 const isEncryptionFailure = (error: unknown): boolean => {
   if (!error) return false;
@@ -233,4 +233,4 @@ export {
   requestAccountDeletionCode,
   verifyAccountDeletionCode,
   confirmAccountDeletion,
-} from './accountFlows';
+} from '../account/accountFlows';

@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useRef, useState, type FormEvent} from 'react';
 import {getProfile, getStoredSession, isCurrentSession, updateProfileFields, useAuth} from '@/features/auth';
-import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
-import type {ProfileResponse} from '@/features/auth/api/types';
+import {hasRequiredNameFields} from '@/features/auth/api/account/profileCompletion';
+import type {ProfileResponse} from '@/features/auth/api/contracts/types';
 import {getSubscribeErrorMessage} from '../steps/helpers';
 import type {LoadState, OrganizationType, SubscribeWizardStep} from './types';
 

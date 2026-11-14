@@ -1,6 +1,6 @@
 import {useCallback, useState} from 'react';
 import {useNavigate} from 'react-router';
-import {buildCompleteProfilePath} from '@/features/auth/api/redirects';
+import {buildCompleteProfilePath} from '@/features/auth/api/navigation/redirects';
 import type {EventRegistrationOptions, Registration} from '@/features/events/api';
 import {useAttendeeProfile} from './registration/useAttendeeProfile';
 import {usePhoneVerification, type PhoneVerification} from './registration/usePhoneVerification';

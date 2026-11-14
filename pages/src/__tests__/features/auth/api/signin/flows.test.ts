@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   clearProfileCompletion: vi.fn(),
 }));
 
-vi.mock('@/features/auth/api/client', () => ({
+vi.mock('@/features/auth/api/session/client', () => ({
   authApi: {post: mocks.post},
 }));
 
@@ -17,7 +17,7 @@ vi.mock('@/lib/security', () => ({
   clearKeyCache: mocks.clearKeyCache,
 }));
 
-vi.mock('@/features/auth/api/storage', () => ({
+vi.mock('@/features/auth/api/session/storage', () => ({
   persistAuthSession: mocks.persist,
   clearProfileCompletionRequired: mocks.clearProfileCompletion,
 }));
@@ -45,7 +45,7 @@ import {
   verifyPasswordChangeCode,
   verifyPasswordResetCode,
   verifyRegistrationCode,
-} from '@/features/auth/api/flows';
+} from '@/features/auth/api/signin/flows';
 
 describe('auth flows', () => {
   beforeEach(() => {
