@@ -8,25 +8,27 @@ the recipients are paused and the campaign ends partial; "Resume paused recipien
 
 import logging
 
-from django.utils import timezone
-
 from apps.core.models import EmailServiceConfig
 from apps.core.services.delivery_rates import WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
 from apps.mail.models import RecipientLog
-from apps.mail.services.suppression import SKIPPED_MESSAGE, is_suppressed
-from apps.mail.services.tokens.login_links import issue_login_link, sign_in_page_url
+from apps.mail.services.suppression import is_suppressed
 
 from ..audience import get_recipients
 from ..campaign.errors import unexpected_delivery_error_message
 from ..campaign.personalize import personalize
 from ..campaign.preview import render_email_html
-from ..tokens.unsubscribe import build_oneclick_unsubscribe_url
+from .progress import (
+    _fail_campaign_for_missing_delivery_config,
+    _finalize_campaign,
+    _mark_campaign_sending,
+    _refresh_campaign_progress,
+)
+from .recipient_logs import _configured_provider, _record_send_result, pause_recipients, skip_suppressed_log
+from .recipients import _recipient_context, _unsubscribe_url_for, carries_login_link
 from .transport import SesSendResult, _get_configuration_set_name, _get_ses_client, _send_via_ses
 
 logger = logging.getLogger(__name__)
-
-PAUSED_LOG_MESSAGE = "Paused by delivery limits; send it with “Resume paused recipients”."
 
 
 def send_campaign(campaign, sent_by):
@@ -84,33 +86,6 @@ def send_to_recipients(campaign, pending, delivery=None) -> None:
                 delivery = _load_delivery()
 
 
-def pause_recipients(logs) -> int:
-    """Mark recipients the delivery limits held back as paused (only those not yet sent or failed)."""
-    return RecipientLog.objects.filter(pk__in=[log.pk for log in logs], status="pending").update(
-        status="paused", error_message=PAUSED_LOG_MESSAGE, updated_at=timezone.now()
-    )
-
-
-def _finalize_campaign(campaign):
-    _refresh_campaign_progress(campaign)
-    return {
-        "total": campaign.total_recipients,
-        "sent": campaign.sent_count,
-        "failed": campaign.failed_count,
-    }
-
-
-def _refresh_campaign_progress(campaign):
-    from apps.mail.services.campaign.dispatch import aggregate_email_campaign
-
-    # SES callbacks update the same rows while this loop is running. Always
-    # derive progress from persisted logs instead of overwriting their counts.
-    aggregate_email_campaign(campaign.pk)
-    campaign.refresh_from_db(
-        fields=["status", "total_recipients", "sent_count", "failed_count", "sent_at", "error_message"]
-    )
-
-
 def _send_one_recipient(campaign, config, ses_client, configuration_set, recipient, *, log=None) -> bool:
     """Send to one recipient and record the outcome; False when the delivery limits held it back (left pending)."""
     try:
@@ -165,27 +140,6 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
     return True
 
 
-def skip_suppressed_log(log, *, claim_token=None) -> bool:
-    """Record that ``log``'s address is suppressed and was not sent, only while it is still unsent (and, for a queued
-    job, still claimed by that job: ``claim_token``); True when this call recorded it."""
-    logs = RecipientLog.objects.filter(pk=log.pk)
-    if claim_token is not None:
-        logs = logs.filter(status="processing", claim_token=claim_token)
-    else:
-        logs = logs.filter(status__in=("pending", "retry", "paused"))
-    return bool(
-        logs.update(
-            status="failed",
-            provider="",
-            error_message=SKIPPED_MESSAGE,
-            claim_token=None,
-            claimed_at=None,
-            uncertain_at=None,
-            updated_at=timezone.now(),
-        )
-    )
-
-
 def _send_when_taken(send) -> SesSendResult | None:
     """Send one message (``send()``); None when the delivery limits hold it back longer than this thread may wait.
 
@@ -233,117 +187,3 @@ def _send_with_configured_provider(
             campaign_id=campaign_id,
         )
     return SesSendResult(provider="", error="Email delivery is not configured.")
-
-
-def _configured_provider(config):
-    if config is None:
-        return ""
-    return getattr(config, "provider", "")
-
-
-def _record_send_result(campaign, log, result):
-    updated = RecipientLog.objects.filter(pk=log.pk, status="pending").update(
-        status="failed" if result.error else "sent",
-        provider=result.provider,
-        error_message=result.error,
-        sent_at=None if result.error else timezone.now(),
-        provider_message_id=result.message_id,
-    )
-    if updated == 0:
-        log.refresh_from_db()
-        if log.status in {"bounced", "complained", "rejected", "failed"}:
-            campaign.failed_count += 1
-        else:
-            campaign.sent_count += 1
-    elif result.error:
-        campaign.failed_count += 1
-    else:
-        campaign.sent_count += 1
-
-
-class RecipientContext(dict):
-    """One recipient's personalization values, plus the login link issued for them (``""`` when none was).
-
-    ``{{login_link}}`` is that issued link for a member, and the sign-in page for a recipient with no member account
-    (a Manual Emails address no active member owns), so the tag never renders as nothing.
-    """
-
-    def __init__(self, values, *, issued_login_link=""):
-        super().__init__(values)
-        self.issued_login_link = issued_login_link
-
-
-def _recipient_context(recipient, campaign):
-    issued_login_link = _build_login_link(recipient["member_id"], campaign)
-    return RecipientContext(
-        {
-            "first_name": recipient["first_name"],
-            "last_name": recipient["last_name"],
-            "full_name": recipient["full_name"],
-            "login_link": issued_login_link or sign_in_page_url(),
-        },
-        issued_login_link=issued_login_link,
-    )
-
-
-def carries_login_link(context, *texts) -> bool:
-    """Whether the personalized message holds the login link issued to the recipient, a credential
-    (``keep_sent_copy=False``). The sign-in page that stands in for it when none was issued is not one."""
-    link = getattr(context, "issued_login_link", "")
-    return bool(link) and any(link in text for text in texts)
-
-
-def _build_login_link(member_id, campaign):
-    if not member_id:
-        return ""
-    return issue_login_link(
-        member_id=member_id,
-        campaign=campaign,
-        validity_days=campaign.login_link_validity_days,
-    )
-
-
-def _unsubscribe_url_for(campaign, recipient):
-    if not campaign.include_unsubscribe_header or not recipient["member_id"]:
-        return ""
-    return build_oneclick_unsubscribe_url(recipient["member_id"])
-
-
-def _mark_campaign_sending(campaign, sent_by, recipient_count):
-    campaign.status = "sending"
-    campaign.sent_by = sent_by
-    campaign.total_recipients = recipient_count
-    campaign.sent_count = 0
-    campaign.failed_count = 0
-    campaign.error_message = ""
-    campaign.save(
-        update_fields=[
-            "status",
-            "sent_by",
-            "total_recipients",
-            "sent_count",
-            "failed_count",
-            "error_message",
-        ]
-    )
-
-
-def _fail_campaign_for_missing_delivery_config(campaign, recipients):
-    error_message = "Email delivery is not configured. Check Notification Delivery in admin."
-    for recipient in recipients:
-        RecipientLog.objects.update_or_create(
-            campaign=campaign,
-            email_address=recipient["email"],
-            defaults={
-                "member_id": recipient["member_id"],
-                "recipient_name": recipient["full_name"],
-                "status": "failed",
-                "provider": "",
-                "error_message": error_message,
-            },
-        )
-    campaign.status = "failed"
-    campaign.failed_count = len(recipients)
-    campaign.error_message = error_message
-    campaign.save(update_fields=["status", "failed_count", "error_message"])
-    raise RuntimeError("Email delivery is not configured. Cannot send campaign.")
