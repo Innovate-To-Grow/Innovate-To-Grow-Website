@@ -644,7 +644,7 @@ Email** prove the credentials.
 | JSON `sendMail` body for credential mail | `src/apps/core/services/email/graph/json_message.py` |
 | Certificate facts and client assertions | `src/apps/core/services/email/graph/certificate.py` |
 | Certificate input, stored key, Entra test, install / rollback / remove, expiry | `src/apps/core/services/email/graph/credential/` |
-| Credential store (Secrets Manager, local file, memory) and its system checks | `src/apps/core/services/credential_store/`, `src/apps/core/checks.py` |
+| Credential store (Secrets Manager, local file, memory) and its system checks | `src/apps/core/services/credential_store/`, `src/apps/core/checks/` |
 | Mailbox scope enforcement | `src/apps/core/services/email/graph/access.py` |
 | Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox.py`, `src/apps/mail/services/inbox/graph_backend.py` |
 | Sent mail access in the admin inbox | `src/apps/mail/admin/inbox/helpers.py` (`sent_mail_restricted`, `sent_mail_denied`) |
