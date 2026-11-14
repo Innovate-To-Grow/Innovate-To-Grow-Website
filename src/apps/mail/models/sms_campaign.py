@@ -49,7 +49,7 @@ SMS_LOG_STATUS_CHOICES = [
     ("opted_out", "Opted out"),
 ]
 
-# The short-link placeholders (``services.sms.compose``): usable only while links in SMS are allowed.
+# The short-link placeholders (``services.sms.content.compose``): usable only while links in SMS are allowed.
 SMS_LINK_PLACEHOLDERS = ("login_link", "ticket_link", "event_link")
 
 E164_RE = re.compile(r"^\+[1-9]\d{6,14}$")

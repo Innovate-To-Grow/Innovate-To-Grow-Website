@@ -49,7 +49,7 @@ SMS endpoint. A number that replied STOP is put on AWS's opted-out list, and AWS
 
 ### The sync
 
-`apps.mail.services.sms.opt_out_sync` runs in the background worker's hourly maintenance (and from **Sync with AWS
+`apps.mail.services.sms.policy.opt_out_sync` runs in the background worker's hourly maintenance (and from **Sync with AWS
 now** on SMS Opt-outs). It is read-only on AWS's side:
 
 1. `DescribePhoneNumbers` finds the sending number (the configured origination number, else the first active SMS

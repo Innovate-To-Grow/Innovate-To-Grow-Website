@@ -34,7 +34,7 @@ from apps.helpdesk.services.intake.jobs import purge_finished_jobs as purge_fini
 from apps.helpdesk.services.retention import purge_expired as purge_expired_helpdesk
 from apps.mail.services.email_monitoring.addresses.aggregate import refresh_all as refresh_bounced_address_links
 from apps.mail.services.email_monitoring.addresses.aggregate import run as count_bounced_addresses
-from apps.mail.services.sms.opt_out_sync import run_scheduled as sync_sms_opt_outs
+from apps.mail.services.sms.policy.opt_out_sync import run_scheduled as sync_sms_opt_outs
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)

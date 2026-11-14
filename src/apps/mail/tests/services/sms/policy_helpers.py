@@ -54,5 +54,8 @@ def opt_out(number, *, source=SmsOptOut.Source.AWS, **fields):
 def at(moment):
     """Quiet hours enforced (they are off for test runs) with the quiet-hours clock reading ``moment``."""
     clock = SimpleNamespace(now=lambda: moment)
-    with override_settings(SMS_QUIET_HOURS_ENFORCED=True), patch("apps.mail.services.sms.quiet_hours.timezone", clock):
+    with (
+        override_settings(SMS_QUIET_HOURS_ENFORCED=True),
+        patch("apps.mail.services.sms.policy.quiet_hours.timezone", clock),
+    ):
         yield

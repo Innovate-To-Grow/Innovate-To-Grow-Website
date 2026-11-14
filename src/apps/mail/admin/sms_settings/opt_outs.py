@@ -16,8 +16,8 @@ from unfold.decorators import display
 
 from apps.core.admin import BaseModelAdmin
 from apps.mail.models import SmsOptOut, SmsOptOutSyncState
-from apps.mail.services.sms.opt_out_sync import sync_opt_outs
-from apps.mail.services.sms.opt_outs import (
+from apps.mail.services.sms.policy.opt_out_sync import sync_opt_outs
+from apps.mail.services.sms.policy.opt_outs import (
     active_opt_outs,
     add_staff_opt_out,
     lift_staff_opt_out,

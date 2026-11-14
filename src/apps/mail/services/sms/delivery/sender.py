@@ -20,11 +20,17 @@ from apps.mail.models import SmsConfig, SmsRecipientLog
 from apps.mail.services.campaign.errors import unexpected_delivery_error_message
 from apps.mail.services.sms.audience import get_sms_recipients
 
-from .compose import CampaignLinks, render_campaign_text
-from .errors import SmsSendRefused
-from .opt_outs import SKIPPED_MESSAGE, is_opted_out
-from .quiet_hours import PAUSED_LOG_MESSAGE as QUIET_HOURS_PAUSED_MESSAGE
-from .quiet_hours import held_until
+from ..content.compose import CampaignLinks, render_campaign_text
+from ..policy.errors import SmsSendRefused
+from ..policy.opt_outs import SKIPPED_MESSAGE, is_opted_out
+from ..policy.quiet_hours import PAUSED_LOG_MESSAGE as QUIET_HOURS_PAUSED_MESSAGE
+from ..policy.quiet_hours import held_until
+from .campaign_progress import (
+    _fail_campaign_for_missing_sms_config,
+    _finalize_campaign,
+    _mark_campaign_sending,
+    _refresh_campaign_progress,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,25 +112,6 @@ def skip_opted_out_log(log, *, claim_token=None) -> bool:
     )
 
 
-def _finalize_campaign(campaign):
-    _refresh_campaign_progress(campaign)
-    return {
-        "total": campaign.total_recipients,
-        "sent": campaign.sent_count,
-        "failed": campaign.failed_count,
-    }
-
-
-def _refresh_campaign_progress(campaign):
-    from apps.mail.services.campaign.dispatch import aggregate_sms_campaign
-
-    # Derive progress from the persisted logs (sent, failed, paused, still pending) instead of counting in memory.
-    aggregate_sms_campaign(campaign.pk)
-    campaign.refresh_from_db(
-        fields=["status", "total_recipients", "sent_count", "failed_count", "sent_at", "error_message"]
-    )
-
-
 def _send_one_recipient(campaign, recipient, log, *, links, config) -> bool:
     """Send to one recipient and record the outcome; False when the delivery limits held it back (left pending)."""
     try:
@@ -179,29 +166,3 @@ def _record_success(log, message_id: str):
         sent_at=timezone.now(),
         updated_at=timezone.now(),
     )
-
-
-def _mark_campaign_sending(campaign, sent_by, recipient_count):
-    campaign.status = "sending"
-    campaign.sent_by = sent_by
-    campaign.total_recipients = recipient_count
-    campaign.sent_count = 0
-    campaign.failed_count = 0
-    campaign.error_message = ""
-    campaign.save(
-        update_fields=[
-            "status",
-            "sent_by",
-            "total_recipients",
-            "sent_count",
-            "failed_count",
-            "error_message",
-        ]
-    )
-
-
-def _fail_campaign_for_missing_sms_config(campaign):
-    campaign.status = "failed"
-    campaign.error_message = "SMS delivery is not configured. Check AWS Credentials in admin."
-    campaign.save(update_fields=["status", "error_message"])
-    raise RuntimeError("SMS delivery is not configured. Cannot send campaign.")

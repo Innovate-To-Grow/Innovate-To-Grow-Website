@@ -31,8 +31,8 @@ def resume_paused_sms_recipients(campaign) -> int:
     """The same for an SMS campaign; queued ones wait for SMS quiet hours to end, while the in-process sender
     refuses during them (``QuietHoursActive``)."""
     if not jobs_enabled():
-        from apps.mail.services.sms.errors import QuietHoursActive
-        from apps.mail.services.sms.quiet_hours import held_until
+        from apps.mail.services.sms.policy.errors import QuietHoursActive
+        from apps.mail.services.sms.policy.quiet_hours import held_until
 
         until = held_until()
         if until is not None:
@@ -136,7 +136,7 @@ def _run_paused_email(campaign_id) -> None:
 
 def _run_paused_sms(campaign_id) -> None:
     from apps.mail.models import SmsCampaign
-    from apps.mail.services.sms.sender import send_sms_to_recipients
+    from apps.mail.services.sms.delivery.sender import send_sms_to_recipients
 
     try:
         send_sms_to_recipients(SmsCampaign.objects.get(pk=campaign_id), _pending_logs(SMS, campaign_id))

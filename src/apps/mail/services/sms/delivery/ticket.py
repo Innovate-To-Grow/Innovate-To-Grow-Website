@@ -24,11 +24,10 @@ from apps.core.services.delivery_rates import Lane, WaitMode, wait_mode
 from apps.core.services.helpers.in_process import start_in_process_task
 from apps.mail.models import SmsConfig, SmsLinkToken, TicketSms
 
-from ..campaign.personalize import personalize
-from .compose import apply_footer
-from .links import Purpose, issue_personal_link, issue_redirect_link, may_text_personal_link, revoke_links, sign_in_path
-from .opt_outs import SKIPPED_MESSAGE, is_opted_out, normalize_phone
-from .quiet_hours import HELD_LOG_MESSAGE, held_until, next_send_time
+from ..content.ticket_text import _ticket_link, ticket_text
+from ..links import Purpose, revoke_links
+from ..policy.opt_outs import SKIPPED_MESSAGE, is_opted_out, normalize_phone
+from ..policy.quiet_hours import HELD_LOG_MESSAGE, held_until, next_send_time
 
 logger = logging.getLogger(__name__)
 
@@ -147,38 +146,6 @@ def deliver_ticket_sms(record: TicketSms, *, job=None) -> None:
             raise provider_job_error(exc) from exc
         return None
     return _finish(record, Status.SENT, "", message_id=message_id, sent_at=timezone.now())
-
-
-def ticket_text(registration, link: str, config: SmsConfig) -> str:
-    values = {
-        "first_name": registration.attendee_first_name or registration.member.first_name or "",
-        "event_name": registration.event.name,
-        "ticket_link": link,
-    }
-    return apply_footer(personalize(config.ticket_sms_template, values), config)
-
-
-def _ticket_link(registration, config: SmsConfig, phone: str) -> str:
-    """A personal link when personal links are on and ``phone`` is the registrant's own verified account phone (a
-    phone verified only for this registration may be someone else's), else one that opens the sign-in page."""
-    from apps.event.services.ticket.mail import ticket_login_redirect_path
-
-    destination = ticket_login_redirect_path(registration)
-    days = config.ticket_link_validity_days
-    if config.personal_links_enabled and may_text_personal_link(registration.member, phone):
-        url = issue_personal_link(
-            purpose=Purpose.TICKET,
-            member=registration.member,
-            phone=phone,
-            redirect_path=destination,
-            validity_days=days,
-            registration=registration,
-        )
-        if url is not None:  # None: personal sign-in links were turned off meanwhile.
-            return url
-    return issue_redirect_link(
-        purpose=Purpose.TICKET, redirect_path=sign_in_path(destination), validity_days=days, registration=registration
-    )
 
 
 def _record_failure(record: TicketSms, exc: SmsDeliveryError, links, *, job) -> None:

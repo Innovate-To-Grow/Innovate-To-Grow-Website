@@ -7,9 +7,9 @@ from django.test import TestCase, override_settings
 
 from apps.event.tests.helpers import make_event, make_member, make_superuser
 from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken
-from apps.mail.services.sms import compose, estimate
-from apps.mail.services.sms.errors import LinksDisabled, SmsSendRefused
-from apps.mail.services.sms.ticket import ticket_text
+from apps.mail.services.sms.content import compose, estimate
+from apps.mail.services.sms.content.ticket_text import ticket_text
+from apps.mail.services.sms.policy.errors import LinksDisabled, SmsSendRefused
 
 from .policy_helpers import add_phone, sms_settings
 

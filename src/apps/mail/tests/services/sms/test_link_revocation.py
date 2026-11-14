@@ -17,8 +17,9 @@ from django.utils import timezone
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkRevocation, SmsLinkToken
 from apps.mail.models.sms_config import revoke_personal_links
-from apps.mail.services.sms import links, ticket
-from apps.mail.services.sms.compose import CampaignLinks
+from apps.mail.services.sms import links
+from apps.mail.services.sms.content.compose import CampaignLinks
+from apps.mail.services.sms.delivery import ticket
 
 from .policy_helpers import add_phone, sms_settings
 
@@ -241,14 +242,14 @@ class TurnedOffOutsideTheAppTests(RevocationTestCase):
 
 class IssueRaceTests(RevocationTestCase):
     def test_a_link_stored_while_the_switch_goes_off_never_signs_in(self):
-        real_token = links._new_token
+        real_token = links.issuing._new_token
 
         def switch_off_then_token():
             # The switch goes off after the issuer read it as on, before the link is stored.
             sms_settings(personal_links_enabled=False)
             return real_token()
 
-        with patch.object(links, "_new_token", side_effect=switch_off_then_token):
+        with patch.object(links.issuing, "_new_token", side_effect=switch_off_then_token):
             token = self.issue()
 
         row = row_of(token)
@@ -293,14 +294,14 @@ class IssueRaceTests(RevocationTestCase):
 class OpenRaceTests(RevocationTestCase):
     def test_a_revocation_that_commits_while_a_link_is_opened_wins(self):
         token = self.issue()
-        real_claim = links._claim
+        real_claim = links.opening._claim
 
         def revoke_then_claim(link):
             # The switch-off commits after the opener's checks, just before its claim.
             sms_settings(personal_links_enabled=False)
             return real_claim(link)
 
-        with patch.object(links, "_claim", side_effect=revoke_then_claim):
+        with patch.object(links.opening, "_claim", side_effect=revoke_then_claim):
             opened = self.assert_lands_on_sign_in_page(token)
 
         self.assertEqual(opened.reason, "revoked")
