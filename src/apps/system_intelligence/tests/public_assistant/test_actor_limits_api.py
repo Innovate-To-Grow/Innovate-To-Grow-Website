@@ -35,8 +35,8 @@ MOCK_RESULT = {
     "text": "Innovate to Grow connects student teams with industry partners.",
     "usage": {"inputTokens": 120, "outputTokens": 40, "totalTokens": ACTUAL_TOKENS},
 }
-INVOKE_PATH = "apps.system_intelligence.views.answer_public_question"
-CONTEXT_PATH = "apps.system_intelligence.views.build_public_context"
+INVOKE_PATH = "apps.system_intelligence.views.chat_turn.answer_public_question"
+CONTEXT_PATH = "apps.system_intelligence.views.chat_turn.build_public_context"
 BUDGET_LOGGER = "apps.system_intelligence.services.public_assistant.budget"
 BUDGET_MESSAGE = "The assistant has reached its usage limit for now. Please try again later."
 CAMPUS_IP = "169.236.10.10"
@@ -357,7 +357,7 @@ class FailurePathTests(ActorLimitsTestBase):
 
     def test_reconcile_failure_does_not_break_the_answer(self):
         with patch(
-            "apps.system_intelligence.views.reconcile_budget",
+            "apps.system_intelligence.views.chat_turn.reconcile_budget",
             side_effect=budget.BudgetBackendUnavailable("db blip"),
         ):
             response = self.ask(self.new_visitor())
@@ -384,7 +384,7 @@ class FailurePathTests(ActorLimitsTestBase):
     def test_release_failure_after_a_provider_error_still_answers_502(self):
         self.invoke.side_effect = RuntimeError("bedrock down")
         with patch(
-            "apps.system_intelligence.views.release_budget",
+            "apps.system_intelligence.views.chat_turn.release_budget",
             side_effect=budget.BudgetBackendUnavailable("db blip"),
         ):
             response = self.ask(self.new_visitor())

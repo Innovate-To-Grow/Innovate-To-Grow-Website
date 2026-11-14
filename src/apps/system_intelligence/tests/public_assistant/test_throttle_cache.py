@@ -28,8 +28,8 @@ MOCK_RESULT = {
     "text": "Innovate to Grow connects student teams with industry partners.",
     "usage": {"inputTokens": 120, "outputTokens": 40, "totalTokens": 160},
 }
-INVOKE_PATH = "apps.system_intelligence.views.answer_public_question"
-CONTEXT_PATH = "apps.system_intelligence.views.build_public_context"
+INVOKE_PATH = "apps.system_intelligence.views.chat_turn.answer_public_question"
+CONTEXT_PATH = "apps.system_intelligence.views.chat_turn.build_public_context"
 CAMPUS_IP = "169.236.10.10"
 
 
