@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.authn.models import ContactEmail, Member
 from apps.event.tests.helpers import make_admin, make_event, make_registration, make_superuser, make_ticket
 from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressAction, EmailCampaign
-from apps.mail.services.email_monitoring.addresses.guards import fingerprint, load_target
+from apps.mail.services.email_monitoring.addresses.actions.targets import fingerprint, load_target
 from apps.mail.tests.services.bounced_addresses.helpers import add_email, make_bounce, make_person, make_row, settled
 
 LIST = "admin:mail_email_monitoring_addresses"

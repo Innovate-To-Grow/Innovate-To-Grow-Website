@@ -5,8 +5,8 @@ from django.utils import timezone
 from apps.authn.models import ContactEmail
 from apps.mail.models import BouncedAddress
 
+from ..aggregate.suggestions import suggest
 from . import audit
-from .suggestions import suggest
 
 REVIEW_FIELDS = ["status", "resolution", "reviewed_by", "reviewed_at", "review_note"]
 SUPPRESSION_FIELDS = ["suppression", "suppressed_at", "suppressed_by", "suppressed_reason"]

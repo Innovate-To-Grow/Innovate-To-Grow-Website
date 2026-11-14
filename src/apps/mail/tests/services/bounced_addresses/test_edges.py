@@ -13,10 +13,10 @@ from apps.authn.services.email.challenges import AuthChallengeInvalid
 from apps.core.tests.services.email_monitoring.helpers import make_email
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressAction, BouncedAddressCampaign
-from apps.mail.services.email_monitoring.addresses import actions, aggregate, audit
-from apps.mail.services.email_monitoring.addresses.actions import ActionRefused
-from apps.mail.services.email_monitoring.addresses.export import export_rows
+from apps.mail.services.email_monitoring.addresses import actions, aggregate
+from apps.mail.services.email_monitoring.addresses.actions import ActionRefused, audit
 from apps.mail.services.email_monitoring.addresses.listing import parse_listing
+from apps.mail.services.email_monitoring.addresses.listing.export import export_rows
 
 from .helpers import add_email, count_now, make_bounce, make_campaign, make_person, make_row, make_ses_log, settled
 from .test_actions import apply
@@ -44,7 +44,7 @@ class CountingEdgeTests(TestCase):
     def test_a_source_another_run_holds_is_skipped_without_waiting(self):
         make_bounce(recipient="busy@example.org")
 
-        with settled(), patch.object(aggregate, "_locked_state", return_value=None):
+        with settled(), patch.object(aggregate.counting, "_locked_state", return_value=None):
             result = aggregate.run(wait=False)
 
         self.assertEqual((result["graph"], result["busy"]), (0, True))
@@ -112,7 +112,7 @@ class RefusalEdgeTests(TestCase):
         member = make_person("old@example.org")
         verified = add_email(member, "new@example.org", email_type="other", verified=True)
         row = make_row("old@example.org")
-        target = "apps.mail.services.email_monitoring.addresses.actions.make_contact_email_primary"
+        target = "apps.mail.services.email_monitoring.addresses.actions.handlers.make_contact_email_primary"
 
         with patch(target, side_effect=AuthChallengeInvalid("Contact email not found.")):
             for action in (Action.MAKE_PRIMARY, Action.DELETE_EMAIL):
@@ -124,7 +124,9 @@ class RefusalEdgeTests(TestCase):
         row = make_row("kept@example.org")
         protected = {"deleted": [], "model_count": [], "protected": ["a protected record"]}
 
-        with patch("apps.mail.services.email_monitoring.addresses.actions.deletion_summary", return_value=protected):
+        with patch(
+            "apps.mail.services.email_monitoring.addresses.actions.handlers.deletion_summary", return_value=protected
+        ):
             with self.assertRaisesMessage(ActionRefused, "deactivate it instead"):
                 apply(self.master, row, Action.DELETE_ACCOUNT, confirm="kept@example.org")
 

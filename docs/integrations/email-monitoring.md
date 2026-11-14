@@ -226,7 +226,7 @@ subscription, and every change is a staff action with a confirmation page and an
   soft, rejected, delayed, unknown) and by [category](#bounce-categories) (`BouncedAddress.category_counts`, with the
   latest report's `last_category`). Amazon SES events on campaign recipient logs (`RecipientLog`): permanent (shown as
   hard), transient (soft) and undetermined (unknown) bounces, and spam **complaints**. **Left-the-organisation
-  notices** (the `inbound` source, `addresses/notices.py`): automatic replies the helpdesk classified as "left the
+  notices** (the `inbound` source, `addresses/aggregate/notices.py`): automatic replies the helpdesk classified as "left the
   organisation" (the person left, retired or changed address, or the mailbox is closed;
   [Helpdesk](helpdesk.md#how-a-message-becomes-a-ticket)) that answer an email the site sent, counted against **the
   address that email went to** (the notice may come from another address of the same organisation, such as an alias

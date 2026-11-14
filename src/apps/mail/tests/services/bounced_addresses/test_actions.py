@@ -12,7 +12,12 @@ from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import BouncedAddress, BouncedAddressAction, EmailCampaign
 from apps.mail.services.audience import get_recipients
 from apps.mail.services.email_monitoring.addresses.actions import ActionRefused, StaleConfirmation, apply_action
-from apps.mail.services.email_monitoring.addresses.guards import NEEDS_AUTHN, PRIVILEGED, fingerprint, load_target
+from apps.mail.services.email_monitoring.addresses.actions.targets import (
+    NEEDS_AUTHN,
+    PRIVILEGED,
+    fingerprint,
+    load_target,
+)
 
 from .helpers import add_email, make_person, make_row, request_for
 
@@ -302,7 +307,7 @@ class DeleteEmailTests(ActionTestCase):
     def test_an_unlinked_contact_linked_meanwhile_is_not_reported_deleted(self):
         ContactEmail.objects.create(member=None, email_address="orphan@example.org", email_type="other")
         row = make_row("orphan@example.org")
-        nothing_deleted = patch("apps.mail.services.email_monitoring.addresses.actions.ContactEmail")
+        nothing_deleted = patch("apps.mail.services.email_monitoring.addresses.actions.handlers.ContactEmail")
 
         with nothing_deleted as contact_model:
             contact_model.objects.filter.return_value.delete.return_value = (0, {})
