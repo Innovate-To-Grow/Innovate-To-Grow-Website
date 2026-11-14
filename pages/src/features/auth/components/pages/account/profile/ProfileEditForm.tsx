@@ -1,4 +1,4 @@
-import '../../../styles/orgToggle.css';
+import '../../../styles/base/orgToggle.css';
 import type {ProfileSectionProps} from './types';
 
 type ProfileEditFormProps = Pick<
