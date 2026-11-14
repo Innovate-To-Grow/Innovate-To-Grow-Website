@@ -1,0 +1,130 @@
+  function mergeListHtml(root, html) {
+    var tmp = document.createElement('div');
+    tmp.innerHTML = html;
+
+    function replaceSection(selector) {
+      var fresh = tmp.querySelector(selector);
+      var current = root.querySelector(selector);
+      if (fresh && current) {
+        current.replaceWith(fresh);
+      } else if (!fresh && current) {
+        current.remove();
+      } else if (fresh) {
+        var shell = root.querySelector('.i2g-mail-shell');
+        var split = shell ? shell.querySelector('.i2g-inbox-split') : null;
+        if (shell && split) shell.insertBefore(fresh, split);
+      }
+    }
+
+    replaceSection('.i2g-mail-toolbar');
+    replaceSection('[data-inbox-account-panel]');
+    replaceSection('[data-inbox-status]');
+
+    var newHead = tmp.querySelector('.i2g-inbox-list-head');
+    var oldHead = root.querySelector('.i2g-inbox-list-head');
+    if (newHead && oldHead) {
+      oldHead.replaceWith(newHead);
+    }
+
+    var newList = tmp.querySelector('.i2g-inbox-list');
+    var oldList = root.querySelector('.i2g-inbox-list');
+    if (newList && oldList) {
+      oldList.innerHTML = newList.innerHTML;
+    }
+
+    var newSplit = tmp.querySelector('.i2g-inbox-split');
+    var oldSplit = root.querySelector('.i2g-inbox-split');
+    if (!oldSplit && newSplit) {
+      var shell = root.querySelector('.i2g-mail-shell');
+      var previewPane = root.querySelector('#inbox-preview-pane');
+      if (shell && previewPane) {
+        var wrapper = document.createElement('div');
+        wrapper.innerHTML = newSplit.outerHTML;
+        var freshSplit = wrapper.firstElementChild;
+        var freshPreview = freshSplit.querySelector('#inbox-preview-pane');
+        if (freshPreview) freshPreview.replaceWith(previewPane);
+        shell.appendChild(freshSplit);
+      }
+    }
+
+    applyInboxLayoutState(root);
+  }
+
+  var SCROLL_KEY = 'inbox-list-scroll';
+
+  function saveListScroll(root) {
+    var list = root.querySelector('.i2g-inbox-list');
+    return list ? list.scrollTop : 0;
+  }
+
+  function restoreListScroll(root, top) {
+    var list = root.querySelector('.i2g-inbox-list');
+    if (list && top) list.scrollTop = top;
+  }
+
+  function persistScrollToSession(root) {
+    var list = root.querySelector('.i2g-inbox-list');
+    if (list) {
+      try { sessionStorage.setItem(SCROLL_KEY, String(list.scrollTop)); } catch (e) {}
+    }
+  }
+
+  function popSessionScroll() {
+    try {
+      var v = sessionStorage.getItem(SCROLL_KEY);
+      sessionStorage.removeItem(SCROLL_KEY);
+      return v ? Number(v) : 0;
+    } catch (e) { return 0; }
+  }
+
+  function fetchInbox(root, params) {
+    var url = root.getAttribute('data-fragment-url');
+    if (!url) return;
+    var activeUid = getActiveUid(root);
+    var preservePreview = hasPreviewContent(root);
+    var scrollTop = saveListScroll(root);
+    var sessionScroll = preservePreview ? 0 : popSessionScroll();
+    var btn = root.querySelector('[data-inbox-refresh]');
+    if (btn) {
+      btn.classList.add('i2g-inbox-refresh--loading');
+      btn.setAttribute('disabled', 'disabled');
+    }
+    fetch(buildUrl(url, params || {}), {
+      credentials: 'same-origin',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' },
+    })
+      .then(function (r) { if (!r.ok) throw new Error(); return r.text(); })
+      .then(function (html) {
+        if (preservePreview) {
+          mergeListHtml(root, html);
+          if (activeUid) setActiveRow(root, activeUid);
+          restoreListScroll(root, scrollTop);
+        } else {
+          root.innerHTML = html;
+          var savedUid = getHashUid();
+          if (savedUid) {
+            var savedRow = root.querySelector('[data-inbox-row][data-uid="' + savedUid + '"]');
+            if (savedRow) {
+              loadPreview(root, savedRow);
+              restoreListScroll(root, sessionScroll);
+            }
+          }
+        }
+        applyInboxLayoutState(root);
+      })
+      .catch(function () {
+        var skel = root.querySelector('#inbox-loading-skeleton');
+        if (skel) skel.innerHTML = '<div class="p-8 text-center text-red-600 text-sm">Failed to load inbox. <button data-inbox-refresh class="underline text-primary-600 ml-1">Retry</button></div>';
+        else window.alert('Could not refresh inbox.');
+      })
+      .finally(function () {
+        if (btn) { btn.classList.remove('i2g-inbox-refresh--loading'); btn.removeAttribute('disabled'); }
+      });
+  }
+
+  function setActiveRow(root, uid) {
+    root.querySelectorAll('[data-inbox-row]').forEach(function (r) {
+      r.classList.toggle('is-active', r.getAttribute('data-uid') === uid);
+    });
+  }
+

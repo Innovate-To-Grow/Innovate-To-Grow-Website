@@ -24,7 +24,7 @@ def inbox_list_view(request):
         "title": "Inbox",
         "fragment_url": reverse("admin:mail_inbox_fragment"),
     }
-    return TemplateResponse(request, "admin/mail/inbox/list.html", context)
+    return TemplateResponse(request, "admin/mail/inbox/list/list.html", context)
 
 
 def inbox_fragment_view(request):
@@ -59,7 +59,7 @@ def inbox_fragment_view(request):
 
     return TemplateResponse(
         request,
-        "admin/mail/inbox/_inbox_full_body.html",
+        "admin/mail/inbox/detail/_inbox_full_body.html",
         {
             "inbox_account": _inbox_account(),
             "inbox_messages": inbox_messages,
