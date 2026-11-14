@@ -1,7 +1,7 @@
 import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {ProfileSection} from '@/features/auth/components/pages/account/ProfileSection';
+import {ProfileSection} from '@/features/auth/components/pages/account/profile/ProfileSection';
 
 type OrganizationType = 'individual' | 'organization';
 

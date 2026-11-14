@@ -1,7 +1,7 @@
 import {useCallback, useEffect, useState, type ChangeEvent, type FormEvent} from 'react';
 import {getProfile, updateProfileFields, uploadProfileImage, type ProfileResponse} from '@/features/auth/api';
-import {getAuthApiErrorMessage} from '../../shared/apiErrors';
-import {useProfileForm} from '../../shared/useProfileForm';
+import {getAuthApiErrorMessage} from '../../../shared/apiErrors';
+import {useProfileForm} from '../../../shared/useProfileForm';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 

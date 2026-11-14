@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   useAccountDashboard: vi.fn(),
 }));
 
-vi.mock('@/features/auth/components/pages/account/useAccountDashboard', () => ({
+vi.mock('@/features/auth/components/pages/account/dashboard/useAccountDashboard', () => ({
   useAccountDashboard: () => mocks.useAccountDashboard(),
 }));
 

@@ -1,7 +1,7 @@
 import {cleanup, fireEvent, render, screen, within} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {DeleteAccountSection} from '@/features/auth/components/pages/account/DeleteAccountSection';
+import {DeleteAccountSection} from '@/features/auth/components/pages/account/security/DeleteAccountSection';
 
 const renderSection = (overrides: Record<string, unknown> = {}) => {
   const props = {

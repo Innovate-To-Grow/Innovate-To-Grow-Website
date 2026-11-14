@@ -1,6 +1,6 @@
 import {useState, type FormEvent} from 'react';
-import {CodeInput} from '../../forms/CodeInput';
-import {StatusAlert} from '../../shared/StatusAlert';
+import {CodeInput} from '../../../forms/CodeInput';
+import {StatusAlert} from '../../../shared/StatusAlert';
 
 interface DeleteAccountSectionProps {
   deleteCodeRequested: boolean;

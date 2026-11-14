@@ -1,6 +1,6 @@
 import {useCallback, useState, type FormEvent} from 'react';
 import {confirmPasswordChange, requestPasswordChangeCode, verifyPasswordChangeCode} from '@/features/auth/api';
-import {getAuthApiErrorMessage} from '../../shared/apiErrors';
+import {getAuthApiErrorMessage} from '../../../shared/apiErrors';
 
 /**
  * Changing the password: request a code (emailed, or texted to a phone-only account), verify it for a

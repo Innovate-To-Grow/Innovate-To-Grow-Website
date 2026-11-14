@@ -2,7 +2,7 @@ import {cleanup, fireEvent, render, screen, within} from '@testing-library/react
 import {MemoryRouter} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {TicketsSection} from '@/features/auth/components/pages/account/TicketsSection';
+import {TicketsSection} from '@/features/auth/components/pages/account/tickets/TicketsSection';
 import type {EventRegistrationSummary, Registration} from '@/features/events/api';
 
 const registration = (overrides: Partial<Registration> = {}): Registration => ({

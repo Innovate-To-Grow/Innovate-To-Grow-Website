@@ -1,7 +1,7 @@
 import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {PasswordSection} from '@/features/auth/components/pages/account/PasswordSection';
+import {PasswordSection} from '@/features/auth/components/pages/account/security/PasswordSection';
 
 const renderSection = (overrides: Record<string, unknown> = {}) => {
   const props = {

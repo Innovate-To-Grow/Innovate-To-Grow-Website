@@ -1,9 +1,9 @@
-import {StatusAlert} from '../../shared/StatusAlert';
-import {ProfileEditForm} from './profile/ProfileEditForm';
-import {ProfileErrorAlert} from './profile/ProfileErrorAlert';
-import {ProfileImageControl} from './profile/ProfileImageControl';
-import {ProfileSummary} from './profile/ProfileSummary';
-import type {ProfileSectionProps} from './profile/types';
+import {StatusAlert} from '../../../shared/StatusAlert';
+import {ProfileEditForm} from './ProfileEditForm';
+import {ProfileErrorAlert} from './ProfileErrorAlert';
+import {ProfileImageControl} from './ProfileImageControl';
+import {ProfileSummary} from './ProfileSummary';
+import type {ProfileSectionProps} from './types';
 
 export const ProfileSection = (props: ProfileSectionProps) => {
   const {profileMessage, profileError, isEditingProfile, onRetryProfile} = props;

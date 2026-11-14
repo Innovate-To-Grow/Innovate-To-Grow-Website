@@ -1,7 +1,7 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {DetailsSection} from '@/features/auth/components/pages/account/DetailsSection';
+import {DetailsSection} from '@/features/auth/components/pages/account/dashboard/DetailsSection';
 
 describe('DetailsSection', () => {
   afterEach(cleanup);

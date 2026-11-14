@@ -1,11 +1,11 @@
 import {useCallback, useEffect} from 'react';
 import {useNavigate} from 'react-router';
-import {useAuth} from '../../AuthContext';
+import {useAuth} from '../../../AuthContext';
 import {firstEmailAddress} from '@/features/auth/components/sections/internal/emailAddress';
-import {useAccountDeletion} from './useAccountDeletion';
-import {useAccountTickets} from './useAccountTickets';
-import {usePasswordChange} from './usePasswordChange';
-import {useProfileEditor} from './useProfileEditor';
+import {useAccountDeletion} from '../security/useAccountDeletion';
+import {useAccountTickets} from '../tickets/useAccountTickets';
+import {usePasswordChange} from '../security/usePasswordChange';
+import {useProfileEditor} from '../profile/useProfileEditor';
 
 /**
  * The account page: redirects visitors who cannot use it, then composes one hook per section — the

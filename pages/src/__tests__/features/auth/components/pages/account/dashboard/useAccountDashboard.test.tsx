@@ -4,7 +4,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import type {ChangeEvent, FormEvent, ReactNode} from 'react';
 
 import type {ProfileResponse} from '@/features/auth/api';
-import {useAccountDashboard} from '@/features/auth/components/pages/account/useAccountDashboard';
+import {useAccountDashboard} from '@/features/auth/components/pages/account/dashboard/useAccountDashboard';
 
 const mocks = vi.hoisted(() => ({
   useAuth: vi.fn(),

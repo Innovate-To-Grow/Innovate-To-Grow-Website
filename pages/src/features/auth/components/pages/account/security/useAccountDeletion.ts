@@ -1,7 +1,7 @@
 import {useCallback, useState, type FormEvent} from 'react';
 import {useNavigate} from 'react-router';
 import {confirmAccountDeletion, requestAccountDeletionCode, verifyAccountDeletionCode} from '@/features/auth/api';
-import {getAuthApiErrorMessage} from '../../shared/apiErrors';
+import {getAuthApiErrorMessage} from '../../../shared/apiErrors';
 
 /** Deleting the account: request a code, verify it for a one-time token, confirm; then sign out. */
 export function useAccountDeletion(logout: () => void) {

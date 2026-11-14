@@ -12,7 +12,7 @@ import {
 import {SharedLinksList} from '../sections/sharedLinks/SharedLinksList';
 import {useMySharedLinks} from '../sections/sharedLinks/useMySharedLinks';
 
-import './account/accountSharedLinks.css';
+import './account/dashboard/accountSharedLinks.css';
 
 export const PastProjectCurationSharedLinksPage = () => {
   const {isAuthenticated, isInitializing, requiresProfileCompletion} = useAuth();
