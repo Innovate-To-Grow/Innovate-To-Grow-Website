@@ -10,7 +10,7 @@ A COMPLETE VALIDATION. Exits 1 unless the run matches the approval. Every run is
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphProviderConfig
-from apps.core.models.base.service_credentials.microsoft_graph_access_check import go_live_problem
+from apps.core.models.base.service_credentials.microsoft_graph.access_check import go_live_problem
 from apps.core.services.email.graph.access_check import FAIL, PASS, WARN, precondition_problem, run_and_record
 
 NOT_CONFIGURED = "No active, fully configured Microsoft Graph provider config (with a mailbox scope)."

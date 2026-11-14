@@ -6,7 +6,7 @@ through a Google Cloud service account with **domain-wide delegation for exactly
 or Microsoft Graph; there is no per-message routing and no automatic failover.
 
 Code: `src/apps/core/services/email/gmail/` (provider, assertion, token exchange, transport, errors, key handling and
-the access check), `src/apps/core/models/base/service_credentials/gmail_api.py` (`GmailApiProviderConfig`,
+the access check), `src/apps/core/models/base/service_credentials/gmail_api/` (`GmailApiProviderConfig`,
 `GmailApiSubject`), `src/apps/core/admin/service_credentials/gmail_api*.py` (admin pages), and
 `src/apps/core/services/delivery_rates/adapters/gmail_api.py` (rate signals).
 
