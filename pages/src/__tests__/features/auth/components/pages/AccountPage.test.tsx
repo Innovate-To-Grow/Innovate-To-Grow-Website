@@ -13,15 +13,15 @@ vi.mock('@/features/auth/components/pages/account/useAccountDashboard', () => ({
   useAccountDashboard: () => mocks.useAccountDashboard(),
 }));
 
-vi.mock('@/features/auth/components/sections/EmailCenter', () => ({
+vi.mock('@/features/auth/components/sections/email/EmailCenter', () => ({
   EmailCenter: () => <div data-testid="email-center" />,
 }));
 
-vi.mock('@/features/auth/components/sections/PhoneCenter', () => ({
+vi.mock('@/features/auth/components/sections/phone/PhoneCenter', () => ({
   PhoneCenter: () => <div data-testid="phone-center" />,
 }));
 
-vi.mock('@/features/auth/components/sections/MySharedLinksSection', () => ({
+vi.mock('@/features/auth/components/sections/sharedLinks/MySharedLinksSection', () => ({
   MySharedLinksSection: () => <div data-testid="shared-links" />,
 }));
 

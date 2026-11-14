@@ -1,10 +1,10 @@
-import {StatusAlert} from '../shared/StatusAlert';
-import {useMySharedLinks} from './internal/useMySharedLinks';
+import {StatusAlert} from '../../shared/StatusAlert';
+import {useMySharedLinks} from './useMySharedLinks';
 import {
   PAST_PROJECT_CURATION_SHARED_LINKS_PATH,
   PAST_PROJECT_CURATION_SHARED_LINKS_TITLE,
-} from './internal/sharedLinkUtils';
-import {SharedLinksList} from './internal/SharedLinksList';
+} from './sharedLinkUtils';
+import {SharedLinksList} from './SharedLinksList';
 
 export const MySharedLinksSection = () => {
   const {shares, loading, error, successMessage, handleDelete} = useMySharedLinks();

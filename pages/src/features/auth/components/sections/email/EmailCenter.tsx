@@ -4,9 +4,9 @@ import {
 import {EmailAddForm} from './EmailAddForm';
 import {ContactEmailCard} from './ContactEmailCard';
 import {PrimaryEmailCard} from './PrimaryEmailCard';
-import {StatusAlert} from '../shared/StatusAlert';
-import {normalizeEmailAddress} from './internal/emailAddress';
-import {useEmailCenter} from './internal/useEmailCenter';
+import {StatusAlert} from '../../shared/StatusAlert';
+import {normalizeEmailAddress} from '../internal/emailAddress';
+import {useEmailCenter} from './useEmailCenter';
 
 interface EmailCenterProps {
     profile: ProfileResponse;

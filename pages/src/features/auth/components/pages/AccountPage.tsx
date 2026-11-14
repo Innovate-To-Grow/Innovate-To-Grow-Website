@@ -5,10 +5,10 @@ import {PasswordSection} from './account/PasswordSection';
 import {ProfileSection} from './account/ProfileSection';
 import {TicketsSection} from './account/TicketsSection';
 import {useAccountDashboard} from './account/useAccountDashboard';
-import {EmailCenter} from '../sections/EmailCenter';
+import {EmailCenter} from '../sections/email/EmailCenter';
 import {Icon} from '@/components/Icon/Icon';
-import {MySharedLinksSection} from '../sections/MySharedLinksSection';
-import {PhoneCenter} from '../sections/PhoneCenter';
+import {MySharedLinksSection} from '../sections/sharedLinks/MySharedLinksSection';
+import {PhoneCenter} from '../sections/phone/PhoneCenter';
 
 import './account/accountSharedLinks.css';
 

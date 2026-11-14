@@ -1,37 +1,35 @@
 import type {FormEvent} from 'react';
-import type {ProfileResponse} from '@/features/auth/api';
-import {CodeInput} from '../forms/CodeInput';
-import {StatusAlert} from '../shared/StatusAlert';
+import type {ContactPhone} from '@/features/auth/api';
+import {CodeInput} from '../../forms/CodeInput';
+import {StatusAlert} from '../../shared/StatusAlert';
+import {formatPhoneDisplay} from '../internal/helpers';
 
-interface PrimaryEmailCardProps {
-  profile: ProfileResponse;
-  email: string;
-  subscribeSaving: boolean;
-  verifying: boolean;
+/** Only a verified number signs in by text (the server refuses any other), so say why verifying matters. */
+export const UNVERIFIED_PHONE_NOTE = 'Verify this number to use it to sign in with a texted code.';
+
+interface PhoneCardProps {
+  phone: ContactPhone;
+  verifyingId: string | null;
   verifyCode: string;
   verifyLoading: boolean;
   verifyError: string | null;
   resendLoading: boolean;
-  deleteLoading: boolean;
-  onToggleSubscribe: () => void;
-  onToggleVerify: () => void;
+  onToggleSubscribe: (phone: ContactPhone) => void;
+  onToggleVerify: (phoneId: string) => void;
   onVerifyCodeChange: (value: string) => void;
   onVerifySubmit: (event: FormEvent) => void;
-  onResend: () => void;
+  onResend: (phoneId: string) => void;
   onCancelVerify: () => void;
-  onDelete: () => void;
+  onDelete: (phoneId: string) => void;
 }
 
-export const PrimaryEmailCard = ({
-  profile,
-  email,
-  subscribeSaving,
-  verifying,
+export const PhoneCard = ({
+  phone,
+  verifyingId,
   verifyCode,
   verifyLoading,
   verifyError,
   resendLoading,
-  deleteLoading,
   onToggleSubscribe,
   onToggleVerify,
   onVerifyCodeChange,
@@ -39,41 +37,41 @@ export const PrimaryEmailCard = ({
   onResend,
   onCancelVerify,
   onDelete,
-}: PrimaryEmailCardProps) => (
+}: PhoneCardProps) => (
   <div className="email-center-card">
     <div className="email-center-row">
       <div className="email-center-card-main">
         <div className="email-center-card-heading">
-          <span className="email-center-card-title email-center-card-title--emphasis">{email}</span>
-          <span className="itg-tag email-center-badge primary">Primary</span>
-          <span className={`itg-tag email-center-badge ${profile.email_verified ? 'itg-tag-saved verified' : 'itg-tag-new unverified'}`}>
-            {profile.email_verified ? 'Verified' : 'Unverified'}
+          <span className="email-center-card-title">{formatPhoneDisplay(phone.phone_number)}</span>
+          <span className={`itg-tag email-center-badge ${phone.verified ? 'itg-tag-saved verified' : 'itg-tag-new unverified'}`}>
+            {phone.verified ? 'Verified' : 'Unverified'}
           </span>
         </div>
+        {!phone.verified ? (
+          <p className="email-center-card-note">{UNVERIFIED_PHONE_NOTE}</p>
+        ) : null}
         <div className="email-center-actions">
-          <label className="email-center-toggle" aria-label="Subscribe primary email">
-            <input type="checkbox" checked={profile.email_subscribe} onChange={onToggleSubscribe} disabled={subscribeSaving} />
+          <label className="email-center-toggle" aria-label="Text Messages">
+            <input type="checkbox" checked={phone.subscribe} onChange={() => onToggleSubscribe(phone)} />
             <span className="email-center-toggle-slider" />
-            <span className="email-center-toggle-label">Newsletters</span>
+            <span className="email-center-toggle-label">Text Messages</span>
           </label>
-          {!profile.email_verified && profile.primary_email_id && !verifying ? (
-            <button type="button" className="itg-btn itg-btn-outline email-center-btn verify" disabled={resendLoading} onClick={onToggleVerify}>
+          {!phone.verified && verifyingId !== phone.id ? (
+            <button type="button" className="itg-btn itg-btn-outline email-center-btn verify" onClick={() => onToggleVerify(phone.id)}>
               Verify
             </button>
           ) : null}
-          {profile.primary_email_id && !verifying ? (
-            <button type="button" className="itg-btn itg-btn-danger email-center-btn delete" disabled={deleteLoading} onClick={onDelete}>
-              {deleteLoading ? 'Removing...' : 'Remove'}
-            </button>
-          ) : null}
+          <button type="button" className="itg-btn itg-btn-danger email-center-btn delete" onClick={() => onDelete(phone.id)}>
+            Remove
+          </button>
         </div>
       </div>
     </div>
 
-    {verifying && !profile.email_verified ? (
+    {verifyingId === phone.id && !phone.verified ? (
       <div className="email-center-verify-inline">
         <p className="email-center-verify-hint">
-          Enter the 6-digit code we sent to this address, then tap Submit code.
+          Enter the 6-digit code we sent by SMS, then tap Submit code.
         </p>
         <form onSubmit={onVerifySubmit} className="email-center-verify-form">
           <div className="email-center-verify-code-wrap">
@@ -92,7 +90,7 @@ export const PrimaryEmailCard = ({
                 type="button"
                 className="itg-btn itg-btn-outline email-center-btn verify email-center-verify-secondary-btn"
                 disabled={resendLoading}
-                onClick={onResend}
+                onClick={() => onResend(phone.id)}
               >
                 {resendLoading ? 'Sending...' : 'Resend Code'}
               </button>

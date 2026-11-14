@@ -2,7 +2,7 @@ import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/reac
 import {MemoryRouter} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {PhoneCenter} from '@/features/auth/components/sections/PhoneCenter';
+import {PhoneCenter} from '@/features/auth/components/sections/phone/PhoneCenter';
 
 const mocks = vi.hoisted(() => ({
   getContactPhones: vi.fn(),

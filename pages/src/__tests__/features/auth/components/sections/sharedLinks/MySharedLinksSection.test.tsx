@@ -1,7 +1,7 @@
 import {cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {MySharedLinksSection} from '@/features/auth/components/sections/MySharedLinksSection';
+import {MySharedLinksSection} from '@/features/auth/components/sections/sharedLinks/MySharedLinksSection';
 
 const mockListMyShares = vi.fn();
 const mockDeleteShare = vi.fn();

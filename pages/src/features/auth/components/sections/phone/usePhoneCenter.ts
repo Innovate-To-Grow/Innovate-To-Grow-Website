@@ -7,7 +7,7 @@ import {
 } from '@/features/auth/api';
 import {USER_FACING_GENERIC_ERROR} from '../../shared/apiErrors';
 import {phoneVerificationOptions, useAddPhoneActions, useAddPhoneForm} from './useAddPhoneForm';
-import {useContactCodeVerification} from './useContactCodeVerification';
+import {useContactCodeVerification} from '../internal/useContactCodeVerification';
 
 /**
  * The account's phone numbers. A new number is created on the server but stays out of the list (as

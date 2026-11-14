@@ -2,7 +2,7 @@ import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import type {ContactPhone} from '@/features/auth/api';
-import {PhoneCard, UNVERIFIED_PHONE_NOTE} from '@/features/auth/components/sections/PhoneCard';
+import {PhoneCard, UNVERIFIED_PHONE_NOTE} from '@/features/auth/components/sections/phone/PhoneCard';
 
 const phone = (overrides: Partial<ContactPhone> = {}): ContactPhone => ({
   id: 'p-1',

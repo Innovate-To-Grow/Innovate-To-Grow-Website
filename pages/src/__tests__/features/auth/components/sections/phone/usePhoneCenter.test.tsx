@@ -3,7 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import type {FormEvent} from 'react';
 
 import type {ContactPhone} from '@/features/auth/api';
-import {usePhoneCenter} from '@/features/auth/components/sections/internal/usePhoneCenter';
+import {usePhoneCenter} from '@/features/auth/components/sections/phone/usePhoneCenter';
 
 const mocks = vi.hoisted(() => ({
   getContactPhones: vi.fn(),

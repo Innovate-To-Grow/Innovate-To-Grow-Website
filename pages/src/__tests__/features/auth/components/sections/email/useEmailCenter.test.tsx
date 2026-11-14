@@ -3,7 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import type {FormEvent} from 'react';
 
 import type {ContactEmail, ProfileResponse} from '@/features/auth/api';
-import {useEmailCenter} from '@/features/auth/components/sections/internal/useEmailCenter';
+import {useEmailCenter} from '@/features/auth/components/sections/email/useEmailCenter';
 
 const mocks = vi.hoisted(() => ({
   getContactEmails: vi.fn(),

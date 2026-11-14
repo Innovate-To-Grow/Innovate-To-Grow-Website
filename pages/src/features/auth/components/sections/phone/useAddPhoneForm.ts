@@ -9,7 +9,7 @@ import {
 } from '@/features/auth/api';
 import {USER_FACING_GENERIC_ERROR} from '../../shared/apiErrors';
 import {canSubmitNationalPhone} from '@/lib/format/phoneInput';
-import type {useContactCodeVerification} from './useContactCodeVerification';
+import type {useContactCodeVerification} from '../internal/useContactCodeVerification';
 
 export const TERMS_REQUIRED = 'Please accept the Privacy/Legal Notice and Privacy Statement to continue.';
 

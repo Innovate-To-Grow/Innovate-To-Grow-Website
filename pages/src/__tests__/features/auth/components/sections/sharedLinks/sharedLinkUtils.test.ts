@@ -4,7 +4,7 @@ import {
   getSharedLinkDisplayName,
   getSharedLinkResultsLabel,
   getSharedLinkSearchText,
-} from '@/features/auth/components/sections/internal/sharedLinkUtils';
+} from '@/features/auth/components/sections/sharedLinks/sharedLinkUtils';
 import type {PastProjectShareSummary} from '@/features/projects/api';
 
 const share = (overrides: Partial<PastProjectShareSummary> = {}): PastProjectShareSummary => ({

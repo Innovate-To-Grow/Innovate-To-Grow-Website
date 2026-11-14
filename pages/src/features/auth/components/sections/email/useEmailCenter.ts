@@ -9,7 +9,7 @@ import {
   type ProfileResponse,
 } from '@/features/auth/api';
 import {getAuthApiErrorMessage} from '../../shared/apiErrors';
-import {useContactCodeVerification} from './useContactCodeVerification';
+import {useContactCodeVerification} from '../internal/useContactCodeVerification';
 import {useAddEmailForm} from './useAddEmailForm';
 import {usePrimaryEmailActions} from './usePrimaryEmailActions';
 import {usePrimaryEmailVerification} from './usePrimaryEmailVerification';

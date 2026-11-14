@@ -2,7 +2,7 @@ import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import type {ContactEmail} from '@/features/auth/api';
-import {ContactEmailCard} from '@/features/auth/components/sections/ContactEmailCard';
+import {ContactEmailCard} from '@/features/auth/components/sections/email/ContactEmailCard';
 
 const contact = (overrides: Partial<ContactEmail> = {}): ContactEmail => ({
   id: 'e-1',

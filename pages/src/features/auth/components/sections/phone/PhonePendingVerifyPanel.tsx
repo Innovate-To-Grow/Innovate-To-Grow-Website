@@ -1,8 +1,8 @@
 import type {FormEvent} from 'react';
 import type {ContactPhone} from '@/features/auth/api';
-import {CodeInput} from '../forms/CodeInput';
-import {StatusAlert} from '../shared/StatusAlert';
-import {formatPhoneDisplay} from './internal/helpers';
+import {CodeInput} from '../../forms/CodeInput';
+import {StatusAlert} from '../../shared/StatusAlert';
+import {formatPhoneDisplay} from '../internal/helpers';
 import {PhoneConsentFields} from './PhoneConsentFields';
 
 interface PhonePendingVerifyPanelProps {

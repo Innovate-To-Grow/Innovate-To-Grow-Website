@@ -1,8 +1,8 @@
 import {PhoneAddForm} from './PhoneAddForm';
 import {PhoneCard} from './PhoneCard';
 import {PhonePendingVerifyPanel} from './PhonePendingVerifyPanel';
-import {StatusAlert} from '../shared/StatusAlert';
-import {usePhoneCenter} from './internal/usePhoneCenter';
+import {StatusAlert} from '../../shared/StatusAlert';
+import {usePhoneCenter} from './usePhoneCenter';
 
 export const PhoneCenter = () => {
     const pc = usePhoneCenter();

@@ -1,5 +1,5 @@
 import type {FormEvent} from 'react';
-import {StatusAlert} from '../shared/StatusAlert';
+import {StatusAlert} from '../../shared/StatusAlert';
 
 interface EmailAddFormProps {
   addEmail: string;
