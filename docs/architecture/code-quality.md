@@ -15,6 +15,8 @@ pre-push hooks run the same commands.
 | TypeScript advisory report | `cd pages && npm run quality:report` (`-- --json out.json`) | never (always exits 0) |
 | Frontend layer boundaries, cycles, directory size | `cd pages && npm run check:structure` | a boundary violation, a new cycle, or a directory over the hard limit |
 | `core/services` structure (existing, stricter) | `cd src && python manage.py test apps.core.tests.services.test_core_services_structure --settings=config.settings.environments.local` | a file over 200 physical lines, or more than 10 `.py` files in one directory |
+| Repository structure (architecture spec R001–R004) | `python -m scripts.structure.checker report` (`--verbose` lists every finding, `--json out.json`) | never in report mode; with `--mode enforce`, an open finding or a stale entry |
+| Migration guard (spec R024) | `python -m scripts.structure.checker migrations --base origin/main --head HEAD` | an existing file under any `migrations/` directory was modified, deleted, renamed or changed type |
 
 Run both Python checks from the repository root with the dev virtualenv active: complexity comes from
 `ruff` on `PATH` (the version pinned in `src/requirements/local.txt`). Where they run:
@@ -22,6 +24,8 @@ Run both Python checks from the repository root with the dev virtualenv active: 
 - **CI:** `lint.yml` (Python Linting job) runs both Python checks after Ruff. `ci.yml` (Frontend Lint,
   Build and Static Checks job) runs `npm run lint` and then `npm run check:structure`. The checkers' own unit tests
   (`scripts/ci/tests/test_check_python_*.py`) run in the Preflight job with the other CI script tests.
+  `ci.yml`'s `Repository Structure and Migration Guard` job runs the structure checker's tests, the migration guard
+  and the structure report on every run (see [Repository structure](#repository-structure)).
 - **Pre-push hooks** (`.pre-commit-config.yaml`): `frontend-eslint`, `frontend-structure`, `python-quality`,
   `python-dependencies`.
 
@@ -173,6 +177,40 @@ types, assets  <  lib  <  hooks, components  <  features  <  routes  <  app (+ m
   CMS embed page receives the router's `EMBED_APP_ROUTES` as a prop.
 - Cycles are computed over static value imports (`import type` and dynamic `import()` excluded).
   `KNOWN_CYCLES` is empty, and any new cycle fails.
+
+## Repository structure
+
+`scripts/structure/checker` (standard library only) measures the architecture spec's structure rules over
+every file git tracks, from the repository root. Limits and exceptions live in
+`scripts/structure/checker/structure.toml`.
+
+| Rule | Finding |
+|---|---|
+| R001 | a hand-maintained source file (`.py .ts .tsx .js .jsx .mjs .cjs .css .scss .html .sh .tf .yml .yaml`, `Dockerfile`) has more than 200 **physical** lines (blank and comment lines count) |
+| R002 | a directory holds more than 8 files directly (hidden files count) |
+| R003-mixed | a directory holds both files and subdirectories |
+| R003-width | a directory holds more than 8 subdirectories |
+| R004-depth | a file sits more than 6 levels below its business-module root (advisory, never fails) |
+| R004-name | a directory is named `misc`, `others`, `other`, `temp` or `tmp` |
+
+- `__init__.py` and a frontend feature's public entry `pages/src/features/<name>/index.ts` never count toward
+  R002/R003.
+- **Unmeasured** (`[[unmeasured]]`): Django migrations, vendored third-party code, generated files (lockfiles,
+  the Bandit baseline) and historical material. They are invisible to every rule.
+- **Exceptions** (`[[exceptions]]`): exact paths (or one-level patterns such as `src/apps/*` for the Django app
+  roots), the rules relaxed for them, and a reason. They cover only layouts a framework or tool fixes and
+  files that cannot be split without changing behavior. Never add a pattern that covers a whole source tree.
+- An entry that no longer matches anything is reported as stale, so the lists only shrink.
+
+**Mode.** CI's `Repository Structure and Migration Guard` job runs the structure check in **report-only**
+mode: the counts and every open finding go to the job summary and never fail the run, because the tree
+predates the spec and the architecture refactor fixes it module by module. Once it lands, the job switches to
+`--mode enforce` (fails on an open finding or a stale entry).
+
+**Migration guard (enforcing).** The same job fails when an existing file under any `migrations/` directory is
+modified, deleted, renamed or changes type between the merge base of the PR (or merge-group, or push) base
+and its head. Added files pass, so new migrations work as before. `[migrations].allowed_changes` can list a
+change the owners explicitly approved; it is empty.
 
 ## Exceptions policy
 
