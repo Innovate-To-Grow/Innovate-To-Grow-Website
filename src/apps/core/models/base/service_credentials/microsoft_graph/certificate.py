@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
-from ...control import ProjectControlModel
+from ...abstract.control import ProjectControlModel
 
 
 class MicrosoftGraphCertificate(ProjectControlModel):

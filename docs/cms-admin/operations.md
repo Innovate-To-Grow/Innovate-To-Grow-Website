@@ -6,7 +6,7 @@ Maintenance tasks, data management, and operational guidance for administrators.
 
 ### Enabling
 
-The `SiteMaintenanceControl` model (`src/apps/core/models/base/web.py`) controls maintenance mode:
+The `SiteMaintenanceControl` model (`src/apps/core/models/base/site_controls/maintenance.py`) controls maintenance mode:
 
 1. In Django admin → Site Settings → Site Maintenance Control
 2. Set `is_maintenance = True`

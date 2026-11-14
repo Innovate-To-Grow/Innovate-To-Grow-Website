@@ -3,7 +3,7 @@
 from django.core.validators import MinValueValidator
 from django.db import models, transaction
 
-from ...control import ProjectControlModel
+from ...abstract.control import ProjectControlModel
 from .limits import (
     _LIMITS_WHERE,
     default_external_recipients_per_hour_limit,

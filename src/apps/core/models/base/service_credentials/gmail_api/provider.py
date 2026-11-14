@@ -4,7 +4,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
-from ...control import ProjectControlModel
+from ...abstract.control import ProjectControlModel
 from .limits import default_max_message_bytes, default_max_recipients
 from .provider_status import GmailApiProviderStatusMixin
 
