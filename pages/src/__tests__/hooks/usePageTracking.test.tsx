@@ -13,7 +13,7 @@ vi.mock('@/lib/api', () => ({
   trackPageView: mockTrackPageView,
 }));
 
-vi.mock('@/lib/isolatedRoute', () => ({
+vi.mock('@/lib/preview/isolatedRoute', () => ({
   isIsolatedRoute: (...args: unknown[]) => mockIsIsolatedRoute(...args),
 }));
 
