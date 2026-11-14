@@ -1,0 +1,184 @@
+/* Mail → Delivery Operations → Email Monitoring.
+ *
+ * Surfaces and ink come from the admin's Material tokens. The five series colors are the validated reference
+ * palette (light on #ffffff, dark on #202124: lightness band, chroma floor, adjacent CVD separation and the
+ * normal-vision floor all pass); three light-mode slots sit under 3:1 contrast, so every chart ships a legend and
+ * a data table. Status chips carry an icon and a label; color is never the only signal.
+ */
+
+.i2g-monitor {
+    --i2g-m-surface: var(--md-sys-color-surface-container-lowest, #ffffff);
+    --i2g-m-border: var(--md-sys-color-outline-variant, #c4c7c5);
+    --i2g-m-text: var(--md-sys-color-on-surface, #1f1f1f);
+    --i2g-m-muted: var(--md-sys-color-on-surface-variant, #444746);
+    --i2g-m-accent: var(--md-sys-color-primary, #0b57d0);
+    --i2g-m-grid: #e1e0d9;
+    --i2g-m-axis: #c3c2b7;
+    --i2g-m-wash: color-mix(in srgb, var(--i2g-m-accent) 8%, transparent);
+    --i2g-series-1: #2a78d6;
+    --i2g-series-2: #eb6834;
+    --i2g-series-3: #1baf7a;
+    --i2g-series-4: #eda100;
+    --i2g-series-5: #e87ba4;
+    --i2g-status-good: #0ca30c;
+    --i2g-status-warning: #fab219;
+    --i2g-status-critical: #d03b3b;
+    --i2g-status-neutral: #898781;
+    color: var(--i2g-m-text);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.dark .i2g-monitor {
+    --i2g-m-surface: var(--md-sys-color-surface-container, #202124);
+    --i2g-m-grid: #34353a;
+    --i2g-m-axis: #4a4b50;
+    --i2g-series-1: #3987e5;
+    --i2g-series-2: #d95926;
+    --i2g-series-3: #199e70;
+    --i2g-series-4: #c98500;
+    --i2g-series-5: #d55181;
+}
+
+.i2g-monitor .material-symbols-outlined {
+    font-size: 18px;
+    vertical-align: -4px;
+}
+
+/* Navigation, notice and filters ---------------------------------------------------------------------------- */
+
+.i2g-monitor-subnav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.i2g-monitor-subnav a {
+    align-items: center;
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 999px;
+    color: var(--i2g-m-text);
+    display: inline-flex;
+    font-size: 0.875rem;
+    gap: 6px;
+    padding: 6px 14px;
+    text-decoration: none;
+}
+
+.i2g-monitor-subnav a:hover {
+    background: var(--i2g-m-wash);
+}
+
+.i2g-monitor-subnav a[aria-current="page"] {
+    background: var(--i2g-m-accent);
+    border-color: var(--i2g-m-accent);
+    color: var(--md-sys-color-on-primary, #ffffff);
+}
+
+.i2g-monitor-notice,
+.i2g-monitor-error {
+    align-items: flex-start;
+    border-radius: 8px;
+    display: flex;
+    font-size: 0.8125rem;
+    gap: 8px;
+    line-height: 1.45;
+    margin: 0;
+    padding: 10px 12px;
+}
+
+.i2g-monitor-notice {
+    background: var(--i2g-m-wash);
+    border: 1px solid color-mix(in srgb, var(--i2g-m-accent) 25%, transparent);
+}
+
+.i2g-monitor-notice p {
+    margin: 0;
+}
+
+.i2g-monitor-error {
+    background: color-mix(in srgb, var(--i2g-status-critical) 8%, transparent);
+    border: 1px solid color-mix(in srgb, var(--i2g-status-critical) 35%, transparent);
+}
+
+.i2g-monitor-error .material-symbols-outlined {
+    color: var(--i2g-status-critical);
+}
+
+.i2g-monitor-filters {
+    align-items: flex-end;
+    background: var(--i2g-m-surface);
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 12px;
+}
+
+.i2g-monitor-field {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.75rem;
+    gap: 4px;
+    min-width: 140px;
+}
+
+.i2g-monitor-field--wide {
+    flex: 1 1 240px;
+}
+
+.i2g-monitor-field span,
+.i2g-monitor-check {
+    color: var(--i2g-m-muted);
+}
+
+.i2g-monitor-field input,
+.i2g-monitor-field select,
+.i2g-monitor-field textarea {
+    background: var(--i2g-m-surface);
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 6px;
+    color: var(--i2g-m-text);
+    font-size: 0.875rem;
+    min-height: 36px;
+    padding: 4px 8px;
+}
+
+.i2g-monitor-field[hidden] {
+    display: none;
+}
+
+.i2g-monitor-check {
+    align-items: center;
+    display: inline-flex;
+    font-size: 0.8125rem;
+    gap: 6px;
+    min-height: 36px;
+}
+
+.i2g-monitor-button {
+    align-items: center;
+    background: var(--i2g-m-surface);
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 6px;
+    color: var(--i2g-m-text);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 6px;
+    min-height: 36px;
+    padding: 4px 12px;
+}
+
+.i2g-monitor-button:hover:not(:disabled) {
+    background: var(--i2g-m-wash);
+}
+
+.i2g-monitor-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+}

@@ -1,0 +1,119 @@
+/* Charts --------------------------------------------------------------------------------------------------- */
+
+.i2g-monitor-chart-head {
+    align-items: baseline;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.i2g-monitor-legend {
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+    gap: 4px 12px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.i2g-monitor-legend li {
+    align-items: center;
+    color: var(--i2g-m-muted);
+    display: inline-flex;
+    gap: 6px;
+}
+
+.i2g-monitor-key {
+    display: inline-block;
+}
+
+.i2g-monitor-key--rect {
+    border-radius: 2px;
+    height: 10px;
+    width: 10px;
+}
+
+.i2g-monitor-key--line {
+    border-radius: 1px;
+    height: 2px;
+    width: 14px;
+}
+
+.i2g-monitor-key.i2g-series-1 { background: var(--i2g-series-1); }
+.i2g-monitor-key.i2g-series-2 { background: var(--i2g-series-2); }
+.i2g-monitor-key.i2g-series-3 { background: var(--i2g-series-3); }
+.i2g-monitor-key.i2g-series-4 { background: var(--i2g-series-4); }
+.i2g-monitor-key.i2g-series-5 { background: var(--i2g-series-5); }
+
+.i2g-monitor-plot {
+    min-height: 236px;
+    position: relative;
+}
+
+.i2g-monitor-plot svg {
+    display: block;
+    height: auto;
+    overflow: visible;
+    width: 100%;
+}
+
+.i2g-monitor-plot .i2g-grid { stroke: var(--i2g-m-grid); stroke-width: 1; }
+.i2g-monitor-plot .i2g-axis { stroke: var(--i2g-m-axis); stroke-width: 1; }
+.i2g-monitor-plot .i2g-tick { fill: var(--i2g-m-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.i2g-monitor-plot .i2g-end-label { fill: var(--i2g-m-text); font-size: 11px; }
+.i2g-monitor-plot .i2g-fill-1 { fill: var(--i2g-series-1); }
+.i2g-monitor-plot .i2g-fill-2 { fill: var(--i2g-series-2); }
+.i2g-monitor-plot .i2g-fill-3 { fill: var(--i2g-series-3); }
+.i2g-monitor-plot .i2g-fill-4 { fill: var(--i2g-series-4); }
+.i2g-monitor-plot .i2g-fill-5 { fill: var(--i2g-series-5); }
+.i2g-monitor-plot .i2g-line { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; }
+.i2g-monitor-plot .i2g-stroke-1 { stroke: var(--i2g-series-1); }
+.i2g-monitor-plot .i2g-stroke-2 { stroke: var(--i2g-series-2); }
+.i2g-monitor-plot .i2g-stroke-3 { stroke: var(--i2g-series-3); }
+.i2g-monitor-plot .i2g-stroke-4 { stroke: var(--i2g-series-4); }
+.i2g-monitor-plot .i2g-stroke-5 { stroke: var(--i2g-series-5); }
+.i2g-monitor-plot .i2g-dot { stroke: var(--i2g-m-surface); stroke-width: 2; }
+.i2g-monitor-plot .i2g-crosshair { stroke: var(--i2g-m-axis); stroke-width: 1; }
+.i2g-monitor-plot .i2g-hit { cursor: crosshair; fill: transparent; outline: none; }
+.i2g-monitor-plot .i2g-hit:focus-visible { stroke: var(--i2g-m-accent); stroke-width: 2; }
+.i2g-monitor-plot .i2g-band.is-active .i2g-mark { opacity: 0.8; }
+
+.i2g-monitor-tooltip {
+    background: var(--i2g-m-surface);
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 6px;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    font-size: 0.75rem;
+    min-width: 140px;
+    padding: 8px 10px;
+    pointer-events: none;
+    position: absolute;
+    z-index: 5;
+}
+
+.i2g-monitor-tooltip[hidden] {
+    display: none;
+}
+
+.i2g-monitor-tooltip-title {
+    color: var(--i2g-m-muted);
+    margin-bottom: 4px;
+}
+
+.i2g-monitor-tooltip-row {
+    align-items: center;
+    display: flex;
+    gap: 8px;
+}
+
+.i2g-monitor-tooltip-row strong {
+    font-variant-numeric: tabular-nums;
+    min-width: 2.5em;
+}
+
+.i2g-monitor-tooltip-row span:last-child {
+    color: var(--i2g-m-muted);
+}

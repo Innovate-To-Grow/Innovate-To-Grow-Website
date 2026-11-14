@@ -1,0 +1,108 @@
+.si-usage-fallback-chart {
+    align-items: stretch;
+    display: flex;
+    height: 100%;
+    min-height: 15rem;
+    width: 100%;
+}
+
+.si-usage-fallback-svg {
+    display: block;
+    height: 100%;
+    overflow: visible;
+    width: 100%;
+}
+
+.si-usage-fallback-grid {
+    stroke: color-mix(in srgb, var(--si-usage-border) 72%, transparent);
+    stroke-width: 1;
+}
+
+.si-usage-fallback-axis,
+.si-usage-fallback-legend,
+.si-usage-fallback-value {
+    fill: var(--si-usage-muted);
+    font-size: 0.72rem;
+}
+
+.si-usage-fallback-value {
+    fill: var(--si-usage-text);
+    font-weight: 600;
+}
+
+.si-usage-fallback-track {
+    fill: color-mix(in srgb, var(--si-usage-muted) 12%, transparent);
+}
+
+.si-usage-fallback-empty {
+    align-items: center;
+    border: 1px dashed color-mix(in srgb, var(--si-usage-border) 80%, transparent);
+    border-radius: 0.5rem;
+    color: var(--si-usage-muted);
+    display: flex;
+    flex: 1 1 auto;
+    font-size: 0.875rem;
+    justify-content: center;
+    min-height: 15rem;
+    text-align: center;
+}
+
+.si-usage-scroll-panel {
+    display: flex;
+    flex-direction: column;
+    height: 24rem;
+    overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+    .si-usage-scroll-panel {
+        height: 26rem;
+    }
+}
+
+.si-usage-scroll-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding-right: 0.125rem;
+}
+
+.si-usage-scroll-body table {
+    min-width: 100%;
+}
+
+.si-usage-scroll-body thead {
+    background: var(--si-usage-surface);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.si-usage-scroll-body::-webkit-scrollbar {
+    height: 0.625rem;
+    width: 0.625rem;
+}
+
+.si-usage-scroll-body::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--si-usage-muted) 46%, transparent);
+    border: 2px solid var(--si-usage-surface);
+    border-radius: 999px;
+}
+
+.si-usage-scroll-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.si-usage-refresh:hover {
+    color: var(--si-usage-primary) !important;
+}
+
+.si-usage-banner {
+    background: color-mix(in srgb, var(--md-sys-color-warning, #f59e0b) 14%, var(--si-usage-surface)) !important;
+    border-color: color-mix(in srgb, var(--md-sys-color-warning, #f59e0b) 48%, var(--si-usage-border)) !important;
+    color: var(--si-usage-text) !important;
+}
+
+.si-usage-banner code {
+    color: var(--si-usage-text);
+}
