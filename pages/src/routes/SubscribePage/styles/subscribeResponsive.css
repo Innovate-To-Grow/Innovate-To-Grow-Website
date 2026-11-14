@@ -1,0 +1,44 @@
+@layer itg.components {
+/* ---- responsive.css ---- */
+
+@media (max-width: 992px) {
+  .subscribe-org-toggle-btn {
+    min-height: 44px;
+  }
+
+  /* Grow the switch's hit area to 44px without changing how it looks. */
+  .subscribe-toggle::before {
+    content: '';
+    position: absolute;
+    inset: -10px 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .subscribe-form-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .subscribe-code-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  .subscribe-submit {
+    width: 100%;
+  }
+
+  .subscribe-preference-item {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .subscribe-manage-status {
+    justify-content: flex-start;
+    width: 100%;
+    min-width: 0;
+  }
+}
+}

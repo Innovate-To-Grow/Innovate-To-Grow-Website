@@ -1,0 +1,39 @@
+@layer itg.components {
+/* ---- feedback.css ---- */
+/* Notices: the system's .itg-notice look (#f7f7f7, 4px left rule, 16px text);
+   white inside the grey feature panels so they still stand out. */
+
+.subscribe-alert {
+  box-sizing: border-box;
+  max-width: 680px;
+  padding: 14px 18px;
+  border: 0;
+  border-left: 4px solid var(--itg-color-secondary);
+  background: var(--itg-color-bg-panel);
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.itg-panel .subscribe-alert {
+  background: var(--itg-color-white);
+}
+
+.subscribe-alert.info {
+  border-left-color: var(--itg-color-secondary);
+}
+
+.subscribe-alert.success {
+  border-left-color: var(--itg-color-success);
+}
+
+.subscribe-alert.error {
+  border-left-color: var(--itg-color-error);
+  color: var(--itg-color-error);
+}
+
+.subscribe-section .subscribe-alert {
+  margin-top: 12px;
+}
+}
