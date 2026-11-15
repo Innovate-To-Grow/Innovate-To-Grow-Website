@@ -6,7 +6,8 @@ defines CMS redirects; each run preserves unrelated Amplify rules.
 * ``rules`` — the pure rule transformation (base rules, merge).
 * ``config`` — the deployment configuration snapshot a reconciliation runs with.
 * ``reconcile`` — the serialized provider call that applies the merged rules.
-* ``jobs`` — durable scheduling: coalescing, supersession, retries, status mirroring.
+* ``jobs`` — durable scheduling: the job, its retries and status mirroring, and scheduling a sync.
+* ``coalescing`` — one pending sync at a time: coalescing requests and cancelling superseded jobs.
 """
 
 from .config import AMPLIFY_CONFIGURATION_PAYLOAD_KEY, AMPLIFY_REDIRECT_JOB_KIND
