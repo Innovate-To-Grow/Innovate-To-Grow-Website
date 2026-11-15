@@ -7,20 +7,25 @@ certificate that loaded, and the thumbprint box only a well-formed thumbprint, n
 could hold a key pasted into the wrong box).
 """
 
-import re
-
 from cryptography.hazmat.primitives.serialization import Encoding
 from django import forms
 from django.conf import settings
 from django.views.decorators.debug import sensitive_variables
 from unfold.widgets import (
-    UnfoldAdminFileFieldWidget,
     UnfoldAdminPasswordWidget,
     UnfoldAdminTextareaWidget,
     UnfoldAdminTextInputWidget,
     UnfoldBooleanWidget,
 )
 
+from apps.core.admin.service_credentials.microsoft_graph_certificate_widgets import (
+    _THUMBPRINT_RE,
+    CertificateTextarea,
+    ThumbprintInput,
+    WriteOnlyTextarea,
+    _file_widget,
+    normalize_thumbprint,
+)
 from apps.core.models import MicrosoftGraphCertificate
 from apps.core.services.email.graph.credential.loaders import as_bytes, load_certificate
 from apps.core.services.email.graph.credential.parsing import (
@@ -41,46 +46,12 @@ THUMBPRINT_MISMATCH = (
 )
 REMOVE_WORD = "REMOVE"
 REMOVE_WORD_REQUIRED = f"Type {REMOVE_WORD} to confirm."
-_THUMBPRINT_RE = re.compile(r"[0-9A-F]{40}")
 _TEXTAREA_ATTRS = {"rows": 8, "spellcheck": "false", "autocomplete": "off", "class": "font-mono"}
 # Each pasted-or-uploaded input of ``parse_certificate_input``: (text field, file field, what the admin calls it).
 _TEXT_OR_FILE_INPUTS = {
     CERTIFICATE: ("certificate_text", "certificate_file", "certificate"),
     PRIVATE_KEY: ("private_key_text", "private_key_file", "private key"),
 }
-
-
-class WriteOnlyTextarea(UnfoldAdminTextareaWidget):
-    """A textarea that never renders a submitted value back."""
-
-    def format_value(self, value):
-        return None
-
-
-def normalize_thumbprint(value) -> str:
-    """Upper-case hex without the colons and spaces Entra, OpenSSL or Keychain may show."""
-    return "".join(str(value or "").replace(":", "").split()).upper()
-
-
-class ThumbprintInput(UnfoldAdminTextInputWidget):
-    """Renders a submitted value back only as a well-formed SHA-1 thumbprint, so nothing else typed here is echoed."""
-
-    def format_value(self, value):
-        thumbprint = normalize_thumbprint(value)
-        return thumbprint if _THUMBPRINT_RE.fullmatch(thumbprint) else None
-
-
-class CertificateTextarea(UnfoldAdminTextareaWidget):
-    """Renders only ``canonical_pem``, which the form sets once the pasted text loaded as one certificate."""
-
-    canonical_pem = None
-
-    def format_value(self, value):
-        return self.canonical_pem
-
-
-def _file_widget(accept: str):
-    return UnfoldAdminFileFieldWidget(attrs={"accept": accept})
 
 
 class InstallCertificateForm(forms.Form):
