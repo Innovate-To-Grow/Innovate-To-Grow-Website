@@ -95,7 +95,7 @@ updates:
     ignore:
       # Pinned exactly: it must match the Playwright container images in
       # .github/workflows/ci.yml. Upgrade them, and the e2e venv cache label,
-      # together by hand; scripts/ci/validate_tool_versions.py fails CI if they
+      # together by hand; scripts/ci/tool_versions/ fails CI if they
       # drift.
       - dependency-name: "@playwright/test"
 

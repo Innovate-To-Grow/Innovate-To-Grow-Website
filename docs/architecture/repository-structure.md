@@ -99,7 +99,7 @@ Domain subsystems that used to live here have moved to their owners. The Bedrock
 `system_intelligence/services/bedrock/`, the assistant's query tools are
 `system_intelligence/services/query_tools/`, and the sitemap view is `cms/views/sitemap.py`.
 `core` does not import business apps at module level, and
-`scripts/ci/check_python_dependencies.py` enforces that. See
+`scripts/ci/python_dependencies/` enforces that. See
 [Code Quality Rules](code-quality.md#dependency-directions) for the allowed direction of every app
 and for the registration hooks.
 
@@ -175,7 +175,7 @@ Allowed imports between these layers are listed in
 | `aws/ecs/backend-task-definition.json` | ECS Fargate task template (web + background-worker containers) with env var placeholders |
 | `aws/ecs/archive-task-definition.json` | ECS task template of the archive service |
 | `aws/cicd/deploy-config-keys.json` | The allow-list of deploy-config keys `scripts/deploy/load_config.py` accepts |
-| `scripts/ci/python_quality.toml`, `scripts/ci/python_dependencies.toml` | Size/complexity thresholds and app dependency rules |
+| `scripts/ci/python_quality/python_quality.toml`, `scripts/ci/python_dependencies/python_dependencies.toml` | Size/complexity thresholds and app dependency rules |
 | `.github/codeql/codeql-config.yml`, `.github/dependabot.yml` | CodeQL and Dependabot settings |
 
 ## Related pages
