@@ -172,13 +172,13 @@ describe('the site pager', () => {
 
     // News shows its page line, visually hidden on wide screens, on paper as it does on phones, in place of the numbers.
     const shownFor: string[] = [];
-    postcss.parse(readFileSync(join(SRC_DIR, 'routes/NewsPage/NewsPage.css'), 'utf8')).walkRules('.news-pagination-info', (rule) => {
+    postcss.parse(readFileSync(join(SRC_DIR, 'routes/news/NewsPage/NewsPage.css'), 'utf8')).walkRules('.news-pagination-info', (rule) => {
       if (rule.some((node) => node.type === 'decl' && node.prop === 'position' && node.value === 'static')) {
         shownFor.push((rule.parent as AtRule).params);
       }
     });
     expect(shownFor).toEqual(['(max-width: 768px), print']);
-    expect(printDisplay('routes/NewsPage/NewsPage.css')).toContainEqual(['.news-pagination-pages', 'none']);
+    expect(printDisplay('routes/news/NewsPage/NewsPage.css')).toContainEqual(['.news-pagination-pages', 'none']);
 
     // The projects lists' status line says which rows they show ("showing 1–10"), so their pager leaves the paper whole.
     expect(printDisplay('features/projects/components/styles/cascade/projectsResponsive.css')).toContainEqual([

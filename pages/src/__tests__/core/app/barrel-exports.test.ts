@@ -79,24 +79,27 @@ describe('Component barrel exports', () => {
 
 describe('Page barrel exports', () => {
   const pages = [
-    ['AcknowledgementPage', 'AcknowledgementPage'],
-    ['AllProjectsPage', 'AllProjectsPage'],
-    ['EventArchivePage', 'EventArchivePage'],
-    ['EventRegistrationPage', 'EventRegistrationPage'],
-    ['LoginLinkPage', 'LoginLinkPage'],
-    ['NewsDetailPage', 'NewsDetailPage'],
-    ['NewsPage', 'NewsPage'],
-    ['PastProjectsPage', 'PastProjectsPage'],
-    ['PresentingTeamsPage', 'PresentingTeamsPage'],
-    ['ProjectDetailPage', 'ProjectDetailPage'],
-    ['ProjectsPage', 'ProjectsPage'],
-    ['SchedulePage', 'SchedulePage'],
-    ['SubscribePage', 'SubscribePage'],
+    ['AcknowledgementPage', 'AcknowledgementPage', 'events', false],
+    ['AllProjectsPage', 'AllProjectsPage', 'projects', false],
+    ['EventArchivePage', 'EventArchivePage', 'events', false],
+    ['EventRegistrationPage', 'EventRegistrationPage', 'events', true],
+    ['LoginLinkPage', 'LoginLinkPage', 'auth', false],
+    ['NewsDetailPage', 'NewsDetailPage', 'news', false],
+    ['NewsPage', 'NewsPage', 'news', false],
+    ['PastProjectsPage', 'PastProjectsPage', 'projects', false],
+    ['PresentingTeamsPage', 'PresentingTeamsPage', 'projects', false],
+    ['ProjectDetailPage', 'ProjectDetailPage', 'projects', false],
+    ['ProjectsPage', 'ProjectsPage', 'projects', false],
+    ['SchedulePage', 'SchedulePage', 'events', true],
+    ['SubscribePage', 'SubscribePage', 'subscription', true],
   ] as const;
 
-  it.each(pages)('pages/%s exports %s', async (dir, exportName) => {
-    // Vite expands this import to the routes/* folders that exist when it transforms this file.
-    const mod = await import(`@/routes/${dir}/index.ts`);
+  // [route folder, export, route group, whether the folder keeps its page entry in page/ beside its parts]
+  it.each(pages)('pages/%s exports %s', async (dir, exportName, group, hasParts) => {
+    // Vite expands these imports to the route folders that exist when it transforms this file.
+    const mod = hasParts
+      ? await import(`@/routes/${group}/${dir}/page/index.ts`)
+      : await import(`@/routes/${group}/${dir}/index.ts`);
     expect(mod[exportName]).toBeDefined();
   });
 });

@@ -27,11 +27,11 @@ function apiPreconnect(apiBaseUrl: string | undefined): Plugin {
 // has downloaded and run, a third round trip before the page, its data request and its largest
 // paint can start.
 const PRELOADED_ROUTES: ReadonlyArray<readonly [pathPattern: string, routeModule: string]> = [
-  ['^/current-projects/?$', 'src/routes/ProjectsPage/index.ts'],
-  ['^/presenting-teams/?$', 'src/routes/PresentingTeamsPage/index.ts'],
-  ['^/past-projects(/[^/]+)?/?$', 'src/routes/PastProjectsPage/index.ts'],
-  ['^/all-projects/?$', 'src/routes/AllProjectsPage/index.ts'],
-  ['^/(projects|past-projects/project)/[^/]+/?$', 'src/routes/ProjectDetailPage/index.ts'],
+  ['^/current-projects/?$', 'src/routes/projects/ProjectsPage/index.ts'],
+  ['^/presenting-teams/?$', 'src/routes/projects/PresentingTeamsPage/index.ts'],
+  ['^/past-projects(/[^/]+)?/?$', 'src/routes/projects/PastProjectsPage/index.ts'],
+  ['^/all-projects/?$', 'src/routes/projects/AllProjectsPage/index.ts'],
+  ['^/(projects|past-projects/project)/[^/]+/?$', 'src/routes/projects/ProjectDetailPage/index.ts'],
 ]
 
 /** A chunk's files (itself, its static imports, their CSS) that the entry does not already load. */
