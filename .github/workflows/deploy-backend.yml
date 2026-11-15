@@ -372,7 +372,7 @@ jobs:
           with open(output_path, "w", encoding="utf-8") as f:
               json.dump(taskdef, f, indent=2)
           PY
-          python scripts/deploy/validate_backend_task_definition.py rendered-task-definition.json --rendered
+          python -m scripts.deploy.validate_backend_task_definition rendered-task-definition.json --rendered
           echo "task-definition=rendered-task-definition.json" >> "$GITHUB_OUTPUT"
 
       - name: Run database migration before replacing the service

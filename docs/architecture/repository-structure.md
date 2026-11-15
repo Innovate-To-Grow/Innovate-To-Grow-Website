@@ -40,7 +40,7 @@
 ├── aws/                    # ecs/ (backend + archive task-definition templates), cicd/ (deploy-config keys, identity stack),
 │                           #   legacy/ (CloudFormation + nginx of the old site)
 ├── scripts/                # ci/ (planner, validators, quality + dependency checks, and their tests), deploy/ (load_config,
-│                           #   migrate_ecs, publish_image, validate_backend_task_definition), dev/ (e2e-local.sh), pre-commit/
+│                           #   migrate_ecs, publish_image, validate_backend_task_definition + its task_definition_* modules), dev/ (e2e-local.sh), pre-commit/
 ├── docs/                   # Technical documentation (this directory): api/, architecture/, cms-admin/, deployment/, integrations/
 ├── .github/                # workflows/ (CI/CD), actions/ (composite setup actions), codeql/, dependabot.yml
 ├── pyproject.toml          # Ruff, Bandit and coverage config for src/
