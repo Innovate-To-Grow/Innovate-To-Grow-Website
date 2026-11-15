@@ -4,7 +4,7 @@ from apps.projects.services.ai_search import (
     find_ai_search_candidates,
     run_past_project_ai_search,
 )
-from apps.projects.tests.api.ai_search.test_ai_search import _PastProjectAISearchAPIViewCase
+from apps.projects.tests.api.ai_search.search.test_ai_search import _PastProjectAISearchAPIViewCase
 from apps.system_intelligence.models import (
     AssistantConversationLog,
     AssistantMessageLog,
