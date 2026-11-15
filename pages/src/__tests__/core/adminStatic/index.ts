@@ -5,7 +5,7 @@ import {readFileSync} from 'node:fs';
 import {dirname, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../../../../..');
 
 /** A file of the repository, by its path from the repository root. */
 export const readRepoFile = (path: string): string => readFileSync(resolve(repoRoot, path), 'utf8');

@@ -9,7 +9,7 @@ import {describe, expect, it} from 'vitest';
 // Every stylesheet in the app (the test tree excluded), loaded lazily by Vite.
 const CSS_MODULES = import.meta.glob(['/src/**/*.css', '!/src/__tests__/**']);
 
-const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PAGES_DIR = dirname(SRC_DIR);
 const TESTS_DIR = join(SRC_DIR, '__tests__');
 

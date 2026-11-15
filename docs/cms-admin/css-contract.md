@@ -27,7 +27,7 @@ equal specificity. Add rules to the file that owns them instead of reordering th
 - `content_html`: the classes the contract files define for editor HTML;
 - `design_system`: the `.itg-*` classes editors may use in rich text.
 
-`pages/src/__tests__/core/css-contract.test.ts` fails when a listed class loses its last rule in
+`pages/src/__tests__/core/css/css-contract.test.ts` fails when a listed class loses its last rule in
 `styles/contract/`.
 
 ## Changing the contract

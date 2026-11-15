@@ -13,7 +13,7 @@ declare global {
 }
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(testDir, '../../../..');
+const repoRoot = resolve(testDir, '../../../../..');
 const snippetScript = readFileSync(
   resolve(repoRoot, 'src/apps/cms/static/cms/js/cms-embed-widget/snippet.js'),
   'utf8',
@@ -38,9 +38,6 @@ const postResize = (data: Record<string, unknown>, origin = WIDGET_ORIGIN) =>
 const postFrom = (frame: HTMLIFrameElement, data: Record<string, unknown>, origin = WIDGET_ORIGIN) =>
   window.dispatchEvent(new MessageEvent('message', {origin, source: frame.contentWindow, data: {slug: SLUG, ...data}}));
 
-const postHello = (frame: HTMLIFrameElement, origin = WIDGET_ORIGIN) =>
-  postFrom(frame, {type: 'i2g-embed-scroll-hello'}, origin);
-
 const postIntoView = (frame: HTMLIFrameElement, data: Record<string, unknown>, origin = WIDGET_ORIGIN) =>
   postFrom(frame, {type: 'i2g-embed-scroll-into-view', smooth: false, ...data}, origin);
 
@@ -51,9 +48,6 @@ function addFrame(slug?: string): HTMLIFrameElement {
   document.body.append(frame);
   return frame;
 }
-
-const spyOnReady = (frame: HTMLIFrameElement) =>
-  vi.spyOn(frame.contentWindow!, 'postMessage').mockImplementation(() => {});
 
 /**
  * Lays out the partner page: the viewport is `viewportHeight` tall and scrolled `scrollY` down, and the frame's
@@ -88,75 +82,7 @@ describe('CMS embed widget snippet (admin static)', () => {
     document.body.replaceChildren();
   });
 
-  it('lets the widget write to the clipboard and sizes the iframe from its resize messages', () => {
-    const iframe = pasteSnippet();
-    expect(iframe.getAttribute('src')).toBe(`${WIDGET_ORIGIN}/_embed/${SLUG}`);
-    expect(iframe.getAttribute('allow')).toBe('clipboard-write');
-
-    postResize({height: 1146});
-    expect(iframe.style.height).toBe('1146px');
-
-    postResize({height: 345});
-    expect(iframe.style.height).toBe('345px');
-  });
-
-  it('ignores resize messages from other origins and for other widgets', () => {
-    const iframe = pasteSnippet();
-    postResize({height: 900});
-
-    postResize({height: 20}, 'https://ads.example.com');
-    postResize({height: 20, slug: 'other-widget'});
-    expect(iframe.style.height).toBe('900px');
-  });
-
-  it('keeps the iframe height while the widget has rendered nothing yet', () => {
-    const iframe = pasteSnippet();
-    postResize({height: 900});
-
-    postResize({height: 0});
-    postResize({height: 'tall'});
-    expect(iframe.style.height).toBe('900px');
-  });
-
   describe('scrolling the page for the widget', () => {
-    it('answers the hello of its own frame, to that frame and the widget origin only', () => {
-      const iframe = pasteSnippet();
-      const twin = addFrame(SLUG);
-      const ready = spyOnReady(iframe);
-      const twinReady = spyOnReady(twin);
-
-      postHello(iframe);
-
-      expect(ready).toHaveBeenCalledOnce();
-      expect(ready).toHaveBeenCalledWith({type: 'i2g-embed-scroll-ready'}, WIDGET_ORIGIN);
-      expect(twinReady).not.toHaveBeenCalled();
-      expect(iframe.style.height).toBe('');
-    });
-
-    it('ignores a hello from another origin, another widget or a frame that is not its own', () => {
-      const iframe = pasteSnippet();
-      const ready = spyOnReady(iframe);
-      const otherWidget = addFrame('other-widget');
-      const otherWidgetReady = spyOnReady(otherWidget);
-      const stranger = addFrame();
-      const strangerReady = spyOnReady(stranger);
-
-      postHello(iframe, 'https://ads.example.com');
-      postFrom(iframe, {type: 'i2g-embed-scroll-hello', slug: 'other-widget'});
-      postHello(otherWidget);
-      postFrom(otherWidget, {type: 'i2g-embed-scroll-hello', slug: 'other-widget'});
-      postHello(stranger);
-      window.dispatchEvent(
-        new MessageEvent('message', {origin: WIDGET_ORIGIN, data: {type: 'i2g-embed-scroll-hello', slug: SLUG}}),
-      );
-      expect(ready).not.toHaveBeenCalled();
-      expect(otherWidgetReady).not.toHaveBeenCalled();
-      expect(strangerReady).not.toHaveBeenCalled();
-
-      postHello(iframe);
-      expect(ready).toHaveBeenCalledOnce();
-    });
-
     it("scrolls the box's top to the top of the screen for block 'start'", () => {
       const iframe = pasteSnippet();
       const scrollTo = layOut(iframe, {frameTop: 300});

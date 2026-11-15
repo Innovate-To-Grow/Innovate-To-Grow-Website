@@ -14,7 +14,7 @@ import {describe, expect, it} from 'vitest';
  */
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(testDir, '../../../..');
+const repoRoot = resolve(testDir, '../../../../..');
 const css = readFileSync(resolve(repoRoot, 'src/apps/core/static/admin/css/google-material-admin.css'), 'utf8');
 
 function surfaceSelectors(): string[] {

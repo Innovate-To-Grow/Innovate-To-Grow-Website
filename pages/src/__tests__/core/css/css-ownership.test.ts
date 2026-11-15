@@ -12,7 +12,7 @@ import {describe, expect, it} from 'vitest';
 // that one stylesheet @imports load together in a fixed order, so they share their importer's
 // ownership (projects.css, for example, @imports the project page sections in cascade order).
 
-const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const TESTS_DIR = join(SRC_DIR, '__tests__');
 
 const listCss = (dir: string): string[] =>

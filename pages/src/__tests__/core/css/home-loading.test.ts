@@ -10,7 +10,7 @@ import {describe, expect, it} from 'vitest';
 // .home-loading is a content class (contract-classes.json): stored body_html can use it, so it keeps its own rules in
 // styles/contract/. It draws the same loading look as the LoadingIndicator component; these checks keep the copy in step.
 
-const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const parse = (path: string): Root => postcss.parse(readFileSync(resolve(SRC_DIR, path), 'utf8'), {from: path});
 
 const home = parse('styles/contract/page-home.css');

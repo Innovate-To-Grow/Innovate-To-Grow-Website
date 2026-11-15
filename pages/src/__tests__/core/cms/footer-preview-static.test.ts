@@ -20,7 +20,7 @@ declare global {
  */
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(testDir, '../../../..');
+const repoRoot = resolve(testDir, '../../../../..');
 const previewScript = readFileSync(
   resolve(repoRoot, 'src/apps/cms/static/layout/js/footer/editor/preview.js'),
   'utf8',
