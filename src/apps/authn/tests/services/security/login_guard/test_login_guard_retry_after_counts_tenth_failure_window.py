@@ -3,9 +3,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from apps.authn.services import login_guard
-from apps.authn.tests.clock import (
-    SECONDS_LEFT_IN_SHORT_WINDOW,
-)
+from apps.authn.tests.helpers.clock import SECONDS_LEFT_IN_SHORT_WINDOW
 
 from .login_guard_helpers import EMAIL, LOGGER, GuardTestCase
 

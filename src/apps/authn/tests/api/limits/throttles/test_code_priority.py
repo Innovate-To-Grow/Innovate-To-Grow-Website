@@ -18,7 +18,7 @@ from apps.authn.services.send_verification.rules.constants import (
     FIELD_REQUEST_ID,
     OP_EMAIL_AUTH_REQUEST_CODE,
 )
-from apps.authn.tests.send_verification import mint_send_verification
+from apps.authn.tests.helpers.send_verification import mint_send_verification
 from apps.core.services.request_limits import priority, scopes
 from apps.core.tests.request_limits.helpers import isolate
 

@@ -7,8 +7,13 @@ from rest_framework.test import APIClient
 from apps.authn.models import ContactPhone, PhoneVerificationChallenge
 from apps.authn.services.email.challenges.degradation import DEGRADED_MAX_ATTEMPTS, FAILURE_THRESHOLD
 from apps.authn.services.sms import sns_verify
-from apps.authn.tests.api.degradation.test_code_guess_degradation_api import DEGRADED_PHONE, FRESH_PHONE, Member, e164
-from apps.authn.tests.sms_provider import SMS_CODE, WRONG_CODE, patch_sms_provider
+from apps.authn.tests.api.limits.degradation.test_code_guess_degradation_api import (
+    DEGRADED_PHONE,
+    FRESH_PHONE,
+    Member,
+    e164,
+)
+from apps.authn.tests.helpers.sms_provider import SMS_CODE, WRONG_CODE, patch_sms_provider
 from apps.event.tests.helpers import make_event
 
 

@@ -9,7 +9,7 @@ from apps.authn.services.members.accounts.profile_image import (
     SIGNATURE_ERROR,
     ProfileImageError,
 )
-from apps.authn.tests.account.profile.test_profile import _PNG_BYTES, _ProfileUpdateCase
+from apps.authn.tests.api.account.profile.test_profile import _PNG_BYTES, _ProfileUpdateCase
 
 
 class ProfileUpdateTests(_ProfileUpdateCase):

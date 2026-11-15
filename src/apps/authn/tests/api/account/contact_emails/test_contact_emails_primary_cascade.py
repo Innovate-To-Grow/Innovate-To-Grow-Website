@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from apps.authn.models import ContactEmail
-from apps.authn.tests.account.contact_emails.test_contact_emails_crud import _ContactEmailCrudCase
+from apps.authn.tests.api.account.contact_emails.test_contact_emails_crud import _ContactEmailCrudCase
 
 
 @patch("apps.authn.services.email.send_email.send_verification_email")

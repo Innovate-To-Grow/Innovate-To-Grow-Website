@@ -15,7 +15,7 @@ from apps.authn.services.send_verification.rules.constants import (
     OP_EMAIL_AUTH_REQUEST_CODE,
     OP_LOGIN_REQUEST_CODE,
 )
-from apps.authn.tests.send_verification import mint_send_verification
+from apps.authn.tests.helpers.send_verification import mint_send_verification
 
 
 @override_settings(SEND_VERIFICATION_TEST_AUTOSOLVE=False, SEND_VERIFICATION_MODE="enforce")

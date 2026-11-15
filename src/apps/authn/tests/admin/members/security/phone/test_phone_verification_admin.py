@@ -15,7 +15,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
-from apps.authn.tests.sms_provider import SMS_CODE, patch_sms_provider
+from apps.authn.tests.helpers.sms_provider import SMS_CODE, patch_sms_provider
 
 NUMBER = "2095550111"
 

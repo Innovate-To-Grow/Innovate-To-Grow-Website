@@ -10,7 +10,7 @@ from apps.authn.tests.admin.login.password.lockout.test_admin_login_lockout impo
     AdminLockoutTestCase,
     Member,
 )
-from apps.authn.tests.clock import SECONDS_LEFT_IN_SHORT_WINDOW
+from apps.authn.tests.helpers.clock import SECONDS_LEFT_IN_SHORT_WINDOW
 
 
 class EmailPasswordFormLockoutTests(AdminLockoutTestCase):

@@ -12,10 +12,7 @@ from django.test import TestCase
 from apps.authn.models import Member, SendVerificationRequest
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email.challenges import issue_email_challenge, verify_email_code
-from apps.authn.tests.services.send_verification.policy.test_send_verification_concurrency import (
-    send,
-    verified_request,
-)
+from apps.authn.tests.services.send_verification.policy.verified_requests import send, verified_request
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import make_test_credential, private_key_lines

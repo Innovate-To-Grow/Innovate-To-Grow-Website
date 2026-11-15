@@ -17,7 +17,7 @@ from apps.authn.services.send_verification.rules.constants import (
     OP_EMAIL_AUTH_REQUEST_CODE,
     OP_PHONE_AUTH_REQUEST_CODE,
 )
-from apps.authn.tests.send_verification import mint_send_verification
+from apps.authn.tests.helpers.send_verification import mint_send_verification
 from apps.core.models import AWSCredentialConfig, DeliveryRatePolicy, EmailServiceConfig
 from apps.core.services import delivery_rates as rates
 from apps.core.services.aws import sms_send
