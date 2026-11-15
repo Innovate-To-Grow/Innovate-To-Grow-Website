@@ -1,4 +1,4 @@
-import '../MainMenu.css';
+import './MainMenu.css';
 import {useCallback, useMemo, useRef, useState, type MouseEvent} from 'react';
 import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage/ResponsiveBrandImage';
 import {useCurrentPathname} from '@/features/layout/hooks/useCurrentPathname';
