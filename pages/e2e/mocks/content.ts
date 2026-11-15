@@ -3,14 +3,14 @@
 // used where a request may carry a query string (glob `?`/`*` handling is
 // finicky); exact slash-terminated paths use string globs.
 import type {Page} from '@playwright/test';
-import type {NewsArticle, PaginatedResponse} from '../../../src/features/news/api';
-import type {CMSEmbedResponse, CMSPageResponse} from '../../../src/features/cms/api';
+import type {NewsArticle, PaginatedResponse} from '../../src/features/news/api';
+import type {CMSEmbedResponse, CMSPageResponse} from '../../src/features/cms/api';
 import type {
   AssistantChatSuccessBody,
   AssistantChatUnavailableBody,
   AssistantConfig,
-} from '../../../src/features/assistant/api';
-import {newsList} from '../factories';
+} from '../../src/features/assistant/api';
+import {newsList} from '../helpers/factoriesContent';
 import {json} from './json';
 
 export async function mockNews(

@@ -1,4 +1,4 @@
-import {test, expect} from '../helpers/fixtures';
+import {test, expect} from '../../helpers/fixtures';
 import {
   item,
   MAIN_MENU,

@@ -1,6 +1,6 @@
 import type {Page} from '@playwright/test';
-import {expect} from '../helpers/fixtures';
-import {seedAuthenticatedSession} from '../helpers';
+import {expect} from '../../helpers/fixtures';
+import {seedAuthenticatedSession} from '../../helpers';
 
 export const SCROLLED_Y = 600;
 
