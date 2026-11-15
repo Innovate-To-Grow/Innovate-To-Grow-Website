@@ -10,7 +10,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
 from apps.cms.admin.cms.cms_asset import CMSAssetAdmin
-from apps.cms.admin.cms.cms_embed_allowed_host import CMSEmbedAllowedHostAdmin
+from apps.cms.admin.cms.embed.allowed_host import CMSEmbedAllowedHostAdmin
 from apps.cms.apps import CmsConfig
 from apps.cms.models import (
     CMSAsset,
@@ -60,7 +60,7 @@ class CMSEmbedAllowedHostAdminTests(TestCase):
         CMSEmbedAllowedHost.objects.create(hostname="b.example.com", is_active=True)
         qs = CMSEmbedAllowedHost.objects.all()
 
-        with patch("apps.cms.admin.cms.cms_embed_allowed_host.invalidate_cache") as mock_invalidate:
+        with patch("apps.cms.admin.cms.embed.allowed_host.invalidate_cache") as mock_invalidate:
             self.admin.delete_queryset(request=None, queryset=qs)
             mock_invalidate.assert_called_once()
 

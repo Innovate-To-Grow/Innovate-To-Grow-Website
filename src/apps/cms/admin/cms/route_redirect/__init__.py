@@ -6,7 +6,7 @@ from django.db.models import Q
 from django.http import JsonResponse
 from django.urls import path, reverse
 
-from apps.cms.admin.cms.route_redirect_form import RouteRedirectAdminForm
+from apps.cms.admin.cms.route_redirect.form import RouteRedirectAdminForm
 from apps.cms.models import RouteRedirect
 from apps.cms.services.routing.route_redirects import redirect_mapping_conflicts
 from apps.core.admin import BaseModelAdmin
