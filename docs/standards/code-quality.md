@@ -14,7 +14,7 @@ pre-push hooks run the same commands.
 | TypeScript size / complexity / nesting (hard limits) | `cd pages && npm run lint` | any ESLint error (the hard limits are ESLint errors) |
 | TypeScript advisory report | `cd pages && npm run quality:report` (`-- --json out.json`) | never (always exits 0) |
 | Frontend layer boundaries, cycles, directory size | `cd pages && npm run check:structure` | a boundary violation, a new cycle, or a directory over the hard limit |
-| `core/services` structure (existing, stricter) | `cd src && python manage.py test apps.core.tests.services.test_core_services_structure --settings=config.settings.environments.local` | a file over 200 physical lines, or more than 10 `.py` files in one directory |
+| `core/services` structure (existing, stricter) | `cd src && python manage.py test apps.core --pattern test_core_services_structure.py --settings=config.settings.environments.local` | a file over 200 physical lines, or more than 10 `.py` files in one directory |
 | Repository structure (architecture spec R001–R004) | `python -m scripts.structure.checker report --mode enforce` (`--verbose` lists every finding, `--json out.json`; without `--mode enforce` it only reports) | a finding that is neither fixed nor a listed exception, or a stale exception entry |
 | Migration guard (spec R024) | `python -m scripts.structure.checker migrations --base origin/main --head HEAD` | an existing file under any `migrations/` directory was modified, deleted, renamed or changed type |
 
