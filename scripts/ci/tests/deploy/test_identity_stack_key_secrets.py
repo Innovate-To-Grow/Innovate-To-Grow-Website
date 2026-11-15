@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[4]
 STACK = json.loads((ROOT / "aws/cicd/identity-stack.json").read_text())
 RESOURCES = STACK["Resources"]
 TASK_ROLE_ARN = "arn:aws:iam::394167325273:role/ecsTaskRole"
-STORE_SETTINGS = ROOT / "src/config/settings/base/integrations/credential_store/__init__.py"
+STORE_SETTINGS = ROOT / "src/config/settings/base/integrations/email/credential_store/__init__.py"
 STORE_BACKEND = ROOT / "src/apps/core/services/credential_store/secrets_manager.py"
 
 

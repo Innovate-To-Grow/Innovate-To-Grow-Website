@@ -655,7 +655,7 @@ Email** prove the credentials.
 | Installed certificates (public data + key pointer) | `src/apps/core/models/base/service_credentials/microsoft_graph/certificate.py` |
 | Certificate pages, certificate panel, Run access check, recorded checks, mailbox scope inline and its guard | `src/apps/core/admin/service_credentials/microsoft_graph*.py` |
 | Notification Delivery (selects the provider; Graph read-only) | `src/apps/mail/admin/settings/` |
-| Settings (`GRAPH_*`, `CREDENTIAL_STORE_*`) | `src/config/settings/base/integrations/microsoft_graph/`, `src/config/settings/base/integrations/credential_store/` |
+| Settings (`GRAPH_*`, `CREDENTIAL_STORE_*`) | `src/config/settings/base/integrations/email/microsoft_graph/`, `src/config/settings/base/integrations/email/credential_store/` |
 | The secret and its IAM and resource policies | `aws/cicd/identity-stack.json` |
 
 ## Sent Items and credential mail
