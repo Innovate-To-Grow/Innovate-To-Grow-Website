@@ -6,7 +6,7 @@ import uuid
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
-from django.test import TestCase
+from django.test import TestCase, tag
 
 from apps.cms.models import CMSAsset, CMSBlock
 from apps.core.services.db_tools.safe_orm import (
@@ -29,6 +29,7 @@ from apps.projects.models import Project, Semester
 Member = get_user_model()
 
 
+@tag("safe_orm")
 class SafetyTests(TestCase):
     def safe_names(self):
         return {field_output_name(f) for f in safe_model_fields(Semester, write=False)}
