@@ -1714,6 +1714,10 @@ jobs:
             echo "::error::The event page is missing the embed helper."
             exit 1
           fi
+          if ! curl --fail --silent --show-error --output /dev/null http://127.0.0.1:5001/static/js/site/i2g-embed.js; then
+            echo "::error::The archive container does not serve the embed helper /static/js/site/i2g-embed.js."
+            exit 1
+          fi
           if grep -q 'AIzaSy' <<<"$page"; then
             echo "::error::API key leaked into a served page!"
             exit 1
