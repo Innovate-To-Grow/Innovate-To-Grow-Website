@@ -1,42 +1,13 @@
-import re
-
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 
+# cms services/routing, system_intelligence's CMS actions and tests import both route helpers from this module.
+from apps.cms.models.content.cms.routing.routes import normalize_cms_route
+from apps.cms.models.content.cms.routing.routes import validate_cms_route as validate_cms_route
 from apps.core.models import ProjectControlModel
 
-ROUTE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9]+(?:[-_][A-Za-z0-9]+)*$")
 _PERSISTED_ROUTE_NOT_PROVIDED = object()
-
-
-def normalize_cms_route(route):
-    """Normalize CMS route paths to a canonical leading-slash/no-trailing-slash form."""
-    route = (route or "").strip()
-    if not route:
-        return "/"
-
-    segments = [segment.strip() for segment in route.split("/") if segment.strip()]
-    if not segments:
-        return "/"
-
-    return "/" + "/".join(segments)
-
-
-def validate_cms_route(route):
-    """Validate a normalized CMS route."""
-    normalized = normalize_cms_route(route)
-
-    if normalized == "/":
-        return normalized
-
-    for segment in normalized.strip("/").split("/"):
-        if not ROUTE_SEGMENT_RE.fullmatch(segment):
-            raise ValidationError(
-                "Each path segment must use letters, numbers, hyphens, or underscores only.",
-            )
-
-    return normalized
 
 
 class CMSPageQuerySet(models.QuerySet):
@@ -139,7 +110,7 @@ class CMSPage(ProjectControlModel):
         """Return the first active redirect targeting this page's old/new route."""
 
         # Imported lazily to avoid a model-module cycle.
-        from .route_redirect import RouteRedirect
+        from ..routing.redirect import RouteRedirect
 
         return (
             RouteRedirect.objects.filter(
