@@ -1,0 +1,154 @@
+(function () {
+  if (window.Chart && window.ChartDataLabels) {
+    Chart.register(ChartDataLabels);
+  }
+
+  const root = document.getElementById('si-usage-root');
+  const dataUrl = root.getAttribute('data-usage-data-url');
+  const charts = {};
+  const preferSvgCharts = true;
+  let lastRenderData = null;
+
+  function readJson(id) {
+    const el = document.getElementById(id);
+    try { return JSON.parse(el.textContent); } catch (e) { return null; }
+  }
+
+  function cssVar(name, fallback) {
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return value || fallback;
+  }
+
+  function toRgb(color) {
+    const normalized = String(color || '').trim();
+    const hex = normalized.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+    if (hex) {
+      let value = hex[1];
+      if (value.length === 3) value = value.split('').map(function (part) { return part + part; }).join('');
+      return { r: parseInt(value.slice(0, 2), 16), g: parseInt(value.slice(2, 4), 16), b: parseInt(value.slice(4, 6), 16) };
+    }
+    const rgb = normalized.match(/rgba?\(([^)]+)\)/i);
+    if (rgb) {
+      const parts = rgb[1].split(',').map(function (part) { return Number(part.trim()); });
+      return { r: parts[0], g: parts[1], b: parts[2] };
+    }
+    return null;
+  }
+
+  function withAlpha(color, alpha) {
+    const rgb = toRgb(color);
+    if (!rgb) return color;
+    return 'rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',' + alpha + ')';
+  }
+
+  function palette() {
+    const isDark = document.documentElement.classList.contains('dark');
+    const onSurface = cssVar('--md-sys-color-on-surface', isDark ? '#e8eaed' : '#202124');
+    const onSurfaceVariant = cssVar('--md-sys-color-on-surface-variant', isDark ? '#c4c7c5' : '#5f6368');
+    const outlineVariant = cssVar('--md-sys-color-outline-variant', isDark ? '#444746' : '#c4c7ca');
+    const surfaceContainer = cssVar('--md-sys-color-surface-container', isDark ? '#202124' : '#f6f3f3');
+    const primary = cssVar('--md-sys-color-primary', isDark ? '#a8c7fa' : '#305f9d');
+    const success = cssVar('--md-sys-color-success', isDark ? '#4ade80' : '#15803d');
+    const warning = cssVar('--md-sys-color-warning', isDark ? '#fbbf24' : '#c2410c');
+
+    return {
+      textColor: onSurfaceVariant,
+      titleColor: onSurface,
+      gridColor: withAlpha(outlineVariant, isDark ? 0.72 : 0.5),
+      tooltipBg: surfaceContainer,
+      tooltipBorder: withAlpha(outlineVariant, isDark ? 0.8 : 0.6),
+      inputBar: withAlpha(primary, isDark ? 0.72 : 0.78),
+      outputBar: withAlpha(success, isDark ? 0.66 : 0.76),
+      invocationBar: withAlpha(warning, isDark ? 0.7 : 0.78),
+    };
+  }
+
+  function gridColor() { return palette().gridColor; }
+  function textColor() { return palette().textColor; }
+
+  function fmt(n) { return Number(n || 0).toLocaleString(); }
+
+  function setStat(name, value) {
+    const el = root.querySelector('[data-stat="' + name + '"]');
+    if (el) el.textContent = fmt(value);
+  }
+
+  function setStatText(name, value) {
+    const el = root.querySelector('[data-stat="' + name + '"]');
+    if (el) el.textContent = value;
+  }
+
+  function setStatLabel(name, value) {
+    const el = root.querySelector('[data-stat-label="' + name + '"]');
+    if (el) el.textContent = value;
+  }
+
+  function setStatDetail(name, value) {
+    const el = root.querySelector('[data-stat-detail="' + name + '"]');
+    if (el) el.textContent = value;
+  }
+
+  function shortDate(iso) {
+    // ISO date "2026-06-07" -> "Jun 07" without pulling in a date lib.
+    const parts = String(iso).split('-');
+    if (parts.length !== 3) return iso;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const m = months[parseInt(parts[1], 10) - 1] || parts[1];
+    return m + ' ' + parts[2];
+  }
+
+  function baseScales() {
+    return {
+      x: { grid: { display: false }, ticks: { color: textColor(), font: { size: 9 }, maxRotation: 0, callback: function (val, idx) { return idx % 3 === 0 ? this.getLabelForValue(val) : ''; } }, border: { display: false } },
+      y: { beginAtZero: true, grid: { color: gridColor() }, ticks: { color: textColor(), font: { size: 11 }, precision: 0, maxTicksLimit: 6 }, border: { display: false } }
+    };
+  }
+
+  function tooltipStyle() {
+    const colors = palette();
+    return {
+      backgroundColor: colors.tooltipBg,
+      titleColor: colors.titleColor,
+      bodyColor: colors.textColor,
+      borderColor: colors.tooltipBorder,
+      borderWidth: 1, padding: 10, cornerRadius: 6
+    };
+  }
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function (char) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char];
+    });
+  }
+
+  function fallbackHost(canvasId) {
+    const canvas = document.getElementById(canvasId);
+    const host = canvas ? canvas.parentElement : null;
+    if (host) {
+      Array.from(host.querySelectorAll('.si-usage-fallback-chart')).forEach(function (el) { el.remove(); });
+    }
+    return { canvas: canvas, host: host };
+  }
+
+  function showCanvas(canvasId) {
+    const chart = fallbackHost(canvasId);
+    if (chart.canvas) chart.canvas.style.display = '';
+    return chart.canvas;
+  }
+
+  function fallbackFrame(canvasId) {
+    const chart = fallbackHost(canvasId);
+    if (!chart.canvas || !chart.host) return null;
+    chart.canvas.style.display = 'none';
+    const wrap = document.createElement('div');
+    wrap.className = 'si-usage-fallback-chart';
+    chart.host.appendChild(wrap);
+    return wrap;
+  }
+
+  function fallbackEmpty(canvasId, message) {
+    const wrap = fallbackFrame(canvasId);
+    if (!wrap) return;
+    wrap.innerHTML = '<div class="si-usage-fallback-empty">' + escapeHtml(message) + '</div>';
+  }
+
