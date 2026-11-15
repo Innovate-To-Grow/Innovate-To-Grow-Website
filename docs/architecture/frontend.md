@@ -94,7 +94,7 @@ Two cases do not get the fallback straight away. An already-used link in a brows
 
 ### AuthProvider
 
-`src/features/auth/components/AuthContext.tsx`
+`src/features/auth/components/AuthContext/index.tsx`
 
 - Manages user state, authentication status, and profile completion requirement
 - Gates its children during the asynchronous authoritative session bootstrap
