@@ -8,7 +8,7 @@ import type {
   PastProjectShare,
   ProjectDetail,
   ProjectTableRow,
-} from '../../../src/features/projects/api';
+} from '../../src/features/projects/api';
 import {json} from './json';
 
 /** A compact list row, as `/projects/archive/` sends it: no abstract. */
