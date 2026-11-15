@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.event.tests.helpers import make_member, make_superuser
-from apps.mail.tests.admin.campaign.test_campaign_send_confirmation import _make_campaign, _make_email_config
+from apps.mail.tests.admin.campaign.send.test_campaign_send_confirmation import _make_campaign, _make_email_config
 
 
 class CampaignSendConfirmationLoginLinkNoticeTest(TestCase):
