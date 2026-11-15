@@ -8,12 +8,12 @@ import type {
   EventRegistrationSummary,
   EventSchedulePayload,
   Registration,
-} from '../../../src/features/events/api';
+} from '../../src/features/events/api';
 import {
   registration as buildRegistration,
   registrationEvent,
   registrationOptions,
-} from '../factories';
+} from '../helpers/factories';
 import {mockSendVerification} from './authFlows';
 import {json} from './json';
 
