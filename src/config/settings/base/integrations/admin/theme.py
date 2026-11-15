@@ -23,9 +23,9 @@ UNFOLD_THEME = {
         },
     },
     "STYLES": [
-        lambda request: static("admin/css/google-material-admin.css"),
-        lambda request: static("admin/css/tabs.css"),
-        lambda request: static("admin/css/file-input.css"),
+        lambda request: static("admin/css/material/google-material-admin.css"),
+        lambda request: static("admin/css/components/tabs.css"),
+        lambda request: static("admin/css/components/file-input.css"),
     ],
     "SCRIPTS": [
         lambda request: static("admin/js/htmx-csp-config.js"),

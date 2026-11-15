@@ -45,7 +45,7 @@ class Base64ImageWidget(forms.ClearableFileInput):
     """
 
     template_name = "admin/authn/member/widgets/base64_image.html"
-    # i2g-admin-file-input: see admin/css/file-input.css (WebKit file button styling).
+    # i2g-admin-file-input: see admin/css/components/file-input.css (WebKit file button styling).
     _file_classes = "i2g-admin-file-input block w-full text-sm text-font-default-light dark:text-font-default-dark"
 
     def __init__(self, attrs=None):
