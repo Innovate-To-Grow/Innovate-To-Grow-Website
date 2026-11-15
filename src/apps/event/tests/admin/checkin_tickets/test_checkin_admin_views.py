@@ -26,7 +26,7 @@ class CheckInAdminTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "checkin-summary-config")
-        self.assertContains(response, "event/css/checkin_change_summary.css")
+        self.assertContains(response, "event/css/checkin_change_summary/checkin_change_summary.css")
         self.assertContains(response, "event/js/checkin_change_summary.js")
         self.assertContains(response, "admin/js/poll-backoff.js")
         self.assertContains(response, "data-checkin-summary")
@@ -144,7 +144,7 @@ class CheckInAdminTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "checkin-console-config")
-        self.assertContains(response, "event/css/checkin_console.css")
+        self.assertContains(response, "event/css/checkin_console/checkin_console.css")
         self.assertContains(response, "event/js/checkin_console.js")
         self.assertContains(response, "admin/js/poll-backoff.js")
         self.assertContains(response, "data-sync-status")

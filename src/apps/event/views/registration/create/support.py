@@ -7,8 +7,6 @@ from apps.event.services.registration.contacts import RegistrationContactError, 
 from apps.event.services.registration.sync_account import sync_name_to_account, sync_phone_to_account
 from apps.event.services.registration.sync_email import sync_secondary_email_to_account
 
-from .notifications import send_initial_ticket_email
-
 
 class RegistrationRequestError(Exception):
     def __init__(self, detail: str, response_status=status.HTTP_400_BAD_REQUEST, *, code: str | None = None):

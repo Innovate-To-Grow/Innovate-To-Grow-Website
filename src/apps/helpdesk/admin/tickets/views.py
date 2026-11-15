@@ -66,7 +66,7 @@ def attachment_view(request, pk, attachment_pk):
             "download_url": f"{request.path}?confirm=1",
             "back_url": _ticket_url(ticket),
         }
-        return TemplateResponse(request, "admin/helpdesk/attachment_warning.html", context)
+        return TemplateResponse(request, "admin/helpdesk/ticket/attachment_warning.html", context)
     response = HttpResponse(bytes(attachment.content), content_type=files.download_content_type(attachment))
     response["Content-Disposition"] = content_disposition_header(as_attachment=True, filename=attachment.filename)
     response["X-Content-Type-Options"] = "nosniff"

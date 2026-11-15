@@ -1,15 +1,11 @@
 import logging
 
-from .create import EventRegistrationCreateView
-from .options import EventRegistrationEventsView, EventRegistrationOptionsView
-from .phones import (
-    LEGACY_EVENT_REGISTRATION_CONTEXT,
-    _normalize_phone,
-    _validate_phone_digits,
-)
-from .secondary_email import SendSecondaryEmailCodeView, VerifySecondaryEmailCodeView
-from .sms import SendPhoneCodeView, VerifyPhoneCodeView
-from .tickets import MyTicketsView, ResendTicketEmailView
+from .contacts.phones import LEGACY_EVENT_REGISTRATION_CONTEXT, _normalize_phone, _validate_phone_digits
+from .contacts.secondary_email import SendSecondaryEmailCodeView, VerifySecondaryEmailCodeView
+from .contacts.sms import SendPhoneCodeView, VerifyPhoneCodeView
+from .create.view import EventRegistrationCreateView
+from .flow.options import EventRegistrationEventsView, EventRegistrationOptionsView
+from .flow.tickets import MyTicketsView, ResendTicketEmailView
 
 logger = logging.getLogger(__name__)
 

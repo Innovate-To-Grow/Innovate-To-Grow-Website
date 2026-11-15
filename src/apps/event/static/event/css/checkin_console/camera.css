@@ -1,0 +1,59 @@
+.i2g-checkin-camera-status {
+    color: var(--checkin-muted);
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.i2g-checkin-camera-reader {
+    min-height: 0;
+}
+
+.i2g-checkin-camera-reader.is-running {
+    border-bottom: 1px solid var(--checkin-border);
+    min-height: 240px;
+}
+
+.i2g-checkin-camera-reader video {
+    border-radius: 0;
+}
+
+.i2g-checkin-camera-reader img[alt="Info icon"] {
+    display: none;
+}
+
+.i2g-checkin-camera-message {
+    color: var(--checkin-muted);
+    display: none;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 12px 16px 0;
+}
+
+.i2g-checkin-camera-message.is-visible {
+    display: block;
+}
+
+.i2g-checkin-camera-message.is-error {
+    color: var(--checkin-error);
+}
+
+.i2g-checkin-camera-message.is-info {
+    color: var(--checkin-blue);
+}
+
+.i2g-checkin-camera-actions {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr auto;
+    padding: 14px 16px;
+}
+
+.i2g-checkin-camera-actions button {
+    min-height: 42px;
+}
+
+.i2g-checkin-camera-actions button[data-camera-stop] {
+    background: #f2f4f7;
+    color: #344054;
+}

@@ -1,0 +1,8 @@
+/* checkin_console.css, split into ordered sections. They are imported in their original cascade order
+   (later files override earlier ones at equal specificity), so do not reorder this list;
+   add new rules to the file that owns them; bump a part's ?v= (and the page link's) when you change it. */
+@import './header.css?v=1';
+@import './scan.css?v=1';
+@import './lists.css?v=1';
+@import './camera.css?v=1';
+@import './dark-and-mobile.css?v=1';

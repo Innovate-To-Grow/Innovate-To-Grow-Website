@@ -31,8 +31,8 @@ class RegistrationCreateIntegrityErrorTest(TestCase):
             format="json",
         )
 
-    @patch("apps.event.views.registration.create.create_registration", side_effect=IntegrityError("dup"))
-    @patch("apps.event.views.registration.create.existing_registration_response", return_value=None)
+    @patch("apps.event.views.registration.create.view.create_registration", side_effect=IntegrityError("dup"))
+    @patch("apps.event.views.registration.create.view.existing_registration_response", return_value=None)
     def test_integrity_error_with_existing_row_returns_409_with_payload(self, _mock_existing, _mock_create):
         # A registration already exists (the racing winner), so duplicate_registration_response
         # finds it and includes its payload.
@@ -45,8 +45,8 @@ class RegistrationCreateIntegrityErrorTest(TestCase):
         self.assertIsNotNone(response.data["registration"])
         self.assertEqual(response.data["registration"]["id"], str(existing.pk))
 
-    @patch("apps.event.views.registration.create.create_registration", side_effect=IntegrityError("dup"))
-    @patch("apps.event.views.registration.create.existing_registration_response", return_value=None)
+    @patch("apps.event.views.registration.create.view.create_registration", side_effect=IntegrityError("dup"))
+    @patch("apps.event.views.registration.create.view.existing_registration_response", return_value=None)
     def test_integrity_error_without_existing_row_returns_409_null_payload(self, _mock_existing, _mock_create):
         # No persisted registration -> duplicate_registration_response returns null registration.
         response = self._post()

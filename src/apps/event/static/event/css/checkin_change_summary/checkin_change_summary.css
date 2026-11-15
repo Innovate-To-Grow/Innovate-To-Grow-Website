@@ -1,0 +1,7 @@
+/* checkin_change_summary.css, split into ordered sections. They are imported in their original cascade order
+   (later files override earlier ones at equal specificity), so do not reorder this list;
+   add new rules to the file that owns them; bump a part's ?v= (and the page link's) when you change it. */
+@import './layout.css?v=1';
+@import './links-and-stats.css?v=1';
+@import './recent-and-lookup.css?v=1';
+@import './dark-and-mobile.css?v=1';

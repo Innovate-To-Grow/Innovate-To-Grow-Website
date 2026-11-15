@@ -12,7 +12,7 @@ from apps.core.models import BackgroundJob
 from apps.core.services.aws.sms_errors import SmsDeliveryError
 from apps.event.signals import initial_ticket_issued
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
-from apps.event.views.registration.create_support.notifications import send_initial_ticket_email
+from apps.event.views.registration.create.notifications import send_initial_ticket_email
 from apps.mail.models import TicketSms
 from apps.mail.services.sms.delivery import ticket
 

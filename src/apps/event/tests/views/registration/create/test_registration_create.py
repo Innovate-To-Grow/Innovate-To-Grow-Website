@@ -100,7 +100,7 @@ class EventRegistrationCreateViewTest(_EventRegistrationCreateViewCase):
         self.assertFalse(BackgroundJob.objects.filter(kind="event.ticket_email").exists())
 
     @patch(
-        "apps.event.views.registration.create_support.notifications.start_in_process_task",
+        "apps.event.views.registration.create.notifications.start_in_process_task",
         side_effect=lambda target, *args, **_kwargs: target(*args),
     )
     @patch("apps.event.services.ticket.mail.send_ticket_email", side_effect=Exception("SMTP error"))
@@ -134,7 +134,7 @@ class EventRegistrationCreateViewTest(_EventRegistrationCreateViewCase):
 
         with (
             patch(
-                "apps.event.views.registration.create_support.notifications.start_in_process_task",
+                "apps.event.views.registration.create.notifications.start_in_process_task",
                 return_value=MagicMock(),
             ) as start_task,
             patch("apps.event.services.registration_sheet_sync.sync.append._schedule_in_process_sync") as start_sync,
