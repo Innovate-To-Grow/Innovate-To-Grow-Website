@@ -1,4 +1,4 @@
-import {VerificationFlowError} from './errors';
+import {VerificationFlowError} from './types';
 
 let loadPromise: Promise<void> | null = null;
 

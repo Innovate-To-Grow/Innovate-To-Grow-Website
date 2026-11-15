@@ -1,5 +1,5 @@
 import {isSafeMessage} from '../context/shared';
-import {VerificationFlowError} from '@/features/auth/verification/errors';
+import {VerificationFlowError} from '@/features/auth/verification/types';
 
 /** Generic message for account UI where we avoid exposing backend / vendor details (e.g. SMS config). */
 export const USER_FACING_GENERIC_ERROR = 'An unknown error occurred.';
