@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.core.services.email.bounces import active_reader, run_now
-from apps.core.services.email.bounces.state import is_paused, set_paused
+from apps.core.services.email.bounces.scanning.state import is_paused, set_paused
 
 from . import controls
 from .views import require_mail_access

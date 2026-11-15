@@ -12,7 +12,8 @@ from unfold.decorators import action, display
 
 from apps.core.admin import BaseModelAdmin
 from apps.core.models import InboundMessage
-from apps.core.services.email.inbound import LABELS, consume
+from apps.core.services.email.inbound import LABELS
+from apps.core.services.email.inbound.processing import consume
 
 from ...models import IngestRecord, Ticket
 from ...services.ingest.pipeline import jobs

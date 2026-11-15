@@ -7,7 +7,7 @@ from django.test import TestCase
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
 from apps.core.services.email import GraphProvider, PermanentEmailDeliveryError, resolve_provider
 from apps.core.services.email.graph import GraphScopeError
-from apps.core.services.email.graph.access import READ, SEND, credential_for, require_mailbox
+from apps.core.services.email.graph.identity.access import READ, SEND, credential_for, require_mailbox
 from apps.core.tests.graph_helpers import create_graph_config, grant, install_test_certificate
 from apps.core.tests.services.graph.provider.test_email_graph import CLIENT_ID, TENANT_ID, GraphFixtureMixin
 

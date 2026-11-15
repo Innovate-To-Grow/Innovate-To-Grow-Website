@@ -2,8 +2,8 @@
 
 import json
 
-from ..errors import graph_error_code, request_id
 from ..mailbox import is_message_id
+from ..transport.errors import graph_error_code, request_id
 from .report import ALLOWED, DENIED, FAIL, PASS, ProbeResult, join_notes
 
 ACCESS_GRANTED = (

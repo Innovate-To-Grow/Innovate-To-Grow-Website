@@ -4,10 +4,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.core.models import InboundMessage
-from apps.core.services.email.inbound import (
-    consume,
-    purge_expired,
-)
+from apps.core.services.email.inbound import purge_expired
+from apps.core.services.email.inbound.processing import consume
 from apps.core.tests.services.email.inbound.queue.test_queue import Status, row
 from apps.core.tests.services.email_monitoring.helpers import monitoring_settings
 

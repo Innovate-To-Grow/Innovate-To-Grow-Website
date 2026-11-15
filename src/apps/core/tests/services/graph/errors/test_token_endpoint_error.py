@@ -10,13 +10,13 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
-from apps.core.services.email.graph.errors import (
+from apps.core.services.email.graph.transport import HttpResponse
+from apps.core.services.email.graph.transport.errors import (
     graph_error_code,
     identity_error_code,
     send_mail_error,
     token_endpoint_error,
 )
-from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.services.graph.errors.test_email_graph_errors import UNREADABLE_BODIES, as_body
 from apps.core.tests.services.graph.provider.test_email_graph import RESPONSE_TEXT
 

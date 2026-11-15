@@ -1,7 +1,7 @@
 from apps.core.services.email import PermanentEmailDeliveryError
+from apps.core.services.email.sending.transport import ConnectFailed, ResponseLost
 from apps.core.services.email.telemetry import classify, kind_label
 from apps.core.services.email.telemetry.notes import AttemptNotes
-from apps.core.services.email.transport import ConnectFailed, ResponseLost
 from apps.core.tests.services.email_monitoring.telemetry.test_telemetry_units import Outcome, Status, _ClassifyCase
 
 

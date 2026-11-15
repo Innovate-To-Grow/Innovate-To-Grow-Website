@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
-from apps.core.services.email.bounces.store import reclassify_stored
+from apps.core.services.email.bounces.recording.store import reclassify_stored
 from apps.mail.models import (
     BounceAggregationState,
     BouncedAddress,

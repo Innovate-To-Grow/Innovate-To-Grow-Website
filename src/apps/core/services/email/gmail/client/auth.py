@@ -23,7 +23,7 @@ from apps.core.services.credential_store import CredentialStoreError
 from apps.core.services.delivery_rates import pause
 from apps.core.services.delivery_rates.adapters.gmail_api import store_signal
 
-from ...exceptions import PermanentEmailDeliveryError, TransientEmailDeliveryError, with_signal
+from ...sending.exceptions import PermanentEmailDeliveryError, TransientEmailDeliveryError, with_signal
 from ..service_account import stored_key
 from ..service_account.assertion import GMAIL_SEND_SCOPE, build_assertion
 from . import transport

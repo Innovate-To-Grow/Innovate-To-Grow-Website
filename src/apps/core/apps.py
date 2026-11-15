@@ -22,7 +22,7 @@ class CoreConfig(AppConfig):
         delivery_rate_receivers.connect()
         request_limit_receivers.connect()
         # The worker's claim-time gates and the inline batch sizes find each family's active channel through these.
-        register_family(Family.EMAIL, "apps.core.services.email.registry.active_rate_target")
+        register_family(Family.EMAIL, "apps.core.services.email.sending.registry.active_rate_target")
         register_family(Family.SMS, "apps.core.services.aws.sms_send.active_rate_target")
         # The bounce processor's scans of the Graph sending mailbox run as background jobs.
         register_bounce_jobs()

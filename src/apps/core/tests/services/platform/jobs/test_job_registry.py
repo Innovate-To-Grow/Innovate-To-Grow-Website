@@ -18,7 +18,7 @@ EXPECTED_KINDS = {
     "authn.member_sheet_sync",
     "authn.notification_email",
     "cms.amplify_redirects",
-    # The email bounce processor's mailbox scans (apps.core.services.email.bounces.jobs).
+    # The email bounce processor's mailbox scans (apps.core.services.email.bounces.scanning.jobs).
     "core.email_bounce_scan",
     "event.registration_sheet_sync",
     "event.ticket_email",

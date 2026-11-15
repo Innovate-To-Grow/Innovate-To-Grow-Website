@@ -8,7 +8,7 @@ from django.db.utils import OperationalError, ProgrammingError
 from django.test import TestCase
 
 from apps.core.models import EmailServiceConfig, MicrosoftGraphProviderConfig
-from apps.core.services.email.graph import auth
+from apps.core.services.email.graph.identity import auth
 from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadBusy, GraphReadError
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.mail.services.inbox.connection import INBOX_LIST_CACHE_KEY, INBOX_MSG_CACHE_PREFIX, InboxBusy, InboxError

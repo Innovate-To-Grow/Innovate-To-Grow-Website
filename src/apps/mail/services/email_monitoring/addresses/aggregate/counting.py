@@ -5,7 +5,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.models import EmailBounce
-from apps.core.services.email.bounces.store import classify_unclassified
+from apps.core.services.email.bounces.recording.store import classify_unclassified
 from apps.mail.models import (
     BounceAggregationState,
     BouncedAddress,

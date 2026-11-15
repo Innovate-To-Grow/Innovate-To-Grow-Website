@@ -30,7 +30,7 @@ from apps.core.models.base.delivery_rates import DeliveryChannel
 from apps.core.services.credential_store import CredentialStoreError, get_store
 from apps.core.services.delivery_rates import receivers
 
-from ...exceptions import EmailDeliveryError, TransientEmailDeliveryError
+from ...sending.exceptions import EmailDeliveryError, TransientEmailDeliveryError
 from ..client import auth
 from ..client.access import GmailScopeError, require_subject
 from ..client.errors import DELEGATION_PENDING_CODES, GmailTokenRefused

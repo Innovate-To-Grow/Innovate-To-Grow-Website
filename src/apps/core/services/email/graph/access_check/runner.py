@@ -8,9 +8,9 @@ from apps.core.models import EmailServiceConfig
 from apps.core.models.base.service_credentials.microsoft_graph import is_deny_mailbox, normalize_mailbox
 from apps.core.utils.security import is_guid
 
-from ...exceptions import EmailDeliveryError
-from .. import auth
-from ..access import READ, SEND, credential_for
+from ...sending.exceptions import EmailDeliveryError
+from ..identity import auth
+from ..identity.access import READ, SEND, credential_for
 from . import roles
 from .probes import Prober
 from .report import (
