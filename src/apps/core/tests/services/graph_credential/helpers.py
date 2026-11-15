@@ -8,7 +8,7 @@ from apps.core.services.email.graph.credential import stored_key
 from apps.core.services.email.graph.credential.parsing import ParsedCertificate
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import make_certificate
-from apps.core.tests.services.test_email_graph import GraphFixtureMixin
+from apps.core.tests.services.graph.provider.test_email_graph import GraphFixtureMixin
 from apps.event.tests.helpers import make_superuser as make_superuser  # re-exported for the lifecycle tests
 
 

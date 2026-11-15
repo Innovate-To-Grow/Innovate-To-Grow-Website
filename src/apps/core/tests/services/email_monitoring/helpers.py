@@ -15,7 +15,7 @@ from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.services.email.telemetry import text
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
-from apps.core.tests.services.test_email_graph import GraphFixtureMixin
+from apps.core.tests.services.graph.provider.test_email_graph import GraphFixtureMixin
 
 SENDER = "i2g@ucmerced.edu"
 REQUEST_ID = "8a1b2c3d-1111-2222-3333-444455556666"

@@ -12,6 +12,7 @@ from apps.core.models import MicrosoftGraphMailboxScope
 from apps.core.services.email.graph import transport
 from apps.core.services.email.graph.access_check import PROBE_SUBJECT, run_access_check
 from apps.core.services.email.graph.transport import HttpResponse
+from apps.core.tests.services.graph.provider.test_email_graph import token_response
 from apps.core.tests.services.graph_access.helpers import (
     APA_MESSAGE,
     DENY,
@@ -23,7 +24,6 @@ from apps.core.tests.services.graph_access.helpers import (
     jwt,
     outcomes,
 )
-from apps.core.tests.services.test_email_graph import token_response
 
 Permission = MicrosoftGraphMailboxScope.Permission
 GUID = "6233fba6-1111-2222-3333-444455556666"

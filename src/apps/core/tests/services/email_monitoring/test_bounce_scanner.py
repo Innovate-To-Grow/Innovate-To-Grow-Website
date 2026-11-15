@@ -16,7 +16,7 @@ from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.mailbox import GraphReadBusy, GraphReadError
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import SEND_AND_READ, create_graph_config
-from apps.core.tests.services.test_email_graph import token_response
+from apps.core.tests.services.graph.provider.test_email_graph import token_response
 
 from .helpers import SENDER, make_email, monitoring_settings
 from .ndr_samples import ORIGINAL_ID, exchange_ndr, personal_email

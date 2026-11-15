@@ -13,13 +13,13 @@ from apps.core.services.email.graph.access import credential_for
 from apps.core.services.email.graph.credential import entra_check, lifecycle, stored_key
 from apps.core.services.email.graph.credential.lifecycle import CertificateChangeError, install_certificate
 from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, create_graph_config, private_key_lines
+from apps.core.tests.services.graph.provider.test_email_graph import ACCESS_TOKEN
 from apps.core.tests.services.graph_credential.helpers import (
     LifecycleFixtureMixin,
     make_superuser,
     parsed_certificate,
     stored_versions,
 )
-from apps.core.tests.services.test_email_graph import ACCESS_TOKEN
 
 State = MicrosoftGraphCertificate.State
 

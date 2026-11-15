@@ -15,7 +15,7 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
-from apps.core.tests.services.test_email_graph import GraphFixtureMixin, make_provider
+from apps.core.tests.services.graph.provider.test_email_graph import GraphFixtureMixin, make_provider
 from apps.event.models import EventRegistration, Ticket
 from apps.event.services.ticket.jobs import send_ticket_email_job
 from apps.event.services.ticket.mail import (

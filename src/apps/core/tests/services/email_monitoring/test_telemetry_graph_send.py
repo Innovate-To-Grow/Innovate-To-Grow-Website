@@ -30,7 +30,7 @@ from apps.core.services.email.exceptions import EmailRateDeferred
 from apps.core.services.email.graph import transport
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.services.email.telemetry import job_tracking
-from apps.core.tests.services.test_email_graph import ACCESS_TOKEN, KEY_LINE
+from apps.core.tests.services.graph.provider.test_email_graph import ACCESS_TOKEN, KEY_LINE
 
 from .helpers import BODY_TEXT, REQUEST_ID, SENDER, GraphSendingMixin, accepted, graph_error, monitoring_settings
 

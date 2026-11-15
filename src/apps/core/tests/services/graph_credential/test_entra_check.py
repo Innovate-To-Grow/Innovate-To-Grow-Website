@@ -9,8 +9,8 @@ from apps.core.services.email.graph.credential import entra_check
 from apps.core.services.email.graph.credential.entra_check import EntraCheckResult, check_certificate, classify
 from apps.core.services.email.graph.transport import ConnectFailed, HttpResponse, ResponseLost
 from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, make_certificate
+from apps.core.tests.services.graph.provider.test_email_graph import ACCESS_TOKEN, GraphFixtureMixin, token_response
 from apps.core.tests.services.graph_credential.helpers import entra_rejection
-from apps.core.tests.services.test_email_graph import ACCESS_TOKEN, GraphFixtureMixin, token_response
 
 
 class ClassifyTests(SimpleTestCase):
