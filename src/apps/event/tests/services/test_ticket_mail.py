@@ -18,13 +18,8 @@ from apps.core.services.email import (
 from apps.core.tests.services.test_email_graph import GraphFixtureMixin, make_provider
 from apps.event.models import EventRegistration, Ticket
 from apps.event.services.ticket.jobs import send_ticket_email_job
-from apps.event.services.ticket.mail import (
-    _build_mime_message,
-    _build_ticket_message,
-    _issue_ticket_login_link,
-    _send_via_ses,
-    send_ticket_email,
-)
+from apps.event.services.ticket.mail import _send_via_ses, send_ticket_email
+from apps.event.services.ticket.message import _build_mime_message, _build_ticket_message, _issue_ticket_login_link
 from apps.event.tests.helpers import make_event, make_member
 from apps.mail.models import LoginLinkToken
 
