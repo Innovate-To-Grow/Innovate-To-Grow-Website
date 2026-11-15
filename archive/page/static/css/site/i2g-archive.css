@@ -1,4 +1,4 @@
-/* Shared archive-page overrides, loaded by templates/base.html after the
+/* Shared archive-page overrides, loaded by templates/layout/base.html after the
    Drupal CSS aggregates and before each page's own inline styles. This was
    previously an identical inline <style> block repeated in every page. */
 

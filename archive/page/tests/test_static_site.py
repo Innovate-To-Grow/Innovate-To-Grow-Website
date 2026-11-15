@@ -1,6 +1,6 @@
 """Invariants for the archived event pages.
 
-The pages are Jinja children of templates/base.html, served at /<name>.html.
+The pages are Jinja children of templates/layout/base.html, served at /<name>.html.
 Their Sheets data flows through the same-origin ``/api/sheets/`` proxy in
 app.py — the Google API key must never appear in (or be reachable from)
 anything the browser receives, so the content checks run against the SERVED
@@ -14,9 +14,9 @@ import pytest
 from app import app
 
 ROOT = Path(__file__).resolve().parent.parent
-PAGES = sorted((ROOT / "templates" / "events").glob("*.html"))
-BASE_TEMPLATE = ROOT / "templates" / "base.html"
-SHARED_CSS = ROOT / "static" / "css" / "i2g-archive.css"
+PAGES = sorted((ROOT / "templates" / "events").glob("*/*.html"))
+BASE_TEMPLATE = ROOT / "templates" / "layout" / "base.html"
+SHARED_CSS = ROOT / "static" / "css" / "site" / "i2g-archive.css"
 
 _ASSET_RE = re.compile(r"""(?:src|href)=["'](/?static/[^"'?#]+)["']""")
 _KEY_RE = re.compile(r"AIzaSy[A-Za-z0-9_-]+")
@@ -97,7 +97,7 @@ def test_page_grid_is_centered_as_a_whole():
     assert "margin-right: auto !important;" in css
     base = BASE_TEMPLATE.read_text()
     links = re.findall(r'href="(/static/css/[^"]+)"', base)
-    assert links[-1] == "/static/css/i2g-archive.css", "shared CSS must load after the aggregates"
+    assert links[-1] == "/static/css/site/i2g-archive.css", "shared CSS must load after the aggregates"
 
 
 @pytest.mark.parametrize("page", PAGES, ids=lambda p: p.name)
@@ -127,7 +127,7 @@ def test_referenced_static_assets_exist(serve, page):
 
 
 def test_2022_fall_sheet_cells_are_text_and_urls_are_validated():
-    sources = _page_sources(ROOT / "templates" / "events" / "2022-fall-event.html")
+    sources = _page_sources(ROOT / "templates" / "events" / "2022" / "2022-fall-event.html")
     js = "\n".join(sources)
     assert 'document.createTextNode(value == null ? "" : String(value))' in js
     assert "$.fn.dataTable.render.text()" in js
@@ -144,8 +144,8 @@ def test_base_template_loads_shared_sheet_safe_helpers():
     # The escaping helpers must be available to every page before any event
     # script runs, so they live in base.html's <head>.
     base = BASE_TEMPLATE.read_text()
-    assert "/static/js/sheet-safe.js" in base
-    shared = (ROOT / "static" / "js" / "sheet-safe.js").read_text()
+    assert "/static/js/site/sheet-safe.js" in base
+    shared = (ROOT / "static" / "js" / "site" / "sheet-safe.js").read_text()
     for fn in ("function escapeSheetText", "function prependSheetText", "function safeSheetUrl"):
         assert fn in shared, f"sheet-safe.js missing {fn}"
 

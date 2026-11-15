@@ -28,14 +28,14 @@ def test_served_page_includes_the_embed_helper(client):
     # Every page extends base.html, which loads the embed auto-resize/new-tab
     # helper right before </body> so the main site can iframe it cleanly.
     resp = client.get("/2025-fall-event.html")
-    assert b'<script src="/static/js/i2g-embed.js"></script>' in resp.data
+    assert b'<script src="/static/js/site/i2g-embed.js"></script>' in resp.data
     body_end = resp.data.lower().rfind(b"</body>")
-    script_at = resp.data.find(b"/static/js/i2g-embed.js")
+    script_at = resp.data.find(b"/static/js/site/i2g-embed.js")
     assert -1 < script_at < body_end
 
 
 def test_embed_helper_is_served_as_static(client):
-    resp = client.get("/static/js/i2g-embed.js")
+    resp = client.get("/static/js/site/i2g-embed.js")
     assert resp.status_code == 200
     assert b"i2g-embed-resize" in resp.data
 
@@ -43,14 +43,14 @@ def test_embed_helper_is_served_as_static(client):
 def test_embed_helper_unsets_fixed_container_width(client):
     # When framed, the helper overrides Bootstrap's fixed `.container` width so
     # the embed fills the iframe instead of leaving wide left/right gaps.
-    resp = client.get("/static/js/i2g-embed.js")
+    resp = client.get("/static/js/site/i2g-embed.js")
     assert b"width: 100% !important; max-width: 100% !important;" in resp.data
     assert b".container," in resp.data
 
 
 def test_embed_helper_included_once_per_page(client):
     resp = client.get("/2025-fall-event.html")
-    assert resp.data.count(b"/static/js/i2g-embed.js") == 1
+    assert resp.data.count(b"/static/js/site/i2g-embed.js") == 1
 
 
 def test_event_page_render_is_deterministic_and_template_cached(client):
@@ -99,8 +99,8 @@ def test_serve_page_uses_fixed_template_allowlist(monkeypatch):
     with app.test_request_context():
         with pytest.raises(NotFound):
             app_module.serve_page("../base")
-        assert app_module.serve_page("2025-fall-event") == "events/2025-fall-event.html"
-    assert rendered["template"] == "events/2025-fall-event.html"
+        assert app_module.serve_page("2025-fall-event") == "events/2025/2025-fall-event.html"
+    assert rendered["template"] == "events/2025/2025-fall-event.html"
 
 
 def test_footer_loads_a_single_jquery(client):

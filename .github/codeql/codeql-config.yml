@@ -3,7 +3,7 @@ name: I2G CodeQL config
 # Vendored, minified Drupal-7-era bundles shipped with the archived event
 # site (archive.i2g.ucmerced.edu). Third-party EOL code we do not maintain;
 # alerts inside them are not actionable. First-party archive JS
-# (i2g-embed.js, event-date.js, static/js/events/) stays in scope.
+# (static/js/site/, static/js/events/) stays in scope.
 paths-ignore:
   - archive/page/static/js/drupal-core.js
   - archive/page/static/js/jquery-ui.js
