@@ -23,7 +23,7 @@ Run both Python checks from the repository root with the dev virtualenv active: 
 
 - **CI:** `lint.yml` (Python Linting job) runs both Python checks after Ruff. `ci.yml` (Frontend Lint,
   Build and Static Checks job) runs `npm run lint` and then `npm run check:structure`. The checkers' own unit tests
-  (`scripts/ci/tests/python_quality/test_check_python_quality.py` and `scripts/ci/tests/python_dependencies/test_check_python_*.py`) run in the Preflight job with the other CI script tests.
+  (`scripts/ci/tests/python_quality/test_check_python_quality.py` and `scripts/ci/tests/python_dependencies/test_check_python_dependencies.py`) run in the Preflight job with the other CI script tests.
   `ci.yml`'s `Repository Structure and Migration Guard` job runs the structure checker's tests, the migration guard
   and the structure report on every run (see [Repository structure](#repository-structure)).
 - **Pre-push hooks** (`.pre-commit-config.yaml`): `frontend-eslint`, `frontend-structure`, `python-quality`,
