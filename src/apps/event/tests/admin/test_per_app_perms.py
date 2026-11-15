@@ -9,9 +9,9 @@ event-granted staff are allowed, other-app staff are denied, superusers bypass.
 
 from django.test import RequestFactory, TestCase
 
-from apps.event.admin.checkin import CheckInRecordAdmin
 from apps.event.admin.registration import EventRegistrationAdmin
-from apps.event.admin.registration.sync_log import RegistrationSheetSyncLogAdmin
+from apps.event.admin.registration.checkin import CheckInRecordAdmin
+from apps.event.admin.registration_sheet.sync_log import RegistrationSheetSyncLogAdmin
 from apps.event.models import CheckInRecord, EventRegistration, RegistrationSheetSyncLog
 from apps.event.tests.helpers import make_admin, make_superuser
 

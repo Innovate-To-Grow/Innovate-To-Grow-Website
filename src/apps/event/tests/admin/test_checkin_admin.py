@@ -5,8 +5,8 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.http import Http404
 from django.test import RequestFactory, TestCase
 
-from apps.event.admin.checkin import CheckInAdmin
 from apps.event.admin.registration import EventRegistrationAdmin
+from apps.event.admin.registration.checkin import CheckInAdmin
 from apps.event.models import CheckIn, EventRegistration
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 
