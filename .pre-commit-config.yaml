@@ -13,7 +13,7 @@ repos:
       - id: check-yaml
         # CloudFormation intrinsic tags are parsed and validated by
         # scripts/ci/legacy_infrastructure/ in the preflight job.
-        exclude: ^aws/legacy/(?:monitoring-us-east-1|template)\.yaml$
+        exclude: ^aws/legacy/cloudformation/(?:monitoring-us-east-1|template)\.yaml$
         stages: [pre-commit]
       - id: check-toml
         stages: [pre-commit]

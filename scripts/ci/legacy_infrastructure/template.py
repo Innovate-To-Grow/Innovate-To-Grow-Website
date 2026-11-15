@@ -8,10 +8,10 @@ import yaml
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 
-TEMPLATE_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "template.yaml"
+TEMPLATE_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "cloudformation" / "template.yaml"
 
 
-MONITORING_TEMPLATE_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "monitoring-us-east-1.yaml"
+MONITORING_TEMPLATE_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "cloudformation" / "monitoring-us-east-1.yaml"
 
 
 NGINX_SERVER_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "nginx" / "i2g-legacy-private-readonly.conf"
