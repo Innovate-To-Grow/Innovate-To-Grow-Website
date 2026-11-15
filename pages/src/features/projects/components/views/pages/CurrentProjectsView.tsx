@@ -1,13 +1,13 @@
 import {useId, useMemo, type ReactNode} from 'react';
 import {Link} from 'react-router';
-import {useProjectGridFilters} from '../../../hooks/useProjectGridFilters';
-import {useListScrollPosition} from '../../../hooks/useListScrollPosition';
+import {useProjectGridFilters} from '../../../hooks/list/useProjectGridFilters';
+import {useListScrollPosition} from '../../../hooks/list/useListScrollPosition';
 import {
   PROJECT_LIST_URL_DEFAULTS,
   useInitialProjectListUrlState,
   useProjectListStateKey,
   useProjectListUrlSync,
-} from '../../../hooks/useProjectListUrlState';
+} from '../../../hooks/list/useProjectListUrlState';
 import {ProjectGridTable} from '../../grid/table/ProjectGridTable';
 import {
   PROJECT_GRID_COLUMNS,

@@ -1,7 +1,7 @@
 import {useId, useMemo, useState} from 'react';
 import {useAuth} from '@/features/auth';
-import {AISearchLoginDialog} from '../../builder/search/AISearchLoginDialog';
-import {PastProjectsActionBar} from '../../builder/search/PastProjectsActionBar';
+import {AISearchLoginDialog} from '../../curation/builder/search/AISearchLoginDialog';
+import {PastProjectsActionBar} from '../../curation/builder/search/PastProjectsActionBar';
 import {createProjectGridRowMatcher, type ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {ArchiveLoadState} from '../../search/cards/ArchiveLoadState';
 import {SearchTableStack} from '../../search/cards/SearchTableStack';

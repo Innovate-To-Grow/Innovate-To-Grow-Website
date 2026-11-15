@@ -1,6 +1,6 @@
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {useCopyLink} from '@/hooks/useCopyLink';
-import {useProjectGridDetails} from '../../../hooks/useProjectGridDetails';
+import {useProjectGridDetails} from '../../../hooks/list/useProjectGridDetails';
 import {getProjectGridRowHref, type ProjectGridLinkScope, type ProjectGridRow} from '../contracts/projectGrid';
 import {ProjectPageLink} from './ProjectTitleWithChips';
 

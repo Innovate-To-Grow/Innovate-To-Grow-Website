@@ -1,8 +1,8 @@
 import type {ComponentProps} from 'react';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {SearchTableCard} from './SearchTableCard';
-import {PastProjectsAISearchForm} from '../../builder/search/PastProjectsAISearchForm';
-import {PastProjectsAIStatus} from '../../builder/search/PastProjectsAIStatus';
+import {PastProjectsAISearchForm} from '../../curation/builder/search/PastProjectsAISearchForm';
+import {PastProjectsAIStatus} from '../../curation/builder/search/PastProjectsAIStatus';
 import {initialSearchTableId, searchTableTitle, type useSearchTables} from '../state/useSearchTables';
 
 type SearchTableCardProps = ComponentProps<typeof SearchTableCard>;

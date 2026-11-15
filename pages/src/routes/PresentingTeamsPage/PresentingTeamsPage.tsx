@@ -1,7 +1,7 @@
 import {useMemo} from 'react';
 import {Link} from 'react-router';
 import {CurrentProjectsView} from '@/features/projects/components/views/pages/CurrentProjectsView';
-import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
+import {useCurrentProjectGridData} from '@/features/projects/hooks/data/useProjectGridData.ts';
 
 /** Names the teams, as the page's count and empty state do, where the hook's message says "projects". */
 const PRESENTING_TEAMS_LOAD_ERROR = "We couldn't load the presenting teams. Please try again.";

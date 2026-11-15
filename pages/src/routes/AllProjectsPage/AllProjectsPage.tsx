@@ -3,7 +3,7 @@ import {createPastProjectShare, type ProjectGridRow} from '@/features/projects/a
 import {ALL_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
 import {ProjectCatalogContext} from '@/features/projects/catalog/projectCatalog';
 import {CatalogBuilderView} from '@/features/projects/components/views/pages/CatalogBuilderView';
-import {useAllProjectGridData} from '@/features/projects/hooks/useProjectGridData';
+import {useAllProjectGridData} from '@/features/projects/hooks/data/useProjectGridData.ts';
 import {usePageTitle} from '@/hooks/usePageTitle';
 
 /**

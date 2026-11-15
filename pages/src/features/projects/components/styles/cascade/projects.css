@@ -14,13 +14,13 @@
    specificity, and projectsResponsive.css must stay last -- so do not reorder
    this list, and add new rules to the file that owns them. */
 @import './projectsPage.css';
-@import '../../curations/panel/MyCurationsPanel.css';
+@import '../../curation/myCurations/MyCurationsPanel.css';
 @import '../../grid/styles/gridControls.css';
 @import '../../grid/styles/gridTable.css';
 @import '../../grid/styles/gridList.css';
 @import '../../search/styles/searchTables.css';
-@import '../../merged/styles/mergedResults.css';
+@import '../../curation/merged/styles/mergedResults.css';
 @import '../../richText/editor/richTextEditor.css';
 @import '../../shared/styles/sharedList.css';
-@import '../../builder/dialog/dialog.css';
+@import '../../curation/builder/dialog/dialog.css';
 @import './projectsResponsive.css';

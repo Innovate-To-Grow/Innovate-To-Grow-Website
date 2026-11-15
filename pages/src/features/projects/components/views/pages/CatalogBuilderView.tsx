@@ -1,10 +1,10 @@
 import '../../styles/cascade/projects.css';
 import {useMemo} from 'react';
 import {useProjectCatalog} from '@/features/projects/catalog/projectCatalog';
-import {PastProjectsBuilder} from '../../builder/composition/PastProjectsBuilder';
-import {MyCurationsPanel} from '../../curations/panel/MyCurationsPanel';
+import {PastProjectsBuilder} from '../../curation/builder/composition/PastProjectsBuilder';
+import {MyCurationsPanel} from '../../curation/myCurations/MyCurationsPanel';
 import {getEarliestTermYear, type ProjectGridRow} from '../../grid/contracts/projectGrid';
-import type {PastProjectShareCreationResult} from '../../merged/composition/MergedResultsTable';
+import type {PastProjectShareCreationResult} from '../../curation/merged/composition/MergedResultsTable';
 
 interface CatalogBuilderViewProps {
   rows: ProjectGridRow[];

@@ -1,4 +1,4 @@
-import {useProjectGridFilters, type ProjectGridFilterOption} from '../../../hooks/useProjectGridFilters';
+import {useProjectGridFilters, type ProjectGridFilterOption} from '../../../hooks/list/useProjectGridFilters';
 
 interface FilterSelectProps {
   /** The select's id: the filter chips focus it when its chip goes (ActiveFilterChips). */

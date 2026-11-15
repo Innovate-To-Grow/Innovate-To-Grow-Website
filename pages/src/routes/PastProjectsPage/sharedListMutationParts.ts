@@ -1,6 +1,6 @@
 import {useEffect, useRef} from 'react';
 import {type PastProjectShare, type ProjectGridRow} from '@/features/projects/api';
-import {curationBranding} from '@/features/projects/components/merged/list/curationBranding';
+import {curationBranding} from '@/features/projects/components/curation/merged/note/curationBranding';
 import {haveEqualRows, rebaseSubmittedRows} from './shareRows';
 
 export type PastProjectSharePatch = Partial<Pick<PastProjectShare, 'name' | 'rows' | 'note'>>;

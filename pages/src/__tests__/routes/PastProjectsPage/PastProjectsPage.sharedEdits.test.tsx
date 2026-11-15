@@ -76,7 +76,7 @@ vi.mock('@/features/projects/api', () => ({
     updatePastProjectShare: vi.fn(),
 }));
 
-vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
+vi.mock('@/features/projects/hooks/data/useProjectGridData.ts', () => ({
     usePastProjectGridData: () => ({
         error: null,
         loading: false,
@@ -107,11 +107,11 @@ vi.mock('@/features/projects', async () =>
 );
 
 // The builder page's body (CatalogBuilderView) imports these two directly.
-vi.mock('@/features/projects/components/builder/composition/PastProjectsBuilder', async () => ({
+vi.mock('@/features/projects/components/curation/builder/composition/PastProjectsBuilder', async () => ({
     PastProjectsBuilder: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
         .pastProjectsModuleStub(sampleRow, addedRow).PastProjectsBuilder,
 }));
-vi.mock('@/features/projects/components/curations/panel/MyCurationsPanel', async () => ({
+vi.mock('@/features/projects/components/curation/myCurations/MyCurationsPanel', async () => ({
     MyCurationsPanel: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
         .pastProjectsModuleStub(sampleRow, addedRow).MyCurationsPanel,
 }));

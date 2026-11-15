@@ -47,7 +47,7 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
     return {...actual, createPastProjectShare: vi.fn()};
 });
 
-vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
+vi.mock('@/features/projects/hooks/data/useProjectGridData.ts', () => ({
     useAllProjectGridData: () => {
         gridState.allCalls += 1;
         return {error: null, loading: gridState.loading, rows: gridState.rows, refetch: vi.fn()};
@@ -59,11 +59,11 @@ vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
 }));
 
 // The builder and My Curations as the PastProjectsPage tests stub them: buttons that report what they were given.
-vi.mock('@/features/projects/components/builder/composition/PastProjectsBuilder', async () => ({
+vi.mock('@/features/projects/components/curation/builder/composition/PastProjectsBuilder', async () => ({
     PastProjectsBuilder: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
         .pastProjectsModuleStub(archiveRow, addedRow).PastProjectsBuilder,
 }));
-vi.mock('@/features/projects/components/curations/panel/MyCurationsPanel', async () => ({
+vi.mock('@/features/projects/components/curation/myCurations/MyCurationsPanel', async () => ({
     MyCurationsPanel: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
         .pastProjectsModuleStub(archiveRow, addedRow).MyCurationsPanel,
 }));

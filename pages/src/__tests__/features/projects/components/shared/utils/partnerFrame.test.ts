@@ -4,7 +4,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {scrollPartnerPageBy} from '@/features/projects/components/shared/utils/partnerFrame';
 import {
   useKeepScrollAnchor,
-} from '@/features/projects/components/builder/selection/scrollAnchor';
+} from '@/features/projects/components/curation/builder/selection/scrollAnchor';
 
 // In the partner widget the frame is as tall as its content and the partner page scrolls, so keeping something in
 // place on screen means scrolling the partner page, which only scrollIntoView can do from inside the frame.
