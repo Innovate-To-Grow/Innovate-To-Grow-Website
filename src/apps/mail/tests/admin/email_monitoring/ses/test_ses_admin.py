@@ -34,7 +34,7 @@ class SesTabTests(TestCase):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "admin/mail/email_monitoring/ses.html")
+        self.assertTemplateUsed(response, "admin/mail/email_monitoring/pages/ses.html")
         dashboard.assert_called_once_with(days=183)
         labels = figure_labels(response)
         for label in ("SES attempts", "Delivered by SES", "SES errors", "Bounces", "Complaints", "Rejected by SES"):

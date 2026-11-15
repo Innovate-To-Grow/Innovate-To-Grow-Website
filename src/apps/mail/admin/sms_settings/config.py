@@ -77,7 +77,7 @@ class SmsConfigForm(forms.ModelForm):
 @admin.register(SmsConfig)
 class SmsConfigAdmin(BaseModelAdmin):
     form = SmsConfigForm
-    change_form_template = "admin/mail/smsconfig/change_form.html"
+    change_form_template = "admin/mail/sms/config/change_form.html"
     fieldsets = (
         ("Opt-out footer", {"fields": ("footer_enabled", "footer_text")}),
         (

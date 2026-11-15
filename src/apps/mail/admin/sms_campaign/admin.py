@@ -29,8 +29,8 @@ class SmsAudienceTypeFilter(admin.SimpleListFilter):
 @admin.register(SmsCampaign)
 class SmsCampaignAdmin(SmsCampaignActionsMixin, SmsCampaignDisplayMixin, SmsCampaignSendViewsMixin, BaseModelAdmin):
     form = SmsCampaignForm
-    change_form_template = "admin/mail/smscampaign/change_form.html"
-    change_list_template = "admin/mail/smscampaign/change_list.html"
+    change_form_template = "admin/mail/sms/campaign/change_form.html"
+    change_list_template = "admin/mail/sms/campaign/change_list.html"
     inlines = (SmsRecipientLogInline,)
 
     list_display = (

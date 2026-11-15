@@ -76,7 +76,7 @@ class ActiveFilter(admin.SimpleListFilter):
 @admin.register(SmsOptOut)
 class SmsOptOutAdmin(BaseModelAdmin):
     add_form = SmsOptOutAddForm
-    change_list_template = "admin/mail/smsoptout/change_list.html"
+    change_list_template = "admin/mail/sms/optout/change_list.html"
     require_confirmation = False
     list_display = (
         "phone_number",

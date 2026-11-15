@@ -88,4 +88,4 @@ def _confirm_page(request, row, action: str, values: dict, *, status: int = 200)
     if not context["verdict"].allowed:
         messages.error(request, context["verdict"].reason)
         return HttpResponseRedirect(_detail_url(row))
-    return TemplateResponse(request, f"{TEMPLATES}/address_confirm.html", context, status=status)
+    return TemplateResponse(request, f"{TEMPLATES}/addresses/address_confirm.html", context, status=status)

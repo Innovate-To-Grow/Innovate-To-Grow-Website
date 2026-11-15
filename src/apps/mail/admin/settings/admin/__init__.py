@@ -45,7 +45,7 @@ def mail_settings_view(request):
     context["edit_url"] = reverse("admin:mail_settings_edit")
     context["sending_method"] = in_use_label(email_config)
     context["sending_method_url"] = reverse("admin:mail_sending_method")
-    return TemplateResponse(request, "admin/mail/settings.html", context)
+    return TemplateResponse(request, "admin/mail/settings/notification_delivery/settings.html", context)
 
 
 def _save_delivery_forms(request, email_form, aws_form, provider_form) -> bool:
@@ -147,4 +147,4 @@ def mail_settings_edit_view(request):
     context.update(forms_by_name)
     for key, (form_name, field_names) in _EDIT_FIELD_LISTS.items():
         context[key] = [forms_by_name[form_name][name] for name in field_names]
-    return TemplateResponse(request, "admin/mail/settings_edit.html", context)
+    return TemplateResponse(request, "admin/mail/settings/notification_delivery/settings_edit.html", context)

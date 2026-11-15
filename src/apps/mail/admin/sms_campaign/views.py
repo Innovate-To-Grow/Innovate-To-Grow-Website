@@ -52,7 +52,7 @@ class SmsCampaignSendViewsMixin:
             "opted_out_count": len(recipients.skipped),
             "back_url": reverse("admin:mail_smscampaign_change", args=[object_id]),
         }
-        return TemplateResponse(request, "admin/mail/smscampaign/preview_recipients.html", context)
+        return TemplateResponse(request, "admin/mail/sms/campaign/preview_recipients.html", context)
 
     def send_sms_preview_view(self, request, object_id):
         if not self.has_view_permission(request):
@@ -71,7 +71,7 @@ class SmsCampaignSendViewsMixin:
             else None,
             "cancel_url": change_url,
         }
-        return TemplateResponse(request, "admin/mail/smscampaign/send_preview.html", context)
+        return TemplateResponse(request, "admin/mail/sms/campaign/send_preview.html", context)
 
     def send_sms_confirm_view(self, request, object_id):
         # State-changing flow (triggers the background SMS send) — require change access.
@@ -117,7 +117,7 @@ class SmsCampaignSendViewsMixin:
             "recipient_count": len(recipients),
             "preview_url": reverse("admin:mail_smscampaign_send_preview", args=[object_id]),
         }
-        return TemplateResponse(request, "admin/mail/smscampaign/confirm_send.html", context)
+        return TemplateResponse(request, "admin/mail/sms/campaign/confirm_send.html", context)
 
     def send_sms_status_view(self, request, object_id):
         if not self.has_view_permission(request):
@@ -130,7 +130,7 @@ class SmsCampaignSendViewsMixin:
             "status_json_url": reverse("admin:mail_smscampaign_send_status_json", args=[object_id]),
             "back_url": reverse("admin:mail_smscampaign_change", args=[object_id]),
         }
-        return TemplateResponse(request, "admin/mail/smscampaign/send_status.html", context)
+        return TemplateResponse(request, "admin/mail/sms/campaign/send_status.html", context)
 
     def send_sms_status_json(self, request, object_id):
         if not self.has_view_permission(request):

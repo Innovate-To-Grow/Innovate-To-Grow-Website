@@ -98,4 +98,4 @@ def address_detail_view(request, pk):
         shown=REPORTS_SHOWN,
         category_legend=EmailBounce.category_legend(),
     )
-    return TemplateResponse(request, f"{TEMPLATES}/address_detail.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/addresses/address_detail.html", context)
