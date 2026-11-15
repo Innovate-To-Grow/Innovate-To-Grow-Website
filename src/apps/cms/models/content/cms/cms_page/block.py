@@ -3,8 +3,8 @@ from django.db import models
 
 from apps.core.models import ProjectControlModel
 
-from .block_types import BLOCK_TYPE_CHOICES, normalize_block_data_for_storage, validate_block_data
-from .cms_page import CMSPage
+from ..block_types import BLOCK_TYPE_CHOICES, normalize_block_data_for_storage, validate_block_data
+from . import CMSPage
 
 
 class CMSBlock(ProjectControlModel):
