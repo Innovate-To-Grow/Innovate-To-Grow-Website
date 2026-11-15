@@ -44,7 +44,7 @@ class PageViewAdmin(ReadOnlyModelAdmin):
     list_select_related = ("member",)
 
     class Media:
-        css = {"all": ("admin/css/ip-geo-popup.css",)}
+        css = {"all": ("admin/css/components/ip-geo-popup.css",)}
 
     fieldsets = (
         ("Request", {"fields": ("id", "path", "referrer", "timestamp")}),

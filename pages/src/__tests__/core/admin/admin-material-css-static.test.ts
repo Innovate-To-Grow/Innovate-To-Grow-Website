@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {describe, expect, it} from 'vitest';
 
 /**
- * The admin's Material theme (src/apps/core/static/admin/css/google-material-admin.css) repaints every
+ * The admin's Material theme (src/apps/core/static/admin/css/material/google-material-admin.css) repaints every
  * `bg-white` / `dark:bg-base-900` element as a surface, with !important. Unfold's radio and checkbox inputs carry
  * those same classes and show their checked state through `checked:bg-primary-600`, so the surface rules must
  * leave form controls alone: with them included, a selected "Email format" radio looked unselected.
@@ -15,7 +15,11 @@ import {describe, expect, it} from 'vitest';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, '../../../../..');
-const css = readFileSync(resolve(repoRoot, 'src/apps/core/static/admin/css/google-material-admin.css'), 'utf8');
+const cssPath = resolve(repoRoot, 'src/apps/core/static/admin/css/material/google-material-admin.css');
+// The stylesheet is an ordered @import list of its parts: read it with each part inlined.
+const css = readFileSync(cssPath, 'utf8').replace(/@import '\.\/([^'?]+)(?:\?[^']*)?';/g, (_match, part: string) =>
+  readFileSync(resolve(dirname(cssPath), part), 'utf8'),
+);
 
 function surfaceSelectors(): string[] {
   const selectors: string[] = [];

@@ -1,0 +1,111 @@
+.i2g-admin-object-tools {
+    align-items: center;
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+}
+
+.i2g-admin-object-tools > * {
+    display: inline-flex;
+    position: relative;
+}
+
+.i2g-admin-object-tools > * + * {
+    margin-left: -1px;
+}
+
+.i2g-admin-object-tools > *:hover,
+.i2g-admin-object-tools > *:focus-within {
+    z-index: 1;
+}
+
+.i2g-admin-object-tools--separated {
+    gap: 0.5rem;
+}
+
+.i2g-admin-object-tools--separated > * + * {
+    margin-left: 0;
+}
+
+.i2g-admin-object-tools form {
+    display: inline-flex;
+    margin: 0;
+}
+
+.i2g-admin-action,
+.i2g-admin-object-tools .addlink {
+    align-items: center;
+    background-color: var(--md-sys-color-surface-container-lowest) !important;
+    border: 1px solid var(--md-sys-color-outline-variant) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    color: var(--md-sys-color-on-surface) !important;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.875rem;
+    font-weight: 500;
+    gap: 0.5rem;
+    height: 38px;
+    justify-content: center;
+    line-height: 1;
+    padding: 0 0.875rem;
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+    white-space: nowrap;
+}
+
+.i2g-admin-object-tools .addlink {
+    background-color: var(--md-sys-color-primary) !important;
+    border-color: var(--md-sys-color-primary) !important;
+    color: var(--md-sys-color-on-primary) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 38px;
+}
+
+.i2g-admin-action:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 8%, transparent) !important;
+    border-color: var(--md-sys-color-primary) !important;
+    color: var(--md-sys-color-primary) !important;
+}
+
+.i2g-admin-action--primary {
+    background-color: var(--md-sys-color-primary) !important;
+    border-color: var(--md-sys-color-primary) !important;
+    color: var(--md-sys-color-on-primary) !important;
+}
+
+.i2g-admin-action--primary:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+    border-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+    color: var(--md-sys-color-on-primary) !important;
+}
+
+.i2g-admin-object-tools .addlink:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+    border-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+    color: var(--md-sys-color-on-primary) !important;
+}
+
+.i2g-admin-object-tools > .i2g-admin-action:first-child,
+.i2g-admin-object-tools > form:first-child > .i2g-admin-action,
+.i2g-admin-object-tools > div:first-child > .addlink {
+    border-bottom-left-radius: var(--md-sys-shape-corner-extra-large) !important;
+    border-top-left-radius: var(--md-sys-shape-corner-extra-large) !important;
+}
+
+.i2g-admin-object-tools > .i2g-admin-action:last-child,
+.i2g-admin-object-tools > form:last-child > .i2g-admin-action,
+.i2g-admin-object-tools > div:last-child > .addlink {
+    border-bottom-right-radius: var(--md-sys-shape-corner-extra-large) !important;
+    border-top-right-radius: var(--md-sys-shape-corner-extra-large) !important;
+}
+
+.i2g-admin-object-tools--separated .i2g-admin-action,
+.i2g-admin-object-tools--separated .addlink {
+    border-radius: var(--md-sys-shape-corner-extra-large) !important;
+}
+
+.i2g-admin-action .material-symbols-outlined,
+.i2g-admin-object-tools .addlink .material-symbols-outlined {
+    font-size: 18px !important;
+}

@@ -1,0 +1,86 @@
+.ucm-api {
+  --ucm-blue: #002856;
+  --ucm-blue-dark: #001b3a;
+  --ucm-blue-light: #0b4f8a;
+  --ucm-gold: #daa900;
+  --ucm-gold-light: #f5e6a8;
+  --ucm-ink: #1f2933;
+  --ucm-muted: #5d6773;
+  --ucm-border: #d8dee7;
+  --ucm-surface: #ffffff;
+  --ucm-page: #f3f5f8;
+  margin: 0;
+  overflow-x: hidden;
+  background: var(--ucm-page);
+  color: var(--ucm-ink);
+  font-family: "Open Sans", Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.ucm-api *,
+.ucm-api *::before,
+.ucm-api *::after {
+  box-sizing: border-box;
+}
+
+.ucm-api .wrapper {
+  position: static;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 0 32px;
+}
+
+.ucm-api .container {
+  width: min(100% - 32px, 1170px);
+  max-width: 1170px;
+  margin-right: auto;
+  margin-left: auto;
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.ucm-api a {
+  color: var(--ucm-blue-light);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+.ucm-api a:hover,
+.ucm-api a:focus {
+  color: var(--ucm-blue);
+}
+
+.ucm-api :focus {
+  outline: 3px solid var(--ucm-gold);
+  outline-offset: 3px;
+}
+
+.ucm-api :focus:not(:focus-visible) {
+  outline: none;
+}
+
+.ucm-api :focus-visible {
+  outline: 3px solid var(--ucm-gold);
+  outline-offset: 3px;
+}
+
+.ucm-api .ucm-api__skip-link {
+  position: fixed;
+  top: 12px;
+  left: 16px;
+  z-index: 1100;
+  min-height: 44px;
+  padding: 11px 18px;
+  border-radius: 4px;
+  background: var(--ucm-gold);
+  color: var(--ucm-blue-dark);
+  font-weight: 700;
+  transform: translateY(-180%);
+  transition: transform 120ms ease-out;
+}
+
+.ucm-api .ucm-api__skip-link:focus {
+  color: var(--ucm-blue-dark);
+  transform: translateY(0);
+}
