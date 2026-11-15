@@ -20,7 +20,7 @@ from unfold.admin import TabularInline
 from apps.core.models import EmailServiceConfig, MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
 from apps.core.models.base.service_credentials.microsoft_graph import normalize_mailbox
 
-from ..common.base import AppAccessInlineMixin
+from ...common.base import AppAccessInlineMixin
 
 WOULD_STOP_EMAIL = (
     "Mail → Notification Delivery sends email through Microsoft Graph with this configuration, so this change "

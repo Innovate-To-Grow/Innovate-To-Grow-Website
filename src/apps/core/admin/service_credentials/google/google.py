@@ -8,7 +8,7 @@ from unfold.widgets import UnfoldAdminFileFieldWidget, UnfoldAdminTextareaWidget
 
 from apps.core.models import GoogleCredentialConfig
 
-from ..common.base import BaseModelAdmin
+from ...common.base import BaseModelAdmin
 
 
 class GoogleCredentialConfigForm(forms.ModelForm):

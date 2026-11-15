@@ -13,7 +13,7 @@ Production sets the backend to Secrets Manager and turns on the require flag; th
 ``core`` system check then refuses to start with any other backend.
 """
 
-from ...framework.environment import BASE_DIR
+from ....framework.environment import BASE_DIR
 
 CREDENTIAL_STORE_BACKEND = "local_file"
 CREDENTIAL_STORE_REQUIRE_SECRETS_MANAGER = False

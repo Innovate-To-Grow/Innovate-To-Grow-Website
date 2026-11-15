@@ -4,10 +4,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core.admin.service_credentials.microsoft_graph import (
-    GRAPH_FORM_FIELDS,
-    NO_CERTIFICATE,
-)
+from apps.core.admin.service_credentials.microsoft_graph.config import GRAPH_FORM_FIELDS, NO_CERTIFICATE
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.tests.admin.service_credentials.graph_config.test_microsoft_graph_admin import (
     CLIENT_ID,

@@ -69,7 +69,7 @@ class SecretStoreTests(TestCase):
 
     @override_settings(AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER=True)
     def test_admin_reports_missing_reference_before_save(self):
-        from apps.core.admin.service_credentials.aws import AWSCredentialConfigForm
+        from apps.core.admin.service_credentials.aws_smtp.aws import AWSCredentialConfigForm
 
         form = AWSCredentialConfigForm(data={"name": "Production", "is_active": True, "default_region": "us-west-2"})
         self.assertFalse(form.is_valid())

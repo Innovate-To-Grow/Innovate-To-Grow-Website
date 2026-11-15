@@ -2,6 +2,7 @@ from contextlib import ExitStack, contextmanager
 from unittest.mock import patch
 
 from apps.core.management.commands import run_background_worker
+from apps.core.management.operations import worker_maintenance
 from apps.core.services.delivery_rates.lifecycle.maintenance import MaintenanceResult
 
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
@@ -52,21 +53,28 @@ def patch_maintenance(**side_effects):
     patchers = []
     for name, return_value in MAINTENANCE_SERVICES.items():
         if name in side_effects:
-            patchers.append(patch.object(run_background_worker, name, side_effect=side_effects[name]))
+            patchers.append(patch.object(worker_maintenance, name, side_effect=side_effects[name]))
         else:
-            patchers.append(patch.object(run_background_worker, name, return_value=return_value))
+            patchers.append(patch.object(worker_maintenance, name, return_value=return_value))
     return patchers
 
 
 @contextmanager
 def patch_worker(returns):
-    """Patch each ``run_background_worker`` name in ``returns`` to return its value; yield the mocks by name.
+    """Patch each name in ``returns`` to return its value (a maintenance service where the tasks look it up, in
+    ``worker_maintenance``; anything else in ``run_background_worker``); yield the mocks by name.
 
     One ExitStack holds every patch, so the worker can gain any number of services: a single ``with`` statement of
     more than 20 context managers does not compile on Python 3.11 ("too many statically nested blocks")."""
     with ExitStack() as stack:
         yield {
-            name: stack.enter_context(patch.object(run_background_worker, name, return_value=value))
+            name: stack.enter_context(
+                patch.object(
+                    worker_maintenance if name in MAINTENANCE_SERVICES else run_background_worker,
+                    name,
+                    return_value=value,
+                )
+            )
             for name, value in returns.items()
         }
 

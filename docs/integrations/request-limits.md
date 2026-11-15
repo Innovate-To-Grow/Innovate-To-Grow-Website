@@ -246,7 +246,7 @@ The limiter never takes the site down with it: an error inside it is logged (`re
 | Pure rules | `apps/core/services/request_limits/rules/` (`limits.py` precedence and slot shares, `controller.py`) |
 | Runtime | `apps/core/services/request_limits/` (`limiter.py`, `scopes.py`, `identity.py`, `priority.py`, `view_limits.py`), `runtime/` (`store.py`, `heartbeat.py`, `registry.py`, `signals.py`, `smart.py`, `abuse.py`, `refusals.py`) |
 | App hooks | `register_scope`, `register_exemption`, `register_identity_resolver`, `register_priority_check` from `AppConfig.ready()` (authn registers the code-send proof check) |
-| Admin | `apps/core/admin/request_limits/` (`views.py`, `forms.py`, `cards.py`); templates `admin/core/request_limits.html`, `request_limit_card.html`; `admin/js/poll-backoff.js` |
+| Admin | `apps/core/admin/request_limits/` (`views.py`, `forms.py`, `cards.py`); templates `admin/core/request_limits/request_limits.html`, `request_limit_card.html`; `admin/js/poll-backoff.js` |
 | Clients | `pages/src/lib/api/rateLimit.ts` (SPA), `cli/src/i2g_admin/client/rate_limit.py` (CLI) |
 
 The policy, state and heartbeat rows are on the safe-ORM denylist, so the `i2g-admin` CLI cannot read or change them.

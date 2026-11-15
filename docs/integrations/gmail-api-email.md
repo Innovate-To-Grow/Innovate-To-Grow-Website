@@ -210,7 +210,7 @@ in `DELIVERY_RATES["signals"]["gmail_api"]`). Google's free text is matched, nev
 
 ## Settings
 
-`GMAIL_API` (`config/settings/base/integrations/gmail_api/`, overridable with `GMAIL_API_OVERRIDES`): request
+`GMAIL_API` (`config/settings/base/integrations/email/gmail_api/`, overridable with `GMAIL_API_OVERRIDES`): request
 timeout, response cap, recipients and size ceilings (also the config fields' seeds and ceilings), the upload
 endpoint's maximum, assertion and token lifetimes, key-file size and RSA key size, and the key-test and access-check
 timeouts. See [Environments](../deployment/environments.md#gmail-api-email).

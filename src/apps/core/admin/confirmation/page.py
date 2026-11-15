@@ -61,7 +61,7 @@ class ChangeConfirmationPageMixin:
             "token": pending["token"],
             "cancel_url": self._get_cancel_url(pending),
         }
-        return TemplateResponse(request, "admin/core/confirm_change.html", context)
+        return TemplateResponse(request, "admin/core/confirmation/confirm_change.html", context)
 
     def _get_cancel_url(self, pending):
         if pending["action"] == "delete" or pending["action"] == "change":

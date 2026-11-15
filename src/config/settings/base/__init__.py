@@ -16,11 +16,11 @@ from .framework.cache import *  # noqa: F403        # dev/CI CACHES + the shared
 from .integrations.admin import *  # noqa: F403     # Unfold admin theme
 from .integrations.api import *  # noqa: F403       # DRF + SimpleJWT
 from .integrations.editor import *  # noqa: F403    # CKEditor 5
-from .integrations.credential_store import *  # noqa: F403  # private-key store backend + secret names
-from .integrations.microsoft_graph import *  # noqa: F403  # Graph certificate limits
-from .integrations.gmail_api import *  # noqa: F403  # Gmail API request limits, token lifetimes, key entry
+from .integrations.email.credential_store import *  # noqa: F403  # private-key store backend + secret names
+from .integrations.email.microsoft_graph import *  # noqa: F403  # Graph certificate limits
+from .integrations.email.gmail_api import *  # noqa: F403  # Gmail API request limits, token lifetimes, key entry
 from .integrations.delivery_rates import *  # noqa: F403  # per-channel rate seeds, Smart rate controller
 from .integrations.request_limits import *  # noqa: F403  # inbound request-limit scopes, tiers, Smart limiting
-from .integrations.email_monitoring import *  # noqa: F403  # email telemetry, retention, bounce processing
+from .integrations.email.email_monitoring import *  # noqa: F403  # email telemetry, retention, bounce processing
 from .integrations.member_import import *  # noqa: F403  # member import review: upload cap, batch retention
 from .integrations.sms import *  # noqa: F403  # SMS policy bounds: quiet hours switch, links, opt-out sync

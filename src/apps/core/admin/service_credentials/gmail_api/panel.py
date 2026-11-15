@@ -11,7 +11,7 @@ from django.urls import reverse
 from apps.core.services.email.graph.credential.expiry import local_time_text
 from apps.core.utils.access import user_can_access_app
 
-from .microsoft_graph_panel import STORE_NAMES
+from ..microsoft_graph.panel import STORE_NAMES
 
 URL_NAME_PREFIX = "core_gmailapiproviderconfig"
 INSTALL_URL_NAME = f"{URL_NAME_PREFIX}_install_key"

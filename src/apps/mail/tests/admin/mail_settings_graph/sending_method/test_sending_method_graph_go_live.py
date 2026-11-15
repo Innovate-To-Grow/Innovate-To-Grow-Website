@@ -13,7 +13,7 @@ from unittest.mock import patch
 from django.test import override_settings
 from django.urls import reverse
 
-from apps.core.admin.service_credentials.microsoft_graph_panel import ACCESS_CHECK_URL_NAME
+from apps.core.admin.service_credentials.microsoft_graph.panel import ACCESS_CHECK_URL_NAME
 from apps.core.models import EmailServiceConfig, MicrosoftGraphAccessCheck
 from apps.core.services.email import EmailMessage, deliver_email
 from apps.core.services.email.graph import transport

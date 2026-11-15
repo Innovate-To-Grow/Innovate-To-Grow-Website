@@ -18,7 +18,7 @@ class TestSmsViewTest(TestCase):
         request = _request("get", self.user, path="/admin/test-sms/")
         with patch.object(AWSCredentialConfig, "load", return_value=AWSCredentialConfig(name="AWS")):
             response = self.admin.test_sms_list_view(request)
-        self.assertEqual(response.template_name, "admin/core/test_send_form.html")
+        self.assertEqual(response.template_name, "admin/core/test_send/test_send_form.html")
         self.assertIn("Send Test SMS", response.context_data["title"])
 
     def test_post_missing_recipient_redirects_to_canonical_form(self):
@@ -43,7 +43,7 @@ class TestSmsViewTest(TestCase):
         with (
             patch.object(AWSCredentialConfig, "load", return_value=AWSCredentialConfig(name="AWS")),
             patch(
-                "apps.core.admin.service_credentials.test_send_mixin._send_test_sms",
+                "apps.core.admin.service_credentials.aws_smtp.test_send_mixin._send_test_sms",
                 return_value="message (ID: m1)",
             ),
         ):
@@ -57,7 +57,7 @@ class TestSmsViewTest(TestCase):
         with (
             patch.object(AWSCredentialConfig, "load", return_value=AWSCredentialConfig(name="AWS")),
             patch(
-                "apps.core.admin.service_credentials.test_send_mixin._send_test_sms",
+                "apps.core.admin.service_credentials.aws_smtp.test_send_mixin._send_test_sms",
                 side_effect=RuntimeError("sms boom"),
             ),
         ):

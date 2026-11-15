@@ -1,8 +1,8 @@
 from django.contrib.admin.sites import AdminSite
 from django.test import TestCase
 
-from apps.core.admin.service_credentials.gmail import GmailAccessAccountAdmin
-from apps.core.admin.service_credentials.google import GoogleCredentialConfigAdmin, GoogleCredentialConfigForm
+from apps.core.admin.service_credentials.google.gmail import GmailAccessAccountAdmin
+from apps.core.admin.service_credentials.google.google import GoogleCredentialConfigAdmin, GoogleCredentialConfigForm
 from apps.core.models import (
     GmailAccessAccount,
     GoogleCredentialConfig,

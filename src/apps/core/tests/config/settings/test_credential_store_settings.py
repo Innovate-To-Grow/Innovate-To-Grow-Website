@@ -11,7 +11,7 @@ from django.test import SimpleTestCase, override_settings
 from apps.core.checks import check_credential_store
 from apps.core.services.credential_store import CredentialStoreError, get_store
 from config.settings.base.framework.environment import BASE_DIR
-from config.settings.base.integrations import credential_store as base_settings
+from config.settings.base.integrations.email import credential_store as base_settings
 from config.settings.environments import test as ci_settings
 
 from ..production.test_prod_cache import PROD_ENV, reload_prod_settings

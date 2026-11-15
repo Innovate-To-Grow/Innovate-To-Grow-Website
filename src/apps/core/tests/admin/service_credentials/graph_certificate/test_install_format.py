@@ -1,7 +1,7 @@
 from cryptography.hazmat.primitives import hashes, serialization
 from django.test import TestCase, override_settings
 
-from apps.core.admin.service_credentials import microsoft_graph_certificate_forms as forms
+from apps.core.admin.service_credentials.microsoft_graph import certificate_forms as forms
 from apps.core.models import MicrosoftGraphCertificate
 from apps.core.services.email.graph.credential import lifecycle
 from apps.core.services.email.graph.credential.loaders import KEY_IN_CERTIFICATE, WRONG_PASSPHRASE

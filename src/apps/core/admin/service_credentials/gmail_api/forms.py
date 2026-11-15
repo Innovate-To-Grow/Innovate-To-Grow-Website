@@ -17,7 +17,7 @@ from unfold.widgets import (
 
 from apps.core.services.email.gmail.service_account.parsing import KeyInputError, parse_key
 
-from .microsoft_graph_certificate_forms import REMOVE_WORD, REMOVE_WORD_REQUIRED, WriteOnlyTextarea
+from ..microsoft_graph.certificate_forms import REMOVE_WORD, REMOVE_WORD_REQUIRED, WriteOnlyTextarea
 
 KEY_FIELD = "service_account_key"
 FILE_FIELD = "service_account_key_file"

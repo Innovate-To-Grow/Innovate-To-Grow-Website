@@ -42,7 +42,7 @@
             <p class="mb-3 text-xs font-medium text-base-500 dark:text-base-400" data-tier-state="{{ group.tier }}">{{ group.state }}</p>
             <div class="grid grid-cols-1 gap-4">
                 {% for card in group.routes %}
-                    {% include "admin/core/request_limit_card.html" with card=card %}
+                    {% include "admin/core/request_limits/request_limit_card.html" with card=card %}
                 {% empty %}
                     <p class="text-xs text-base-500 dark:text-base-400">No scope is in this tier.</p>
                 {% endfor %}
@@ -53,7 +53,7 @@
                     <p class="mt-2 text-xs text-base-500 dark:text-base-400">Limits a view keeps with its own key (the member, the code's destination, the challenge), under the scope it belongs to. They follow that scope's Smart factor.</p>
                     <div class="mt-3 grid grid-cols-1 gap-4">
                         {% for card in group.views %}
-                            {% include "admin/core/request_limit_card.html" with card=card %}
+                            {% include "admin/core/request_limits/request_limit_card.html" with card=card %}
                         {% endfor %}
                     </div>
                 </details>

@@ -104,7 +104,7 @@ describe.each(SEND_STATUS_PAGES)('%s send status polling', (_name, template, sen
 
 const STATUS_PAGES = [
   ['Delivery Rates', 'src/apps/mail/templates/admin/mail/settings/delivery_rates/settings_rates.html'],
-  ['Request Limits', 'src/apps/core/templates/admin/core/request_limits.html'],
+  ['Request Limits', 'src/apps/core/templates/admin/core/request_limits/request_limits.html'],
 ] as const;
 
 describe.each(STATUS_PAGES)('%s status refresh', (_name, template) => {

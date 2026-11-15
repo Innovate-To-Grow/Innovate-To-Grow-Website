@@ -4,7 +4,7 @@ from django.contrib.admin.models import LogEntry
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.utils.html import escape
 
-from apps.core.admin.service_credentials import gmail_api_forms
+from apps.core.admin.service_credentials.gmail_api import forms as gmail_api_forms
 from apps.core.models import GmailApiProviderConfig
 from apps.core.services.email.gmail.service_account import parsing
 from apps.core.tests.admin.service_credentials.google.test_gmail_api_admin import GmailAdminTestCase, pem_slices
