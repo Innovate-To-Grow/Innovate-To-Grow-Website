@@ -3,7 +3,7 @@ from django.core.cache import cache
 from django.test import RequestFactory, TestCase, override_settings
 
 from apps.authn.models import ContactEmail, Member
-from apps.authn.tests.admin.members.security.test_member_admin_security import _staff
+from apps.authn.tests.admin.members.security.privileged.test_member_admin_security import _staff
 
 
 class PrivilegeFieldEditTests(TestCase):

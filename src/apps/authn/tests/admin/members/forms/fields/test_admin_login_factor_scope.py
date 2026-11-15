@@ -2,7 +2,7 @@ from django.core.cache import cache
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail
-from apps.authn.tests.admin.members.security.test_member_admin_security import _staff
+from apps.authn.tests.admin.members.security.privileged.test_member_admin_security import _staff
 
 
 class AdminLoginFactorScopeTests(TestCase):
