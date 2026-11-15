@@ -29,7 +29,7 @@ from apps.authn.services.send_verification import (
     fingerprint_payload,
     guarded_send,
 )
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_EMAIL
 
 from ..shared.responses import challenge_error_response
 from .contact_emails import _get_contact_email

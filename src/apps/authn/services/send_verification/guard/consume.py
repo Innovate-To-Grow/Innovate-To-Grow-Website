@@ -1,6 +1,8 @@
+"""``consume_and_reserve``: check a send's proof, spend its challenge and reserve its quotas in one transaction, or
+replay the request it repeats."""
+
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import timedelta
 from uuid import UUID
 
@@ -9,58 +11,21 @@ from django.utils import timezone
 
 from apps.authn.models import SendVerificationChallenge, SendVerificationRequest
 
-from .challenges import check_challenge_usable
-from .config import load_settings, require_ready
-from .constants import (
-    FIELD_CHALLENGE_ID,
-    FIELD_PAYLOAD,
-    FIELD_REQUEST_ID,
-    MODE_OBSERVE,
-    OP_PASSWORD_RESET_REQUEST_CODE,
-    SMS_CHANNEL,
-    SMS_OPERATIONS,
-)
-from .exceptions import (
+from ..proofs.challenges import check_challenge_usable
+from ..proofs.fields import extract_verification_fields
+from ..proofs.principal import principal_from_request, principals_match
+from ..proofs.verification import check_signed_challenge, verify_payload
+from ..rules.config import load_settings, require_ready
+from ..rules.constants import MODE_OBSERVE, OP_PASSWORD_RESET_REQUEST_CODE, SMS_CHANNEL, SMS_OPERATIONS
+from ..rules.exceptions import (
     SendRequestConflict,
-    SendVerificationConsumed,
     SendVerificationContextMismatch,
     SendVerificationInvalid,
     SendVerificationRequired,
 )
-from .metrics import emit
-from .principal import principal_from_request, principals_match
-from .proofs import check_signed_challenge, verify_payload
-from .quotas import reserve_send_quotas
-
-
-@dataclass
-class ProtectedSend:
-    record: SendVerificationRequest
-    is_replay: bool
-    skip_dispatch: bool = False
-
-
-def _parse_uuid(value) -> UUID | None:
-    try:
-        return UUID(str(value))
-    except (TypeError, ValueError):
-        return None
-
-
-def extract_verification_fields(data) -> tuple[UUID | None, str, UUID | None]:
-    if hasattr(data, "get") and not isinstance(data, dict):
-        try:
-            data = {key: data.get(key) for key in (FIELD_CHALLENGE_ID, FIELD_PAYLOAD, FIELD_REQUEST_ID)}
-        except Exception:
-            data = {}
-    if not isinstance(data, dict):
-        return None, "", None
-    challenge_id = _parse_uuid(data.get(FIELD_CHALLENGE_ID))
-    payload = data.get(FIELD_PAYLOAD) or ""
-    if not isinstance(payload, str):
-        payload = str(payload)
-    request_id = _parse_uuid(data.get(FIELD_REQUEST_ID))
-    return challenge_id, payload.strip(), request_id
+from ..rules.metrics import emit
+from .requests import ProtectedSend, _replay
+from .reservation import _mark_consumed, _observe_without_proof, _reserve_for
 
 
 def _load_existing_request(
@@ -216,136 +181,3 @@ def _consume_transaction(
         destination=context["destination_normalized"],
     )
     return ProtectedSend(record=record, is_replay=False)
-
-
-def _mark_consumed(challenge, *, now) -> None:
-    """Conditionally move the locked challenge from pending to consumed; it can be spent only once."""
-    updated = SendVerificationChallenge.objects.filter(
-        pk=challenge.pk,
-        status=SendVerificationChallenge.Status.PENDING,
-        expires_at__gt=now,
-    ).update(
-        status=SendVerificationChallenge.Status.CONSUMED,
-        consumed_at=now,
-        updated_at=now,
-    )
-    if not updated:
-        raise SendVerificationConsumed()
-
-
-def _reserve_for(record, *, config, now, refuse_spent_sms_budget) -> None:
-    """Reserve the destination (and SMS) quotas for a new request and mark it reserved."""
-    reserve_send_quotas(
-        config=config,
-        channel=record.channel,
-        destination_kind=record.destination_kind,
-        destination_normalized=record.destination_normalized,
-        now=now,
-        refuse_spent_sms_budget=refuse_spent_sms_budget,
-    )
-    record.quota_reserved = True
-    record.reserved_at = now
-    record.save(update_fields=["quota_reserved", "reserved_at", "updated_at"])
-
-
-def _observe_without_proof(
-    *,
-    operation,
-    destination_kind,
-    destination_normalized,
-    fingerprint,
-    channel,
-    principal_type,
-    principal_key,
-    refuse_spent_sms_budget=False,
-) -> ProtectedSend:
-    from uuid import uuid4
-
-    config = load_settings()
-    now = timezone.now()
-    with transaction.atomic():
-        reserve_send_quotas(
-            config=config,
-            channel=channel,
-            destination_kind=destination_kind,
-            destination_normalized=destination_normalized,
-            now=now,
-            refuse_spent_sms_budget=refuse_spent_sms_budget,
-        )
-        record = SendVerificationRequest.objects.create(
-            request_id=uuid4(),
-            operation=operation,
-            channel=channel,
-            destination_kind=destination_kind,
-            destination_normalized=destination_normalized,
-            principal_type=principal_type,
-            principal_key=principal_key,
-            request_fingerprint=fingerprint,
-            status=SendVerificationRequest.Status.PENDING,
-            quota_reserved=True,
-            reserved_at=now,
-            idempotency_expires_at=now + timedelta(seconds=config.idempotency_ttl_seconds),
-        )
-    return ProtectedSend(record=record, is_replay=False)
-
-
-def _replay(existing: SendVerificationRequest) -> ProtectedSend:
-    if existing.status in {
-        SendVerificationRequest.Status.PROVIDER_ACCEPTED,
-        SendVerificationRequest.Status.DEFINITELY_FAILED,
-        SendVerificationRequest.Status.UNKNOWN,
-    }:
-        emit("request_replay", request_id=str(existing.request_id), status=existing.status)
-        return ProtectedSend(record=existing, is_replay=True)
-    if existing.status == SendVerificationRequest.Status.SENDING:
-        return ProtectedSend(record=existing, is_replay=True)
-    return ProtectedSend(record=existing, is_replay=False)
-
-
-def claim_for_dispatch(record: SendVerificationRequest) -> bool:
-    return bool(
-        SendVerificationRequest.objects.filter(
-            pk=record.pk,
-            status=SendVerificationRequest.Status.PENDING,
-        ).update(status=SendVerificationRequest.Status.SENDING, updated_at=timezone.now())
-    )
-
-
-def finalize_send_request(
-    record: SendVerificationRequest,
-    *,
-    status: str,
-    result_payload: dict,
-    http_status: int,
-    client_error_code: str = "",
-    otp_challenge_id: str = "",
-    provider_message_id: str = "",
-) -> SendVerificationRequest:
-    now = timezone.now()
-    SendVerificationRequest.objects.filter(pk=record.pk, status=SendVerificationRequest.Status.SENDING).update(
-        status=status,
-        result_payload=result_payload,
-        http_status=http_status,
-        client_error_code=client_error_code,
-        otp_challenge_id=otp_challenge_id or record.otp_challenge_id,
-        provider_message_id=provider_message_id or record.provider_message_id,
-        updated_at=now,
-    )
-    record.refresh_from_db()
-    emit("send_finalized", request_id=str(record.request_id), status=status, http_status=http_status)
-    return record
-
-
-def lookup_request(request, request_id: UUID) -> SendVerificationRequest:
-    record = SendVerificationRequest.objects.filter(request_id=request_id).first()
-    if record is None:
-        raise SendVerificationInvalid("Send request was not found.")
-    from .principal import authenticate_for_operation
-
-    authenticate_for_operation(request, record.operation)
-    principal_type, principal_key = principal_from_request(request, operation=record.operation)
-    if record is None or not principals_match(
-        record.principal_type, record.principal_key, principal_type, principal_key
-    ):
-        raise SendVerificationInvalid("Send request was not found.")
-    return record

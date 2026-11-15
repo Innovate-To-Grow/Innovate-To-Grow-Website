@@ -26,7 +26,7 @@ keeps its destination cooldown, hourly cap, SMS daily budget, challenge attempt 
 who collects repeated 429s is blocked with a growing cooldown ([Abuse escalation](#abuse-escalation)).
 
 **User-initiated only.** An anonymous verification-code request is P0 only when its body carries a valid
-send-verification (ALTCHA) proof, checked without spending it (`apps/authn/services/send_verification/priority.py`); a
+send-verification (ALTCHA) proof, checked without spending it (`apps/authn/services/send_verification/proofs/priority.py`); a
 signed-in person is P0 anyway. Anything else is counted in the shared P2 scope `auth-code-unproven` and shed like
 background traffic. A promoted code goes out on the transactional lane of the delivery-rate limiter, so it is never
 queued behind a campaign ([Delivery rates: lanes](delivery-rates.md#budgets-the-transactional-reserve-and-lanes)).

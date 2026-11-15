@@ -19,9 +19,9 @@ import time
 
 from django.http.request import RawPostDataException
 
-from .config import load_settings
-from .guard import extract_verification_fields
-from .proofs import payload_parameters, verify_payload
+from ..rules.config import load_settings
+from .fields import extract_verification_fields
+from .verification import payload_parameters, verify_payload
 
 logger = logging.getLogger(__name__)
 

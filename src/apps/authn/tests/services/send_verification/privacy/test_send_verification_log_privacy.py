@@ -2,8 +2,8 @@ from uuid import uuid4
 
 from django.test import SimpleTestCase
 
-from apps.authn.services.send_verification.hashing import short_destination_hash
-from apps.authn.services.send_verification.metrics import emit
+from apps.authn.services.send_verification.rules.hashing import short_destination_hash
+from apps.authn.services.send_verification.rules.metrics import emit
 
 
 class SendVerificationLogPrivacyTests(SimpleTestCase):

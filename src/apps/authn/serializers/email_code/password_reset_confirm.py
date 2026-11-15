@@ -39,7 +39,7 @@ class PasswordResetVerifySerializer(serializers.Serializer):
         # old clients may continue supplying the actual phone challenge UUID.
         if attrs.get("challenge_id"):
             from apps.authn.models import SendVerificationRequest
-            from apps.authn.services.send_verification.constants import OP_PASSWORD_RESET_REQUEST_CODE
+            from apps.authn.services.send_verification.rules.constants import OP_PASSWORD_RESET_REQUEST_CODE
 
             record = SendVerificationRequest.objects.filter(request_id=attrs["challenge_id"]).first()
             if record is not None:

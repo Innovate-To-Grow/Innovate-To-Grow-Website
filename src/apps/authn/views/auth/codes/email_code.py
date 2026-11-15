@@ -20,7 +20,7 @@ from apps.authn.services.send_verification import (
     OP_EMAIL_AUTH_REQUEST_CODE,
     OP_LOGIN_REQUEST_CODE,
 )
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_EMAIL
 
 from ...shared.code_requests import protected_save
 from .completion import _complete_login, _complete_unified_auth

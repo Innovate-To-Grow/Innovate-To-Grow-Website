@@ -4,7 +4,7 @@ from uuid import UUID
 
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
-from .constants import (
+from ..rules.constants import (
     AUTHENTICATED_OPERATIONS,
     KIND_EMAIL,
     KIND_PHONE,
@@ -20,7 +20,7 @@ from .constants import (
     OP_PASSWORD_RESET_REQUEST_CODE,
     SMS_OPERATIONS,
 )
-from .exceptions import SendVerificationInvalid
+from ..rules.exceptions import SendVerificationInvalid
 
 
 def _parse_uuid(value) -> UUID | None:

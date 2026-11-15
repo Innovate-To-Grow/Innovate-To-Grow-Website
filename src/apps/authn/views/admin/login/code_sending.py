@@ -6,9 +6,9 @@ from apps.authn.services.email.challenges.queries import latest_pending_for_inpu
 from apps.authn.services.send_verification import (
     fingerprint_payload,
 )
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
-from apps.authn.services.send_verification.http import guarded_send
-from apps.authn.services.send_verification.outcomes import active_send_request_id
+from apps.authn.services.send_verification.guard.http import guarded_send
+from apps.authn.services.send_verification.guard.outcomes import active_send_request_id
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_EMAIL
 
 from .page import get_unresolved_admin_send
 from .state import (

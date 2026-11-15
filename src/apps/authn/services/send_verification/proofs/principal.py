@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from rest_framework.exceptions import NotAuthenticated
 
-from .constants import AUTHENTICATED_OPERATIONS, PRINCIPAL_MEMBER, PRINCIPAL_SESSION
-from .exceptions import SendVerificationUnavailable
-from .hashing import hash_value
+from ..rules.constants import AUTHENTICATED_OPERATIONS, PRINCIPAL_MEMBER, PRINCIPAL_SESSION
+from ..rules.exceptions import SendVerificationUnavailable
+from ..rules.hashing import hash_value
 
 
 def authenticate_for_operation(request, operation: str) -> None:

@@ -12,7 +12,7 @@ from apps.authn.serializers import (
 from apps.authn.services.send_verification import (
     OP_REGISTER_RESEND_CODE,
 )
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_EMAIL
 
 from ...shared.code_requests import protected_save
 from .completion import _complete_registration

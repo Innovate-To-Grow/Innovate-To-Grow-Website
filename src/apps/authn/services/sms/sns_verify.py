@@ -90,7 +90,7 @@ __all__ = [
 
 
 def _deliver_otp(challenge, *, phone_number: str, message: str, aws_config, admission) -> str:
-    from apps.authn.services.send_verification.outcomes import record_otp_challenge
+    from apps.authn.services.send_verification.guard.outcomes import record_otp_challenge
 
     try:
         record_otp_challenge(str(challenge.pk))

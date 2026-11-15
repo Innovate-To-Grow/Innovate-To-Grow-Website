@@ -23,7 +23,7 @@ from apps.authn.serializers import (
 from apps.authn.services.send_verification import (
     OP_PASSWORD_RESET_REQUEST_CODE,
 )
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_PHONE, SMS_CHANNEL
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_PHONE, SMS_CHANNEL
 
 from ...shared.code_requests import auth_challenge_response, protected_save
 

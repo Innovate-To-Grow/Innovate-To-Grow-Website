@@ -30,7 +30,7 @@ def _verification_context(event_slug: str | None) -> str | None:
 
 def _send_registration_code(member, phone: str, verification_context: str):
     """Start the phone challenge; the guarded send's ``(payload, status)`` or ``SendOutcome``."""
-    from apps.authn.services.send_verification.outcomes import SendOutcome, failure_status
+    from apps.authn.services.send_verification.guard.outcomes import SendOutcome, failure_status
     from apps.authn.services.sms import (
         PhoneNumberOptedOut,
         PhoneVerificationBusy,
@@ -153,7 +153,7 @@ class SendPhoneCodeView(APIView):
 
         phone = registration_api._normalize_phone(phone, region)
         from apps.authn.services.send_verification import OP_EVENT_SEND_PHONE_CODE, fingerprint_payload, guarded_send
-        from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
+        from apps.authn.services.send_verification.rules.constants import KIND_PHONE, SMS_CHANNEL
 
         return guarded_send(
             request,

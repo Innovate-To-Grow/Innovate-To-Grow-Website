@@ -38,4 +38,6 @@ def register_request_limits():
 
     # An anonymous code request is P0 only when it carries a valid anti-abuse proof (a signed-in member is P0
     # anyway); others are counted as unproven traffic, never promoted.
-    register_priority_check("auth-code-send", "apps.authn.services.send_verification.priority.carries_valid_proof")
+    register_priority_check(
+        "auth-code-send", "apps.authn.services.send_verification.proofs.priority.carries_valid_proof"
+    )

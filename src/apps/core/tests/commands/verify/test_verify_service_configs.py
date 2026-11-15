@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.core.management import CommandError, call_command
 from django.test import TestCase, override_settings
 
-from apps.authn.services.send_verification.exceptions import SendVerificationUnavailable
+from apps.authn.services.send_verification.rules.exceptions import SendVerificationUnavailable
 from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,

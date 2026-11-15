@@ -16,7 +16,7 @@ const unresolvedMessage = 'The previous send request is still unresolved. Please
 /**
  * Whether the server binds an operation's challenge to the signed-in member.
  * This mirrors `AUTHENTICATED_OPERATIONS` in
- * `apps/authn/services/send_verification/constants.py`. Every other operation
+ * `apps/authn/services/send_verification/rules/constants.py`. Every other operation
  * is bound to the browser's Django session cookie and never looks at the JWT
  * session. Typed as a complete record so a new operation cannot be added
  * without deciding which kind it is.

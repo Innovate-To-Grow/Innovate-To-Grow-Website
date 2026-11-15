@@ -3,7 +3,7 @@ import hashlib
 from django.test import SimpleTestCase, override_settings
 from django.utils.crypto import salted_hmac
 
-from apps.authn.services.send_verification.hashing import short_destination_hash
+from apps.authn.services.send_verification.rules.hashing import short_destination_hash
 
 
 @override_settings(SECRET_KEY="test-destination-pseudonym-key")

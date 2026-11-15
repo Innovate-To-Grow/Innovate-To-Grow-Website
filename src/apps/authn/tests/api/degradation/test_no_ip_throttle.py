@@ -538,7 +538,8 @@ class SmsThrottleSelectionTests(NoIpThrottleTestCase):
     def test_any_failure_to_read_the_budget_keeps_the_ip_throttle(self):
         with (
             patch(
-                "apps.authn.services.send_verification.config.load_settings", side_effect=RuntimeError("database down")
+                "apps.authn.services.send_verification.rules.config.load_settings",
+                side_effect=RuntimeError("database down"),
             ),
             self.assertLogs("apps.authn.security.throttles", level="WARNING") as logs,
         ):
