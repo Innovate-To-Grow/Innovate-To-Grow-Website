@@ -7,11 +7,11 @@ from unfold.decorators import display
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.models.base.service_credentials.microsoft_graph import SENDING_LIMIT_FIELDS
 
-from ..common.base import BaseModelAdmin
-from .microsoft_graph_access_check import GraphAccessCheckViewMixin
-from .microsoft_graph_certificate_views import GraphCertificateViewsMixin
-from .microsoft_graph_panel import certificate_panel
-from .microsoft_graph_scope import MicrosoftGraphMailboxScopeInline
+from ...common.base import BaseModelAdmin
+from .access_check import GraphAccessCheckViewMixin
+from .certificate_views import GraphCertificateViewsMixin
+from .panel import certificate_panel
+from .scope import MicrosoftGraphMailboxScopeInline
 
 # The config holds no secret: the certificate's private key is kept in the credential store, and certificates are
 # installed, rolled back and removed on their own pages (``GraphCertificateViewsMixin``), never through this form.

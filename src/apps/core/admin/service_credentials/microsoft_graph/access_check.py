@@ -18,8 +18,8 @@ from apps.core.models import MicrosoftGraphAccessCheck
 from apps.core.services.email.graph.access_check import precondition_problem, run_and_record
 from apps.core.services.email.graph.credential.expiry import local_time_text
 
-from ..common.base import ReadOnlyModelAdmin
-from .microsoft_graph_panel import ACCESS_CHECK_URL_NAME, EVIDENCE_URL_NAME, URL_NAME_PREFIX, certificate_card
+from ...common.base import ReadOnlyModelAdmin
+from .panel import ACCESS_CHECK_URL_NAME, EVIDENCE_URL_NAME, URL_NAME_PREFIX, certificate_card
 
 Verdict = MicrosoftGraphAccessCheck.Verdict
 CORE_APP_ONLY = "Running the Microsoft Graph access check needs the Core app."

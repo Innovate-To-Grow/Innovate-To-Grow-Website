@@ -8,10 +8,8 @@ from django.utils import timezone
 
 from apps.core.admin.confirmation.diff import compute_change_diff, compute_delete_diff
 from apps.core.admin.confirmation.post_data import extract_sensitive_post_data
-from apps.core.admin.service_credentials.microsoft_graph import (
-    MicrosoftGraphProviderConfigForm,
-)
-from apps.core.admin.service_credentials.microsoft_graph_panel import expiry_badge, store_name
+from apps.core.admin.service_credentials.microsoft_graph.config import MicrosoftGraphProviderConfigForm
+from apps.core.admin.service_credentials.microsoft_graph.panel import expiry_badge, store_name
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.tests.admin.service_credentials.graph_config.test_microsoft_graph_admin import (
     CLIENT_ID,
