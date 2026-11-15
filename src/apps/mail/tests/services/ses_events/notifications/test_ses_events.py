@@ -12,7 +12,7 @@ from django.test import TestCase
 
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.email_monitoring.ses_events import SesEventError, process_sns_envelope
-from apps.mail.tests.services.ses_events.envelopes import SES_MSG_ID, _envelope
+from apps.mail.tests.services.ses_events.notifications.envelopes import SES_MSG_ID, _envelope
 
 
 class ProcessSnsEnvelopeTests(TestCase):

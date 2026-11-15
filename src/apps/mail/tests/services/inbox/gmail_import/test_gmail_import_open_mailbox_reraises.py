@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 from apps.mail.services.campaign.gmail_import import DEFAULT_GMAIL_FOLDER, GmailImportError
-from apps.mail.tests.services.inbox.test_gmail_import import _GmailImportServiceCase
+from apps.mail.tests.services.inbox.gmail_import.test_gmail_import import _GmailImportServiceCase
 
 
 class GmailImportServiceTest(_GmailImportServiceCase):

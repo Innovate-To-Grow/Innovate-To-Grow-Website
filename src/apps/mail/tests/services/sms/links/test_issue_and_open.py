@@ -9,9 +9,9 @@ from apps.authn.models import ContactPhone
 from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import SmsCampaign, SmsLinkToken
 from apps.mail.services.sms import links
-from apps.mail.tests.services.sms.test_links import PHONE, token_of
+from apps.mail.tests.services.sms.links.test_links import PHONE, token_of
 
-from .policy_helpers import add_phone, sms_settings
+from ..policy.policy_helpers import add_phone, sms_settings
 
 
 class _IssueAndOpenCase(TestCase):

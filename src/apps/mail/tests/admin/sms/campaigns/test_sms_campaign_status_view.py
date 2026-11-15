@@ -12,7 +12,7 @@ from apps.mail.admin.sms_campaign import (
     SmsRecipientLogAdmin,
 )
 from apps.mail.models import SmsCampaign, SmsRecipientLog
-from apps.mail.tests.admin.sms.test_sms_admin import _make_sms_config
+from apps.mail.tests.admin.sms.campaigns.test_sms_admin import _make_sms_config
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)

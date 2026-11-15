@@ -7,7 +7,7 @@ from apps.mail.services.sms.audience import (
     get_sms_recipients,
     recipients_for_sms_audience,
 )
-from apps.mail.tests.services.sms.test_sms_audience import _add_phone
+from apps.mail.tests.services.sms.campaigns.test_sms_audience import _add_phone
 
 
 class SmsAudienceEventResolverTests(TestCase):
