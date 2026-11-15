@@ -135,7 +135,7 @@ def mail_sending_method_view(request):
         "provider_cards": provider_cards(request, config, AWSCredentialConfig.load(), SMTPProviderConfig.load()),
         "notification_delivery_url": reverse("admin:mail_settings"),
     }
-    return TemplateResponse(request, "admin/mail/sending_method.html", context)
+    return TemplateResponse(request, "admin/mail/settings/notification_delivery/sending_method.html", context)
 
 
 def in_use_label(config: EmailServiceConfig) -> str:

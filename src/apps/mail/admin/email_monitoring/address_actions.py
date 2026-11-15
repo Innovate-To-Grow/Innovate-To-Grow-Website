@@ -115,10 +115,10 @@ def addresses_bulk_view(request):
             messages.success(request, f"{SPECS[action].label}: {len(applied)} address(es) updated.")
         if skipped:
             messages.warning(request, f"{len(skipped)} address(es) skipped; see the reasons below.")
-        return TemplateResponse(request, f"{TEMPLATES}/address_bulk.html", context)
+        return TemplateResponse(request, f"{TEMPLATES}/addresses/address_bulk.html", context)
     entries = _bulk_rows(request, action, rows)
     context.update(entries=entries, allowed=sum(1 for entry in entries if entry["verdict"].allowed))
-    return TemplateResponse(request, f"{TEMPLATES}/address_bulk.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/addresses/address_bulk.html", context)
 
 
 @require_POST
@@ -137,7 +137,7 @@ def addresses_rebuild_view(request):
             retention_days=settings.EMAIL_MONITORING["bounce_retention_days"],
             addresses=BouncedAddress.objects.count(),
         )
-        return TemplateResponse(request, f"{TEMPLATES}/address_rebuild.html", context)
+        return TemplateResponse(request, f"{TEMPLATES}/addresses/address_rebuild.html", context)
     reclassified = aggregate.rebuild()
     counted = aggregate.run(max_rows=int(settings.EMAIL_MONITORING["address_page_rows"]))
     audit.record_rebuild(request, {"counted": counted["graph"] + counted["ses"], "reclassified": reclassified})

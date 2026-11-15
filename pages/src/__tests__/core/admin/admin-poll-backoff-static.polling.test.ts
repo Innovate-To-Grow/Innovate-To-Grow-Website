@@ -37,8 +37,8 @@ afterEach(() => {
 });
 
 const SEND_STATUS_PAGES = [
-  ['campaign', 'src/apps/mail/templates/admin/mail/send_status.html', 'Campaign Sent'],
-  ['SMS campaign', 'src/apps/mail/templates/admin/mail/smscampaign/send_status.html', 'SMS Campaign Sent'],
+  ['campaign', 'src/apps/mail/templates/admin/mail/emailcampaign_send/send_status.html', 'Campaign Sent'],
+  ['SMS campaign', 'src/apps/mail/templates/admin/mail/sms/campaign/send_status.html', 'SMS Campaign Sent'],
 ] as const;
 
 describe.each(SEND_STATUS_PAGES)('%s send status polling', (_name, template, sentText) => {
@@ -103,7 +103,7 @@ describe.each(SEND_STATUS_PAGES)('%s send status polling', (_name, template, sen
 });
 
 const STATUS_PAGES = [
-  ['Delivery Rates', 'src/apps/mail/templates/admin/mail/settings_rates.html'],
+  ['Delivery Rates', 'src/apps/mail/templates/admin/mail/settings/delivery_rates/settings_rates.html'],
   ['Request Limits', 'src/apps/core/templates/admin/core/request_limits.html'],
 ] as const;
 

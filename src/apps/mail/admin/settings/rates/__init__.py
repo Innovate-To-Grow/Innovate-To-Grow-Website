@@ -108,7 +108,7 @@ def delivery_rates_view(request):
         "all_cards": list(cards.values()),
         **card_groups(cards, EmailServiceConfig.load().provider),
     }
-    return TemplateResponse(request, "admin/mail/settings_rates.html", context)
+    return TemplateResponse(request, "admin/mail/settings/delivery_rates/settings_rates.html", context)
 
 
 @require_GET

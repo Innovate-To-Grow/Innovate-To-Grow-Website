@@ -137,7 +137,7 @@ def address_list_view(request):
         evidence_choices=[(key, label) for key, (label, _q) in listing.EVIDENCE.items()],
         can_rebuild=bool(request.user.is_superuser),
     )
-    return TemplateResponse(request, f"{TEMPLATES}/addresses.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/addresses/addresses.html", context)
 
 
 def addresses_export_view(request):
