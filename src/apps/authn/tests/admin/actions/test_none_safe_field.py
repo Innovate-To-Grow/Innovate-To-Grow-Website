@@ -1,0 +1,179 @@
+from __future__ import annotations
+
+from unittest.mock import patch
+
+from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
+
+from apps.authn.models import ContactEmail
+from apps.authn.tests.admin.actions.test_coverage_gaps import Member
+
+
+# ---------------------------------------------------------------------------
+# admin/members/inlines.py
+# ---------------------------------------------------------------------------
+class NoneSafeFieldTests(SimpleTestCase):
+    def test_uuid_field_treats_none_string_as_empty(self):
+        """inlines.py:13-15 — NoneSafeUUIDField.to_python('None') -> None."""
+        from apps.authn.admin.members.inlines import NoneSafeUUIDField
+
+        field = NoneSafeUUIDField()
+        self.assertIsNone(field.to_python("None"))
+        self.assertIsNone(field.to_python(""))
+        self.assertIsNone(field.to_python(None))
+
+    def test_uuid_field_parses_real_uuid(self):
+        """inlines.py:15 — a genuine UUID string falls through to super().to_python."""
+        import uuid
+
+        from apps.authn.admin.members.inlines import NoneSafeUUIDField
+
+        value = uuid.uuid4()
+        field = NoneSafeUUIDField()
+        self.assertEqual(field.to_python(str(value)), value)
+
+
+class NoneSafeInlineForeignKeyFieldTests(TestCase):
+    def test_inline_fk_field_treats_none_string_as_empty(self):
+        """inlines.py:31-32 — NoneSafeInlineForeignKeyField.clean('None') normalizes to None."""
+        from django.core.exceptions import ValidationError
+
+        from apps.authn.admin.members.inlines import NoneSafeInlineForeignKeyField
+
+        parent = Member.objects.create_user(password="x", first_name="P", last_name="Q")
+        field = NoneSafeInlineForeignKeyField(parent_instance=parent, to_field="pk")
+        self.assertIs(field.clean("None"), parent)
+        with self.assertRaises(ValidationError):
+            field.clean("not-the-parent-pk")
+
+
+class UUIDInlineMixinTests(TestCase):
+    def test_formfield_for_uuid_dbfield_gets_none_safe_class(self):
+        """inlines.py:90 — formfield_for_dbfield reclasses a UUIDField to NoneSafeUUIDField."""
+        from django.contrib.admin.sites import AdminSite
+
+        from apps.authn.admin.members.inlines import ContactEmailInline, NoneSafeUUIDField
+        from apps.authn.models import ContactEmail as _ContactEmail
+
+        inline = ContactEmailInline(Member, AdminSite())
+        request = RequestFactory().get("/")
+        request.user = Member.objects.create_user(first_name="A", last_name="B", password="StrongPass123!")
+        uuid_dbfield = _ContactEmail._meta.get_field("id")
+        formfield = inline.formfield_for_dbfield(uuid_dbfield, request)
+        self.assertIsInstance(formfield, NoneSafeUUIDField)
+
+    def test_normalize_replaces_none_string_in_querydict(self):
+        """inlines.py:53 — setlist runs when a 'None' value is normalized to ''."""
+        from django.http import QueryDict
+
+        from apps.authn.admin.members.inlines import NoneSafeUUIDInlineFormSet
+
+        data = QueryDict(mutable=True)
+        data["contact_emails-0-id"] = "None"
+        normalized = NoneSafeUUIDInlineFormSet._normalize_none_uuid_values(data, "contact_emails")
+        self.assertEqual(normalized.get("contact_emails-0-id"), "")
+
+
+@override_settings(ROOT_URLCONF="config.routing.urls", ADMIN_REQUIRE_CONFIRMATION=False)
+class ContactEmailInlinePrimaryFormsetTests(TestCase):
+    """inlines.py:116 — submitting two primary emails through the admin is rejected."""
+
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+        self.admin = Member.objects.create_superuser(
+            password="admin123", first_name="Admin", last_name="User", is_staff=True, is_active=True
+        )
+        ContactEmail.objects.create(
+            member=self.admin, email_address="admin@example.com", email_type="primary", verified=True
+        )
+        self.target = Member.objects.create_user(
+            first_name="Target", last_name="User", password="target123", is_active=True
+        )
+
+    def tearDown(self):
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def test_more_than_one_primary_raises_validation_error(self):
+        self.client.force_login(self.admin)
+        data = {
+            "password1": "",
+            "password2": "",
+            "first_name": "Two",
+            "middle_name": "",
+            "last_name": "Primaries",
+            "organization": "",
+            "title": "",
+            "is_active": "on",
+            "contact_emails-TOTAL_FORMS": "2",
+            "contact_emails-INITIAL_FORMS": "0",
+            "contact_emails-MIN_NUM_FORMS": "0",
+            "contact_emails-MAX_NUM_FORMS": "1000",
+            "contact_emails-0-id": "None",
+            "contact_emails-0-member": "None",
+            "contact_emails-0-email_address": "first@example.com",
+            "contact_emails-0-email_type": "primary",
+            "contact_emails-0-verified": "on",
+            "contact_emails-0-subscribe": "on",
+            "contact_emails-1-id": "None",
+            "contact_emails-1-member": "None",
+            "contact_emails-1-email_address": "second@example.com",
+            "contact_emails-1-email_type": "primary",
+            "contact_emails-1-verified": "on",
+            "contact_emails-1-subscribe": "on",
+            "contact_phones-TOTAL_FORMS": "0",
+            "contact_phones-INITIAL_FORMS": "0",
+            "contact_phones-MIN_NUM_FORMS": "0",
+            "contact_phones-MAX_NUM_FORMS": "1000",
+            "_save": "Save",
+        }
+        resp = self.client.post("/admin/authn/member/add/", data)
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "A member may only have one primary email.")
+        self.assertFalse(Member.objects.filter(first_name="Two", last_name="Primaries").exists())
+
+
+# ---------------------------------------------------------------------------
+# views/admin/invitation/view.py:24  (_get_unfold_context no each_context)
+# ---------------------------------------------------------------------------
+class UnfoldContextTests(SimpleTestCase):
+    def test_get_unfold_context_returns_empty_without_each_context(self):
+        """invitation/view.py:24 — site without each_context returns {}."""
+        from apps.authn.views.admin.invitation import view
+
+        request = RequestFactory().get("/")
+
+        class _Site:
+            pass
+
+        with patch.object(view.admin, "site", _Site()):
+            ctx = view._get_unfold_context(request)
+        self.assertEqual(ctx, {})
+
+
+# ---------------------------------------------------------------------------
+# views/admin/login/password.py:36 and views/admin/login/code_sending.py:98-99
+# ---------------------------------------------------------------------------
+@override_settings(ROOT_URLCONF="config.routing.urls")
+class AdminPasswordFormInvalidTests(TestCase):
+    def setUp(self):
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def tearDown(self):
+        from django.core.cache import cache
+
+        cache.clear()
+
+    def test_password_step_invalid_form_rerenders(self):
+        """password.py:36 — invalid AdminPasswordForm (no password) re-renders password step."""
+        response = self.client.post(
+            "/admin/login/",
+            {"mode": "password", "email": "someone@example.com"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["step"], "password")
+        self.assertFalse(response.wsgi_request.user.is_authenticated)
