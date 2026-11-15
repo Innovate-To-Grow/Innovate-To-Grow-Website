@@ -2,19 +2,13 @@ import {cleanup, fireEvent, render, screen, waitFor, within} from '@testing-libr
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {PastProjectsBuilder} from '@/features/projects/components/builder/composition/PastProjectsBuilder';
-import type {ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
-import type {ProjectTableRow} from '@/features/projects/api';
+import {authenticatedAuth, getMergedSection, ROWS} from '@/__tests__/features/projects/components/builder/composition/fixtures/pastProjectsBuilderFixtures';
+import {makeProjectTableRow} from '@/__tests__/features/projects/components/builder/composition/aiSearch/pastProjectsBuilderAiSearchFixtures';
 
 const mockUseAuth = vi.fn();
 const mockSearchPastProjectsWithAI = vi.fn();
 const mockBuildLoginPath = vi.fn();
 const mockHydrateProjectGridRowsSettled = vi.fn();
-const authenticatedAuth = {
-  isAuthenticated: true,
-  isInitializing: false,
-  unverified: false,
-  user: {member_uuid: 'member-1', email: 'member@example.com'},
-};
 
 vi.mock('@/features/auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/auth')>();
@@ -40,47 +34,6 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
     hydrateProjectGridRowsSettled: (...args: unknown[]) => mockHydrateProjectGridRowsSettled(...args),
   };
 });
-
-const makeRow = (overrides: Partial<ProjectGridRow>): ProjectGridRow => ({
-  semester_label: '2025-1 Spring',
-  class_code: 'ENGR 120',
-  team_number: 'T01',
-  team_name: 'Team Alpha',
-  project_title: 'Alpha Project',
-  organization: 'Acme',
-  industry: 'Technology',
-  abstract: '',
-  student_names: '',
-  is_presenting: '',
-  ...overrides,
-});
-
-const makeProjectTableRow = (overrides: Partial<ProjectTableRow>): ProjectTableRow => ({
-  id: 'project-1',
-  semester_label: '2024-1 Spring',
-  class_code: 'CAP',
-  team_number: '101',
-  team_name: 'Solar Team',
-  project_title: 'Solar Project',
-  organization: 'Solar Org',
-  industry: 'Energy',
-  abstract: 'A solar project abstract.',
-  student_names: 'Alex Student',
-  track: null,
-  presentation_order: null,
-  ...overrides,
-});
-
-const ROWS: ProjectGridRow[] = [
-  makeRow({team_number: 'T01', team_name: 'Team Alpha', project_title: 'Alpha Project'}),
-  makeRow({team_number: 'T02', team_name: 'Team Bravo', project_title: 'Bravo Project'}),
-  makeRow({team_number: 'T03', team_name: 'Team Charlie', project_title: 'Charlie Project'}),
-];
-
-const getMergedSection = () => {
-  const heading = screen.queryByRole('heading', {name: /curation draft/i});
-  return heading ? (heading.closest('section') as HTMLElement) : null;
-};
 
 describe('PastProjectsBuilder — AI search table', () => {
   beforeEach(() => {
@@ -213,109 +166,5 @@ describe('PastProjectsBuilder — AI search table', () => {
     expect(screen.getByText('You need to sign in before using AI search.')).toBeInTheDocument();
     expect(mockSearchPastProjectsWithAI).not.toHaveBeenCalled();
     expect(screen.queryByPlaceholderText(/ask about past projects/i)).toBeNull();
-  });
-
-  it('shows unavailable AI search responses inline inside the AI table, in words meant for members', async () => {
-    mockSearchPastProjectsWithAI.mockResolvedValue({
-      available: false,
-      // The API's text is for the site's administrators.
-      message: 'AI search is not configured yet. Check the AWS Bedrock credentials and model settings.',
-      query: 'solar',
-      results: [],
-      usage: {},
-    });
-
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
-      target: {value: 'solar'},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
-
-    expect(
-      (await screen.findByText(/AI search is not available on this site right now/)).closest(
-        '.past-projects-ai-search-message',
-      ),
-    ).toHaveClass('past-projects-ai-search-message', 'is-error');
-    expect(screen.queryByText(/Bedrock/)).toBeNull();
-    expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
-  });
-
-  it('allows only one AI Search Table at a time', () => {
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-
-    const addAIButton = screen.getByRole('button', {name: /\+ ai search table/i});
-    expect(addAIButton).toBeEnabled();
-
-    fireEvent.click(addAIButton);
-
-    expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
-    expect(addAIButton).toBeDisabled();
-    expect(screen.getAllByRole('heading', {level: 3, name: /ai search table/i})).toHaveLength(1);
-  });
-
-  it('shows a no-results message when AI search finds nothing', async () => {
-    mockSearchPastProjectsWithAI.mockResolvedValue({
-      available: true,
-      query: 'solar',
-      results: [],
-      usage: {},
-    });
-
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
-      target: {value: 'solar'},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
-
-    expect(await screen.findByText('AI search did not find matching past projects.')).toBeInTheDocument();
-  });
-
-  it('shows the API detail when an AI search rejects', async () => {
-    mockSearchPastProjectsWithAI.mockRejectedValue({response: {data: {detail: 'AI backend down.'}}});
-
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
-      target: {value: 'solar'},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
-
-    expect(await screen.findByText('AI backend down.')).toBeInTheDocument();
-  });
-
-  it('shows the message field when an AI search rejects without a detail', async () => {
-    mockSearchPastProjectsWithAI.mockRejectedValue({response: {data: {message: 'Try later.'}}});
-
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
-      target: {value: 'solar'},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
-
-    expect(await screen.findByText('Try later.')).toBeInTheDocument();
-  });
-
-  it('shows why the API refused the query, such as a query that is too long', async () => {
-    mockSearchPastProjectsWithAI.mockRejectedValue({
-      response: {status: 400, data: {query: ['Query must be at most 2000 characters.']}},
-    });
-
-    render(<PastProjectsBuilder rows={ROWS} loading={false} error={null} onCreateShare={vi.fn()} />);
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
-      target: {value: 'x'.repeat(2100)},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
-
-    expect(await screen.findByText('Query must be at most 2000 characters.')).toBeInTheDocument();
-    expect(screen.queryByText(/AI search is unavailable right now/)).toBeNull();
   });
 });
