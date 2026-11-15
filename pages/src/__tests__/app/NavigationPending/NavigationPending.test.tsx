@@ -4,7 +4,7 @@ import {createMemoryRouter, Link, Outlet, RouterProvider, type DataRouter} from 
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {resetPageReloadState} from '@/app/pageReload/pageReload';
-import {NavigationPending} from '@/app/router/NavigationPending';
+import {NavigationPending} from '@/app/NavigationPending/NavigationPending';
 
 const originalLocation = window.location;
 

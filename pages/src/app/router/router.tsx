@@ -10,7 +10,7 @@ import {LegacyLoginLinkRedirect} from './LegacyLoginLinkRedirect';
 import {RouteDocumentTitle, type RouteHandle} from './RouteDocumentTitle';
 import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
 import {EMBED_APP_ROUTES} from './embedAppRoutes';
-import {NavigationPending, type LatestLocationSource} from './NavigationPending';
+import {NavigationPending, type LatestLocationSource} from '../NavigationPending/NavigationPending';
 import {RouteErrorPage} from './RouteErrorPage';
 
 // While a lazy route's chunk loads: the site's one loading look (the 24px spinner and its label), centred like the
