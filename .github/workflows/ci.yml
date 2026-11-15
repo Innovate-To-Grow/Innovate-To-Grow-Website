@@ -184,6 +184,39 @@ jobs:
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
 
+  # Architecture spec R024/R032 (docs/architecture/code-quality.md, "Repository
+  # structure"). Ungated like preflight: every run checks every diff.
+  repository-structure:
+    name: Repository Structure and Migration Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Test the structure checker
+        run: python -m unittest discover -s scripts/structure/tests
+
+      # Enforcing: an existing file under any migrations/ directory may not be
+      # modified, deleted or renamed. Added files (new migrations) pass.
+      - name: Guard existing migrations
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: python -m scripts.structure.checker migrations --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      # Report-only until the architecture refactor lands: findings go to the
+      # job summary and never fail this job (switch to --mode enforce then).
+      - name: Report repository structure
+        run: python -m scripts.structure.checker report --markdown "$GITHUB_STEP_SUMMARY"
+
   lint:
     name: Python Code Style Check
     needs: [preflight, changes]
@@ -1754,6 +1787,7 @@ jobs:
     needs:
       - preflight
       - changes
+      - repository-structure
       - backend-required-result
       - frontend-required
       - e2e-required-result
