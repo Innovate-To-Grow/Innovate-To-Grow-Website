@@ -351,7 +351,7 @@ budget: they only end a stuck call, which the ALB idle timeout bounds in any cas
 | Provider adapters | `apps/core/services/delivery_rates/adapters/` (graph, ses, smtp, imap, gmail_api, sms); AWS reads in `apps/core/services/aws/quotas.py` |
 | Call sites | `apps/core/services/email/delivery.py` (every email), `apps/core/services/aws/sms_send.py` (every SMS), `apps/mail/services/gmail_import/session.py` (every IMAP session), `apps/core/services/email/graph/mailbox.py` (Graph reads) |
 | Worker | `apps/core/services/background_jobs/` (`worker.py` deferral and claim order, `gating.py`), `run_background_worker` ("Delivery-rate maintenance") |
-| Admin | `apps/mail/admin/settings/rates.py`, `rates_forms.py`, `rate_cards.py`; templates `admin/mail/settings_rates.html`, `rate_card.html` |
+| Admin | `apps/mail/admin/settings/rates/` (`__init__.py`, `forms.py`, `cards.py` with `card_lines.py` and `card_placeholders.py`); templates `admin/mail/settings_rates.html`, `rate_card.html` |
 
 Every channel's state, policy and usage rows are on the safe-ORM denylist, so the `i2g-admin` CLI cannot read or
 change them.
