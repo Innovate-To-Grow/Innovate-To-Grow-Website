@@ -17,6 +17,7 @@ PROBE = "import os, app; print(repr(os.environ.get('SHEETS_API_KEY')))"
 
 def _key_seen_by_app(tmp_path: Path, dotenv_text: str, **env: str) -> str:
     shutil.copy(APP_PY, tmp_path / "app.py")
+    shutil.copy(APP_PY.with_name("sheets_allowlist.py"), tmp_path / "sheets_allowlist.py")  # app.py imports it
     (tmp_path / ".env").write_text(dotenv_text, encoding="utf-8")
     child_env = {k: v for k, v in os.environ.items() if k != "SHEETS_API_KEY"}
     child_env.update(env)
