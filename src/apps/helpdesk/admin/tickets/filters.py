@@ -8,7 +8,7 @@
 from django.contrib import admin
 from django.db.models import Q
 
-from ..models import Ticket
+from ...models import Ticket
 
 Status = Ticket.Status
 

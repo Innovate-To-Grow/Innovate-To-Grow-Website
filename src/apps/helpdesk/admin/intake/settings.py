@@ -11,11 +11,11 @@ from django.urls import path, reverse
 
 from apps.core.admin import BaseModelAdmin
 
-from ..models import HelpdeskSettings, TicketCategory
-from ..services.ingest import jobs
-from ..services.intake import jobs as intake_jobs
-from ..services.intake import status as intake_status
-from . import intake
+from ...models import HelpdeskSettings, TicketCategory
+from ...services.ingest import jobs
+from ...services.intake import jobs as intake_jobs
+from ...services.intake import status as intake_status
+from . import controls as intake
 
 
 @admin.register(HelpdeskSettings)

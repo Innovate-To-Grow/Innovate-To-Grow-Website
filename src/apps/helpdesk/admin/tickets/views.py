@@ -18,9 +18,9 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.core.utils.access import user_can_access_app
 
-from ..models import HelpdeskSettings, Ticket, TicketAttachment
-from ..services import tickets
-from ..services.ingest import attachments as files
+from ...models import HelpdeskSettings, Ticket, TicketAttachment
+from ...services import tickets
+from ...services.ingest import attachments as files
 
 
 def require_helpdesk_access(request) -> None:
