@@ -7,8 +7,8 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.mail.models import SmsLinkToken
-from apps.mail.models.sms_config import revoke_personal_links
-from apps.mail.models.sms_link import SmsLinkRevocation
+from apps.mail.models.sms.config import revoke_personal_links
+from apps.mail.models.sms.links import SmsLinkRevocation
 
 from .issuing import TOKEN_RE, _still_owns, may_sign_in_by_sms, personal_link_state, sign_in_path, token_digest
 

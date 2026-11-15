@@ -32,7 +32,7 @@ from django.utils import timezone
 
 from apps.core.models import ProjectControlModel, ProjectControlQuerySet
 
-from .sms_link import SmsLinkRevocation, SmsLinkToken
+from .links import SmsLinkRevocation, SmsLinkToken
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@
 
 from apps.authn.models import Member
 from apps.event.models import EventRegistration
-from apps.mail.models.sms_campaign import E164_RE, parse_manual_sms_phones
+from apps.mail.models.sms.campaign_options import E164_RE, parse_manual_sms_phones
 
 from ..policy.opt_outs import split_opted_out
 from .phones import members_to_sms_recipients, registrations_to_sms_recipients

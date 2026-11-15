@@ -12,7 +12,7 @@ from decimal import Decimal
 
 from apps.core.services.delivery_rates.rules.sms_parts import sms_encoding, sms_parts
 from apps.mail.models import SmsConfig
-from apps.mail.models.sms_campaign import SMS_LINK_PLACEHOLDERS
+from apps.mail.models.sms.campaign_options import SMS_LINK_PLACEHOLDERS
 
 from ...campaign.personalize import personalize
 from ..links import example_link

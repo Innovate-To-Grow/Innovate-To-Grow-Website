@@ -1,7 +1,7 @@
 """Which number a member or a registrant is texted at, and the recipient row built for them."""
 
 from apps.authn.models import ContactPhone
-from apps.mail.models.sms_campaign import E164_RE
+from apps.mail.models.sms.campaign import E164_RE
 
 
 def members_to_sms_recipients(members, *, phone_policy: str):

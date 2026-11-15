@@ -9,7 +9,7 @@ from unfold.decorators import action, display
 from apps.core.admin import BaseModelAdmin
 from apps.core.services.background_jobs import jobs_enabled
 from apps.mail.models import SmsCampaign
-from apps.mail.models.sms_campaign import SMS_AUDIENCE_CHOICES
+from apps.mail.models.sms.campaign_options import SMS_AUDIENCE_CHOICES
 
 from .forms import SmsCampaignForm
 from .recipient_logs import SmsRecipientLogInline

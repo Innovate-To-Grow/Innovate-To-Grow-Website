@@ -6,7 +6,7 @@ from unfold.widgets import UnfoldAdminSelectWidget, UnfoldAdminTextareaWidget
 from apps.event.models import Ticket
 from apps.mail.admin.campaign.widgets import TicketSelectWidget
 from apps.mail.models import SmsCampaign
-from apps.mail.models.sms_campaign import SMS_AUDIENCE_CHOICES, SMS_EXCLUDE_AUDIENCE_CHOICES
+from apps.mail.models.sms.campaign_options import SMS_AUDIENCE_CHOICES, SMS_EXCLUDE_AUDIENCE_CHOICES
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
 
 

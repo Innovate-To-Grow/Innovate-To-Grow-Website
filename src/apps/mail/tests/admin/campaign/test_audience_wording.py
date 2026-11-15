@@ -10,7 +10,7 @@ from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.admin.campaign.forms import EmailCampaignForm
 from apps.mail.models import EmailCampaign
-from apps.mail.models.campaign import ALL_MEMBERS_LABEL, EXCLUDE_AUDIENCE_CHOICES, SUBSCRIBERS_LABEL
+from apps.mail.models.email.campaign_options import ALL_MEMBERS_LABEL, EXCLUDE_AUDIENCE_CHOICES, SUBSCRIBERS_LABEL
 from apps.mail.services.audience.resolvers import recipients_for_audience
 
 

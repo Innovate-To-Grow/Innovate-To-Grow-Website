@@ -138,7 +138,7 @@ With **Allow links in SMS** on, a Broadcast SMS may use:
   credential and are not affected. How it holds on every path:
   - **In the save's transaction.** Every write to SMS Settings (the admin, a `save()` in code, a bulk `update()`)
     locks the row and settles personal links before it commits (`SmsConfig.save`, `settle_personal_links` in
-    `apps/mail/models/sms_config.py`). Unless personal sign-in links were on before and are still on, the settings'
+    `apps/mail/models/sms/config.py`). Unless personal sign-in links were on before and are still on, the settings'
     **epoch** (`personal_links_epoch`) moves on and every outstanding personal link (unused, unexpired) is revoked
     (`revoked_at`). The epoch never moves back, not even from an outdated copy of the settings.
   - **When a link is opened.** A personal link carries the epoch it was issued in, read together with the switches,

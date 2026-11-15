@@ -1,6 +1,6 @@
 """Why a Broadcast SMS or a ticket text is not sent now: policy refusals made before any provider call."""
 
-from apps.mail.models.sms_campaign import LINKS_OFF_MESSAGE
+from apps.mail.models.sms.campaign_options import LINKS_OFF_MESSAGE
 
 
 class SmsSendRefused(Exception):

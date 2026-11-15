@@ -590,7 +590,7 @@ class SmsAudienceTypeFilterTests(TestCase):
 
     def test_filter_lookups_match_choices(self):
         from apps.mail.admin.sms_campaign import SmsAudienceTypeFilter
-        from apps.mail.models.sms_campaign import SMS_AUDIENCE_CHOICES
+        from apps.mail.models.sms.campaign_options import SMS_AUDIENCE_CHOICES
 
         instance = SmsAudienceTypeFilter.__new__(SmsAudienceTypeFilter)
         self.assertEqual(instance.lookups(request=None, model_admin=None), SMS_AUDIENCE_CHOICES)
