@@ -7,7 +7,7 @@ from django.contrib.admin.models import LogEntry
 from django.test import TestCase
 from rest_framework.test import APIClient
 
-from apps.core.admin.service_credentials.microsoft_graph import MicrosoftGraphProviderConfigAdmin
+from apps.core.admin.service_credentials.microsoft_graph.config import MicrosoftGraphProviderConfigAdmin
 from apps.core.models import EmailServiceConfig, MicrosoftGraphCertificate
 from apps.core.tests.graph_helpers import create_graph_config, make_certificate
 from apps.core.tests.services.graph_credential.helpers import stored_versions

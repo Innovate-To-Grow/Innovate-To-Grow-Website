@@ -1,8 +1,8 @@
 from django.contrib import admin
 from django.urls import reverse
 
-from apps.core.admin.service_credentials.gmail_api_panel import key_panel
-from apps.core.admin.service_credentials.microsoft_graph_panel import certificate_panel
+from apps.core.admin.service_credentials.gmail_api.panel import key_panel
+from apps.core.admin.service_credentials.microsoft_graph.panel import certificate_panel
 from apps.core.models import (
     GmailApiProviderConfig,
 )

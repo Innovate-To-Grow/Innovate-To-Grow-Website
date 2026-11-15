@@ -2,7 +2,7 @@ from django.contrib.admin.models import LogEntry
 from django.test import override_settings
 from django.urls import reverse
 
-from apps.core.admin.service_credentials.microsoft_graph_panel import CORE_APP_NEEDED
+from apps.core.admin.service_credentials.microsoft_graph.panel import CORE_APP_NEEDED
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.access_check.runner import NO_DENY_MAILBOX
 from apps.core.tests.admin.service_credentials.graph_access.test_graph_access_check_admin import (
