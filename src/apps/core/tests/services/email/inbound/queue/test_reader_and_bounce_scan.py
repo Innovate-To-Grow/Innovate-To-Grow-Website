@@ -16,7 +16,7 @@ from apps.core.services.email.graph.mailbox import IMMUTABLE_ID_PREFERENCE, SCAN
 from apps.core.tests.services.email_monitoring.bounce_scan.test_bounce_scanner import FakeReader, listed
 from apps.core.tests.services.email_monitoring.helpers import SENDER, make_email, monitoring_settings
 from apps.core.tests.services.email_monitoring.ndr_samples import ORIGINAL_ID, exchange_ndr, personal_email
-from apps.core.tests.services.test_graph_mailbox_reader import MAILBOX, GraphReaderFixtureMixin, listing
+from apps.core.tests.services.graph.mailbox.test_graph_mailbox_reader import MAILBOX, GraphReaderFixtureMixin, listing
 
 READER = "apps.core.services.email.bounces.scanner.active_reader"
 

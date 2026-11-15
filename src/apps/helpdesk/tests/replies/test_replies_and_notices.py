@@ -21,8 +21,8 @@ from django.utils import timezone
 
 from apps.core.models import InboundMessage
 from apps.core.services.email.inbound import NO_AUTO_RESPONSE, REPLY_HINT
+from apps.core.tests.services.email.inbound import samples
 from apps.core.tests.services.email_monitoring.helpers import make_email
-from apps.core.tests.services.inbound import samples
 from apps.mail.models import EmailCampaign
 
 from ...models import HelpdeskSettings, Ticket, TicketMessage

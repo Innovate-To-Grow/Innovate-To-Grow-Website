@@ -4,7 +4,7 @@ from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from apps.core.models import InboundMessage, OutboundEmail
-from apps.core.tests.services.inbound import samples
+from apps.core.tests.services.email.inbound import samples
 from apps.helpdesk.tests.replies.test_replies_and_notices import SiteMailMixin
 from apps.mail.models import BouncedAddress
 from apps.mail.tests.services.bounced_addresses.helpers import count_now
