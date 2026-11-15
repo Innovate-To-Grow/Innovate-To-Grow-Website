@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 import {useNavigate, useSearchParams, type NavigateFunction} from 'react-router';
 import {useAuth} from '@/features/auth';
-import {buildCompleteProfilePath} from '@/features/auth/api/redirects';
+import {buildCompleteProfilePath} from '@/features/auth/api/navigation/redirects';
 import {
   fetchRegistrationEvents,
   type EventRegistrationOptions,

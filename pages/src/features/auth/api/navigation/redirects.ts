@@ -1,4 +1,4 @@
-import type { EmailAuthSource, LoginResponse } from './types';
+import type { EmailAuthSource, LoginResponse } from '../contracts/types';
 
 export const getSafeInternalRedirectPath = (value: string | null | undefined): string | null => {
   const normalized = value?.trim() ?? '';

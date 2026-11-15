@@ -104,7 +104,7 @@ const updateSessionTokens = vi.fn(
   },
 );
 
-vi.mock('@/features/auth/api/storage', () => ({
+vi.mock('@/features/auth/api/session/storage', () => ({
   clearTokens,
   getStoredSession,
   updateSessionTokens,
@@ -142,7 +142,7 @@ describe('auth refresh session guards', () => {
     updateSessionTokens.mockClear();
     storedSession = accountA();
 
-    await import('@/features/auth/api/client');
+    await import('@/features/auth/api/session/client');
   });
 
   it('deduplicates concurrent refreshes for one generation', async () => {
@@ -263,7 +263,7 @@ describe('auth refresh session guards', () => {
 
   it('retains the guarded generation when refresh returns a malformed success', async () => {
     axiosPost.mockResolvedValue({data: {}});
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
 
@@ -273,7 +273,7 @@ describe('auth refresh session guards', () => {
 
   it('retains the guarded generation when refresh fails transiently', async () => {
     axiosPost.mockRejectedValue({response: {status: 503}});
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
 
@@ -283,7 +283,7 @@ describe('auth refresh session guards', () => {
 
   it('does not mark the original 401 definitive after a refresh 5xx', async () => {
     axiosPost.mockRejectedValue({response: {status: 503}});
-    const {isDefinitiveAuthFailure} = await import('@/features/auth/api/client');
+    const {isDefinitiveAuthFailure} = await import('@/features/auth/api/session/client');
     const request = prepareRequest({headers: {}});
     if (!responseRejectedHandler) {
       throw new Error('Response interceptor was not registered');
@@ -299,7 +299,7 @@ describe('auth refresh session guards', () => {
 
   it('marks only a definitive refresh rejection for anonymous fallback', async () => {
     axiosPost.mockRejectedValue({response: {status: 401}});
-    const {isDefinitiveAuthFailure} = await import('@/features/auth/api/client');
+    const {isDefinitiveAuthFailure} = await import('@/features/auth/api/session/client');
     const request = prepareRequest({headers: {}});
     if (!responseRejectedHandler) {
       throw new Error('Response interceptor was not registered');
@@ -356,14 +356,14 @@ describe('auth refresh session guards', () => {
 
   it('returns null when refreshing without a stored session', async () => {
     storedSession = null;
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
     expect(axiosPost).not.toHaveBeenCalled();
   });
 
   it('returns null when refreshing a different generation', async () => {
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     await expect(refreshAccessToken('generation-other')).resolves.toBeNull();
     expect(axiosPost).not.toHaveBeenCalled();
@@ -371,7 +371,7 @@ describe('auth refresh session guards', () => {
 
   it('treats a non-object refresh failure as transient', async () => {
     axiosPost.mockRejectedValue(null);
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
     expect(clearTokens).not.toHaveBeenCalled();
@@ -380,7 +380,7 @@ describe('auth refresh session guards', () => {
 
   it('treats a refresh failure without a response as transient', async () => {
     axiosPost.mockRejectedValue({});
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
     expect(clearTokens).not.toHaveBeenCalled();
@@ -389,7 +389,7 @@ describe('auth refresh session guards', () => {
 
   it('reports a changed session when a definitive refresh fails after a guard mismatch', async () => {
     axiosPost.mockRejectedValue({response: {status: 401}});
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     const pending = refreshAccessToken('generation-a');
     storedSession = {...accountA(), generation: 'generation-b'};
@@ -429,7 +429,7 @@ describe('auth refresh session guards', () => {
 
   it('treats a non-numeric refresh failure status as transient', async () => {
     axiosPost.mockRejectedValue({response: {status: 'oops'}});
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
     expect(clearTokens).not.toHaveBeenCalled();
@@ -438,7 +438,7 @@ describe('auth refresh session guards', () => {
 
   it('reuses the previous refresh token when the refresh response omits it', async () => {
     axiosPost.mockResolvedValue({data: {access: 'new-access'}});
-    const {refreshAccessToken} = await import('@/features/auth/api/client');
+    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
 
     await expect(refreshAccessToken('generation-a')).resolves.toMatchObject({
       access: 'new-access',
@@ -610,7 +610,7 @@ describe('auth refresh session guards', () => {
       if (!responseRejectedHandler) {
         throw new Error('Response interceptor was not registered');
       }
-      const {isDefinitiveAuthFailure} = await import('@/features/auth/api/client');
+      const {isDefinitiveAuthFailure} = await import('@/features/auth/api/session/client');
       const error = {config: request, response: {status: 401}};
 
       await expect(responseRejectedHandler(error)).rejects.toBe(error);
@@ -630,7 +630,7 @@ describe('auth refresh session guards', () => {
       if (!responseRejectedHandler) {
         throw new Error('Response interceptor was not registered');
       }
-      const {isDefinitiveAuthFailure} = await import('@/features/auth/api/client');
+      const {isDefinitiveAuthFailure} = await import('@/features/auth/api/session/client');
       const error = {config: request, response: {status: 401}};
 
       await expect(responseRejectedHandler(error)).rejects.toBe(error);

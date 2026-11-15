@@ -2,7 +2,7 @@ import {VerificationFlowError} from './errors';
 
 import axios, {AxiosError, type AxiosResponse} from 'axios';
 
-import {getStoredSession} from '../api/storage';
+import {getStoredSession} from '../api/session/storage';
 import {createSendChallenge, fetchSendRequestStatus} from './api';
 import {newRequestId, solveAltchaChallenge} from './solve';
 import {setVerifiedSendStatus} from './status';

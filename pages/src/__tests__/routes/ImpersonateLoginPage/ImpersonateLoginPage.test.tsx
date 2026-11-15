@@ -8,7 +8,7 @@ const mockImpersonateAutoLogin = vi.fn();
 const mockNavigate = vi.fn();
 const mockDispatchAuthStateChange = vi.fn();
 
-vi.mock('@/features/auth/api/session', () => ({
+vi.mock('@/features/auth/api/signin/session', () => ({
   impersonateAutoLogin: (...args: unknown[]) => mockImpersonateAutoLogin(...args),
 }));
 

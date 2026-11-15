@@ -1,7 +1,7 @@
 import '../auth.css';
 import { useEffect } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
-import { getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
+import { getSafeInternalRedirectPath } from '@/features/auth/api/navigation/redirects';
 import { useAuth } from '../AuthContext';
 import { VerifyEmailView } from './verify/VerifyEmailView';
 import { FLOW_META, isVerifyFlow, type VerifyFlow } from './verify/shared';

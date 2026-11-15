@@ -4,12 +4,12 @@ const authApiPost = vi.fn();
 const authApiGet = vi.fn();
 const persistAuthSession = vi.fn();
 
-vi.mock('@/features/auth/api/client', () => ({
+vi.mock('@/features/auth/api/session/client', () => ({
   authApi: {get: authApiGet, post: authApiPost},
   isDefinitiveAuthFailure: vi.fn(() => false),
 }));
 
-vi.mock('@/features/auth/api/storage', () => ({
+vi.mock('@/features/auth/api/session/storage', () => ({
   clearTokens: vi.fn(),
   getAccessToken: vi.fn(() => null),
   getStoredSession: vi.fn(() => null),
@@ -36,7 +36,7 @@ describe('SMS short links and the /register destination', () => {
 
   it('opens a personal link: stores the session it signs in', async () => {
     authApiPost.mockResolvedValue({data: LOGIN});
-    const {openSmsLink} = await import('@/features/auth/api/session');
+    const {openSmsLink} = await import('@/features/auth/api/signin/session');
 
     const result = await openSmsLink('AbCdEfGhIjKlMnOpQrStUv');
 
@@ -47,7 +47,7 @@ describe('SMS short links and the /register destination', () => {
 
   it('opens a shared link: only says where to go', async () => {
     authApiPost.mockResolvedValue({data: {kind: 'redirect', redirect_to: '/event-registration?event=x'}});
-    const {openSmsLink} = await import('@/features/auth/api/session');
+    const {openSmsLink} = await import('@/features/auth/api/signin/session');
 
     await expect(openSmsLink('token-token-token-tok')).resolves.toEqual({
       kind: 'redirect',
@@ -57,8 +57,8 @@ describe('SMS short links and the /register destination', () => {
   });
 
   it('treats a redirect without a destination, and a 2xx that is no login, carefully', async () => {
-    const {openSmsLink} = await import('@/features/auth/api/session');
-    const {MalformedLoginResponseError} = await import('@/features/auth/api/errors');
+    const {openSmsLink} = await import('@/features/auth/api/signin/session');
+    const {MalformedLoginResponseError} = await import('@/features/auth/api/contracts/errors');
 
     authApiPost.mockResolvedValueOnce({data: {kind: 'redirect', redirect_to: 42}});
     await expect(openSmsLink('t')).resolves.toEqual({kind: 'redirect', redirectTo: null});
@@ -68,7 +68,7 @@ describe('SMS short links and the /register destination', () => {
   });
 
   it('reads where /register leads', async () => {
-    const {getRegisterLinkPath} = await import('@/features/auth/api/session');
+    const {getRegisterLinkPath} = await import('@/features/auth/api/signin/session');
 
     authApiGet.mockResolvedValueOnce({data: {path: '/event-registration?event=fall'}});
     await expect(getRegisterLinkPath()).resolves.toBe('/event-registration?event=fall');

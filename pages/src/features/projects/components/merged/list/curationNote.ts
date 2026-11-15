@@ -1,4 +1,4 @@
-import {buildLoginPath} from '@/features/auth/api/redirects';
+import {buildLoginPath} from '@/features/auth/api/navigation/redirects';
 import {draftHandoverHref, isEmbeddedBuilder, PAST_PROJECTS_PATH} from '../../builder/draft/draftHandover';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 import {pastProjectsDetailHtmlToPlainText, sanitizePastProjectsDetailHtml} from '../../richText/content/pastProjectsDetailText';

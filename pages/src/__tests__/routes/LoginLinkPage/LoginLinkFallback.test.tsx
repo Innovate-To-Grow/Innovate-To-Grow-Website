@@ -5,7 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {
   captureAuthCallbackParams,
   readAuthCallbackParams,
-} from '@/features/auth/api/callbackParams';
+} from '@/features/auth/api/navigation/callbackParams';
 import {
   LoginLinkFallback,
   type LoginLinkFallbackKind,

@@ -1,5 +1,5 @@
 import {type FocusEvent, type KeyboardEvent, type MouseEvent} from 'react';
-import {type User} from '@/features/auth/api/types';
+import {type User} from '@/features/auth/api/contracts/types';
 import {formatE164ForDisplay} from '@/lib/format/phoneInput';
 import {Icon} from '@/components/Icon/Icon';
 import {memberButtonLabel, memberDisplayName} from './shared';

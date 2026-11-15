@@ -1,13 +1,13 @@
 import '@/features/auth/components/shared/linkLandingPages.css';
 import {useEffect, useState, useMemo} from 'react';
 import {useSearchParams, useNavigate} from 'react-router';
-import {impersonateAutoLogin} from '@/features/auth/api/session';
+import {impersonateAutoLogin} from '@/features/auth/api/signin/session';
 import {dispatchAuthStateChange} from '@/features/auth/components/context/shared';
-import {getPostAuthPath} from '@/features/auth/api/redirects';
+import {getPostAuthPath} from '@/features/auth/api/navigation/redirects';
 import {
   clearAuthCallbackParams,
   readAuthCallbackParams,
-} from '@/features/auth/api/callbackParams';
+} from '@/features/auth/api/navigation/callbackParams';
 
 export function ImpersonateLoginPage() {
   const [searchParams] = useSearchParams();

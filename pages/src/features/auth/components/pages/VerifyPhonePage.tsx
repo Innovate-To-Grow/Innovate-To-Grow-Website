@@ -1,7 +1,7 @@
 import '../auth.css';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router';
-import { getPostAuthPath, getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
+import { getPostAuthPath, getSafeInternalRedirectPath } from '@/features/auth/api/navigation/redirects';
 import { useAuth } from '../AuthContext';
 import { VerifyEmailView } from './verify/VerifyEmailView';
 import {

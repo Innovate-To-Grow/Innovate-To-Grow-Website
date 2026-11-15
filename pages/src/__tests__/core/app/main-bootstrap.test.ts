@@ -6,7 +6,7 @@ const markIsolatedIframeRoute = vi.hoisted(() => vi.fn());
 const loadThirdPartyScripts = vi.hoisted(() => vi.fn());
 const installPreloadErrorRecovery = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/auth/api/callbackParams', () => ({captureAuthCallbackParams}));
+vi.mock('@/features/auth/api/navigation/callbackParams', () => ({captureAuthCallbackParams}));
 vi.mock('@/app/providers', () => ({mountApp}));
 vi.mock('@/app/pageReload', () => ({installPreloadErrorRecovery}));
 vi.mock('@/app/thirdPartyLoaders', () => ({

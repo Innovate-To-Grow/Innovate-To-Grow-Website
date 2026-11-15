@@ -6,11 +6,11 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {
   captureAuthCallbackParams,
   readAuthCallbackParams,
-} from '@/features/auth/api/callbackParams';
+} from '@/features/auth/api/navigation/callbackParams';
 import {
   MalformedLoginResponseError,
   SessionNotSavedError,
-} from '@/features/auth/api/errors';
+} from '@/features/auth/api/contracts/errors';
 import {LoginLinkPage} from '@/routes/LoginLinkPage/LoginLinkPage';
 
 const mockLoginLinkAutoLogin = vi.fn();
@@ -20,14 +20,14 @@ const mockGetAccessToken = vi.fn();
 const mockBootstrapAuthSession = vi.fn();
 const mockUseAuth = vi.fn();
 
-vi.mock('@/features/auth/api/session', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/auth/api/session')>()),
+vi.mock('@/features/auth/api/signin/session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/auth/api/signin/session')>()),
   loginLinkAutoLogin: (...args: unknown[]) => mockLoginLinkAutoLogin(...args),
   bootstrapAuthSession: () => mockBootstrapAuthSession(),
 }));
 
-vi.mock('@/features/auth/api/storage', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/auth/api/storage')>()),
+vi.mock('@/features/auth/api/session/storage', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/auth/api/session/storage')>()),
   getAccessToken: () => mockGetAccessToken(),
 }));
 

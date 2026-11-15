@@ -4,8 +4,8 @@
 import axios, {AxiosError, AxiosHeaders, type AxiosAdapter, type AxiosResponse, type InternalAxiosRequestConfig} from 'axios';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {authApi, refreshAccessToken} from '@/features/auth/api/client';
-import {clearTokens, getStoredSession, setTokens} from '@/features/auth/api/storage';
+import {authApi, refreshAccessToken} from '@/features/auth/api/session/client';
+import {clearTokens, getStoredSession, setTokens} from '@/features/auth/api/session/storage';
 
 type Answer = {status: number; data?: unknown; headers?: Record<string, string>};
 

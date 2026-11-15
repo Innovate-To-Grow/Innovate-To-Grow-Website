@@ -1,6 +1,6 @@
 import '../auth.css';
 import { Navigate, useSearchParams } from 'react-router';
-import { buildCompleteProfilePath, getSafeInternalRedirectPath } from '@/features/auth/api/redirects';
+import { buildCompleteProfilePath, getSafeInternalRedirectPath } from '@/features/auth/api/navigation/redirects';
 import { useAuth } from '../AuthContext';
 import { LoginForm } from '../forms/LoginForm';
 

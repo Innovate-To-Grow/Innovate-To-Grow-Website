@@ -2,7 +2,7 @@ import './styles/SubscribePage.css';
 import {useEffect, useState} from 'react';
 import {useSearchParams} from 'react-router';
 import {useAuth} from '@/features/auth';
-import type {ProfileResponse} from '@/features/auth/api/types';
+import type {ProfileResponse} from '@/features/auth/api/contracts/types';
 import {CodeStep} from './steps/CodeStep';
 import {EmailStep} from './steps/EmailStep';
 import {ManageStep} from './steps/ManageStep';

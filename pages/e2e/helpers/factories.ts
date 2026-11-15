@@ -7,7 +7,7 @@ import type {
   LoginResponse,
   ProfileResponse,
   User,
-} from '../../src/features/auth/api/types';
+} from '../../src/features/auth/api/contracts/types';
 import type {
   EventRegistrationOptions,
   EventRegistrationSummary,

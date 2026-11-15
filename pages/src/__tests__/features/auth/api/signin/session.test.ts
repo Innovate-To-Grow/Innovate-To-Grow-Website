@@ -28,12 +28,12 @@ const baseSession = {
 
 let storedSession: typeof baseSession | null;
 
-vi.mock('@/features/auth/api/client', () => ({
+vi.mock('@/features/auth/api/session/client', () => ({
   authApi: {get: authApiGet, post: authApiPost},
   isDefinitiveAuthFailure,
 }));
 
-vi.mock('@/features/auth/api/storage', () => ({
+vi.mock('@/features/auth/api/session/storage', () => ({
   clearTokens,
   getAccessToken: vi.fn(() => storedSession?.access ?? null),
   getStoredSession: vi.fn(() => storedSession),
@@ -75,7 +75,7 @@ describe('auth session lifecycle', () => {
     authApiPost.mockReturnValue(new Promise(() => undefined));
     const eventSpy = vi.fn();
     window.addEventListener('i2g-auth-state-change', eventSpy);
-    const {logout} = await import('@/features/auth/api/session');
+    const {logout} = await import('@/features/auth/api/signin/session');
 
     void logout();
     await Promise.resolve();
@@ -102,7 +102,7 @@ describe('auth session lifecycle', () => {
       callOrder.push('authApi.post');
       return Promise.resolve({data: {}});
     });
-    const {logout} = await import('@/features/auth/api/session');
+    const {logout} = await import('@/features/auth/api/signin/session');
 
     await logout();
     expect(callOrder).toEqual(['clearTokens', 'authApi.post']);
@@ -110,7 +110,7 @@ describe('auth session lifecycle', () => {
 
   it('does not call the server when no session is stored', async () => {
     storedSession = null;
-    const {logout} = await import('@/features/auth/api/session');
+    const {logout} = await import('@/features/auth/api/signin/session');
 
     await logout();
     expect(clearTokens).toHaveBeenCalledWith(undefined);
@@ -119,7 +119,7 @@ describe('auth session lifecycle', () => {
 
   it('swallows server logout errors after local state is cleared', async () => {
     authApiPost.mockRejectedValue(new Error('network down'));
-    const {logout} = await import('@/features/auth/api/session');
+    const {logout} = await import('@/features/auth/api/signin/session');
 
     await expect(logout()).resolves.toBeUndefined();
     expect(clearTokens).toHaveBeenCalledTimes(1);
@@ -143,7 +143,7 @@ describe('auth session lifecycle', () => {
         next_step: 'complete_profile',
       },
     });
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const result = await bootstrapAuthSession();
 
@@ -172,7 +172,7 @@ describe('auth session lifecycle', () => {
     });
     const eventSpy = vi.fn();
     window.addEventListener('i2g-auth-state-change', eventSpy);
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await expect(bootstrapAuthSession()).resolves.toEqual({
       status: 'anonymous',
@@ -190,7 +190,7 @@ describe('auth session lifecycle', () => {
   it('preserves an expired session when refresh failed transiently', async () => {
     const transientRefreshFailure = {response: {status: 401}};
     authApiGet.mockRejectedValue(transientRefreshFailure);
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await expect(bootstrapAuthSession()).resolves.toEqual({
       status: 'unverified',
@@ -230,7 +230,7 @@ describe('auth session lifecycle', () => {
   it('posts a login-link token and persists the returned session', async () => {
     const data = loginData();
     authApiPost.mockResolvedValue({data});
-    const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
+    const {loginLinkAutoLogin} = await import('@/features/auth/api/signin/session');
 
     const result = await loginLinkAutoLogin('token-1');
 
@@ -246,7 +246,7 @@ describe('auth session lifecycle', () => {
   it('accepts a phone-only account, whose email is an empty string', async () => {
     const data = {...loginData(), user: {member_uuid: 'member-p', email: ''}};
     authApiPost.mockResolvedValue({data});
-    const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
+    const {loginLinkAutoLogin} = await import('@/features/auth/api/signin/session');
 
     await expect(loginLinkAutoLogin('token-p')).resolves.toBe(data);
     expect(persistAuthSession).toHaveBeenCalledWith(data);
@@ -256,8 +256,8 @@ describe('auth session lifecycle', () => {
     'rejects a login-link 2xx answer that is %s without touching storage',
     async (_label, data) => {
       authApiPost.mockResolvedValue({data});
-      const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
-      const {MalformedLoginResponseError} = await import('@/features/auth/api/errors');
+      const {loginLinkAutoLogin} = await import('@/features/auth/api/signin/session');
+      const {MalformedLoginResponseError} = await import('@/features/auth/api/contracts/errors');
 
       await expect(loginLinkAutoLogin('token-x')).rejects.toBeInstanceOf(
         MalformedLoginResponseError,
@@ -268,8 +268,8 @@ describe('auth session lifecycle', () => {
 
   it('lets the typed storage failure through untouched when the session cannot be written', async () => {
     authApiPost.mockResolvedValue({data: loginData()});
-    const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
-    const {SessionNotSavedError} = await import('@/features/auth/api/errors');
+    const {loginLinkAutoLogin} = await import('@/features/auth/api/signin/session');
+    const {SessionNotSavedError} = await import('@/features/auth/api/contracts/errors');
     const failure = new SessionNotSavedError();
     persistAuthSession.mockImplementation(() => {
       throw failure;
@@ -281,7 +281,7 @@ describe('auth session lifecycle', () => {
   it('passes an Axios failure through untouched', async () => {
     const failure = Object.assign(new Error('Request failed'), {isAxiosError: true});
     authApiPost.mockRejectedValue(failure);
-    const {loginLinkAutoLogin} = await import('@/features/auth/api/session');
+    const {loginLinkAutoLogin} = await import('@/features/auth/api/signin/session');
 
     await expect(loginLinkAutoLogin('token-z')).rejects.toBe(failure);
     expect(persistAuthSession).not.toHaveBeenCalled();
@@ -290,7 +290,7 @@ describe('auth session lifecycle', () => {
   it('posts an impersonation token and persists the returned session', async () => {
     const data = loginData();
     authApiPost.mockResolvedValue({data});
-    const {impersonateAutoLogin} = await import('@/features/auth/api/session');
+    const {impersonateAutoLogin} = await import('@/features/auth/api/signin/session');
 
     const result = await impersonateAutoLogin('token-3');
 
@@ -307,8 +307,8 @@ describe('auth session lifecycle', () => {
     'rejects an impersonation 2xx answer that is %s without touching storage',
     async (_label, data) => {
       authApiPost.mockResolvedValue({data});
-      const {impersonateAutoLogin} = await import('@/features/auth/api/session');
-      const {MalformedLoginResponseError} = await import('@/features/auth/api/errors');
+      const {impersonateAutoLogin} = await import('@/features/auth/api/signin/session');
+      const {MalformedLoginResponseError} = await import('@/features/auth/api/contracts/errors');
 
       await expect(impersonateAutoLogin('token-x')).rejects.toBeInstanceOf(
         MalformedLoginResponseError,
@@ -319,46 +319,46 @@ describe('auth session lifecycle', () => {
 
   it('reports unauthenticated when no access token is stored', async () => {
     storedSession = null;
-    const {isAuthenticated} = await import('@/features/auth/api/session');
+    const {isAuthenticated} = await import('@/features/auth/api/signin/session');
     expect(isAuthenticated()).toBe(false);
   });
 
   it('accepts an unexpired JWT access token', async () => {
     const token = `header.${btoa(JSON.stringify({exp: 2000000000}))}.signature`;
     storedSession = {...baseSession, access: token};
-    const {isAuthenticated} = await import('@/features/auth/api/session');
+    const {isAuthenticated} = await import('@/features/auth/api/signin/session');
     expect(isAuthenticated()).toBe(true);
   });
 
   it('rejects an expired JWT access token', async () => {
     const token = `header.${btoa(JSON.stringify({exp: 1}))}.signature`;
     storedSession = {...baseSession, access: token};
-    const {isAuthenticated} = await import('@/features/auth/api/session');
+    const {isAuthenticated} = await import('@/features/auth/api/signin/session');
     expect(isAuthenticated()).toBe(false);
   });
 
   it('rejects a token whose payload exp is not numeric', async () => {
     const token = `header.${btoa(JSON.stringify({exp: 'soon'}))}.signature`;
     storedSession = {...baseSession, access: token};
-    const {isAuthenticated} = await import('@/features/auth/api/session');
+    const {isAuthenticated} = await import('@/features/auth/api/signin/session');
     expect(isAuthenticated()).toBe(false);
   });
 
   it('rejects a token without a payload segment', async () => {
     storedSession = {...baseSession, access: 'no-dot-token'};
-    const {isAuthenticated} = await import('@/features/auth/api/session');
+    const {isAuthenticated} = await import('@/features/auth/api/signin/session');
     expect(isAuthenticated()).toBe(false);
   });
 
   it('rejects a token with an undecodable payload', async () => {
     storedSession = {...baseSession, access: 'a.!!!.b'};
-    const {isAuthenticated} = await import('@/features/auth/api/session');
+    const {isAuthenticated} = await import('@/features/auth/api/signin/session');
     expect(isAuthenticated()).toBe(false);
   });
 
   it('resolves anonymous without a request when no session is stored', async () => {
     storedSession = null;
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await expect(bootstrapAuthSession()).resolves.toEqual({status: 'anonymous', session: null});
     expect(authApiGet).not.toHaveBeenCalled();
@@ -368,7 +368,7 @@ describe('auth session lifecycle', () => {
     authApiGet.mockResolvedValue({data: {authenticated: false}});
     const eventSpy = vi.fn();
     window.addEventListener('i2g-auth-state-change', eventSpy);
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await expect(bootstrapAuthSession()).resolves.toEqual({status: 'anonymous', session: null});
 
@@ -379,7 +379,7 @@ describe('auth session lifecycle', () => {
 
   it('keeps the session verified when the payload has no usable member', async () => {
     authApiGet.mockResolvedValue({data: {user: {member_uuid: ''}}});
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const result = await bootstrapAuthSession();
 
@@ -394,7 +394,7 @@ describe('auth session lifecycle', () => {
         resolveGet = resolve;
       }),
     );
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const first = bootstrapAuthSession();
     const second = bootstrapAuthSession();
@@ -406,7 +406,7 @@ describe('auth session lifecycle', () => {
 
   it('returns a replacement session when the generation changes during a failed refresh', async () => {
     authApiGet.mockRejectedValue({response: {status: 503}});
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const pending = bootstrapAuthSession();
     const replacement = {...baseSession, generation: 'generation-b', user: {...baseSession.user}};
@@ -417,7 +417,7 @@ describe('auth session lifecycle', () => {
 
   it('resolves anonymous when the session is cleared during a failed refresh', async () => {
     authApiGet.mockRejectedValue({response: {status: 503}});
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const pending = bootstrapAuthSession();
     storedSession = null;
@@ -427,7 +427,7 @@ describe('auth session lifecycle', () => {
 
   it('keeps the session verified when the payload is not a usable object', async () => {
     authApiGet.mockResolvedValue({data: 'unexpected-string'});
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const result = await bootstrapAuthSession();
 
@@ -447,7 +447,7 @@ describe('auth session lifecycle', () => {
         },
       },
     });
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const result = await bootstrapAuthSession();
 
@@ -472,7 +472,7 @@ describe('auth session lifecycle', () => {
         },
       },
     });
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await bootstrapAuthSession();
 
@@ -485,7 +485,7 @@ describe('auth session lifecycle', () => {
 
   it('returns a replacement session when the generation changes before verification', async () => {
     authApiGet.mockResolvedValue({data: {}});
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const pending = bootstrapAuthSession();
     const replacement = {...baseSession, generation: 'generation-b', user: {...baseSession.user}};
@@ -496,7 +496,7 @@ describe('auth session lifecycle', () => {
 
   it('resolves anonymous when the session clears before verification', async () => {
     authApiGet.mockResolvedValue({data: {}});
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const pending = bootstrapAuthSession();
     storedSession = null;
@@ -509,7 +509,7 @@ describe('auth session lifecycle', () => {
     authApiPost.mockResolvedValue({data: {}});
     const eventSpy = vi.fn();
     window.addEventListener('i2g-auth-state-change', eventSpy);
-    const {logout} = await import('@/features/auth/api/session');
+    const {logout} = await import('@/features/auth/api/signin/session');
 
     await logout();
 
@@ -528,7 +528,7 @@ describe('auth session lifecycle', () => {
         },
       },
     });
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await bootstrapAuthSession();
 
@@ -546,7 +546,7 @@ describe('auth session lifecycle', () => {
         },
       },
     });
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await bootstrapAuthSession();
 
@@ -562,7 +562,7 @@ describe('auth session lifecycle', () => {
     authApiGet.mockResolvedValue({data: {authenticated: false}});
     const eventSpy = vi.fn();
     window.addEventListener('i2g-auth-state-change', eventSpy);
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await expect(bootstrapAuthSession()).resolves.toEqual({status: 'anonymous', session: null});
     expect(eventSpy).not.toHaveBeenCalled();
@@ -577,7 +577,7 @@ describe('auth session lifecycle', () => {
       },
     });
     updateStoredSessionProfile.mockReturnValue(null);
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     await expect(bootstrapAuthSession()).resolves.toEqual({status: 'anonymous', session: null});
   });
@@ -592,7 +592,7 @@ describe('auth session lifecycle', () => {
       resolveSecond = resolve;
     });
     authApiGet.mockReturnValueOnce(first).mockReturnValueOnce(second);
-    const {bootstrapAuthSession} = await import('@/features/auth/api/session');
+    const {bootstrapAuthSession} = await import('@/features/auth/api/signin/session');
 
     const firstBootstrap = bootstrapAuthSession();
     const replacement = {...baseSession, generation: 'generation-b', user: {...baseSession.user}};

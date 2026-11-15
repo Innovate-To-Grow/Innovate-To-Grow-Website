@@ -1,8 +1,8 @@
 import {expect, type Page} from '@playwright/test';
-import type {LoginResponse, ProfileResponse, User} from '../../src/features/auth/api/types';
+import type {LoginResponse, ProfileResponse, User} from '../../src/features/auth/api/contracts/types';
 import {mintFakeJwt, profileResponse} from './factories';
 
-// Storage keys mirror pages/src/features/auth/api/storage.ts. Kept as literals
+// Storage keys mirror pages/src/features/auth/api/session/storage.ts. Kept as literals
 // here because addInitScript serializes its callback into the browser context
 // and cannot import app modules.
 const AUTH_SESSION_KEY = 'i2g_auth_session';

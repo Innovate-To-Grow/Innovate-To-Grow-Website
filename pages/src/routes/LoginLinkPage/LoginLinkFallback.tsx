@@ -1,7 +1,7 @@
 import '@/features/auth/components/auth.css';
 import {useEffect, useRef, useState, type FormEvent} from 'react';
 import {useAuth} from '@/features/auth';
-import {clearAuthCallbackParams} from '@/features/auth/api/callbackParams';
+import {clearAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
 import {isSafeMessage} from '@/features/auth/components/context/shared';
 import {VerifyEmailPageContent} from '@/features/auth/components/pages/VerifyEmailPage';
 import {identifyLoginInput} from '@/features/auth/components/sections/internal/identifyLoginInput';

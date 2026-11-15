@@ -1,6 +1,6 @@
 import {useRef, type RefObject} from 'react';
 import {type MenuItem} from '@/features/layout/api';
-import {type User} from '@/features/auth/api/types';
+import {type User} from '@/features/auth/api/contracts/types';
 import {formatE164ForDisplay} from '@/lib/format/phoneInput';
 import {Icon} from '@/components/Icon/Icon';
 import {type SectionMatch} from '@/features/layout/sections';

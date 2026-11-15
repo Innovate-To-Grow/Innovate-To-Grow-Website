@@ -165,7 +165,7 @@ concern. For example:
 
 - Plain Axios instance with `/api` base URL for public requests.
 - Does not attach credentials or refresh tokens.
-- Code that can carry a member session uses the auth-specific client in `features/auth/api/client.ts`.
+- Code that can carry a member session uses the auth-specific client in `features/auth/api/session/client.ts`.
 
 The auth-specific client tags each request with the session generation and access token it used. On a 401 it performs one generation-guarded refresh through `/authn/refresh/`, retries once with the fresh access token, and clears only the rejected generation if recovery fails. Session-bearing event and project requests use this client; public fallbacks remain explicit.
 
