@@ -11,7 +11,7 @@ from django.test import RequestFactory, TestCase
 
 from apps.core.middleware.csp_report import csp_report
 from apps.core.tests.request_limits.helpers import isolate, view_limit
-from config.settings.base.integrations.request_limits import view_scopes
+from config.settings.base.integrations.request_limits.defaults import view_scopes
 
 BODY = json.dumps({"csp-report": {"effective-directive": "img-src"}})
 

@@ -75,7 +75,7 @@ Two layers limit requests (design and runbook: [Request limits](../integrations/
    unpaged `/projects/past-all/`, `ai`, `staff-bulk`, `not-found`; the paged `/projects/all/` is `public-read`). A view names its scope with
    `rate_limit_scope`; unnamed routes fall back by path, method and sign-in. Under overload Smart limit sheds P3,
    then P2, then P1, never P0. Exempt: `/livez/`, `/readyz/`, `/health/`, `/layout/theme.css`, `/robots.txt`,
-   one-click unsubscribe and CORS preflights. Seeds: `src/config/settings/base/integrations/request_limits/scopes.py`.
+   one-click unsubscribe and CORS preflights. Seeds: `src/config/settings/base/integrations/request_limits/defaults/` (`scopes.py`, `critical_scopes.py`).
 2. **Per-view throttles** (below) are finer limits underneath, set per view with `throttle_classes`, never globally
    (`DEFAULT_THROTTLE_CLASSES` stays unset).
 
@@ -106,7 +106,7 @@ limiting is on by default and takes priority over the manual value: the rate is 
 its parent route scope, never below the scope's floor, and never lowered at all for P0 (sign-in and verification
 codes) or fixed scopes; with Smart off the manual value applies. While the request limiter is off
 (`REQUEST_RATE_LIMITS_ENABLED=false`, as in the test settings) each throttle uses its default. Seeds:
-`src/config/settings/base/integrations/request_limits/view_scopes.py`.
+`src/config/settings/base/integrations/request_limits/defaults/view_scopes.py` (and `critical_view_scopes.py`).
 
 | Throttle | Policy | Default | Keyed on | Applied to |
 |----------|--------|---------|----------|------------|

@@ -11,7 +11,8 @@ from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
 from config.settings.base.integrations import request_limits as limits_settings
-from config.settings.base.integrations.request_limits import enabled_from_env, runtime
+from config.settings.base.integrations.request_limits import enabled_from_env
+from config.settings.base.integrations.request_limits.defaults import runtime
 from config.settings.base.integrations.request_limits.validation import load_request_limits, validate_request_limits
 
 DEFAULTS = limits_settings.DEFAULTS

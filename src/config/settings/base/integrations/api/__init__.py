@@ -29,8 +29,8 @@ REST_FRAMEWORK = {
         "apps.core.renderers.UCMercedBrowsableAPIRenderer",
     ],
     # No rates here: every per-view throttle reads its rate live from its request-limit policy (seeded from
-    # config/settings/base/integrations/request_limits/view_scopes.py, edited in the admin), so DRF's import-time
-    # THROTTLE_RATES is never consulted. Classes are still set per view, never globally.
+    # config/settings/base/integrations/request_limits/defaults/view_scopes.py, edited in the admin), so DRF's
+    # import-time THROTTLE_RATES is never consulted. Classes are still set per view, never globally.
     "DEFAULT_THROTTLE_RATES": {},
 }
 # A 429 (from the request limiter or a throttle) says when to retry in Retry-After. The SPA calls the API
