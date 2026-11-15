@@ -57,17 +57,17 @@ vi.mock('@/features/projects/hooks/data/useProjectGridData.ts', async (importOri
 });
 
 vi.mock('@/features/projects', async () =>
-    (await import('@/__tests__/routes/projects/PastProjectsPage/pastProjectsModuleStub')).pastProjectsModuleStub(
+    (await import('@/__tests__/routes/projects/PastProjectsPage/fixtures/pastProjectsModuleStub')).pastProjectsModuleStub(
         archiveRow,
         addedRow,
     ),
 );
 vi.mock('@/features/projects/components/curation/builder/composition/PastProjectsBuilder', async () => ({
-    PastProjectsBuilder: (await import('@/__tests__/routes/projects/PastProjectsPage/pastProjectsModuleStub'))
+    PastProjectsBuilder: (await import('@/__tests__/routes/projects/PastProjectsPage/fixtures/pastProjectsModuleStub'))
         .pastProjectsModuleStub(archiveRow, addedRow).PastProjectsBuilder,
 }));
 vi.mock('@/features/projects/components/curation/myCurations/MyCurationsPanel', async () => ({
-    MyCurationsPanel: (await import('@/__tests__/routes/projects/PastProjectsPage/pastProjectsModuleStub'))
+    MyCurationsPanel: (await import('@/__tests__/routes/projects/PastProjectsPage/fixtures/pastProjectsModuleStub'))
         .pastProjectsModuleStub(archiveRow, addedRow).MyCurationsPanel,
 }));
 

@@ -60,11 +60,11 @@ vi.mock('@/features/projects/hooks/data/useProjectGridData.ts', () => ({
 
 // The builder and My Curations as the PastProjectsPage tests stub them: buttons that report what they were given.
 vi.mock('@/features/projects/components/curation/builder/composition/PastProjectsBuilder', async () => ({
-    PastProjectsBuilder: (await import('@/__tests__/routes/projects/PastProjectsPage/pastProjectsModuleStub'))
+    PastProjectsBuilder: (await import('@/__tests__/routes/projects/PastProjectsPage/fixtures/pastProjectsModuleStub'))
         .pastProjectsModuleStub(archiveRow, addedRow).PastProjectsBuilder,
 }));
 vi.mock('@/features/projects/components/curation/myCurations/MyCurationsPanel', async () => ({
-    MyCurationsPanel: (await import('@/__tests__/routes/projects/PastProjectsPage/pastProjectsModuleStub'))
+    MyCurationsPanel: (await import('@/__tests__/routes/projects/PastProjectsPage/fixtures/pastProjectsModuleStub'))
         .pastProjectsModuleStub(archiveRow, addedRow).MyCurationsPanel,
 }));
 
