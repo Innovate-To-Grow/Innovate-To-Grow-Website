@@ -49,7 +49,7 @@
             // "--enhanced" on a field that is not wired means this wrapper arrived via
             // cloneNode/innerHTML (an added inline row): it carries the markup but none of the
             // wiring, so drop the dead md-* elements and let this pass build live ones. A wrapper
-            // without the class is pre-rendered markup (admin/material_password_widget.html) and is
+            // without the class is pre-rendered markup (admin/widgets/material_password_widget.html) and is
             // left intact so its template attributes survive.
             if (existing.classList.contains("i2g-md-field--enhanced")) {
                 existing.classList.remove("i2g-md-field--enhanced", "i2g-md-toggle");

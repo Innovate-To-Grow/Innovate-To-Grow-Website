@@ -15,7 +15,9 @@ class SiteMaintenanceControlAdminFormTests(TestCase):
         self.assertEqual(form.fields["bypass_password"].initial, "")
         self.assertFalse(form.fields["bypass_password"].widget.render_value)
         self.assertIn("rounded-default", form.fields["bypass_password"].widget.attrs["class"])
-        self.assertEqual(form.fields["bypass_password"].widget.template_name, "admin/material_password_widget.html")
+        self.assertEqual(
+            form.fields["bypass_password"].widget.template_name, "admin/widgets/material_password_widget.html"
+        )
 
     def test_blank_password_keeps_existing_hash_without_clear_flag(self):
         config = SiteMaintenanceControl.objects.create(is_maintenance=True, bypass_password="secret123")

@@ -93,7 +93,7 @@ def request_limits_view(request):
         "groups": tier_groups(cards, status),
         "history_url": reverse("admin:admin_logentry_changelist"),
     }
-    return TemplateResponse(request, "admin/core/request_limits.html", context)
+    return TemplateResponse(request, "admin/core/request_limits/request_limits.html", context)
 
 
 @require_GET
