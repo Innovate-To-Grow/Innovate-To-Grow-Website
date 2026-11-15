@@ -21,7 +21,8 @@ from apps.core.services.email.inbound import AUTOMATED, LABELS
 
 from ..admin.tickets import timeline
 from ..models import Ticket, TicketEvent, TicketMessage
-from ..services import numbering, tickets
+from ..services import tickets
+from ..services.tickets import numbering
 from . import corpus
 from .helpers import FakeReader, helpdesk_staff, receive
 

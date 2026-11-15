@@ -16,7 +16,7 @@ from apps.core.tests.services.email_monitoring.helpers import make_email
 from apps.mail.models import EmailCampaign
 
 from ..models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
-from ..services.ingest.store import OWN_MAIL_NOTE
+from ..services.ingest.pipeline.messages import OWN_MAIL_NOTE
 from . import corpus
 from .helpers import FakeReader, ingest, queue, receive
 
@@ -82,9 +82,11 @@ class PersonTests(TestCase):
         self.assertTrue(old.backfilled)
 
     def test_a_high_scam_score_makes_it_spam_and_a_medium_one_suspicious(self):
-        with patch("apps.helpdesk.services.ingest.classify.analyze_email", return_value={"risk_level": "high"}):
+        with patch("apps.helpdesk.services.ingest.routing.classify.analyze_email", return_value={"risk_level": "high"}):
             spam = receive(corpus.message(message_id="<s1@example.org>"))
-        with patch("apps.helpdesk.services.ingest.classify.analyze_email", return_value={"risk_level": "medium"}):
+        with patch(
+            "apps.helpdesk.services.ingest.routing.classify.analyze_email", return_value={"risk_level": "medium"}
+        ):
             suspicious = receive(corpus.message(message_id="<s2@example.org>", sender="other@example.org"))
 
         self.assertEqual((spam.status, spam.automated, spam.classification), (Status.SPAM, True, "spam"))

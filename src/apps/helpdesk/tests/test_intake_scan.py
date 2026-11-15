@@ -20,7 +20,7 @@ from apps.core.tests.services.email_monitoring.helpers import monitoring_setting
 from apps.core.tests.services.email_monitoring.test_bounce_scanner import FakeReader, listed
 
 from ..models import HelpdeskSettings, IntakeState, Ticket
-from ..services.ingest import jobs as ingest_jobs
+from ..services.ingest.pipeline import jobs as ingest_jobs
 from ..services.intake import jobs, scanner, status
 from ..services.intake import state as intake_state
 from . import corpus
@@ -29,7 +29,7 @@ from .helpers import make_admin
 
 READER = "apps.helpdesk.services.intake.scanner.active_reader"
 STATUS_READER = "apps.helpdesk.services.intake.status.active_reader"
-INGEST_READER = "apps.helpdesk.services.ingest.runner.active_reader"
+INGEST_READER = "apps.helpdesk.services.ingest.pipeline.runner.active_reader"
 Status = InboundMessage.Status
 
 

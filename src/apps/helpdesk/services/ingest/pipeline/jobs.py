@@ -17,7 +17,7 @@ from apps.core.models import BackgroundJob
 from apps.core.services.email.inbound import consume
 from apps.mail.models import EmailCampaign
 
-from ...models import HelpdeskSettings
+from ....models import HelpdeskSettings
 from . import runner
 
 INGEST_JOB_KIND = "helpdesk.ingest_inbound"
@@ -32,7 +32,7 @@ def register_ingest() -> None:
     """Called from ``HelpdeskConfig.ready``."""
     from apps.core.services.background_jobs import register_job_kind
 
-    register_job_kind(INGEST_JOB_KIND, handler="apps.helpdesk.services.ingest.jobs.run_ingest_job")
+    register_job_kind(INGEST_JOB_KIND, handler="apps.helpdesk.services.ingest.pipeline.jobs.run_ingest_job")
 
 
 def ingest_enabled() -> bool:

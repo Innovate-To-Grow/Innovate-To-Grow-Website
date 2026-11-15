@@ -1,7 +1,7 @@
 """Tickets and their categories.
 
 A ticket is opened by the first message of a conversation that reaches the mailbox; later messages of the same
-conversation join it (``services.ingest.matching``). Automated mail (out-of-office replies, bounce reports, receipts,
+conversation join it (``services.ingest.routing.matching``). Automated mail (out-of-office replies, bounce reports, receipts,
 list mail, spam, the site's own messages) opens a ticket that is closed at once and hidden from the default queue
 (``automated``): it raises no notification, has no response target and never reopens. Every link to a member or a
 campaign is ``SET_NULL``, so a ticket outlives a deleted account and keeps the requester's address.

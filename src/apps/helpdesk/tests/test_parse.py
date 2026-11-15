@@ -5,8 +5,9 @@ from datetime import UTC, datetime
 
 from django.test import SimpleTestCase
 
-from ..services.ingest import parse as parsing
-from ..services.ingest.parse import clean_filename, parse
+from ..services.ingest.reading import mime as parsing
+from ..services.ingest.reading.mime import clean_filename
+from ..services.ingest.reading.parse import parse
 from . import corpus
 
 

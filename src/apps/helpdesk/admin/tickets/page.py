@@ -7,7 +7,8 @@ from unfold.decorators import display
 from apps.core.services.email.inbound import LABELS
 
 from ...models import HelpdeskSettings
-from ...services import shadow, tickets
+from ...services import tickets
+from ...services.tickets import shadow
 from . import timeline, views
 from .queue import EDITABLE
 

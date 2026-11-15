@@ -13,7 +13,7 @@ claims the site's own address without proof, so a responder that marks nothing i
 
 from apps.core.services.email.inbound import NO_AUTO_RESPONSE
 
-from ..models import HelpdeskSettings, Ticket, TicketMessage
+from ...models import HelpdeskSettings, Ticket, TicketMessage
 
 # Flipped by the release that adds replies and notifications; until then nothing can send, whatever the settings say.
 SENDING_IMPLEMENTED = False

@@ -15,7 +15,7 @@ from apps.core.models import InboundMessage
 from apps.core.services.email.inbound import LABELS, consume
 
 from ...models import IngestRecord, Ticket
-from ...services.ingest import jobs
+from ...services.ingest.pipeline import jobs
 
 Status = InboundMessage.Status
 PROBLEMS = (Status.FAILED, Status.SKIPPED)

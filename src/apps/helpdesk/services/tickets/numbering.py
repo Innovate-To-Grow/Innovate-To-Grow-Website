@@ -11,7 +11,7 @@ import re
 from django.db import IntegrityError, connection, transaction
 from django.db.models import Max
 
-from ..models import TICKET_PREFIX, Ticket
+from ...models import TICKET_PREFIX, Ticket
 
 FIRST_NUMBER = 1001
 SEQUENCE = "helpdesk_ticket_number_seq"

@@ -6,9 +6,9 @@ from django.test import SimpleTestCase
 from apps.core.services.email.inbound import LINK_PLACEHOLDER
 
 from ..models import HelpdeskSettings, TicketAttachment
-from ..services.ingest import attachments as files
-from ..services.ingest.parse import ParsedAttachment
-from ..services.ingest.sanitize import frame_document, sanitize_html
+from ..services.ingest.reading import attachments as files
+from ..services.ingest.reading.message import ParsedAttachment
+from ..services.ingest.reading.sanitize import frame_document, sanitize_html
 from .corpus import LOGIN_LINK
 
 LIMIT = 1024 * 1024

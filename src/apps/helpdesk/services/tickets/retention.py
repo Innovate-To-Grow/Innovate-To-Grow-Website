@@ -14,7 +14,7 @@ from django.conf import settings as django_settings
 from django.db.models import Q
 from django.utils import timezone
 
-from ..models import HelpdeskSettings, Ticket, TicketAttachment, TicketMessage
+from ...models import HelpdeskSettings, Ticket, TicketAttachment, TicketMessage
 
 CLOSED = Ticket.CLOSED_STATUSES
 

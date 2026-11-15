@@ -1,129 +1,24 @@
-"""Reading one inbound message from its raw MIME: envelope headers, bodies, attachments and attached messages.
+"""Walking a message's MIME parts: bodies, attachments and attached messages, within the limits."""
 
-Anyone can mail the mailbox, so the input is hostile. Headers are read with ``core``'s hardened helpers (``compat32``
-parsing, every value cut to 998 characters before it is decoded); the MIME tree is walked to at most ``MAX_PARTS``
-parts and ``MAX_DEPTH`` levels (a message is marked ``incomplete`` past them); each text part is decoded from at most
-``TEXT_PART_MAX_BYTES``; attached messages (forwards, the original inside a bounce report) are read to a summary of
-their headers and text, never kept as raw bytes, and their own attachments are ignored. A message cut off at the
-read limit (``truncated``) keeps what was read. NUL characters are dropped from every text read (headers, bodies,
-part headers): PostgreSQL text cannot hold them, and a body that has some (a UTF-16 part labelled as another charset
-is full of them) must still become a ticket. Nothing here touches the database.
-"""
-
-import hashlib
 import mimetypes
-from dataclasses import dataclass, field
-from datetime import datetime
-
-from bs4 import BeautifulSoup
 
 from apps.core.services.email.inbound import headers as mime
 from apps.core.services.email.telemetry import text
 
-MAX_PARTS = 500
-MAX_DEPTH = 12
-MAX_ATTACHED_MESSAGES = 5
-TEXT_PART_MAX_BYTES = 4 * 1024 * 1024
-ATTACHED_TEXT_MAX_CHARS = 64 * 1024
-HTML_TO_TEXT_MAX_CHARS = 256 * 1024
-NESTED_TYPES = frozenset({"message/rfc822", "message/global"})
-# Machine-readable parts of a report: the bounce processor reads them; they are neither body nor attachment here.
-REPORT_PARTS = frozenset(
-    {
-        "message/delivery-status",
-        "message/global-delivery-status",
-        "message/disposition-notification",
-        "message/global-disposition-notification",
-        "text/rfc822-headers",
-        "message/global-headers",
-    }
+from .message import (
+    _PART_ERRORS,
+    ATTACHED_TEXT_MAX_CHARS,
+    BODY_TYPES,
+    MAX_ATTACHED_MESSAGES,
+    MAX_DEPTH,
+    MAX_PARTS,
+    NESTED_TYPES,
+    REPORT_PARTS,
+    TEXT_PART_MAX_BYTES,
+    ParsedAttachment,
+    ParsedMessage,
+    html_to_text,
 )
-BODY_TYPES = ("text/plain", "text/html")
-_PART_ERRORS = (AssertionError, LookupError, TypeError, ValueError, UnicodeError, IndexError, AttributeError)
-
-
-@dataclass
-class ParsedAttachment:
-    filename: str
-    content_type: str
-    content_id: str = ""
-    is_inline: bool = False
-    data: bytes | None = None
-    size: int = 0
-
-
-@dataclass
-class ParsedMessage:
-    headers: dict
-    message_id: str = ""
-    in_reply_to: str = ""
-    references: list = field(default_factory=list)
-    subject: str = ""
-    from_address: str = ""
-    from_name: str = ""
-    to: list = field(default_factory=list)
-    cc: list = field(default_factory=list)
-    reply_to: str = ""
-    date_header: str = ""
-    sent_at: datetime | None = None
-    content_type: str = "text/plain"
-    report_type: str = ""
-    text: str = ""
-    html: str = ""
-    attachments: list = field(default_factory=list)
-    attached_messages: list = field(default_factory=list)
-    has_calendar: bool = False
-    truncated: bool = False
-    incomplete: bool = False
-
-    def text_head(self, chars: int = 4096) -> str:
-        return (self.text or html_to_text(self.html))[:chars]
-
-    def fingerprint(self) -> str:
-        """One message, however often it arrives: its Message-ID, or (none) its sender, date, subject and text."""
-        if self.message_id:
-            basis = f"message-id\n{self.message_id.lower()}"
-        else:
-            basis = "\n".join(
-                ("content", self.from_address, self.date_header, text.normalize_subject(self.subject), self.text[:4096])
-            )
-        return hashlib.sha256(basis.encode("utf-8", "replace")).hexdigest()
-
-
-def html_to_text(html: str, limit: int = HTML_TO_TEXT_MAX_CHARS) -> str:
-    if not html:
-        return ""
-    return BeautifulSoup(html[:limit], "html.parser").get_text("\n").strip()
-
-
-def parse(raw: bytes, *, truncated: bool = False) -> ParsedMessage:
-    message = mime.parse(raw)
-    headers = mime.header_map(message)
-    content_type, params = mime.content_type(message)
-    parsed = ParsedMessage(
-        headers=headers,
-        truncated=truncated,
-        content_type=content_type,
-        report_type=params.get("report-type", "").strip().lower()[:64],
-    )
-    _read_envelope(parsed, headers)
-    _Walker(parsed).walk(message, 0)
-    return parsed
-
-
-def _read_envelope(parsed: ParsedMessage, headers: dict) -> None:
-    sender = mime.addresses(mime.first(headers, "from"), limit=1)
-    parsed.from_name, parsed.from_address = sender[0] if sender else ("", "")
-    parsed.to = [address for _name, address in mime.addresses(mime.joined(headers, "to"))]
-    parsed.cc = [address for _name, address in mime.addresses(mime.joined(headers, "cc"))]
-    reply_to = mime.addresses(mime.first(headers, "reply-to"), limit=1)
-    parsed.reply_to = reply_to[0][1] if reply_to else ""
-    parsed.subject = mime.decoded(mime.first(headers, "subject"))
-    parsed.message_id = text.message_id(mime.first(headers, "message-id"))
-    parsed.in_reply_to = text.message_id(mime.first(headers, "in-reply-to"))
-    parsed.references = mime.message_ids(mime.joined(headers, "references"))
-    parsed.date_header = text.clean(mime.first(headers, "date"), 64)
-    parsed.sent_at = mime.date(mime.first(headers, "date"))
 
 
 class _Counter:
