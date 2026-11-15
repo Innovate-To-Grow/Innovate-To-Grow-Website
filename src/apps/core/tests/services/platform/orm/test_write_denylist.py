@@ -1,7 +1,7 @@
 import uuid
 
 from django.core.exceptions import PermissionDenied
-from django.test import TestCase
+from django.test import TestCase, tag
 
 from apps.authn.models import (
     AdminInvitation,
@@ -33,6 +33,7 @@ from apps.projects.models import Semester
 from apps.system_intelligence.models import SystemIntelligenceExport
 
 
+@tag("safe_orm")
 class WriteDenylistTests(TestCase):
     """Tables a proposed record write never touches. Contact rows (sign-in factors), verification challenges (proofs of
     a code), admin invitations (they make staff), the RSA sign-in key, the CLI audit log and background jobs can be
@@ -85,6 +86,7 @@ class WriteDenylistTests(TestCase):
         self.assertFalse(is_model_denied(Member, write=True))
 
 
+@tag("safe_orm")
 class RecordsTests(TestCase):
     def setUp(self):
         self.sem = Semester.objects.create(year=2030, season=1)
