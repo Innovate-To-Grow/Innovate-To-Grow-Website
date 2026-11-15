@@ -1,0 +1,130 @@
+<script nonce="{{ request.csp_nonce }}">
+(function(){
+  var lookupUrl = '{% url "admin:cms_pageview_ip_geo_lookup" %}';
+  var popup = null, overlay = null;
+
+  function close() {
+    if (popup) popup.remove();
+    if (overlay) overlay.remove();
+    popup = overlay = null;
+  }
+
+  function icon(name, size) {
+    var span = document.createElement('span');
+    span.className = 'material-symbols-outlined';
+    span.style.fontSize = size || '16px';
+    span.textContent = name;
+    return span;
+  }
+
+  function popupHeader(ip) {
+    var header = document.createElement('div');
+    header.className = 'ip-geo-popup-header';
+    var title = document.createElement('strong');
+    title.textContent = ip;
+    var button = document.createElement('button');
+    button.className = 'ip-geo-popup-close';
+    button.appendChild(icon('close', '18px'));
+    button.addEventListener('click', close);
+    header.append(title, button);
+    return header;
+  }
+
+  function popupRow(label, value) {
+    var row = document.createElement('div');
+    row.className = 'ip-geo-popup-row';
+    var labelEl = document.createElement('span');
+    labelEl.className = 'ip-geo-popup-label';
+    labelEl.textContent = label;
+    var valueEl = document.createElement('span');
+    valueEl.className = 'ip-geo-popup-value';
+    valueEl.textContent = value;
+    row.append(labelEl, valueEl);
+    return row;
+  }
+
+  function setPopupLoading(ip) {
+    popup.replaceChildren(popupHeader(ip));
+    var loading = document.createElement('div');
+    loading.className = 'ip-geo-popup-loading';
+    var spinner = icon('progress_activity', '16px');
+    spinner.style.animation = 'spin 1s linear infinite';
+    loading.append(spinner, document.createTextNode(' Loading...'));
+    popup.appendChild(loading);
+  }
+
+  function setPopupError(message) {
+    var loading = popup && popup.querySelector('.ip-geo-popup-loading');
+    if (!loading) return;
+    var error = document.createElement('span');
+    error.style.color = 'var(--color-red-600,#dc2626)';
+    error.textContent = message;
+    loading.replaceChildren(error);
+  }
+
+  function renderGeoDetails(ip, d) {
+    if (!popup) return;
+    var loc = [d.city, d.region, d.country].filter(Boolean).join(', ');
+    var children = [popupHeader(ip)];
+    if (loc) children.push(popupRow('Location', loc));
+    if (d.zip) children.push(popupRow('ZIP', String(d.zip)));
+    if (d.isp) children.push(popupRow('ISP', String(d.isp)));
+    if (d.org) children.push(popupRow('Org', String(d.org)));
+
+    var lat = Number(d.lat);
+    var lon = Number(d.lon);
+    if (Number.isFinite(lat) && Number.isFinite(lon)) {
+      children.push(popupRow('Coords', lat + ', ' + lon));
+      var link = document.createElement('a');
+      link.className = 'ip-geo-popup-map-link';
+      link.href = 'https://www.google.com/maps?q=' + encodeURIComponent(lat + ',' + lon);
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.append(icon('map', '16px'), document.createTextNode(' View on Map'));
+      children.push(link);
+    }
+    popup.replaceChildren.apply(popup, children);
+  }
+
+  function show(ip, rect) {
+    close();
+    overlay = document.createElement('div');
+    overlay.className = 'ip-geo-popup-overlay';
+    overlay.addEventListener('click', close);
+    document.body.appendChild(overlay);
+
+    popup = document.createElement('div');
+    popup.className = 'ip-geo-popup';
+    setPopupLoading(ip);
+
+    var top = rect.bottom + 6, left = rect.left;
+    if (top + 280 > window.innerHeight) top = rect.top - 280;
+    if (left + 340 > window.innerWidth) left = window.innerWidth - 350;
+    popup.style.top = top + 'px';
+    popup.style.left = Math.max(8, left) + 'px';
+    document.body.appendChild(popup);
+
+    fetch(lookupUrl + '?ip=' + encodeURIComponent(ip), {credentials: 'same-origin'})
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        if (!popup) return;
+        if (d.error) {
+          setPopupError(d.error);
+          return;
+        }
+        renderGeoDetails(ip, d);
+      })
+      .catch(function() {
+        if (popup) popup.querySelector('.ip-geo-popup-loading').textContent = 'Network error';
+      });
+  }
+
+  document.addEventListener('click', function(e) {
+    var el = e.target.closest('.ip-geo-link');
+    if (!el) return;
+    e.preventDefault();
+    show(el.getAttribute('data-ip'), el.getBoundingClientRect());
+  });
+})();
+</script>
+<style nonce="{{ request.csp_nonce }}">@keyframes spin{to{transform:rotate(360deg)}}</style>
