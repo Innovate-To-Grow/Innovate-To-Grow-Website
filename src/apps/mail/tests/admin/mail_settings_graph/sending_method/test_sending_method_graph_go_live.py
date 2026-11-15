@@ -20,7 +20,7 @@ from apps.core.services.email.graph import auth, transport
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.graph_access.helpers import DENY, SCOPED, ProbeFake
 
-from ..mail_settings.test_mail_settings_providers import EmailSendingMethodTestCase
+from ...mail_settings.test_mail_settings_providers import EmailSendingMethodTestCase
 
 FROM = "admin@example.com"  # the From address email starts with (EmailSendingMethodTestCase), outside the scope
 

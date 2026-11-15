@@ -2,7 +2,7 @@ from django.urls import reverse
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig
 from apps.event.tests.helpers import make_admin
-from apps.mail.tests.admin.mail_settings_graph.test_mail_settings_admin_graph import (
+from apps.mail.tests.admin.mail_settings_graph.settings.test_mail_settings_admin_graph import (
     GRAPH_CONFIG_URL_NAME,
     GRAPH_INPUTS,
     PROVIDER_ERROR,

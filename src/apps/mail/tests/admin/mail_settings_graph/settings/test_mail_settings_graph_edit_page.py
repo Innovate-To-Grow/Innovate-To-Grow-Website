@@ -1,7 +1,7 @@
 from django.urls import reverse
 
 from apps.event.tests.helpers import make_admin
-from apps.mail.tests.admin.mail_settings_graph.test_mail_settings_admin_graph import (
+from apps.mail.tests.admin.mail_settings_graph.settings.test_mail_settings_admin_graph import (
     CLIENT_ID,
     GRAPH_CONFIG_URL_NAME,
     TENANT_ID,
