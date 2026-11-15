@@ -7,7 +7,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.db.migrations.loader import MigrationLoader
 from django.test import SimpleTestCase, TransactionTestCase
 
-from apps.core.admin.mixins.confirm_on_save_utils import SENSITIVE_FIELD_RE as CONFIRM_SENSITIVE_FIELD_RE
+from apps.core.admin.confirmation.post_data import SENSITIVE_FIELD_RE as CONFIRM_SENSITIVE_FIELD_RE
 from apps.core.services.db_tools.safe_orm import SENSITIVE_FIELD_RE as SAFE_ORM_SENSITIVE_FIELD_RE
 
 MAIN_0033 = ("core", "0033_awscredentialconfig_credentials_secret_arn")
