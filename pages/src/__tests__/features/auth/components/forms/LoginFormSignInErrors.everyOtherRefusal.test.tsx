@@ -17,7 +17,7 @@ vi.mock('@/lib/security', () => ({
 
 import {authApi} from '@/features/auth/api/session/client';
 import {AuthProvider} from '@/features/auth/components/AuthContext';
-import {VerifiedSendStatus} from '@/features/auth/verification/VerifiedSendStatus';
+import {VerifiedSendStatus} from '@/features/auth/components/shared/VerifiedSendStatus';
 import {setVerifiedSendStatus} from '@/features/auth/verification/status';
 import {LOCKED, renderForm, type Reply, reply, signInWithPassword} from '@/__tests__/features/auth/components/forms/loginFormSignInErrorsFixtures';
 

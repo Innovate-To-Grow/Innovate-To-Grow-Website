@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 
-import {getVerifiedSendStatus, subscribeVerifiedSendStatus} from './status';
-import type {VerifiedSendStatus as Status} from './types';
+import {getVerifiedSendStatus, subscribeVerifiedSendStatus} from '@/features/auth/verification/status';
+import type {VerifiedSendStatus as Status} from '@/features/auth/verification/types';
 
 import './VerifiedSendStatus.css';
 
