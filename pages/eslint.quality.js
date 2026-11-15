@@ -1,4 +1,4 @@
-// Size and complexity limits for pages/src (policy: docs/architecture/code-quality.md).
+// Size and complexity limits for pages/src (policy: docs/standards/code-quality.md).
 //
 // Each limit is a pair: `advisory` values are only reported by
 // `npm run quality:report`; `hard` values are ESLint errors in `npm run lint`.

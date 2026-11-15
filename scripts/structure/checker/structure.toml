@@ -1,5 +1,5 @@
 # Repository structure rules for `python -m scripts.structure.checker` (architecture spec R001-R005, R024, R032).
-# Policy and how to add an entry: docs/architecture/code-quality.md ("Repository structure").
+# Policy and how to add an entry: docs/standards/code-quality.md ("Repository structure").
 #
 # Patterns are repository-relative POSIX globs: `*` stays inside one path segment, `**/` spans any number of
 # segments, and `.` is the repository root. Every entry needs a `reason`. An entry that no longer matches

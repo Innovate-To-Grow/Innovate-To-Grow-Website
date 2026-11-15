@@ -60,7 +60,7 @@ Web process with an unconsumed queue. SIGTERM receives the Fargate maximum
 120-second stop window. Besides jobs, the worker runs the hourly database
 maintenance (retired RSA keys, public-assistant budgets, send-verification rows,
 expired sessions, login failure windows) listed in
-[Send verification: scheduled cleanup](send-verification.md#scheduled-cleanup).
+[Send verification: scheduled cleanup](../operations/send-verification.md#scheduled-cleanup).
 
 The task was increased from 0.5 vCPU/1 GiB to 1 vCPU/2 GiB so the second Django
 runtime cannot starve Web requests or trigger avoidable out-of-memory restarts.
@@ -202,7 +202,7 @@ Served from S3 via `django-storages`:
 | `/static/` | Collected static files (admin CSS, CKEditor assets) |
 | `/media/` | User uploads (CMS assets, profile images) |
 
-`src/Dockerfile` collects the static files into the image at build time (`/app/static`), and `deploy-backend.yml` copies them out of the release image and syncs them to S3 (`--size-only`) before the rollout. `src/docker/entrypoint.sh` also runs `collectstatic` at every Web container start, because its fallback checks `staticfiles/`, which the image never contains; under the production settings that pass writes to the bucket's `static/` prefix, and if it fails it logs `collectstatic failed (non-fatal)` and the container still starts.
+`src/Dockerfile` collects the static files into the image at build time (`/app/static`), and `deploy-backend.yml` copies them out of the release image and syncs them to S3 (`--size-only`) before the rollout. `src/docker/runtime/entrypoint.sh` also runs `collectstatic` at every Web container start, because its fallback checks `staticfiles/`, which the image never contains; under the production settings that pass writes to the bucket's `static/` prefix, and if it fails it logs `collectstatic failed (non-fatal)` and the container still starts.
 
 ## Related pages
 

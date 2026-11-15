@@ -78,7 +78,7 @@ finding starts.
   limiter stays off (as in the backend container smoke, which sets
   `-e REQUEST_RATE_LIMITS_ENABLED=false`). `scripts/ci/tests/workflow/test_ci_workflow_invariants.py`
   fails if either loses it or any workflow switches the limiter on; the limiter's
-  own tests turn it on in-process ([Request limits](../integrations/request-limits.md))
+  own tests turn it on in-process ([Request limits](../integrations/limits/request-limits.md))
 - The Playwright container image, the npm package (pinned exactly in
   `pages/package.json`), and the e2e venv cache label move together;
   `validate_tool_versions.py` fails preflight if they drift
@@ -238,7 +238,7 @@ See [production authentication](production.md#aws-authentication-and-rollout).
 
 - All workflow runs visible at the repository's Actions tab
 - `CI Timing Report` adds a per-job duration table to each run's summary
-- Semgrep and Trivy findings from `main` appear in the Security tab ([Code scanning](code-scanning.md) says how alerts are triaged)
+- Semgrep and Trivy findings from `main` appear in the Security tab ([Code scanning](../operations/code-scanning.md) says how alerts are triaged)
 - Deploy smoke tests catch basic runtime issues (readiness, CORS)
 - CloudWatch logs capture runtime errors after deployment
 

@@ -65,7 +65,7 @@ Non-field errors use the `non_field_errors` key or `detail` for simple messages.
 
 ### Throttling
 
-Two layers limit requests (design and runbook: [Request limits](../integrations/request-limits.md)):
+Two layers limit requests (design and runbook: [Request limits](../integrations/limits/request-limits.md)):
 
 1. **The request limiter** (`RequestRateLimitMiddleware`) limits every request by **scope**, a group of endpoints
    with a priority tier: P0 critical (sign-in, verification codes a person asked for, token refresh, session check,
@@ -98,7 +98,7 @@ one caller in one scope block it for a growing, bounded time, so retrying faster
 
 #### Keys and per-view limits
 
-**Sign-in, emailed-link, verification-code and ALTCHA-challenge endpoints have no per-IP throttle**: campus users share one public IP, so such a limit throttles everyone at once (and is bypassable through `X-Forwarded-For`). They are bounded by the token, the per-destination cooldown/hourly cap and the per-challenge attempt cap instead, and password login by an identifier-keyed failure lockout (`429` with `code: "login_locked"`; see [Auth & Mail](auth-and-mail.md#login)). Per-IP limits for off-campus traffic belong at the edge and exclude campus addresses: see [WAF rate limits](../deployment/waf-rate-limits.md).
+**Sign-in, emailed-link, verification-code and ALTCHA-challenge endpoints have no per-IP throttle**: campus users share one public IP, so such a limit throttles everyone at once (and is bypassable through `X-Forwarded-For`). They are bounded by the token, the per-destination cooldown/hourly cap and the per-challenge attempt cap instead, and password login by an identifier-keyed failure lockout (`429` with `code: "login_locked"`; see [Auth & Mail](auth-and-mail.md#login)). Per-IP limits for off-campus traffic belong at the edge and exclude campus addresses: see [WAF rate limits](../operations/waf-rate-limits.md).
 
 Nothing a campus user does is limited by client IP. Every throttle's rate is a **request-limit policy** (Site
 Settings → Request Limits, scope `view-…`), read live: an edit applies within seconds, without a restart. Smart
@@ -134,11 +134,11 @@ Limits that are not throttle classes:
 
 | Limit | Keyed on | Where |
 |-------|----------|-------|
-| Verification sends: 60-second cooldown, hourly cap | Destination (email address or phone number) | [Send verification](../deployment/send-verification.md) |
+| Verification sends: 60-second cooldown, hourly cap | Destination (email address or phone number) | [Send verification](../operations/send-verification.md) |
 | Code-guess attempts and degradation | Challenge and destination | [Auth & Mail](auth-and-mail.md#rate-limit-policy-no-client-ip-limits-on-sign-in) |
 | Password sign-in lockout (member and admin-panel login) | Account identifier; the admin "remembered" form uses a separate counter only the signed-cookie holder can reach | [Auth & Mail](auth-and-mail.md#login) |
-| SMS daily budget (`sms_daily_limit`) | Global, set in Django admin | [Send verification](../deployment/send-verification.md#sms-daily-budget) |
-| Assistant and AI search token budgets | Visitor token or member, plus one global budget per feature (limit set in Django admin) | [Assistant and AI search limits](../integrations/assistant-limits.md) |
+| SMS daily budget (`sms_daily_limit`) | Global, set in Django admin | [Send verification](../operations/send-verification.md#sms-daily-budget) |
+| Assistant and AI search token budgets | Visitor token or member, plus one global budget per feature (limit set in Django admin) | [Assistant and AI search limits](../integrations/limits/assistant-limits.md) |
 | Maintenance bypass: 20 wrong passwords per 15 minutes (policy `view-maintenance-bypass`), then every attempt `429` until the period ends | Everyone together (one shared password; never the client IP) | `POST /maintenance/bypass/` |
 | Staff invitation: 10 submissions per hour (policy `view-invitation`) | The invitation | `POST /authn/invite/<token>/` |
 | CSP reports: 60 per minute (policy `view-csp-report`, seeded from `CSP_REPORT_RATE_LIMIT` / `CSP_REPORT_RATE_WINDOW_SECONDS`) | Client address | `POST /csp-report/` (over the limit a report is dropped, still `204`) |

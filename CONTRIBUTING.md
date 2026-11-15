@@ -125,7 +125,7 @@ python -m scripts.ci.python_quality
 python -m scripts.ci.python_dependencies
 ```
 The rules, how lines and complexity are counted, and how to record a justified exception are in
-[docs/architecture/code-quality.md](docs/architecture/code-quality.md). `npm run quality:report` lists the
+[docs/standards/code-quality.md](docs/standards/code-quality.md). `npm run quality:report` lists the
 advisory (non-blocking) findings.
 
 ---
@@ -140,7 +140,7 @@ advisory (non-blocking) findings.
 - When touching authentication, remember the custom `authn.Member` model (UUIDs, custom fields).
 - Settings live in `src/config/settings/`: `base/` contains shared configuration, `production/` contains production overrides, and `environments/` contains the entrypoints; use `config.settings.environments.local` for development, `config.settings.environments.test` in CI, and `config.settings.environments.production` in deployment.
 - Keep the API contract in sync with the frontend TypeScript interfaces in each feature's `api/` module (`pages/src/features/<domain>/api/`). Payloads stay snake_case.
-- Respect the app dependency directions in [docs/architecture/code-quality.md](docs/architecture/code-quality.md#dependency-directions): `core` never imports a business app; register with shared machinery (e.g. `register_job_kind` in `AppConfig.ready()`) instead.
+- Respect the app dependency directions in [docs/standards/code-quality.md](docs/standards/code-quality.md#dependency-directions): `core` never imports a business app; register with shared machinery (e.g. `register_job_kind` in `AppConfig.ready()`) instead.
 
 ### Frontend (React + TypeScript)
 - All components should be functional components with hooks; avoid class components.

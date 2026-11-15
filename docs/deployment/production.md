@@ -135,7 +135,7 @@ Core app installs in Django admin. The key is stored in one Secrets Manager secr
 `itg/backend/microsoft-graph/certificate-key`, outside the
 `itg/backend/aws-credentials/` namespace. Each install adds a version; the
 database keeps only the certificate's public data, the secret ARN and the pinned
-version ID. Runbook: [Microsoft Graph email](../integrations/microsoft-graph-email.md#where-the-private-key-is-kept).
+version ID. Runbook: [Microsoft Graph email](../integrations/messaging/microsoft-graph-email.md#where-the-private-key-is-kept).
 
 This secret is a deliberate exception to the task role's read-only access to
 application credentials, and it needs InfoSec sign-off before go-live. The
@@ -191,14 +191,14 @@ version and the key's public facts. The key reaches further than the Graph one:
 with domain-wide delegation it can send as any user in the Workspace domain, so
 it needs InfoSec sign-off before go-live. Deploy the identity stack before the
 first install; until the secret exists an install fails and changes nothing.
-Runbook: [Gmail API email](../integrations/gmail-api-email.md).
+Runbook: [Gmail API email](../integrations/messaging/gmail-api-email.md).
 
 Image rollback: code from before the Gmail API provider does not know the
 `gmail` provider value. Switch email to AWS SES before deploying such an image.
 
 ### Delivery rates release
 
-The delivery-rate limiter ([Delivery rates](../integrations/delivery-rates.md))
+The delivery-rate limiter ([Delivery rates](../integrations/limits/delivery-rates.md))
 paces every email, SMS and inbox session. Before or with the release:
 
 1. **IAM reads for Smart rate.** Grant the shared application IAM user (the

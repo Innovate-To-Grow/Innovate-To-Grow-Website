@@ -6,7 +6,7 @@ several apps share and that names no business app: domain behaviour belongs in
 the owning app (e.g. the Bedrock client and the assistant's query tools now live
 in ``system_intelligence``, the sitemap in ``cms``). Read this before adding a
 module: put it in the owning app unless it is genuinely shared. ``core`` must not
-import business apps at module level (``scripts/ci/check_python_dependencies.py``);
+import business apps at module level (``python -m scripts.ci.python_dependencies``);
 apps plug into shared machinery through registration hooks instead.
 Consumers below are the apps that import each path today (verified, excluding
 ``core``'s own modules).
@@ -59,11 +59,11 @@ Subsystem               What it is                                            Im
 Extracting ``background_jobs`` or ``db_tools`` into their own apps would need new
 Django app labels — and app labels are stored **in the database**
 (``Member.admin_apps``, read by ``apps.core.utils.access``), so it requires a data
-migration. See ``docs/architecture/repository-structure.md``.
+migration. See ``docs/standards/repository-structure.md``.
 
 Structure limits are enforced by
 ``apps/core/tests/services/test_core_services_structure.py``: at most 200
 *physical* lines per file and 10 ``.py`` files (``__init__.py`` included) per
 directory in this tree. These are stricter than, and counted differently from,
-the repository-wide limits in ``docs/architecture/code-quality.md``.
+the repository-wide limits in ``docs/standards/code-quality.md``.
 """

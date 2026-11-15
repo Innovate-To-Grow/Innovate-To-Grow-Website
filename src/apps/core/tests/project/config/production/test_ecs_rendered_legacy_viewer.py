@@ -7,7 +7,7 @@ from apps.core.tests.project.config.production.test_ecs_task_definition import T
 
 
 class ECSRenderedLegacyViewerTests(SimpleTestCase):
-    """Rendered-task rules for the private Legacy viewer (docs/deployment/legacy-view.md)."""
+    """Rendered-task rules for the private Legacy viewer (docs/operations/legacy-view.md)."""
 
     SECRET_ARN = "arn:aws:secretsmanager:us-west-2:123456789012:secret:itg/backend/legacy-view-origin-header"
 

@@ -177,7 +177,7 @@ their go-live checks), and has:
   Graph can be selected. In production Graph can be selected only after an
   admin with the Core app has run the access check with the current certificate and it
   matched the approval (the panel's **Go-live evidence** line says what is
-  missing; see [Validate the access restriction](../integrations/microsoft-graph-email.md#validate-the-access-restriction)).
+  missing; see [Validate the access restriction](../integrations/messaging/microsoft-graph-email.md#validate-the-access-restriction)).
   Graph authenticates with a certificate only; an
   admin with the Core app installs it there, and its private key is kept in the credential
   store, never in the database. The sender mailbox
@@ -189,7 +189,7 @@ their go-live checks), and has:
   rule score is in the medium band still sends its sender, subject,
   authentication results and the first 4,000 characters of its body to
   Amazon Bedrock for a second opinion (see
-  [Admin inbox](../integrations/microsoft-graph-email.md#admin-inbox)).
+  [Admin inbox](../integrations/messaging/microsoft-graph-email.md#admin-inbox)).
   Graph mail counts against the
   mailbox's Exchange Online limits (its rate is on **Mail → Delivery Rates**) and reports
   no delivery events. Campaigns, replies and notices are copied to its Sent
@@ -199,7 +199,7 @@ their go-live checks), and has:
   has no `List-Unsubscribe` header (Graph cannot send one without the copy);
   its footer's unsubscribe link stays.
   Setup in Entra and Exchange Online is in
-  [Microsoft Graph email](../integrations/microsoft-graph-email.md).
+  [Microsoft Graph email](../integrations/messaging/microsoft-graph-email.md).
 - **Gmail API** shows the active Gmail API configuration read-only: its key
   ID, service account, numeric client ID, project, when the key was installed
   and the access check last passed, and the **account allow-list** (the Google
@@ -212,7 +212,7 @@ their go-live checks), and has:
   that folder by **Mail → Inbox** or **Import from Gmail**, and the inbox's **Sent** folder is
   shown to staff with the Mail app only while the Gmail import account is one the site sends
   as. Rates and daily limits are on **Mail → Delivery Rates**. Setup:
-  [Gmail API email](../integrations/gmail-api-email.md).
+  [Gmail API email](../integrations/messaging/gmail-api-email.md).
 - AWS settings remain available for SMS even when email uses SMTP, Microsoft
   Graph or the Gmail API. Changing the email provider does not switch the SMS provider.
 
@@ -254,7 +254,7 @@ once, when sending starts (with the background worker, when the campaign is queu
 that still receives that campaign.
 
 **Suppressed addresses.** Every audience type leaves out an address that staff marked undeliverable or suppressed on
-**Email Monitoring → Bounced addresses** ([Email Monitoring](../integrations/email-monitoring.md#bounced-addresses)),
+**Email Monitoring → Bounced addresses** ([Email Monitoring](../integrations/messaging/email-monitoring.md#bounced-addresses)),
 compared in lower case (event audiences compare the attendee email). The previews and the send confirmation show
 "N recipients skipped: undeliverable", and a recipient queued before the address was suppressed is checked again just
 before sending and recorded as failed ("Not sent: this address is suppressed for bulk mail"). A member whose primary
@@ -347,7 +347,7 @@ stop, and ends the campaign **Partially sent**. The **Resume paused recipients
 (held back by delivery limits)** action on the Email Campaigns and SMS Campaigns
 lists sends exactly those later, through the queue when background jobs are
 enabled; it leaves a campaign that is still sending or queued alone. See
-[Delivery rates](../integrations/delivery-rates.md#waiting-deferral-and-the-background-worker).
+[Delivery rates](../integrations/limits/delivery-rates.md#waiting-deferral-and-the-background-worker).
 
 Provider calls whose outcome cannot be determined are marked `uncertain` and
 are never resent automatically. A verified SES event for the same send attempt
@@ -361,9 +361,9 @@ through SES. SMTP and Microsoft Graph campaigns record submission acceptance as
 `sent` (for Graph, an HTTP 202 from `sendMail`); no later delivery status is
 inferred without a feedback integration. Graph's non-delivery reports arrive in
 the sender mailbox, where bounce processing reads them for
-[Email monitoring](../integrations/email-monitoring.md) without changing the recipient log, and its
+[Email monitoring](../integrations/messaging/email-monitoring.md) without changing the recipient log, and its
 uncertain outcomes are explained in the
-[error reference](../integrations/microsoft-graph-email.md#error-reference).
+[error reference](../integrations/messaging/microsoft-graph-email.md#error-reference).
 Email Monitoring's **Amazon SES** tab under **Delivery Operations** (the former
 Delivery Dashboard, whose old address redirects there) charts SES CloudWatch
 metrics only and shows a notice while another provider is active.
@@ -424,7 +424,7 @@ replaces it (enter another value to make it your own limit). **Internal domain**
 the domain of an account on the Gmail API allow-list or a parent domain of it, since recipients there do not count
 against Google's external limit.
 How the rate, the daily limits and the stops are worked out, every seed with its source, and what to do when a
-provider stops sending: [Delivery rates](../integrations/delivery-rates.md).
+provider stops sending: [Delivery rates](../integrations/limits/delivery-rates.md).
 
 ### Login link tokens
 
@@ -458,7 +458,7 @@ Viewable as inline records in the campaign admin.
 
 ## Broadcast SMS: opt-outs, quiet hours, links and ticket texts
 
-What staff need to know before texting people (full detail: [AWS SMS](../integrations/aws-sms.md)):
+What staff need to know before texting people (full detail: [AWS SMS](../integrations/messaging/aws-sms.md)):
 
 - **SMS Opt-outs** (Broadcast Campaigns tabs) lists every number no text goes to: people who replied STOP (read
   from AWS every hour, or **Sync with AWS now**) and numbers staff added because someone asked them to stop. A
@@ -488,8 +488,8 @@ What staff need to know before texting people (full detail: [AWS SMS](../integra
 - [Django Admin](django-admin.md) — Admin interface and customization
 - [API: Auth & Mail](../api/auth-and-mail.md) — Auth and mail API endpoints
 - [Architecture: Integrations](../architecture/integrations.md) — AWS SES, SMTP, Microsoft Graph, the Gmail API, and AWS SMS configuration
-- [Microsoft Graph email](../integrations/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
-- [Gmail API email](../integrations/gmail-api-email.md) — service account, domain-wide delegation, key install, the access check and Sent copies for the Gmail API provider
-- [Delivery rates](../integrations/delivery-rates.md) — Smart rate, manual rate, budgets, stops and Resume for every delivery channel
-- [AWS SMS](../integrations/aws-sms.md) — SMS opt-outs and their AWS sync, the footer, quiet hours, the cost estimate, links in SMS, ticket texts and the /register QR code
+- [Microsoft Graph email](../integrations/messaging/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
+- [Gmail API email](../integrations/messaging/gmail-api-email.md) — service account, domain-wide delegation, key install, the access check and Sent copies for the Gmail API provider
+- [Delivery rates](../integrations/limits/delivery-rates.md) — Smart rate, manual rate, budgets, stops and Resume for every delivery channel
+- [AWS SMS](../integrations/messaging/aws-sms.md) — SMS opt-outs and their AWS sync, the footer, quiet hours, the cost estimate, links in SMS, ticket texts and the /register QR code
 - [Operations](operations.md) — Operational tasks

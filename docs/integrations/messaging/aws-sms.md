@@ -5,7 +5,7 @@ Operator runbook for the SMS policy the site applies on top of AWS End User Mess
 cost estimate, short links in texts (`/l/<token>`), ticket texts for phone-only registrants, and the short
 `/register` link with its QR code. Staff manage it in the admin under **Broadcast Campaigns → SMS Settings** and
 **SMS Opt-outs**. Sending itself (credentials, the origination number, pacing and budgets) is unchanged:
-[Delivery rates](delivery-rates.md) and **Notification Delivery**.
+[Delivery rates](../limits/delivery-rates.md) and **Notification Delivery**.
 
 > **Open item before links go live.** Links in SMS (and with them ticket texts) are **off** by default. Before
 > turning them on, confirm that the sending number's 10DLC campaign (or toll-free verification) declares

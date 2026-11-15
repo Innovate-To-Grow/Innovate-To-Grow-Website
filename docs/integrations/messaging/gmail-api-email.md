@@ -36,7 +36,7 @@ the access check), `src/apps/core/models/base/service_credentials/gmail_api/` (`
   messages, 3,000 recipients and 2,000 external recipients per rolling 24 hours, with a 0.9 budget headroom and a 25 %
   reserve for sign-in codes and tickets. The limits include mail people send from the account in Gmail, which the
   site cannot see. Values and sources: `config/settings/base/integrations/delivery_rates/defaults/` (`sending_channels.py`, sources in `channels.py`); how Smart rate
-  and the budgets work: [Delivery rates](delivery-rates.md).
+  and the budgets work: [Delivery rates](../limits/delivery-rates.md).
 
 Items marked **[CONFIRM LIVE]** are taken from Google's documentation and were not observed: nothing in this change
 was sent to Google (the tests use mocked HTTP).
@@ -213,7 +213,7 @@ in `DELIVERY_RATES["signals"]["gmail_api"]`). Google's free text is matched, nev
 `GMAIL_API` (`config/settings/base/integrations/email/gmail_api/`, overridable with `GMAIL_API_OVERRIDES`): request
 timeout, response cap, recipients and size ceilings (also the config fields' seeds and ceilings), the upload
 endpoint's maximum, assertion and token lifetimes, key-file size and RSA key size, and the key-test and access-check
-timeouts. See [Environments](../deployment/environments.md#gmail-api-email).
+timeouts. See [Environments](../../deployment/environments.md#gmail-api-email).
 
 ## To confirm with Google and UC Merced [CONFIRM LIVE]
 

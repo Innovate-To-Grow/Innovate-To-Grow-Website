@@ -431,7 +431,7 @@ The private key is never stored in the database, code, images, task definitions 
   included).
 
 AWS permissions (`aws/cicd/identity-stack.json`; deployment notes in
-[Production](../deployment/production.md#microsoft-graph-certificate-key)):
+[Production](../../deployment/production.md#microsoft-graph-certificate-key)):
 
 - The secret is created empty, with `DeletionPolicy` and `UpdateReplacePolicy` `Retain`. Never set a value
   in the console: only the backend adds versions.
@@ -442,7 +442,7 @@ AWS permissions (`aws/cicd/identity-stack.json`; deployment notes in
   every principal except `ecsTaskRole`. No person or other role can read the key through IAM; break-glass
   means an account administrator changes the resource policy, which CloudTrail records.
 - **This is an exception** to the rule that the ECS task role has read-only access to application
-  credentials ([Production](../deployment/production.md#application-aws-credentials-and-background-jobs)):
+  credentials ([Production](../../deployment/production.md#application-aws-credentials-and-background-jobs)):
   the backend must write a version when a Core admin installs a certificate. It needs InfoSec sign-off
   ([Open items](#open-items-before-go-live)).
 
@@ -788,7 +788,7 @@ deploy also catches certificate expiry.
   copy. Received mail stays in the Inbox. Retention is set by the UC Merced Microsoft 365 records policy for
   the mailbox, not by the site.
 - **Inbox views on the site.** Production has no Redis, so the site cache is a file cache on each
-  container's disk (see [Environments](../deployment/environments.md#production-cache-today)). An opened
+  container's disk (see [Environments](../../deployment/environments.md#production-cache-today)). An opened
   message (headers, addresses, text and HTML body) and each list are written there unencrypted. They are
   served for at most 30 and 5 minutes, but the file stays on that container's disk until it is read again,
   removed when the cache is culled (above 2,000 entries), or the task is replaced. The site stores no other
@@ -886,7 +886,7 @@ Microsoft's defaults for one sender mailbox and app, as published on Microsoft L
 
 All app email shares one mailbox, so a campaign draws on the same allowance as login codes, tickets,
 invitations, and test emails. Login-code emails are capped per destination but not in total (see
-[Send verification](../deployment/send-verification.md)), so a burst of code requests for many
+[Send verification](../../operations/send-verification.md)), so a burst of code requests for many
 different addresses can use the same allowance. Every email and mailbox read is paced as described under
 [Campaign pacing](#campaign-pacing). When Graph throttles a request it answers `429`, `503` or `509` and the
 app pauses Graph for the mailbox; watch the sender mailbox Inbox for non-delivery reports too when volume
@@ -898,8 +898,8 @@ Every email the site sends through Graph, and every admin inbox read, goes throu
 (`apps.core.services.delivery_rates`): one schedule per sender mailbox, shared by every web process, worker
 and campaign thread. Its settings are the **Email · Microsoft Graph** and **Inbox · Microsoft Graph**
 delivery-rate policies (Mail → Delivery Rates), seeded from `DELIVERY_RATES` (see
-[Environments](../deployment/environments.md#delivery-rates)). How Smart rate, the manual rate, the budgets and
-the stops work for every channel: [Delivery rates](delivery-rates.md).
+[Environments](../../deployment/environments.md#delivery-rates)). How Smart rate, the manual rate, the budgets and
+the stops work for every channel: [Delivery rates](../limits/delivery-rates.md).
 
 - **Rate.** Smart rate is on by default: 80 % of the mailbox's messages per minute (30 on the Graph configuration,
   from OIT), that is 24 per minute, slowing down when Graph throttles and speeding up again step by step. With
@@ -952,7 +952,7 @@ Every failure is classified so callers know whether sending again is safe:
   for it ask the recipient or use the Exchange message trace.
 
 How a campaign records these depends on how it runs. With the background worker enabled
-(`BACKGROUND_JOBS_ENABLED`, see [Environments](../deployment/environments.md)) a recipient becomes
+(`BACKGROUND_JOBS_ENABLED`, see [Environments](../../deployment/environments.md)) a recipient becomes
 `retry` (transient, retried automatically with growing delays), `failed` (permanent), or `uncertain`
 (review it, then use the admin retry action). Without the worker, the in-process sender makes one
 attempt per recipient and records every failure as `failed`, keeping the message. One-off sends such as

@@ -8,5 +8,5 @@ Run from the repository root (standard library only, Python 3.11+):
     python -m scripts.structure.checker migrations --base <sha> --head <sha>
 
 Limits, the unmeasured paths, the exceptions and the protected migration paths live in ``structure.toml``.
-Policy: docs/architecture/code-quality.md ("Repository structure").
+Policy: docs/standards/code-quality.md ("Repository structure").
 """

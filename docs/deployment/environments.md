@@ -48,7 +48,7 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle and request-limit identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
 | `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | Enabled in production through `itg/backend/deploy-config`; code defaults to false |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
-| `EMAIL_TELEMETRY_ENABLED`, `EMAIL_TELEMETRY_STORE_SUBJECTS` | Record every outgoing email and attempt; keep subjects ([Email monitoring](../integrations/email-monitoring.md#configuration)) | No (both default to true) |
+| `EMAIL_TELEMETRY_ENABLED`, `EMAIL_TELEMETRY_STORE_SUBJECTS` | Record every outgoing email and attempt; keep subjects ([Email monitoring](../integrations/messaging/email-monitoring.md#configuration)) | No (both default to true) |
 | `EMAIL_BOUNCE_PROCESSING_ENABLED`, `EMAIL_BOUNCE_MAILBOXES` | Read bounce reports in the Graph sending mailbox; the only mailboxes it may read (comma-separated) | No (default true, `i2g@ucmerced.edu`) |
 
 ### AWS / Storage
@@ -73,7 +73,7 @@ The SES variables below matter only while AWS SES is the selected email provider
 
 ### Microsoft Graph (email)
 
-The Microsoft Graph email provider has no environment variables. Its Entra tenant ID, client ID, sender mailbox, mailbox scope and the mailbox's sending limits (OIT's recipients per message, messages per minute and recipients per day and hour; the delivery-rate ceilings) live in [`MicrosoftGraphProviderConfig`](../../src/apps/core/models/base/service_credentials/microsoft_graph/) and are entered on the Graph configuration's admin page (`/admin/core/microsoftgraphproviderconfig/`, Core app); Mail → Notification Delivery only selects Graph and shows the configuration read-only. It authenticates with a certificate only (no client secret) whose private key is kept in the credential store: the Secrets Manager secret `itg/backend/microsoft-graph/certificate-key` in production, written by the backend's task role ([Production](production.md#microsoft-graph-certificate-key)). The database keeps only the certificate's public data and the pinned version (`MicrosoftGraphCertificate`). The other deployment requirement is outbound HTTPS (port 443) from the backend and background-worker containers to `login.microsoftonline.com` and `graph.microsoft.com`; the provider connects to them directly and ignores proxy environment variables. Setup and limits: [Microsoft Graph email](../integrations/microsoft-graph-email.md).
+The Microsoft Graph email provider has no environment variables. Its Entra tenant ID, client ID, sender mailbox, mailbox scope and the mailbox's sending limits (OIT's recipients per message, messages per minute and recipients per day and hour; the delivery-rate ceilings) live in [`MicrosoftGraphProviderConfig`](../../src/apps/core/models/base/service_credentials/microsoft_graph/) and are entered on the Graph configuration's admin page (`/admin/core/microsoftgraphproviderconfig/`, Core app); Mail → Notification Delivery only selects Graph and shows the configuration read-only. It authenticates with a certificate only (no client secret) whose private key is kept in the credential store: the Secrets Manager secret `itg/backend/microsoft-graph/certificate-key` in production, written by the backend's task role ([Production](production.md#microsoft-graph-certificate-key)). The database keeps only the certificate's public data and the pinned version (`MicrosoftGraphCertificate`). The other deployment requirement is outbound HTTPS (port 443) from the backend and background-worker containers to `login.microsoftonline.com` and `graph.microsoft.com`; the provider connects to them directly and ignores proxy environment variables. Setup and limits: [Microsoft Graph email](../integrations/messaging/microsoft-graph-email.md).
 
 These Django settings (not environment variables) bound the certificate, the access check and the key store. The defaults are in `config/settings/base/integrations/email/microsoft_graph/` and `config/settings/base/integrations/email/credential_store/`; the production values come from `config/settings/production/django.py`, and the test values from `config/settings/environments/test.py` (and `local.py` under `manage.py test`). The `core` system checks (`core.E001`–`core.E007`, `apps/core/checks/`) stop every management command, container start-up included, when one is invalid.
 
@@ -126,7 +126,7 @@ The Gmail API provider's service account, key facts and account allow-list live 
 
 | Section | Holds (defaults) |
 |---------|------------------|
-| `channels.<channel>` | `smart_enabled`, `manual_rate`, `provider_limit`, `fallback_rate`, `headroom`, `burst`, `recovery_interval_seconds`, `backoff_initial_seconds` / `backoff_max_seconds`; sending channels also `daily_limit`, `budget_headroom`, `transactional_reserve`; plus per-channel keys (Graph hourly limits and `limits_confirmed`, the Gmail API's message and external limits, SMTP `host_profiles`, SMS `parts_limit`, the SES and SMS discovery intervals, and `request_timeout_seconds` 10 for each SES `SendRawEmail` and SMS `SendTextMessage` call, connect and read, instead of botocore's 60 s). Values and sources: [Delivery rates](../integrations/delivery-rates.md#seeds-by-channel) |
+| `channels.<channel>` | `smart_enabled`, `manual_rate`, `provider_limit`, `fallback_rate`, `headroom`, `burst`, `recovery_interval_seconds`, `backoff_initial_seconds` / `backoff_max_seconds`; sending channels also `daily_limit`, `budget_headroom`, `transactional_reserve`; plus per-channel keys (Graph hourly limits and `limits_confirmed`, the Gmail API's message and external limits, SMTP `host_profiles`, SMS `parts_limit`, the SES and SMS discovery intervals, and `request_timeout_seconds` 10 for each SES `SendRawEmail` and SMS `SendTextMessage` call, connect and read, instead of botocore's 60 s). Values and sources: [Delivery rates](../integrations/limits/delivery-rates.md#seeds-by-channel) |
 | `controller` | Smart rate: `start_factor` 1.0 (0.5 without a known limit), `decrease_factor` 0.5, `recovery_step` 0.10, `floor` 0.25, `backoff_jitter` 0.20, `retry_after_max_seconds` 3600 (Microsoft Graph also caps at `GRAPH_MAX_RETRY_AFTER_SECONDS`, the smaller applying), `persistent_throttle_count` 8, `breaker_probe_seconds` 900 doubling to `breaker_probe_max_seconds` 21600 |
 | `waits` | Longest wait for a slot: `inline_seconds` 10 (a request), `read_seconds` 5 (an inbox read), `worker_seconds` 30, `dedicated_seconds` 900 (an in-process campaign); `inline_request_budget_seconds` 25 (sizes inline batches; Graph's 30 s, the Gmail API's 15 s per request and the 30 s Gmail IMAP timeouts are failure bounds that may exceed it) |
 | `lanes` | `bulk_share` 0.8 (campaigns' share of the rate), `transactional_reserve` 0.10 (the share of each daily limit campaigns leave) |
@@ -152,7 +152,7 @@ running site at once; its other scope keys only seed rows that do not exist yet.
 import (an unknown key, a share or count out of range, a baseline above its per-caller ceiling, a route to an unknown
 scope, a route both limited and exempt…), and a
 bad value raises `ImproperlyConfigured` before any process serves a request. Reference and runbook:
-[Request limits](../integrations/request-limits.md).
+[Request limits](../integrations/limits/request-limits.md).
 
 | Section | Holds (defaults) |
 |---------|------------------|
@@ -203,7 +203,7 @@ password-login lockout for member and admin-panel sign-in (including the admin "
 (`authn_loginfailurewindow`), and the assistant / AI-search token budgets, per
 visitor or member and global (`PublicAssistantTokenBudget`, used when
 `REDIS_URL` is unset; see
-[Assistant and AI search limits](../integrations/assistant-limits.md)). What
+[Assistant and AI search limits](../integrations/limits/assistant-limits.md)). What
 still depends on the per-container cache, and is therefore per task and best
 effort:
 
@@ -318,7 +318,7 @@ Three per-view limiters also use the client IP, each for a stated reason:
 |---------|------|----------------|
 | `SesEventThrottle` / `SesRejectedThrottle` on `POST /mail/ses/events/` | 600/minute signed, 60/minute rejected | Callers are AWS SNS delivery addresses, never users. Authenticity comes from the SNS signature and topic allowlist; signed deliveries and rejected calls are counted apart, so junk never uses up the real deliveries' allowance |
 | CSP-report log limiter (`/csp-report/`) | 60 reports/minute | Detection only: the endpoint always answers `204` and only logging is skipped |
-| `PhoneAuthCodeRequestThrottle` (anonymous SMS code requests) | 5/minute | Fallback only, attached while **no** SMS daily budget is configured. Setting `sms_daily_limit` removes it with no deploy ([Send verification](send-verification.md#client-ip-policy-and-residual-risks)) |
+| `PhoneAuthCodeRequestThrottle` (anonymous SMS code requests) | 5/minute | Fallback only, attached while **no** SMS daily budget is configured. Setting `sms_daily_limit` removes it with no deploy ([Send verification](../operations/send-verification.md#client-ip-policy-and-residual-risks)) |
 
 Their rates are request-limit policies (`view-ses-events`, `view-ses-rejected`,
 `view-csp-report`, `view-code-send-sms-ip`), editable in the admin. Apart from these and the
@@ -326,7 +326,7 @@ request limiter's anonymous flood ceilings above, the client IP is only recorded
 `ip_hash` and the CLI audit rows. The two anonymous endpoints with no
 IP-independent bound on request count, `POST /analytics/pageview/` and
 `POST /assistant/chat/`, get an off-campus-only rate rule at the edge
-([WAF rate limits](waf-rate-limits.md), pattern set C).
+([WAF rate limits](../operations/waf-rate-limits.md), pattern set C).
 
 ### Frontend / CORS
 

@@ -6,7 +6,7 @@ knowledge.
 
 > **Public document.** This repository is public. This page names services and roles only. Account IDs, resource
 > names and ARNs, hostnames of internal systems, IP addresses, credentials, contacts and ticket numbers belong in the
-> **private ops doc** (see the [operations runbook skeleton](../deployment/ops-runbook.md)).
+> **private ops doc** (see the [operations runbook skeleton](../operations/ops-runbook.md)).
 
 ## What the system does
 
@@ -56,7 +56,7 @@ The I2G platform supports the School of Engineering's Innovate to Grow program a
 | Archive site | A small separate site that serves the event pages of past years | Visitors |
 
 How a request travels from a browser to the database is described in [Request flow](request-flow.md), and the code
-layout in [Repository structure](repository-structure.md).
+layout in [Repository structure](../standards/repository-structure.md).
 
 ## Where the data lives
 
@@ -66,7 +66,7 @@ layout in [Repository structure](repository-structure.md).
 | Event registrations, tickets, check-ins | Database; optionally copied to a Google Sheet | Until deleted |
 | Website pages, menus, news | Database; images in S3 | Until deleted |
 | Email and SMS campaigns and their recipient lists (addresses, phone numbers, status) | Database | Until deleted |
-| Records of every email sent (who, when, provider answer) | Database ([Email monitoring](../integrations/email-monitoring.md)) | 180 days |
+| Records of every email sent (who, when, provider answer) | Database ([Email monitoring](../integrations/messaging/email-monitoring.md)) | 180 days |
 | Bounce reports read from the mailbox | Database | 365 days |
 | The email messages themselves (received and sent) | The i2g@ucmerced.edu mailbox in Microsoft 365; the site reads them but does not store their text (the admin's inbox page caches what staff open for a few minutes; the planned helpdesk will store messages) | Mailbox policy |
 | Website page views (path, IP address, a random browser ID) | Database | Until deleted (no automatic clean-up yet) |
@@ -87,7 +87,7 @@ only as a fingerprint). Exports made from the admin contain personal data and sh
 2. **Pacing.** Each provider has sending limits (for the Exchange mailbox: per minute and per day as set by UC
    Merced IT, and Microsoft's standard hourly limits). The site paces every send to stay under them and keeps part of
    the allowance for sign-in codes and tickets, so a large campaign takes hours, and a long list carries on the next
-   day ([Delivery rates](../integrations/delivery-rates.md)).
+   day ([Delivery rates](../integrations/limits/delivery-rates.md)).
 3. **Campaigns.** A campaign resolves its audience when it is sent, then queues one job per recipient. The
    background worker sends them at the paced rate. If the message uses a personal sign-in link, each recipient
    with an account gets their own; others get a link to the sign-in page.
@@ -104,7 +104,7 @@ only as a fingerprint). Exports made from the admin contain personal data and sh
 The site can read the i2g@ mailbox but cannot change it: it never moves, deletes, forwards or marks messages, and
 its connection to Microsoft refuses every request except sending and reading. The app it uses authenticates with a
 certificate, and UC Merced IT reports that it is restricted to the I2G mailbox; the status of that evidence is kept
-in [Microsoft Graph email](../integrations/microsoft-graph-email.md).
+in [Microsoft Graph email](../integrations/messaging/microsoft-graph-email.md).
 
 ## How SMS works
 
@@ -187,5 +187,5 @@ Names, contacts, account numbers and ticket references for each service are in t
 
 - [Staff handbook](../staff/README.md): step-by-step tasks in the admin.
 - [Architecture](index.md): how the code is organised.
-- [Deployment guide](../deployment/index.md) and the [operations runbook skeleton](../deployment/ops-runbook.md).
+- [Deployment guide](../deployment/index.md) and the [operations runbook skeleton](../operations/ops-runbook.md).
 - [Integrations](integrations.md): every outside service in detail.

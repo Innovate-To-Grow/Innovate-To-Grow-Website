@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Report and enforce size / nesting / complexity limits for active Python code.
 
-Counting rules (documented in docs/architecture/code-quality.md):
+Counting rules (documented in docs/standards/code-quality.md):
 
 * A *logical line* is a physical line holding at least one code token. Blank
   lines, comment-only lines and docstring lines are not counted.

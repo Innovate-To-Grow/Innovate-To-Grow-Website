@@ -163,4 +163,4 @@ cd pages && npm run lint && npx tsc --noEmit && npm test && npm run build
 
 - [Environments](environments.md) — Configuration differences across environments
 - [CI/CD](ci-cd.md) — What runs in the CI pipeline
-- [Architecture: Repository Structure](../architecture/repository-structure.md) — Directory layout
+- [Architecture: Repository Structure](../standards/repository-structure.md) — Directory layout

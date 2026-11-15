@@ -178,7 +178,7 @@ jobs:
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
 
-  # Architecture spec R024/R032 (docs/architecture/code-quality.md, "Repository
+  # Architecture spec R024/R032 (docs/standards/code-quality.md, "Repository
   # structure"). Ungated like preflight: every run checks every diff.
   repository-structure:
     name: Repository Structure and Migration Guard
@@ -560,7 +560,7 @@ jobs:
         run: npm run lint
 
       # Layer boundaries, import cycles and directory sizes (ESLint enforces the
-      # per-file / per-function hard limits above). See docs/architecture/code-quality.md.
+      # per-file / per-function hard limits above). See docs/standards/code-quality.md.
       - name: Check frontend structure
         if: ${{ !cancelled() && steps.frontend-setup.outcome == 'success' }}
         run: npm run check:structure

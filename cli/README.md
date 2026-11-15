@@ -83,7 +83,7 @@ Access requires the logged-in account be active **and** staff. The `apps`
 command filters its output through the account's `admin_apps` grants (superusers
 bypass that filter), and the backend enforces the same grants for model access.
 
-See [`CHANGELOG.md`](CHANGELOG.md) for release notes and [`docs/cms-admin/cli-admin.md`](../docs/cms-admin/cli-admin.md) for the authoritative reference.
+See [`CHANGELOG.md`](CHANGELOG.md) for release notes and [`docs/operations/cli-admin.md`](../docs/operations/cli-admin.md) for the authoritative reference.
 
 ## Develop
 

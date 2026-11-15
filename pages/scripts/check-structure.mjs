@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Enforce dependency directions between pages/src layers, forbid new import
-// cycles, and keep directories small (policy: docs/architecture/code-quality.md).
+// cycles, and keep directories small (policy: docs/standards/code-quality.md).
 //
 // Layers, lowest first. A module may import its own layer and anything below
 // it, never upward:

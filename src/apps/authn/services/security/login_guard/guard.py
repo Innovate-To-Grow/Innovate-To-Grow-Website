@@ -24,7 +24,7 @@ from .counters import (
 )
 
 # These functions used to live in ``login_guard`` itself; keep that logger name.
-# The log name the spray alert is documented under (docs/deployment/send-verification.md), kept when this moved.
+# The log name the spray alert is documented under (docs/operations/send-verification.md), kept when this moved.
 logger = logging.getLogger("apps.authn.services.login_guard")
 
 
