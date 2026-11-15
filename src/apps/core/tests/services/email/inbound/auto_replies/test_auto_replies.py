@@ -7,7 +7,7 @@ Pure: no database."""
 from django.test import SimpleTestCase
 
 from apps.core.services.email.inbound import REPLY_HINT, classify
-from apps.core.services.email.inbound.autoreply import kind_of
+from apps.core.services.email.inbound.classification.autoreply import kind_of
 
 from .. import samples
 from ..classify.test_classify import OWN, evidence

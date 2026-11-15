@@ -2,7 +2,7 @@ from contextlib import ExitStack, contextmanager
 from unittest.mock import patch
 
 from apps.core.management.commands import run_background_worker
-from apps.core.services.delivery_rates.maintenance import MaintenanceResult
+from apps.core.services.delivery_rates.lifecycle.maintenance import MaintenanceResult
 
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
 NOTHING_MAINTAINED = MaintenanceResult(limits_read=0, buckets_purged=0, states_purged=0)

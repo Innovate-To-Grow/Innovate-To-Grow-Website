@@ -7,8 +7,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.core.models import EmailBounce, OutboundEmail
-from apps.core.services.email.bounces.dsn import parse_report
-from apps.core.services.email.bounces.store import (
+from apps.core.services.email.bounces.recording.dsn import parse_report
+from apps.core.services.email.bounces.recording.store import (
     classify_unclassified,
     reclassify_stored,
     refresh_worst,

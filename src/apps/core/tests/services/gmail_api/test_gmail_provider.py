@@ -18,8 +18,8 @@ from apps.core.services.email.gmail.client import auth, compose
 from apps.core.services.email.gmail.client import provider as provider_module
 from apps.core.services.email.gmail.client.access import credential_for, require_subject
 from apps.core.services.email.gmail.client.provider import GmailProvider
-from apps.core.services.email.mime import CREDENTIAL_MAIL_CLASS, MAIL_CLASS_HEADER
-from apps.core.services.email.transport import ConnectFailed, ResponseLost
+from apps.core.services.email.sending.mime import CREDENTIAL_MAIL_CLASS, MAIL_CLASS_HEADER
+from apps.core.services.email.sending.transport import ConnectFailed, ResponseLost
 from apps.core.tests.gmail_api_helpers import (
     SUBJECT,
     TOKEN,

@@ -10,11 +10,11 @@ from django.utils import timezone
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphCertificate
 from apps.core.services.credential_store import get_store, memory
 from apps.core.services.email import PermanentEmailDeliveryError
-from apps.core.services.email.graph import auth
-from apps.core.services.email.graph.access import credential_for
 from apps.core.services.email.graph.credential import recovery, stored_key
 from apps.core.services.email.graph.credential.lifecycle import CertificateChangeError, install_certificate
 from apps.core.services.email.graph.credential.recovery import remove_certificates, rollback_certificate
+from apps.core.services.email.graph.identity import auth
+from apps.core.services.email.graph.identity.access import credential_for
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.graph_credential.helpers import (
     LifecycleFixtureMixin,

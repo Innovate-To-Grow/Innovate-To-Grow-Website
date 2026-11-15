@@ -97,7 +97,7 @@ def make_email_config(*, provider=EmailServiceConfig.Provider.GMAIL, from_email=
 
 
 def _response(status: int, body: dict, headers=None):
-    from apps.core.services.email.transport import HttpResponse
+    from apps.core.services.email.sending.transport import HttpResponse
 
     return HttpResponse(status=status, headers=headers or {}, body=json.dumps(body).encode())
 

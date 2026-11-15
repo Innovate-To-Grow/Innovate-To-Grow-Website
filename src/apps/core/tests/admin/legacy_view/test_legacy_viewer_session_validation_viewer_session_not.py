@@ -6,16 +6,13 @@ from django.contrib.sessions.models import Session
 from django.test import Client, override_settings
 from django.utils import timezone
 
-from apps.core.models import LegacyAccessGrant
-from apps.core.services.legacy_access import (
+from apps.core.legacy_view.access import (
     LegacyViewerAccessDenied,
     exchange_legacy_access_code,
     issue_legacy_access_grant,
 )
-from apps.core.services.legacy_access.sessions import (
-    _discard_viewer_session,
-    create_viewer_session,
-)
+from apps.core.legacy_view.access.sessions import _discard_viewer_session, create_viewer_session
+from apps.core.models import LegacyAccessGrant
 from apps.core.tests.admin.legacy_view.test_legacy_viewer_session_validation import _LegacyViewerSessionValidationCase
 from apps.event.tests.helpers import make_admin
 
@@ -30,7 +27,7 @@ class LegacyViewerSessionValidationTests(_LegacyViewerSessionValidationCase):
         self.assertEqual(Session.objects.count(), 1)
 
     def test_discard_failure_is_swallowed(self):
-        with patch("apps.core.services.legacy_access.sessions._session_store", side_effect=RuntimeError("db down")):
+        with patch("apps.core.legacy_view.access.sessions._session_store", side_effect=RuntimeError("db down")):
             self.assertIsNone(_discard_viewer_session("any-session-key-0123456789"))
 
     def test_grant_requires_core_access(self):
@@ -63,9 +60,9 @@ class LegacyViewerSessionValidationTests(_LegacyViewerSessionValidationCase):
         now = timezone.now()
 
         with (
-            patch("apps.core.services.legacy_access.grants.timezone.now", return_value=now),
-            patch("apps.core.services.legacy_access.grants.database_session_expiry", return_value=now),
-            patch("apps.core.services.legacy_access.grants.source_session_is_valid", return_value=True),
+            patch("apps.core.legacy_view.access.grants.timezone.now", return_value=now),
+            patch("apps.core.legacy_view.access.grants.database_session_expiry", return_value=now),
+            patch("apps.core.legacy_view.access.grants.source_session_is_valid", return_value=True),
             self.assertRaisesMessage(LegacyViewerAccessDenied, "about to expire"),
         ):
             issue_legacy_access_grant(self._launch_request())

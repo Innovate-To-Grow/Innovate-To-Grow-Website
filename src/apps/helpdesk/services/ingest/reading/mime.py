@@ -2,7 +2,7 @@
 
 import mimetypes
 
-from apps.core.services.email.inbound import headers as mime
+from apps.core.services.email.inbound.classification import headers as mime
 from apps.core.services.email.telemetry import text
 
 from .message import (

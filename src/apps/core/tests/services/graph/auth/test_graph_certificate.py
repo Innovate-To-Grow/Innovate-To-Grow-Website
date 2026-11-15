@@ -13,7 +13,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from django.conf import settings
 from django.test import SimpleTestCase
 
-from apps.core.services.email.graph.certificate import (
+from apps.core.services.email.graph.identity.certificate import (
     build_client_assertion,
     describe_certificate,
     public_key_sha256,
@@ -109,7 +109,7 @@ class BuildClientAssertionTests(SimpleTestCase):
         self.assertNotIn("x5t", header)
 
     def test_times_are_now_and_expire_after_five_minutes(self):
-        with patch("apps.core.services.email.graph.certificate.time.time", return_value=1_800_000_000.7):
+        with patch("apps.core.services.email.graph.identity.certificate.time.time", return_value=1_800_000_000.7):
             token = self.build()
 
         claims = self.decode(token, options={"verify_exp": False, "verify_nbf": False, "verify_iat": False})
@@ -118,7 +118,7 @@ class BuildClientAssertionTests(SimpleTestCase):
         self.assertEqual(claims["exp"], 1_800_000_000 + settings.GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS)
         self.assertEqual(settings.GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS, 300)
         with self.settings(GRAPH_CLIENT_ASSERTION_LIFETIME_SECONDS=120):
-            with patch("apps.core.services.email.graph.certificate.time.time", return_value=1_800_000_000):
+            with patch("apps.core.services.email.graph.identity.certificate.time.time", return_value=1_800_000_000):
                 shorter = self.build()
         claims = self.decode(shorter, options={"verify_exp": False, "verify_nbf": False, "verify_iat": False})
         self.assertEqual(claims["exp"], 1_800_000_000 + 120)

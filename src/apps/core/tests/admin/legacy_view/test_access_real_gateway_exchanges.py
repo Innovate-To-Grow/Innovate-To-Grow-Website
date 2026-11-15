@@ -7,14 +7,14 @@ from django.test import Client, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.core.models import LegacyAccessGrant
-from apps.core.services.legacy_access import (
+from apps.core.legacy_view.access import (
     LEGACY_VIEWER_COOKIE_NAME,
     LEGACY_VIEWER_TTL_SECONDS,
     LegacyViewerAccessDenied,
     clear_legacy_viewer_cookie,
     require_legacy_viewer,
 )
+from apps.core.models import LegacyAccessGrant
 from apps.core.tests.admin.legacy_view.test_access import _LegacyAccessAdminCase
 from apps.core.tests.admin.legacy_view.test_access import urlpatterns as urlpatterns  # ROOT_URLCONF=__name__ below
 from apps.core.tests.legacy_view.proxy.test_transport_and_views import origin_handle
@@ -123,7 +123,7 @@ class LegacyAccessAdminTests(_LegacyAccessAdminCase):
         future = timezone.now() + timedelta(seconds=LEGACY_VIEWER_TTL_SECONDS + 1)
 
         with (
-            patch("apps.core.services.legacy_access.sessions.timezone.now", return_value=future),
+            patch("apps.core.legacy_view.access.sessions.timezone.now", return_value=future),
             self.assertRaises(LegacyViewerAccessDenied),
         ):
             require_legacy_viewer(self._viewer_request(response))

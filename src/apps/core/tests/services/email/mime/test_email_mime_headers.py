@@ -4,7 +4,7 @@ check, so whitespace cannot slip a protected name (the credential-mail tag among
 from django.test import SimpleTestCase
 
 from apps.core.services.email import EmailMessage, PermanentEmailDeliveryError
-from apps.core.services.email.mime import MAIL_CLASS_HEADER, build_mime_message
+from apps.core.services.email.sending.mime import MAIL_CLASS_HEADER, build_mime_message
 
 
 def build(headers, **values):

@@ -1,6 +1,6 @@
 """The helpdesk's verdict on one message: ``core``'s header classifier, then the Mail app's rule-based scam score.
 
-The header classifier decides whether a message is automated (``apps.core.services.email.inbound.classify``). It is
+The header classifier decides whether a message is automated (``apps.core.services.email.inbound.classification.classify``). It is
 told first whether the message replies to the site's mail: an email the site sent (``replies.site_mail_replied``), or
 a message of a person's ticket (``replies.answers_a_person``: a follow-up in a conversation, typically to an answer
 staff sent from Outlook). So a person who answers from a CRM or sales tool (whose mail carries bulk headers) is still

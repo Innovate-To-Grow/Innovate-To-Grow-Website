@@ -80,7 +80,7 @@ def resolve_sender(aws_config=None) -> SmsSender:
 
 
 def active_rate_target() -> tuple[str, str] | None:
-    """The SMS channel and identity in use (``delivery_rates.families``), or None while SMS is not set up.
+    """The SMS channel and identity in use (``delivery_rates.lifecycle.families``), or None while SMS is not set up.
 
     Registered for the SMS family in ``CoreConfig.ready``. It never calls AWS: the worker reads it on every claim,
     so an auto-detected number counts only once a send has cached it.

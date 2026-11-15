@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.utils import timezone
 
 from apps.core.models import EmailBounce, EmailMonitorState
-from apps.core.services.email.bounces import state
+from apps.core.services.email.bounces.scanning import state
 from apps.core.services.email.graph.mailbox import GraphReadBusy, GraphReadError
 from apps.core.tests.services.email_monitoring.bounce_scan.test_bounce_scanner import FakeReader, _ScannerCase
 
@@ -57,7 +57,7 @@ class ScannerTests(_ScannerCase):
     def test_a_report_that_cannot_be_parsed_is_kept_as_unknown(self):
         reader = FakeReader(self.messages[:1], self.bodies)
 
-        with patch("apps.core.services.email.bounces.scanner.parse_report", side_effect=ValueError("broken")):
+        with patch("apps.core.services.email.bounces.scanning.scanner.parse_report", side_effect=ValueError("broken")):
             outcome = self.scan(reader)
 
         bounce = EmailBounce.objects.get()
@@ -84,7 +84,7 @@ class ScannerTests(_ScannerCase):
 
         reader = FakeReader(self.messages, self.bodies)
 
-        with patch("apps.core.services.email.bounces.scanner.save_report", side_effect=DataError("bad data")):
+        with patch("apps.core.services.email.bounces.scanning.scanner.save_report", side_effect=DataError("bad data")):
             outcome = self.scan(reader)
 
         self.assertEqual((outcome.status, outcome.stats["unstorable"]), ("ok", 1))

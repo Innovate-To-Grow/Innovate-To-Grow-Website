@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.models import RequestLimitProcess, RequestRateLimitPolicy
-from apps.core.services.request_limits import limiter
+from apps.core.services.request_limits.enforcement import limiter
 from apps.core.services.request_limits.runtime import heartbeat, signals
 from apps.core.services.request_limits.runtime.context import as_datetime
 

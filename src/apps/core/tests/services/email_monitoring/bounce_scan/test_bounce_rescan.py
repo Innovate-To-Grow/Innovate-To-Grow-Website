@@ -14,7 +14,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.core.models import EmailBounce, EmailMonitorState
-from apps.core.services.email.bounces import scanner, state
+from apps.core.services.email.bounces.scanning import scanner, state
 from apps.event.tests.helpers import make_admin
 
 from ..helpers import SENDER, make_email, monitoring_settings

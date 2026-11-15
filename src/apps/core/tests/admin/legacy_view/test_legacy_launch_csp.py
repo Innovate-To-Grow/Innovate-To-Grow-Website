@@ -7,12 +7,12 @@ from django.http import HttpResponse
 from django.test import Client, RequestFactory, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 
-from apps.core.middleware.csp_middleware import ContentSecurityPolicyMiddleware
-from apps.core.services.legacy_access import (
+from apps.core.legacy_view.access import (
     LegacyViewerAccessDenied,
     exchange_legacy_access_code,
     issue_legacy_access_grant,
 )
+from apps.core.middleware.csp_middleware import ContentSecurityPolicyMiddleware
 from apps.event.tests.helpers import make_admin
 
 

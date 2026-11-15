@@ -10,7 +10,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.core.models import EmailBounce, EmailMonitorState, InboundMessage
-from apps.core.services.email.bounces import scanner
+from apps.core.services.email.bounces.scanning import scanner
 from apps.core.services.email.graph import transport
 from apps.core.services.email.graph.mailbox import IMMUTABLE_ID_PREFERENCE, SCAN_FIELDS
 from apps.core.tests.services.email_monitoring.bounce_scan.test_bounce_scanner import FakeReader, listed
@@ -18,7 +18,7 @@ from apps.core.tests.services.email_monitoring.helpers import SENDER, make_email
 from apps.core.tests.services.email_monitoring.ndr_samples import ORIGINAL_ID, exchange_ndr, personal_email
 from apps.core.tests.services.graph.mailbox.test_graph_mailbox_reader import MAILBOX, GraphReaderFixtureMixin, listing
 
-READER = "apps.core.services.email.bounces.scanner.active_reader"
+READER = "apps.core.services.email.bounces.scanning.scanner.active_reader"
 
 
 class BounceScanRecordsNothingTests(TestCase):

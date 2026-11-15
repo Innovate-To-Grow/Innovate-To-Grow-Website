@@ -17,7 +17,7 @@ from apps.core.models import (
     EmailServiceConfig,
     MicrosoftGraphMailboxScope,
 )
-from apps.core.services.email.bounces import state as bounce_state
+from apps.core.services.email.bounces.scanning import state as bounce_state
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.email_monitoring.helpers import monitoring_settings
 

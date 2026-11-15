@@ -5,7 +5,8 @@ from django.core.cache import cache
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.urls import resolve
 
-from apps.core.services.request_limits import register_exemption, register_scope, scopes
+from apps.core.services.request_limits import register_exemption, register_scope
+from apps.core.services.request_limits.classification import scopes
 
 from ..helpers import isolate, limits_with
 from ..urls import MethodScopedView, exempt_view, unscoped

@@ -18,10 +18,10 @@ writes; ``status`` describes this process's live state and ``overview`` what Sit
 (``apps.core.admin.request_limits``).
 """
 
-from .identity import register_identity_resolver
-from .priority import register_priority_check
-from .scopes import register_exemption, register_scope
-from .status import counter_mode, runtime_status
+from .classification.identity import register_identity_resolver
+from .classification.priority import register_priority_check
+from .classification.scopes import register_exemption, register_scope
+from .reporting.status import counter_mode, runtime_status
 
 __all__ = [
     "counter_mode",

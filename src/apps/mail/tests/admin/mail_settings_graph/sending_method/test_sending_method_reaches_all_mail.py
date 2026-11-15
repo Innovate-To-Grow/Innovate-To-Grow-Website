@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from apps.authn.services.email import send_admin_invitation_email, send_notification_email, send_verification_email
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SMTPProviderConfig
-from apps.core.services.delivery_rates.families import clear_gate_cache
+from apps.core.services.delivery_rates.lifecycle.families import clear_gate_cache
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.delivery_rates.helpers import FakeClock

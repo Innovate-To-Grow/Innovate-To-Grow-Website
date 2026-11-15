@@ -34,7 +34,7 @@ FORBIDDEN_NAMES = {
 }
 FORBIDDEN_MODULES = (
     "apps.core.services.email.graph.transport",
-    "apps.core.services.email.delivery",
+    "apps.core.services.email.sending.delivery",
     "django.core.mail",
 )
 
@@ -101,7 +101,7 @@ class NothingIsSentTests(TestCase):
         refuse = AssertionError("shadow mode: nothing may be sent")
 
         with (
-            patch("apps.core.services.email.delivery.EmailDeliveryService.send", side_effect=refuse) as facade,
+            patch("apps.core.services.email.sending.delivery.EmailDeliveryService.send", side_effect=refuse) as facade,
             patch("django.core.mail.send_mail", side_effect=refuse) as django_mail,
             patch("django.core.mail.EmailMessage.send", side_effect=refuse) as django_message,
             patch("apps.core.services.email.graph.transport.post", side_effect=refuse) as graph_post,

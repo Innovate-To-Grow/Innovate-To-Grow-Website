@@ -10,7 +10,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import SimpleTestCase, TestCase, TransactionTestCase
 from django.utils import timezone
 
-from apps.core.services.email.bounces.dsn import parse_report
+from apps.core.services.email.bounces.recording.dsn import parse_report
 
 from ..helpers import make_bounce, make_email
 from ..review_cases import CASES

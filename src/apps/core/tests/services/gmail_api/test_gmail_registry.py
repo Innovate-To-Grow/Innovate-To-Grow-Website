@@ -5,7 +5,7 @@ from django.test import TestCase
 from apps.core.models import EmailServiceConfig
 from apps.core.services.email import EmailMessage, PermanentEmailDeliveryError, deliver_email, resolve_provider
 from apps.core.services.email.gmail import GmailProvider, GmailScopeError
-from apps.core.services.email.registry import active_rate_target
+from apps.core.services.email.sending.registry import active_rate_target
 from apps.core.tests.gmail_api_helpers import (
     SUBJECT,
     FakePost,

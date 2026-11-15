@@ -12,7 +12,7 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
-from ..transport import ConnectFailed
+from ..sending.transport import ConnectFailed
 
 # The steps of a Graph attempt (``OutboundEmailAttempt.Operation`` values), named here so providers need no model.
 COMPOSE, TOKEN, SEND_MAIL = "compose", "token", "send_mail"

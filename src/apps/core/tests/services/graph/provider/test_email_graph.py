@@ -15,8 +15,8 @@ from typing import NamedTuple
 from unittest.mock import patch
 
 from apps.core.services.email import EmailAttachment, EmailMessage, GraphProvider
-from apps.core.services.email.graph import auth
 from apps.core.services.email.graph import provider as graph_provider
+from apps.core.services.email.graph.identity import auth
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import CLIENT_ID as CLIENT_ID  # re-exported for the other Graph test modules
 from apps.core.tests.graph_helpers import TENANT_ID as TENANT_ID
