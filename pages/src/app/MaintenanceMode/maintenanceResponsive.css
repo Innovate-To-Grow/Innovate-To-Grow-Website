@@ -1,0 +1,61 @@
+@layer itg.components {
+@media (max-width: 640px) {
+  .maintenance-shell {
+    padding: 1.5rem 1rem;
+  }
+
+  .maintenance-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .maintenance-ucm-logo {
+    height: 34px;
+  }
+
+  .maintenance-gear {
+    width: 44px;
+    height: 44px;
+    font-size: 38px;
+  }
+
+  .maintenance-alert {
+    gap: 0.75rem;
+    padding: 1rem;
+  }
+
+  .maintenance-info {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+  }
+
+  .maintenance-footer-links {
+    gap: 0 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .maintenance-footer-links a,
+  .maintenance-container .bypass-toggle-link {
+    min-height: 44px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .maintenance-gear {
+    animation: none;
+  }
+}
+
+/* ---- degraded-service banner (HealthCheckProvider) ---- */
+
+.service-degraded-banner {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--itg-color-accent-gold);
+  background: var(--itg-color-highlight);
+  color: var(--itg-color-text-dark);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  text-align: center;
+}
+}

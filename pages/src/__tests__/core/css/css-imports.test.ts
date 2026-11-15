@@ -140,7 +140,12 @@ describe('maintenance page styles are bundled with the app', () => {
   // The maintenance page is shown when the backend is down, and the backend also serves
   // /api/layout/theme.css, so the page must never depend on that sheet.
   const maintenanceDir = join(SRC_DIR, 'app', 'MaintenanceMode');
-  const maintenanceCss = stripCssComments(readFileSync(join(maintenanceDir, 'MaintenanceMode.css'), 'utf8'));
+  // MaintenanceMode.css is an ordered @import list of its sections (maintenanceCard.css, ...): read them in place.
+  const withImports = (file: string): string =>
+    readFileSync(file, 'utf8').replace(/@import\s+['"](\.\/[^'"]+)['"];/g, (_match, specifier: string) =>
+      withImports(join(dirname(file), specifier)),
+    );
+  const maintenanceCss = stripCssComments(withImports(join(maintenanceDir, 'MaintenanceMode.css')));
 
   /** Declarations of the top-level rule whose whole selector is `selector`. */
   const ruleBody = (selector: string) => {

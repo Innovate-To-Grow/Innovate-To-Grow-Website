@@ -1,0 +1,145 @@
+@layer itg.components {
+.maintenance-container {
+  --maintenance-blue: #0f2d52;
+  --maintenance-gold: #f2a900;
+  --maintenance-gold-light: #ffc107;
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: auto;
+  background: var(--maintenance-blue);
+  color: #fff;
+  font-family: 'Open Sans', 'Khula', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.maintenance-shell {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 980px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: auto;
+  padding: 2.5rem 2rem;
+  text-align: left;
+}
+
+.maintenance-content {
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+}
+
+.maintenance-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2.25rem;
+  padding: 2.75rem 3rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  overflow-wrap: anywhere;
+}
+
+.maintenance-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.maintenance-ucm-logo {
+  display: block;
+  width: auto;
+  height: 50px;
+}
+
+.maintenance-gear {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  margin-left: auto;
+  color: var(--maintenance-gold);
+  font-size: 50px;
+  animation: maintenance-gear-rotate 6s linear infinite;
+}
+
+@keyframes maintenance-gear-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.maintenance-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--maintenance-gold);
+  border-radius: 8px;
+  background: rgba(242, 169, 0, 0.1);
+}
+
+.maintenance-alert-icon {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+  color: var(--maintenance-gold);
+  font-size: 1.5rem;
+}
+
+.maintenance-alert-content {
+  min-width: 0;
+}
+
+.maintenance-title {
+  margin: 0 0 0.5rem;
+  color: #fff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.maintenance-lead {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.maintenance-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.maintenance-info h2 {
+  margin: 0 0 0.75rem;
+  color: #fff;
+  font-size: 1.55rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.maintenance-info p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+}

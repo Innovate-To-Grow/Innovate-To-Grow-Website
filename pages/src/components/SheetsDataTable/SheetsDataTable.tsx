@@ -4,6 +4,7 @@ import {SheetsTableRow} from './SheetsTableRow';
 import type {SheetRow} from './types';
 import {useSheetsTable, type SortField} from './useSheetsTable';
 import './SheetsDataTable.css';
+import './SheetsDataTableMedia.css';
 
 interface ColumnDef {
   key: SortField;

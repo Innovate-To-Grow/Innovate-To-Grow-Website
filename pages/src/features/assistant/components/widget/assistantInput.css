@@ -1,0 +1,152 @@
+@layer itg.components {
+/* ---- Error / unavailable banners --------------------------------------- */
+.itg-assistant__error {
+  align-self: stretch;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--itg-color-border, #ddd);
+  border-left: 4px solid var(--itg-color-error, #9b1c1c);
+  border-radius: 0;
+  background: var(--itg-color-white, #fff);
+  color: var(--itg-color-error, #9b1c1c);
+  font-size: 0.875rem;
+}
+
+.itg-assistant__retry {
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid var(--itg-color-error, #9b1c1c);
+  border-radius: 0;
+  background: transparent;
+  color: var(--itg-color-error, #9b1c1c);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.itg-assistant__retry:hover {
+  background: var(--itg-color-error, #9b1c1c);
+  color: var(--itg-color-white, #fff);
+}
+
+.itg-assistant__retry:focus-visible {
+  outline: 2px solid var(--itg-color-secondary, #005487);
+  outline-offset: 2px;
+}
+
+.itg-assistant__unavailable {
+  align-self: stretch;
+  padding: 0.75rem;
+  text-align: center;
+  color: var(--itg-color-text-secondary, #555555);
+  font-size: 0.875rem;
+  font-style: italic;
+}
+
+/* ---- Input row --------------------------------------------------------- */
+.itg-assistant__input-row {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--itg-color-border, #ddd);
+  background: var(--itg-color-white, #fff);
+}
+
+.itg-assistant__input-controls {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.itg-assistant__textarea {
+  flex: 1 1 auto;
+  resize: none;
+  max-height: 96px;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--itg-color-border-input, #ccc);
+  border-radius: var(--itg-radius-input, 4px);
+  font-family: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: var(--itg-color-text-dark, #333333);
+}
+
+.itg-assistant__textarea:focus-visible {
+  outline: 2px solid var(--itg-color-secondary, #005487);
+  outline-offset: 2px;
+}
+
+.itg-assistant__textarea:disabled {
+  background: var(--itg-color-disabled-bg, #efefef);
+  color: var(--itg-color-disabled-text, #6b6b6b);
+  cursor: not-allowed;
+}
+
+.itg-assistant__send {
+  flex: 0 0 auto;
+  min-height: 40px;
+  padding: 0 1rem;
+  border: 1px solid var(--itg-color-primary, #0f2d52);
+  border-radius: 0;
+  background: var(--itg-color-primary, #0f2d52);
+  color: var(--itg-color-white, #fff);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast, 0.2s) ease;
+}
+
+.itg-assistant__send:hover:not(:disabled) {
+  border-color: var(--itg-color-primary-hover, #005487);
+  background: var(--itg-color-primary-hover, #005487);
+}
+
+.itg-assistant__send:focus-visible {
+  outline: 2px solid var(--itg-color-secondary, #005487);
+  outline-offset: 2px;
+}
+
+.itg-assistant__send:disabled {
+  border-color: var(--itg-color-disabled-border, #d6d6d6);
+  background: var(--itg-color-disabled-bg, #efefef);
+  color: var(--itg-color-disabled-text, #6b6b6b);
+  cursor: not-allowed;
+}
+
+.itg-assistant__counter {
+  align-self: flex-end;
+  font-size: 0.75rem;
+  color: var(--itg-color-text-secondary, #555555);
+}
+
+.itg-assistant__counter--over {
+  color: var(--itg-color-error, #9b1c1c);
+  font-weight: 700;
+}
+
+/* ---- Print: a floating widget has no place on paper -------------------- */
+@media print {
+  .itg-assistant {
+    display: none;
+  }
+}
+
+/* ---- Mobile: near-full-width bottom sheet ------------------------------ */
+@media (max-width: 480px) {
+  .itg-assistant__panel {
+    width: 100vw;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    height: auto;
+    max-height: 80vh;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+  }
+}
+}
