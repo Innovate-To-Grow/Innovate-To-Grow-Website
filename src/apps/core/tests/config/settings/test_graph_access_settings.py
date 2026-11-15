@@ -10,7 +10,7 @@ from apps.core.checks import check_credential_store, check_microsoft_graph
 from config.settings.base.integrations import microsoft_graph as base_settings
 from config.settings.environments import test as ci_settings
 
-from .test_prod_cache import PROD_ENV, reload_prod_settings
+from ..production.test_prod_cache import PROD_ENV, reload_prod_settings
 
 
 def error_ids():

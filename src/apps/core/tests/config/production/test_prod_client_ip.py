@@ -18,7 +18,7 @@ from rest_framework.throttling import BaseThrottle
 from rest_framework.views import APIView
 
 from apps.authn.security.throttles import PhoneAuthCodeRequestThrottle
-from apps.core.tests.config.test_prod_cache import PROD_ENV, reload_prod_settings
+from apps.core.tests.config.production.test_prod_cache import PROD_ENV, reload_prod_settings
 from apps.core.utils.throttle_cache import throttle_cache
 
 ALB_ADDRESS = "10.0.5.7"  # REMOTE_ADDR behind the ALB: the load balancer, never the client

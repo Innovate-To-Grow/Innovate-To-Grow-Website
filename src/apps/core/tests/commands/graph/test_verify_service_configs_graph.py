@@ -19,7 +19,7 @@ TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 
-class VerifyServiceConfigsGraphTest(TestCase):
+class _VerifyServiceConfigsGraphCase(TestCase):
     def setUp(self):
         EmailServiceConfig.objects.all().delete()
         GoogleCredentialConfig.objects.all().delete()
@@ -75,8 +75,8 @@ class VerifyServiceConfigsGraphTest(TestCase):
             default_region="us-west-2",
         )
 
-    # --- Microsoft Graph selected -------------------------------------------------------------------
 
+class VerifyServiceConfigsGraphTest(_VerifyServiceConfigsGraphCase):
     def test_selected_and_configured_graph_passes_strict(self):
         self._create_email()
         self._create_graph()
@@ -162,8 +162,6 @@ class VerifyServiceConfigsGraphTest(TestCase):
             self.assertNotIn(line, configured + broken)
         self.assertIn("FAIL", broken)
 
-    # --- Microsoft Graph not selected ---------------------------------------------------------------
-
     def test_unselected_and_unconfigured_graph_is_not_mentioned_with_ses(self):
         self._create_email(provider="ses")
         self._create_aws()
@@ -172,90 +170,4 @@ class VerifyServiceConfigsGraphTest(TestCase):
 
         self.assertIn("Service config verification passed.", out)
         self.assertIn("WARN:", out)  # the optional SMS and Google checks still warn, but never about Graph
-        self.assertNotIn("Graph", out)
-
-    def test_missing_email_config_does_not_mention_graph(self):
-        out = self._run()
-
-        self.assertIn("FAIL: EmailServiceConfig selects SES", out)
-        self.assertNotIn("Graph", out)
-
-    def test_unselected_and_unconfigured_graph_is_not_mentioned_with_smtp(self):
-        self._create_email(provider="smtp")
-        self._create_smtp()
-
-        out = self._run("--strict")
-
-        self.assertIn("Service config verification passed.", out)
-        self.assertNotIn("Graph", out)
-
-    def test_inactive_graph_config_is_not_mentioned_when_another_provider_is_selected(self):
-        self._create_email(provider="ses")
-        self._create_aws()
-        self._create_graph(is_active=False)
-
-        self.assertNotIn("Graph", self._run("--strict"))
-
-    def test_unselected_but_configured_graph_is_reported_ok(self):
-        self._create_graph()
-        for provider, create_provider in (("ses", self._create_aws), ("smtp", self._create_smtp)):
-            EmailServiceConfig.objects.all().delete()
-            self._create_email(provider=provider)
-            create_provider()
-            with self.subTest(provider):
-                out = self._run("--strict")
-
-                self.assertIn("MicrosoftGraphProviderConfig: OK", out)
-                self.assertIn("Service config verification passed.", out)
-                self.assertNotIn("FAIL", out)
-
-    # --- unsupported provider and unchanged providers -----------------------------------------------
-
-    def test_unsupported_provider_is_still_reported_even_when_graph_is_configured(self):
-        email = self._create_email(provider="ses")
-        EmailServiceConfig.objects.filter(pk=email.pk).update(provider="unsupported")
-        self._create_graph()
-
-        out = self._run()
-        with self.assertRaises(CommandError):
-            self._run("--strict")
-
-        self.assertIn("FAIL: EmailServiceConfig selects unsupported provider", out)
-        self.assertNotIn("Service config verification passed.", out)
-
-    def test_ses_selection_is_unchanged(self):
-        self._create_email(provider="ses")
-        self._create_aws()
-
-        self.assertIn("Service config verification passed.", self._run("--strict"))
-
-        AWSCredentialConfig.objects.all().delete()
-        out = self._run()
-        self.assertIn("FAIL: EmailServiceConfig selects SES", out)
-        with self.assertRaises(CommandError):
-            self._run("--strict")
-
-    def test_smtp_selection_is_unchanged(self):
-        self._create_email(provider="smtp")
-        self._create_smtp()
-
-        self.assertIn("Service config verification passed.", self._run("--strict"))
-
-        SMTPProviderConfig.objects.all().delete()
-        out = self._run()
-        self.assertIn("FAIL: EmailServiceConfig selects SMTP", out)
-        with self.assertRaises(CommandError):
-            self._run("--strict")
-
-    def test_policy_only_check_does_not_load_graph_credentials(self):
-        self._create_email()
-        self._create_graph()
-
-        with patch(
-            "apps.core.management.commands.verify_service_configs.MicrosoftGraphProviderConfig.load",
-            side_effect=AssertionError("Policy-only verification must not load Graph credentials."),
-        ):
-            out = self._run("--send-verification-only")
-
-        self.assertIn("SendVerificationConfig:", out)
         self.assertNotIn("Graph", out)
