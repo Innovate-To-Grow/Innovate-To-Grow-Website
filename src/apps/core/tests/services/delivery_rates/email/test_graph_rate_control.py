@@ -16,7 +16,12 @@ from apps.core.services.email.exceptions import EmailRateDeferred
 from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadBusy
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import create_graph_config
-from apps.core.tests.services.test_email_graph import (
+from apps.core.tests.services.graph.mailbox.test_graph_mailbox_reader import (
+    GET_TARGET,
+    FakeGet,
+    GraphReaderFixtureMixin,
+)
+from apps.core.tests.services.graph.provider.test_email_graph import (
     CLIENT_ID,
     MAILBOX,
     TENANT_ID,
@@ -26,7 +31,6 @@ from apps.core.tests.services.test_email_graph import (
     make_provider,
     simple_message,
 )
-from apps.core.tests.services.test_graph_mailbox_reader import GET_TARGET, FakeGet, GraphReaderFixtureMixin
 
 from ..helpers import FakeClock
 

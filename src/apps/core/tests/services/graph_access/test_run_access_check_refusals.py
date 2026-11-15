@@ -3,6 +3,7 @@ import json
 from apps.core.services.email.graph import transport
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import grant
+from apps.core.tests.services.graph.provider.test_email_graph import error_body
 from apps.core.tests.services.graph_access.helpers import (
     ALLOW,
     DENIED,
@@ -19,7 +20,6 @@ from apps.core.tests.services.graph_access.test_run_access_check import (
     _AccessCheckRunCase,
     apa_denied,
 )
-from apps.core.tests.services.test_email_graph import error_body
 
 
 class AccessCheckRunTests(_AccessCheckRunCase):

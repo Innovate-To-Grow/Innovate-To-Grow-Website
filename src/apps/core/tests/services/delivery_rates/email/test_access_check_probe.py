@@ -10,11 +10,7 @@ from apps.core.services.email.graph.access_check.probes import Prober
 from apps.core.services.email.graph.access_check.report import FAIL, SEND
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.services.delivery_rates.email.test_graph_rate_control import READER_MAILBOX, GraphTrafficMixin
-from apps.core.tests.services.test_email_graph import (
-    MAILBOX,
-    error_body,
-    graph_response,
-)
+from apps.core.tests.services.graph.provider.test_email_graph import MAILBOX, error_body, graph_response
 
 from ..helpers import FakeClock
 

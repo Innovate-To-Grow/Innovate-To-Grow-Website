@@ -13,7 +13,7 @@ from apps.core.tests.services.email_monitoring.telemetry.test_telemetry_graph_se
     TelemetryTestCase,
     stored_text,
 )
-from apps.core.tests.services.test_email_graph import ACCESS_TOKEN, KEY_LINE
+from apps.core.tests.services.graph.provider.test_email_graph import ACCESS_TOKEN, KEY_LINE
 
 from ..helpers import BODY_TEXT, REQUEST_ID, accepted, graph_error
 

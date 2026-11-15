@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from apps.core.models import InboundMessage, OutboundEmail
-from apps.core.tests.services.inbound import samples
+from apps.core.tests.services.email.inbound import samples
 from apps.helpdesk.tests.replies.test_replies_and_notices import SiteMailMixin, Status
 
 from ...models import Ticket

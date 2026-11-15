@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.core.tests.services.inbound import samples
+from apps.core.tests.services.email.inbound import samples
 from apps.helpdesk.tests.replies.test_replies_and_notices import SiteMailMixin, Status
 
 from ...models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
