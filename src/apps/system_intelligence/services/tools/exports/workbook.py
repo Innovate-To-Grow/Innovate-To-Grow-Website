@@ -21,8 +21,9 @@ from openpyxl.utils import get_column_letter
 
 from apps.core.services.helpers.sheets_safety import safe_sheet_value
 from apps.system_intelligence.models import SystemIntelligenceExport
-from apps.system_intelligence.services.actions.context import current_conversation, current_user_id
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.context import current_conversation, current_user_id
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.utils import json_safe
 from apps.system_intelligence.services.actions.orm import (
     field_output_name,
     resolve_model,
@@ -30,7 +31,6 @@ from apps.system_intelligence.services.actions.orm import (
     validate_query_key,
     validate_selected_fields,
 )
-from apps.system_intelligence.services.actions.utils import json_safe
 
 EXPORT_DEFAULT_LIMIT = 5000
 EXPORT_HARD_LIMIT = 25000

@@ -58,7 +58,7 @@ class ToolFreeInvocationTests(TestCase):
         def _boom(*args, **kwargs):
             raise AssertionError("get_agent_tool_callables must never be called from the public path")
 
-        with patch("apps.system_intelligence.services.tools.registry.get_agent_tool_callables", _boom):
+        with patch("apps.system_intelligence.services.tools.framework.registry.get_agent_tool_callables", _boom):
             mock_agent, _ = self._run_with_mock_agent()
         mock_agent.assert_called_once()
 

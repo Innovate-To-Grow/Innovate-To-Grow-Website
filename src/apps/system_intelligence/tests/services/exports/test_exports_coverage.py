@@ -15,7 +15,12 @@ from apps.authn.models import Member
 from apps.event.tests.helpers import make_superuser
 from apps.system_intelligence.models import ChatConversation
 from apps.system_intelligence.services import actions
-from apps.system_intelligence.services.exports import ExportError, _header_label, _render_cell, create_export
+from apps.system_intelligence.services.tools.exports.workbook import (
+    ExportError,
+    _header_label,
+    _render_cell,
+    create_export,
+)
 
 
 class CreateExportGuardTests(TestCase):
@@ -41,7 +46,7 @@ class CreateExportGuardTests(TestCase):
     def test_no_exportable_fields_raises(self):
         # When the model exposes no safe fields, ``selected`` is empty (line 76).
         with patch(
-            "apps.system_intelligence.services.exports.safe_model_fields",
+            "apps.system_intelligence.services.tools.exports.workbook.safe_model_fields",
             return_value=[],
         ):
             with self.assertRaises(ExportError) as cm:

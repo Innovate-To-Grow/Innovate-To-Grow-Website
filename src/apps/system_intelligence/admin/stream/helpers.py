@@ -4,7 +4,7 @@ import re
 
 from apps.system_intelligence.models import ChatMessage, SystemIntelligenceActionRequest
 from apps.system_intelligence.services.agents import format_system_intelligence_error
-from apps.system_intelligence.services.agents.errors import (
+from apps.system_intelligence.services.agents.invocation.errors import (
     exception_chain_message,
     is_bedrock_connectivity_error,
 )

@@ -2,7 +2,7 @@ from typing import Any
 
 from apps.system_intelligence.services import actions as action_services
 
-from .runtime import run_action_service_async
+from ..framework.runtime import run_action_service_async
 
 
 async def list_database_models() -> dict[str, Any]:

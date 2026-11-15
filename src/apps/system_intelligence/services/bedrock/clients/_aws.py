@@ -3,7 +3,7 @@ import boto3
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 
-from ..exceptions import BedrockError
+from .exceptions import BedrockError
 
 
 def get_aws_config(aws_config=None):

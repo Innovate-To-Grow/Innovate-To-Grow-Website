@@ -6,8 +6,8 @@ from django.db import models
 
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
-from ..constants import COMPARISON_MAX_BLOCKS, COMPARISON_MAX_FIELDS
-from ..utils import json_safe
+from ..engine.constants import COMPARISON_MAX_BLOCKS, COMPARISON_MAX_FIELDS
+from ..engine.utils import json_safe
 from .field_display import display_value, field_label, field_type_name
 from .text import extract_block_text, limit_comparison_text
 

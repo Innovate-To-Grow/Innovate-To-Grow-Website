@@ -20,7 +20,7 @@ from __future__ import annotations
 from apps.core.utils.access import user_can_manage_member
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
-from ..exceptions import ActionRefused
+from ..engine.exceptions import ActionRefused
 from ..orm import get_object
 
 MEMBER_LABEL = "authn.member"

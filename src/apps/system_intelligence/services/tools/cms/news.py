@@ -1,9 +1,9 @@
 from typing import Any
 
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
 
-from ..query_helpers import object_payload, queryset_payload, require_one
-from ..runtime import run_action_service_async
+from ..framework.query_helpers import object_payload, queryset_payload, require_one
+from ..framework.runtime import run_action_service_async
 
 
 async def get_news_source_detail(

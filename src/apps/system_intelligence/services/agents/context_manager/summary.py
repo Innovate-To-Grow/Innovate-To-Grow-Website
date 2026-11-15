@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import ChatConversation, ChatMessage, SystemIntelligenceConfig
 
-from ..runner import run_tool_free_agent_async
+from ..invocation.runner import run_tool_free_agent_async
 from .messages import format_messages_for_summary
 from .tokens import (
     SUMMARY_AGENT_NAME,

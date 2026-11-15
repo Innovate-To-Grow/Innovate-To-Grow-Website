@@ -1,11 +1,14 @@
 from django.test import TestCase
 
-from apps.system_intelligence.services.query_tools.tool_modules.events import (
+from apps.system_intelligence.services.query_tools.tool_modules.domains.events import (
     get_checkin_stats,
     get_event_registrations,
     search_events,
 )
-from apps.system_intelligence.services.query_tools.tool_modules.mail import get_campaign_stats, search_email_campaigns
+from apps.system_intelligence.services.query_tools.tool_modules.domains.mail import (
+    get_campaign_stats,
+    search_email_campaigns,
+)
 
 
 class EventsToolsTest(TestCase):

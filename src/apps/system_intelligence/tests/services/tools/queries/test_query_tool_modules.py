@@ -6,9 +6,9 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.system_intelligence.services.query_tools import execute_tool, get_tool_definitions
-from apps.system_intelligence.services.query_tools.tool_modules.analytics import get_page_views
-from apps.system_intelligence.services.query_tools.tool_modules.cms import search_cms_pages, search_news
-from apps.system_intelligence.services.query_tools.tool_modules.helpers import _serialize_rows, _truncate
+from apps.system_intelligence.services.query_tools.tool_modules.domains.analytics import get_page_views
+from apps.system_intelligence.services.query_tools.tool_modules.domains.cms import search_cms_pages, search_news
+from apps.system_intelligence.services.query_tools.tool_modules.domains.helpers import _serialize_rows, _truncate
 
 # ---------- helpers ----------
 
@@ -59,7 +59,7 @@ class ExecuteToolTest(TestCase):
             raise ValueError("kaboom")
 
         with patch.dict(
-            "apps.system_intelligence.services.query_tools.tool_modules.executor.TOOL_REGISTRY",
+            "apps.system_intelligence.services.query_tools.tool_modules.dispatch.executor.TOOL_REGISTRY",
             {"boomtool": boom},
         ):
             result = execute_tool({"name": "boomtool", "input": {}})

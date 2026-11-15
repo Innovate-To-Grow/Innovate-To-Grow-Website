@@ -4,10 +4,11 @@ from typing import Any
 from django.apps import apps
 from django.core.serializers.json import DjangoJSONEncoder
 
-from apps.system_intelligence.services.query_tools.tool_modules.helpers import MAX_ROWS, _truncate
+from apps.system_intelligence.services.query_tools.tool_modules.domains.helpers import MAX_ROWS, _truncate
 
-from .exceptions import ActionRequestError
-from .orm import (
+from ..engine.exceptions import ActionRequestError
+from ..engine.utils import json_safe
+from ..orm import (
     field_output_name,
     field_schema,
     get_object,
@@ -18,7 +19,6 @@ from .orm import (
     validate_query_key,
     validate_selected_fields,
 )
-from .utils import json_safe
 
 
 def list_database_models() -> str:

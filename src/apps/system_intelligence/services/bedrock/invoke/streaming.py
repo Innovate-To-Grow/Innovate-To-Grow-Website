@@ -2,9 +2,9 @@ import logging
 
 from botocore.exceptions import ClientError
 
+from ..clients.exceptions import BedrockError
 from ..clients.prepare import prepare
-from ..constants import MAX_TOOL_ROUNDS
-from ..exceptions import BedrockError
+from .constants import MAX_TOOL_ROUNDS
 from .stream_parser import process_stream_response, stream_tool_results
 
 logger = logging.getLogger(__name__)

@@ -9,7 +9,7 @@ from apps.system_intelligence.services.actions.db.cascade import (
     cascade_summary,
     collect_cascade_impact,
 )
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
 from apps.system_intelligence.services.actions.orm import safety as orm_safety
 
 

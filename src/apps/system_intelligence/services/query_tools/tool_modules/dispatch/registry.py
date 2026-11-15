@@ -1,10 +1,10 @@
-from .analytics import get_page_views
-from .cms import search_cms_pages, search_news
-from .custom import run_custom_query
-from .events import get_checkin_stats, get_event_registrations, search_events
-from .mail import get_campaign_stats, search_email_campaigns
-from .members import count_members, search_members
-from .projects import search_projects, search_semesters
+from ..custom import run_custom_query
+from ..domains.analytics import get_page_views
+from ..domains.cms import search_cms_pages, search_news
+from ..domains.events import get_checkin_stats, get_event_registrations, search_events
+from ..domains.mail import get_campaign_stats, search_email_campaigns
+from ..domains.members import count_members, search_members
+from ..domains.projects import search_projects, search_semesters
 
 TOOL_REGISTRY = {
     "search_members": search_members,

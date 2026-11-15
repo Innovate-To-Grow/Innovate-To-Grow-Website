@@ -2,7 +2,7 @@ from typing import Any
 
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
-from .comparison import action_comparison
+from ..comparison import action_comparison
 
 _FAILURE_NOTICE_BY_STATUS: dict[str, str] = {
     SystemIntelligenceActionRequest.STATUS_FAILED: (

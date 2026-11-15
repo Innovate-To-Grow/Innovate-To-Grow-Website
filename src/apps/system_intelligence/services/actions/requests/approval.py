@@ -9,13 +9,13 @@ from django.utils import timezone
 from apps.cms.models import CMSPage
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
-from .cms import apply_cms_page_update
-from .db import apply_db_create, apply_db_delete, apply_db_update
-from .db.member_guard import check_member_action
-from .exceptions import ActionRequestError
-from .orm import check_model_permission, resolve_model
+from ..cms import apply_cms_page_update
+from ..db import apply_db_create, apply_db_delete, apply_db_update
+from ..db.member_guard import check_member_action
+from ..engine.exceptions import ActionRequestError
+from ..orm import check_model_permission, resolve_model
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.system_intelligence.services.actions.approval")
 
 _ERROR_MESSAGE_MAX_LEN = 300
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x1f\x7f]")

@@ -11,12 +11,12 @@ from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services import actions as system_intelligence_actions
 
-from .constants import SENTINEL, TEMPERATURE_DEPRECATED_MODEL_IDS
+from ..definition.constants import SENTINEL, TEMPERATURE_DEPRECATED_MODEL_IDS
 from .errors import SystemIntelligenceAgentError, format_system_intelligence_error, is_temperature_deprecated_error
 from .history import split_history_and_current_message
 from .runner import run_agent_invocation
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.system_intelligence.services.agents.stream")
 
 
 def invoke_system_intelligence_stream(

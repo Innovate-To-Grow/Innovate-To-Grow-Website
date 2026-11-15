@@ -6,13 +6,13 @@ from typing import Any
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 
-from .agent_builder import build_agent, build_model_settings
-from .agent_builder import build_agent_tools as build_agent_tools  # agents/__init__ and tests import it from here
-from .constants import (
-    MAX_LLM_CALLS,
+from ..definition.agent_builder import build_agent, build_model_settings
+from ..definition.agent_builder import (
+    build_agent_tools as build_agent_tools,  # agents/__init__ and tests import it from here
 )
+from ..definition.constants import MAX_LLM_CALLS
+from ..definition.litellm import bedrock_litellm_credentials, build_litellm_model
 from .events import StreamState, normalize_agent_stream_event, usage_event
-from .litellm import bedrock_litellm_credentials, build_litellm_model
 
 
 @dataclass

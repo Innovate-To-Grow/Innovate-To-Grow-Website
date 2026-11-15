@@ -4,12 +4,7 @@ from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.bedrock.clients.parameters import supports_temperature
 
-from .constants import (
-    AGENT_NAME,
-    APPROVAL_INSTRUCTION,
-    PLAN_MODE_INSTRUCTION,
-    READ_ONLY_AGENT_DEBUG_INSTRUCTION,
-)
+from .constants import AGENT_NAME, APPROVAL_INSTRUCTION, PLAN_MODE_INSTRUCTION, READ_ONLY_AGENT_DEBUG_INSTRUCTION
 from .litellm import bedrock_litellm_credentials, build_litellm_model
 
 PLAN_MODE = "plan"
