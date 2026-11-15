@@ -1,7 +1,7 @@
 import uuid
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, tag
 
 from apps.core.services.db_tools.safe_orm import (
     cascade_summary,
@@ -11,6 +11,7 @@ from apps.core.services.db_tools.safe_orm import (
 from apps.projects.models import Project, Semester
 
 
+@tag("safe_orm")
 class CascadeTests(TestCase):
     def setUp(self):
         self.sem = Semester.objects.create(year=2030, season=1)
@@ -59,6 +60,7 @@ class CascadeTests(TestCase):
         self.assertIn("...", many)
 
 
+@tag("safe_orm")
 class JsonTests(TestCase):
     def test_json_safe_roundtrips_uuid(self):
         value = json_safe({"id": uuid.uuid4()})
