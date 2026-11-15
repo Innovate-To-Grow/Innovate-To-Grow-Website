@@ -181,7 +181,7 @@ describe('the site pager', () => {
     expect(printDisplay('routes/news/NewsPage/NewsPage.css')).toContainEqual(['.news-pagination-pages', 'none']);
 
     // The projects lists' status line says which rows they show ("showing 1–10"), so their pager leaves the paper whole.
-    expect(printDisplay('features/projects/components/styles/cascade/projectsResponsive.css')).toContainEqual([
+    expect(printDisplay('features/projects/components/styles/cascade/projectsResponsiveModes.css')).toContainEqual([
       '.project-grid-pagination',
       'none',
     ]);

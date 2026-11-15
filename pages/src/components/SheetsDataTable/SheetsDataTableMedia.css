@@ -1,0 +1,124 @@
+@layer itg.components {
+/* SheetsDataTable.css's hover, narrow-screen, print and forced-colour rules. SheetsDataTable.tsx imports this file
+   right after SheetsDataTable.css, so these rules still follow (and override) the base ones. */
+
+/* A touch screen keeps :hover on the button last tapped, so a tapped Details stayed navy, open or closed, and only
+   its arrow told the two apart: only a pointer that can hover fills it. */
+@media (hover: hover) {
+  .sdt-expand-button:hover {
+    background: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
+}
+
+.sdt-expand-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  margin-left: -1px;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.5.5h5v7h3L6 11.5.5 7.5h3z' fill='none' stroke='black' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.sdt-expand-button[aria-expanded='true'] .sdt-expand-icon {
+  transform: rotate(180deg);
+}
+
+/* The details under an open row, indented like the reference's child row (padding-left 50px). */
+.sdt-detail-row .sdt-detail-cell {
+  padding: 16px 10px 16px 60px;
+  border-top: 0;
+}
+
+/* "No data available in table" / "No matching records found", as DataTables writes them. */
+.sdt-table tbody > tr.sdt-empty-row > td {
+  background: var(--itg-color-row-stripe);
+  text-align: center;
+}
+
+.sdt-detail-section {
+  margin: 0 0 12px;
+}
+
+.sdt-detail-section:last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 992px) {
+  .sdt-expand-button {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Phones keep the 16px table (it scrolls sideways, like the reference's). */
+@media (max-width: 768px) {
+  .sdt-search {
+    flex-basis: 100%;
+  }
+
+  /* Previous / Page x of y / Next. */
+  .sdt-pagination {
+    justify-content: space-between;
+  }
+}
+
+/* Print, as the projects table prints (projectsResponsive.css): the rows as a document, with no search, sort
+   arrows or Details buttons. The pager prints only its "Page x of y" under the rows (pagination.css), since the
+   count line counts every matching row, not the ones on this page. The table leaves its scroll box, which cut it
+   off at the paper's right edge, so every column prints and Chromium repeats the headings on each page; each row
+   is kept with the start of its open details. */
+@media print {
+  .sdt-search,
+  .sdt-sort-button::after {
+    display: none;
+  }
+
+  .itg-table-wrap.sdt-table-wrap {
+    overflow: visible;
+  }
+
+  /* Chromium leaves the labels out of the repeated headings while they are buttons: on paper they are text. */
+  .sdt-sort-button {
+    display: contents;
+  }
+
+  /* The Details column holds only buttons. Squeezed to nothing rather than removed, so an open row's details
+     still span the table. */
+  .sdt-table th.sdt-th-expand,
+  .sdt-table td.sdt-td-expand {
+    width: 0;
+    padding: 0;
+    font-size: 0;
+  }
+
+  .sdt-table .sdt-td-expand > * {
+    display: none;
+  }
+
+  .sdt-table tbody > tr.sdt-row {
+    break-inside: avoid;
+  }
+
+  .sdt-table tbody > tr.sdt-row:has(+ .sdt-detail-row) {
+    break-after: avoid;
+  }
+}
+
+/* Forced colours (Windows Contrast themes) repaint backgrounds. The Details button keeps its 2px edge (forced to
+   the theme's colour), but its arrow, like the sort arrows, is a mask filled with background-color, so the arrows
+   vanished: fill them with the theme's own text colours. */
+@media (forced-colors: active) {
+  .sdt-expand-icon {
+    forced-color-adjust: none;
+    background-color: ButtonText;
+  }
+
+  /* Above the sorted column's navy arrow in specificity, so that one is drawn in CanvasText too. */
+  .sdt-table th.sdt-th .sdt-sort-button::after {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+}
+}

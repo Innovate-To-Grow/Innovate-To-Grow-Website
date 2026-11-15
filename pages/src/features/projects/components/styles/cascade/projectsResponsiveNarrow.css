@@ -1,0 +1,146 @@
+@layer itg.components {
+/* ---- Narrow screens ------------------------------------------------------------ */
+
+@media (max-width: 992px) {
+  /* 44px targets on touch screens. */
+  .project-grid-results-controls .project-grid-select {
+    height: 2.75rem;
+  }
+
+  .project-grid-detail-icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .itg-btn.project-grid-toggle-details,
+  .project-grid-share-result-row > .itg-btn {
+    min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .past-projects-help-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  /* The save goes under the title instead of beside it. */
+  .project-grid-save-status {
+    align-items: flex-start;
+  }
+
+  .project-grid-results-bar {
+    margin-top: 1rem;
+  }
+
+  .project-grid-results-controls {
+    width: 100%;
+  }
+
+  .project-grid-controls-row,
+  .project-grid-controls-row.has-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 0.625rem;
+  }
+
+  .project-grid-controls-row > .project-grid-search-field,
+  .project-grid-controls-row.has-filters > .project-grid-search-field,
+  .project-grid-controls-row > .past-projects-ai-search {
+    grid-column: 1 / -1;
+  }
+
+  .project-grid-controls-row > .project-grid-toggle-details:only-child,
+  .project-grid-controls-row > .project-grid-page-size + .project-grid-toggle-details {
+    align-self: end;
+  }
+
+  /* Previous / Page x of y / Next. */
+  .project-grid-pagination {
+    justify-content: space-between;
+  }
+
+  .project-grid-pager-pages {
+    display: none;
+  }
+
+  .project-grid-pager-status {
+    display: inline;
+  }
+
+  /* Search tables: full-width Save, a two-column grid of the other actions. */
+  .past-projects-action-bar-header {
+    display: block;
+  }
+
+  .past-projects-action-bar-title {
+    margin-bottom: 0.75rem;
+  }
+
+  .past-projects-action-bar-header {
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .past-projects-action-bar-title {
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--itg-color-primary);
+  }
+
+  .past-projects-action-bar-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .past-projects-action-bar-group .itg-btn {
+    padding: 0 0.5rem;
+  }
+
+  /* Half-width "View All Details": the footer CTA's 14px keeps it on one line. */
+  .project-grid-controls-row > .project-grid-toggle-details {
+    padding: 0 0.5rem;
+    font-size: var(--itg-font-size-small);
+  }
+
+  .search-table-card {
+    padding: 14px;
+  }
+
+  .search-table-save-group,
+  .search-table-save-group .search-table-save-button {
+    width: 100%;
+  }
+
+  .search-table-save-count {
+    display: inline;
+  }
+
+  .search-table-save-group .search-table-selection-count {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .search-table-secondary-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .search-table-action-group {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .search-table-group-label,
+  .search-table-group-divider {
+    display: none;
+  }
+}
+}
