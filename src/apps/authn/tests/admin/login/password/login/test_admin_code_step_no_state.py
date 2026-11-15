@@ -2,7 +2,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 
 from apps.authn.models import ContactEmail
-from apps.authn.tests.admin.login.password.test_admin_login_edge_cases import LOGIN_URL, Member
+from apps.authn.tests.admin.login.password.login.test_admin_login_edge_cases import LOGIN_URL, Member
 
 
 @override_settings(ROOT_URLCONF="config.routing.urls")

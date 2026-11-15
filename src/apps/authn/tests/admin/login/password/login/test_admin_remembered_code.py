@@ -8,7 +8,7 @@ from django.utils import timezone
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services.email.challenges import AuthChallengeDeliveryError, AuthChallengeThrottled
-from apps.authn.tests.admin.login.password.test_admin_login_edge_cases import (
+from apps.authn.tests.admin.login.password.login.test_admin_login_edge_cases import (
     LOGIN_URL,
     PURPOSE,
     Member,
