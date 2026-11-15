@@ -146,7 +146,7 @@ class BusyResponseTests(TestCase):
         self.assertIn("about 12 seconds", response.data["detail"])
 
     def test_the_event_registration_send_reports_busy_as_definitely_not_sent(self):
-        from apps.event.views.registration.sms import _send_registration_code
+        from apps.event.views.registration.contacts.sms_codes import _send_registration_code
 
         with patch("apps.authn.services.sms.start_phone_verification", side_effect=PhoneVerificationBusy(30)):
             outcome = _send_registration_code(MagicMock(), PHONE, "event-registration:1")

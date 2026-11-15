@@ -74,7 +74,7 @@ def _apply_phone(member, event, data, fields):
             raise RegistrationContactError("A phone number is required for this event.")
         return
 
-    from apps.event.views.registration.phones import _normalize_phone, _validate_phone_digits
+    from apps.event.views.registration.contacts.phones import _normalize_phone, _validate_phone_digits
 
     region = "1-US"
     error = _validate_phone_digits(phone, region)
@@ -89,7 +89,7 @@ def _apply_phone(member, event, data, fields):
     ).exists()
     if event.verify_phone and not verified:
         from apps.authn.services.sms import PhoneVerificationInvalid, consume_verified_phone_challenge
-        from apps.event.views.registration.phones import LEGACY_EVENT_REGISTRATION_CONTEXT
+        from apps.event.views.registration.contacts.phones import LEGACY_EVENT_REGISTRATION_CONTEXT
 
         try:
             consume_verified_phone_challenge(

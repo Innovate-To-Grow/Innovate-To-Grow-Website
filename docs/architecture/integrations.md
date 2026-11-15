@@ -135,7 +135,7 @@ Broadcast SMS and ticket texts.
 | Origination resolution | `src/apps/core/services/aws/sms.py` (`describe_phone_numbers`, cached) |
 | Sending | `src/apps/core/services/aws/sms_send.py` (`send_text_message`, the only `SendTextMessage` call, paced by the delivery-rate limiter) |
 | Send verification | `src/apps/authn/services/sms/` (`sns_verify.py` is the public entry point; `checks.py` holds the code checks, `errors.py` the error types) |
-| Event phone verify | `src/apps/event/views/registration/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
+| Event phone verify | `src/apps/event/views/registration/contacts/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
 
 OTP codes are generated locally, stored only as hashes in
 `PhoneVerificationChallenge`, and delivered via AWS End User Messaging

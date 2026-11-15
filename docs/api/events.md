@@ -190,7 +190,7 @@ Returns the current event with associated projects (linked via `CurrentProjectSc
 active schedule's projects that are not archived yet ahead of the archive, and AI search with `scope: "all"` ranks
 them; `/projects/{id}/` resolves one from any schedule, and a curation (`/projects/past-shares/`) may hold one. Once
 the past-projects sync imports a team's semester, each of these shows the team's archive project instead. The projects app reads them
-only through `apps/event/services/current_projects.py` (`find_current_projects`, `active_schedule_references`). See
+only through `apps/event/services/current_projects/` (`find_current_projects`, `active_schedule_references`). See
 [Projects](projects.md).
 
 ### Check-in

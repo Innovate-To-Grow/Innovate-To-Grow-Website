@@ -15,7 +15,7 @@ from apps.core.services.background_jobs import claim_jobs, process_claimed_job
 from apps.core.services.delivery_rates import Lane
 from apps.event.signals import initial_ticket_issued
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
-from apps.event.views.registration.create_support.notifications import send_initial_ticket_email
+from apps.event.views.registration.create.notifications import send_initial_ticket_email
 from apps.mail.models import SmsLinkToken, TicketSms
 from apps.mail.services.sms.delivery import ticket
 from apps.mail.services.sms.policy.opt_outs import SKIPPED_MESSAGE

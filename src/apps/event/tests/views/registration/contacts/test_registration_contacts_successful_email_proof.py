@@ -100,7 +100,8 @@ class RegistrationContactPolicyTest(_RegistrationContactPolicyCase):
         proof = self._email_proof(event)
         self.client.raise_request_exception = False
         with patch(
-            "apps.event.views.registration.create.send_initial_ticket_email", side_effect=RuntimeError("test failure")
+            "apps.event.views.registration.create.view.send_initial_ticket_email",
+            side_effect=RuntimeError("test failure"),
         ):
             response = self._post(event, **self._proof_data(proof))
         self.assertEqual(response.status_code, 500)
