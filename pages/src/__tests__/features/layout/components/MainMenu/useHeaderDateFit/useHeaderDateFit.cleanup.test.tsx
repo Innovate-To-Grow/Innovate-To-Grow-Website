@@ -1,7 +1,7 @@
 import {act, cleanup, renderHook} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {useHeaderDateHidden} from '@/features/layout/components/MainMenu/useHeaderDateFit';
+import {useHeaderDateHidden} from '@/features/layout/components/MainMenu/header/useHeaderDateFit';
 import {
   collectFrames,
   computedStyles,

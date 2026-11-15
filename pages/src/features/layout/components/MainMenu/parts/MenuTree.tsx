@@ -1,7 +1,7 @@
 import {type FocusEvent, type KeyboardEvent, type ReactElement} from 'react';
 import {type MenuItem} from '@/features/layout/api';
 import {Icon} from '@/components/Icon/Icon';
-import {ariaCurrentFor, menuItemPath, type SectionMatch} from '@/features/layout/sections';
+import {ariaCurrentFor, menuItemPath, type SectionMatch} from '@/features/layout/components/MainMenu/parts/sections';
 import {buildHref} from './shared';
 
 type CurrentLocation = Pick<SectionMatch, 'menuIndex' | 'currentPath' | 'isExact'>;

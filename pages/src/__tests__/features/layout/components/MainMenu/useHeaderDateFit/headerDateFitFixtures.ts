@@ -1,7 +1,7 @@
 import {act} from '@testing-library/react';
 import {expect, vi} from 'vitest';
 
-import {measureDateHidden} from '@/features/layout/components/MainMenu/useHeaderDateFit';
+import {measureDateHidden} from '@/features/layout/components/MainMenu/header/useHeaderDateFit';
 
 /** What getComputedStyle reports for one element; anything unset reads as the browser's default. */
 interface FakeStyle {

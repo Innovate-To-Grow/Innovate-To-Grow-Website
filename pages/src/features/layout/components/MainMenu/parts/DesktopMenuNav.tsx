@@ -1,7 +1,7 @@
-import type {SectionMatch} from '@/features/layout/sections';
+import type {SectionMatch} from '@/features/layout/components/MainMenu/parts/sections';
 import {MenuTree} from './MenuTree';
 import {MENU_BAR_SKELETON_WIDTHS_PX, PHONE_MAX_WIDTH} from './shared';
-import type {useMainMenuState} from '../useMainMenuState';
+import type {useMainMenuState} from '../menu/useMainMenuState';
 
 type MenuState = ReturnType<typeof useMainMenuState>;
 

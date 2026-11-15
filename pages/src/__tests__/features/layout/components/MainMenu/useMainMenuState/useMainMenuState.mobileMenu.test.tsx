@@ -5,7 +5,7 @@ import {
   LayoutContext,
   type LayoutContextValue,
 } from '@/features/layout/components/LayoutProvider/context';
-import {useMainMenuState} from '@/features/layout/components/MainMenu/useMainMenuState';
+import {useMainMenuState} from '@/features/layout/components/MainMenu/menu/useMainMenuState';
 
 const useAuth = vi.hoisted(() => vi.fn());
 
