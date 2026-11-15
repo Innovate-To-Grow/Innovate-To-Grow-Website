@@ -4,7 +4,7 @@ from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.actions.comparison import build_db_comparison
 
-from .base import SystemIntelligenceActionBase
+from ..support.base import SystemIntelligenceActionBase
 
 
 class SystemIntelligenceComparisonTests(SystemIntelligenceActionBase):

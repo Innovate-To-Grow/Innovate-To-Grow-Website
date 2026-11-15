@@ -6,7 +6,7 @@ from apps.event.tests.helpers import make_admin
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 
-from .base import SystemIntelligenceActionBase
+from ..support.base import SystemIntelligenceActionBase
 
 
 class SystemIntelligenceDBActionTests(SystemIntelligenceActionBase):
