@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BlockRenderer } from './BlockRenderer';
-import { cmsPageClassName } from './pageClassName';
+import { BlockRenderer } from '../rendering/BlockRenderer';
+import { cmsPageClassName } from '../rendering/pageClassName';
 import type { CMSBlock } from '@/features/cms/api';
 import { useReportFrameHeight } from '@/hooks/useReportFrameHeight';
 import {

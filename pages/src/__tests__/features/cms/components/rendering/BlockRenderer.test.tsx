@@ -3,7 +3,7 @@ import {MemoryRouter} from 'react-router';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import type {CMSBlock} from '@/features/cms/api';
-import {BlockRenderer} from '@/features/cms/components/BlockRenderer';
+import {BlockRenderer} from '@/features/cms/components/rendering/BlockRenderer';
 
 /**
  * Sanity tests for the block-type -> component map. These guard against a

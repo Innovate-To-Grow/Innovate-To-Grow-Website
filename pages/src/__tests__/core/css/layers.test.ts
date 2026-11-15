@@ -15,7 +15,7 @@ import {COMPONENTS_LAYER, inComponentsLayer} from '@/lib/css';
 const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PAGES_DIR = dirname(SRC_DIR);
 const TESTS_DIR = join(SRC_DIR, '__tests__');
-const LAYERS_FILE = join(SRC_DIR, 'styles', 'layers.css');
+const LAYERS_FILE = join(SRC_DIR, 'styles', 'base', 'layers.css');
 
 const listCss = (dir: string): string[] =>
   readdirSync(dir, {withFileTypes: true}).flatMap((entry) => {
@@ -46,7 +46,7 @@ describe('cascade layer order', () => {
 
   it('is the first stylesheet main.tsx imports', () => {
     const main = readFileSync(join(SRC_DIR, 'main.tsx'), 'utf8');
-    expect(main.match(/^import\s+['"]([^'"]+\.css)['"]/m)?.[1]).toBe('./styles/layers.css');
+    expect(main.match(/^import\s+['"]([^'"]+\.css)['"]/m)?.[1]).toBe('./styles/base/layers.css');
   });
 });
 

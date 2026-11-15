@@ -1,6 +1,6 @@
 import {act, render} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
-import {EmbedBlock} from '@/features/cms/components/blocks/content/EmbedBlock';
+import {EmbedBlock} from '@/features/cms/components/blocks/content/embed/EmbedBlock';
 
 describe('EmbedBlock', () => {
   describe('auto-resize via postMessage (cooperating embeds)', () => {

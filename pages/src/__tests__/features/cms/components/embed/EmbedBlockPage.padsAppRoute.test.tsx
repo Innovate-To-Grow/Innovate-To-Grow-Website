@@ -3,7 +3,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {useEffect} from 'react';
 import {Link, RouterProvider, createMemoryRouter} from 'react-router';
 
-import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
+import {EmbedBlockPage} from '@/features/cms/components/embed/EmbedBlockPage';
 
 /**
  * Unit tests for the public embed widget page served at /_embed/:embedSlug.
@@ -24,7 +24,7 @@ vi.mock('@/features/cms/api', () => ({
   fetchCMSEmbed: (slug: string) => fetchCMSEmbedMock(slug),
 }));
 
-vi.mock('@/features/cms/components/BlockRenderer', () => ({
+vi.mock('@/features/cms/components/rendering/BlockRenderer', () => ({
   BlockRenderer: ({blocks}: {blocks: Array<{block_type: string; data: Record<string, unknown>}>}) => (
     <div data-testid="br">
       {blocks.map((b, i) => (

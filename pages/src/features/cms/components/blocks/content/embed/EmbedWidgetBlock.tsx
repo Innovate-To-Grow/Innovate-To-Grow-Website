@@ -1,5 +1,5 @@
 import { useMemo, useRef } from 'react';
-import { normalizeScheduleId } from '@/features/cms/components/embedScheduleId';
+import { normalizeScheduleId } from '@/features/cms/components/rendering/embedScheduleId';
 import { frameStyleFor, IFRAME_STYLE, parseFixedHeight, parseAspectRatio, useReportedHeight } from './embedFrame';
 
 export interface EmbedWidgetData {

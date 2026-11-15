@@ -1,4 +1,4 @@
-import '@/features/events/scheduleShared.css';
+import '@/features/events/schedule/scheduleShared.css';
 import '../styles/SchedulePage.css';
 import {useEffect, useMemo, type ReactNode} from 'react';
 import {useSearchParams} from 'react-router';

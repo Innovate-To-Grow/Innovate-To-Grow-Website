@@ -140,8 +140,9 @@ pages/src/
 ├── index.css           # Imports the contract, the shared styles and the app layout
 ├── app/                # Composition: providers/, router/ (routes + EMBED_APP_ROUTES), ErrorBoundary/,
 │                       #   MaintenanceMode/, thirdPartyLoaders/
-├── routes/             # Routed pages, lazy-loaded via deep imports; page-only hooks and sections
-│                       #   live beside the page (e.g. EventRegistrationPage/registration/)
+├── routes/             # Routed pages by area (auth/, events/, news/, projects/, subscription/), lazy-loaded via
+│                       #   deep imports; page-only hooks and sections live beside the page (e.g.
+│                       #   events/EventRegistrationPage/registration/)
 ├── features/<domain>/  # assistant, auth, cms, events, layout, news, projects:
 │                       #   api/, components/, optional hooks/, types.ts, public index.ts
 ├── components/         # Cross-feature UI, one folder per component (Icon/, NotFoundPage/, SafeHtml/,
@@ -150,8 +151,8 @@ pages/src/
 ├── lib/                # Framework-agnostic: api/ (client, error messages, embed hosts), format/, security/,
 │                       #   css/, preview/, documentHead.ts, isolatedRoute.ts
 ├── types/              # Shared API types
-├── styles/             # Every global stylesheet: tokens.css (fallback design tokens), shared.css, layers.css
-│                       #   and contract/ (the CSS contract editors rely on)
+├── styles/             # Every global stylesheet: base/ (tokens.css: fallback design tokens, shared.css,
+│                       #   layers.css) and contract/ (the CSS contract editors rely on)
 └── __tests__/          # Vitest tests mirroring the source tree, plus core/ for project-level checks
                         #   (CSS contract and layers, index.html, lazy routes, barrels) and the Django admin
                         #   static JS evaluated in jsdom

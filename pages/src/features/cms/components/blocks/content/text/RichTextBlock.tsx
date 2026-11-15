@@ -1,6 +1,6 @@
 import type { ElementType } from 'react';
 import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
-import {headingClassForLevel, normalizeHeadingLevel} from '../headings';
+import {headingClassForLevel, normalizeHeadingLevel} from '../../shared/headings';
 
 export interface RichTextData {
   heading?: string;

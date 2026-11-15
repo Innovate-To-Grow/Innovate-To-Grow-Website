@@ -1,6 +1,6 @@
 import type {CSSProperties} from 'react';
 import type {ScheduleSection, ScheduleSlot} from '@/features/events/api';
-import {scheduleToneClass} from '@/features/events/scheduleTones';
+import {scheduleToneClass} from '@/features/events/schedule/scheduleTones';
 import {presentationGrid, type PresentationGrid} from './scheduleModel';
 
 type OnTeamClick = (searchValue: string) => void;

@@ -1,10 +1,10 @@
-import '../../scheduleShared.css';
+import '../../schedule/scheduleShared.css';
 import './ScheduleGrid.css';
 import {useMemo} from 'react';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import type {SheetRow, TrackInfo} from '@/components/SheetsDataTable';
 import {addMinutes} from '@/lib/format';
-import {scheduleToneClass} from '@/features/events/scheduleTones';
+import {scheduleToneClass} from '@/features/events/schedule/scheduleTones';
 
 export interface ClassConfig {
   /** Class code, e.g. "CAP", "CEE", "CSE" */

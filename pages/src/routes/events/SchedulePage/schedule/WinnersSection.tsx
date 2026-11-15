@@ -1,6 +1,6 @@
 import type {CSSProperties} from 'react';
 import type {EventSchedulePayload, ScheduleSection} from '@/features/events/api';
-import {scheduleToneClass} from '@/features/events/scheduleTones';
+import {scheduleToneClass} from '@/features/events/schedule/scheduleTones';
 import {grandAwardLabel} from './scheduleModel';
 
 interface WinnersSectionProps {

@@ -2,12 +2,12 @@ import {useState} from 'react';
 import {useLocation} from 'react-router';
 
 import {NotFoundPage} from '@/components/NotFoundPage';
-import {BlockRenderer} from './BlockRenderer';
-import {CMSPageError, CMSPageLoading} from './page/CMSPageStatus';
-import {LivePreviewNotice} from './page/LivePreviewNotice';
-import {useCMSPageDocument} from './page/useCMSPageDocument';
-import {useCMSRouteRedirect} from './page/useCMSRouteRedirect';
-import {cmsPageClassName} from './pageClassName';
+import {BlockRenderer} from '../rendering/BlockRenderer';
+import {CMSPageError, CMSPageLoading} from './CMSPageStatus';
+import {LivePreviewNotice} from './LivePreviewNotice';
+import {useCMSPageDocument} from './useCMSPageDocument';
+import {useCMSRouteRedirect} from './useCMSRouteRedirect';
+import {cmsPageClassName} from '../rendering/pageClassName';
 import {useCMSPage} from './useCMSPage';
 
 interface FallbackState {

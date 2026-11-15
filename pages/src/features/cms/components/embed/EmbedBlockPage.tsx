@@ -1,7 +1,7 @@
 import { createElement, Suspense, useMemo, useRef, type ComponentType } from 'react';
 import { useParams, useSearchParams } from 'react-router';
-import { BlockRenderer } from './BlockRenderer';
-import { cmsPageClassName } from './pageClassName';
+import { BlockRenderer } from '../rendering/BlockRenderer';
+import { cmsPageClassName } from '../rendering/pageClassName';
 import type { CMSEmbedResponse } from '@/features/cms/api';
 import {
   EMBED_APP_ROUTE_BODY_CSS,
@@ -10,17 +10,17 @@ import {
   useEmbedData,
   useHeadStyle,
   useReportHeightToParent,
-} from './embed/useEmbedDocument';
-import { BlockedTabNotice } from './embed/BlockedTabNotice';
-import { usePopOutNavigation } from './embed/usePopOutNavigation';
-import { normalizeScheduleId } from './embedScheduleId';
+} from './useEmbedDocument';
+import { BlockedTabNotice } from './BlockedTabNotice';
+import { usePopOutNavigation } from './usePopOutNavigation';
+import { normalizeScheduleId } from '../rendering/embedScheduleId';
 import {
   SECTION_TITLES_KEY,
   buildHiddenSectionsCss,
   isTruthyParam,
   normalizeHiddenSections,
   parseHiddenSectionsParam,
-} from './hiddenSections';
+} from '../rendering/hiddenSections';
 
 /**
  * Public embed page rendered inside a third-party iframe.

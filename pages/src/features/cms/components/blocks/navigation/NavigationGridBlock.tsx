@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { safeHref } from '@/lib/security';
-import {CMS_PAGE_TITLE_CLASS} from '../headings';
+import {CMS_PAGE_TITLE_CLASS} from '../shared/headings';
 
 export interface NavigationGridItem {
   title: string;

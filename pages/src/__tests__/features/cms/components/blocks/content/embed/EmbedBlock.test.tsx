@@ -1,6 +1,6 @@
 import {render} from '@testing-library/react';
 import {describe, expect, it} from 'vitest';
-import {EmbedBlock} from '@/features/cms/components/blocks/content/EmbedBlock';
+import {EmbedBlock} from '@/features/cms/components/blocks/content/embed/EmbedBlock';
 
 describe('EmbedBlock', () => {
   it('renders an iframe with https src, default sandbox, and 16/9 aspect', () => {
