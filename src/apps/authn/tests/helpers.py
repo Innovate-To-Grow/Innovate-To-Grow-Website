@@ -14,7 +14,7 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from apps.authn.models import ContactEmail, Member
 
 # A real 1x1 PNG. Profile-image uploads are checked against magic bytes on both the admin and the API
-# path (apps.authn.services.members.profile_image), so placeholder payloads like b"new-image" are
+# path (apps.authn.services.members.accounts.profile_image), so placeholder payloads like b"new-image" are
 # rejected — tests that upload an avatar need actual image bytes.
 PNG_1PX = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg=="

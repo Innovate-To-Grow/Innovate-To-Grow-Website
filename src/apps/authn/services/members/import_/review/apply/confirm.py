@@ -20,7 +20,7 @@ from django.utils import timezone
 
 from apps.authn.models import MemberImportBatch, MemberImportRow
 
-from ...parsing import generate_random_password, values_from_json
+from ...workbook.parsing import generate_random_password, values_from_json
 from ..analysis.choices import allowed_values
 from ..analysis.resolution import INVALID, Context
 from ..analysis.rows import analyse_rows

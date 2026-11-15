@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from ....services.members.profile_image import ProfileImageError, encode_profile_image
+from ....services.members.accounts.profile_image import ProfileImageError, encode_profile_image
 
 
 class Base64ImageWidget(forms.ClearableFileInput):

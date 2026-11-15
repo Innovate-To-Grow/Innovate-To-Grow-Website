@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.serializers import ProfileSerializer
-from apps.authn.services.members.profile_image import (
+from apps.authn.services.members.accounts.profile_image import (
     CONTENT_TYPE_ERROR,
     DIMENSIONS_ERROR,
     OVERSIZE_ERROR,

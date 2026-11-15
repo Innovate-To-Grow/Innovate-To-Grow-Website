@@ -7,9 +7,9 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail, Member, MemberImportBatch
 from apps.authn.services.members.import_ import import_members_from_excel
-from apps.authn.services.members.import_.reader import read_upload
 from apps.authn.services.members.import_.review import purge_member_imports
 from apps.authn.services.members.import_.review.analysis.risky import PENDING
+from apps.authn.services.members.import_.workbook.reader import read_upload
 from apps.authn.tests.admin.members.import_.test_member_import_security import _FlowCase
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row, workbook_bytes
 

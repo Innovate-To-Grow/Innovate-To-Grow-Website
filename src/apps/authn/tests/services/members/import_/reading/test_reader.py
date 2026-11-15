@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from apps.authn.services.members.import_.reader import (
+from apps.authn.services.members.import_.workbook.reader import (
     EMPTY_FILE,
     NO_OPENPYXL,
     NO_PRIMARY_EMAIL_COLUMN,
@@ -85,7 +85,7 @@ class SheetChoiceTests(ImportTestCase):
         self.assertEqual(sheet.error, EMPTY_FILE)
         self.assertEqual(sheet.rows, [])
 
-    @patch("apps.authn.services.members.import_.reader.load_workbook", None)
+    @patch("apps.authn.services.members.import_.workbook.reader.load_workbook", None)
     def test_without_openpyxl_nothing_is_read(self):
         sheet = read(HEADERS, [row("ada@example.com")])
 

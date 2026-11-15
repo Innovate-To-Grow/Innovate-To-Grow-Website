@@ -88,7 +88,7 @@ def build_excel_response(content, filename):
 def export_members_response(queryset):
     from django.utils import timezone
 
-    from ....services.members.export_excel import export_members_to_excel
+    from ....services.members.export.excel import export_members_to_excel
 
     content = export_members_to_excel(queryset)
     filename = f"members_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
@@ -104,7 +104,7 @@ def build_vcard_response(content, filename):
 def export_members_vcard_response(queryset):
     from django.utils import timezone
 
-    from ....services.members.export_vcf import export_members_to_vcard
+    from ....services.members.export.vcard import export_members_to_vcard
 
     content = export_members_to_vcard(queryset)
     filename = f"members_export_{timezone.now().strftime('%Y%m%d_%H%M%S')}.vcf"

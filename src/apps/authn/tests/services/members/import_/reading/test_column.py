@@ -1,10 +1,8 @@
 import uuid
 from io import BytesIO
 
-from apps.authn.services.members.import_.parsing import parse_row
-from apps.authn.services.members.import_.reader import (
-    read_upload,
-)
+from apps.authn.services.members.import_.workbook.parsing import parse_row
+from apps.authn.services.members.import_.workbook.reader import read_upload
 from apps.authn.tests.services.members.import_.helpers import (
     HEADERS,
     ImportTestCase,

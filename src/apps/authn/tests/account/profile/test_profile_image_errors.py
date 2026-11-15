@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from apps.authn.services.members.profile_image import (
+from apps.authn.services.members.accounts.profile_image import (
     CONTENT_TYPE_ERROR,
     DIMENSIONS_ERROR,
     OVERSIZE_ERROR,

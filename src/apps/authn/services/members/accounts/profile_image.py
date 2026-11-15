@@ -17,7 +17,7 @@ import binascii
 import io
 import logging
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.authn.services.members.profile_image")  # its log name before the move
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 

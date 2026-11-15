@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.authn.services.email.notification_jobs import enqueue_notification_email
+from apps.authn.services.email.send_email.notification_jobs import enqueue_notification_email
 from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_TRANSIENT, ProviderDeliveryError
 from apps.core.services.background_jobs import TransientJobError
 
@@ -34,7 +34,7 @@ class NotificationEmailJobTests(TestCase):
         self,
         send_notification,
     ):
-        from apps.authn.services.email.notification_jobs import send_notification_email_job
+        from apps.authn.services.email.send_email.notification_jobs import send_notification_email_job
 
         job = SimpleNamespace(
             payload={

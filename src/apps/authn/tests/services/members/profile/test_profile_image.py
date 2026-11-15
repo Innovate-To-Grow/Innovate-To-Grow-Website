@@ -1,4 +1,4 @@
-"""Tests for apps.authn.services.members.profile_image."""
+"""Tests for apps.authn.services.members.accounts.profile_image."""
 
 import base64
 import io
@@ -9,7 +9,7 @@ from django.test import SimpleTestCase
 from PIL import Image
 
 from apps.authn.admin.members.member.profile_image import Base64ImageField
-from apps.authn.services.members.profile_image import (
+from apps.authn.services.members.accounts.profile_image import (
     DIMENSIONS_ERROR,
     MAX_DIMENSION,
     ProfileImageError,
