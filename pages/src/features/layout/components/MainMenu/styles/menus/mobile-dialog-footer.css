@@ -1,0 +1,106 @@
+@layer itg.components {
+/* Member rows at the bottom of the menu, same look as the menu rows */
+.header-mobile-member {
+  flex: none;
+  border-bottom: 1px solid var(--itg-color-border-table);
+  background: var(--itg-color-white);
+}
+
+.header-mobile-member-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px 2px;
+  color: var(--itg-color-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  overflow-wrap: anywhere;
+}
+
+.header-mobile-member-info .fa {
+  flex: none;
+  font-size: 22px;
+  color: var(--itg-color-primary);
+}
+
+.header-mobile-member-avatar {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.header-mobile-member-actions {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 10px;
+}
+
+.header-mobile-action {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 20px 4px;
+  display: flex;
+  align-items: center;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.header-mobile-member > .header-mobile-action {
+  margin: 6px 0;
+}
+
+.header-mobile-action:hover {
+  text-decoration: underline;
+}
+
+/* Directory / Apply / Give strip: grey, three columns, 15px bold uppercase */
+.header-mobile-actions {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 10px 5px;
+  list-style: none;
+  background: var(--itg-color-bg-light);
+  border-bottom: 1px solid var(--itg-color-border-table);
+}
+
+.header-mobile-actions li {
+  display: flex;
+  justify-content: center;
+  border-right: 1px solid var(--itg-color-border-table);
+}
+
+.header-mobile-actions li:last-child {
+  border-right: 0;
+}
+
+.header-mobile-university-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  color: var(--itg-color-primary);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 22px;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.header-mobile-university-link:hover {
+  text-decoration: underline;
+}
+}

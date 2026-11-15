@@ -2,14 +2,14 @@ import './MainMenu.css';
 import {useCallback, useMemo, useRef, useState, type MouseEvent} from 'react';
 import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage/ResponsiveBrandImage';
 import {useCurrentPathname} from '@/features/layout/hooks/useCurrentPathname';
-import {resolveSection} from '@/features/layout/sections';
-import {DesktopMenuNav} from './parts/DesktopMenuNav';
-import {HeaderBar} from './parts/HeaderBar';
-import {MemberMenu} from './parts/MemberMenu';
-import {MobileMenuPanel} from './parts/MobileMenuPanel';
-import {formatMenuDate} from './parts/shared';
-import {useHeaderDateHidden} from './useHeaderDateFit';
-import {useHeaderCondensed, useHeaderMetrics} from './useHeaderScroll';
+import {resolveSection} from '@/features/layout/components/MainMenu/parts/sections';
+import {DesktopMenuNav} from '../parts/DesktopMenuNav';
+import {HeaderBar} from '../header/HeaderBar';
+import {MemberMenu} from '../parts/MemberMenu';
+import {MobileMenuPanel} from '../parts/MobileMenuPanel';
+import {formatMenuDate} from '../parts/shared';
+import {useHeaderDateHidden} from '../header/useHeaderDateFit';
+import {useHeaderCondensed, useHeaderMetrics} from '../header/useHeaderScroll';
 import {useMainMenuState} from './useMainMenuState';
 
 interface MainMenuProps {

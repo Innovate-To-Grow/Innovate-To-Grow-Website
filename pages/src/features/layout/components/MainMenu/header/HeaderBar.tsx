@@ -1,6 +1,6 @@
 import type {RefObject} from 'react';
 import {ResponsiveBrandImage} from '@/components/ResponsiveBrandImage/ResponsiveBrandImage';
-import {PHONE_MAX_WIDTH, UNIVERSITY_LINKS} from './shared';
+import {PHONE_MAX_WIDTH, UNIVERSITY_LINKS} from '../parts/shared';
 
 interface HeaderBarProps {
   isMobileOpen: boolean;

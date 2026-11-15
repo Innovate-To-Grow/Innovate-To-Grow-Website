@@ -1,7 +1,7 @@
 import {describe, expect, it} from 'vitest';
 
 import type {MenuItem} from '@/features/layout/api';
-import {ariaCurrentFor, menuItemPath, normalizePath, resolveSection} from '@/features/layout/sections';
+import {ariaCurrentFor, menuItemPath, normalizePath, resolveSection} from '@/features/layout/components/MainMenu/parts/sections';
 
 const item = (title: string, url: string, children: MenuItem[] = [], type: MenuItem['type'] = 'app'): MenuItem => ({
   title,

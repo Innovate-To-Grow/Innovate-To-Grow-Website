@@ -1,7 +1,7 @@
 import {act, cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {MainMenu} from '@/features/layout/components/MainMenu/MainMenu';
+import {MainMenu} from '@/features/layout/components/MainMenu/menu/MainMenu';
 import {ROUTE_CHANGE_EVENT} from '@/features/layout/hooks/useCurrentPathname';
 import {makeState, menuItem} from '@/__tests__/features/layout/components/MainMenu/menu/mainMenuFixtures';
 
@@ -45,7 +45,7 @@ const childProps = vi.hoisted(() => ({
   mobilePanel: {} as MobileMenuPanelProps,
 }));
 
-vi.mock('@/features/layout/components/MainMenu/useMainMenuState', () => ({
+vi.mock('@/features/layout/components/MainMenu/menu/useMainMenuState', () => ({
   useMainMenuState,
 }));
 

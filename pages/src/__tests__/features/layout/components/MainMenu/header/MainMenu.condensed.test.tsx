@@ -1,18 +1,18 @@
 import {act, cleanup, render, screen, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {MainMenu} from '@/features/layout/components/MainMenu/MainMenu';
+import {MainMenu} from '@/features/layout/components/MainMenu/menu/MainMenu';
 import {makeState} from '@/__tests__/features/layout/components/MainMenu/menu/mainMenuFixtures';
 
 const useMainMenuState = vi.hoisted(() => vi.fn());
 const useHeaderDateHidden = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/layout/components/MainMenu/useMainMenuState', () => ({
+vi.mock('@/features/layout/components/MainMenu/menu/useMainMenuState', () => ({
   useMainMenuState,
 }));
 
-vi.mock('@/features/layout/components/MainMenu/useHeaderDateFit', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/features/layout/components/MainMenu/useHeaderDateFit')>()),
+vi.mock('@/features/layout/components/MainMenu/header/useHeaderDateFit', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/layout/components/MainMenu/header/useHeaderDateFit')>()),
   useHeaderDateHidden,
 }));
 

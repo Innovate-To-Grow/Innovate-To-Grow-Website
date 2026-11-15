@@ -1,5 +1,5 @@
 import {useEffect, useMemo, useRef, useState} from 'react';
-import {useMenu} from '../LayoutProvider/context';
+import {useMenu} from '../../LayoutProvider/context';
 import {useAuth} from '@/features/auth';
 import {type MenuItem} from '@/features/layout/api';
 
