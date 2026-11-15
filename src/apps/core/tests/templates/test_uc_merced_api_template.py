@@ -11,6 +11,14 @@ from django.test import RequestFactory, SimpleTestCase
 from rest_framework.settings import api_settings
 
 
+def _stylesheet_text(path) -> str:
+    """The stylesheet's text, each ``@import './part.css?v=N';`` replaced by that part (split stylesheets)."""
+    sheet = Path(path)
+    return re.sub(
+        r"@import '\./([^'?]+)(?:\?[^']*)?';", lambda m: (sheet.parent / m.group(1)).read_text(), sheet.read_text()
+    )
+
+
 class UCMercedAPITemplateTests(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
@@ -91,7 +99,7 @@ class UCMercedAPITemplateTests(SimpleTestCase):
 
         self.assertIsNotNone(css_result)
         self.assertIsNotNone(logo_result)
-        css = Path(css_result).read_text()
+        css = _stylesheet_text(css_result)
         logo = Path(logo_result).read_bytes()
         source_logo = (settings.BASE_DIR.parent / "pages" / "public" / "assets" / "images" / "ucmlogo.png").read_bytes()
 

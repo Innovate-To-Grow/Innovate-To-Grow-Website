@@ -1,0 +1,8 @@
+/* google-material-admin.css, split into ordered sections. They are imported in their original cascade order
+   (later files override earlier ones at equal specificity), so do not reorder this list;
+   add new rules to the file that owns them; bump a part's ?v= (and the page link's) when you change it. */
+@import './google-material-admin-tokens.css?v=1';
+@import './google-material-admin-elements.css?v=1';
+@import './google-material-admin-navigation.css?v=1';
+@import './google-material-admin-actions.css?v=1';
+@import './google-material-admin-system-intelligence.css?v=1';

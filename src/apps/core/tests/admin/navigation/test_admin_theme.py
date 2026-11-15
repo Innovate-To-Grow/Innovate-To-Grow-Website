@@ -10,6 +10,14 @@ from apps.core.models import SiteMaintenanceControl
 from apps.event.tests.helpers import make_superuser
 
 
+def _stylesheet_text(path) -> str:
+    """The stylesheet's text, each ``@import './part.css?v=N';`` replaced by that part (split stylesheets)."""
+    sheet = Path(path)
+    return re.sub(
+        r"@import '\./([^'?]+)(?:\?[^']*)?';", lambda m: (sheet.parent / m.group(1)).read_text(), sheet.read_text()
+    )
+
+
 class AdminThemeRenderingTests(TestCase):
     def assert_persisted_admin_theme_defaults_to_system(self, response):
         html = response.content.decode()
@@ -71,9 +79,9 @@ class AdminThemeRenderingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertLess(
             html.index("/static/unfold/css/styles.css"),
-            html.index("/static/admin/css/google-material-admin-overrides.css"),
+            html.index("/static/admin/css/material/google-material-admin-overrides.css"),
         )
-        path = finders.find("admin/css/google-material-admin-overrides.css")
+        path = finders.find("admin/css/material/google-material-admin-overrides.css")
         self.assertIsNotNone(path)
         source = Path(path).read_text()
         self.assertIn(".i2g-admin-theme-toggle__button", source)
@@ -86,20 +94,20 @@ class AdminThemeRenderingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("<html", html)
         self.assertIn("x-cloak", html)
-        self.assertIn("/static/admin/css/google-material-admin.css", html)
+        self.assertIn("/static/admin/css/material/google-material-admin.css", html)
         self.assertLess(
             html.index("/static/unfold/css/styles.css"),
-            html.index("/static/admin/css/google-material-admin-overrides.css"),
+            html.index("/static/admin/css/material/google-material-admin-overrides.css"),
         )
 
         for style_path in (
-            "admin/css/google-material-admin.css",
-            "admin/css/google-material-admin-overrides.css",
+            "admin/css/material/google-material-admin.css",
+            "admin/css/material/google-material-admin-overrides.css",
         ):
             with self.subTest(style_path=style_path):
                 path = finders.find(style_path)
                 self.assertIsNotNone(path)
-                source = Path(path).read_text()
+                source = _stylesheet_text(path)
                 self.assertIn("html[x-cloak]", source)
                 self.assertIn("display: block !important", source)
 
@@ -156,9 +164,9 @@ class AdminThemeRenderingTests(TestCase):
         self.assertIn("includeIndicatorStyles = false", source)
 
     def test_google_material_admin_css_covers_dark_custom_dashboards(self):
-        path = finders.find("admin/css/google-material-admin.css")
+        path = finders.find("admin/css/material/google-material-admin.css")
         self.assertIsNotNone(path)
-        source = Path(path).read_text()
+        source = _stylesheet_text(path)
 
         self.assertIn(".dark .text-font-default-light", source)
         self.assertIn(".dark #changelist", source)
