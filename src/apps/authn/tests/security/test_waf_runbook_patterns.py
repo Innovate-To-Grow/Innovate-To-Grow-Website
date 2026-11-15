@@ -14,7 +14,7 @@ from django.test import SimpleTestCase
 from django.urls import URLResolver, get_resolver, resolve
 from django.urls.resolvers import RoutePattern
 
-RUNBOOK = Path(settings.BASE_DIR).parent / "docs" / "deployment" / "waf-rate-limits.md"
+RUNBOOK = Path(settings.BASE_DIR).parent / "docs" / "operations" / "waf-rate-limits.md"
 
 # AWS WAF fixed quotas (https://docs.aws.amazon.com/waf/latest/developerguide/limits.html).
 MAX_PATTERN_LENGTH = 200
