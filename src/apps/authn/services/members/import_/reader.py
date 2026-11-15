@@ -15,7 +15,8 @@ try:
 except ImportError:  # pragma: no cover - openpyxl is a hard dependency; guarded for the import error message
     load_workbook = None
 
-from .parsing import FLAG_COLUMNS, IMPORTED_KEYS, INFORMATIONAL_KEYS, column_notes, normalize_header, parse_row
+from .columns import INFORMATIONAL_KEYS
+from .parsing import FLAG_COLUMNS, IMPORTED_KEYS, column_notes, normalize_header, parse_row
 
 EMPTY_FILE = "Excel file is empty"
 NO_PRIMARY_EMAIL_COLUMN = "Excel file must contain a 'Primary Email' column"
