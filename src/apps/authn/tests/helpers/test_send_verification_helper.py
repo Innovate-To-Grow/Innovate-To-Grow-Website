@@ -7,7 +7,7 @@ from django.test import SimpleTestCase, override_settings
 from django.test.client import Client
 from rest_framework.test import APIClient
 
-from apps.authn.tests import send_verification
+from apps.authn.tests.helpers import send_verification
 
 
 @override_settings(SEND_VERIFICATION_TEST_AUTOSOLVE=True)

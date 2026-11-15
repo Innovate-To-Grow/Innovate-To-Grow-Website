@@ -7,7 +7,7 @@ from apps.authn.services import (
     PhoneVerificationThrottled,
 )
 from apps.authn.services.email.challenges import AuthChallengeInvalid
-from apps.authn.tests.account.contact_phones.test_contact_phones import _ContactPhoneCase
+from apps.authn.tests.api.account.contact_phones.test_contact_phones import _ContactPhoneCase
 
 
 class ContactPhoneTests(_ContactPhoneCase):

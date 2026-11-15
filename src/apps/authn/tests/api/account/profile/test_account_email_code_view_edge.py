@@ -5,7 +5,7 @@ from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail
 from apps.authn.services import AuthChallengeDeliveryError, AuthChallengeInvalid
-from apps.authn.tests.account.contact_emails.test_contact_emails_edge import Member
+from apps.authn.tests.api.account.contact_emails.test_contact_emails_edge import Member
 
 
 class AccountEmailCodeViewEdgeTests(APITestCase):

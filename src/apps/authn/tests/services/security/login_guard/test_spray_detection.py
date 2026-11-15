@@ -1,7 +1,5 @@
 from apps.authn.services import login_guard
-from apps.authn.tests.clock import (
-    SECONDS_LEFT_IN_SPRAY_WINDOW,
-)
+from apps.authn.tests.helpers.clock import SECONDS_LEFT_IN_SPRAY_WINDOW
 
 from .login_guard_helpers import LOGGER, PHONE, THRESHOLD, GuardTestCase, identifier_rows, spray_count
 

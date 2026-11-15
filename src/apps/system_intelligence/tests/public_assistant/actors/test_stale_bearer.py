@@ -8,7 +8,7 @@ visitor in the body), so it honours a valid token and treats a bad one as the vi
 
 from django.contrib.auth import get_user_model
 
-from apps.authn.tests.stale_bearer import (
+from apps.authn.tests.helpers.stale_bearer import (
     assert_stale_bearer_reads_as_anonymous,
     stale_bearer_headers,
     valid_bearer_header,

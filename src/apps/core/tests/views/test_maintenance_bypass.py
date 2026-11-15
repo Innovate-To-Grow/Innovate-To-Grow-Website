@@ -7,7 +7,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.authn.models import Member
-from apps.authn.tests.stale_bearer import (
+from apps.authn.tests.helpers.stale_bearer import (
     assert_stale_bearer_reads_as_anonymous,
     stale_bearer_headers,
     valid_bearer_header,

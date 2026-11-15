@@ -12,7 +12,7 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.authn.models import Member
 from apps.authn.security import SoftJWTAuthentication
-from apps.authn.tests.stale_bearer import stale_bearer_headers, valid_bearer_header
+from apps.authn.tests.helpers.stale_bearer import stale_bearer_headers, valid_bearer_header
 
 factory = APIRequestFactory()
 

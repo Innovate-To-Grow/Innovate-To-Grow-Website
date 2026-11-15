@@ -22,7 +22,7 @@ from apps.authn.tests.admin.login.password.lockout.test_admin_login_lockout impo
     remembered_cookie,
     spray_count,
 )
-from apps.authn.tests.clock import SECONDS_LEFT_IN_DAY
+from apps.authn.tests.helpers.clock import SECONDS_LEFT_IN_DAY
 from apps.authn.views.admin.login.password import REMEMBERED_ADMIN_GUARD_SCOPE, remembered_admin_guard_key
 from apps.authn.views.admin.login.state import LAST_ADMIN_LOGIN_COOKIE_NAME
 

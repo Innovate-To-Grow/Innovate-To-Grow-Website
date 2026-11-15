@@ -13,7 +13,7 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.tests.clock import freeze_time
+from apps.authn.tests.helpers.clock import freeze_time
 from apps.authn.views.admin.login.state import LAST_ADMIN_LOGIN_COOKIE_NAME
 
 Member = get_user_model()
