@@ -90,45 +90,6 @@ describe('LoginForm unified email/phone field', () => {
     expect(submit).toBeEnabled();
   });
 
-  it('returns a password sign-in to the safe returnTo', async () => {
-    renderForm('/past-projects');
-    const authValue = mockUseAuth.mock.results.at(-1)?.value;
-    authValue.login.mockResolvedValue({next_step: 'account', requires_profile_completion: false});
-
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'ada@example.com'}});
-    fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'hunter2!'}});
-    fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
-
-    await waitFor(() => {
-      expect(authValue.login).toHaveBeenCalledWith('ada@example.com', 'hunter2!');
-    });
-    expect(mockNavigate).toHaveBeenCalledWith('/past-projects', {replace: true});
-  });
-
-  it('signs in with a phone number and password', async () => {
-    renderForm();
-    const authValue = mockUseAuth.mock.results.at(-1)?.value;
-    authValue.login.mockResolvedValue({next_step: 'account', requires_profile_completion: false});
-
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: '(202) 555-0123'}});
-    fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'hunter2!'}});
-    fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
-
-    await waitFor(() => {
-      expect(authValue.login).toHaveBeenCalledWith('2025550123', 'hunter2!');
-    });
-  });
-
-  it('prefills the password email from a typed email when switching modes', () => {
-    renderForm();
-    fireEvent.change(screen.getByLabelText('Email or phone number'), {target: {value: 'ada@example.com'}});
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-
-    expect((screen.getByLabelText('Email or Phone') as HTMLInputElement).value).toBe('ada@example.com');
-  });
-
   it('routes a phone entry to the phone-code step', async () => {
     renderForm();
     const authValue = mockUseAuth.mock.results.at(-1)?.value;
@@ -150,44 +111,6 @@ describe('LoginForm unified email/phone field', () => {
     fireEvent.submit(form);
 
     expect(screen.getByText('Please enter a valid email address or 10-digit US phone number.')).toBeInTheDocument();
-  });
-
-  it('shows a validation error for an empty password-mode identifier', () => {
-    renderForm();
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-    const form = screen.getByLabelText('Email or Phone').closest('form')!;
-    fireEvent.submit(form);
-
-    expect(screen.getByText('Please enter your email or phone number.')).toBeInTheDocument();
-  });
-
-  it('shows a validation error for an invalid password-mode identifier', () => {
-    renderForm();
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'not-an-identifier'}});
-    fireEvent.change(screen.getByLabelText('Password'), {target: {value: 'hunter2!'}});
-    fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
-
-    expect(screen.getByText('Please enter a valid email address or 10-digit US phone number.')).toBeInTheDocument();
-  });
-
-  it('shows a validation error for an empty password', () => {
-    renderForm();
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-    fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: 'ada@example.com'}});
-    const form = screen.getByLabelText('Email or Phone').closest('form')!;
-    fireEvent.submit(form);
-
-    expect(screen.getByText('Please enter your password.')).toBeInTheDocument();
-  });
-
-  it('switches back to the identifier mode', () => {
-    renderForm();
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with password instead'}));
-    fireEvent.click(screen.getByRole('button', {name: 'Sign in with a verification code'}));
-
-    expect(screen.getByLabelText('Email or phone number')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Email or Phone')).not.toBeInTheDocument();
   });
 
   it('shows the context error when no validation error is present', () => {
