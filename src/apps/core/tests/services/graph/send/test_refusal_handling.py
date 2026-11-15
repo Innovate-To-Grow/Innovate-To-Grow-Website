@@ -3,8 +3,9 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.core.services.email import PermanentEmailDeliveryError
-from apps.core.services.email.graph import auth, transport
+from apps.core.services.email.graph import transport
 from apps.core.services.email.graph.access_check.probes import Prober
+from apps.core.services.email.graph.identity import auth
 from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadError
 from apps.core.services.email.graph.provider import GraphProvider
 from apps.core.tests.graph_helpers import create_graph_config, make_test_credential

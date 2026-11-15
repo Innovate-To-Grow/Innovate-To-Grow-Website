@@ -12,7 +12,8 @@ from django.core.cache import cache
 from django.test import RequestFactory, TestCase, override_settings
 from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 
-from apps.core.services.request_limits import identity, register_identity_resolver
+from apps.core.services.request_limits import register_identity_resolver
+from apps.core.services.request_limits.classification import identity
 
 from ..helpers import isolate
 

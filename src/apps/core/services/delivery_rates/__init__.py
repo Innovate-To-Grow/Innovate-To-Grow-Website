@@ -21,8 +21,8 @@ or uses ``controlled(...)`` for the same. ``RateDeferred`` means "certainly not 
   ``maintenance``: the worker's periodic limit reads and purges.
 """
 
-from .families import Target, active_target, inline_batch_limit, lane_gated, register_family
-from .maintenance import run_maintenance
+from .lifecycle.families import Target, active_target, inline_batch_limit, lane_gated, register_family
+from .lifecycle.maintenance import run_maintenance
 from .rules.channels import (
     Family,
     Lane,
@@ -61,7 +61,7 @@ from .runtime.discovery import refresh_discovery
 from .runtime.feedback import controlled, held_for, record, release, reset_smart
 from .runtime.limiter import admit
 from .runtime.state import AdmissionInTransaction
-from .snapshot import ChannelStatus, IdentityStatus, channel_status, snapshot
+from .status.snapshot import ChannelStatus, IdentityStatus, channel_status, snapshot
 
 __all__ = [
     "CONFIG_REASONS",

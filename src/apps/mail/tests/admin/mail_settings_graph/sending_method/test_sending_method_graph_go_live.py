@@ -16,7 +16,8 @@ from django.urls import reverse
 from apps.core.admin.service_credentials.microsoft_graph_panel import ACCESS_CHECK_URL_NAME
 from apps.core.models import EmailServiceConfig, MicrosoftGraphAccessCheck
 from apps.core.services.email import EmailMessage, deliver_email
-from apps.core.services.email.graph import auth, transport
+from apps.core.services.email.graph import transport
+from apps.core.services.email.graph.identity import auth
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.graph_access.helpers import DENY, SCOPED, ProbeFake
 

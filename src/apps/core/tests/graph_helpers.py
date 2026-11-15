@@ -15,9 +15,9 @@ from cryptography.x509.oid import NameOID
 from django.utils import timezone
 
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
-from apps.core.services.email.graph.auth import GraphCredential
-from apps.core.services.email.graph.certificate import describe_certificate
 from apps.core.services.email.graph.credential import stored_key
+from apps.core.services.email.graph.identity.auth import GraphCredential
+from apps.core.services.email.graph.identity.certificate import describe_certificate
 
 SEND_AND_READ = MicrosoftGraphMailboxScope.Permission.SEND_AND_READ
 TENANT_ID = "11111111-2222-3333-4444-555555555555"

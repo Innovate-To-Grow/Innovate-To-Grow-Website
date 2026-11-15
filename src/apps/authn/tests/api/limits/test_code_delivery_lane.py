@@ -21,7 +21,7 @@ from apps.authn.tests.send_verification import mint_send_verification
 from apps.core.models import AWSCredentialConfig, DeliveryRatePolicy, EmailServiceConfig
 from apps.core.services import delivery_rates as rates
 from apps.core.services.aws import sms_send
-from apps.core.services.email import delivery
+from apps.core.services.email.sending import delivery
 from apps.core.tests.services.delivery_rates.helpers import FakeClock, set_policy
 
 Channel = DeliveryRatePolicy.Channel

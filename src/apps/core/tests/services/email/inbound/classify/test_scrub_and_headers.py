@@ -6,7 +6,7 @@ from email.message import EmailMessage
 from django.test import SimpleTestCase
 
 from apps.core.services.email.inbound import LINK_PLACEHOLDER, is_sensitive_url, scrub_links, scrub_subject
-from apps.core.services.email.inbound import headers as mime
+from apps.core.services.email.inbound.classification import headers as mime
 
 TOKEN = "fake-test-token-0000000000"  # a synthetic value: only its position matters
 

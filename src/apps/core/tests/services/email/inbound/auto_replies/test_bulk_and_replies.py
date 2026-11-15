@@ -6,7 +6,7 @@ does (decision to confirm) and spam stays spam."""
 from django.test import SimpleTestCase
 
 from apps.core.services.email.inbound import REPLY_HINT, auth_summary, classify
-from apps.core.services.email.inbound.bulk import bulk_complaint_level
+from apps.core.services.email.inbound.classification.bulk import bulk_complaint_level
 
 from .. import samples
 from ..classify.test_classify import OWN, evidence

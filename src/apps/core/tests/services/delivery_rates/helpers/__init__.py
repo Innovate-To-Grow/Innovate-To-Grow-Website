@@ -86,7 +86,7 @@ def set_policy(channel, **values):
 def spy_on_email_admissions(test):
     """Record every email admission (the real limiter still runs); returns the mock whose calls show channel,
     identity and lane: ``spy.call_args.kwargs["lane"]``."""
-    from apps.core.services.email import delivery
+    from apps.core.services.email.sending import delivery
 
     patcher = patch.object(delivery, "admit", wraps=delivery.admit)
     spy = patcher.start()

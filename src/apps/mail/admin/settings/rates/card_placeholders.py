@@ -3,7 +3,7 @@ from apps.core.models.base.delivery_rates import limits_from_configuration
 from apps.core.services.delivery_rates import channel_info
 from apps.core.services.delivery_rates.rules.channels import smtp_host
 from apps.core.services.delivery_rates.rules.defaults import channel_settings, section
-from apps.core.services.delivery_rates.status_text import clock, number
+from apps.core.services.delivery_rates.status.status_text import clock, number
 
 Channel = DeliveryRatePolicy.Channel
 

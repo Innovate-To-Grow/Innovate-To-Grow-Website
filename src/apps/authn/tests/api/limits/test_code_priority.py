@@ -19,7 +19,7 @@ from apps.authn.services.send_verification.rules.constants import (
     OP_EMAIL_AUTH_REQUEST_CODE,
 )
 from apps.authn.tests.send_verification import mint_send_verification
-from apps.core.services.request_limits import priority, scopes
+from apps.core.services.request_limits.classification import priority, scopes
 from apps.core.tests.request_limits.helpers import isolate
 
 PATH = "/authn/email-auth/request-code/"

@@ -6,7 +6,7 @@ from urllib.parse import parse_qs
 from django.conf import settings
 from django.test import SimpleTestCase
 
-from apps.core.services.email.graph import auth
+from apps.core.services.email.graph.identity import auth
 from apps.core.tests.graph_helpers import make_test_credential, private_key_lines
 from apps.core.tests.services.graph.provider.test_email_graph import (
     ACCESS_TOKEN,

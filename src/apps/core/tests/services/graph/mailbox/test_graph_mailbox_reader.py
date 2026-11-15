@@ -11,7 +11,7 @@ from django.conf import settings
 from django.test import TestCase
 
 from apps.core.models import MicrosoftGraphMailboxScope
-from apps.core.services.email.graph.access import GraphScopeError
+from apps.core.services.email.graph.identity.access import GraphScopeError
 from apps.core.services.email.graph.mailbox import (
     LIST_FIELDS,
     GraphMailboxReader,

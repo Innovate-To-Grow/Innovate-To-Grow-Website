@@ -10,7 +10,7 @@ from django.core.cache import cache
 from django.test import TestCase
 
 from apps.core.models import EmailCategory, OutboundEmail, OutboundEmailAttempt
-from apps.core.services.delivery_rates.families import clear_gate_cache
+from apps.core.services.delivery_rates.lifecycle.families import clear_gate_cache
 from apps.core.services.email import (
     EmailDeliveryError,
     EmailMessage,

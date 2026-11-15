@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 
 from apps.core.models import BackgroundJob
-from apps.core.services.email.inbound import consume
+from apps.core.services.email.inbound.processing import consume
 from apps.mail.models import EmailCampaign
 
 from ....models import HelpdeskSettings

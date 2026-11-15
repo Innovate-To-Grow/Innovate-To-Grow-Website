@@ -44,7 +44,6 @@ Subsystem               What it is                                            Im
                         facade's tracker, ``email_tracking`` categories) and
                         ``bounces/`` reads Graph bounce reports (worker job)
 ``helpers/``            In-process task runner + sheet formula safety         ``authn``, ``event``, ``mail``, ``system_intelligence``
-``legacy_access/``      Signed access to the read-only legacy site viewer      ``core`` only (legacy_view, admin, views)
 ``request_limits/``     Inbound request limits for every route (one           ``core`` (its middleware); apps plug in from
                         middleware): scopes, priority tiers, Smart limiting    ``ready()`` with ``register_scope`` /
                         (shed P3 → P2 → P1, never P0), tier slots, abuse      ``register_exemption`` /

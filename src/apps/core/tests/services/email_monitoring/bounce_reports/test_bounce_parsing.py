@@ -7,7 +7,7 @@ from django.test import SimpleTestCase
 
 from apps.core.models import EmailBounce
 from apps.core.services.email.bounces.classify import classify, reason
-from apps.core.services.email.bounces.dsn import parse_report, strip_report_prefix
+from apps.core.services.email.bounces.recording.dsn import parse_report, strip_report_prefix
 
 from ..ndr_samples import ORIGINAL_ID, exchange_ndr, gmail_dsn, old_style_bounce, personal_email
 

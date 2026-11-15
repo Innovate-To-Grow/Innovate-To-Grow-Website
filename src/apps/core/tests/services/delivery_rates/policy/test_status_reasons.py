@@ -7,7 +7,7 @@ from django.test import SimpleTestCase
 
 from apps.core.services import delivery_rates, email
 from apps.core.services.delivery_rates.rules.signals import Reason
-from apps.core.services.delivery_rates.status_text import REASONS, reason
+from apps.core.services.delivery_rates.status.status_text import REASONS, reason
 
 _CONSTRUCTORS = {"throttle", "pause", "quota", "blocked"}
 

@@ -7,7 +7,7 @@ from django.urls import resolve, reverse
 
 from apps.core.models import BackgroundJob
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND
-from apps.core.services.request_limits.scopes import classify_route
+from apps.core.services.request_limits.classification.scopes import classify_route
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import BouncedAddress
 

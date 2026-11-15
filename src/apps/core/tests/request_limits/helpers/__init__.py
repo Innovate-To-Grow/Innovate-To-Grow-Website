@@ -8,8 +8,8 @@ from django.conf import settings
 from django.core.cache import cache
 from django.test import override_settings
 
-from apps.core.services.request_limits import scopes as scope_module
-from apps.core.services.request_limits.identity import _RESOLVERS
+from apps.core.services.request_limits.classification import scopes as scope_module
+from apps.core.services.request_limits.classification.identity import _RESOLVERS
 from apps.core.services.request_limits.runtime import heartbeat, registry, signals, smart
 
 START = 1_800_000_000.0  # a fixed epoch second (2027-01-15), aligned to a whole minute

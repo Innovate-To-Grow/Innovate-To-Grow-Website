@@ -33,7 +33,7 @@ queued behind a campaign ([Delivery rates: lanes](delivery-rates.md#budgets-the-
 
 ## Scopes and routes
 
-A request's scope is decided in `process_view`, after URL resolution (`apps/core/services/request_limits/scopes.py`):
+A request's scope is decided in `process_view`, after URL resolution (`apps/core/services/request_limits/classification/scopes.py`):
 
 1. **Exempt**: a CORS preflight (`OPTIONS` with `Access-Control-Request-Method`; a bare `OPTIONS` runs the view and
    is limited as a read), a view with `rate_limit_exempt = "reason"`, an app's `register_exemption(...)` or
@@ -57,7 +57,7 @@ follows).
 
 ## Who a request counts against
 
-Each scope's `identity` picks the bucket key (`apps/core/services/request_limits/identity.py`):
+Each scope's `identity` picks the bucket key (`apps/core/services/request_limits/classification/identity.py`):
 
 | Identity | Key |
 |----------|-----|
