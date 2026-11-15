@@ -10,12 +10,51 @@ One row per number (E.164). It is active while ``cleared_at`` is empty. Rows com
 The first two are cleared only by the sync, when AWS no longer lists the number (it replied START). Staff rows stay
 until staff lift them. Every send path asks this list first (``core.services.aws.sms_opt_outs``), and the member's
 contact phone is unsubscribed once (``contacts_unsubscribed_at``); clearing never subscribes anyone again.
+
+
+``SmsOptOutSyncState`` is written only by the sync (``services.sms.policy.opt_out_sync``), with UPDATEs, never by a form,
+so saving the settings can never overwrite what a running sync records.
 """
+
+import uuid
 
 from django.conf import settings
 from django.db import models
 
 from apps.core.models import ProjectControlModel
+
+SYNC_STATE_PK = uuid.UUID("00000000-0000-4000-8000-000000005302")
+
+
+class SmsOptOutSyncState(ProjectControlModel):
+    class Status(models.TextChoices):
+        NEVER = "", "Not run yet"
+        OK = "ok", "Up to date"
+        PARTIAL = "partial", "Partly read (list longer than one run reads)"
+        FAILED = "failed", "Failed"
+        NOT_CONFIGURED = "not_configured", "SMS is not configured"
+        DISABLED = "disabled", "Turned off"
+
+    status = models.CharField(max_length=16, choices=Status.choices, blank=True, default="")
+    message = models.CharField(max_length=300, blank=True, default="")
+    list_name = models.CharField(max_length=128, blank=True, default="")
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    last_success_at = models.DateTimeField(null=True, blank=True)
+    listed_count = models.PositiveIntegerField(default=0)
+    added_count = models.PositiveIntegerField(default=0)
+    cleared_count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "SMS opt-out sync state"
+        verbose_name_plural = "SMS opt-out sync state"
+
+    def __str__(self):
+        return f"SMS opt-out sync ({self.get_status_display()})"
+
+    @classmethod
+    def load(cls) -> "SmsOptOutSyncState":
+        obj, _created = cls.objects.get_or_create(pk=SYNC_STATE_PK)
+        return obj
 
 
 class SmsOptOut(ProjectControlModel):

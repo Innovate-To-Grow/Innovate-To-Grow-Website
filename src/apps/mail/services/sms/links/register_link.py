@@ -12,7 +12,7 @@ from django.core.cache import cache
 from django.db import transaction
 
 from apps.mail.models import SmsConfig
-from apps.mail.models.sms.config import DEFAULT_REGISTER_PATH, REGISTER_PATH, register_path_errors
+from apps.mail.models.sms.config_rules import DEFAULT_REGISTER_PATH, REGISTER_PATH, register_path_errors
 
 CACHE_KEY = "mail:sms:register-link"
 CACHE_SECONDS = 300

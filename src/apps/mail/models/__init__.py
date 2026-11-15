@@ -5,9 +5,9 @@ from .email.login_link import LoginLinkToken
 from .email.recipient_log import RecipientLog
 from .sms.campaign import SmsCampaign
 from .sms.campaign_recipients import SmsRecipientLog
-from .sms.config import SmsConfig, SmsOptOutSyncState
+from .sms.config import SmsConfig
 from .sms.links import SmsLinkRevocation, SmsLinkToken, TicketSms
-from .sms.opt_out import SmsOptOut
+from .sms.opt_out import SmsOptOut, SmsOptOutSyncState
 
 __all__ = [
     "BounceAggregationState",

@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkRevocation, SmsLinkToken
-from apps.mail.models.sms.config import revoke_personal_links
+from apps.mail.models.sms.personal_links import revoke_personal_links
 from apps.mail.services.sms import links
 from apps.mail.services.sms.content.compose import CampaignLinks
 from apps.mail.services.sms.delivery import ticket
@@ -25,7 +25,7 @@ from .policy_helpers import add_phone, sms_settings
 
 PHONE = "+12095550101"
 SIGN_IN_PAGE = "/login?returnTo=/subscribe"
-MODEL_LOG = "apps.mail.models.sms.config"
+MODEL_LOG = "apps.mail.models.sms.personal_links"
 Reason = SmsLinkRevocation.Reason
 Via = SmsLinkRevocation.Via
 

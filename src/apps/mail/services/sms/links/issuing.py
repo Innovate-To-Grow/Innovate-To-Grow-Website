@@ -12,7 +12,7 @@ from django.utils import timezone
 
 from apps.authn.models import ContactPhone
 from apps.mail.models import SmsConfig, SmsLinkToken
-from apps.mail.models.sms.config import PersonalLinkState
+from apps.mail.models.sms.personal_links import PersonalLinkState
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, is_strict_internal_path
 
 from ..policy.opt_outs import US_REGION, normalize_phone, us_national_digits
