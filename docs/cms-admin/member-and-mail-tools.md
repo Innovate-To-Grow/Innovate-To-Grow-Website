@@ -300,7 +300,7 @@ announcements"). Whether those audiences should honour the flag, or leave out th
 
 ### Personalization
 
-`src/apps/mail/services/campaign/personalize.py` replaces these placeholders in the subject and body (plain string
+`src/apps/mail/services/campaign/content/personalize.py` replaces these placeholders in the subject and body (plain string
 replacement, `{{name}}` or `{{ name }}`):
 
 | Variable | Replaced with |
@@ -440,7 +440,7 @@ Resending a ticket email revokes the registration's previous link before issuing
 
 ### Gmail import
 
-The campaign admin includes a Gmail import feature (`src/apps/mail/services/gmail_import/`) that can fetch email templates from a Gmail account for use as campaign bodies.
+The campaign admin includes a Gmail import feature (`src/apps/mail/services/campaign/gmail_import/`) that can fetch email templates from a Gmail account for use as campaign bodies.
 
 ### Recipient logs
 
