@@ -1,0 +1,125 @@
+<style nonce="{{ request.csp_nonce }}">
+{% include "admin/mail/inbox/shared/_scam_panel_styles_risk.html" %}
+{% include "admin/mail/inbox/shared/_scam_panel_styles_sections.html" %}
+</style>
+
+<div data-scam-analysis-panel
+     data-risk-level="{{ scam_analysis.risk_level }}"
+     class="{{ panel_margin|default:'mb-3' }} i2g-scam-panel">
+    <div class="i2g-scam-panel__body">
+        <div class="i2g-scam-panel__header">
+            <div class="i2g-scam-panel__identity">
+                <span class="material-symbols-outlined i2g-scam-panel__icon">{% if scam_analysis.risk_level == 'low' %}gpp_good{% elif scam_analysis.risk_level == 'high' %}gpp_bad{% else %}gpp_maybe{% endif %}</span>
+
+                <div class="i2g-scam-panel__intro">
+                    <div class="i2g-scam-panel__title-row">
+                        <span class="i2g-scam-panel__title">Security analysis</span>
+                        <span class="i2g-scam-panel__risk-badge">{{ scam_analysis.risk_level }} risk</span>
+                    </div>
+                    <p class="i2g-scam-panel__summary">
+                        {% firstof scam_analysis.summary "No automated security signals were flagged for this message." %}
+                    </p>
+                </div>
+            </div>
+
+            <div class="i2g-scam-panel__score">
+                <span class="i2g-scam-panel__score-label">Signal score</span>
+                <span class="i2g-scam-panel__score-value">{{ scam_analysis.score }}</span>
+            </div>
+        </div>
+
+        <div class="i2g-scam-panel__meter" aria-hidden="true">
+            <div class="i2g-scam-panel__meter-fill" style="width:{% firstof scam_analysis.score_percent 0 %}%;"></div>
+        </div>
+
+        <div class="i2g-scam-panel__recommendation">
+            <span class="material-symbols-outlined i2g-scam-panel__recommendation-icon">verified_user</span>
+            <span>{% firstof scam_analysis.recommendation "Verify the sender and destination before taking action from this message." %}</span>
+        </div>
+
+        {% if scam_analysis.ai_review %}
+        <div class="i2g-scam-panel__section" data-scam-ai-review>
+            <div class="i2g-scam-panel__section-heading">
+                <span class="material-symbols-outlined">smart_toy</span>
+                <span>AI review</span>
+                <span class="i2g-scam-panel__section-meta">{{ scam_analysis.ai_review.verdict|title }} &middot; {{ scam_analysis.ai_review.risk_score }}/100</span>
+            </div>
+            {% if scam_analysis.ai_review.reasons %}
+            <ul class="i2g-scam-panel__signals">
+                {% for reason in scam_analysis.ai_review.reasons %}
+                <li class="i2g-scam-panel__signal">
+                    <span class="i2g-scam-panel__signal-body">
+                        <span class="material-symbols-outlined i2g-scam-panel__signal-icon">smart_toy</span>
+                        <span class="i2g-scam-panel__signal-reason">{{ reason }}</span>
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if scam_analysis.link_warnings %}
+        <div class="i2g-scam-panel__section">
+            <div class="i2g-scam-panel__section-heading">
+                <span class="material-symbols-outlined">link</span>
+                <span>Link check</span>
+                <span class="i2g-scam-panel__section-meta">{{ scam_analysis.link_warnings|length }} flagged</span>
+            </div>
+            <div class="i2g-scam-panel__link-list">
+                {% for warning in scam_analysis.link_warnings %}
+                <div class="i2g-scam-panel__link-row">
+                    <div class="i2g-scam-panel__link-cell">
+                        <div class="i2g-scam-panel__label">Shown as</div>
+                        <div class="i2g-scam-panel__domain">{{ warning.display_domain }}</div>
+                    </div>
+                    <div class="i2g-scam-panel__link-cell">
+                        <div class="i2g-scam-panel__label">Destination</div>
+                        <div class="i2g-scam-panel__domain">{{ warning.actual_domain }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="i2g-scam-panel__section">
+            <div class="i2g-scam-panel__section-heading">
+                <span class="material-symbols-outlined">rule</span>
+                <span>Detected signals</span>
+            </div>
+            <ul class="i2g-scam-panel__signals">
+                {% if scam_analysis.findings %}
+                    {% for finding in scam_analysis.findings %}
+                    <li class="i2g-scam-panel__signal">
+                        <span class="i2g-scam-panel__signal-body">
+                            <span class="material-symbols-outlined i2g-scam-panel__signal-icon">warning</span>
+                            <span class="i2g-scam-panel__signal-copy">
+                                <span class="i2g-scam-panel__signal-title">{{ finding.category }} - {{ finding.impact }} impact</span>
+                                <span class="i2g-scam-panel__signal-reason">{{ finding.reason }}</span>
+                            </span>
+                        </span>
+                        <span class="i2g-scam-panel__signal-score">+{{ finding.score }}</span>
+                    </li>
+                    {% endfor %}
+                {% else %}
+                    {% for reason in scam_analysis.reasons %}
+                    <li class="i2g-scam-panel__signal">
+                        <span class="i2g-scam-panel__signal-body">
+                            <span class="material-symbols-outlined i2g-scam-panel__signal-icon">warning</span>
+                            <span class="i2g-scam-panel__signal-reason">{{ reason }}</span>
+                        </span>
+                    </li>
+                    {% empty %}
+                    <li class="i2g-scam-panel__signal">
+                        <span class="i2g-scam-panel__signal-body">
+                            <span class="material-symbols-outlined i2g-scam-panel__signal-icon">check_circle</span>
+                            <span class="i2g-scam-panel__signal-reason">No suspicious signals detected.</span>
+                        </span>
+                    </li>
+                    {% endfor %}
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</div>

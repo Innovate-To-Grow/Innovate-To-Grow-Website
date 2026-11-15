@@ -20,7 +20,8 @@ from apps.event.tests.helpers import make_superuser
 from apps.mail.services.inbox import graph_backend
 from apps.mail.services.inbox.reply import REPLY_INVALID_ADDRESS_MESSAGE, send_reply
 
-LIST_TEMPLATE = Path(__file__).resolve().parents[2] / "templates" / "admin" / "mail" / "inbox" / "list.html"
+LIST_DIR = Path(__file__).resolve().parents[2] / "templates" / "admin" / "mail" / "inbox" / "list"
+_INCLUDE_RE = re.compile(r'^\{% include "admin/mail/inbox/list/(?P<name>_\w+\.html)" %\}$', re.MULTILINE)
 DELIVER = "apps.mail.services.inbox.reply.deliver_email"
 PAYLOAD = "<img src=x onerror=alert(document.domain)>"
 CRAFTED_MIME = (
@@ -36,9 +37,15 @@ _INNER_HTML_RE = re.compile(r"\.innerHTML\s*=\s*(?P<value>.+?);\s*$")
 _SAFE_INNER_HTML = re.compile(r"'[^'+]*'|html|newList\.innerHTML|newSplit\.outerHTML")
 
 
+def _list_template_source():
+    """list.html with each of its {% include %} partials inlined, as the page renders it."""
+    source = (LIST_DIR / "list.html").read_text(encoding="utf-8")
+    return _INCLUDE_RE.sub(lambda m: (LIST_DIR / m["name"]).read_text(encoding="utf-8"), source)
+
+
 class ReplyBannerTemplateTests(SimpleTestCase):
     def setUp(self):
-        self.source = LIST_TEMPLATE.read_text(encoding="utf-8")
+        self.source = _list_template_source()
 
     def test_no_server_value_is_assigned_to_inner_html(self):
         assignments = [match["value"] for line in self.source.splitlines() if (match := _INNER_HTML_RE.search(line))]
