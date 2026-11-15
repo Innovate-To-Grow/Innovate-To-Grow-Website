@@ -11,7 +11,7 @@ from rest_framework.test import APIClient
 
 from apps.projects.models import PastProjectShare
 from apps.projects.serializers import PastProjectShareSerializer
-from apps.projects.tests.api.test_past_project_share import sample_row
+from apps.projects.tests.api.shares.test_past_project_share import sample_row
 
 Member = get_user_model()
 
