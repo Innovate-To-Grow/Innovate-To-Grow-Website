@@ -4,9 +4,9 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.core.services.email.gmail import auth
-from apps.core.services.email.gmail.access import GmailScopeError, credential_for, require_subject
-from apps.core.services.email.gmail.key import stored_key
+from apps.core.services.email.gmail.client import auth
+from apps.core.services.email.gmail.client.access import GmailScopeError, credential_for, require_subject
+from apps.core.services.email.gmail.service_account import stored_key
 from apps.core.tests.gmail_api_helpers import SUBJECT, make_config, reset_gmail_state
 
 CONNECTION = "apps.core.services.email.transport.HTTPSConnection"

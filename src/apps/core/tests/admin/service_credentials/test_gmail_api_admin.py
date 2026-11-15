@@ -13,7 +13,7 @@ from django.utils.html import escape
 
 from apps.core.admin.service_credentials import gmail_api_forms
 from apps.core.models import GmailApiProviderConfig, GmailApiSubject
-from apps.core.services.email.gmail.key import parsing
+from apps.core.services.email.gmail.service_account import parsing
 from apps.core.tests.gmail_api_helpers import (
     KEY_ID,
     SERVICE_ACCOUNT,

@@ -3,8 +3,13 @@
 import jwt
 from django.test import SimpleTestCase, override_settings
 
-from apps.core.services.email.gmail import assertion
-from apps.core.services.email.gmail.assertion import GMAIL_SEND_SCOPE, TOKEN_URI, SigningKeyError, load_signing_key
+from apps.core.services.email.gmail.service_account import assertion
+from apps.core.services.email.gmail.service_account.assertion import (
+    GMAIL_SEND_SCOPE,
+    TOKEN_URI,
+    SigningKeyError,
+    load_signing_key,
+)
 from apps.core.tests.gmail_api_helpers import KEY_ID, SERVICE_ACCOUNT, SUBJECT, ec_pem, pem, rsa_key
 
 
