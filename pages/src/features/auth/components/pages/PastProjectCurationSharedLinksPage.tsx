@@ -8,11 +8,11 @@ import {
   getSharedLinkSearchText,
   PAST_PROJECT_CURATION_SHARED_LINKS_PATH,
   PAST_PROJECT_CURATION_SHARED_LINKS_TITLE,
-} from '../sections/internal/sharedLinkUtils';
-import {SharedLinksList} from '../sections/internal/SharedLinksList';
-import {useMySharedLinks} from '../sections/internal/useMySharedLinks';
+} from '../sections/sharedLinks/sharedLinkUtils';
+import {SharedLinksList} from '../sections/sharedLinks/SharedLinksList';
+import {useMySharedLinks} from '../sections/sharedLinks/useMySharedLinks';
 
-import './account/accountSharedLinks.css';
+import './account/dashboard/accountSharedLinks.css';
 
 export const PastProjectCurationSharedLinksPage = () => {
   const {isAuthenticated, isInitializing, requiresProfileCompletion} = useAuth();

@@ -1,16 +1,16 @@
 import '../auth.css';
-import {DeleteAccountSection} from './account/DeleteAccountSection';
-import {DetailsSection} from './account/DetailsSection';
-import {PasswordSection} from './account/PasswordSection';
-import {ProfileSection} from './account/ProfileSection';
-import {TicketsSection} from './account/TicketsSection';
-import {useAccountDashboard} from './account/useAccountDashboard';
-import {EmailCenter} from '../sections/EmailCenter';
+import {DeleteAccountSection} from './account/security/DeleteAccountSection';
+import {DetailsSection} from './account/dashboard/DetailsSection';
+import {PasswordSection} from './account/security/PasswordSection';
+import {ProfileSection} from './account/profile/ProfileSection';
+import {TicketsSection} from './account/tickets/TicketsSection';
+import {useAccountDashboard} from './account/dashboard/useAccountDashboard';
+import {EmailCenter} from '../sections/email/EmailCenter';
 import {Icon} from '@/components/Icon/Icon';
-import {MySharedLinksSection} from '../sections/MySharedLinksSection';
-import {PhoneCenter} from '../sections/PhoneCenter';
+import {MySharedLinksSection} from '../sections/sharedLinks/MySharedLinksSection';
+import {PhoneCenter} from '../sections/phone/PhoneCenter';
 
-import './account/accountSharedLinks.css';
+import './account/dashboard/accountSharedLinks.css';
 
 type AccountDashboard = ReturnType<typeof useAccountDashboard>;
 
