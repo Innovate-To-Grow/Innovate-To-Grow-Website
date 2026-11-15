@@ -1,8 +1,5 @@
-import {
-  RICH_DETAIL_HIGHLIGHT_TAGS,
-  clearInsertedFormattingAncestors,
-  unwrapMatchingElements,
-} from './richTextEditorDom';
+import {RICH_DETAIL_HIGHLIGHT_TAGS} from './formattingQueries';
+import {clearInsertedFormattingAncestors, unwrapMatchingElements} from './richTextEditorDom';
 
 /** Whether the range starts and ends inside the editor. */
 export const rangeBelongsToEditor = (range: Range, editor: HTMLElement) => {

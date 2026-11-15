@@ -1,11 +1,13 @@
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {
-  clearInsertedFormattingAncestors,
-  createPlainFormattingFragment,
   getEditorSelectionRange,
   rangeContainsFormatting,
   rangeContainsHighlight,
+} from '@/features/projects/components/richText/dom/formattingQueries';
+import {
+  clearInsertedFormattingAncestors,
+  createPlainFormattingFragment,
   replaceEditorWithPlainFormatting,
   replaceRangeWithPlainFormatting,
   replaceRangeWithoutMatchingFormatting,
