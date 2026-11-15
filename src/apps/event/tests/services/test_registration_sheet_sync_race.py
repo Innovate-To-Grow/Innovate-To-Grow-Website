@@ -18,7 +18,7 @@ from apps.event.tests.services.sheet_fakes import FakeWorksheet
 class ManagedSyncRaceTests(TransactionTestCase):
     def setUp(self):
         # Real commits would start the no-worker fallback thread, which races teardown.
-        fallback = patch("apps.event.services.registration_sheet_sync.append._schedule_in_process_sync")
+        fallback = patch("apps.event.services.registration_sheet_sync.sync.append._schedule_in_process_sync")
         fallback.start()
         self.addCleanup(fallback.stop)
         self.event = make_event()
@@ -148,8 +148,8 @@ class ManagedSyncRaceTests(TransactionTestCase):
 
     @skipUnless(connection.vendor == "postgresql", "requires PostgreSQL advisory locks")
     def test_different_events_cannot_claim_same_initially_empty_worksheet(self):
-        from apps.event.services.registration_sheet_sync.provider import lock_destination
-        from apps.event.services.registration_sheet_sync.sheets import RegistrationSyncConflict
+        from apps.event.services.registration_sheet_sync.worksheet.sheets import RegistrationSyncConflict
+        from apps.event.services.registration_sheet_sync.worksheet.snapshot import lock_destination
 
         first_registration = make_registration(self.member, self.event, self.ticket)
         other_event = make_event(slug="other-sync-event")
@@ -185,7 +185,9 @@ class ManagedSyncRaceTests(TransactionTestCase):
                     done.set()
 
         self.sheet.spreadsheet.before_write = before_write
-        with patch("apps.event.services.registration_sheet_sync.engine.lock_destination", side_effect=tracked_lock):
+        with patch(
+            "apps.event.services.registration_sheet_sync.sync.prepare.lock_destination", side_effect=tracked_lock
+        ):
             first = threading.Thread(target=flush, args=(self.event,))
             second = threading.Thread(target=flush, args=(other_event, second_done), name="other-event")
             first.start()

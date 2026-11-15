@@ -4,9 +4,9 @@ from django.test import TestCase
 
 from apps.event.models import RegistrationSheetSyncLog
 from apps.event.services.registration_sheet_sync import RegistrationSyncError
-from apps.event.services.registration_sheet_sync.logs import record_sync_failure
-from apps.event.services.registration_sheet_sync.rows import build_header, build_row
-from apps.event.services.registration_sheet_sync.sheets import (
+from apps.event.services.registration_sheet_sync.sync.logs import record_sync_failure
+from apps.event.services.registration_sheet_sync.worksheet.rows import build_header, build_row
+from apps.event.services.registration_sheet_sync.worksheet.sheets import (
     _get_worksheet,
     _get_worksheet_by_gid,
     ensure_registration_id_protected,
@@ -29,13 +29,13 @@ class SheetsHelperTest(TestCase):
         spreadsheet = MagicMock(worksheets=MagicMock(return_value=[MagicMock(id=1)]))
         self.assertIsNone(_get_worksheet_by_gid(spreadsheet, 999))
 
-    @patch("apps.event.services.registration_sheet_sync.sheets.GoogleCredentialConfig.load")
+    @patch("apps.event.services.registration_sheet_sync.worksheet.sheets.GoogleCredentialConfig.load")
     def test_get_worksheet_unconfigured_raises(self, mock_load):
         mock_load.return_value = MagicMock(is_configured=False)
         with self.assertRaises(RegistrationSyncError):
             _get_worksheet(self.event)
 
-    @patch("apps.event.services.registration_sheet_sync.sheets.GoogleCredentialConfig.load")
+    @patch("apps.event.services.registration_sheet_sync.worksheet.sheets.GoogleCredentialConfig.load")
     def test_get_worksheet_uses_sheet1_when_no_gid(self, mock_load):
         mock_load.return_value = MagicMock(
             is_configured=True,
@@ -48,7 +48,7 @@ class SheetsHelperTest(TestCase):
             result = _get_worksheet(self.event)
         self.assertIs(result, sheet1)
 
-    @patch("apps.event.services.registration_sheet_sync.sheets.GoogleCredentialConfig.load")
+    @patch("apps.event.services.registration_sheet_sync.worksheet.sheets.GoogleCredentialConfig.load")
     def test_get_worksheet_resolves_by_gid(self, mock_load):
         mock_load.return_value = MagicMock(
             is_configured=True,
@@ -64,7 +64,7 @@ class SheetsHelperTest(TestCase):
             result = _get_worksheet(self.event)
         self.assertIs(result, target)
 
-    @patch("apps.event.services.registration_sheet_sync.sheets.GoogleCredentialConfig.load")
+    @patch("apps.event.services.registration_sheet_sync.worksheet.sheets.GoogleCredentialConfig.load")
     def test_get_worksheet_missing_gid_raises(self, mock_load):
         mock_load.return_value = MagicMock(
             is_configured=True,

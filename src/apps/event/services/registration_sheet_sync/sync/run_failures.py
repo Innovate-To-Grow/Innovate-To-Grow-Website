@@ -2,9 +2,9 @@
 
 from dataclasses import dataclass
 
+from ..schedule.state import fail_sync
+from ..worksheet.sheets import RegistrationSyncConflict
 from .logs import record_sync_failure
-from .scheduler import fail_sync
-from .sheets import RegistrationSyncConflict
 
 
 def _rows_written(plan, provider_write_completed: bool) -> int:

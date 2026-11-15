@@ -8,8 +8,9 @@ from django.db import close_old_connections
 
 from apps.event.models import Event, RegistrationSheetSyncLog
 
+from ..schedule.batching import schedule_registration_sync
+from ..schedule.state import job_should_run
 from .engine import sync_registrations_to_sheet
-from .scheduler import job_should_run, schedule_registration_sync
 
 logger = logging.getLogger(__name__)
 _sync_timers: dict[str, threading.Timer] = {}

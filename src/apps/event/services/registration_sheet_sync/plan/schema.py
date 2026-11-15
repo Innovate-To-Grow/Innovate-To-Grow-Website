@@ -39,7 +39,7 @@ def registration_fields(event, config=None):
     for field in defaults:
         choice = settings.get(field.key, {})
         if not isinstance(choice, dict):
-            from .sheets import RegistrationSyncError
+            from ..worksheet.sheets import RegistrationSyncError
 
             raise RegistrationSyncError(f"Invalid settings for field {field.key}.")
         label = str(choice.get("label") or field.label).strip()
