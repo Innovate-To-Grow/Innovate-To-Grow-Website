@@ -7,7 +7,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
 from apps.core.admin.common.base import BaseModelAdmin
-from apps.core.admin.mixins.confirm_on_save_utils import SENSITIVE_FIELD_RE
+from apps.core.admin.confirmation.post_data import SENSITIVE_FIELD_RE
 from apps.core.models import AWSCredentialConfig, SMTPProviderConfig
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.event.tests.helpers import make_admin, make_superuser

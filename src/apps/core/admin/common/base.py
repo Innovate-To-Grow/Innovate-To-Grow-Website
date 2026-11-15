@@ -7,8 +7,8 @@ from unfold.admin import ModelAdmin
 
 from apps.core.utils.access import user_can_access_app
 
+from ..confirmation.post_data import SENSITIVE_FIELD_RE
 from ..mixins import ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin
-from ..mixins.confirm_on_save_utils import SENSITIVE_FIELD_RE
 
 
 class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin, ModelAdmin):
