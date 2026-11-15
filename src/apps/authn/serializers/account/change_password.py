@@ -4,7 +4,7 @@ Change password serializer for authenticated users.
 
 from rest_framework import serializers
 
-from ..helpers import decrypt_field, decrypt_password_pair
+from ..shared.encrypted_passwords import decrypt_field, decrypt_password_pair
 
 
 class ChangePasswordSerializer(serializers.Serializer):
