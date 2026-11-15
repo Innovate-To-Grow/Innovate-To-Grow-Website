@@ -9,7 +9,7 @@ from django.db.models.functions import Lower
 from apps.core.models import EmailBounce
 from apps.core.services.email.telemetry import text
 from apps.mail.models import BouncedAddress, BouncedAddressCampaign, RecipientLog
-from apps.mail.services.suppression import normalize_address
+from apps.mail.services.audience.suppression import normalize_address
 
 from .sources import COUNT_FIELDS, Category, Match, Source, _reopen, locked_row
 

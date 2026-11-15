@@ -12,12 +12,12 @@ from apps.core.services.background_jobs import (
     UncertainJobError,
 )
 from apps.mail.models import RecipientLog
-from apps.mail.services.campaign.personalize import personalize
-from apps.mail.services.campaign.preview import render_email_html
-from apps.mail.services.send_campaign.recipient_logs import skip_suppressed_log
-from apps.mail.services.send_campaign.recipients import _recipient_context, _unsubscribe_url_for, carries_login_link
-from apps.mail.services.send_campaign.transport import _get_configuration_set_name, _get_ses_client, _send_via_ses
-from apps.mail.services.suppression import is_suppressed
+from apps.mail.services.audience.suppression import is_suppressed
+from apps.mail.services.campaign.content.personalize import personalize
+from apps.mail.services.campaign.content.preview import render_email_html
+from apps.mail.services.campaign.send.recipient_logs import skip_suppressed_log
+from apps.mail.services.campaign.send.recipients import _recipient_context, _unsubscribe_url_for, carries_login_link
+from apps.mail.services.campaign.send.transport import _get_configuration_set_name, _get_ses_client, _send_via_ses
 
 from .channels import (
     EMAIL,

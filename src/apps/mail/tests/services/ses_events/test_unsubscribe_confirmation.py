@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.mail.services.ses_events import process_sns_envelope
+from apps.mail.services.email_monitoring.ses_events import process_sns_envelope
 
 
 class UnsubscribeConfirmationTests(TestCase):
@@ -19,7 +19,7 @@ class SubscriptionUrlopenFailureTests(TestCase):
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
         with patch(
-            "apps.mail.services.ses_events.subscription.fetch_sns_https",
+            "apps.mail.services.email_monitoring.ses_events.subscription.fetch_sns_https",
             side_effect=RuntimeError("network down"),
         ) as mock_fetch:
             # Should not raise even though the confirmation request failed.
@@ -29,25 +29,25 @@ class SubscriptionUrlopenFailureTests(TestCase):
 
 class ParseTimestampTests(TestCase):
     def test_parse_ts_returns_none_for_empty(self):
-        from apps.mail.services.ses_events.handlers import parse_ts
+        from apps.mail.services.email_monitoring.ses_events.handlers import parse_ts
 
         self.assertIsNone(parse_ts(""))
 
     def test_parse_ts_uses_fromisoformat_fallback(self):
-        from apps.mail.services.ses_events.handlers import parse_ts
+        from apps.mail.services.email_monitoring.ses_events.handlers import parse_ts
 
         # Django's parse_datetime is permissive; force the fromisoformat fallback
         # by making parse_datetime return None for an otherwise-valid ISO value.
-        with patch("apps.mail.services.ses_events.handlers.parse_datetime", return_value=None):
+        with patch("apps.mail.services.email_monitoring.ses_events.handlers.parse_datetime", return_value=None):
             result = parse_ts("2026-04-22T12:00:00Z")
 
         self.assertIsNotNone(result)
         self.assertEqual(result.year, 2026)
 
     def test_parse_ts_returns_none_for_garbage(self):
-        from apps.mail.services.ses_events.handlers import parse_ts
+        from apps.mail.services.email_monitoring.ses_events.handlers import parse_ts
 
-        with patch("apps.mail.services.ses_events.handlers.parse_datetime", return_value=None):
+        with patch("apps.mail.services.email_monitoring.ses_events.handlers.parse_datetime", return_value=None):
             self.assertIsNone(parse_ts("not-a-timestamp"))
 
 
@@ -58,7 +58,9 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription&Token=abc",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https", return_value=b"<ok/>") as mock_fetch:
+        with patch(
+            "apps.mail.services.email_monitoring.ses_events.subscription.fetch_sns_https", return_value=b"<ok/>"
+        ) as mock_fetch:
             process_sns_envelope(envelope)
             mock_fetch.assert_called_once()
             self.assertIn("ConfirmSubscription", mock_fetch.call_args.args[0])
@@ -69,7 +71,7 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://evil.example.com/trick",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https") as mock_fetch:
+        with patch("apps.mail.services.email_monitoring.ses_events.subscription.fetch_sns_https") as mock_fetch:
             process_sns_envelope(envelope)
             mock_fetch.assert_not_called()
 
@@ -79,7 +81,7 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com.evil.example/?Action=ConfirmSubscription",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https") as mock_fetch:
+        with patch("apps.mail.services.email_monitoring.ses_events.subscription.fetch_sns_https") as mock_fetch:
             process_sns_envelope(envelope)
             mock_fetch.assert_not_called()
 
@@ -89,7 +91,7 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "http://sns.us-west-2.amazonaws.com/?Action=ConfirmSubscription",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https") as mock_fetch:
+        with patch("apps.mail.services.email_monitoring.ses_events.subscription.fetch_sns_https") as mock_fetch:
             process_sns_envelope(envelope)
             mock_fetch.assert_not_called()
 
@@ -99,6 +101,6 @@ class SubscriptionConfirmationTests(TestCase):
             "SubscribeURL": "https://sns.us-west-2.amazonaws.com/?Action=GetTopicAttributes",
             "TopicArn": "arn:aws:sns:us-west-2:123:t",
         }
-        with patch("apps.mail.services.ses_events.subscription.fetch_sns_https") as mock_fetch:
+        with patch("apps.mail.services.email_monitoring.ses_events.subscription.fetch_sns_https") as mock_fetch:
             process_sns_envelope(envelope)
             mock_fetch.assert_not_called()

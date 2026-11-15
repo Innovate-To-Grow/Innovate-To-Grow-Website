@@ -5,8 +5,8 @@ from django.test import TestCase
 from apps.core.models import EmailServiceConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, LoginLinkToken
-from apps.mail.services.send_campaign.runner import send_campaign
-from apps.mail.services.send_campaign.transport import SesSendResult
+from apps.mail.services.campaign.send.runner import send_campaign
+from apps.mail.services.campaign.send.transport import SesSendResult
 from apps.mail.tests.services.campaigns.send.test_send_campaign_runner import _make_active_aws
 
 
@@ -29,8 +29,8 @@ class SendCampaignMagicLoginTests(TestCase):
             status="draft",
         )
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_login_link_token_created_per_member(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
@@ -38,8 +38,8 @@ class SendCampaignMagicLoginTests(TestCase):
         tokens = LoginLinkToken.objects.filter(campaign=self.campaign, member=self.m1)
         self.assertEqual(tokens.count(), 1)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_login_link_validity_frozen_from_campaign(self, mock_client, mock_send):
         from datetime import timedelta
 
@@ -58,8 +58,8 @@ class SendCampaignMagicLoginTests(TestCase):
         self.assertGreaterEqual(token.expires_at, before)
         self.assertLessEqual(token.expires_at, after)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_no_token_for_manual_emails_without_member(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")

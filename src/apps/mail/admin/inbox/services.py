@@ -2,7 +2,7 @@
 
 import logging
 
-from apps.mail.services.gmail_import.credential_mail import sent_copies_kept as gmail_sent_copies_kept
+from apps.mail.services.campaign.gmail_import.credential_mail import sent_copies_kept as gmail_sent_copies_kept
 from apps.mail.services.inbox import (
     INBOX_FOLDER,
     INBOX_FOLDER_CHOICES,

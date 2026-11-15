@@ -20,7 +20,7 @@ from collections import defaultdict
 from apps.core.models import InboundMessage
 from apps.core.services.email.inbound import rules
 from apps.mail.models import BouncedAddress
-from apps.mail.services.suppression import normalize_address
+from apps.mail.services.audience.suppression import normalize_address
 
 from . import sources
 

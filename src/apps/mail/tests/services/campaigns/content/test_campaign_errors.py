@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR, unexpected_delivery_error_message
+from apps.mail.services.campaign.delivery.errors import UNEXPECTED_DELIVERY_ERROR, unexpected_delivery_error_message
 
 
 class UnexpectedDeliveryErrorMessageTests(SimpleTestCase):

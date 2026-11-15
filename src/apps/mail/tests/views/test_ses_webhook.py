@@ -12,7 +12,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.ses_events import SesEventError
+from apps.mail.services.email_monitoring.ses_events import SesEventError
 from apps.mail.services.sns.signature import SnsVerificationError
 
 SES_MSG_ID = "ses-msg-webhook-test"

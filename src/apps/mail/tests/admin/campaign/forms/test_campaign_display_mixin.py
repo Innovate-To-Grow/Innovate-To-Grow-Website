@@ -7,7 +7,7 @@ from django.urls import reverse
 from apps.event.tests.helpers import make_superuser
 from apps.mail.admin.campaign import EmailCampaignAdmin
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign.preview import HTML_MARKER
+from apps.mail.services.campaign.content.preview import HTML_MARKER
 
 
 class CampaignDisplayMixinTests(TestCase):

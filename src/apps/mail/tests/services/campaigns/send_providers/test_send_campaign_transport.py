@@ -3,7 +3,7 @@
 from django.test import TestCase, override_settings
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
-from apps.mail.services.send_campaign.transport import (
+from apps.mail.services.campaign.send.transport import (
     _build_raw_ses_message,
     _build_unsubscribe_headers,
     _get_configuration_set_name,

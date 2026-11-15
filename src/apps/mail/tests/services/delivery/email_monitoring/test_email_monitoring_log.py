@@ -8,7 +8,7 @@ from django.utils import timezone
 from apps.core.models import EmailCategory, EmailMonitorState
 from apps.core.services.email.bounces import ensure_scheduled
 from apps.core.tests.services.email_monitoring.helpers import make_bounce, make_email, monitoring_settings
-from apps.mail.services.email_monitoring import health, log, scope
+from apps.mail.services.email_monitoring.dashboard import health, log, scope
 
 
 class LogTests(TestCase):

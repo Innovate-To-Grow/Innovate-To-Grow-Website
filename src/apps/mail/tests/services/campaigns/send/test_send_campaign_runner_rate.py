@@ -21,10 +21,10 @@ from apps.core.services.email.exceptions import (
 from apps.core.tests.services.delivery_rates.helpers import rates_with
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.send_campaign.recipient_logs import PAUSED_LOG_MESSAGE
-from apps.mail.services.send_campaign.runner import send_campaign
+from apps.mail.services.campaign.send.recipient_logs import PAUSED_LOG_MESSAGE
+from apps.mail.services.campaign.send.runner import send_campaign
 
-DELIVER = "apps.mail.services.send_campaign.transport.deliver_email"
+DELIVER = "apps.mail.services.campaign.send.transport.deliver_email"
 
 
 def held_back(seconds=3600):
@@ -53,7 +53,7 @@ class RunnerDeliveryRateTests(TestCase):
             subject="Hi", body="<p>Hello</p>", audience_type="subscribers", member_email_scope="primary", status="draft"
         )
         EmailServiceConfig.objects.create(is_active=True, provider="ses", from_email="noreply@example.com")
-        patcher = patch("apps.mail.services.send_campaign.runner._get_ses_client", side_effect=lambda config: config)
+        patcher = patch("apps.mail.services.campaign.send.runner._get_ses_client", side_effect=lambda config: config)
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -93,7 +93,7 @@ class RunnerDeliveryRateTests(TestCase):
         loads = MagicMock(wraps=EmailServiceConfig.load)
         with (
             patch(DELIVER, return_value=DeliveryResult(provider="ses", message_id="id")),
-            patch("apps.mail.services.send_campaign.runner.EmailServiceConfig.load", loads),
+            patch("apps.mail.services.campaign.send.runner.EmailServiceConfig.load", loads),
         ):
             send_campaign(self.campaign, self.sender)
 

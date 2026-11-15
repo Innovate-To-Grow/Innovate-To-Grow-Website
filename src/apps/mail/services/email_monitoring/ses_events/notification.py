@@ -86,7 +86,7 @@ def _apply_event(matching_logs: Q, handler, ses_event: dict, *, ses_message_id: 
 
 
 def handle_notification(envelope: dict[str, Any]) -> None:
-    import apps.mail.services.ses_events as ses_api
+    import apps.mail.services.email_monitoring.ses_events as ses_api
 
     sns_message_id = envelope.get("MessageId", "")
     try:

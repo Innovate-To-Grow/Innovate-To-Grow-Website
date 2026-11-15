@@ -11,7 +11,7 @@ from apps.event.models import CheckIn, CheckInRecord
 from apps.event.tests.helpers import make_event, make_registration, make_ticket
 from apps.mail.models import BouncedAddress, EmailCampaign
 from apps.mail.services.audience import get_recipients
-from apps.mail.services.suppression import is_suppressed, split_suppressed, suppressed_addresses
+from apps.mail.services.audience.suppression import is_suppressed, split_suppressed, suppressed_addresses
 
 from ..helpers import add_email, make_person, make_row
 

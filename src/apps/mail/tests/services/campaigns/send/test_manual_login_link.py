@@ -11,9 +11,9 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import EmailCampaign, LoginLinkToken, RecipientLog
 from apps.mail.services.audience import get_recipients
-from apps.mail.services.campaign.preview import HTML_MARKER
-from apps.mail.services.send_campaign.runner import send_campaign
-from apps.mail.services.send_campaign.transport import SesSendResult
+from apps.mail.services.campaign.content.preview import HTML_MARKER
+from apps.mail.services.campaign.send.runner import send_campaign
+from apps.mail.services.campaign.send.transport import SesSendResult
 
 FRONTEND = "https://i2g.example"
 SIGN_IN_PAGE = f"{FRONTEND}/login"
@@ -93,8 +93,8 @@ class ManualAudienceMemberMatchTests(TestCase):
 
 
 @override_settings(FRONTEND_URL=f"{FRONTEND}/")
-@patch("apps.mail.services.send_campaign.runner._send_via_ses", return_value=SesSendResult(message_id="SES-1"))
-@patch("apps.mail.services.send_campaign.runner._get_ses_client", return_value=MagicMock())
+@patch("apps.mail.services.campaign.send.runner._send_via_ses", return_value=SesSendResult(message_id="SES-1"))
+@patch("apps.mail.services.campaign.send.runner._get_ses_client", return_value=MagicMock())
 class ManualCampaignRunnerLoginLinkTests(TestCase):
     """The in-process runner (background jobs off)."""
 

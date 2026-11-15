@@ -7,7 +7,7 @@ from apps.core.models import (
     GmailApiProviderConfig,
 )
 from apps.core.utils.access import user_can_access_app
-from apps.mail.services.campaign.pacing import email_send_rate_line, sms_send_rate_line
+from apps.mail.services.campaign.delivery.pacing import email_send_rate_line, sms_send_rate_line
 
 from ..rates.cards import EMAIL_CHANNELS
 

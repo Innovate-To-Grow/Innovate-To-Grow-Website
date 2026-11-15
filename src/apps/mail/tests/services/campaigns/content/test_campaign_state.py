@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from apps.mail.services.campaign.state import campaign_state
+from apps.mail.services.campaign.delivery.state import campaign_state
 
 
 class CampaignStateTests(SimpleTestCase):

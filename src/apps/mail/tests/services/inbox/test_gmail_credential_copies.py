@@ -13,8 +13,12 @@ from apps.core.tests.gmail_api_helpers import make_config
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.admin.inbox.helpers import sent_mail_restricted
-from apps.mail.services.gmail_import import GmailImportError, fetch_message_html_fragment, list_recent_sent_messages
-from apps.mail.services.gmail_import.credential_mail import (
+from apps.mail.services.campaign.gmail_import import (
+    GmailImportError,
+    fetch_message_html_fragment,
+    list_recent_sent_messages,
+)
+from apps.mail.services.campaign.gmail_import.credential_mail import (
     WITHOUT_CREDENTIAL_MAIL,
     is_credential_mail,
     sent_copies_kept,

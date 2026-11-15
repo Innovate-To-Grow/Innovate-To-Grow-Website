@@ -8,8 +8,8 @@ from unfold.decorators import action
 
 from apps.core.utils.json_helpers import safe_json
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign.personalize import personalize
-from apps.mail.services.campaign.preview import (
+from apps.mail.services.campaign.content.personalize import personalize
+from apps.mail.services.campaign.content.preview import (
     HTML_MARKER,
     SAMPLE_CONTEXT,
     build_email_render_context,

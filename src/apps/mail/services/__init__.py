@@ -1,6 +1,6 @@
 from .audience import get_recipients
-from .campaign.personalize import personalize
-from .gmail_import import (
+from .campaign.content.personalize import personalize
+from .campaign.gmail_import import (
     DEFAULT_GMAIL_FOLDER,
     DEFAULT_GMAIL_MAILBOX,
     GMAIL_FOLDER_DISPLAY,
@@ -10,7 +10,7 @@ from .gmail_import import (
     list_recent_sent_messages,
     resolve_gmail_mailbox,
 )
-from .send_campaign import send_campaign
+from .campaign.send import send_campaign
 
 __all__ = [
     "DEFAULT_GMAIL_FOLDER",

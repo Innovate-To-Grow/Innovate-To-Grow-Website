@@ -10,6 +10,6 @@
 - ``actions.guards`` decides which action a staff member may take on an address right now, and why not;
   ``actions`` applies one (each explicit, permission-checked, re-checked on apply and audited by ``actions.audit``).
 
-The package ``__init__`` imports nothing, so the send path can use ``apps.mail.services.suppression`` without
+The package ``__init__`` imports nothing, so the send path can use ``apps.mail.services.audience.suppression`` without
 loading the actions.
 """

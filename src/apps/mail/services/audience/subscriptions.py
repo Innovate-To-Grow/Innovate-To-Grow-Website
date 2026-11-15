@@ -16,7 +16,7 @@ from django.utils import timezone
 from apps.authn.models import ContactEmail, Member
 from apps.authn.signals import schedule_member_sync_on_change
 
-from .tokens.notifications import send_subscription_confirmation
+from ..tokens.notifications import send_subscription_confirmation
 
 
 def member_has_subscribed_email(member) -> bool:

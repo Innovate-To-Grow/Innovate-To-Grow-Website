@@ -13,7 +13,7 @@ from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign.dispatch import aggregate_email_campaign, resume_paused_email_recipients
 
-DELIVER = "apps.mail.services.send_campaign.transport.deliver_email"
+DELIVER = "apps.mail.services.campaign.send.transport.deliver_email"
 START_TASK = "apps.mail.services.campaign.dispatch.resume.start_in_process_task"
 
 

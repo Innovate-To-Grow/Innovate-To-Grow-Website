@@ -9,8 +9,8 @@ import re
 
 from django.test import SimpleTestCase
 
-from apps.mail.services.campaign.personalize import personalize
-from apps.mail.services.campaign.preview import HTML_MARKER, _text_to_html, render_email_html
+from apps.mail.services.campaign.content.personalize import personalize
+from apps.mail.services.campaign.content.preview import HTML_MARKER, _text_to_html, render_email_html
 
 URL = "https://i2g.example/login-link#token=" + "aB3_-" * 12 + "wxyz"
 ANCHOR = f'<a href="{URL}" style="color:#0f2d52;">{URL}</a>'

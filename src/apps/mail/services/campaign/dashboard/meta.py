@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 
-from ..pacing import email_send_rate_line
+from ..delivery.pacing import email_send_rate_line
 
 DEFAULT_WINDOW_DAYS = 183
 

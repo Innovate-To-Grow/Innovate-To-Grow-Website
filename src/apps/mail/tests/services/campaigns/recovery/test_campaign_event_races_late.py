@@ -4,7 +4,7 @@ from apps.core.services.background_jobs import claim_jobs, process_claimed_job
 from apps.core.services.email import UncertainEmailDeliveryError
 from apps.mail.models import RecipientLog
 from apps.mail.services.campaign.dispatch import queue_email_campaign
-from apps.mail.services.ses_events import process_sns_envelope
+from apps.mail.services.email_monitoring.ses_events import process_sns_envelope
 from apps.mail.tests.services.campaigns.recovery.test_campaign_event_races import (
     _CampaignEventRaceCase,
     event_envelope,
@@ -61,7 +61,7 @@ class CampaignEventRaceTests(_CampaignEventRaceCase):
             before_provider_call()
             raise UncertainEmailDeliveryError("Response was lost.")
 
-        with patch("apps.mail.services.send_campaign.transport.deliver_email", side_effect=provider):
+        with patch("apps.mail.services.campaign.send.transport.deliver_email", side_effect=provider):
             process_claimed_job(job)
         log = campaign.recipient_logs.get()
         self.assertEqual(log.status, "uncertain")

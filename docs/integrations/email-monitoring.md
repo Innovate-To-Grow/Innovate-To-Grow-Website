@@ -343,7 +343,7 @@ deactivate, delete account) are never offered in bulk.
 ### What suppression stops
 
 Suppression (`BouncedAddress.suppressed_at`, set by Suppress address or Mark undeliverable) is the site's one
-bulk-mail suppression list (`apps.mail.services.suppression`). Addresses compare in their bare lower-case form.
+bulk-mail suppression list (`apps.mail.services.audience.suppression`). Addresses compare in their bare lower-case form.
 
 - **Every campaign audience** skips a suppressed address when it is resolved (subscribers, all members, staff,
   selected members, event registrants, ticket type, checked-in, no-shows, manual lists; registrant audiences

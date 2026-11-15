@@ -17,8 +17,8 @@ from apps.core.services.email import DeliveryResult, UncertainEmailDeliveryError
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign import dispatch
-from apps.mail.services.ses_events import process_sns_envelope
-from apps.mail.services.ses_events.handlers import apply_delivery
+from apps.mail.services.email_monitoring.ses_events import process_sns_envelope
+from apps.mail.services.email_monitoring.ses_events.handlers import apply_delivery
 from apps.mail.tests.services.campaigns.recovery.test_campaign_event_races import event_envelope
 
 
@@ -58,7 +58,7 @@ class SesJobReconciliationTests(TestCase):
         campaign, log = self.queued_campaign()
         job = claim_jobs(batch_size=1)[0]
         with patch(
-            "apps.mail.services.send_campaign.transport.deliver_email",
+            "apps.mail.services.campaign.send.transport.deliver_email",
             side_effect=self.timeout_provider,
         ):
             self.assertFalse(process_claimed_job(job))
@@ -125,7 +125,7 @@ class SesJobReconciliationTests(TestCase):
                 raise
 
         with (
-            patch("apps.mail.services.send_campaign.transport.deliver_email", side_effect=self.timeout_provider),
+            patch("apps.mail.services.campaign.send.transport.deliver_email", side_effect=self.timeout_provider),
             patch(
                 "apps.mail.services.campaign.dispatch.email_job._record_email_job_result",
                 side_effect=record_then_callback,
@@ -158,7 +158,7 @@ class SesJobReconciliationTests(TestCase):
             real_fail(snapshot, error)
 
         with (
-            patch("apps.mail.services.send_campaign.transport.deliver_email", side_effect=self.timeout_provider),
+            patch("apps.mail.services.campaign.send.transport.deliver_email", side_effect=self.timeout_provider),
             patch("apps.core.services.background_jobs.worker._fail", side_effect=callback_then_fail),
         ):
             process_claimed_job(job)
@@ -208,7 +208,7 @@ class SesJobReconciliationTests(TestCase):
             before_provider_call()
             return DeliveryResult(provider="ses", message_id=message_id)
 
-        with patch("apps.mail.services.send_campaign.transport.deliver_email", side_effect=accepted):
+        with patch("apps.mail.services.campaign.send.transport.deliver_email", side_effect=accepted):
             self.assertTrue(process_claimed_job(job))
         job.refresh_from_db()
         completed_at = job.completed_at
@@ -354,7 +354,9 @@ class SesJobReconciliationConcurrencyTests(TransactionTestCase):
 
         callback_thread = Thread(target=receive_callback)
         worker_thread = Thread(target=fail_worker)
-        with patch.dict("apps.mail.services.ses_events.notification.EVENT_HANDLERS", {"Delivery": paused_delivery}):
+        with patch.dict(
+            "apps.mail.services.email_monitoring.ses_events.notification.EVENT_HANDLERS", {"Delivery": paused_delivery}
+        ):
             callback_thread.start()
             try:
                 self.assertTrue(callback_has_locks.wait(timeout=10))

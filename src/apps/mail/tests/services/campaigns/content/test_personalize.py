@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from apps.mail.services.campaign.personalize import personalize, uses_placeholder
+from apps.mail.services.campaign.content.personalize import personalize, uses_placeholder
 
 
 class PersonalizeTest(TestCase):

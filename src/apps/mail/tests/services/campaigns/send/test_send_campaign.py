@@ -5,13 +5,13 @@ from unittest.mock import MagicMock, patch
 from django.test import TestCase
 
 from apps.core.services.email import DeliveryResult, UncertainEmailDeliveryError
-from apps.mail.services.send_campaign import SesSendResult, _send_via_ses
+from apps.mail.services.campaign.send import SesSendResult, _send_via_ses
 
 
 class SendViaSesTests(TestCase):
     def _send(self, *, result=None, side_effect=None, configuration_set=""):
         config = MagicMock(provider="ses")
-        with patch("apps.mail.services.send_campaign.transport.deliver_email") as deliver:
+        with patch("apps.mail.services.campaign.send.transport.deliver_email") as deliver:
             deliver.return_value = result or DeliveryResult(provider="ses", message_id="SES-123")
             deliver.side_effect = side_effect
             send_result = _send_via_ses(

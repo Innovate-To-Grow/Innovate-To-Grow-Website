@@ -8,8 +8,8 @@ from apps.core.models import GmailAccessAccount
 from apps.event.tests.helpers import make_superuser
 from apps.mail.admin.campaign.admin.inlines import AudienceTypeFilter, RecipientLogInline
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign.preview import HTML_MARKER
-from apps.mail.services.gmail_import import GmailImportError
+from apps.mail.services.campaign.content.preview import HTML_MARKER
+from apps.mail.services.campaign.gmail_import import GmailImportError
 from apps.mail.tests.admin.campaign.views.test_campaign_views import _make_email_config
 
 

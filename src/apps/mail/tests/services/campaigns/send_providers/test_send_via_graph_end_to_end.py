@@ -9,7 +9,7 @@ from apps.core.models import (
 )
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
-from apps.mail.services.send_campaign.transport import (
+from apps.mail.services.campaign.send.transport import (
     SES_OUTCOME_PERMANENT,
     SES_OUTCOME_SUCCESS,
     SES_OUTCOME_TRANSIENT,

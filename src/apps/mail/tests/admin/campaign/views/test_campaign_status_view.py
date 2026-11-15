@@ -6,7 +6,7 @@ from django.utils import timezone
 from apps.core.models import EmailServiceConfig
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
+from apps.mail.services.campaign.delivery.errors import UNEXPECTED_DELIVERY_ERROR
 from apps.mail.tests.admin.campaign.views.test_campaign_views import _make_email_config
 
 

@@ -2,7 +2,7 @@
 
 from apps.mail.models import SmsConfig
 
-from ...campaign.personalize import personalize
+from ...campaign.content.personalize import personalize
 from ..links import Purpose, issue_personal_link, issue_redirect_link, may_text_personal_link, sign_in_path
 from .compose import apply_footer
 

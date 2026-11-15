@@ -6,7 +6,7 @@ from django.utils.html import escape, format_html
 from unfold.decorators import display
 
 from apps.core.models import EmailServiceConfig, GmailAccessAccount
-from apps.mail.services.campaign.preview import split_html_marker
+from apps.mail.services.campaign.content.preview import split_html_marker
 
 from ..views import services as campaign_api
 

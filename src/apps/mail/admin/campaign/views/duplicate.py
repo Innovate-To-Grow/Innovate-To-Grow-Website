@@ -9,7 +9,7 @@ from django.urls import reverse
 from unfold.decorators import action
 
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign.duplicate import NAME_MAX_LENGTH, copy_name, duplicate_campaign
+from apps.mail.services.campaign.content.duplicate import NAME_MAX_LENGTH, copy_name, duplicate_campaign
 
 # Detail actions that only make sense while a campaign is still a draft; a locked campaign does not show them.
 DRAFT_ONLY_DETAIL_ACTIONS = ("_send_campaign_action", "_import_gmail_html_action")
