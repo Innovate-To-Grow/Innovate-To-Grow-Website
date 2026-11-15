@@ -1,4 +1,4 @@
-import '../../auth.css';
+import '../../styles/base/auth.css';
 import {Icon} from '@/components/Icon/Icon';
 import { Navigate, useSearchParams } from 'react-router';
 import { getSafeInternalRedirectPath } from '@/features/auth/api/navigation/redirects';

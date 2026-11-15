@@ -1,4 +1,4 @@
-import '@/features/auth/components/auth.css';
+import '@/features/auth/components/styles/base/auth.css';
 import {useEffect, useRef, useState, type FormEvent} from 'react';
 import {useAuth} from '@/features/auth';
 import {clearAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';

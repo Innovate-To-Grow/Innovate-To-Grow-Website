@@ -1,4 +1,4 @@
-import '../../../auth.css';
+import '../../../styles/base/auth.css';
 import {DeleteAccountSection} from '../security/DeleteAccountSection';
 import {DetailsSection} from './DetailsSection';
 import {PasswordSection} from '../security/PasswordSection';
