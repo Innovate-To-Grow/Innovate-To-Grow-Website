@@ -37,7 +37,7 @@ def local(value):
     return f"{timezone.localtime(value):%Y-%m-%d %H:%M %Z}"
 
 
-class VerifyServiceConfigsGraphScopeTest(TestCase):
+class _VerifyServiceConfigsGraphScopeCase(TestCase):
     def setUp(self):
         for model in (
             EmailServiceConfig,
@@ -68,6 +68,8 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
         MicrosoftGraphCertificate.objects.filter(config=config).update(not_after=not_after)
         return not_after
 
+
+class VerifyServiceConfigsGraphScopeTest(_VerifyServiceConfigsGraphScopeCase):
     def test_a_valid_certificate_passes_strict_quietly(self):
         self.email()
         self.graph()
@@ -172,94 +174,3 @@ class VerifyServiceConfigsGraphScopeTest(TestCase):
 
         self.assertRegex(out, r"expires on \d{4}-\d\d-\d\d \d\d:\d\d P[DS]T ")
         self.assertNotIn(f"{not_after.astimezone(datetime.UTC):%Y-%m-%d %H:%M} UTC", out)
-
-    def test_an_expired_certificate_fails_when_graph_is_the_provider(self):
-        self.email()
-        self.expire(self.graph(), -datetime.timedelta(days=2))
-        out = StringIO()
-
-        with self.assertRaises(CommandError):
-            call_command("verify_service_configs", "--strict", stdout=out, stderr=StringIO(), no_color=True)
-
-        self.assertIn("FAIL: The Microsoft Graph certificate expired on", out.getvalue())
-        self.assertIn("MicrosoftGraphProviderConfig: MISSING", out.getvalue())
-
-    def test_an_expired_certificate_only_warns_when_graph_is_not_the_provider(self):
-        self.email(provider="smtp")
-        SMTPProviderConfig.objects.create(
-            name="SMTP", is_active=True, host="smtp.example.com", port=587, username="u", password="not-a-real-pw"
-        )
-        self.expire(self.graph(), -datetime.timedelta(hours=1))
-
-        out = self.run_command("--strict")
-
-        self.assertIn("WARN: The Microsoft Graph certificate expired on", out)
-        self.assertIn("Service config verification passed.", out)
-
-    def test_missing_scope_fails_when_graph_is_the_provider(self):
-        self.email()
-        self.graph(scope=())
-
-        out = self.run_command()
-
-        self.assertIn(f"FAIL: MicrosoftGraphProviderConfig {NO_SCOPE}.", out)
-        self.assertIn("MicrosoftGraphProviderConfig: MISSING", out)
-        with self.assertRaises(CommandError):
-            self.run_command("--strict")
-
-    def test_missing_scope_warns_when_graph_is_not_the_provider(self):
-        self.email(provider="smtp")
-        SMTPProviderConfig.objects.create(
-            name="SMTP", is_active=True, host="smtp.example.com", port=587, username="u", password="not-a-real-pw"
-        )
-        self.graph(scope=())
-
-        out = self.run_command("--strict")
-
-        self.assertIn(f"WARN: MicrosoftGraphProviderConfig {NO_SCOPE}.", out)
-        self.assertNotIn("MicrosoftGraphProviderConfig: ", out)
-
-    def test_a_from_address_outside_the_scope_fails(self):
-        self.email()
-        self.graph(scope=("other@g.ucmerced.edu",))
-
-        out = self.run_command()
-
-        self.assertIn(NOT_IN_SCOPE, out)
-        self.assertIn("MicrosoftGraphProviderConfig: MISSING", out)
-
-    def test_a_read_only_scope_cannot_send(self):
-        self.email()
-        create_graph_config(
-            scope=(FROM,),
-            permission=Permission.READ,
-            name="Graph",
-            is_active=True,
-            tenant_id=TENANT_ID,
-            client_id=CLIENT_ID,
-        )
-
-        with self.assertRaises(CommandError):
-            self.run_command("--strict")
-
-    def test_removed_certificates_fail_without_expiry_messages(self):
-        self.email()
-        self.graph().certificates.update(state=MicrosoftGraphCertificate.State.REMOVED)
-
-        out = self.run_command()
-
-        self.assertIn("MicrosoftGraphProviderConfig: MISSING", out)
-        self.assertIn(f"FAIL: {NO_CERTIFICATE}", out)
-        self.assertNotIn("certificate expire", out)
-
-    def test_an_inactive_graph_config_is_not_checked(self):
-        self.email(provider="smtp")
-        SMTPProviderConfig.objects.create(
-            name="SMTP", is_active=True, host="smtp.example.com", port=587, username="u", password="not-a-real-pw"
-        )
-        self.graph(scope=(), is_active=False)
-
-        out = self.run_command("--strict")
-
-        self.assertNotIn("Graph", out)
-        self.assertIn("Service config verification passed.", out)

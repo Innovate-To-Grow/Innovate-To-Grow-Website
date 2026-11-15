@@ -14,7 +14,7 @@ from config.settings.base.framework.environment import BASE_DIR
 from config.settings.base.integrations import credential_store as base_settings
 from config.settings.environments import test as ci_settings
 
-from .test_prod_cache import PROD_ENV, reload_prod_settings
+from ..production.test_prod_cache import PROD_ENV, reload_prod_settings
 
 
 def error_ids():

@@ -8,10 +8,9 @@ import importlib
 
 from django.conf import settings
 from django.core.cache import InvalidCacheBackendError, cache, caches
-from django.core.cache.backends.locmem import LocMemCache
 from django.test import SimpleTestCase, override_settings
 
-from apps.core.utils.throttle_cache import THROTTLE_CACHE_ALIAS, DevelopmentLocMemCache, throttle_cache
+from apps.core.utils.throttle_cache import THROTTLE_CACHE_ALIAS, throttle_cache
 from config.settings.base.framework.cache import CACHES as BASE_CACHES
 from config.settings.base.framework.cache import THROTTLE_CACHE
 
@@ -178,36 +177,3 @@ class ThrottleCacheBoundTests(SimpleTestCase):
             self.assertEqual(len(caches["throttle"]._cache), limit - limit // 3 + 1)
             self.assertIsNone(throttle_cache.get("k0"))
             self.assertEqual(throttle_cache.get(f"k{limit - 1}"), 1)
-
-
-class DevelopmentLocMemCacheTests(SimpleTestCase):
-    def test_it_is_a_locmem_cache(self):
-        self.assertIsInstance(caches["default"], DevelopmentLocMemCache)
-        self.assertTrue(issubclass(DevelopmentLocMemCache, LocMemCache))
-
-    def test_clearing_the_default_cache_also_clears_throttle_history(self):
-        """Tests call ``cache.clear()`` in setUp; that must keep resetting every throttle."""
-        cache.set("read-cache", "value", 60)
-        throttle_cache.set("throttle_public_assistant_legacy:legacy", [1.0, 2.0], 60)
-
-        cache.clear()
-
-        self.assertIsNone(cache.get("read-cache"))
-        self.assertIsNone(throttle_cache.get("throttle_public_assistant_legacy:legacy"))
-        self.assertEqual(len(caches["throttle"]._cache), 0)
-
-    def test_clearing_the_throttle_cache_leaves_the_default_cache_alone(self):
-        cache.set("read-cache", "value", 60)
-        self.addCleanup(cache.clear)
-
-        throttle_cache.clear()
-
-        self.assertEqual(cache.get("read-cache"), "value")
-
-    def test_clear_works_when_no_throttle_alias_is_configured(self):
-        with override_settings(CACHES={"default": {"BACKEND": DEVELOPMENT, "LOCATION": "throttle-cache-no-alias"}}):
-            cache.set("read-cache", "value", 60)
-
-            cache.clear()
-
-            self.assertIsNone(cache.get("read-cache"))
