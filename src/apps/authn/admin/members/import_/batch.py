@@ -12,7 +12,7 @@ from unfold.admin import TabularInline
 
 from apps.core.admin import ReadOnlyModelAdmin
 
-from ...models import MemberImportBatch, MemberImportRow
+from ....models import MemberImportBatch, MemberImportRow
 
 
 class MemberImportRowInline(TabularInline):

@@ -15,7 +15,7 @@
 {% block content %}
 <div class="max-w-6xl mx-auto py-8 px-4">
     <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Review import</h1>
-    {% include "admin/authn/member/_import_steps.html" with step=2 %}
+    {% include "admin/authn/member_import/_import_steps.html" with step=2 %}
 
     <!-- Header: the file, who uploaded it, its columns -->
     <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-5 mb-6 text-sm space-y-1">
@@ -69,9 +69,9 @@
                 <section class="mb-6" id="group-{{ group.conflict }}">
                     <div class="flex flex-wrap items-center gap-3 mb-3 bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3">
                         <h3 class="font-semibold">{{ group.code }} · {{ group.title }} <span class="text-font-subtle-light dark:text-font-subtle-dark">({{ group.views|length }})</span></h3>
-                        {% if editable %}{% include "admin/authn/member/_import_bulk.html" %}{% endif %}
+                        {% if editable %}{% include "admin/authn/member_import_review/_import_bulk.html" %}{% endif %}
                     </div>
-                    {% for view in group.views %}{% include "admin/authn/member/_import_row.html" %}{% endfor %}
+                    {% for view in group.views %}{% include "admin/authn/member_import_review/_import_row.html" %}{% endfor %}
                 </section>
             {% endfor %}
             {% if editable %}
@@ -135,7 +135,7 @@
                             <td class="py-1 pr-3">{{ view.number }}<input type="hidden" name="ready-{{ view.number }}" value="{{ view.default }}">{% if view.row.changed_since_review %}<span class="block text-xs text-red-700 dark:text-red-300">Changed since you reviewed it</span>{% endif %}</td>
                             <td class="py-1 pr-3"><input type="checkbox" name="skip-{{ view.number }}" value="1"{% if view.skip_checked %} checked{% endif %}{% if not editable %} disabled{% endif %} aria-label="Skip row {{ view.number }}"></td>
                             <td class="py-1 pr-3">{% if view.target_url %}<a class="underline" href="{{ view.target_url }}" target="_blank" rel="noopener">{{ view.target_name|default:"member" }}</a>{% else %}New: {{ view.row.values.raw.first_name }} {{ view.row.values.raw.last_name }}{% endif %}</td>
-                            <td class="py-1">{% include "admin/authn/member/_import_plan.html" with plan=view.plan %}
+                            <td class="py-1">{% include "admin/authn/member_import_review/_import_plan.html" with plan=view.plan %}
                                 {% for warning in view.warnings %}<p class="text-xs text-yellow-800 dark:text-yellow-300">{{ warning.code }}: {{ warning.text }}</p>{% endfor %}</td>
                         </tr>
                     {% endfor %}

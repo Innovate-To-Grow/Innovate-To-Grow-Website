@@ -14,7 +14,7 @@ from apps.authn.tests.admin.actions.test_coverage_gaps import Member
 class NoneSafeFieldTests(SimpleTestCase):
     def test_uuid_field_treats_none_string_as_empty(self):
         """inlines.py:13-15 — NoneSafeUUIDField.to_python('None') -> None."""
-        from apps.authn.admin.members.inlines import NoneSafeUUIDField
+        from apps.authn.admin.members.inlines.fields import NoneSafeUUIDField
 
         field = NoneSafeUUIDField()
         self.assertIsNone(field.to_python("None"))
@@ -25,7 +25,7 @@ class NoneSafeFieldTests(SimpleTestCase):
         """inlines.py:15 — a genuine UUID string falls through to super().to_python."""
         import uuid
 
-        from apps.authn.admin.members.inlines import NoneSafeUUIDField
+        from apps.authn.admin.members.inlines.fields import NoneSafeUUIDField
 
         value = uuid.uuid4()
         field = NoneSafeUUIDField()
@@ -37,7 +37,7 @@ class NoneSafeInlineForeignKeyFieldTests(TestCase):
         """inlines.py:31-32 — NoneSafeInlineForeignKeyField.clean('None') normalizes to None."""
         from django.core.exceptions import ValidationError
 
-        from apps.authn.admin.members.inlines import NoneSafeInlineForeignKeyField
+        from apps.authn.admin.members.inlines.fields import NoneSafeInlineForeignKeyField
 
         parent = Member.objects.create_user(password="x", first_name="P", last_name="Q")
         field = NoneSafeInlineForeignKeyField(parent_instance=parent, to_field="pk")
@@ -51,7 +51,8 @@ class UUIDInlineMixinTests(TestCase):
         """inlines.py:90 — formfield_for_dbfield reclasses a UUIDField to NoneSafeUUIDField."""
         from django.contrib.admin.sites import AdminSite
 
-        from apps.authn.admin.members.inlines import ContactEmailInline, NoneSafeUUIDField
+        from apps.authn.admin.members.inlines.contacts import ContactEmailInline
+        from apps.authn.admin.members.inlines.fields import NoneSafeUUIDField
         from apps.authn.models import ContactEmail as _ContactEmail
 
         inline = ContactEmailInline(Member, AdminSite())
@@ -65,7 +66,7 @@ class UUIDInlineMixinTests(TestCase):
         """inlines.py:53 — setlist runs when a 'None' value is normalized to ''."""
         from django.http import QueryDict
 
-        from apps.authn.admin.members.inlines import NoneSafeUUIDInlineFormSet
+        from apps.authn.admin.members.inlines.fields import NoneSafeUUIDInlineFormSet
 
         data = QueryDict(mutable=True)
         data["contact_emails-0-id"] = "None"

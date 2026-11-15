@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.test import override_settings
 
-from apps.authn.admin.members.forms import MemberCreationForm
+from apps.authn.admin.members.member.forms import MemberCreationForm
 from apps.authn.models import ContactEmail
 from apps.authn.tests.admin.members.inlines.test_member_admin_inlines import _MemberAdminInlineUUIDSubmitCase
 

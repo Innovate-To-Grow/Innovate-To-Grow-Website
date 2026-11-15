@@ -21,7 +21,7 @@ from django.contrib.admin.utils import lookup_spawns_duplicates
 from django.contrib.admin.views.main import ORDER_VAR
 from django.db.models import Case, Exists, IntegerField, OuterRef, Value, When
 
-from ...models import ContactEmail, ContactPhone
+from ....models import ContactEmail, ContactPhone
 
 #: The fewest digits a phone-shaped term needs before phone numbers are searched ("555" still finds 555 numbers).
 MIN_PHONE_DIGITS = 3

@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from apps.authn.admin.members.invitation import AdminInvitationAdmin
+from apps.authn.admin.security.invitation import AdminInvitationAdmin
 from apps.authn.models import (
     AdminInvitation,
     MemberSheetSyncConfig,
@@ -100,7 +100,7 @@ class AdminInvitationAdminTests(_AdminTestBase):
         self.assertTrue(any("Skipped" in m for m in msgs))
         self.assertTrue(any("Resent" in m for m in msgs))
 
-    @patch("apps.authn.admin.members.invitation.inline_batch_limit", return_value=1)
+    @patch("apps.authn.admin.security.invitation.inline_batch_limit", return_value=1)
     @patch("apps.authn.services.email.send_admin_invitation_email")
     def test_resend_invitations_refuses_more_than_one_request_can_send(self, mock_send, _limit):
         first, second = self._make_invitation(), self._make_invitation()

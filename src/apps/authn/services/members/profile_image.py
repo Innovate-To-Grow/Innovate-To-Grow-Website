@@ -3,7 +3,7 @@
 ``Member.profile_image`` is a ``TextField`` holding a base64 ``data:`` URI rather than an
 ``ImageField``, so every write path has to validate and encode by hand. This module is the single
 source of truth for that, shared by the admin change form
-(``apps.authn.admin.members.forms.MemberChangeForm``) and the account API
+(``apps.authn.admin.members.member.forms.MemberChangeForm``) and the account API
 (``apps.authn.views.account.profile.ProfileView``) — before, the API enforced a size cap, a
 content-type allow-list and a magic-byte check while the admin enforced nothing but an HTML
 ``accept`` attribute.

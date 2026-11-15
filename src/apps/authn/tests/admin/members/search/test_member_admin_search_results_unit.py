@@ -4,7 +4,7 @@ from django.core.cache import cache
 from django.db.models import F
 from django.test import RequestFactory, TestCase
 
-from apps.authn.admin.members.member import MemberAdmin
+from apps.authn.admin.members.member.admin import MemberAdmin
 from apps.authn.tests.admin.members.search.test_member_admin_exact_search import CHANGELIST, Member, _joined, _member
 
 

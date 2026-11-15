@@ -11,7 +11,7 @@ Every condition is an ``EXISTS`` on the member's own rows, so filtering never du
 from django.contrib import admin
 from django.db.models import Exists, OuterRef, Q
 
-from ...models import ContactEmail, ContactPhone
+from ....models import ContactEmail, ContactPhone
 
 
 def _emails(**conditions):

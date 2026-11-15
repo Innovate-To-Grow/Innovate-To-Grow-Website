@@ -15,7 +15,7 @@
 {% block content %}
 <div class="max-w-6xl mx-auto py-8 px-4">
     <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Member import: {{ batch.get_status_display }}</h1>
-    {% include "admin/authn/member/_import_steps.html" with step=4 %}
+    {% include "admin/authn/member_import/_import_steps.html" with step=4 %}
 
     <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-5 mb-6 text-sm space-y-1">
         <p><strong>{{ batch.file_name }}</strong> · SHA-256 <span class="font-mono">{{ batch.file_sha256|slice:":12" }}</span> · sheet "{{ batch.sheet_name }}" · {{ batch.row_count }} rows · {{ batch.get_mode_display }} for matching rows</p>

@@ -4,7 +4,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth import get_user_model
 from django.test import RequestFactory, TestCase
 
-from apps.authn.admin.members.member import MemberAdmin
+from apps.authn.admin.members.member.admin import MemberAdmin
 from apps.authn.models import ContactEmail, ContactPhone
 
 Member = get_user_model()

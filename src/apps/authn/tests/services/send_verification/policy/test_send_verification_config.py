@@ -8,10 +8,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from apps.authn.admin.send_verification import (
-    SendVerificationConfigAdmin,
-    SendVerificationConfigForm,
-)
+from apps.authn.admin.security.send_verification import SendVerificationConfigAdmin, SendVerificationConfigForm
 from apps.authn.services.send_verification.rules.config import load_settings, require_ready
 from apps.authn.services.send_verification.rules.exceptions import SendPaused, SendVerificationUnavailable
 from apps.core.models import SendVerificationConfig

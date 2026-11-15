@@ -9,7 +9,7 @@ from django.contrib.messages import get_messages
 from django.test import override_settings
 from django.urls import reverse
 
-from apps.authn.admin.members.import_context import review_sections
+from apps.authn.admin.members.import_.context import review_sections
 from apps.authn.models import ContactPhone, Member, MemberImportBatch
 from apps.authn.services.members.import_.parsing import PHONE_VERIFIED_IGNORED
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row, upload

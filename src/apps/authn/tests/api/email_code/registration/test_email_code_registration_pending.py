@@ -14,7 +14,7 @@ from django.core.cache import cache
 from django.test import RequestFactory
 from rest_framework.test import APITestCase
 
-from apps.authn.admin.members.member import MemberAdmin
+from apps.authn.admin.members.member.admin import MemberAdmin
 from apps.authn.constants import VERIFICATION_INVALID
 from apps.authn.models import ContactEmail, EmailAuthChallenge
 from apps.authn.services import issue_email_challenge

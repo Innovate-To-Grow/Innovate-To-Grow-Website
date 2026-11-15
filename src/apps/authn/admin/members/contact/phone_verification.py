@@ -34,7 +34,7 @@ from ....services.send_verification.rules.config import load_settings
 from ....services.send_verification.rules.constants import KIND_PHONE, SMS_CHANNEL
 from ....services.send_verification.rules.exceptions import SendVerificationError
 from ....services.sms import PhoneVerificationError, PhoneVerificationInvalid, PhoneVerificationThrottled
-from ..help_texts import PHONE_SUBSCRIBED
+from ..shared.help_texts import PHONE_SUBSCRIBED
 
 VERIFIED_HELP = (
     "Only a verified number can be used to sign in with a texted code. A number becomes verified only with an SMS "

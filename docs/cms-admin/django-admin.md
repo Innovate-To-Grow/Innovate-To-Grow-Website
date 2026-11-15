@@ -51,7 +51,7 @@ A locked form shows "Too many login attempts. Please try again later." even with
 ### Member and contact admin search
 
 `MemberAdmin`, `ContactEmailAdmin` and `ContactPhoneAdmin` share `RankedSearchMixin`
-(`src/apps/authn/admin/members/search.py`). It runs Django's stock search first: every word of the term must match
+(`src/apps/authn/admin/members/shared/search.py`). It runs Django's stock search first: every word of the term must match
 one of the `search_fields` (`icontains`). Members search every contact email, first/middle/last name, `id`,
 organization and title. On top of that:
 
@@ -92,16 +92,16 @@ Member UUID, so a short term made only of the letters a–f and digits can also 
 Also in `src/apps/authn/admin/members/` (details in
 [Member & Mail Tools](member-and-mail-tools.md#account-active-verified-and-subscribed)):
 
-- `filters.py`: `SimpleListFilter`s built on `EXISTS` subqueries over the member's own rows, so a filter never
+- `shared/filters.py`: `SimpleListFilter`s built on `EXISTS` subqueries over the member's own rows, so a filter never
   duplicates a member. Members: Account active, Primary email, Unverified emails, Newsletter, Phone. Contact Emails:
   Verified (sign-in), Subscribed (newsletters), Member account; Contact Phones: Member account.
-- `help_texts.py`: the "Account active" label and the help text of every flag, applied through the admin forms'
+- `shared/help_texts.py`: the "Account active" label and the help text of every flag, applied through the admin forms'
   `Meta.labels` / `Meta.help_texts` (Django uses them for read-only fields too), so no model field or migration
   changes.
-- `sign_in_warning.py`: warns, never blocks, when a save, a bulk "mark unverified" or a delete leaves a member with no
+- `shared/sign_in_warning.py`: warns, never blocks, when a save, a bulk "mark unverified" or a delete leaves a member with no
   verified email or phone. `get_confirmation_diff` adds the warning as a row of the type-to-confirm page; `save_related`
   / `save_model` / the actions add a message after the write.
-- `primary_switch.py` (+ `primary_switch_notes.py`, template `admin/authn/member/switch_primary.html`): the **Switch
+- `primary_switch/switch.py` (+ `primary_switch/notes.py`, template `admin/authn/member/switch_primary.html`): the **Switch
   primary email** detail action and its page. `get_actions_detail` hides the button unless
   `user_can_manage_member` allows it, and the view re-checks, because Unfold wraps a detail-action URL only in
   `admin_view`. The write goes through `apps.authn.services.contacts.primary_switch` (member lock, fingerprint,
