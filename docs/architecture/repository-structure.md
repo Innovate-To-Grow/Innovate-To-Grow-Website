@@ -76,7 +76,7 @@ src/apps/<app>/
 Not every app has all directories — `system_intelligence/` has no public REST surface. A
 directory is used only where there is more than one module to hold; single-module concerns
 stay as plain `.py` files (for example `apps/core/renderers.py`, `apps/cms/signals.py`,
-`apps/mail/redirects.py`, `apps/system_intelligence/views.py`). The exceptions are the packages Django
+`apps/mail/redirects.py`). The exceptions are the packages Django
 or the migration history require: `management/commands/` is always a package, and
 `apps/core/models/base/system_intelligence/` is a migration-compatibility shim that must stay byte-stable.
 
@@ -115,8 +115,8 @@ admins' grants, or they silently lose access.
 
 A large module becomes a package that keeps the old import path as its public interface. Its
 `__init__.py` re-exports what callers use, and the parts are named by responsibility. Examples:
-`system_intelligence/services/public_assistant/budget/` (limits, usage, database store, cache
-store), `mail/services/campaign/dispatch/` (launch, channels, email job, SMS job, job state,
+`system_intelligence/services/public_assistant/budget/` (limits, usage, reservations, counters,
+database store, cache store), `mail/services/campaign/dispatch/` (launch, channels, email job, SMS job, job state,
 failures), and `cms/services/amplify/` (rules, config, reconcile, jobs). Tests patch the submodule
 that owns a name (for example `budget.cache_store._shared_redis_client`), not the package. The reverse
 also holds: when a package is down to one module, flatten it back into a plain module with the same
