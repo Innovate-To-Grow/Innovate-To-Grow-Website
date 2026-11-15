@@ -14,14 +14,13 @@ from .auth import (
     UnifiedEmailAuthRequestSerializer,
     UnifiedEmailAuthVerifySerializer,
 )
-from .passwords import (
+from .password_change import (
     ChangePasswordCodeConfirmSerializer,
     ChangePasswordCodeRequestSerializer,
     ChangePasswordCodeVerifySerializer,
-    PasswordResetConfirmSerializer,
-    PasswordResetRequestSerializer,
-    PasswordResetVerifySerializer,
 )
+from .password_reset_confirm import PasswordResetConfirmSerializer, PasswordResetVerifySerializer
+from .password_reset_request import PasswordResetRequestSerializer
 
 __all__ = [
     "AccountEmailsSerializer",

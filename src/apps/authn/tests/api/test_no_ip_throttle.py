@@ -168,7 +168,7 @@ class VerifyCodeBurstTests(NoIpThrottleTestCase):
                 self.assertAll(rotating, 400)
                 self.assertAll(pinned, 400)
 
-    @patch("apps.authn.views.auth.phone_code.check_phone_verification", side_effect=PhoneVerificationInvalid())
+    @patch("apps.authn.views.auth.codes.phone_code.check_phone_verification", side_effect=PhoneVerificationInvalid())
     def test_phone_verify_endpoint_never_429(self, _check):
         statuses = [
             self.client.post(

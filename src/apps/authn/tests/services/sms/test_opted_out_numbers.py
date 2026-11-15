@@ -14,7 +14,7 @@ from apps.authn.services.sms import PhoneNumberOptedOut, publish_plain_sms, star
 from apps.authn.services.sms.errors import OPTED_OUT_MESSAGE
 from apps.authn.services.sms.provider import _verification_error
 from apps.authn.tests.sms_provider import sms_budget_used
-from apps.authn.views.helpers import challenge_error_response
+from apps.authn.views.shared.responses import challenge_error_response
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.aws import sms_opt_outs
 from apps.core.services.aws.sms_errors import SmsDeliveryError, SmsOptedOut

@@ -7,7 +7,7 @@ from apps.authn.constants import VERIFICATION_INVALID
 from apps.authn.services import AuthChallengeInvalid
 from apps.authn.services.send_verification import fingerprint_payload, guarded_send
 
-from ..helpers import challenge_error_response
+from .responses import challenge_error_response
 
 
 def request_code_response(request, serializer_class):

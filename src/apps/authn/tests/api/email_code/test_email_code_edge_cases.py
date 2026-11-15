@@ -12,18 +12,18 @@ from rest_framework.test import APITestCase
 
 from apps.authn.constants import RECOVERY_CHANNEL_UNAVAILABLE
 from apps.authn.models import ContactEmail, EmailAuthChallenge
-from apps.authn.serializers.email_code.passwords import (
+from apps.authn.serializers.email_code.password_change import (
     ChangePasswordCodeRequestSerializer,
     ChangePasswordCodeVerifySerializer,
-    PasswordResetConfirmSerializer,
 )
+from apps.authn.serializers.email_code.password_reset_confirm import PasswordResetConfirmSerializer
 from apps.authn.services import (
     AuthChallengeDeliveryError,
     AuthChallengeInvalid,
     AuthChallengeThrottled,
     NoRecoveryChannelError,
 )
-from apps.authn.views.helpers import challenge_error_response
+from apps.authn.views.shared.responses import challenge_error_response
 from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
 
 Member = get_user_model()
@@ -33,10 +33,10 @@ PURPOSE_REGISTER = EmailAuthChallenge.Purpose.REGISTER
 
 class PasswordResetSerializerSecurityTests(APITestCase):
     @patch(
-        "apps.authn.serializers.email_code.passwords.consume_verification_token",
+        "apps.authn.serializers.email_code.password_reset_confirm.consume_verification_token",
         side_effect=AuthChallengeInvalid("internal challenge details"),
     )
-    @patch("apps.authn.serializers.email_code.passwords.validate_password")
+    @patch("apps.authn.serializers.email_code.password_reset_confirm.validate_password")
     def test_confirm_suppresses_internal_exception_context(self, _validate_password, _consume):
         serializer = PasswordResetConfirmSerializer()
         serializer._validated_data = {
@@ -53,7 +53,7 @@ class PasswordResetSerializerSecurityTests(APITestCase):
         self.assertNotIn("internal challenge details", str(raised.exception.detail))
 
     @patch(
-        "apps.authn.serializers.email_code.passwords.select_recovery_channel",
+        "apps.authn.serializers.email_code.password_change.select_recovery_channel",
         side_effect=NoRecoveryChannelError("internal recovery diagnostics"),
     )
     def test_password_change_serializers_use_client_safe_recovery_error(self, _select):

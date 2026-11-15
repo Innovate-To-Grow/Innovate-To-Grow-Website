@@ -30,7 +30,7 @@ def approve_phone_verification(
 
 
 @patch(
-    "apps.authn.views.auth.phone_code.check_phone_verification",
+    "apps.authn.views.auth.codes.phone_code.check_phone_verification",
     side_effect=approve_phone_verification,
 )
 @patch("apps.authn.services.sms.start_phone_verification", return_value="pending")

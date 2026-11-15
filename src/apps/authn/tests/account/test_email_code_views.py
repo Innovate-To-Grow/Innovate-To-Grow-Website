@@ -37,7 +37,7 @@ class ChangePasswordCodeViewEdgeTests(APITestCase):
     def test_request_code_validation_error_returns_400(self, _code, _send):
         """save() raising serializers.ValidationError -> 400 with the detail (lines 47-48)."""
         with patch(
-            "apps.authn.serializers.email_code.passwords.issue_email_challenge",
+            "apps.authn.serializers.email_code.password_change.issue_email_challenge",
             side_effect=serializers.ValidationError({"email": ["bad"]}),
         ):
             resp = self.client.post(
@@ -51,7 +51,7 @@ class ChangePasswordCodeViewEdgeTests(APITestCase):
     def test_request_code_throttled_returns_429(self, _code, _send):
         """save() raising AuthChallengeThrottled -> challenge_error_response -> 429 (lines 49-50)."""
         with patch(
-            "apps.authn.serializers.email_code.passwords.issue_email_challenge",
+            "apps.authn.serializers.email_code.password_change.issue_email_challenge",
             side_effect=AuthChallengeThrottled("slow down"),
         ):
             resp = self.client.post(

@@ -183,7 +183,7 @@ class VerifyPhoneCodeViewTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         # These tests patch apps.authn.services.sms.check_phone_verification around a request. Import the views first,
-        # or apps.authn.views.auth.phone_code could bind the mock for every later phone-auth test in this process (a
+        # or apps.authn.views.auth.codes.phone_code could bind the mock for every later phone-auth test in this process (a
         # MagicMock response never finishes rendering: DRF's JSON encoder keeps calling .tolist() on it).
         load_urlconf()
 

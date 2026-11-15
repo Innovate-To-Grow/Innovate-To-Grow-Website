@@ -1,4 +1,4 @@
-"""Coverage gaps for API views: change_password, email_code_helpers."""
+"""Coverage gaps for API views: change_password, shared.code_requests."""
 
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -50,12 +50,12 @@ class ChangePasswordTokenErrorTests(TestCase):
 
 
 # ---------------------------------------------------------------------------
-# views/auth/email_code_helpers.py:15, 32
+# views/shared/code_requests.py:15, 32
 # ---------------------------------------------------------------------------
 class EmailCodeHelperResponseTests(SimpleTestCase):
     def test_request_code_invalid_serializer_returns_400(self):
-        """email_code_helpers.py:15 — invalid serializer -> 400 with errors."""
-        from apps.authn.views.auth import email_code_helpers
+        """code_requests.py:15 — invalid serializer -> 400 with errors."""
+        from apps.authn.views.shared import code_requests
 
         request = SimpleNamespace(data={})
 
@@ -66,15 +66,15 @@ class EmailCodeHelperResponseTests(SimpleTestCase):
             def is_valid(self):
                 return False
 
-        response = email_code_helpers.request_code_response(request, _Serializer)
+        response = code_requests.request_code_response(request, _Serializer)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data, {"email": ["required"]})
 
     def test_auth_challenge_invalid_returns_400(self):
-        """email_code_helpers.py:32 — AuthChallengeInvalid on save -> 400 generic detail."""
+        """code_requests.py:32 — AuthChallengeInvalid on save -> 400 generic detail."""
         from apps.authn.constants import VERIFICATION_INVALID
         from apps.authn.services import AuthChallengeInvalid
-        from apps.authn.views.auth import email_code_helpers
+        from apps.authn.views.shared import code_requests
 
         request = SimpleNamespace(data={})
 
@@ -88,6 +88,6 @@ class EmailCodeHelperResponseTests(SimpleTestCase):
             def save(self):
                 raise AuthChallengeInvalid("bad")
 
-        response = email_code_helpers.auth_challenge_response(request, _Serializer)
+        response = code_requests.auth_challenge_response(request, _Serializer)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.data, {"detail": VERIFICATION_INVALID})

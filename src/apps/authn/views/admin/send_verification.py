@@ -8,7 +8,7 @@ from apps.authn.services.send_verification.constants import (
     OP_ADMIN_LOGIN_REQUEST_CODE,
     OP_ADMIN_LOGIN_RESEND,
 )
-from apps.authn.views.auth.send_verification import SendVerificationChallengeView
+from apps.authn.views.auth.codes.send_verification import SendVerificationChallengeView
 
 
 @method_decorator(csrf_protect, name="dispatch")

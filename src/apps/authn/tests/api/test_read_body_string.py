@@ -9,7 +9,7 @@ from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ImpersonationToken
-from apps.authn.views.helpers import MAX_CREDENTIAL_LENGTH, read_body_string
+from apps.authn.views.shared.responses import MAX_CREDENTIAL_LENGTH, read_body_string
 from apps.mail.models import LoginLinkToken
 
 

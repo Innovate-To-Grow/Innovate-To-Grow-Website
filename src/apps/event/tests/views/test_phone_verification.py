@@ -19,7 +19,7 @@ class PhoneVerificationViewsTest(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         # A test below patches apps.authn.services.sms.check_phone_verification around a request: import the views
-        # first so apps.authn.views.auth.phone_code cannot bind that mock for the rest of this process.
+        # first so apps.authn.views.auth.codes.phone_code cannot bind that mock for the rest of this process.
         load_urlconf()
 
     def setUp(self):

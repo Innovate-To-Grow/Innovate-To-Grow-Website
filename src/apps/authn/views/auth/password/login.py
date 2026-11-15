@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from apps.authn.serializers import LoginSerializer
 from apps.authn.services import login_guard
 
-from ..helpers import build_auth_success_payload
+from ...shared.responses import build_auth_success_payload
 
 
 def _locked_response(retry_after: int) -> Response:

@@ -27,7 +27,7 @@ from apps.authn.services import AuthChallengeInvalid
 from apps.authn.services.send_verification import OP_CHANGE_PASSWORD_REQUEST_CODE, OP_DELETE_ACCOUNT_REQUEST_CODE
 from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL, KIND_PHONE, SMS_CHANNEL
 
-from ..auth.email_code_helpers import protected_save
+from ..shared.code_requests import protected_save
 
 
 class AccountEmailsView(APIView):

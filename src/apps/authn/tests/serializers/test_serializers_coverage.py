@@ -20,7 +20,7 @@ from apps.authn.serializers.email_code.account_deletion import (
     DeleteAccountCodeVerifySerializer,
 )
 from apps.authn.serializers.email_code.base import BaseCodeVerifySerializer
-from apps.authn.serializers.email_code.passwords import ChangePasswordCodeVerifySerializer
+from apps.authn.serializers.email_code.password_change import ChangePasswordCodeVerifySerializer
 
 Member = get_user_model()
 
