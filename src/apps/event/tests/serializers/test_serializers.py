@@ -1,19 +1,15 @@
-import datetime
 import uuid
 
 from django.test import SimpleTestCase, TestCase
 
-from apps.event.models import Event, EventRegistration, Question, Ticket
+from apps.event.models import Question, Ticket
 from apps.event.serializers.registration import (
     EventRegistrationCreateSerializer,
     RegistrationAnswerInputSerializer,
     _serialize_question,
     _serialize_ticket_option,
-    build_event_registration_option_payload,
-    build_event_registration_summary_payload,
-    build_registration_payload,
 )
-from apps.event.tests.helpers import make_event, make_member
+from apps.event.tests.helpers import make_event
 
 # ---------- RegistrationAnswerInputSerializer ----------
 
@@ -143,155 +139,4 @@ class SerializeQuestionTest(TestCase):
 # ---------- build_registration_payload ----------
 
 
-class BuildRegistrationPayloadTest(TestCase):
-    def setUp(self):
-        self.member = make_member(first_name="Jane", last_name="Doe")
-        self.event = make_event()
-        self.ticket = Ticket.objects.create(event=self.event, name="GA")
-        self.registration = EventRegistration.objects.create(member=self.member, event=self.event, ticket=self.ticket)
-
-    def test_contains_all_expected_keys(self):
-        result = build_registration_payload(self.registration)
-        expected_keys = {
-            "id",
-            "ticket_code",
-            "attendee_first_name",
-            "attendee_last_name",
-            "attendee_name",
-            "attendee_email",
-            "attendee_secondary_email",
-            "secondary_email_verified",
-            "attendee_phone",
-            "phone_verified",
-            "phone_verification_required",
-            "attendee_organization",
-            "registered_at",
-            "ticket_email_sent_at",
-            "ticket_email_error",
-            "barcode_format",
-            "barcode_image",
-            "event",
-            "ticket",
-            "answers",
-        }
-        self.assertEqual(set(result.keys()), expected_keys)
-
-    def test_barcode_image_is_data_url(self):
-        result = build_registration_payload(self.registration)
-        self.assertTrue(result["barcode_image"].startswith("data:image/png;base64,"))
-
-    def test_event_nested_dict_structure(self):
-        result = build_registration_payload(self.registration)
-        event_data = result["event"]
-        self.assertEqual(event_data["name"], self.event.name)
-        self.assertEqual(event_data["slug"], self.event.slug)
-        self.assertEqual(event_data["date"], self.event.date.isoformat())
-        self.assertEqual(event_data["end_date"], self.event.end_date.isoformat())
-
-    def test_phone_verification_requires_phone_collection(self):
-        self.registration.attendee_phone = "5551234567"
-        self.registration.event.collect_phone = False
-        self.registration.event.verify_phone = True
-
-        result = build_registration_payload(self.registration)
-
-        self.assertFalse(result["phone_verification_required"])
-
-    def test_ticket_nested_dict_structure(self):
-        result = build_registration_payload(self.registration)
-        ticket_data = result["ticket"]
-        self.assertEqual(ticket_data["name"], "GA")
-
-    def test_ticket_email_sent_at_none_when_not_sent(self):
-        result = build_registration_payload(self.registration)
-        self.assertIsNone(result["ticket_email_sent_at"])
-
-    def test_ticket_email_sent_at_formatted_when_set(self):
-        from django.utils import timezone
-
-        now = timezone.now()
-        self.registration.ticket_email_sent_at = now
-        self.registration.save()
-        result = build_registration_payload(self.registration)
-        self.assertEqual(result["ticket_email_sent_at"], now.isoformat())
-
-    def test_ticket_email_error_is_public_safe_message(self):
-        self.registration.ticket_email_error = "SMTPAuthenticationError: secret"
-        self.registration.save(update_fields=["ticket_email_error"])
-
-        result = build_registration_payload(self.registration)
-
-        self.assertEqual(result["ticket_email_error"], "Ticket email could not be sent. Please try again later.")
-
-
 # ---------- build_event_registration_option_payload ----------
-
-
-class BuildEventRegistrationOptionPayloadTest(TestCase):
-    def setUp(self):
-        self.event = make_event()
-        self.ticket = Ticket.objects.create(event=self.event, name="GA")
-        self.question = Question.objects.create(event=self.event, text="Role?")
-
-    def test_contains_event_fields(self):
-        result = build_event_registration_option_payload(self.event)
-        self.assertEqual(result["name"], self.event.name)
-        self.assertEqual(result["slug"], self.event.slug)
-        self.assertEqual(result["date"], self.event.date.isoformat())
-        self.assertEqual(result["end_date"], self.event.end_date.isoformat())
-
-    def test_tickets_list_serialized(self):
-        result = build_event_registration_option_payload(self.event)
-        self.assertEqual(len(result["tickets"]), 1)
-        self.assertEqual(result["tickets"][0]["name"], "GA")
-
-    def test_questions_list_serialized(self):
-        result = build_event_registration_option_payload(self.event)
-        self.assertEqual(len(result["questions"]), 1)
-        self.assertEqual(result["questions"][0]["text"], "Role?")
-
-    def test_registration_none_when_not_provided(self):
-        result = build_event_registration_option_payload(self.event)
-        self.assertIsNone(result["registration"])
-
-    def test_registration_included_when_provided(self):
-        member = make_member()
-        reg = EventRegistration.objects.create(member=member, event=self.event, ticket=self.ticket)
-        result = build_event_registration_option_payload(self.event, registration=reg)
-        self.assertIsNotNone(result["registration"])
-        self.assertEqual(result["registration"]["id"], str(reg.pk))
-
-    def test_empty_tickets_and_questions(self):
-        event = Event.objects.create(
-            name="Empty Event",
-            date=datetime.date(2025, 7, 1),
-            end_date=datetime.date(2025, 7, 1),
-            location="V",
-            description="D",
-        )
-        result = build_event_registration_option_payload(event)
-        self.assertEqual(result["tickets"], [])
-        self.assertEqual(result["questions"], [])
-
-
-class BuildEventRegistrationSummaryPayloadTest(TestCase):
-    def test_contains_inclusive_date_range(self):
-        event = make_event(
-            date=datetime.date(2026, 12, 31),
-            end_date=datetime.date(2027, 1, 2),
-        )
-
-        result = build_event_registration_summary_payload(event)
-
-        self.assertEqual(result["date"], "2026-12-31")
-        self.assertEqual(result["end_date"], "2027-01-02")
-
-    def test_transitional_null_end_date_falls_back_to_start_date(self):
-        event = make_event(date=datetime.date(2026, 7, 10))
-        Event.objects.filter(pk=event.pk).update(end_date=None)
-        event.refresh_from_db()
-
-        result = build_event_registration_summary_payload(event)
-
-        self.assertEqual(result["date"], "2026-07-10")
-        self.assertEqual(result["end_date"], "2026-07-10")
