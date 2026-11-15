@@ -1,0 +1,43 @@
+/* In this column a field's flex basis would be a height: keep each field at its content height. */
+.i2g-monitor-confirm .i2g-monitor-field,
+.i2g-monitor-confirm .i2g-monitor-field--wide {
+    flex: 0 0 auto;
+}
+
+.i2g-monitor-card--danger .i2g-monitor-meters {
+    margin: 10px 0 12px;
+}
+
+.i2g-monitor-fieldset {
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 6px 12px;
+}
+
+.i2g-monitor-fieldset legend {
+    color: var(--i2g-m-muted);
+    font-size: 0.75rem;
+    padding: 0 4px;
+}
+
+@media (max-width: 640px) {
+    .i2g-monitor-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .i2g-monitor-field {
+        flex: 1 1 100%;
+    }
+
+    .i2g-monitor-meters li {
+        grid-template-columns: 1fr auto;
+    }
+
+    .i2g-monitor-meters li .i2g-monitor-meter-track {
+        grid-column: 1 / -1;
+        grid-row: 2;
+    }
+}

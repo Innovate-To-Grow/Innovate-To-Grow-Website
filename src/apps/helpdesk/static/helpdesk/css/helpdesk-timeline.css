@@ -1,0 +1,103 @@
+/* Helpdesk admin: the ticket timeline, the note form, the shadow-mode notice and the intake card on Settings
+ * (Unfold light and dark themes). Status levels always carry an icon and a label; color is never the only signal. */
+
+.i2g-helpdesk {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.i2g-helpdesk-heading {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.i2g-helpdesk-notice,
+.i2g-helpdesk-warning {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgb(191 219 254);
+  background: rgb(239 246 255);
+  color: rgb(30 58 138);
+}
+
+.i2g-helpdesk-warning {
+  border-color: rgb(253 230 138);
+  background: rgb(255 251 235);
+  color: rgb(120 53 15);
+}
+
+.i2g-helpdesk-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.i2g-helpdesk-card {
+  border: 1px solid rgb(229 231 235);
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgb(255 255 255);
+}
+
+.i2g-helpdesk-card.is-automated {
+  background: rgb(249 250 251);
+}
+
+.i2g-helpdesk-note {
+  border-color: rgb(253 224 71);
+  background: rgb(254 252 232);
+}
+
+.i2g-helpdesk-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  cursor: default;
+}
+
+summary.i2g-helpdesk-card-head {
+  cursor: pointer;
+}
+
+.i2g-helpdesk-card-head time,
+.i2g-helpdesk-event time,
+.i2g-helpdesk-muted {
+  color: rgb(107 114 128);
+  font-size: 0.875rem;
+}
+
+.i2g-helpdesk-event {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: rgb(75 85 99);
+}
+
+.i2g-helpdesk-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.125rem 0.75rem;
+  margin: 0.5rem 0;
+  font-size: 0.875rem;
+}
+
+.i2g-helpdesk-meta dt {
+  color: rgb(107 114 128);
+}
+
+.i2g-helpdesk-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: inherit;
+  margin: 0.5rem 0;
+}
