@@ -157,7 +157,7 @@ rules = ["R001"]
 reason = "Splitting into reusable workflows renames the jobs and checks the CI Result ruleset, the deploy workflow_run trigger and test_ci_workflow_invariants.py depend on (spec priority 2: deploy behavior)."
 
 [[exceptions]]
-paths = ["aws/legacy/template.yaml"]
+paths = ["aws/legacy/cloudformation/template.yaml"]
 rules = ["R001"]
 reason = "CloudFormation template of the legacy stack; splitting it needs nested stacks, an infrastructure change."
 
