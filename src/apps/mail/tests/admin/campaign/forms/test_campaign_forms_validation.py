@@ -1,7 +1,7 @@
 from apps.mail.admin.campaign.forms import EmailCampaignForm
 from apps.mail.models import EmailCampaign
 from apps.mail.services.campaign.preview import HTML_MARKER
-from apps.mail.tests.admin.campaign.test_campaign_forms import _EmailCampaignFormCase
+from apps.mail.tests.admin.campaign.forms.test_campaign_forms import _EmailCampaignFormCase
 
 
 class EmailCampaignFormTests(_EmailCampaignFormCase):

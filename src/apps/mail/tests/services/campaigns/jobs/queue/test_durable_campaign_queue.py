@@ -13,7 +13,7 @@ from apps.mail.services.campaign.dispatch import (
     queue_sms_campaign,
 )
 
-from .durable_queue_helpers import DurableCampaignQueueTestCase
+from ..durable_queue_helpers import DurableCampaignQueueTestCase
 
 
 @override_settings(BACKGROUND_JOBS_ENABLED=True)

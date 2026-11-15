@@ -5,7 +5,7 @@ from apps.core.services.background_jobs import claim_jobs, enqueue_job
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign.dispatch import queue_email_campaign
-from apps.mail.tests.services.campaigns.jobs.test_pacing import make_graph_sender
+from apps.mail.tests.services.campaigns.jobs.queue.test_pacing import make_graph_sender
 
 
 class QueuedCampaignOrderTests(TestCase):

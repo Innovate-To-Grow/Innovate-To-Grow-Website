@@ -14,7 +14,7 @@ from apps.core.services.background_jobs import (
 from apps.mail.models import SmsRecipientLog
 from apps.mail.services.campaign.dispatch.sms_job import _send_via_sms
 
-from .durable_queue_helpers import DurableCampaignQueueTestCase, _provider_failure
+from ..durable_queue_helpers import DurableCampaignQueueTestCase, _provider_failure
 
 
 @override_settings(BACKGROUND_JOBS_ENABLED=True)
