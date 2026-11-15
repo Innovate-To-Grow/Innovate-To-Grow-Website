@@ -224,6 +224,8 @@ jobs:
           # A served page must carry the embed helper and not leak the key.
           page="$(curl -sS "$base/2025-fall-event.html")"
           echo "$page" | grep -q '/static/js/site/i2g-embed.js' || { echo "embed helper missing"; exit 1; }
+          # ...and the helper itself must be served, not only referenced.
+          curl -fsS -o /dev/null "$base/static/js/site/i2g-embed.js" || { echo "embed helper not served"; exit 1; }
           if echo "$page" | grep -q 'AIzaSy'; then
             echo "::error::API key leaked into a served page!"
             exit 1

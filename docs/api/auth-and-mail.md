@@ -735,7 +735,7 @@ The mail app (`src/apps/mail/`) handles email campaigns and exposes login-link e
 
 ### One-click unsubscribe and resubscribe
 
-Standalone backend HTML pages (`src/apps/mail/views/subscriptions.py`, logic in `src/apps/mail/services/subscriptions.py`), authenticated only by the signed token in the URL. They read no JWT, CSRF token or request body, have no throttle (the token is the control), are never cached (`never_cache`), are `noindex`, and never list the member's addresses. They always answer with their HTML page, so an unusual `Accept` header or a `?format=` parameter cannot turn a request into a `406` or `404`. When `FRONTEND_URL` is set, each page links to `FRONTEND_URL/account` ("Manage email preferences"), where every address has its own flag.
+Standalone backend HTML pages (`src/apps/mail/views/subscriptions.py`, logic in `src/apps/mail/services/audience/subscriptions.py`), authenticated only by the signed token in the URL. They read no JWT, CSRF token or request body, have no throttle (the token is the control), are never cached (`never_cache`), are `noindex`, and never list the member's addresses. They always answer with their HTML page, so an unusual `Accept` header or a `?format=` parameter cannot turn a request into a `406` or `404`. When `FRONTEND_URL` is set, each page links to `FRONTEND_URL/account` ("Manage email preferences"), where every address has its own flag.
 
 #### `GET|HEAD|POST /mail/unsubscribe/{token}/`
 
