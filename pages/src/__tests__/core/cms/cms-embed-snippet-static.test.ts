@@ -15,7 +15,7 @@ declare global {
 const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, '../../../../..');
 const snippetScript = readFileSync(
-  resolve(repoRoot, 'src/apps/cms/static/cms/js/cms-embed-widget/snippet.js'),
+  resolve(repoRoot, 'src/apps/cms/static/cms/js/embed-widget/snippet.js'),
   'utf8',
 );
 

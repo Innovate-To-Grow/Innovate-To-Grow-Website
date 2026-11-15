@@ -51,7 +51,7 @@ class CMSPageChangeFormRenderTests(_CMSPageChangeFormRenderCase):
         self.assertEqual(response.status_code, 200)
         # The live-preview sync backs off on 429 with the shared admin helper, loaded before it.
         html = response.content.decode()
-        self.assertLess(html.index("admin/js/poll-backoff.js"), html.index("cms-block-editor-parts/live-preview.js"))
+        self.assertLess(html.index("admin/js/poll-backoff.js"), html.index("block-editor/live-preview.js"))
 
     @override_settings(
         CSP_REPORT_ONLY=False,
@@ -123,7 +123,7 @@ class CMSPageChangeFormRenderTests(_CMSPageChangeFormRenderCase):
         response = self.client.get(url)
         content = response.content.decode()
         self.assertIn("cms-block-editor.js", content)
-        self.assertIn("cms-block-editor-parts/assets.js", content)
+        self.assertIn("block-editor/assets.js", content)
         self.assertIn("CMS_ASSET_MANAGER", content)
 
     def test_change_form_has_preview_button(self):

@@ -1,7 +1,7 @@
 (function () {
     /**
      * Footer editor preview: the SPA's /_footer-preview renders the real Footer with the site's CSS,
-     * from the content this page posts. Same protocol shape as cms-block-editor-parts/block-preview.js:
+     * from the content this page posts. Same protocol shape as cms/js/block-editor/block-preview.js:
      *   frame -> parent: { type: 'cms-footer-preview-ready' | 'cms-footer-preview-resize', nonce, height? }
      *   parent -> frame: { type: 'cms-footer-preview', nonce, content }
      */
