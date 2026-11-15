@@ -28,7 +28,7 @@ class LoginGuardPostgresConcurrencyTests(TransactionTestCase):
         cache.clear()
         # Pin the guard's clock (only the guard's: the driver and pool keep real time) so no window rolls over
         # mid-test; the patch is module-wide, so every worker thread sees the same windows.
-        patcher = patch.object(login_guard, "time", SimpleNamespace(time=FrozenClock()))
+        patcher = patch.object(login_guard.guard, "time", SimpleNamespace(time=FrozenClock()))
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -78,7 +78,7 @@ class LoginGuardPostgresConcurrencyTests(TransactionTestCase):
 
     def test_workers_that_all_miss_a_new_window_race_on_the_insert_without_losing_a_failure(self):
         workers = 6
-        real_insert = login_guard._insert_window
+        real_insert = login_guard.counters._insert_window
         at_insert = Barrier(workers)
         state = local()
         outcomes = []
@@ -96,7 +96,7 @@ class LoginGuardPostgresConcurrencyTests(TransactionTestCase):
             return outcome
 
         with (
-            patch.object(login_guard, "_insert_window", side_effect=insert_together),
+            patch.object(login_guard.guard, "_insert_window", side_effect=insert_together),
             self.assertNoLogs("apps.authn.services.login_guard", "WARNING"),
         ):
             self.parallel([lambda: login_guard.record_failure(EMAIL)] * workers)
