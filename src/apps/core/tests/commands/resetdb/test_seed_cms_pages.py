@@ -3,14 +3,14 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.core.management.commands import resetdb_helpers as helpers
+from apps.core.management.operations import archive_seed as helpers
 from apps.core.tests.commands.resetdb.test_resetdb_helpers import FakeCommand, _string_open
 
 
 class SeedCmsPagesTest(TestCase):
     def test_no_export_files(self):
         cmd = FakeCommand()
-        with patch("apps.core.management.commands.resetdb_helpers.glob.glob", return_value=[]):
+        with patch("apps.core.management.operations.archive_seed.glob.glob", return_value=[]):
             helpers._seed_cms_pages(cmd)
         self.assertIn("No cms_export_*.json found", cmd.stdout.text)
 
@@ -19,7 +19,7 @@ class SeedCmsPagesTest(TestCase):
         bundle = json.dumps({"pages": []})
         with (
             patch(
-                "apps.core.management.commands.resetdb_helpers.glob.glob",
+                "apps.core.management.operations.archive_seed.glob.glob",
                 return_value=["/a/cms_export_1.json"],
             ),
             patch("builtins.open", new=_string_open(bundle)),
@@ -37,7 +37,7 @@ class SeedCmsPagesTest(TestCase):
         ]
         with (
             patch(
-                "apps.core.management.commands.resetdb_helpers.glob.glob",
+                "apps.core.management.operations.archive_seed.glob.glob",
                 return_value=["/a/cms_export_1.json", "/a/cms_export_2.json"],
             ),
             patch("builtins.open", new=_string_open(bundle)),
@@ -56,7 +56,7 @@ class SeedCmsPagesTest(TestCase):
 class SeedMenusTest(TestCase):
     def test_missing_file(self):
         cmd = FakeCommand()
-        with patch("apps.core.management.commands.resetdb_helpers.os.path.exists", return_value=False):
+        with patch("apps.core.management.operations.archive_seed.os.path.exists", return_value=False):
             helpers._seed_menus(cmd)
         self.assertIn("No menus.json found", cmd.stdout.text)
 
@@ -66,7 +66,7 @@ class SeedMenusTest(TestCase):
         cmd = FakeCommand()
         items = [{"label": "Home", "url": "/"}]
         with (
-            patch("apps.core.management.commands.resetdb_helpers.os.path.exists", return_value=True),
+            patch("apps.core.management.operations.archive_seed.os.path.exists", return_value=True),
             patch("builtins.open", new=_string_open(json.dumps(items))),
         ):
             helpers._seed_menus(cmd)
@@ -83,7 +83,7 @@ class SeedMenusTest(TestCase):
         cmd = FakeCommand()
         items = [{"label": "A"}, {"label": "B"}]
         with (
-            patch("apps.core.management.commands.resetdb_helpers.os.path.exists", return_value=True),
+            patch("apps.core.management.operations.archive_seed.os.path.exists", return_value=True),
             patch("builtins.open", new=_string_open(json.dumps(items))),
         ):
             helpers._seed_menus(cmd)
@@ -94,7 +94,7 @@ class SeedMenusTest(TestCase):
 class SeedFooterTest(TestCase):
     def test_missing_file(self):
         cmd = FakeCommand()
-        with patch("apps.core.management.commands.resetdb_helpers.os.path.exists", return_value=False):
+        with patch("apps.core.management.operations.archive_seed.os.path.exists", return_value=False):
             helpers._seed_footer(cmd)
         self.assertIn("No footer.json found", cmd.stdout.text)
 
@@ -104,7 +104,7 @@ class SeedFooterTest(TestCase):
         cmd = FakeCommand()
         content = {"columns": [{"title": "About"}]}
         with (
-            patch("apps.core.management.commands.resetdb_helpers.os.path.exists", return_value=True),
+            patch("apps.core.management.operations.archive_seed.os.path.exists", return_value=True),
             patch("builtins.open", new=_string_open(json.dumps(content))),
         ):
             helpers._seed_footer(cmd)
@@ -121,7 +121,7 @@ class SeedFooterTest(TestCase):
         cmd = FakeCommand()
         content = {"columns": []}
         with (
-            patch("apps.core.management.commands.resetdb_helpers.os.path.exists", return_value=True),
+            patch("apps.core.management.operations.archive_seed.os.path.exists", return_value=True),
             patch("builtins.open", new=_string_open(json.dumps(content))),
         ):
             helpers._seed_footer(cmd)

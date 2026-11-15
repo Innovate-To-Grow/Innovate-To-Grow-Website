@@ -9,7 +9,7 @@ from apps.event.tests.helpers import make_superuser
 class SMTPProviderConfigAdminTests(TestCase):
     def setUp(self):
         self.admin_user = make_superuser()
-        from apps.core.admin.service_credentials.smtp import SMTPProviderConfigAdmin
+        from apps.core.admin.service_credentials.aws_smtp.smtp import SMTPProviderConfigAdmin
         from apps.core.models import SMTPProviderConfig
 
         self.model = SMTPProviderConfig
@@ -43,7 +43,7 @@ class SMTPProviderConfigAdminTests(TestCase):
         self.assertNotIn("delete_selected", actions)
 
     def test_form_clean_password_keeps_existing_on_blank(self):
-        from apps.core.admin.service_credentials.smtp import SMTPProviderConfigForm
+        from apps.core.admin.service_credentials.aws_smtp.smtp import SMTPProviderConfigForm
 
         config = self.model.objects.create(
             name="SMTP", host="smtp.example.com", username="user", password="stored-secret"

@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 from django.test import TestCase
 
 from apps.core.management.commands import resetdb_helpers as helpers
+from apps.core.management.operations import archive_seed
 from apps.core.tests.commands.resetdb.test_resetdb_helpers import FakeCommand, _cursor_mock
 
 
@@ -141,19 +142,19 @@ class CreateDefaultAdminTest(TestCase):
 class SeedArchiveDataTest(TestCase):
     def test_missing_directory_warns_and_returns(self):
         cmd = FakeCommand()
-        with patch("apps.core.management.commands.resetdb_helpers.os.path.isdir", return_value=False):
-            helpers.seed_archive_data(cmd)
+        with patch("apps.core.management.operations.archive_seed.os.path.isdir", return_value=False):
+            archive_seed.seed_archive_data(cmd)
         self.assertIn("Archive data directory not found", cmd.stdout.text)
 
     def test_dispatches_to_each_seeder(self):
         cmd = FakeCommand()
         with (
-            patch("apps.core.management.commands.resetdb_helpers.os.path.isdir", return_value=True),
-            patch("apps.core.management.commands.resetdb_helpers._seed_cms_pages") as cms,
-            patch("apps.core.management.commands.resetdb_helpers._seed_menus") as menus,
-            patch("apps.core.management.commands.resetdb_helpers._seed_footer") as footer,
+            patch("apps.core.management.operations.archive_seed.os.path.isdir", return_value=True),
+            patch("apps.core.management.operations.archive_seed._seed_cms_pages") as cms,
+            patch("apps.core.management.operations.archive_seed._seed_menus") as menus,
+            patch("apps.core.management.operations.archive_seed._seed_footer") as footer,
         ):
-            helpers.seed_archive_data(cmd)
+            archive_seed.seed_archive_data(cmd)
         cms.assert_called_once_with(cmd)
         menus.assert_called_once_with(cmd)
         footer.assert_called_once_with(cmd)

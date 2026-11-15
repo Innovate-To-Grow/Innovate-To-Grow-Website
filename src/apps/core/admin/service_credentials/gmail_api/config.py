@@ -18,9 +18,9 @@ from unfold.decorators import display
 from apps.core.models import EmailServiceConfig, GmailApiProviderConfig, GmailApiSubject
 from apps.core.models.base.service_credentials.gmail_api import MESSAGE_BYTES_HELP, RECIPIENTS_HELP, normalize_subject
 
-from ..common.base import AppAccessInlineMixin, BaseModelAdmin
-from .gmail_api_panel import key_panel
-from .gmail_api_views import GmailApiKeyViewsMixin
+from ...common.base import AppAccessInlineMixin, BaseModelAdmin
+from .panel import key_panel
+from .views import GmailApiKeyViewsMixin
 
 KEY_FACTS = (
     "service_account_email",

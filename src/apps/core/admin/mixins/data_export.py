@@ -156,7 +156,7 @@ class DataExportMixin:
             "confirm_param": EXPORT_CONFIRM_PARAM,
             "media": self.media,
         }
-        return TemplateResponse(request, "admin/core/export_columns.html", context)
+        return TemplateResponse(request, "admin/core/data_export/export_columns.html", context)
 
     def _generate_excel(self, request, queryset):
         return generate_excel_response(self, request, queryset, self._resolve_columns(request))

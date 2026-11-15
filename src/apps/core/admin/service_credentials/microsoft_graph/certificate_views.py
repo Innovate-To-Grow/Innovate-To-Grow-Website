@@ -23,8 +23,8 @@ from apps.core.models import EmailServiceConfig
 from apps.core.services.email.graph.credential import lifecycle, recovery
 from apps.core.services.email.graph.credential.lifecycle import CertificateChangeError
 
-from .microsoft_graph_certificate_forms import InstallCertificateForm, RemoveCertificatesForm
-from .microsoft_graph_panel import (
+from .certificate_forms import InstallCertificateForm, RemoveCertificatesForm
+from .panel import (
     DOWNLOAD_URL_NAME,
     INSTALL_URL_NAME,
     REMOVE_URL_NAME,

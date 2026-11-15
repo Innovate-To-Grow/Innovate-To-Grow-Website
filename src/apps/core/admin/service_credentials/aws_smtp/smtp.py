@@ -6,7 +6,7 @@ from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
 from apps.core.models import SMTPProviderConfig
 
-from ..common.base import BaseModelAdmin
+from ...common.base import BaseModelAdmin
 
 
 class SMTPProviderConfigForm(forms.ModelForm):

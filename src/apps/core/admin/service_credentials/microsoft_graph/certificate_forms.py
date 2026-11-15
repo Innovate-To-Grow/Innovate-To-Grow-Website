@@ -18,7 +18,7 @@ from unfold.widgets import (
     UnfoldBooleanWidget,
 )
 
-from apps.core.admin.service_credentials.microsoft_graph_certificate_widgets import (
+from apps.core.admin.service_credentials.microsoft_graph.certificate_widgets import (
     _THUMBPRINT_RE,
     CertificateTextarea,
     ThumbprintInput,

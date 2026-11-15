@@ -87,7 +87,7 @@ class VerifyServiceConfigsGraphTest(_VerifyServiceConfigsGraphCase):
         self._create_graph()
 
         with patch(
-            "apps.core.management.commands.verify_service_configs.MicrosoftGraphProviderConfig.load",
+            "apps.core.management.operations.provider_checks.MicrosoftGraphProviderConfig.load",
             side_effect=AssertionError("Policy-only verification must not load Graph credentials."),
         ):
             out = self._run("--send-verification-only")

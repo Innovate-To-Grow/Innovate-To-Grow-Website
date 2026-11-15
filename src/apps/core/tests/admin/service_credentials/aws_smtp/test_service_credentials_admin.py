@@ -6,7 +6,7 @@ from django.test import TestCase, override_settings
 from django.test.client import RequestFactory
 from django.urls import reverse
 
-from apps.core.admin.service_credentials.aws import AWSCredentialConfigAdmin
+from apps.core.admin.service_credentials.aws_smtp.aws import AWSCredentialConfigAdmin
 from apps.core.models import AWSCredentialConfig, GmailAccessAccount
 from apps.event.tests.helpers import make_superuser
 from apps.system_intelligence.models import SystemIntelligenceConfig
@@ -126,7 +126,7 @@ class AWSCredentialConfigAdminTests(TestCase):
 
 class SMTPProviderConfigFormTest(TestCase):
     def test_standby_can_replace_active_configuration_without_disabling_it_first(self):
-        from apps.core.admin.service_credentials.smtp import SMTPProviderConfigForm
+        from apps.core.admin.service_credentials.aws_smtp.smtp import SMTPProviderConfigForm
         from apps.core.models import SMTPProviderConfig
 
         active = SMTPProviderConfig.objects.create(name="Primary", host="smtp.example.com", is_active=True)
@@ -155,7 +155,7 @@ class SMTPProviderConfigFormTest(TestCase):
         self.assertEqual(SMTPProviderConfig.objects.filter(is_active=True).count(), 1)
 
     def test_existing_password_is_not_rendered_and_blank_preserves_it(self):
-        from apps.core.admin.service_credentials.smtp import SMTPProviderConfigForm
+        from apps.core.admin.service_credentials.aws_smtp.smtp import SMTPProviderConfigForm
         from apps.core.models import SMTPProviderConfig
 
         config = SMTPProviderConfig.objects.create(

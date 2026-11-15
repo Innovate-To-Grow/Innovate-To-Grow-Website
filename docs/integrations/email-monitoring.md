@@ -408,7 +408,7 @@ Notification Delivery and Delivery Rates; the sidebar's **Delivery Operations** 
 
 ## Configuration
 
-`EMAIL_MONITORING` in `src/config/settings/base/integrations/email_monitoring/__init__.py`:
+`EMAIL_MONITORING` in `src/config/settings/base/integrations/email/email_monitoring/__init__.py`:
 
 | Key (environment variable) | Default | What it does |
 |---|---|---|

@@ -149,7 +149,7 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
             "token": pending["token"],
             "cancel_url": self._changelist_url(),
         }
-        return TemplateResponse(request, "admin/core/confirm_action.html", context)
+        return TemplateResponse(request, "admin/core/confirmation/confirm_action.html", context)
 
     def _execute_confirmed_action(self, request, pending):
         action_name = pending["action_name"]

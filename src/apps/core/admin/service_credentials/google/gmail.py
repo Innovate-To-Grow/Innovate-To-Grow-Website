@@ -8,7 +8,7 @@ from unfold.widgets import UnfoldAdminPasswordToggleWidget
 
 from apps.core.models import GmailAccessAccount
 
-from ..common.base import BaseModelAdmin
+from ...common.base import BaseModelAdmin
 
 
 class GmailAccessAccountForm(forms.ModelForm):

@@ -3,8 +3,10 @@
 
 # Composition roots: project-wide entry points that wire apps together.
 # - core management commands are the project's operational CLI (the background
-#   worker and its maintenance list, dev/E2E seeding, service-config checks).
-composition = ["apps.core.management.commands.*"]
+#   worker and its maintenance list, dev/E2E seeding, service-config checks);
+#   management/operations holds the parts of those commands that live outside
+#   commands/ (Django would list a helper module there as a command).
+composition = ["apps.core.management.commands.*", "apps.core.management.operations.*"]
 
 # What each app may import besides itself. An entry is an app label or a
 # module path inside that app (its public interface). Layers, lowest first:
@@ -35,12 +37,12 @@ cli_admin = ["core"]
 # Individually justified cross-app imports. `from` is an fnmatch pattern of the
 # importing module, `to` a module (prefix) it may import.
 [[exceptions]]
-from = "apps.core.admin.service_credentials.aws"
+from = "apps.core.admin.service_credentials.aws_smtp.aws"
 to = "apps.system_intelligence.models"
 reason = "The AWS credentials page's 'Test Bedrock API' action reads the default model id; imported lazily inside the action."
 
 [[exceptions]]
-from = "apps.core.admin.service_credentials.helpers"
+from = "apps.core.admin.service_credentials.aws_smtp.helpers"
 to = "apps.authn.services.sms"
 reason = "Admin 'send test SMS' (core AWS page and mail settings) reuses authn's one SMS publisher and its error classification; imported lazily inside the call."
 

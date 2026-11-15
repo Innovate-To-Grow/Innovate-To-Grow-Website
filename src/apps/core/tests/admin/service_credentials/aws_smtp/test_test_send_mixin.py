@@ -7,8 +7,8 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from apps.core.admin.service_credentials.aws import AWSCredentialConfigAdmin
-from apps.core.admin.service_credentials.helpers import (
+from apps.core.admin.service_credentials.aws_smtp.aws import AWSCredentialConfigAdmin
+from apps.core.admin.service_credentials.aws_smtp.helpers import (
     _normalize_phone_number,
     _send_test_email,
     _send_test_sms,
@@ -119,7 +119,7 @@ class TestEmailViewTest(TestCase):
         request = _request("get", self.user)
         with patch.object(EmailServiceConfig, "load", return_value=EmailServiceConfig(name="Prod")):
             response = self.admin.test_email_list_view(request)
-        self.assertEqual(response.template_name, "admin/core/test_send_form.html")
+        self.assertEqual(response.template_name, "admin/core/test_send/test_send_form.html")
         self.assertIn("Send Test Email", response.context_data["title"])
 
     def test_post_missing_recipient_errors(self):
@@ -135,7 +135,7 @@ class TestEmailViewTest(TestCase):
         with (
             patch.object(EmailServiceConfig, "load", return_value=EmailServiceConfig(name="Prod")),
             patch(
-                "apps.core.admin.service_credentials.test_send_mixin._send_test_email",
+                "apps.core.admin.service_credentials.aws_smtp.test_send_mixin._send_test_email",
                 return_value="AWS SES",
             ),
         ):
@@ -148,7 +148,7 @@ class TestEmailViewTest(TestCase):
         with (
             patch.object(EmailServiceConfig, "load", return_value=EmailServiceConfig(name="Prod")),
             patch(
-                "apps.core.admin.service_credentials.test_send_mixin._send_test_email",
+                "apps.core.admin.service_credentials.aws_smtp.test_send_mixin._send_test_email",
                 side_effect=RuntimeError("nope"),
             ),
         ):
