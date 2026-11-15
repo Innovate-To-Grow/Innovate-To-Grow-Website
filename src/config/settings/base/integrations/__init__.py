@@ -4,12 +4,12 @@ Third-party package configuration.
   api/    – Django REST Framework and SimpleJWT.
   admin/  – Unfold theme, tab groups, sidebar navigation, and branding.
   editor/ – CKEditor 5 toolbar and plugin settings.
-  credential_store/ – Private-key store backend (Secrets Manager / local file / memory) and secret names.
-  microsoft_graph/ – Microsoft Graph certificate limits (key size, input size, clock skew, Entra test timeout).
-  gmail_api/ – Gmail API request limits, token and assertion lifetimes, and what the admin accepts as a key.
+  email/ – credential_store/ (the private-key store backend: Secrets Manager / local file / memory, and secret
+           names), microsoft_graph/ (certificate limits: key size, input size, clock skew, Entra test timeout),
+           gmail_api/ (request limits, token and assertion lifetimes, what the admin accepts as a key) and
+           email_monitoring/ (outgoing-email telemetry, its retention, and bounce (NDR / DSN) processing).
   delivery_rates/ – Per-channel delivery-rate seeds and ceilings, the Smart rate controller, waits and signals.
   request_limits/ – Inbound request-limit scopes, priority tiers, routes, Smart limiting and the counter store.
-  email_monitoring/ – Outgoing-email telemetry, its retention, and bounce (NDR / DSN) processing.
   member_import/ – Member import review: the upload's row cap and how long staged imports are kept.
   sms/ – SMS policy bounds: the quiet-hours switch, SMS link tokens and the AWS opt-out list sync.
 """

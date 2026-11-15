@@ -6,8 +6,8 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.test import SimpleTestCase
 
-from config.settings.base.integrations.gmail_api import DEFAULTS
-from config.settings.base.integrations.gmail_api.validation import load_gmail_api
+from config.settings.base.integrations.email.gmail_api import DEFAULTS
+from config.settings.base.integrations.email.gmail_api.validation import load_gmail_api
 
 
 class GmailApiSettingsTests(SimpleTestCase):

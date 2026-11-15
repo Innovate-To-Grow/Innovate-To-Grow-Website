@@ -205,7 +205,7 @@ intake's own controls ([Intake controls](#intake-controls)).
 | `automated_retention_days`, `spam_retention_days`, `closed_body_retention_days`, `attachment_retention_days`, `ticket_retention_days` | 90, 30, 730, 365, 1095 | Retention (above). |
 
 The intake's cadence and bounds are settings (`EMAIL_MONITORING` in
-`src/config/settings/base/integrations/email_monitoring/__init__.py`), like bounce processing's: they bound the
+`src/config/settings/base/integrations/email/email_monitoring/__init__.py`), like bounce processing's: they bound the
 controls on the card, so they are not edited beside them.
 
 | Setting | Default | Meaning |
