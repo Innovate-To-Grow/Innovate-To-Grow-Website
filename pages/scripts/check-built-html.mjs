@@ -28,7 +28,7 @@ try {
   process.exit(1)
 }
 
-// PRELOADED_ROUTES in vite.config.ts: ['<path pattern>', 'src/routes/<Page>/index.ts'] pairs.
+// PRELOADED_ROUTES in vite.config.ts: ['<path pattern>', 'src/routes/<group>/<Page>/index.ts'] pairs.
 const configSource = readFileSync(join(root, 'vite.config.ts'), 'utf8')
 const routesBlock = configSource.match(/const PRELOADED_ROUTES[^=]*=\s*\[([\s\S]*?)\n\]/)
 const configured = routesBlock

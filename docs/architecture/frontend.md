@@ -138,7 +138,7 @@ Campus users share one public IP, so the backend tells browsers apart by two val
 
 ## Shared modules
 
-Layer rules (what may import what, and how features expose a public interface) are in [Code Quality Rules](code-quality.md#frontend-layers). Page-only hooks and sections live beside their route (for example `routes/EventRegistrationPage/registration/` and `routes/SubscribePage/subscription/`). Pure formatting helpers shared across features live in `lib/format/` (`eventDates.ts`, `phoneInput.ts`), and form error collection lives in `lib/api/errorMessages.ts`.
+Layer rules (what may import what, and how features expose a public interface) are in [Code Quality Rules](code-quality.md#frontend-layers). Page-only hooks and sections live beside their route (for example `routes/events/EventRegistrationPage/registration/` and `routes/subscription/SubscribePage/subscription/`). Pure formatting helpers shared across features live in `lib/format/` (`eventDates.ts`, `phoneInput.ts`), and form error collection lives in `lib/api/errorMessages.ts`.
 
 Large components keep rendering in the component and move state into a hook beside it, one hook per
 concern. For example:
@@ -152,11 +152,12 @@ concern. For example:
   rows, server search, AI search scope and wording) comes from `ProjectCatalogContext`
   (`features/projects/catalog/`): Past Projects by default, All Projects under `ALL_PROJECTS_CATALOG`'s provider.
   Both pages render `components/views/pages/CatalogBuilderView`.
-- **Event registration** (`routes/EventRegistrationPage/registration/`). `useRegistrationEvents` (which
-  event and step) loads options through `useEventOptionsLoader`. The phone and secondary-email hooks
-  share `contactChallenge.ts`: a challenge's state, and `runLatestRequest`, which lets only the newest
+- **Event registration** (`routes/events/EventRegistrationPage/registration/`). `events/useRegistrationEvents` (which
+  event and step) loads options through `useEventOptionsLoader`, boots through `useRegistrationBoot` and switches
+  events through `useEventChoice`. The phone and secondary-email hooks
+  share `verification/contactChallenge.ts`: a challenge's state, and `runLatestRequest`, which lets only the newest
   send or verify apply its result.
-- **Shared list edits** (`routes/PastProjectsPage/useSharedListMutations.ts`). Edits are queued and
+- **Shared list edits** (`routes/projects/PastProjectsPage/useSharedListMutations.ts`). Edits are queued and
   rebased onto the latest version, and a stale-snapshot conflict reloads the list. The pure parts
   (`editPatch`, `runnableBaseline`) sit above the hook, and the queue's bookkeeping is
   `useMutationQueueState`.
