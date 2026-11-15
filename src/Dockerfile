@@ -26,7 +26,7 @@ COPY docker/security/ /opt/itg-security/
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential=12.* \
         libpq-dev=17.* \
-    && sh /opt/itg-security/install-debian-floors.sh \
+    && sh /opt/itg-security/debian/install-debian-floors.sh \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the dependency manifests together so their nested `-r` includes resolve.
@@ -55,7 +55,7 @@ COPY docker/security/ /opt/itg-security/
 # publishes between the two layers.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq5=17.* \
-    && sh /opt/itg-security/install-debian-floors.sh \
+    && sh /opt/itg-security/debian/install-debian-floors.sh \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system app \
     && useradd --system --gid app --home /app --shell /usr/sbin/nologin app
@@ -75,10 +75,10 @@ COPY --chown=app:app . .
 
 # Bake static assets into the image instead of running collectstatic at boot.
 # config.settings.environments.local points at SQLite + local FS, which is enough for the
-# build-time staticfiles pass (no DB or S3 credentials needed). docker/entrypoint.sh
+# build-time staticfiles pass (no DB or S3 credentials needed). docker/runtime/entrypoint.sh
 # is made executable in the same layer so there's one RUN for app setup.
 ENV DJANGO_SETTINGS_MODULE=config.settings.environments.local
-RUN chmod +x docker/entrypoint.sh \
+RUN chmod +x docker/runtime/entrypoint.sh \
  && mkdir -p data \
  && chown app:app data \
  && python manage.py collectstatic --noinput
@@ -92,4 +92,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/livez/')" || exit 1
 
-ENTRYPOINT ["./docker/entrypoint.sh"]
+ENTRYPOINT ["./docker/runtime/entrypoint.sh"]

@@ -17,7 +17,7 @@
 │   │   └── cli_admin/      # OAuth2 + PKCE CRUD API for the i2g-admin CLI
 │   ├── config/             # Django settings (base/, production/ overrides, environments/ entrypoints), routing/, deploy/ (ASGI/WSGI)
 │   ├── assets/             # Pinned third-party static libs (vendor/), app-agnostic
-│   ├── docker/             # Container pieces: entrypoint.sh and security/ (Debian package floors the image installs)
+│   ├── docker/             # Container pieces: runtime/entrypoint.sh and security/debian/ (Debian package floors + their installer)
 │   ├── requirements/       # base.txt (shared) ← production.txt (servers, PostgreSQL, Redis, S3) ← local.txt (+ dev/CI tooling)
 │   ├── requirements.txt    # `-r requirements/local.txt`: the include every consumer uses (pip, Docker, pip-audit)
 │   ├── manage.py           # Django management entry point
