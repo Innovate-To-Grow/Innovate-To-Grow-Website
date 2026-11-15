@@ -7,9 +7,9 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
-from apps.authn.services.login_guard import purge_expired_failure_windows
 from apps.authn.services.members.import_.review.staging.purge import purge_member_imports
-from apps.authn.services.security.rsa_manager import purge_retired_auth_keypairs
+from apps.authn.services.security.login_guard import purge_expired_failure_windows
+from apps.authn.services.security.rsa.rsa_manager import purge_retired_auth_keypairs
 from apps.authn.services.send_verification import cleanup_expired_records, clear_expired_sessions
 from apps.core.services.background_jobs import (
     JobOutcome,

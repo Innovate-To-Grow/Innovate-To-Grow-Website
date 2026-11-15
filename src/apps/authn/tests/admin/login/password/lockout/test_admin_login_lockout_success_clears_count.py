@@ -1,5 +1,5 @@
 from apps.authn.models import ContactEmail, LoginFailureWindow
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 from apps.authn.tests.admin.login.password.lockout.test_admin_login_lockout import (
     ALICE,
     INVALID_EMAIL_OR_PASSWORD,

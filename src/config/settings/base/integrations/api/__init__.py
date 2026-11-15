@@ -40,7 +40,7 @@ CORS_EXPOSE_HEADERS = ["Retry-After"]
 # Deliberately absent, here and in the request limiter's sign-in and code scopes: per-IP rates for password login,
 # email-link exchange, verification-code request/verify and ALTCHA challenge/status. Most users share one campus IP, so such a bucket throttles everyone at once (and
 # is bypassable through X-Forwarded-For). Those flows are bounded per token / destination / challenge and, for
-# password login, by the identifier-keyed lockout in apps.authn.services.login_guard.
+# password login, by the identifier-keyed lockout in apps.authn.services.security.login_guard.
 
 # ---------------------------------------------------------------------------
 # Self-hosted send verification (ALTCHA PoW v2 + destination quotas)

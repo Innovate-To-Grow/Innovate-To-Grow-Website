@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.test import Client
 
 from apps.authn.models import LoginFailureWindow
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 from apps.authn.tests.admin.login.password.lockout.test_admin_login_lockout import (
     ALICE,
     BOB,

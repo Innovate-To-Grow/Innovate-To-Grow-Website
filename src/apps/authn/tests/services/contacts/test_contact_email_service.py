@@ -13,7 +13,7 @@ from apps.authn.services.contacts.contact_emails import (
     verify_contact_email_code,
 )
 from apps.authn.services.email.challenges import AuthChallengeInvalid
-from apps.authn.services.security.key_encryption import decrypt_pem, encrypt_pem, is_encrypted
+from apps.authn.services.security.rsa.key_encryption import decrypt_pem, encrypt_pem, is_encrypted
 from apps.authn.tests.services.coverage.test_service_coverage import _member
 
 

@@ -2,7 +2,7 @@ from django.db import connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 from apps.authn.tests.services.security.scoped_key.test_scoped_key import _ScopedKeyCase
 
 from ..login_guard.login_guard_helpers import GLOBAL, LOGGER, SUBJECT

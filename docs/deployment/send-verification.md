@@ -510,7 +510,7 @@ verification tests disable automatic proof attachment. The API coverage matrix
 checks all 12 sending routes before account/contact mutations.
 
 Run `apps.authn.tests.services.send_verification.test_send_verification_concurrency` and
-`apps.authn.tests.services.security.test_login_guard_concurrency` against an isolated
+`apps.authn.tests.services.security.login_guard.test_login_guard_concurrency` against an isolated
 PostgreSQL 16 database with `config.settings.environments.test` and the `DB_*` variables (CI
 does). SQLite skips are not evidence of locking correctness. Contention and
 fault tests must check provider calls, reservations, challenge consumption,

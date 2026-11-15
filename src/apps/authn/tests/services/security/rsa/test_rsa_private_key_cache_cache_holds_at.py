@@ -1,8 +1,8 @@
 from concurrent.futures import ThreadPoolExecutor
 
 from apps.authn.models import RSAKeypair
-from apps.authn.services.security import rsa_manager
-from apps.authn.services.security.decryption import decrypt_password
+from apps.authn.services.security.rsa import rsa_manager
+from apps.authn.services.security.rsa.decryption import decrypt_password
 from apps.authn.tests.services.security.rsa.test_rsa_private_key_cache import _PrivateKeyCacheCase
 
 

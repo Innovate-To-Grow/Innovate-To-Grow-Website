@@ -2,7 +2,7 @@ from django.test import Client, override_settings
 from rest_framework.test import APIClient
 
 from apps.authn.models import LoginFailureWindow
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 from apps.authn.tests.admin.login.password.lockout.test_admin_login_lockout import (
     ALICE,
     DAILY_LIMIT,

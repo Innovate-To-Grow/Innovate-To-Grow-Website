@@ -17,7 +17,7 @@ from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 
 from apps.authn.models import ContactEmail, LoginFailureWindow
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 from apps.authn.tests.helpers.clock import freeze_time
 from apps.authn.views.admin.login.state import LAST_ADMIN_LOGIN_COOKIE_NAME
 

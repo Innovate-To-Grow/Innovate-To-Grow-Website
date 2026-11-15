@@ -1,6 +1,6 @@
 """A settable clock for tests of windowed counters (the login lockout).
 
-``apps.authn.services.login_guard`` reads ``time.time`` for its window indexes and expiry times (as do the cache
+``apps.authn.services.security.login_guard`` reads ``time.time`` for its window indexes and expiry times (as do the cache
 backends for entry expiry), so patching it moves them together. The default start sits one minute into a 15-minute
 window of a UTC day, so the windows end at known offsets: 14 minutes ahead (short window), 4 minutes ahead
 (the 5-minute spray-detection window) and ``SECONDS_LEFT_IN_DAY`` ahead (daily window).

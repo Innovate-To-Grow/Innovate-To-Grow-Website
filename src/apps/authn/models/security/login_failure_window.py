@@ -6,7 +6,7 @@ from apps.core.models import ProjectControlModel
 class LoginFailureWindow(ProjectControlModel):
     """Password sign-in failures counted for one identifier in one clock-aligned window.
 
-    Written only by ``apps.authn.services.login_guard``. ``identifier_digest`` is a SECRET_KEY-salted HMAC of the
+    Written only by ``apps.authn.services.security.login_guard``. ``identifier_digest`` is a SECRET_KEY-salted HMAC of the
     normalised identifier (never the identifier itself), or the constant ``GLOBAL_DIGEST`` for the site-wide
     spray-detection counter. ``window_index`` is ``unix time // window length``; ``expires_at`` is the end of that
     window, after which the row is dead weight for ``purge_expired_failure_windows``. Increments are single

@@ -4,7 +4,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 
 from apps.authn.models import LoginFailureWindow
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 from apps.authn.tests.helpers.clock import (
     SECONDS_LEFT_IN_DAY,
     SECONDS_LEFT_IN_SHORT_WINDOW,
