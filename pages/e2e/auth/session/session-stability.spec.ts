@@ -1,5 +1,5 @@
 import type {BrowserContext, Page} from '@playwright/test';
-import {test, expect} from '../helpers/fixtures';
+import {test, expect} from '../../helpers/fixtures';
 import {
   aiSearchResponse,
   expectSignedInAs,
@@ -8,7 +8,7 @@ import {
   mockPastProjects,
   pastProjectRows,
   profileResponse,
-} from '../helpers';
+} from '../../helpers';
 
 function watchAccountNavigation(page: Page): string[] {
   const unexpectedPaths: string[] = [];

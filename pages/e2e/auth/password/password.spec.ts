@@ -1,10 +1,10 @@
 // /login password mode: email + encrypted-password login via /authn/login/.
-import {test, expect} from '../helpers/fixtures';
+import {test, expect} from '../../helpers/fixtures';
 import {
   mockAccountDashboard,
   mockPasswordLogin,
   mockPublicKey,
-} from '../helpers';
+} from '../../helpers';
 
 test('switch from identifier mode to password mode', async ({page}) => {
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
