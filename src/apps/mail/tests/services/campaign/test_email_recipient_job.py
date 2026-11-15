@@ -19,7 +19,7 @@ from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign.dispatch.email_job import _render_recipient_email
 from apps.mail.services.campaign.dispatch.failures import DEFERRED_LOG_MESSAGE
 from apps.mail.services.send_campaign import SesSendResult
-from apps.mail.services.send_campaign.runner import RecipientContext
+from apps.mail.services.send_campaign.recipients import RecipientContext
 from apps.mail.services.send_campaign.transport import (
     SES_OUTCOME_PERMANENT,
     SES_OUTCOME_TRANSIENT,

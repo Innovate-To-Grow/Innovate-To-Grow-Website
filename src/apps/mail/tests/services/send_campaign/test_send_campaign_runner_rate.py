@@ -21,7 +21,8 @@ from apps.core.services.email.exceptions import (
 from apps.core.tests.services.delivery_rates.helpers import rates_with
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.send_campaign.runner import PAUSED_LOG_MESSAGE, send_campaign
+from apps.mail.services.send_campaign.recipient_logs import PAUSED_LOG_MESSAGE
+from apps.mail.services.send_campaign.runner import send_campaign
 
 DELIVER = "apps.mail.services.send_campaign.transport.deliver_email"
 
