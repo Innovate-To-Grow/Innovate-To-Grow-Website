@@ -2,7 +2,7 @@ from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, TestCase
 
 from apps.event.tests.helpers import make_event
-from apps.mail.admin.recipient_log import RecipientLogAdmin
+from apps.mail.admin.campaign.admin.recipient_log import RecipientLogAdmin
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign
 
 

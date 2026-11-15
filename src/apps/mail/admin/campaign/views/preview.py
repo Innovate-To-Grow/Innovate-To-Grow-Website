@@ -16,7 +16,7 @@ from apps.mail.services.campaign.preview import (
     split_html_marker,
 )
 
-from .. import services as campaign_api
+from . import services as campaign_api
 
 _PREVIEW_CSP = (
     "sandbox; default-src 'none'; img-src 'self' data: https:; "

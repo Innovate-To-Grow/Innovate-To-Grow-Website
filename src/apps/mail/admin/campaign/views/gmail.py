@@ -10,7 +10,7 @@ from unfold.decorators import action
 from apps.core.models import GmailAccessAccount
 from apps.mail.models import EmailCampaign
 
-from .. import services as campaign_api
+from . import services as campaign_api
 
 
 class CampaignGmailMixin:

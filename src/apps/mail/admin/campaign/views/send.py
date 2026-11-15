@@ -14,7 +14,7 @@ from apps.core.models import EmailServiceConfig
 from apps.mail.models import EmailCampaign
 from apps.mail.services.campaign.pacing import delivery_pacing_notice
 
-from .. import services as campaign_api
+from . import services as campaign_api
 
 
 class CampaignSendMixin:

@@ -128,7 +128,7 @@ class ModelStrAndCleanTests(TestCase):
 class TicketSelectWidgetTests(TestCase):
     def test_create_option_adds_data_event_attribute(self):
         from apps.event.models import Ticket
-        from apps.mail.admin.campaign.widgets import ManualEmailsWidget, TicketSelectWidget
+        from apps.mail.admin.campaign.forms.widgets import ManualEmailsWidget, TicketSelectWidget
 
         event = make_event()
         ticket = make_ticket(event, name="VIP")
@@ -148,7 +148,7 @@ class TicketSelectWidgetTests(TestCase):
         self.assertEqual(manual.attrs["rows"], 12)
 
     def test_get_event_map_handles_non_queryset_choices(self):
-        from apps.mail.admin.campaign.widgets import TicketSelectWidget
+        from apps.mail.admin.campaign.forms.widgets import TicketSelectWidget
 
         widget = TicketSelectWidget()
         widget.choices = [("", "----")]  # plain list, no .queryset

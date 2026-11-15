@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
-from apps.mail.admin.login_link import LoginLinkTokenAdmin
+from apps.mail.admin.campaign.admin.login_link import LoginLinkTokenAdmin
 from apps.mail.models import EmailCampaign, LoginLinkToken
 
 

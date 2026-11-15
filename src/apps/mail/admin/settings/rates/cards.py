@@ -12,8 +12,8 @@ from django.urls import reverse
 
 from apps.core.models import DeliveryRateState, EmailServiceConfig
 from apps.core.services.delivery_rates import Family, active_target, channel_info
-from apps.mail.admin.settings.rate_cards.lines import reported_lines
-from apps.mail.admin.settings.rate_cards.placeholders import Channel
+from apps.mail.admin.settings.rates.card_lines import reported_lines
+from apps.mail.admin.settings.rates.card_placeholders import Channel
 
 Provider = EmailServiceConfig.Provider
 

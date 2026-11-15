@@ -44,7 +44,7 @@ selection. There is no per-message routing or automatic failover.
 | Concern | Implementation |
 |---------|---------------|
 | Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email/service.py`) — active sender identity and selected provider |
-| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates/`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates.py`, staff with the Mail app); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read ([Delivery rates](../integrations/delivery-rates.md)) |
+| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates/`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates/`, staff with the Mail app); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read ([Delivery rates](../integrations/delivery-rates.md)) |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
 | Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph/`) — Entra tenant ID, client ID and optional sender mailbox; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |

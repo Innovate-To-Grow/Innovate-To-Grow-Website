@@ -8,7 +8,7 @@ from unfold.decorators import display
 from apps.core.models import EmailServiceConfig, GmailAccessAccount
 from apps.mail.services.campaign.preview import split_html_marker
 
-from . import services as campaign_api
+from ..views import services as campaign_api
 
 
 class CampaignDisplayMixin:

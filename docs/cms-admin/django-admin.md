@@ -109,7 +109,7 @@ Also in `src/apps/authn/admin/members/` (details in
 
 ### Email campaign admin
 
-`EmailCampaignAdmin` (`src/apps/mail/admin/campaign/admin.py`) provides:
+`EmailCampaignAdmin` (`src/apps/mail/admin/campaign/admin/`) provides:
 - Inline recipient logs
 - Campaign status display
 - Gmail template import action
