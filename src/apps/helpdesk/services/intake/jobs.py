@@ -18,7 +18,7 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 
 from ...models import HelpdeskSettings
-from ..ingest import jobs as ingest_jobs
+from ..ingest.pipeline import jobs as ingest_jobs
 
 INTAKE_JOB_KIND = "helpdesk.intake_scan"
 # A scan that stopped at its page or time budget continues this soon (sooner than the interval, never later): it only
