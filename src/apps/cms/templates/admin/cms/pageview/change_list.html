@@ -23,104 +23,20 @@
         <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"
                 integrity="sha384-y49Zu59jZHJL/PLKgZPv3k2WI9c0Yp3pWB76V8OBVCb0QBKS8l4Ff3YslzHVX76Y"
                 crossorigin="anonymous"></script>
-        <script nonce="{{ request.csp_nonce }}">
-            (function () {
-                if (window.i2gPageViewTheme) return;
-
-                function cssVar(name, fallback) {
-                    var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-                    return value || fallback;
-                }
-
-                function toRgb(color) {
-                    var normalized = String(color || "").trim();
-                    var hex = normalized.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
-
-                    if (hex) {
-                        var value = hex[1];
-                        if (value.length === 3) {
-                            value = value.split("").map(function (part) { return part + part; }).join("");
-                        }
-                        return {
-                            r: parseInt(value.slice(0, 2), 16),
-                            g: parseInt(value.slice(2, 4), 16),
-                            b: parseInt(value.slice(4, 6), 16),
-                        };
-                    }
-
-                    var rgb = normalized.match(/rgba?\(([^)]+)\)/i);
-                    if (rgb) {
-                        var parts = rgb[1].split(",").map(function (part) { return Number(part.trim()); });
-                        return { r: parts[0], g: parts[1], b: parts[2] };
-                    }
-
-                    return null;
-                }
-
-                function withAlpha(color, alpha) {
-                    var rgb = toRgb(color);
-                    if (!rgb) return color;
-                    return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + alpha + ")";
-                }
-
-                function palette() {
-                    var isDark = document.documentElement.classList.contains("dark");
-                    var onSurface = cssVar("--md-sys-color-on-surface", isDark ? "#e8eaed" : "#202124");
-                    var onSurfaceVariant = cssVar("--md-sys-color-on-surface-variant", isDark ? "#c4c7c5" : "#5f6368");
-                    var outlineVariant = cssVar("--md-sys-color-outline-variant", isDark ? "#444746" : "#c4c7ca");
-                    var surfaceContainer = cssVar("--md-sys-color-surface-container", isDark ? "#202124" : "#f6f3f3");
-                    var primary = cssVar("--md-sys-color-primary", isDark ? "#a8c7fa" : "#305f9d");
-
-                    return {
-                        isDark: isDark,
-                        textColor: onSurfaceVariant,
-                        titleColor: onSurface,
-                        gridColor: withAlpha(outlineVariant, isDark ? 0.72 : 0.5),
-                        tooltipBg: surfaceContainer,
-                        primaryBar: withAlpha(primary, isDark ? 0.72 : 0.78),
-                        tealBar: withAlpha(isDark ? "#2dd4bf" : "#0f766e", isDark ? 0.66 : 0.76),
-                        orangeLine: withAlpha(isDark ? "#fb923c" : "#c2410c", isDark ? 0.92 : 0.84),
-                    };
-                }
-
-                var subscribers = [];
-
-                function refresh() {
-                    var colors = palette();
-                    subscribers.forEach(function (subscriber) {
-                        subscriber.apply(subscriber.chart, colors);
-                        subscriber.chart.update("none");
-                    });
-                }
-
-                window.i2gPageViewTheme = {
-                    palette: palette,
-                    register: function (chart, apply) {
-                        subscribers.push({ chart: chart, apply: apply });
-                        apply(chart, palette());
-                        chart.update("none");
-                    },
-                };
-
-                new MutationObserver(refresh).observe(document.documentElement, {
-                    attributes: true,
-                    attributeFilter: ["class"],
-                });
-            })();
-        </script>
+{% include "admin/cms/pageview_dashboard/_chart_theme_script.html" %}
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div class="cms-pageview-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
                 <h3 class="cms-pageview-heading text-sm font-semibold mb-3"><span class="cms-pageview-heading-icon material-symbols-outlined align-middle" style="font-size:18px">bar_chart</span>Last 7 Days</h3>
                 <div style="position:relative; height:240px;"><canvas id="last7DaysChart"></canvas></div>
             </div>
-            {% include "admin/cms/pageview/includes/last7_chart_script.html" %}
+            {% include "admin/cms/pageview_dashboard/last7_chart_script.html" %}
 
             <div class="cms-pageview-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
                 <h3 class="cms-pageview-heading text-sm font-semibold mb-3"><span class="cms-pageview-heading-icon material-symbols-outlined align-middle" style="font-size:18px">schedule</span>Today's Hourly Views</h3>
                 <div style="position:relative; height:240px;"><canvas id="hourlyChart"></canvas></div>
             </div>
-            {% include "admin/cms/pageview/includes/hourly_chart_script.html" %}
+            {% include "admin/cms/pageview_dashboard/hourly_chart_script.html" %}
 
             <div class="cms-pageview-panel rounded-default border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 p-4">
                 <h3 class="cms-pageview-heading text-sm font-semibold mb-3"><span class="cms-pageview-heading-icon material-symbols-outlined align-middle" style="font-size:18px">trending_up</span>Top Pages</h3>
@@ -136,134 +52,5 @@
 
     {{ block.super }}
 
-<script nonce="{{ request.csp_nonce }}">
-(function(){
-  var lookupUrl = '{% url "admin:cms_pageview_ip_geo_lookup" %}';
-  var popup = null, overlay = null;
-
-  function close() {
-    if (popup) popup.remove();
-    if (overlay) overlay.remove();
-    popup = overlay = null;
-  }
-
-  function icon(name, size) {
-    var span = document.createElement('span');
-    span.className = 'material-symbols-outlined';
-    span.style.fontSize = size || '16px';
-    span.textContent = name;
-    return span;
-  }
-
-  function popupHeader(ip) {
-    var header = document.createElement('div');
-    header.className = 'ip-geo-popup-header';
-    var title = document.createElement('strong');
-    title.textContent = ip;
-    var button = document.createElement('button');
-    button.className = 'ip-geo-popup-close';
-    button.appendChild(icon('close', '18px'));
-    button.addEventListener('click', close);
-    header.append(title, button);
-    return header;
-  }
-
-  function popupRow(label, value) {
-    var row = document.createElement('div');
-    row.className = 'ip-geo-popup-row';
-    var labelEl = document.createElement('span');
-    labelEl.className = 'ip-geo-popup-label';
-    labelEl.textContent = label;
-    var valueEl = document.createElement('span');
-    valueEl.className = 'ip-geo-popup-value';
-    valueEl.textContent = value;
-    row.append(labelEl, valueEl);
-    return row;
-  }
-
-  function setPopupLoading(ip) {
-    popup.replaceChildren(popupHeader(ip));
-    var loading = document.createElement('div');
-    loading.className = 'ip-geo-popup-loading';
-    var spinner = icon('progress_activity', '16px');
-    spinner.style.animation = 'spin 1s linear infinite';
-    loading.append(spinner, document.createTextNode(' Loading...'));
-    popup.appendChild(loading);
-  }
-
-  function setPopupError(message) {
-    var loading = popup && popup.querySelector('.ip-geo-popup-loading');
-    if (!loading) return;
-    var error = document.createElement('span');
-    error.style.color = 'var(--color-red-600,#dc2626)';
-    error.textContent = message;
-    loading.replaceChildren(error);
-  }
-
-  function renderGeoDetails(ip, d) {
-    if (!popup) return;
-    var loc = [d.city, d.region, d.country].filter(Boolean).join(', ');
-    var children = [popupHeader(ip)];
-    if (loc) children.push(popupRow('Location', loc));
-    if (d.zip) children.push(popupRow('ZIP', String(d.zip)));
-    if (d.isp) children.push(popupRow('ISP', String(d.isp)));
-    if (d.org) children.push(popupRow('Org', String(d.org)));
-
-    var lat = Number(d.lat);
-    var lon = Number(d.lon);
-    if (Number.isFinite(lat) && Number.isFinite(lon)) {
-      children.push(popupRow('Coords', lat + ', ' + lon));
-      var link = document.createElement('a');
-      link.className = 'ip-geo-popup-map-link';
-      link.href = 'https://www.google.com/maps?q=' + encodeURIComponent(lat + ',' + lon);
-      link.target = '_blank';
-      link.rel = 'noopener';
-      link.append(icon('map', '16px'), document.createTextNode(' View on Map'));
-      children.push(link);
-    }
-    popup.replaceChildren.apply(popup, children);
-  }
-
-  function show(ip, rect) {
-    close();
-    overlay = document.createElement('div');
-    overlay.className = 'ip-geo-popup-overlay';
-    overlay.addEventListener('click', close);
-    document.body.appendChild(overlay);
-
-    popup = document.createElement('div');
-    popup.className = 'ip-geo-popup';
-    setPopupLoading(ip);
-
-    var top = rect.bottom + 6, left = rect.left;
-    if (top + 280 > window.innerHeight) top = rect.top - 280;
-    if (left + 340 > window.innerWidth) left = window.innerWidth - 350;
-    popup.style.top = top + 'px';
-    popup.style.left = Math.max(8, left) + 'px';
-    document.body.appendChild(popup);
-
-    fetch(lookupUrl + '?ip=' + encodeURIComponent(ip), {credentials: 'same-origin'})
-      .then(function(r) { return r.json(); })
-      .then(function(d) {
-        if (!popup) return;
-        if (d.error) {
-          setPopupError(d.error);
-          return;
-        }
-        renderGeoDetails(ip, d);
-      })
-      .catch(function() {
-        if (popup) popup.querySelector('.ip-geo-popup-loading').textContent = 'Network error';
-      });
-  }
-
-  document.addEventListener('click', function(e) {
-    var el = e.target.closest('.ip-geo-link');
-    if (!el) return;
-    e.preventDefault();
-    show(el.getAttribute('data-ip'), el.getBoundingClientRect());
-  });
-})();
-</script>
-<style nonce="{{ request.csp_nonce }}">@keyframes spin{to{transform:rotate(360deg)}}</style>
+{% include "admin/cms/pageview_dashboard/_ip_geo_lookup.html" %}
 {% endblock %}
