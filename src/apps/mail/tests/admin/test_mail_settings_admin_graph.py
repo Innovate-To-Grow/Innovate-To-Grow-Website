@@ -19,7 +19,7 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftG
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import create_graph_config, private_key_lines
-from apps.core.tests.models.test_graph_go_live_gate import DENY, evidence
+from apps.core.tests.models.graph.test_graph_go_live_gate import DENY, evidence
 from apps.event.tests.helpers import make_admin, make_superuser
 
 TENANT_ID = "11111111-2222-3333-4444-555555555555"

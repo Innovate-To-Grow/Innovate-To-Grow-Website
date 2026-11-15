@@ -11,7 +11,7 @@ from django.urls import reverse
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SMTPProviderConfig
 from apps.core.models.base.service_credentials.email import GMAIL_ACTIVATION_REQUIRED
 from apps.core.tests.graph_helpers import create_graph_config
-from apps.core.tests.models.test_graph_go_live_gate import DENY, evidence
+from apps.core.tests.models.graph.test_graph_go_live_gate import DENY, evidence
 from apps.event.tests.helpers import make_admin, make_superuser
 
 SEND_TEST = "apps.mail.admin.settings.test_send._send_test_email"
