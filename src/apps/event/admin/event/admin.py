@@ -4,7 +4,7 @@ from django.http import Http404
 from unfold.decorators import display
 
 from apps.core.admin import BaseModelAdmin
-from apps.core.admin.mixins.confirm_on_save_utils import compute_formsets_diff
+from apps.core.admin.confirmation.diff import compute_formsets_diff
 from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from ...models import Event, Question, Ticket

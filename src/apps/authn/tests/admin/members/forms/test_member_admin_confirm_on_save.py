@@ -19,7 +19,7 @@ from django.urls import reverse
 
 from apps.authn.models import ContactEmail
 from apps.authn.tests.helpers import PNG_1PX_DATA_URI, png_upload, scrape_admin_form
-from apps.core.admin.mixins.confirm_on_save import EXPIRED_UPLOAD_ERROR
+from apps.core.admin.confirmation.pending import EXPIRED_UPLOAD_ERROR
 
 Member = get_user_model()
 

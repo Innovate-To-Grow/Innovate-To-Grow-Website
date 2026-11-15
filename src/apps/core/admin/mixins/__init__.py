@@ -1,6 +1,6 @@
 """Admin mixins for timestamps and data export."""
 
-from .confirm_on_save import ConfirmOnSaveMixin
+from ..confirmation import ConfirmOnSaveMixin
 from .data_export import DataExportMixin
 from .timestamps import TimestampedAdminMixin
 
