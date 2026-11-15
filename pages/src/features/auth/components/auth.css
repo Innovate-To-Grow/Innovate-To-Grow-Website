@@ -2,12 +2,12 @@
    The sections are imported in their original cascade order (later files
    override earlier ones at equal specificity), so do not reorder this list;
    add new rules to the file that owns them. */
-@import './styles/layout.css';
-@import './styles/forms.css';
-@import './styles/buttons.css';
-@import './styles/feedback.css';
-@import './styles/account.css';
-@import './styles/tickets.css';
-@import './styles/profileImage.css';
-@import './styles/contacts.css';
-@import './styles/responsive.css';
+@import './styles/base/layout.css';
+@import './styles/base/forms.css';
+@import './styles/base/buttons.css';
+@import './styles/base/feedback.css';
+@import './styles/account/account.css';
+@import './styles/account/tickets.css';
+@import './styles/account/profileImage.css';
+@import './styles/account/contacts.css';
+@import './styles/base/responsive.css';

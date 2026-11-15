@@ -1,4 +1,4 @@
-import '@/features/auth/components/styles/orgToggle.css';
+import '@/features/auth/components/styles/base/orgToggle.css';
 import type {FormSectionProps} from './types';
 
 /** First, middle and last name. */

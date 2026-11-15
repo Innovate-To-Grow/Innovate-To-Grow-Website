@@ -2,12 +2,12 @@
    The sections are imported in their original cascade order (later files
    override earlier ones at equal specificity), so do not reorder this list;
    add new rules to the file that owns them. */
-@import './styles/shell.css';
-@import './styles/blue-bar.css';
-@import './styles/menu-row.css';
-@import './styles/dropdowns.css';
-@import './styles/member.css';
-@import './styles/mobile-dialog.css';
-@import './styles/phone-header.css';
-@import './styles/overrides.css';
-@import './styles/print.css';
+@import './styles/header/shell.css';
+@import './styles/header/blue-bar.css';
+@import './styles/header/menu-row.css';
+@import './styles/menus/dropdowns.css';
+@import './styles/menus/member.css';
+@import './styles/menus/mobile-dialog.css';
+@import './styles/header/phone-header.css';
+@import './styles/header/overrides.css';
+@import './styles/header/print.css';
