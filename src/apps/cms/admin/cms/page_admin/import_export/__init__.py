@@ -3,32 +3,13 @@ import json
 from django.contrib import messages
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import transaction
-from django.http import HttpResponse
 from django.shortcuts import render
-from django.utils import timezone
 
+# The page admin imports export_pages_response from here.
+from apps.cms.admin.cms.page_admin.import_export.export import export_pages_response as export_pages_response
+from apps.cms.admin.cms.page_admin.import_export.persistence import _page_payload, replace_page_blocks, upsert_page
 from apps.cms.models import BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
-from apps.cms.models.content.cms.block_types import normalize_block_data_for_storage
-
-
-def export_pages_response(queryset):
-    content = json.dumps(
-        {
-            "version": 1,
-            "exported_at": timezone.now().isoformat(),
-            "pages": [serialize_page(page) for page in queryset.prefetch_related("blocks")],
-        },
-        indent=2,
-        cls=DjangoJSONEncoder,
-        ensure_ascii=False,
-    )
-    response = HttpResponse(content, content_type="application/json")
-    response["Content-Disposition"] = (
-        f'attachment; filename="cms_export_{timezone.now().strftime("%Y%m%d_%H%M%S")}.json"'
-    )
-    return response
 
 
 def render_json_import(
@@ -162,64 +143,3 @@ def validate_page_data(page_data, block_type_keys, validate_required, default_st
             setattr(candidate, field, value)
         result["errors"].extend(_model_errors(candidate))
     return result, page_data.get("blocks", []), existing
-
-
-def _page_payload(page_data, default_status):
-    return {
-        "slug": page_data.get("slug", ""),
-        "route": page_data.get("route", f"/{page_data.get('slug', '')}"),
-        "title": page_data.get("title", ""),
-        "meta_description": page_data.get("meta_description", ""),
-        "page_css_class": page_data.get("page_css_class", ""),
-        "status": page_data.get("status", default_status),
-        "sort_order": page_data.get("sort_order", 0),
-    }
-
-
-def upsert_page(page_data, existing, default_status):
-    payload = _page_payload(page_data, default_status)
-    if existing:
-        for key, value in payload.items():
-            setattr(existing, key, value)
-        existing.full_clean()
-        existing.save()
-        existing.blocks.all().delete()
-        return existing
-    page = CMSPage(**payload)
-    page.full_clean()
-    page.save()
-    return page
-
-
-def replace_page_blocks(page, blocks_data):
-    for index, block_data in enumerate(blocks_data):
-        block_type = block_data.get("block_type")
-        CMSBlock.objects.create(
-            page=page,
-            block_type=block_type,
-            sort_order=block_data.get("sort_order", index),
-            admin_label=block_data.get("admin_label", ""),
-            data=normalize_block_data_for_storage(block_type, block_data.get("data", {})),
-        )
-    transaction.on_commit(lambda route=page.route: cache.delete(f"cms:page:{route}"))
-
-
-def serialize_page(page):
-    return {
-        "slug": page.slug,
-        "route": page.route,
-        "title": page.title,
-        "meta_description": page.meta_description,
-        "page_css_class": page.page_css_class,
-        "status": page.status,
-        "sort_order": page.sort_order,
-        "blocks": [
-            {
-                "block_type": block.block_type,
-                "sort_order": block.sort_order,
-                "admin_label": block.admin_label,
-                "data": block.data,
-            }
-            for block in page.blocks.all().order_by("sort_order")
-        ],
-    }
