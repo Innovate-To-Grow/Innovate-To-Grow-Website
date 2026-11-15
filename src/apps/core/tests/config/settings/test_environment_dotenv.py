@@ -45,7 +45,7 @@ class EnvironmentDotenvTests(SimpleTestCase):
         module, requested = self.reload_with('FRONTEND_URL="https://from-dotenv.example"\nLEGACY_VIEW_ENABLED=true\n')
 
         self.assertEqual(requested, [module.BASE_DIR / ".env"])
-        self.assertEqual(module.BASE_DIR, Path(__file__).resolve().parents[4])
+        self.assertEqual(module.BASE_DIR, Path(__file__).resolve().parents[5])
         self.assertEqual(module.FRONTEND_URL, "https://from-dotenv.example")
         self.assertTrue(module.LEGACY_VIEW_ENABLED)
 
