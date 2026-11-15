@@ -3,14 +3,8 @@
 // login flow, and the shared client run against a fake axios adapter that
 // answers with the backend's own bodies. Only the RSA step, which needs a key
 // from the server, is replaced.
-import axios, {
-  AxiosError,
-  type AxiosAdapter,
-  type AxiosResponse,
-  type InternalAxiosRequestConfig,
-} from 'axios';
-import {act, cleanup, fireEvent, render, screen, waitFor} from '@testing-library/react';
-import {MemoryRouter} from 'react-router';
+import axios, {type AxiosAdapter} from 'axios';
+import {cleanup, fireEvent, screen} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 vi.mock('@/lib/security', () => ({
@@ -22,38 +16,12 @@ vi.mock('@/lib/security', () => ({
 }));
 
 import {authApi} from '@/features/auth/api/session/client';
-import {AuthProvider} from '@/features/auth/components/AuthContext';
-import {LoginForm} from '@/features/auth/components/forms/LoginForm';
-import {VerifiedSendStatus} from '@/features/auth/verification/VerifiedSendStatus';
 import {setVerifiedSendStatus} from '@/features/auth/verification/status';
-
-// Exactly what the login view answers once an account's failed attempts are spent.
-const LOCKED_DETAIL =
-  'Too many failed sign-in attempts. Please try again later or sign in with an email code.';
-const LOCKED = {status: 429, data: {detail: LOCKED_DETAIL, code: 'login_locked'}};
-
-interface Reply {
-  status: number;
-  data: unknown;
-}
+import {LOCKED, LOCKED_DETAIL, renderForm, type Reply, reply, signInWithPassword} from '@/__tests__/features/auth/components/forms/loginFormSignInErrorsFixtures';
 
 let loginReply: Reply;
 let codeReply: Reply | null;
 let loginBodies: unknown[];
-
-const reply = (config: InternalAxiosRequestConfig, {status, data}: Reply) => {
-  const response = {data, status, statusText: '', headers: {}, config, request: {}} as AxiosResponse;
-  if (status >= 200 && status < 300) return Promise.resolve(response);
-  return Promise.reject(
-    new AxiosError(
-      `Request failed with status code ${status}`,
-      status >= 500 ? AxiosError.ERR_BAD_RESPONSE : AxiosError.ERR_BAD_REQUEST,
-      config,
-      {},
-      response,
-    ),
-  );
-};
 
 const backend: AxiosAdapter = async (config) => {
   if ((config.url ?? '').endsWith('/authn/login/')) {
@@ -64,22 +32,6 @@ const backend: AxiosAdapter = async (config) => {
     return reply(config, codeReply);
   }
   return reply(config, {status: 404, data: {detail: 'Not found.'}});
-};
-
-const renderForm = () =>
-  render(
-    <MemoryRouter>
-      <AuthProvider>
-        <LoginForm />
-      </AuthProvider>
-    </MemoryRouter>,
-  );
-
-const signInWithPassword = async (identifier = 'ada@example.com', password = 'not-the-password') => {
-  fireEvent.click(await screen.findByRole('button', {name: 'Sign in with password instead'}));
-  fireEvent.change(screen.getByLabelText('Email or Phone'), {target: {value: identifier}});
-  fireEvent.change(screen.getByLabelText('Password'), {target: {value: password}});
-  fireEvent.click(screen.getByRole('button', {name: 'Sign In'}));
 };
 
 describe('LoginForm password sign-in refusals', () => {
@@ -195,77 +147,5 @@ describe('LoginForm password sign-in refusals', () => {
       await signInWithPassword();
       expect(await screen.findByRole('alert')).toHaveTextContent(LOCKED_DETAIL);
     });
-  });
-
-  describe('every other refusal is shown as before', () => {
-    it('wrong credentials', async () => {
-      loginReply = {status: 400, data: {non_field_errors: ['Invalid credentials.']}};
-      renderForm();
-
-      await signInWithPassword();
-
-      const alert = await screen.findByRole('alert');
-      expect(alert).toHaveTextContent('Invalid credentials.');
-      expect(alert.textContent).not.toMatch(/email code|failed sign-in/i);
-    });
-
-    it('a throttle that is not the lock-out', async () => {
-      loginReply = {status: 429, data: {detail: 'Request was throttled. Expected available in 30 seconds.'}};
-      renderForm();
-
-      await signInWithPassword();
-
-      const alert = await screen.findByRole('alert');
-      expect(alert).toHaveTextContent('Request was throttled. Expected available in 30 seconds.');
-      expect(alert.textContent).not.toMatch(/failed sign-in/i);
-    });
-
-    it('a 429 with nothing to show', async () => {
-      loginReply = {status: 429, data: {code: 'something_else'}};
-      renderForm();
-
-      await signInWithPassword();
-
-      expect(await screen.findByRole('alert')).toHaveTextContent(
-        'Request failed. Please check your input and try again.',
-      );
-    });
-
-    it('a server error', async () => {
-      loginReply = {status: 500, data: {}};
-      renderForm();
-
-      await signInWithPassword();
-
-      await waitFor(() => {
-        expect(screen.getByRole('alert')).toHaveTextContent('A server error occurred. Please try again later.');
-      });
-    });
-  });
-
-  it('shows a throttled email-code request once inside the login form, without the raw Axios error in either React root', async () => {
-    codeReply = {
-      status: 429,
-      data: {detail: 'Please wait before requesting another code.', code: 'send_throttled'},
-    };
-    // Production mounts a separate AuthProvider for the menu and the main app.
-    render(<AuthProvider><div data-testid="menu-root" /></AuthProvider>);
-    renderForm();
-    render(<VerifiedSendStatus />);
-
-    fireEvent.change(await screen.findByLabelText('Email or phone number'), {
-      target: {value: 'ada@example.com'},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Continue'}));
-
-    const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Please wait before requesting another code.');
-    expect(screen.getAllByRole('alert')).toHaveLength(1);
-
-    // The app's one progress indicator must not display a raw transport error,
-    // even if another caller publishes an error state.
-    act(() => setVerifiedSendStatus({phase: 'error', message: 'Request failed with status code 429'}));
-    expect(screen.queryAllByText('Request failed with status code 429')).toHaveLength(0);
-    expect(document.querySelectorAll('.verified-send-status')).toHaveLength(0);
   });
 });
