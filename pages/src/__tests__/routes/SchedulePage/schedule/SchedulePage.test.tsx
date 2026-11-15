@@ -3,7 +3,7 @@ import {MemoryRouter, useLocation} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import type {EventSchedulePayload, ScheduleProjectRow, ScheduleSlot} from '@/features/events/api';
-import {SchedulePage} from '@/routes/SchedulePage/SchedulePage';
+import {SchedulePage} from '@/routes/SchedulePage/schedule/SchedulePage';
 
 const useCurrentEventScheduleMock = vi.fn();
 

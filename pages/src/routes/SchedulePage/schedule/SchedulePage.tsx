@@ -1,5 +1,5 @@
 import '@/features/events/scheduleShared.css';
-import './SchedulePage.css';
+import '../styles/SchedulePage.css';
 import {useEffect, useMemo, type ReactNode} from 'react';
 import {useSearchParams} from 'react-router';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
@@ -12,11 +12,11 @@ import {
 } from '@/features/projects';
 import {useCurrentEventSchedule} from '@/features/events/hooks/useCurrentEventSchedule';
 import {scheduleProjectToGridRow} from '@/features/projects/api';
-import {AgendaSection} from './schedule/AgendaSection';
-import {PresentationSection} from './schedule/PresentationSection';
-import {orderSections} from './schedule/scheduleModel';
-import {useMobileScheduleLayout} from './schedule/useMobileScheduleLayout';
-import {WinnersSection} from './schedule/WinnersSection';
+import {AgendaSection} from './AgendaSection';
+import {PresentationSection} from './PresentationSection';
+import {orderSections} from './scheduleModel';
+import {useMobileScheduleLayout} from './useMobileScheduleLayout';
+import {WinnersSection} from './WinnersSection';
 
 interface SchedulePageProps {
   scheduleId?: string | null;

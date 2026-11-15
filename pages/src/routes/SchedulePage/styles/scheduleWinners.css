@@ -1,0 +1,105 @@
+@layer itg.components {
+/* Winners: the reference's centred bold red title, then per class a row of
+   track cells (grey "Track N" header over the track's column colour). */
+.schedule-winners-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.schedule-page .schedule-winners-title {
+  color: var(--schedule-winners-red, #c0392b);
+  font-weight: 700;
+}
+
+.schedule-winners-title-emphasis,
+.schedule-winners-title-event {
+  color: inherit;
+}
+
+.schedule-grand-winners {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+}
+
+.schedule-grand-winner-line {
+  margin: 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.schedule-grand-winner-label {
+  color: var(--itg-color-primary);
+  font-weight: 700;
+}
+
+.schedule-winners {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.schedule-winners-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.schedule-winners-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--winner-column-count, 1), minmax(0, 1fr));
+  border: var(--schedule-table-border);
+}
+
+.schedule-winner-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--schedule-column-bg);
+  color: var(--schedule-cell-text);
+}
+
+.schedule-winner-card-header {
+  padding: 8px;
+  border-bottom: var(--schedule-head-rule);
+  background: var(--schedule-head-bg);
+  color: var(--itg-color-primary);
+}
+
+.schedule-winner-track {
+  margin: 0;
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.schedule-winner-card-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 8px;
+}
+
+/* Five cells share the main column (about 125px each beside the sidebar at
+   1024px), so a long one-word team name must break inside its cell. */
+.schedule-winner-topic {
+  margin: 0;
+  color: var(--schedule-topic-color);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+  overflow-wrap: anywhere;
+}
+
+.schedule-winner-name {
+  margin: 0;
+  color: var(--schedule-cell-text);
+  font-size: var(--itg-font-size-body);
+  font-weight: 700;
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+}
