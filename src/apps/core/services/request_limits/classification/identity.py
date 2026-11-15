@@ -31,9 +31,9 @@ from rest_framework_simplejwt.tokens import AccessToken
 
 from apps.core.utils.client_ip import client_ip
 
-from .runtime.context import section
+from ..runtime.context import section
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.core.services.request_limits.identity")
 
 _RESOLVERS: dict[str, Callable | str] = {}
 

@@ -2,7 +2,7 @@
 
 import logging
 
-from apps.core.services.delivery_rates.families import lane_gated
+from apps.core.services.delivery_rates.lifecycle.families import lane_gated
 
 from .registry import registered_job_kinds
 

@@ -28,7 +28,7 @@ from django.views.decorators.debug import sensitive_variables
 from apps.core.models import EmailServiceConfig, GmailApiProviderConfig, GmailApiSubject
 from apps.core.models.base.delivery_rates import DeliveryChannel
 from apps.core.services.credential_store import CredentialStoreError, get_store
-from apps.core.services.delivery_rates import receivers
+from apps.core.services.delivery_rates.lifecycle import receivers
 
 from ...sending.exceptions import EmailDeliveryError, TransientEmailDeliveryError
 from ..client import auth

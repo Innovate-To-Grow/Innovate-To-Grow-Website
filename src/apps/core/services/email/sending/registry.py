@@ -114,7 +114,7 @@ def _gmail_factory(config: object, **provider_options) -> GmailProvider:
 
 
 def active_rate_target() -> tuple[str, str] | None:
-    """The active email delivery channel and identity (``delivery_rates.families``), or None while email is not set
+    """The active email delivery channel and identity (``delivery_rates.lifecycle.families``), or None while email is not set
     up. Registered for the email family in ``CoreConfig.ready``."""
     from apps.core.models import EmailServiceConfig
 

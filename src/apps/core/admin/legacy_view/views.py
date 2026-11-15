@@ -10,7 +10,7 @@ from django.http import Http404
 from django.template.response import TemplateResponse
 from django.views.decorators.http import require_http_methods
 
-from apps.core.services.legacy_access import issue_legacy_access_grant, legacy_view_is_enabled
+from apps.core.legacy_view.access import issue_legacy_access_grant, legacy_view_is_enabled
 from apps.core.utils.access import user_can_access_app
 
 _CLOUDFRONT_HOST_PATTERN = re.compile(r"^d[a-z0-9]+\.cloudfront\.net$")

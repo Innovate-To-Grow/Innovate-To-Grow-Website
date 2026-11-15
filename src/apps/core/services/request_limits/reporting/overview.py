@@ -12,10 +12,10 @@ from django.conf import settings
 
 from apps.core.models import RequestRateLimitPolicy, RequestRateLimitState
 
-from .limiter import live_processes
-from .rules.limits import P0, admission_limit, effective_limits
-from .runtime import context, refusals, registry, signals, smart, store
-from .runtime.context import section
+from ..enforcement.limiter import live_processes
+from ..rules.limits import P0, admission_limit, effective_limits
+from ..runtime import context, refusals, registry, signals, smart, store
+from ..runtime.context import section
 
 TIER_ORDER = ("p0", "p1", "p2", "p3")
 SHEDDING, RECOVERING, FULL, PROTECTED = "shedding", "recovering", "full", "protected"

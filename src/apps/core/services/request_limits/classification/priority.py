@@ -16,11 +16,11 @@ from collections.abc import Callable
 
 from django.utils.module_loading import import_string
 
+from ..runtime import context, store
+from ..runtime.context import section
 from . import identity
-from .runtime import context, store
-from .runtime.context import section
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.core.services.request_limits.priority")
 
 _CHECKS: dict[str, Callable | str] = {}
 

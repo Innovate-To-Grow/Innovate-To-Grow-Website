@@ -14,8 +14,8 @@ from django.db.models.signals import post_save
 
 from apps.core.models.base.delivery_rates import DeliveryChannel
 
-from .runtime import context
-from .runtime.breaker import config_stopped, half_open_for_config
+from ..runtime import context
+from ..runtime.breaker import config_stopped, half_open_for_config
 
 _EMAIL_SENDERS = (
     DeliveryChannel.GRAPH_SEND,

@@ -22,10 +22,10 @@ from dataclasses import dataclass, replace
 from django.conf import settings
 from rest_framework.throttling import SimpleRateThrottle
 
-from .limiter import live_processes
-from .rules.limits import effective_limits
-from .runtime import context, registry, store
-from .runtime.context import section
+from ..enforcement.limiter import live_processes
+from ..rules.limits import effective_limits
+from ..runtime import context, registry, store
+from ..runtime.context import section
 
 
 @dataclass(frozen=True)

@@ -15,10 +15,10 @@ from dataclasses import dataclass
 
 from django.http import JsonResponse
 
-from . import identity, scopes
-from .rules.limits import effective_limits, strike_limits
-from .runtime import abuse, context, heartbeat, refusals, registry, signals, smart, store
-from .runtime.context import section
+from ..classification import identity, scopes
+from ..rules.limits import effective_limits, strike_limits
+from ..runtime import abuse, context, heartbeat, refusals, registry, signals, smart, store
+from ..runtime.context import section
 
 RATE_LIMITED = "rate_limited"
 

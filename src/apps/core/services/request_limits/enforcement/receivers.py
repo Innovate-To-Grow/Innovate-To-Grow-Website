@@ -8,7 +8,7 @@ from django.db.models.signals import post_delete, post_save
 
 from apps.core.models import RequestRateLimitPolicy, RequestRateLimitState
 
-from .runtime import registry
+from ..runtime import registry
 
 WATCHED_SETTINGS = frozenset({"REQUEST_RATE_LIMITS", "CACHES"})
 
