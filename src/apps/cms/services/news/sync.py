@@ -1,7 +1,6 @@
 import logging
 import xml.etree.ElementTree as ET  # noqa: N817
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import dataclass, field
 
 from defusedxml import ElementTree as DefusedET
 from defusedxml.common import DefusedXmlException
@@ -10,24 +9,14 @@ from django.db import DatabaseError
 
 from apps.cms.models import NewsArticle
 
-from .feed_parser import extract_image_url, extract_summary, fetch_feed, parse_feed_items, parse_pub_date
+from .feed_parser import fetch_feed, parse_feed_items, parse_pub_date
 from .scraper import scrape_article
-from .url_guard import has_allowed_scheme
+from .sync_articles import _apply_scrape_result, _feed_defaults
+from .sync_run import _diagnostic_text, _exception_text, _feed_failure, _SyncRun
 
 logger = logging.getLogger(__name__)
 
 _SCRAPER_MAX_WORKERS = 4
-_DIAGNOSTIC_MAX_LENGTH = 2000
-
-
-def _diagnostic_text(value) -> str:
-    """Keep returned/operator-facing diagnostics single-line and bounded."""
-    return " ".join(str(value).split())[:_DIAGNOSTIC_MAX_LENGTH]
-
-
-def _exception_text(exc: Exception) -> str:
-    detail = _diagnostic_text(exc)
-    return f"{type(exc).__name__}: {detail}" if detail else type(exc).__name__
 
 
 def _raw_feed_description(raw_payload: str) -> tuple[bool, str]:
@@ -85,35 +74,6 @@ def _apply_feed_defaults(article: NewsArticle, defaults: dict) -> list[str]:
     return changed_fields
 
 
-@dataclass
-class _SyncRun:
-    """What one synchronization has done so far; becomes the returned summary."""
-
-    source_key: str
-    created: int = 0
-    scrape_failed: int = 0
-    processable_items: int = 0
-    errors: list[str] = field(default_factory=list)
-    warnings: list[str] = field(default_factory=list)
-    created_article_ids: set = field(default_factory=set)
-    updated_article_ids: set = field(default_factory=set)
-    articles_to_scrape: dict = field(default_factory=dict)
-
-    def summary(self, items_seen: int) -> dict:
-        return {
-            "created": self.created,
-            "updated": len(self.updated_article_ids),
-            "errors": self.errors,
-            "warnings": self.warnings,
-            "items_seen": items_seen,
-            "scrape_failed": self.scrape_failed,
-        }
-
-
-def _feed_failure(error: str) -> dict:
-    return {"created": 0, "updated": 0, "errors": [error], "warnings": [], "items_seen": 0, "scrape_failed": 0}
-
-
 def _serialize_raw_item(item: dict, guid, item_label: str, run: _SyncRun) -> str | None:
     try:
         raw_el = ET.Element("item")
@@ -125,28 +85,6 @@ def _serialize_raw_item(item: dict, guid, item_label: str, run: _SyncRun) -> str
         logger.debug("Failed to serialize raw XML for %s", item_label)
         run.warnings.append(f"Failed to serialize raw XML for {_diagnostic_text(guid)}")
         return None
-
-
-def _feed_defaults(item: dict, published_at, source_key: str, raw: str | None) -> dict:
-    # The link is attacker-influenced (it comes straight from the remote
-    # feed). Only persist/scrape http(s) URLs so a file:// or javascript:
-    # link can never be stored as a rendered href or fetched by the
-    # scraper. The fetch itself is additionally IP/redirect-guarded.
-    raw_link = item["link"]
-    safe_link = raw_link[:1000] if has_allowed_scheme(raw_link) else ""
-    defaults = {
-        "title": item["title"][:500],
-        "source_url": safe_link,
-        "summary": extract_summary(item["description"]),
-        "image_url": extract_image_url(item["description"])[:1000],
-        "content": item["description"],
-        "author": item["creator"][:255],
-        "published_at": published_at,
-        "source": source_key,
-    }
-    if raw is not None:
-        defaults["raw_payload"] = raw
-    return defaults
 
 
 def _upsert_item(item: dict, item_label: str, run: _SyncRun) -> None:
@@ -187,57 +125,6 @@ def _upsert_item(item: dict, item_label: str, run: _SyncRun) -> None:
     # failures must be retried on the next synchronization.
     if article.source_url:
         run.articles_to_scrape[article.pk] = article.source_url
-
-
-def _store_scraped_content(article_id, scraped: dict, run: _SyncRun) -> None:
-    article = NewsArticle.objects.get(pk=article_id)
-    scraped_fields = {
-        "hero_image_url": scraped.get("hero_image_url", "")[:1000],
-        "hero_caption": scraped.get("hero_caption", "")[:500],
-        "content": scraped["body_html"],
-    }
-    update_fields = []
-    for name, value in scraped_fields.items():
-        if value and getattr(article, name) != value:
-            setattr(article, name, value)
-            update_fields.append(name)
-    if update_fields:
-        article.save(update_fields=update_fields)
-        if article_id not in run.created_article_ids:
-            run.updated_article_ids.add(article_id)
-
-
-def _usable_scrape(article_id, scraped, scrape_warning, run: _SyncRun) -> bool:
-    """Record why a scrape result cannot replace the RSS content; True when it can."""
-    if scrape_warning:
-        run.warnings.append(scrape_warning)
-    elif scraped is None:
-        run.warnings.append(f"Scraper returned no result for article {article_id}")
-    elif not isinstance(scraped, dict) or not scraped.get("body_html"):
-        run.warnings.append(f"Scraper returned no article body for article {article_id}; using RSS content")
-    else:
-        return True
-    run.scrape_failed += 1
-    return False
-
-
-def _apply_scrape_result(article_id, scraped, scrape_warning, run: _SyncRun) -> None:
-    if not _usable_scrape(article_id, scraped, scrape_warning, run):
-        return
-    try:
-        _store_scraped_content(article_id, scraped, run)
-    except NewsArticle.DoesNotExist:
-        logger.warning("Article %s disappeared before scrape update", article_id)
-        run.warnings.append(f"Article {article_id} disappeared before scrape update")
-        run.scrape_failed += 1
-    except DatabaseError as exc:
-        logger.exception("Database error applying scraped content for article %s", article_id)
-        run.errors.append(f"Database error applying scraped content for article {article_id}: {_exception_text(exc)}")
-        run.scrape_failed += 1
-    except Exception as exc:  # noqa: BLE001
-        logger.exception("Failed to apply scraped content for article %s", article_id)
-        run.warnings.append(f"Failed to apply scraped content for article {article_id}: {_exception_text(exc)}")
-        run.scrape_failed += 1
 
 
 def _scrape_articles(run: _SyncRun) -> None:
