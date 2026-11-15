@@ -12,7 +12,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from apps.core.models import MicrosoftGraphAccessCheck
-from apps.core.models.base.service_credentials.microsoft_graph_access_check import go_live_problem
+from apps.core.models.base.service_credentials.microsoft_graph.access_check import go_live_problem
 from apps.core.services.credential_store.local_file import LocalFileStore
 from apps.core.services.credential_store.memory import MemoryStore
 from apps.core.services.email.graph.access_check import precondition_problem

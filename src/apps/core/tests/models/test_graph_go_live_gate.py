@@ -14,7 +14,7 @@ from apps.core.models import (
     MicrosoftGraphCertificate,
     MicrosoftGraphProviderConfig,
 )
-from apps.core.models.base.service_credentials.microsoft_graph_access_check import go_live_problem
+from apps.core.models.base.service_credentials.microsoft_graph.access_check import go_live_problem
 from apps.core.tests.graph_helpers import TENANT_ID, create_graph_config, install_test_certificate
 
 Verdict = MicrosoftGraphAccessCheck.Verdict
