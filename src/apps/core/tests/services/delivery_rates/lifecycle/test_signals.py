@@ -11,7 +11,7 @@ from apps.core.services.delivery_rates import rules
 from apps.core.services.delivery_rates.rules import signals
 from apps.core.services.delivery_rates.rules.signals import SignalKind, parse_retry_after
 
-from .helpers import START, rates_with
+from ..helpers import START, rates_with
 
 
 class RetryAfterTests(SimpleTestCase):

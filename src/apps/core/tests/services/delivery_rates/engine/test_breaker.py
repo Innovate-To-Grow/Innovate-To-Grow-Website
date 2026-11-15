@@ -13,7 +13,7 @@ from apps.core.services import delivery_rates as rates
 from apps.core.services.delivery_rates.rules.defaults import rate_spec
 from apps.core.services.delivery_rates.runtime.breaker import open_breaker
 
-from .helpers import Channel, FakeClock, set_policy
+from ..helpers import Channel, FakeClock, set_policy
 
 SES = "1:us-west-2"
 OPEN = DeliveryRateState.BreakerState.OPEN
