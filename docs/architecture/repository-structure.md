@@ -76,7 +76,7 @@ src/apps/<app>/
 Not every app has all directories — `system_intelligence/` has no public REST surface. A
 directory is used only where there is more than one module to hold; single-module concerns
 stay as plain `.py` files (for example `apps/core/renderers.py`, `apps/cms/signals.py`,
-`apps/mail/redirects.py`, `apps/system_intelligence/views.py`). The exceptions are the packages Django
+`apps/mail/redirects.py`). The exceptions are the packages Django
 or the migration history require: `management/commands/` is always a package, and
 `apps/core/models/base/system_intelligence/` is a migration-compatibility shim that must stay byte-stable.
 
