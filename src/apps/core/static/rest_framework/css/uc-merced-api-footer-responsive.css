@@ -1,0 +1,146 @@
+.ucm-api .ucm-api__footer {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 36px 0 0;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--ucm-border);
+  background: transparent;
+}
+
+.ucm-api .ucm-api__footer p {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  color: var(--ucm-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .ucm-api .container {
+    width: min(100% - 24px, 1170px);
+  }
+
+  .ucm-api .ucm-api__header-inner {
+    grid-template-columns: 1fr auto;
+    min-height: 0;
+    gap: 8px 16px;
+    padding: 8px 0 14px;
+  }
+
+  .ucm-api .ucm-api__university-link {
+    min-height: 97px;
+    padding: 20px;
+  }
+
+  .ucm-api .ucm-api__university-logo {
+    width: min(200px, 58vw);
+  }
+
+  .ucm-api .ucm-api__service {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .ucm-api .ucm-api__service-name {
+    font-size: 1.15rem;
+  }
+
+  .ucm-api .ucm-api__account {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .ucm-api ul.breadcrumb {
+    margin-top: 16px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .ucm-api #content {
+    padding: 20px 16px;
+  }
+
+  .ucm-api .region {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 22px;
+  }
+
+  .ucm-api .region .pull-right,
+  .ucm-api .region .button-form,
+  .ucm-api .region > .dropdown,
+  .ucm-api .region > button {
+    float: none !important;
+    margin: 0 !important;
+  }
+
+  .ucm-api .content-main > .pull-left,
+  .ucm-api .content-main > .pull-right {
+    float: none !important;
+    width: 100%;
+  }
+
+  .ucm-api .btn {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .ucm-api pre.prettyprint {
+    padding: 14px;
+    font-size: 0.8125rem;
+  }
+
+  .ucm-api .well {
+    padding: 16px;
+  }
+
+  .ucm-api .form-horizontal .control-label {
+    padding-top: 0;
+    text-align: left;
+  }
+
+  .ucm-api .ucm-api__footer p {
+    flex-direction: column;
+  }
+
+  .ucm-api .ucm-api__footer p span[aria-hidden="true"] {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .ucm-api .ucm-api__header-inner {
+    grid-template-columns: 1fr;
+  }
+
+  .ucm-api .ucm-api__account {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: stretch;
+  }
+
+  .ucm-api .ucm-api__user-links,
+  .ucm-api .ucm-api__user-links > li,
+  .ucm-api .ucm-api__user-links > li > a,
+  .ucm-api .ucm-api__user-links > li.navbar-text {
+    width: 100%;
+  }
+
+  .ucm-api .ucm-api__user-links > li > a,
+  .ucm-api .ucm-api__user-links > li.navbar-text {
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ucm-api .ucm-api__skip-link {
+    transition: none;
+  }
+}

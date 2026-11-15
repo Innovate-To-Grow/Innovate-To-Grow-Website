@@ -17,7 +17,7 @@ from apps.core.legacy_view.access import (
 from apps.core.models import LegacyAccessGrant
 from apps.core.tests.admin.legacy_view.test_access import _LegacyAccessAdminCase
 from apps.core.tests.admin.legacy_view.test_access import urlpatterns as urlpatterns  # ROOT_URLCONF=__name__ below
-from apps.core.tests.legacy_view.proxy.test_transport_and_views import origin_handle
+from apps.core.tests.web.legacy_view.proxy.test_transport_and_views import origin_handle
 
 
 @override_settings(

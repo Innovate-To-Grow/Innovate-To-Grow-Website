@@ -1,0 +1,120 @@
+.ucm-api .ucm-api__header {
+  width: 100%;
+  border: 0;
+  border-bottom: 4px solid var(--ucm-gold);
+  background: var(--ucm-blue);
+  color: var(--ucm-surface);
+}
+
+.ucm-api .ucm-api__header-inner {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 1fr) auto;
+  align-items: center;
+  min-height: 105px;
+  gap: 32px;
+}
+
+/* Bootstrap's container clearfix creates generated grid items unless it is
+   disabled here, which displaces the service label and account controls. */
+.ucm-api .ucm-api__header-inner::before,
+.ucm-api .ucm-api__header-inner::after {
+  display: none;
+  content: none;
+}
+
+.ucm-api .ucm-api__university-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 97px;
+  margin-left: 0;
+  padding: 20px;
+  border-radius: 3px;
+}
+
+.ucm-api .ucm-api__university-link:hover,
+.ucm-api .ucm-api__university-link:focus {
+  background: rgb(255 255 255 / 8%);
+}
+
+.ucm-api .ucm-api__university-logo {
+  display: block;
+  width: 230px;
+  max-width: 100%;
+  height: auto;
+}
+
+.ucm-api .ucm-api__service {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-self: start;
+  gap: 2px;
+}
+
+.ucm-api .ucm-api__service-kicker {
+  color: var(--ucm-gold);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ucm-api .ucm-api__service-name {
+  color: var(--ucm-surface);
+  font-size: 1.35rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ucm-api .ucm-api__account {
+  justify-self: end;
+}
+
+.ucm-api .ucm-api__user-links {
+  float: none;
+  margin: 0;
+}
+
+.ucm-api .ucm-api__user-links > li {
+  float: none;
+}
+
+.ucm-api .ucm-api__user-links > li > a,
+.ucm-api .ucm-api__user-links > li.navbar-text {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 0;
+  padding: 10px 16px;
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 4px;
+  color: var(--ucm-surface);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ucm-api .ucm-api__user-links > li > a:hover,
+.ucm-api .ucm-api__user-links > li > a:focus,
+.ucm-api .ucm-api__user-links > .open > a,
+.ucm-api .ucm-api__user-links > .open > a:hover,
+.ucm-api .ucm-api__user-links > .open > a:focus {
+  border-color: var(--ucm-gold);
+  background: rgb(255 255 255 / 10%);
+  color: var(--ucm-surface);
+}
+
+.ucm-api .ucm-api__user-links .dropdown-menu {
+  right: 0;
+  left: auto;
+  padding: 8px;
+  border-color: var(--ucm-border);
+  border-radius: 4px;
+  box-shadow: 0 12px 32px rgb(0 24 52 / 20%);
+}
+
+.ucm-api .ucm-api__user-links .dropdown-menu > li > a {
+  min-height: 44px;
+  padding: 11px 14px;
+  border-radius: 3px;
+  color: var(--ucm-blue);
+}

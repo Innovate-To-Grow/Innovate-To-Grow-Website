@@ -12,7 +12,7 @@ from apps.core.tests.admin.service_credentials.graph_config.test_graph_provider_
     sending_limit_data,
 )
 from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, create_graph_config, install_test_certificate
-from apps.core.tests.models.graph.test_graph_go_live_gate import DENY, evidence
+from apps.core.tests.project.models.graph.test_graph_go_live_gate import DENY, evidence
 from apps.event.tests.helpers import make_admin, make_superuser
 
 

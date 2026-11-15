@@ -36,12 +36,12 @@ class MaterialWebAdminEnhancerTests(TestCase):
         html = response.content.decode()
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "admin/css/google-material-admin-overrides.css")
+        self.assertContains(response, "admin/css/material/google-material-admin-overrides.css")
         self.assertLess(
             html.index("/static/unfold/css/styles.css"),
-            html.index("/static/admin/css/google-material-admin-overrides.css"),
+            html.index("/static/admin/css/material/google-material-admin-overrides.css"),
         )
-        path = finders.find("admin/css/google-material-admin-overrides.css")
+        path = finders.find("admin/css/material/google-material-admin-overrides.css")
         self.assertIsNotNone(path)
         source = Path(path).read_text()
         self.assertIn("#changelist input.action-select:checked", source)
