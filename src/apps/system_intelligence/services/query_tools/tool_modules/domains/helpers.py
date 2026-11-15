@@ -6,7 +6,7 @@ from datetime import datetime
 
 from apps.core.services.db_tools.safe_orm.constants import MAX_ROWS
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.system_intelligence.services.query_tools.tool_modules.helpers")
 
 MAX_RESULT_CHARS = 4000
 

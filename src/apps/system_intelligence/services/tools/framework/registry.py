@@ -1,4 +1,13 @@
-from .approval_tools import (
+from ..cms import (
+    get_footer_content_detail,
+    get_menu_detail,
+    get_news_source_detail,
+    get_site_settings_detail,
+    search_cms_assets,
+    search_menus,
+)
+from ..domains.analytics import get_page_view_summary, get_page_view_trend, get_top_paths
+from ..domains.approval_tools import (
     get_cms_page_detail,
     get_model_schema,
     get_record,
@@ -14,34 +23,7 @@ from .approval_tools import (
     propose_project_update,
     search_records,
 )
-from .cms import (
-    get_footer_content_detail,
-    get_menu_detail,
-    get_news_source_detail,
-    get_site_settings_detail,
-    search_cms_assets,
-    search_menus,
-)
-from .domains.analytics import get_page_view_summary, get_page_view_trend, get_top_paths
-from .domains.mail import get_campaign_recipient_logs, get_failed_recipient_report
-from .domains.members import get_member_activity_summary, get_member_detail, search_contact_info
-from .domains.projects import get_current_project_schedule, get_project_detail, get_semester_project_summary
-from .events import (
-    get_checkin_breakdown,
-    get_event_detail,
-    get_event_question_summary,
-    get_registration_detail,
-    get_ticket_capacity_summary,
-    search_event_registrations,
-)
-from .exports import (
-    export_events_to_excel,
-    export_members_to_excel,
-    export_news_to_excel,
-    export_projects_to_excel,
-    export_records_to_excel,
-)
-from .legacy import (
+from ..domains.legacy import (
     count_members,
     get_campaign_stats,
     get_checkin_stats,
@@ -55,6 +37,24 @@ from .legacy import (
     search_news,
     search_projects,
     search_semesters,
+)
+from ..domains.mail import get_campaign_recipient_logs, get_failed_recipient_report
+from ..domains.members import get_member_activity_summary, get_member_detail, search_contact_info
+from ..domains.projects import get_current_project_schedule, get_project_detail, get_semester_project_summary
+from ..events import (
+    get_checkin_breakdown,
+    get_event_detail,
+    get_event_question_summary,
+    get_registration_detail,
+    get_ticket_capacity_summary,
+    search_event_registrations,
+)
+from ..exports import (
+    export_events_to_excel,
+    export_members_to_excel,
+    export_news_to_excel,
+    export_projects_to_excel,
+    export_records_to_excel,
 )
 
 # Every agent tool, in the order the agent is given them.
@@ -125,7 +125,7 @@ def get_agent_tool_callables(*, include_writes: bool = True, include_exports: bo
     them even if the system prompt fails to dissuade it. ``include_exports`` is
     separate because exports generate files but do not mutate domain records.
     """
-    from apps.system_intelligence.services.agents.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
+    from apps.system_intelligence.services.agents.definition.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
 
     tools = list(_AGENT_TOOLS)
     if not include_writes:

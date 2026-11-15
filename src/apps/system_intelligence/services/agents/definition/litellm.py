@@ -5,9 +5,9 @@ from apps.core.models import AWSCredentialConfig
 from apps.core.services.aws.credentials import AwsCredentialsError, resolve_aws_credentials
 from apps.system_intelligence.services.bedrock import normalize_bedrock_model_id
 
-from .errors import SystemIntelligenceAgentError
+from ..invocation.errors import SystemIntelligenceAgentError
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.system_intelligence.services.agents.litellm")
 
 
 def build_litellm_model(*, aws_config: AWSCredentialConfig, model_id: str):

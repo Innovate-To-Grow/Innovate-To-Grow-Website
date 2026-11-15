@@ -5,8 +5,11 @@ from apps.system_intelligence.services.query_tools.tool_modules.custom.query imp
     is_allowed_query_key,
     validate_output_fields,
 )
-from apps.system_intelligence.services.query_tools.tool_modules.members import count_members, search_members
-from apps.system_intelligence.services.query_tools.tool_modules.projects import search_projects, search_semesters
+from apps.system_intelligence.services.query_tools.tool_modules.domains.members import count_members, search_members
+from apps.system_intelligence.services.query_tools.tool_modules.domains.projects import (
+    search_projects,
+    search_semesters,
+)
 
 
 class MembersToolsTest(TestCase):

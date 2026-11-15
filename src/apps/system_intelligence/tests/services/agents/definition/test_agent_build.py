@@ -21,8 +21,12 @@ from django.test import TestCase
 
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
-from apps.system_intelligence.services.agents.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
-from apps.system_intelligence.services.agents.runner import build_agent, build_agent_tools, run_tool_free_agent_async
+from apps.system_intelligence.services.agents.definition.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
+from apps.system_intelligence.services.agents.invocation.runner import (
+    build_agent,
+    build_agent_tools,
+    run_tool_free_agent_async,
+)
 from apps.system_intelligence.services.tools import get_agent_tool_callables
 
 _AGENTS_INSTALLED = find_spec("agents") is not None

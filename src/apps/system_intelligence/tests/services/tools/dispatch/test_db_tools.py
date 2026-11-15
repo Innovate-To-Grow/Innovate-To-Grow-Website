@@ -4,12 +4,12 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
-from apps.system_intelligence.services.query_tools.tool_modules.events import (
+from apps.system_intelligence.services.query_tools.tool_modules.dispatch.executor import execute_tool
+from apps.system_intelligence.services.query_tools.tool_modules.domains.events import (
     get_event_registrations,
     search_events,
 )
-from apps.system_intelligence.services.query_tools.tool_modules.executor import execute_tool
-from apps.system_intelligence.services.query_tools.tool_modules.members import count_members, search_members
+from apps.system_intelligence.services.query_tools.tool_modules.domains.members import count_members, search_members
 
 
 class ExecuteToolDispatchTests(TestCase):
@@ -30,7 +30,8 @@ class ExecuteToolDispatchTests(TestCase):
         self.assertEqual(result, "Unknown tool: ")
 
     @patch(
-        "apps.system_intelligence.services.query_tools.tool_modules.executor.TOOL_REGISTRY", {"boom": lambda p: 1 / 0}
+        "apps.system_intelligence.services.query_tools.tool_modules.dispatch.executor.TOOL_REGISTRY",
+        {"boom": lambda p: 1 / 0},
     )
     def test_exception_returns_tool_error(self):
         result = execute_tool({"name": "boom", "toolUseId": "t1", "input": {}})

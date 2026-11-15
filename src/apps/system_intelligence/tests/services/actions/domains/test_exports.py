@@ -2,7 +2,7 @@ from openpyxl import load_workbook
 
 from apps.system_intelligence.models import SystemIntelligenceExport
 from apps.system_intelligence.services import actions
-from apps.system_intelligence.services.exports import EXPORT_HARD_LIMIT, ExportError, create_export
+from apps.system_intelligence.services.tools.exports.workbook import EXPORT_HARD_LIMIT, ExportError, create_export
 
 from ..support.base import SystemIntelligenceActionBase
 

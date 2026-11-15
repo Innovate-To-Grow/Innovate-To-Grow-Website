@@ -4,13 +4,13 @@ from django.db import transaction
 
 from apps.cms.models import CMSBlock, CMSPage
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
-from apps.system_intelligence.services.query_tools.tool_modules.helpers import _truncate
+from apps.system_intelligence.services.query_tools.tool_modules.domains.helpers import _truncate
 
 from ..comparison import build_cms_comparison, build_diff
-from ..context import current_conversation, current_user_id
-from ..exceptions import ActionRequestError
+from ..engine.context import current_conversation, current_user_id
+from ..engine.exceptions import ActionRequestError
 from ..orm import assert_snapshot_unchanged
-from ..serialization import proposal_tool_response
+from ..requests.serialization import proposal_tool_response
 from .helpers import (
     assign_cms_page_fields,
     build_cms_page_proposal,

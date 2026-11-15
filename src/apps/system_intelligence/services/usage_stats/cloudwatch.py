@@ -16,7 +16,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from django.utils import timezone
 
 from apps.system_intelligence.services.bedrock.clients import get_cloudwatch_client
-from apps.system_intelligence.services.bedrock.exceptions import BedrockError
+from apps.system_intelligence.services.bedrock.clients.exceptions import BedrockError
 
 from .cloudwatch_queries import _METRICS, _discover_model_ids, _get_metric_data
 

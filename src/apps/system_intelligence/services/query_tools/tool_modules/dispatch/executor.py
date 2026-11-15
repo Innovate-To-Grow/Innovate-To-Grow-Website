@@ -4,7 +4,7 @@ import logging
 
 from .registry import TOOL_REGISTRY
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.system_intelligence.services.query_tools.tool_modules.executor")
 
 
 def execute_tool(tool_use):

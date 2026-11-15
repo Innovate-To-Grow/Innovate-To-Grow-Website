@@ -2,9 +2,7 @@ from django.test import TestCase
 
 from apps.event.models import CheckIn, CheckInRecord
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
-from apps.system_intelligence.services.query_tools.tool_modules.events import (
-    get_checkin_stats,
-)
+from apps.system_intelligence.services.query_tools.tool_modules.domains.events import get_checkin_stats
 
 
 class GetCheckinStatsToolTests(TestCase):

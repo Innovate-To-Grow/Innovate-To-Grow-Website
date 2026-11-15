@@ -3,10 +3,10 @@ from typing import Any
 from django.db.models import Count
 from django.db.models.functions import TruncDay, TruncHour, TruncMonth
 
-from apps.system_intelligence.services.actions.utils import json_safe
+from apps.system_intelligence.services.actions.engine.utils import json_safe
 
-from ..query_helpers import apply_date_range, bounded_limit, queryset_payload
-from ..runtime import run_action_service_async
+from ..framework.query_helpers import apply_date_range, bounded_limit, queryset_payload
+from ..framework.runtime import run_action_service_async
 
 
 async def get_page_view_summary(

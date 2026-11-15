@@ -1,4 +1,4 @@
-from .exceptions import BedrockError
+from .clients.exceptions import BedrockError
 from .invoke.converse import invoke_bedrock
 from .invoke.streaming import invoke_bedrock_stream
 from .models import (

@@ -2,9 +2,9 @@ from typing import Any
 
 from django.db.models import QuerySet
 
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
-from apps.system_intelligence.services.actions.utils import json_safe
-from apps.system_intelligence.services.query_tools.tool_modules.helpers import MAX_ROWS
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.utils import json_safe
+from apps.system_intelligence.services.query_tools.tool_modules.domains.helpers import MAX_ROWS
 
 
 def bounded_limit(limit: int | None = None, *, default: int = 20) -> int:

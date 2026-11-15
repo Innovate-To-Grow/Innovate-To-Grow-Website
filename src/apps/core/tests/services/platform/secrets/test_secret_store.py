@@ -77,7 +77,7 @@ class SecretStoreTests(TestCase):
 
     @override_settings(AWS_CREDENTIALS_REQUIRE_SECRETS_MANAGER=True)
     def test_bedrock_and_agent_clients_use_cloud_keys(self):
-        from apps.system_intelligence.services.agents.litellm import bedrock_litellm_credentials
+        from apps.system_intelligence.services.agents.definition.litellm import bedrock_litellm_credentials
         from apps.system_intelligence.services.bedrock.clients._aws import get_client
 
         config = AWSCredentialConfig(credentials_secret_arn=ARN)

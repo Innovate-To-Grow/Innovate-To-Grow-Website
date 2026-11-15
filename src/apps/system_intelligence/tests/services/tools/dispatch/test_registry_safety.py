@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
-from apps.system_intelligence.services.agents.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
-from apps.system_intelligence.services.tools.registry import get_agent_tool_callables
+from apps.system_intelligence.services.agents.definition.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
+from apps.system_intelligence.services.tools.framework.registry import get_agent_tool_callables
 
 READ_TOOL_NAMES = frozenset(
     {
@@ -60,7 +60,7 @@ class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
             (
                 f"Unclassified system-intelligence tools detected: {sorted(unclassified)}. "
                 "Add each to READ_TOOL_NAMES, WRITE_TOOL_NAMES (in "
-                "apps.system_intelligence.services.agents.constants), or EXPORT_TOOL_NAMES "
+                "apps.system_intelligence.services.agents.definition.constants), or EXPORT_TOOL_NAMES "
                 "based on whether the tool reads, proposes a human-approved write, or "
                 "generates a download. Tools that mutate user data outside the "
                 "propose/approve flow MUST NOT be added."

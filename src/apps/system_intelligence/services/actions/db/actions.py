@@ -5,8 +5,8 @@ from django.db import models
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
 from ..comparison import build_db_comparison, build_diff
-from ..context import current_conversation, current_user, current_user_id
-from ..exceptions import ActionRequestError
+from ..engine.context import current_conversation, current_user, current_user_id
+from ..engine.exceptions import ActionRequestError
 from ..orm import (
     assert_snapshot_unchanged,
     assign_model_fields,
@@ -18,7 +18,7 @@ from ..orm import (
     serialize_model_instance,
     validate_write_payload,
 )
-from ..serialization import proposal_tool_response
+from ..requests.serialization import proposal_tool_response
 from .cascade import cascade_summary, collect_cascade_impact
 from .member_guard import check_member_write
 

@@ -1,7 +1,7 @@
 from typing import Any
 
-from ..query_helpers import bounded_limit
-from ..runtime import run_action_service_async
+from ..framework.query_helpers import bounded_limit
+from ..framework.runtime import run_action_service_async
 
 
 async def search_cms_assets(name: str | None = None, limit: int | None = None) -> dict[str, Any]:

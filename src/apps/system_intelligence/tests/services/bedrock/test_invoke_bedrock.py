@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase
 
-from apps.system_intelligence.services.bedrock.exceptions import BedrockError
+from apps.system_intelligence.services.bedrock.clients.exceptions import BedrockError
 from apps.system_intelligence.services.bedrock.invoke.converse import collect_tool_results, invoke_bedrock
 from apps.system_intelligence.tests.services.bedrock.test_invoke import _client_error
 
