@@ -21,7 +21,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.views.decorators.debug import sensitive_variables
 
-from ..certificate import CertificateFacts, describe_certificate
+from ..identity.certificate import CertificateFacts, describe_certificate
 from .loaders import (
     BUNDLE,
     CERTIFICATE,

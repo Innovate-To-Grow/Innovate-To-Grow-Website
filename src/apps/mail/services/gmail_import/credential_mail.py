@@ -3,7 +3,7 @@
 Gmail files a copy of everything it sends in the account's Sent folder (the Gmail API cannot turn that off), so
 once the site sends through the Gmail API as the account the inbox and the import read, that folder holds sign-in
 codes, login links, invitations and tickets. Such messages carry ``X-I2G-Mail-Class: credential``
-(``core.services.email.mime``; callers cannot set it). Every Gmail IMAP read of a Sent folder (the inbox's Sent view,
+(``core.services.email.sending.mime``; callers cannot set it). Every Gmail IMAP read of a Sent folder (the inbox's Sent view,
 the whole import) searches without them and drops any that still come back, before anything is listed, opened or
 cached.
 
@@ -16,7 +16,7 @@ from imap_tools import NOT, H
 
 from apps.core.models import EmailServiceConfig, GmailAccessAccount, GmailApiSubject
 from apps.core.models.base.service_credentials.gmail_api import normalize_subject
-from apps.core.services.email.mime import CREDENTIAL_MAIL_CLASS, MAIL_CLASS_HEADER
+from apps.core.services.email.sending.mime import CREDENTIAL_MAIL_CLASS, MAIL_CLASS_HEADER
 
 # IMAP SEARCH that leaves tagged messages out (RFC 3501 HEADER search).
 WITHOUT_CREDENTIAL_MAIL = NOT(header=H(MAIL_CLASS_HEADER, CREDENTIAL_MAIL_CLASS))

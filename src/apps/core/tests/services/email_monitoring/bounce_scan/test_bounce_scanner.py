@@ -11,7 +11,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.core.models import EmailBounce, EmailMonitorState, EmailServiceConfig
-from apps.core.services.email.bounces import scanner, source
+from apps.core.services.email.bounces.scanning import scanner, source
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import SEND_AND_READ, create_graph_config
@@ -20,7 +20,7 @@ from apps.core.tests.services.graph.provider.test_email_graph import token_respo
 from ..helpers import SENDER, make_email, monitoring_settings
 from ..ndr_samples import ORIGINAL_ID, exchange_ndr, personal_email
 
-READER = "apps.core.services.email.bounces.scanner.active_reader"
+READER = "apps.core.services.email.bounces.scanning.scanner.active_reader"
 
 
 def listed(graph_id, *, subject, sender, received):

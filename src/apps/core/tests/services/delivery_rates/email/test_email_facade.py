@@ -17,8 +17,8 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     deliver_email,
 )
-from apps.core.services.email.exceptions import EmailRateDeferred
-from apps.core.services.email.registry import active_rate_target
+from apps.core.services.email.sending.exceptions import EmailRateDeferred
+from apps.core.services.email.sending.registry import active_rate_target
 
 from ..helpers import FakeClock
 

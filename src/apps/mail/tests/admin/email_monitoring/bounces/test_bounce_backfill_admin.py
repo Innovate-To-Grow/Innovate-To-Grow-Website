@@ -16,7 +16,7 @@ from apps.core.models import (
     EmailServiceConfig,
     MicrosoftGraphMailboxScope,
 )
-from apps.core.services.email.bounces import state
+from apps.core.services.email.bounces.scanning import state
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.email_monitoring.helpers import SENDER
 from apps.event.tests.helpers import make_admin, make_superuser

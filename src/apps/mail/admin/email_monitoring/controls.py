@@ -1,6 +1,6 @@
 """Email Monitoring → Bounce processing: the card's "Rescan since" and first-scan lookback forms.
 
-Both change only the bounce processor's state row, through ``apps.core.services.email.bounces.state``, which applies
+Both change only the bounce processor's state row, through ``apps.core.services.email.bounces.scanning.state``, which applies
 the bounds (``bounce_max_lookback_days``), the lease rule and the audit trail (an admin history line and a log line).
 Neither starts a scan: the next scheduled scan, or "Scan now", reads the Inbox. The view that dispatches to them has
 already required the Mail app; every message names what changed, or why nothing did.
@@ -11,7 +11,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.utils import formats, timezone
 
-from apps.core.services.email.bounces import state as bounce_state
+from apps.core.services.email.bounces.scanning import state as bounce_state
 
 # How a time is shown in a message: the site's time zone, to the minute, with the zone's abbreviation.
 WHEN = "M j, Y, H:i T"

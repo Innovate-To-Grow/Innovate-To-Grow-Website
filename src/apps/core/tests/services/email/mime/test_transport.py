@@ -10,7 +10,7 @@ import quopri
 from django.test import SimpleTestCase
 
 from apps.core.services.email import EmailMessage
-from apps.core.services.email.mime import build_mime_message, transport_bytes
+from apps.core.services.email.sending.mime import build_mime_message, transport_bytes
 
 # One line far longer than the 76 characters a quoted-printable line may hold, as every campaign has.
 LONG_LINE = '<td style="height:4px;background-color:#daa520;border-radius:4px 4px 0 0;' + "x" * 120 + '"></td>'

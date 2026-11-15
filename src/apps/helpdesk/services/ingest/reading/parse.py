@@ -10,7 +10,7 @@ part headers): PostgreSQL text cannot hold them, and a body that has some (a UTF
 is full of them) must still become a ticket. Nothing here touches the database.
 """
 
-from apps.core.services.email.inbound import headers as mime
+from apps.core.services.email.inbound.classification import headers as mime
 from apps.core.services.email.telemetry import text
 
 from .message import ParsedMessage

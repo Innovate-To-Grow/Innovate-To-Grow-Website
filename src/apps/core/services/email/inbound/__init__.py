@@ -9,17 +9,17 @@ anything. ``registry`` lets such an app describe its own Inbox scan to the Email
 metadata only; it never reads or keeps a message body.
 """
 
-from .classify import NO_AUTO_RESPONSE, REPLY_HINT, Evidence, Verdict, auth_summary, classify
-from .queue import pending_count, purge_expired, record
-from .registry import (
+from .classification.classify import NO_AUTO_RESPONSE, REPLY_HINT, Evidence, Verdict, auth_summary, classify
+from .classification.rules import AUTOMATED, HUMAN, LABELS
+from .processing.queue import pending_count, purge_expired, record
+from .processing.registry import (
     InboxReader,
     format_interval,
     inbox_readers,
     register_inbox_reader,
     registered_inbox_readers,
 )
-from .rules import AUTOMATED, HUMAN, LABELS
-from .scrub import LINK_PLACEHOLDER, is_sensitive_url, scrub_links, scrub_subject
+from .processing.scrub import LINK_PLACEHOLDER, is_sensitive_url, scrub_links, scrub_subject
 
 __all__ = [
     "AUTOMATED",

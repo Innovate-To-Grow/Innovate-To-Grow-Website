@@ -9,7 +9,7 @@ from apps.core.services.email.gmail.client.access import GmailScopeError, creden
 from apps.core.services.email.gmail.service_account import stored_key
 from apps.core.tests.gmail_api_helpers import SUBJECT, make_config, reset_gmail_state
 
-CONNECTION = "apps.core.services.email.transport.HTTPSConnection"
+CONNECTION = "apps.core.services.email.sending.transport.HTTPSConnection"
 
 
 class SubjectAllowListTests(TestCase):

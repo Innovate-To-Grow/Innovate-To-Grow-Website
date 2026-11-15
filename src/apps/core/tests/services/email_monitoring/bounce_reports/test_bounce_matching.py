@@ -6,9 +6,9 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.core.models import EmailBounce, EmailCategory, OutboundEmail
-from apps.core.services.email.bounces.dsn import parse_report
-from apps.core.services.email.bounces.matching import match
-from apps.core.services.email.bounces.store import save_report
+from apps.core.services.email.bounces.recording.dsn import parse_report
+from apps.core.services.email.bounces.recording.matching import match
+from apps.core.services.email.bounces.recording.store import save_report
 from apps.core.services.email.telemetry import text
 
 from ..helpers import make_email

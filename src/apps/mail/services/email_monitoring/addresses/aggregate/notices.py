@@ -18,7 +18,7 @@ classified again, and the queue keeps only its last 90 days.
 from collections import defaultdict
 
 from apps.core.models import InboundMessage
-from apps.core.services.email.inbound import rules
+from apps.core.services.email.inbound.classification import rules
 from apps.mail.models import BouncedAddress
 from apps.mail.services.suppression import normalize_address
 

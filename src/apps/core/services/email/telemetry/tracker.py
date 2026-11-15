@@ -11,7 +11,7 @@ import time
 
 from django.utils import timezone
 
-from ..exceptions import EmailDeliveryError, EmailRateDeferred
+from ..sending.exceptions import EmailDeliveryError, EmailRateDeferred
 from . import classify, recorder, text
 from .context import current_tracking
 from .notes import AttemptNotes, collecting

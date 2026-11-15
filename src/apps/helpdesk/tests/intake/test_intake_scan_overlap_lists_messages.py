@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.utils import timezone
 
 from apps.core.models import EmailMonitorState, InboundMessage
-from apps.core.services.email.bounces import state as bounce_state
+from apps.core.services.email.bounces.scanning import state as bounce_state
 from apps.core.services.email.graph.mailbox import GraphReadBusy, GraphReadError
 from apps.core.tests.services.email_monitoring.bounce_scan.test_bounce_scanner import FakeReader, listed
 from apps.helpdesk.tests.intake.test_intake_scan import READER, IntakeTestCase, row

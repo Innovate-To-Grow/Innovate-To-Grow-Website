@@ -7,9 +7,9 @@ from types import SimpleNamespace
 from apps.core.services.aws.provider_outcomes import PROVIDER_OUTCOME_UNCERTAIN
 from apps.core.services.delivery_rates import RateDeferred, controlled
 
-from ...contracts import EmailMessage
-from ...exceptions import EmailDeliveryError, PermanentEmailDeliveryError
-from ...registry import resolve_provider
+from ...sending.contracts import EmailMessage
+from ...sending.exceptions import EmailDeliveryError, PermanentEmailDeliveryError
+from ...sending.registry import resolve_provider
 from ..client import auth, transport
 from ..client.access import GmailScopeError, require_subject
 from ..client.errors import DELEGATION_PENDING_CODES, GmailTokenRefused

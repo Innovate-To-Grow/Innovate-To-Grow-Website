@@ -3,9 +3,9 @@
 import json
 
 from apps.core.services.credential_store import memory, secret_id_for
-from apps.core.services.email.graph.certificate import describe_certificate
 from apps.core.services.email.graph.credential import stored_key
 from apps.core.services.email.graph.credential.parsing import ParsedCertificate
+from apps.core.services.email.graph.identity.certificate import describe_certificate
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import make_certificate
 from apps.core.tests.services.graph.provider.test_email_graph import GraphFixtureMixin

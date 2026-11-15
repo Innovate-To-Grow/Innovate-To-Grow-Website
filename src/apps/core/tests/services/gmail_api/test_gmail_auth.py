@@ -14,7 +14,7 @@ from apps.core.services.email.gmail.client import auth
 from apps.core.services.email.gmail.client.access import credential_for, require_subject
 from apps.core.services.email.gmail.client.errors import GmailTokenRefused
 from apps.core.services.email.gmail.service_account import stored_key
-from apps.core.services.email.transport import ConnectFailed, HttpResponse, ResponseLost
+from apps.core.services.email.sending.transport import ConnectFailed, HttpResponse, ResponseLost
 from apps.core.tests.gmail_api_helpers import (
     CLIENT_ID,
     SUBJECT,

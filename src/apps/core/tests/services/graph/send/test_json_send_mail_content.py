@@ -1,7 +1,7 @@
 import base64
 
 from apps.core.services.email import EmailAttachment, PermanentEmailDeliveryError
-from apps.core.services.email.graph import json_message
+from apps.core.services.email.graph.provider import json_message
 from apps.core.tests.graph_helpers import private_key_lines
 from apps.core.tests.services.graph.provider.test_email_graph import PROVIDER_LOGGER, graph_response
 from apps.core.tests.services.graph.send.test_json_send_mail import (

@@ -11,7 +11,7 @@ from apps.core.services.email import (
     deliver_email,
     resolve_provider,
 )
-from apps.core.services.email.registry import register_provider
+from apps.core.services.email.sending.registry import register_provider
 
 
 class RegistryFacadeTests(SimpleTestCase):
@@ -55,9 +55,9 @@ class RegistryFacadeTests(SimpleTestCase):
                 SimpleNamespace(provider="smtp", from_email="from@example.com", from_name=""),
             )
 
-    @patch("apps.core.services.email.delivery.record")
-    @patch("apps.core.services.email.delivery.admit")
-    @patch("apps.core.services.email.delivery.resolve_provider")
+    @patch("apps.core.services.email.sending.delivery.record")
+    @patch("apps.core.services.email.sending.delivery.admit")
+    @patch("apps.core.services.email.sending.delivery.resolve_provider")
     @patch("apps.core.models.EmailServiceConfig.load")
     def test_delivery_service_loads_config_when_none(self, load_config, resolve, admit, record):
         load_config.return_value = SimpleNamespace(is_active=True, provider="ses")
@@ -76,7 +76,7 @@ class RegistryFacadeTests(SimpleTestCase):
         admit.assert_called_once_with("ses_send", "1:us-west-2", lane="transactional")
         record.assert_called_once()
 
-    @patch("apps.core.services.email.delivery.EmailDeliveryService")
+    @patch("apps.core.services.email.sending.delivery.EmailDeliveryService")
     def test_deliver_email_delegates_to_service(self, service_cls):
         service = service_cls.return_value
         service.send.return_value = MagicMock(message_id="delegated")

@@ -3,9 +3,9 @@
 from django.test import SimpleTestCase, override_settings
 
 from apps.core.services.credential_store import CredentialStoreError, get_store, memory, version_token_for
-from apps.core.services.email.graph.certificate import public_key_sha256
 from apps.core.services.email.graph.credential import stored_key
 from apps.core.services.email.graph.credential.stored_key import StoredKeyMismatch, key_payload, read_key, store_key
+from apps.core.services.email.graph.identity.certificate import public_key_sha256
 from apps.core.tests.graph_helpers import make_certificate, private_key_lines
 from apps.core.tests.services.graph_credential.helpers import stored_versions
 

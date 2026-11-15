@@ -19,10 +19,7 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
-from apps.core.services.email.graph.errors import (
-    request_id,
-    retry_after_seconds,
-)
+from apps.core.services.email.graph.transport.errors import request_id, retry_after_seconds
 from apps.core.tests.services.graph.provider.test_email_graph import REQUEST_ID
 
 OUTCOME_OF = {

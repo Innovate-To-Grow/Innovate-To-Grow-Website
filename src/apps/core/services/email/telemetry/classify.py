@@ -14,7 +14,7 @@ from apps.core.services.aws.provider_outcomes import (
 from apps.core.services.delivery_rates.rules.defaults import signal_patterns
 from apps.core.services.delivery_rates.rules.signals import code_in
 
-from ..exceptions import EmailDeliveryError
+from ..sending.exceptions import EmailDeliveryError
 
 Outcome = OutboundEmailAttempt.Outcome
 Operation = OutboundEmailAttempt.Operation

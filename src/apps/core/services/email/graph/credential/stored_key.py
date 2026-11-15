@@ -13,7 +13,7 @@ from django.views.decorators.debug import sensitive_variables
 
 from apps.core.services.credential_store import CredentialStoreError, StoredVersion, get_store, version_token_for
 
-from ..certificate import public_key_sha256
+from ..identity.certificate import public_key_sha256
 
 KEY_NAME = "microsoft_graph_certificate_key"
 PAYLOAD_SCHEMA = "i2g.graph-key/1"
