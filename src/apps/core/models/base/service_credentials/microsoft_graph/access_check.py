@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from ...control import ProjectControlModel
+from ...abstract.control import ProjectControlModel
 from .certificate import MicrosoftGraphCertificate
 
 # Names the control that exists in production (no ECS Exec there): the button in the Access check section of the Graph

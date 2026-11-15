@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from django.test import SimpleTestCase, TestCase
 
 from apps.core.models import RequestLimitProcess, RequestRateLimitPolicy, RequestRateLimitState
-from apps.core.models.base.request_limits import SEED_FIELDS, scope_seed
+from apps.core.models.base.site_controls.request_limits import SEED_FIELDS, scope_seed
 from apps.core.services.db_tools.safe_orm import DENIED_MODEL_LABELS, is_model_denied
 
 MIGRATION = importlib.import_module("apps.core.migrations.0039_request_rate_limits")

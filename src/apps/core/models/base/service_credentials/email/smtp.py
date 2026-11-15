@@ -3,7 +3,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
 
-from ...control import ProjectControlModel
+from ...abstract.control import ProjectControlModel
 
 
 class SMTPProviderConfig(ProjectControlModel):

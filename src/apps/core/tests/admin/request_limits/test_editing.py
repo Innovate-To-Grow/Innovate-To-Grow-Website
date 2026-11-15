@@ -10,7 +10,7 @@ from django.utils.html import escape
 
 from apps.core.admin.request_limits.forms import MANUAL_LIMIT_NOTE, RequestLimitPolicyForm, show
 from apps.core.models import RequestRateLimitPolicy
-from apps.core.models.base.request_limits import MANUAL_LIMIT_HELP, SMART_LIMIT_HELP
+from apps.core.models.base.site_controls.request_limits import MANUAL_LIMIT_HELP, SMART_LIMIT_HELP
 from apps.core.services.request_limits.runtime import registry
 from apps.core.services.request_limits.view_limits import view_rate
 

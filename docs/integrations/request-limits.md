@@ -241,7 +241,7 @@ The limiter never takes the site down with it: an error inside it is logged (`re
 | Concern | Where |
 |---------|-------|
 | Settings | `src/config/settings/base/integrations/request_limits/` (`scopes.py`, `view_scopes.py`, `routes.py`, `runtime.py`, `validation.py`) |
-| Models | `RequestRateLimitPolicy` (`apps/core/models/base/request_limits.py`), `RequestRateLimitState`, `RequestLimitProcess` (`apps/core/models/records/request_limit_state.py`); migrations `core.0039`, `core.0040` |
+| Models | `RequestRateLimitPolicy` (`apps/core/models/base/site_controls/request_limits.py`), `RequestRateLimitState`, `RequestLimitProcess` (`apps/core/models/records/request_limit_state.py`); migrations `core.0039`, `core.0040` |
 | Middleware | `apps/core/middleware/request_limits.py` (after CORS, health checks and sessions, before CSRF so CSRF failures are counted too; the `core` system checks refuse another order) |
 | Pure rules | `apps/core/services/request_limits/rules/` (`limits.py` precedence and slot shares, `controller.py`) |
 | Runtime | `apps/core/services/request_limits/` (`limiter.py`, `scopes.py`, `identity.py`, `priority.py`, `view_limits.py`), `runtime/` (`store.py`, `heartbeat.py`, `registry.py`, `signals.py`, `smart.py`, `abuse.py`, `refusals.py`) |

@@ -5,7 +5,7 @@ from django.db import models
 
 from apps.core.utils.security import is_plain_address
 
-from ...control import ProjectControlModel
+from ...abstract.control import ProjectControlModel
 
 SUBJECT_FORMAT = "Enter the primary address of a Google Workspace user: plain ASCII, no '+' tag, no display name."
 

@@ -6,7 +6,7 @@ from django.db import models
 
 from apps.core.utils.security import is_exchange_mailbox, is_plain_address
 
-from ...control import ProjectControlModel
+from ...abstract.control import ProjectControlModel
 
 # Characters that would change a Graph URL (percent-encoding keeps them out of the path, but a deny mailbox that
 # needs them is never what an operator meant).

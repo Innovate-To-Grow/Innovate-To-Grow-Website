@@ -32,7 +32,7 @@ was tried against AWS, Microsoft or Google: the tests use stubs (botocore `Stubb
 
 ## Smart rate or manual rate
 
-The page shows these help texts (`apps/core/models/base/delivery_rates.py`):
+The page shows these help texts (`apps/core/models/base/delivery_rates/fields.py`):
 
 > **Smart rate.** Adjusts the rate automatically to actual conditions. It uses the limit the provider reports (where
 > it reports one), slows down as soon as the provider throttles or pushes back, then speeds up again step by step,
@@ -345,7 +345,7 @@ budget: they only end a stuck call, which the ALB idle timeout bounds in any cas
 | Concern | Where |
 |---------|-------|
 | Settings | `src/config/settings/base/integrations/delivery_rates/` (`defaults/`: `channels.py`, `sending_channels.py`, `runtime.py`, `signals.py`; `validation/`) |
-| Models | `DeliveryRatePolicy` (`apps/core/models/base/delivery_rates.py`), `DeliveryRateState`, `DeliveryUsageBucket` (`apps/core/models/records/delivery_rate_state.py`), `BackgroundJob.priority` |
+| Models | `DeliveryRatePolicy` (`apps/core/models/base/delivery_rates/`), `DeliveryRateState`, `DeliveryUsageBucket` (`apps/core/models/records/delivery_rate_state.py`), `BackgroundJob.priority` |
 | Pure rules | `apps/core/services/delivery_rates/rules/` (`policy.py` precedence, `pacing.py` GCRA, `controller.py`, `signals.py`, `sms_parts.py`) |
 | Runtime | `apps/core/services/delivery_rates/runtime/` (`limiter.py` admit, `feedback.py` record and release, `budget.py`, `breaker.py`, `discovery.py`), `families.py`, `maintenance.py`, `snapshot.py`, `status_text.py` |
 | Provider adapters | `apps/core/services/delivery_rates/adapters/` (graph, ses, smtp, imap, gmail_api, sms); AWS reads in `apps/core/services/aws/quotas.py` |

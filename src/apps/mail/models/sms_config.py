@@ -30,8 +30,7 @@ from django.db import DEFAULT_DB_ALIAS, models, router, transaction
 from django.db.models import Max
 from django.utils import timezone
 
-from apps.core.models import ProjectControlModel
-from apps.core.models.managers import ProjectControlQuerySet
+from apps.core.models import ProjectControlModel, ProjectControlQuerySet
 
 from .sms_link import SmsLinkRevocation, SmsLinkToken
 

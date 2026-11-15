@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 
-from apps.core.models.base.control import ProjectControlModel
+from apps.core.models import ProjectControlModel
 
 
 class PublicAssistantTokenBudget(models.Model):

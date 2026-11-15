@@ -83,7 +83,7 @@ or the migration history require: `management/commands/` is always a package, an
 ### A note on `apps/core`
 
 `core` holds the framework primitives every other app builds on: `ProjectControlModel`,
-the model mixins (`core/models/mixins.py`), reusable DRF utilities, `BaseModelAdmin`, `utils/access.py`, the
+the model mixins (`core/models/base/abstract/mixins.py`), reusable DRF utilities, `BaseModelAdmin`, `utils/access.py`, the
 `middleware/` package, and the service-credential singletons. It also holds shared infrastructure
 that names no business app:
 
