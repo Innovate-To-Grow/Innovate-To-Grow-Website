@@ -50,6 +50,10 @@ const actionsScript = readFileSync(
   resolve(repoRoot, 'src/apps/system_intelligence/static/system_intelligence/js/chat-actions.js'),
   'utf8',
 );
+const streamScript = readFileSync(
+  resolve(repoRoot, 'src/apps/system_intelligence/static/system_intelligence/js/chat-stream.js'),
+  'utf8',
+);
 
 const uuid = '11111111-2222-4333-8444-555555555555';
 
@@ -86,6 +90,7 @@ function installChatShell() {
   window.eval(stateScript);
   window.eval(renderScript);
   window.eval(actionsScript);
+  window.eval(streamScript);
 }
 
 describe('System Intelligence static chat link rendering', () => {
