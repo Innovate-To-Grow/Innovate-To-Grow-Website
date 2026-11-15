@@ -6,7 +6,7 @@ from apps.core.models import (
     SMTPProviderConfig,
 )
 from apps.core.tests.graph_helpers import private_key_lines
-from apps.core.tests.models.graph.test_microsoft_graph_config import CLIENT_ID, MAILBOX, TENANT_ID, make_graph
+from apps.core.tests.models.graph.config.test_microsoft_graph_config import CLIENT_ID, MAILBOX, TENANT_ID, make_graph
 
 
 class EmailServiceConfigDeliverySummaryTest(TestCase):
