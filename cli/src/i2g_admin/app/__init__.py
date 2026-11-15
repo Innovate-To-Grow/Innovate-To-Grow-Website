@@ -1,12 +1,12 @@
 import typer
 
-from . import __version__, auth, config  # noqa: F401  (re-exported for back-compat + tests)
-from .commands import register
-from .core.context import Context
+from .. import __version__, auth, config  # noqa: F401  (re-exported for back-compat + tests)
+from ..commands import register
+from ..core.context import Context
 
 # Re-export the runtime glue so callers/tests can patch i2g_admin.app._client etc.
 # The real definitions live in the leaf `core.runtime` module to avoid an app<->commands cycle.
-from .core.runtime import (  # noqa: F401
+from ..core.runtime import (  # noqa: F401
     _client,
     _execute,
     _load_data,
