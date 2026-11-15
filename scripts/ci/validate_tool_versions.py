@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep tool and runtime version pins in sync across CI, deploy workflows, git hooks and the AWS runner image.
+"""Keep tool and runtime version pins in sync across CI, deploy workflows and git hooks.
 
 Each pin group lists every place one version is written down, and all of them must agree. A source that
 finds fewer matches than it expects is an error rather than a silent skip, so a renamed key or a rewritten
@@ -30,9 +30,6 @@ DEPENDENCY_AUDIT = ".github/workflows/dependency-audit.yml"
 DEPLOY_BACKEND = ".github/workflows/deploy-backend.yml"
 DEPLOY_FRONTEND = ".github/workflows/deploy-frontend.yml"
 DEPLOY_ARCHIVE = ".github/workflows/deploy-archive.yml"
-RUNNER_SMOKE = ".github/workflows/aws-runner-smoke.yml"
-BAKE_IMAGE = "aws/ci-runners/bake-image.sh"
-IMAGE_TF = "aws/ci-runners/image.tf"
 # src/requirements.txt is a thin `-r requirements/local.txt` entrypoint, so the ruff pin lives here.
 REQUIREMENTS = "src/requirements/local.txt"
 PRE_COMMIT = ".pre-commit-config.yaml"
@@ -48,10 +45,6 @@ PLAYWRIGHT_IMAGE = r"(mcr\.microsoft\.com/playwright:[\w.-]+@sha256:[0-9a-f]{64}
 POSTGRES_IMAGE = r"\bpostgres:(\d+)"
 # Advisory IDs only (GHSA-..., PYSEC-..., CVE-...), so prose such as "the --ignore-vuln list" is not read as one.
 IGNORE_VULN = r"--ignore-vuln[= ]([A-Z]+-[\w-]+)"
-# bake-image.sh installs both interpreters in one loop, tooling first and backend second (the order ci.yml
-# declares PYTHON_VERSION and BACKEND_PYTHON_VERSION in). A third version fails both patterns on purpose.
-BAKED_TOOLING_PYTHON = r"^for version in (\d+\.\d+)\.\d+ \d+\.\d+\.\d+; do$"
-BAKED_BACKEND_PYTHON = r"^for version in \d+\.\d+\.\d+ (\d+\.\d+)\.\d+; do$"
 
 Pin = tuple[str, str]  # (source label, value)
 Source = Callable[[Path], list[Pin]]
@@ -149,12 +142,8 @@ PIN_GROUPS: dict[str, tuple[Source, ...]] = {
         Regex(CI, yaml_literal("TRIVY_VERSION"), minimum=2),
         Regex(DEPLOY_ARCHIVE, yaml_literal("TRIVY_VERSION")),
     ),
-    # The smoke and E2E job containers, the runner-image pre-pull and the runner smoke test.
-    "playwright-image": (
-        Regex(CI, PLAYWRIGHT_IMAGE, minimum=2),
-        Regex(RUNNER_SMOKE, PLAYWRIGHT_IMAGE),
-        Regex(BAKE_IMAGE, PLAYWRIGHT_IMAGE),
-    ),
+    # The smoke and E2E job containers.
+    "playwright-image": (Regex(CI, PLAYWRIGHT_IMAGE, minimum=2),),
     # The image's browsers must be the ones @playwright/test drives; the E2E venv cache label names them too.
     "playwright": (
         Regex(CI, r"mcr\.microsoft\.com/playwright:v(\d+\.\d+\.\d+)-noble", minimum=2),
@@ -165,30 +154,19 @@ PIN_GROUPS: dict[str, tuple[Source, ...]] = {
         Regex(CI, yaml_literal("NODE_VERSION")),
         Regex(DEPENDENCY_AUDIT, yaml_literal("NODE_VERSION")),
         Regex(DEPLOY_FRONTEND, yaml_literal("node-version")),
-        Regex(RUNNER_SMOKE, yaml_literal("node-version")),
-        # Download URLs and checksum lookup (4), and the tool-cache directory setup-node resolves (4).
-        Regex(BAKE_IMAGE, rf"(?:/dist/v|node-v|/node/){VERSION}", minimum=8),
-        Regex(IMAGE_TF, re.escape("node --version | grep '^v") + VERSION),
     ),
     "python-backend": (
         Regex(CI, yaml_literal("BACKEND_PYTHON_VERSION", MINOR)),
         Regex(DEPLOY_BACKEND, yaml_literal("python-version", MINOR)),
         Regex(DEPLOY_FRONTEND, yaml_literal("python-version", MINOR)),
         Regex(DEPLOY_ARCHIVE, yaml_literal("python-version", MINOR)),
-        Regex(RUNNER_SMOKE, yaml_literal("python-version", MINOR)),
-        Regex(BAKE_IMAGE, BAKED_BACKEND_PYTHON),
     ),
     "python-tooling": (
         Regex(CI, yaml_literal("PYTHON_VERSION", MINOR)),
         Regex(LINT, yaml_literal("python-version", MINOR)),
         Regex(DEPENDENCY_AUDIT, yaml_literal("PYTHON_VERSION", MINOR)),
-        Regex(BAKE_IMAGE, BAKED_TOOLING_PYTHON),
     ),
-    "postgres": (
-        Regex(CI, POSTGRES_IMAGE, minimum=4),
-        Regex(RUNNER_SMOKE, POSTGRES_IMAGE),
-        Regex(BAKE_IMAGE, POSTGRES_IMAGE),
-    ),
+    "postgres": (Regex(CI, POSTGRES_IMAGE, minimum=4),),
     "pip-audit": (Regex(CI, PIP_AUDIT), Regex(DEPENDENCY_AUDIT, PIP_AUDIT)),
     # dependency-audit.yml re-runs ci.yml's python-dependency-audit weekly with the same accepted advisories,
     # which may be none.

@@ -2,13 +2,9 @@
 
 GitHub Actions pipelines for linting, testing, building, and deploying.
 
-CPU-bound jobs use the repository's [AWS ephemeral runner fleet](../../aws/ci-runners/README.md):
-the Django and E2E matrices, frontend unit coverage, and the backend Docker build.
-The fleet scales from zero to 32 machines and `AWS_RUNNERS_ENABLED` controls routing.
-Every job shorter than an AWS cold boot runs on a GitHub-hosted runner instead.
-Pull requests from forks never use the fleet: fleet-routed jobs fall back to GitHub-hosted
-`ubuntu-24.04` runners, and jobs pinned to `ubuntu-latest` run there as for any pull request.
-A `merge_group` run is routed like a push.
+Every job runs on a GitHub-hosted runner: `ubuntu-24.04`, or `ubuntu-latest` for jobs that do
+not depend on the Ubuntu release. The repository has no self-hosted runners
+(`scripts/ci/tests/test_ci_workflow_invariants.py` fails if a workflow asks for one).
 
 ## Workflow files
 
@@ -18,7 +14,6 @@ A `merge_group` run is routed like a push.
 | `.github/workflows/lint.yml` | Python style, Bandit, and code-structure checks | Reusable workflow, called by `ci.yml` |
 | `.github/workflows/codeql.yml` | CodeQL for Python and JavaScript/TypeScript | Push to `main`, weekly |
 | `.github/workflows/dependency-audit.yml` | `npm audit` and `pip-audit` against the live advisory databases | Weekly, manual |
-| `.github/workflows/aws-runner-smoke.yml` | Smoke test of the AWS runner fleet | PRs touching `aws/ci-runners/`, manual |
 | `.github/workflows/deploy-production.yml` | Unified production approval and deployment orchestration | CI success on `main`, or manual on `main`; see [Pausing and resuming deployments](#pausing-and-resuming-deployments) |
 | `.github/workflows/deploy-backend.yml` | Backend deployment to ECS | Reusable workflow call |
 | `.github/workflows/deploy-frontend.yml` | Frontend deployment to Amplify | Reusable workflow call |
@@ -46,7 +41,7 @@ A `merge_group` run is routed like a push.
 
 | Area | Checks |
 |------|--------|
-| Preflight | actionlint, YAML/TOML/JSON validity, tool-version pins (`scripts/ci/validate_tool_versions.py`), CI script unit tests (`scripts/ci/tests/`), AWS runner guard tests, legacy viewer infrastructure, Dependabot labels |
+| Preflight | actionlint, YAML/TOML/JSON validity, tool-version pins (`scripts/ci/validate_tool_versions.py`), CI script unit tests (`scripts/ci/tests/`), legacy viewer infrastructure, Dependabot labels |
 | Python style (`lint.yml`) | Ruff lint and format (pinned in `src/requirements/local.txt`), code structure (`scripts/ci/check_python_quality.py`), app import boundaries (`scripts/ci/check_python_dependencies.py`), Bandit with `.bandit-baseline.json` |
 | Backend | Migration drift and apply checks on PostgreSQL 16; production settings import and `manage.py check --deploy`; Django tests per app on PostgreSQL with `config.settings.environments.unit` and the per-app floors in `scripts/ci/backend_coverage_floors.json`; `apps.cli_admin` plus `safe_orm` at 100% coverage; Docker build with hadolint, a runtime smoke test, and Trivy (fixable CRITICAL/HIGH) |
 | CLI | `cli/` pytest with 99% line and 98% branch coverage floors |
@@ -57,8 +52,7 @@ A `merge_group` run is routed like a push.
 
 Backend jobs run Python 3.14, the minor of the production image
 (`BACKEND_PYTHON_VERSION`); lint, audit, and CLI jobs run Python 3.11
-(`PYTHON_VERSION`). Every job that sets up Node uses 22.22.2 (`NODE_VERSION`); Preflight's
-AWS runner guard test (`node --test`) uses the `ubuntu-latest` image's default Node.
+(`PYTHON_VERSION`). Every job that sets up Node uses 22.22.2 (`NODE_VERSION`).
 
 Semgrep fails the job on error-severity findings and on a Semgrep failure.
 Warnings and notes do not block; push runs upload every finding to the
@@ -86,8 +80,7 @@ finding starts.
   fails if either loses it or any workflow switches the limiter on; the limiter's
   own tests turn it on in-process ([Request limits](../integrations/request-limits.md))
 - The Playwright container image, the npm package (pinned exactly in
-  `pages/package.json`), the e2e venv cache label, and the image the AWS runners
-  pre-pull (`aws/ci-runners/bake-image.sh`) move together;
+  `pages/package.json`), and the e2e venv cache label move together;
   `validate_tool_versions.py` fails preflight if they drift
 
 ### Concurrency
