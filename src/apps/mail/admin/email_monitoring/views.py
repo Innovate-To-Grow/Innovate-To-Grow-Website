@@ -10,24 +10,19 @@ Every page is read-only except the bounce-processing POST.
 from datetime import timedelta
 from urllib.parse import urlencode
 
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.core.exceptions import PermissionDenied
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_POST
 
 from apps.core.models import EmailBounce, EmailCategory, OutboundEmail
-from apps.core.services.email.bounces import active_reader, run_now
-from apps.core.services.email.bounces.state import is_paused, set_paused
 from apps.core.services.email.telemetry import KIND_LABELS
 from apps.core.utils.access import user_can_access_app
 from apps.mail.models import EmailCampaign
 from apps.mail.services.email_monitoring import campaigns, charts, detail, health, log, overview, scope
-
-from . import controls
 
 TEMPLATES = "admin/mail/email_monitoring"
 
@@ -164,39 +159,3 @@ def campaign_view(request, pk):
         ),
     )
     return TemplateResponse(request, f"{TEMPLATES}/campaign.html", context)
-
-
-@require_POST
-def bounce_processing_view(request):
-    """Scan now, pause, resume, rescan since a time, or set the first-scan lookback of the Graph sending mailbox.
-
-    A scan and a rescan need a mailbox the processor can read (the time a rescan sets is read by the next scan); the
-    lookback, like pause and resume, needs only the mailbox."""
-    require_mail_access(request)
-    action = request.POST.get("action")
-    reader, mailbox, problem = active_reader()
-    target = reverse("admin:mail_email_monitoring")
-    if action == "scan" and reader is not None:
-        _scan_now(request, mailbox)
-    elif action in ("pause", "resume") and mailbox:
-        set_paused(mailbox, action == "pause")
-        verb = "paused" if action == "pause" else "resumed"
-        messages.success(request, f"Bounce processing for {mailbox} {verb}.")
-    elif action == "rescan" and reader is not None:
-        controls.rescan(request, mailbox)
-    elif action == "lookback" and mailbox:
-        controls.lookback(request, mailbox)
-    else:
-        messages.error(request, problem or "Unknown bounce processing action.")
-    return HttpResponseRedirect(target)
-
-
-def _scan_now(request, mailbox: str) -> None:
-    """Queue a scan at once, unless processing is paused (the scan would read nothing: resume first) or switched off.
-    The card offers no working button then; this answers a stale page or a second tab the same way."""
-    if is_paused(mailbox):
-        messages.warning(request, f"Bounce processing for {mailbox} is paused: resume it to scan.")
-    elif run_now():
-        messages.success(request, "A bounce scan was queued; the background worker runs it within a minute.")
-    else:
-        messages.warning(request, "Bounce processing is turned off (EMAIL_BOUNCE_PROCESSING_ENABLED).")
