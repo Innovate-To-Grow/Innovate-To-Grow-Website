@@ -123,7 +123,7 @@ def _pending_logs(channel: DeliveryChannel, campaign_id):
 
 def _run_paused_email(campaign_id) -> None:
     from apps.mail.models import EmailCampaign
-    from apps.mail.services.send_campaign.runner import send_to_recipients
+    from apps.mail.services.campaign.send.runner import send_to_recipients
 
     try:
         send_to_recipients(EmailCampaign.objects.get(pk=campaign_id), _pending_logs(EMAIL, campaign_id))

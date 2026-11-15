@@ -5,8 +5,8 @@ from unittest.mock import Mock, patch
 from django.db.utils import OperationalError
 
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign.preview import HTML_MARKER, render_preview
-from apps.mail.services.gmail_import import (
+from apps.mail.services.campaign.content.preview import HTML_MARKER, render_preview
+from apps.mail.services.campaign.gmail_import import (
     DEFAULT_GMAIL_MAILBOX,
     GmailImportError,
     fetch_message_html_fragment,
@@ -34,7 +34,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
             ]
         )
 
-        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+        with patch("apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
             fragment = fetch_message_html_fragment("1001")
 
         self.assertIn("{{ login_link }}", fragment)
@@ -62,7 +62,9 @@ class GmailImportServiceTest(_GmailImportServiceCase):
             login_redirect_path="/account",
         )
 
-        with patch("apps.mail.services.gmail_import.fetch_message_html_fragment", return_value="<p>Imported</p>"):
+        with patch(
+            "apps.mail.services.campaign.gmail_import.fetch_message_html_fragment", return_value="<p>Imported</p>"
+        ):
             import_message_into_campaign(campaign, "msg-1")
 
         campaign.refresh_from_db()
@@ -76,7 +78,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
         )
 
         with patch(
-            "apps.mail.services.gmail_import.fetch_message_html_fragment",
+            "apps.mail.services.campaign.gmail_import.fetch_message_html_fragment",
             return_value='<a href="/magic-login?token=victim-token">Log in</a>',
         ):
             import_message_into_campaign(campaign, "msg-1")
@@ -87,7 +89,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
 
     def test_open_mailbox_raises_when_gmail_import_config_missing(self):
         with patch(
-            "apps.mail.services.gmail_import.GmailAccessAccount.load",
+            "apps.mail.services.campaign.gmail_import.GmailAccessAccount.load",
             return_value=SimpleNamespace(is_configured=False, mailbox="", imap_host="", gmail_username=""),
         ):
             with self.assertRaises(GmailImportError):
@@ -95,7 +97,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
 
     def test_resolve_gmail_mailbox_raises_friendly_error_when_migration_missing(self):
         with patch(
-            "apps.mail.services.gmail_import.GmailAccessAccount.load",
+            "apps.mail.services.campaign.gmail_import.GmailAccessAccount.load",
             side_effect=OperationalError("no such table: core_gmailaccessaccount"),
         ):
             with self.assertRaisesMessage(
@@ -117,14 +119,14 @@ class GmailImportServiceTest(_GmailImportServiceCase):
             ]
         )
 
-        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+        with patch("apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
             with self.assertRaises(GmailImportError):
                 fetch_message_html_fragment("1001")
 
     def test_fetch_message_html_fragment_raises_when_message_missing(self):
         mailbox = _FakeMailbox([])
 
-        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+        with patch("apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
             with self.assertRaises(GmailImportError):
                 fetch_message_html_fragment("9999")
 
@@ -133,7 +135,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
 
     def test_resolve_gmail_mailbox_falls_back_to_default_when_unconfigured(self):
         with patch(
-            "apps.mail.services.gmail_import.GmailAccessAccount.load",
+            "apps.mail.services.campaign.gmail_import.GmailAccessAccount.load",
             return_value=SimpleNamespace(mailbox=""),
         ):
             mailbox = resolve_gmail_mailbox()
@@ -150,10 +152,10 @@ class GmailImportServiceTest(_GmailImportServiceCase):
         self.assertNotIn("&lt;strong&gt;Imported", preview["html"])
 
     def test_get_gmail_config_raises_on_db_error(self):
-        from apps.mail.services.gmail_import.connection import get_gmail_config
+        from apps.mail.services.campaign.gmail_import.connection import get_gmail_config
 
         with patch(
-            "apps.mail.services.gmail_import.GmailAccessAccount.load",
+            "apps.mail.services.campaign.gmail_import.GmailAccessAccount.load",
             side_effect=OperationalError("no such table"),
         ):
             with self.assertRaisesMessage(GmailImportError, "Gmail import configuration is unavailable"):

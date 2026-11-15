@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.db.utils import OperationalError, ProgrammingError
 from imap_tools import AND
 
-from apps.mail.services.gmail_import.credential_mail import WITHOUT_CREDENTIAL_MAIL, without_credential_mail
+from apps.mail.services.campaign.gmail_import.credential_mail import WITHOUT_CREDENTIAL_MAIL, without_credential_mail
 
 from . import graph_backend
 from .connection import (

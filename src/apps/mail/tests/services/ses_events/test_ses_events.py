@@ -11,7 +11,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.ses_events import SesEventError, process_sns_envelope
+from apps.mail.services.email_monitoring.ses_events import SesEventError, process_sns_envelope
 from apps.mail.tests.services.ses_events.envelopes import SES_MSG_ID, _envelope
 
 

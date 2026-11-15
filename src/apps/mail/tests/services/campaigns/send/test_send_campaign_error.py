@@ -5,8 +5,8 @@ from django.test import TestCase
 from apps.core.models import EmailServiceConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.send_campaign.runner import send_campaign
-from apps.mail.services.send_campaign.transport import SesSendResult
+from apps.mail.services.campaign.send.runner import send_campaign
+from apps.mail.services.campaign.send.transport import SesSendResult
 from apps.mail.tests.services.campaigns.send.test_send_campaign_runner import _make_active_aws
 
 
@@ -22,9 +22,9 @@ class SendCampaignErrorTests(TestCase):
             status="draft",
         )
 
-    @patch("apps.mail.services.send_campaign.runner.get_recipients", return_value=[])
-    @patch("apps.mail.services.send_campaign.runner.EmailServiceConfig.load")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner.get_recipients", return_value=[])
+    @patch("apps.mail.services.campaign.send.runner.EmailServiceConfig.load")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_fallback_campaign_with_no_recipients_is_sent(self, get_ses_client, load_config, _recipients):
         result = send_campaign(self.campaign, self.sender)
 
@@ -46,8 +46,8 @@ class SendCampaignErrorTests(TestCase):
         self.assertEqual(logs.exclude(status="failed").count(), 0)
         self.assertEqual(logs.exclude(provider="").count(), 0)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_null_ses_client_fails_campaign(self, mock_client, mock_send):
         _make_active_aws()
         EmailServiceConfig.objects.create(
@@ -77,8 +77,8 @@ class SendCampaignErrorTests(TestCase):
         self.assertEqual(logs.exclude(provider="").count(), 0)
         self.assertEqual(logs.exclude(status="failed").count(), 0)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_ses_failure_records_failed_recipients_without_fallback(self, mock_client, mock_send_ses):
         _make_active_aws()
         EmailServiceConfig.objects.create(
@@ -100,8 +100,8 @@ class SendCampaignErrorTests(TestCase):
         self.assertEqual(logs.exclude(status="failed").count(), 0)
         self.assertEqual(logs.exclude(provider_message_id="").count(), 0)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_all_failures_increments_failed_count(self, mock_client, mock_send):
         _make_active_aws()
         EmailServiceConfig.objects.create(
@@ -115,8 +115,8 @@ class SendCampaignErrorTests(TestCase):
         self.assertEqual(self.campaign.failed_count, self.campaign.total_recipients)
         self.assertEqual(self.campaign.status, "failed")
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_all_succeed_status_is_sent(self, mock_client, mock_send):
         _make_active_aws()
         EmailServiceConfig.objects.create(

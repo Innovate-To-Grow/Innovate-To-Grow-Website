@@ -12,13 +12,13 @@ from apps.core.utils.access import user_can_access_app
 from apps.event.models import EventRegistration
 from apps.mail.admin.email_monitoring.addresses import REPORTS_SHOWN, _member_link
 from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
+from apps.mail.services.audience.suppression import normalize_address
 from apps.mail.services.email_monitoring.addresses.actions.guards import availability
 from apps.mail.services.email_monitoring.addresses.actions.specs import SPECS
 from apps.mail.services.email_monitoring.addresses.actions.targets import load_target
 from apps.mail.services.email_monitoring.addresses.listing.matching import (
     refresh_cached_links,
 )
-from apps.mail.services.suppression import normalize_address
 
 from .views import TEMPLATES, _context, require_mail_access
 

@@ -9,7 +9,7 @@ from apps.core.models import (
 from apps.core.services.email.bounces.scanning import state
 from apps.core.services.email.inbound import InboxReader
 from apps.core.tests.services.email_monitoring.helpers import SENDER, monitoring_settings
-from apps.mail.services.email_monitoring import health
+from apps.mail.services.email_monitoring.dashboard import health
 from apps.mail.tests.admin.email_monitoring.bounces.test_bounce_backfill_admin import (
     DISABLED_RESCAN,
     INTAKE_URL,

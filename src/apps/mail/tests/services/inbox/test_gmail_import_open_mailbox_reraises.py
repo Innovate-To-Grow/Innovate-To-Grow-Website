@@ -1,16 +1,13 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
-from apps.mail.services.gmail_import import (
-    DEFAULT_GMAIL_FOLDER,
-    GmailImportError,
-)
+from apps.mail.services.campaign.gmail_import import DEFAULT_GMAIL_FOLDER, GmailImportError
 from apps.mail.tests.services.inbox.test_gmail_import import _GmailImportServiceCase
 
 
 class GmailImportServiceTest(_GmailImportServiceCase):
     def test_open_mailbox_reraises_gmail_import_error(self):
-        from apps.mail.services.gmail_import.connection import _open_mailbox
+        from apps.mail.services.campaign.gmail_import.connection import _open_mailbox
 
         config = SimpleNamespace(
             is_configured=True,
@@ -26,10 +23,10 @@ class GmailImportServiceTest(_GmailImportServiceCase):
         mailbox_client.login.return_value = login_context
 
         with (
-            patch("apps.mail.services.gmail_import.GmailAccessAccount.load", return_value=config),
-            patch("apps.mail.services.gmail_import.MailBox", return_value=mailbox_client),
+            patch("apps.mail.services.campaign.gmail_import.GmailAccessAccount.load", return_value=config),
+            patch("apps.mail.services.campaign.gmail_import.MailBox", return_value=mailbox_client),
             patch(
-                "apps.mail.services.gmail_import.connection.select_sent_folder",
+                "apps.mail.services.campaign.gmail_import.connection.select_sent_folder",
                 side_effect=GmailImportError("no sent folder"),
             ),
         ):
@@ -38,7 +35,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
                     pass
 
     def test_iter_sent_folder_candidates_includes_sent_flagged_folders(self):
-        from apps.mail.services.gmail_import.connection import iter_sent_folder_candidates
+        from apps.mail.services.campaign.gmail_import.connection import iter_sent_folder_candidates
 
         client = Mock()
         client.folder.list.return_value = [
@@ -52,7 +49,10 @@ class GmailImportServiceTest(_GmailImportServiceCase):
         self.assertNotIn("Inbox", candidates)
 
     def test_iter_sent_folder_candidates_handles_listing_failure(self):
-        from apps.mail.services.gmail_import.connection import SENT_FOLDER_CANDIDATES, iter_sent_folder_candidates
+        from apps.mail.services.campaign.gmail_import.connection import (
+            SENT_FOLDER_CANDIDATES,
+            iter_sent_folder_candidates,
+        )
 
         client = Mock()
         client.folder.list.side_effect = RuntimeError("imap error")
@@ -63,7 +63,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
         self.assertEqual(candidates, SENT_FOLDER_CANDIDATES)
 
     def test_select_sent_folder_raises_when_no_candidate_opens(self):
-        from apps.mail.services.gmail_import.connection import select_sent_folder
+        from apps.mail.services.campaign.gmail_import.connection import select_sent_folder
 
         client = Mock()
         client.folder.list.return_value = []
@@ -75,10 +75,12 @@ class GmailImportServiceTest(_GmailImportServiceCase):
     def test_list_recent_sent_messages_returns_cached(self):
         from django.core.cache import cache as dj_cache
 
-        from apps.mail.services.gmail_import.messages import list_recent_sent_messages
+        from apps.mail.services.campaign.gmail_import.messages import list_recent_sent_messages
 
         cached = [{"message_id": "1", "subject": "cached"}]
-        with patch("apps.mail.services.gmail_import.messages.resolve_gmail_mailbox", return_value="m@example.com"):
+        with patch(
+            "apps.mail.services.campaign.gmail_import.messages.resolve_gmail_mailbox", return_value="m@example.com"
+        ):
             dj_cache.set("gmail_import:list:m@example.com:5", cached, 300)
             result = list_recent_sent_messages(limit=5)
 
@@ -87,22 +89,24 @@ class GmailImportServiceTest(_GmailImportServiceCase):
     def test_fetch_message_html_fragment_returns_cached(self):
         from django.core.cache import cache as dj_cache
 
-        from apps.mail.services.gmail_import.messages import fetch_message_html_fragment
+        from apps.mail.services.campaign.gmail_import.messages import fetch_message_html_fragment
 
-        with patch("apps.mail.services.gmail_import.messages.resolve_gmail_mailbox", return_value="m@example.com"):
+        with patch(
+            "apps.mail.services.campaign.gmail_import.messages.resolve_gmail_mailbox", return_value="m@example.com"
+        ):
             dj_cache.set("gmail_import:msg:m@example.com:msg-1", "<p>cached</p>", 1800)
             result = fetch_message_html_fragment("msg-1")
 
         self.assertEqual(result, "<p>cached</p>")
 
     def test_format_sent_at_with_string_and_empty(self):
-        from apps.mail.services.gmail_import.messages import format_sent_at
+        from apps.mail.services.campaign.gmail_import.messages import format_sent_at
 
         self.assertEqual(format_sent_at("Mon 1 Jan"), "Mon 1 Jan")
         self.assertEqual(format_sent_at(None), "")
 
     def test_build_snippet_returns_empty_when_no_body(self):
-        from apps.mail.services.gmail_import.messages import build_snippet
+        from apps.mail.services.campaign.gmail_import.messages import build_snippet
 
         self.assertEqual(build_snippet(SimpleNamespace(html="", text="")), "")
 
@@ -124,10 +128,10 @@ class GmailImportServiceTest(_GmailImportServiceCase):
         mailbox_client.login.return_value = login_context
 
         with (
-            patch("apps.mail.services.gmail_import.GmailAccessAccount.load", return_value=config),
-            patch("apps.mail.services.gmail_import.MailBox", return_value=mailbox_client) as mock_mailbox,
+            patch("apps.mail.services.campaign.gmail_import.GmailAccessAccount.load", return_value=config),
+            patch("apps.mail.services.campaign.gmail_import.MailBox", return_value=mailbox_client) as mock_mailbox,
         ):
-            from apps.mail.services.gmail_import import _open_mailbox
+            from apps.mail.services.campaign.gmail_import import _open_mailbox
 
             with _open_mailbox(mailbox="shared@ucmerced.edu") as client:
                 self.assertIs(client, login_client)

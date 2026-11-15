@@ -15,7 +15,7 @@ from rest_framework.views import APIView
 
 from apps.core.services.request_limits.view_limits import PolicyRateThrottle
 from apps.core.utils.throttle_cache import throttle_cache
-from apps.mail.services.ses_events import SesEventError, process_sns_envelope
+from apps.mail.services.email_monitoring.ses_events import SesEventError, process_sns_envelope
 from apps.mail.services.sns.signature import SnsVerificationError, verify_sns_message
 
 logger = logging.getLogger(__name__)

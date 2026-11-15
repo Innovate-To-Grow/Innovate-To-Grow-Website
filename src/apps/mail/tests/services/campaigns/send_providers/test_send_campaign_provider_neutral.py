@@ -25,7 +25,7 @@ from apps.core.services.email import (
 )
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import create_graph_config, private_key_lines
-from apps.mail.services.send_campaign.transport import (
+from apps.mail.services.campaign.send.transport import (
     SES_OUTCOME_PERMANENT,
     SES_OUTCOME_SUCCESS,
     SES_OUTCOME_TRANSIENT,
@@ -37,7 +37,7 @@ from apps.mail.services.send_campaign.transport import (
 GRAPH_TEST_SCOPE = ("mailer@example.com", "from@example.com", "admin@example.com")
 
 POST = "apps.core.services.email.graph.transport.post"
-RUNNER_LOGGER = "apps.mail.services.send_campaign.runner"
+RUNNER_LOGGER = "apps.mail.services.campaign.send.runner"
 GRAPH_LOGGER = "apps.core.services.email.graph.provider"
 TENANT_ID = "11111111-2222-3333-4444-555555555555"
 CLIENT_ID = "66666666-7777-8888-9999-000000000000"
@@ -113,7 +113,7 @@ class SendViaGraphConfigTests(SimpleTestCase):
 
     def send(self, *, result=None, side_effect=None, **overrides):
         config = MagicMock(provider="graph")
-        with patch("apps.mail.services.send_campaign.transport.deliver_email") as deliver:
+        with patch("apps.mail.services.campaign.send.transport.deliver_email") as deliver:
             deliver.side_effect = side_effect
             deliver.return_value = result or DeliveryResult(provider="graph", message_id="<id@mailer.example.com>")
             send_result = _send_via_ses(

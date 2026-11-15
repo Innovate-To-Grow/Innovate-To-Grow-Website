@@ -10,8 +10,8 @@ from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.delivery_rates.helpers import rates_with
 from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign import pacing
-from apps.mail.services.campaign.pacing import delivery_pacing_notice, format_duration
+from apps.mail.services.campaign.delivery import pacing
+from apps.mail.services.campaign.delivery.pacing import delivery_pacing_notice, format_duration
 
 # Graph senders used in this module; the mailbox scope rules have their own tests.
 GRAPH_TEST_SCOPE = ("sender@example.com", "admin@example.com")

@@ -44,7 +44,7 @@ class InboxConnectionTests(TestCase):
 
     def test_resolve_mailbox_delegates_to_gmail_resolver(self):
         with patch(
-            "apps.mail.services.gmail_import.resolve_gmail_mailbox", return_value="resolved@example.com"
+            "apps.mail.services.campaign.gmail_import.resolve_gmail_mailbox", return_value="resolved@example.com"
         ) as mock_resolve:
             self.assertEqual(resolve_mailbox("requested@example.com"), "resolved@example.com")
         mock_resolve.assert_called_once_with("requested@example.com")
@@ -79,7 +79,7 @@ class InboxConnectionTests(TestCase):
         with (
             patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
             patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client),
-            patch("apps.mail.services.gmail_import.connection.select_sent_folder") as mock_select,
+            patch("apps.mail.services.campaign.gmail_import.connection.select_sent_folder") as mock_select,
         ):
             with _open_inbox(folder="SENT") as client:
                 self.assertIs(client, login_client)
@@ -89,7 +89,7 @@ class InboxConnectionTests(TestCase):
         mock_select.assert_called_once_with(login_client)
 
     def test_open_inbox_sent_missing_folder_raises_inbox_error(self):
-        from apps.mail.services.gmail_import.connection import GmailImportError
+        from apps.mail.services.campaign.gmail_import.connection import GmailImportError
 
         login_context = Mock()
         login_client = Mock()
@@ -102,7 +102,7 @@ class InboxConnectionTests(TestCase):
             patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
             patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client),
             patch(
-                "apps.mail.services.gmail_import.connection.select_sent_folder",
+                "apps.mail.services.campaign.gmail_import.connection.select_sent_folder",
                 side_effect=GmailImportError("no sent folder"),
             ),
         ):

@@ -7,7 +7,7 @@ from apps.core.models import AWSCredentialConfig
 from apps.core.services.delivery_rates import Lane
 from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsCampaign, SmsRecipientLog
-from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
+from apps.mail.services.campaign.delivery.errors import UNEXPECTED_DELIVERY_ERROR
 from apps.mail.services.sms.delivery.sender import send_sms_campaign
 
 

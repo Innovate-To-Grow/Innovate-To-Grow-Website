@@ -24,8 +24,8 @@ from apps.core.tests.services.delivery_rates.helpers import FakeClock
 from apps.event.services.ticket.mail import send_ticket_email
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 from apps.mail.models import EmailCampaign, RecipientLog
+from apps.mail.services.campaign.send.runner import send_campaign
 from apps.mail.services.inbox.reply import send_reply
-from apps.mail.services.send_campaign.runner import send_campaign
 from apps.mail.tests.services.campaigns.send_providers.test_send_campaign_provider_neutral import (
     FakeGraphTransport,
     posted_mime,

@@ -12,12 +12,12 @@ from apps.core.models import EmailServiceConfig
 from apps.core.services.delivery_rates import WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
 from apps.mail.models import RecipientLog
-from apps.mail.services.suppression import is_suppressed
+from apps.mail.services.audience.suppression import is_suppressed
 
-from ..audience import get_recipients
-from ..campaign.errors import unexpected_delivery_error_message
-from ..campaign.personalize import personalize
-from ..campaign.preview import render_email_html
+from ...audience import get_recipients
+from ..content.personalize import personalize
+from ..content.preview import render_email_html
+from ..delivery.errors import unexpected_delivery_error_message
 from .progress import (
     _fail_campaign_for_missing_delivery_config,
     _finalize_campaign,

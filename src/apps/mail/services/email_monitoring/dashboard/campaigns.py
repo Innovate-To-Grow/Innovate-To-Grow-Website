@@ -15,7 +15,7 @@ from apps.core.models import EmailBounce, OutboundEmail, OutboundEmailAttempt
 from apps.core.services.email.telemetry import kind_label
 from apps.mail.models import EmailCampaign, RecipientLog
 
-from .charts import buckets, series, trunc
+from ..charts import buckets, series, trunc
 from .overview import FAILED_OUTCOMES, attempt_figures, message_figures, rate
 from .scope import HOURLY_MAX_SPAN, Scope, monitoring_began
 

@@ -17,7 +17,7 @@ from apps.core.services.background_jobs.delivery import deferral_of
 from apps.core.services.delivery_rates import Lane, WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
 from apps.mail.models import SmsConfig, SmsRecipientLog
-from apps.mail.services.campaign.errors import unexpected_delivery_error_message
+from apps.mail.services.campaign.delivery.errors import unexpected_delivery_error_message
 from apps.mail.services.sms.audience import get_sms_recipients
 
 from ..content.compose import CampaignLinks, render_campaign_text

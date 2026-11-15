@@ -3,7 +3,7 @@
 from django.utils import timezone
 
 from apps.mail.models import RecipientLog
-from apps.mail.services.suppression import SKIPPED_MESSAGE
+from apps.mail.services.audience.suppression import SKIPPED_MESSAGE
 
 PAUSED_LOG_MESSAGE = "Paused by delivery limits; send it with “Resume paused recipients”."
 

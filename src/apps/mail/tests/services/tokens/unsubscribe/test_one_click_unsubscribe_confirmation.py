@@ -108,7 +108,7 @@ class OneClickUnsubscribeConfirmationTests(_UnsubscribeTestBase):
     def test_toggle_loop_queues_one_confirmation_per_action(self):
         """A forwarded link cannot flood the member: the outbox key collapses the loop within the hour."""
         middle_of_an_hour = timezone.now().replace(minute=30, second=0, microsecond=0)
-        with patch("apps.mail.services.subscriptions.timezone.now", return_value=middle_of_an_hour):
+        with patch("apps.mail.services.audience.subscriptions.timezone.now", return_value=middle_of_an_hour):
             self._toggle_loop(rounds=10)
 
         subjects = self._queued_subjects()
@@ -128,7 +128,9 @@ class OneClickUnsubscribeConfirmationTests(_UnsubscribeTestBase):
         first = self.client.post(self.url)
         resubscribe_token = _RESUBSCRIBE_FORM.search(first.content.decode()).group(1)
         self.client.post(f"/mail/resubscribe/{resubscribe_token}/")
-        with patch("apps.mail.services.subscriptions.timezone.now", return_value=timezone.now() + timedelta(hours=2)):
+        with patch(
+            "apps.mail.services.audience.subscriptions.timezone.now", return_value=timezone.now() + timedelta(hours=2)
+        ):
             self.client.post(self.url)
 
         subjects = self._queued_subjects()

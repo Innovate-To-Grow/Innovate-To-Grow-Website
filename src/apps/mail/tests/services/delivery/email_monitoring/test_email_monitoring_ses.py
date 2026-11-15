@@ -2,7 +2,7 @@
 
 from django.test import SimpleTestCase
 
-from apps.mail.services.email_monitoring import ses
+from apps.mail.services.email_monitoring.dashboard import ses
 
 
 def _row(email, reason="BOUNCE"):

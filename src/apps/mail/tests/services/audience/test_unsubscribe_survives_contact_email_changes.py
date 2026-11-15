@@ -12,7 +12,7 @@ from apps.event.services.registration.sync_email import sync_secondary_email_to_
 from apps.event.tests.helpers import make_member
 from apps.mail.admin.campaign.forms import EmailCampaignForm
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign.preview import render_email_html
+from apps.mail.services.campaign.content.preview import render_email_html
 from apps.mail.services.tokens.unsubscribe import build_oneclick_unsubscribe_token
 from apps.mail.tests.services.audience.test_subscribers_audience import (
     _add_email,

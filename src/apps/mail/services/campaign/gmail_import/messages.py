@@ -36,7 +36,7 @@ def list_recent_sent_messages(
             return cached
 
     try:
-        import apps.mail.services.gmail_import as gmail_api
+        import apps.mail.services.campaign.gmail_import as gmail_api
 
         with gmail_api._open_mailbox(mailbox=resolved_mailbox) as client:
             # Credential mail (sign-in codes, login links, invitations, tickets) is never listed, shown or cached.
@@ -67,7 +67,7 @@ def fetch_message_html_fragment(
             return redact_login_link_urls(cached)
 
     try:
-        import apps.mail.services.gmail_import as gmail_api
+        import apps.mail.services.campaign.gmail_import as gmail_api
 
         with gmail_api._open_mailbox(mailbox=resolved_mailbox) as client:
             message = find_message_by_uid(client, message_id)

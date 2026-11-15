@@ -14,7 +14,7 @@ from apps.mail.models import SmsCampaign, SmsConfig
 from apps.mail.models.sms.campaign_options import SMS_LINK_PLACEHOLDERS
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_link_redirect_path
 
-from ...campaign.personalize import personalize, uses_placeholder
+from ...campaign.content.personalize import personalize, uses_placeholder
 from ..links import Purpose, event_page_path, issue_personal_link, may_text_personal_link, shared_link, sign_in_path
 from ..policy.errors import LinksDisabled, SmsSendRefused
 

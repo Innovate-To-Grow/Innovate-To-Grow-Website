@@ -9,7 +9,7 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
-from apps.mail.services.send_campaign.transport import (
+from apps.mail.services.campaign.send.transport import (
     SES_OUTCOME_PERMANENT,
     SES_OUTCOME_TRANSIENT,
     SES_OUTCOME_UNCERTAIN,
@@ -21,7 +21,7 @@ from apps.mail.services.send_campaign.transport import (
 class SendViaSesTests(TestCase):
     def _send(self, side_effect=None, result=None, **overrides):
         config = MagicMock(provider="ses")
-        with patch("apps.mail.services.send_campaign.transport.deliver_email") as deliver:
+        with patch("apps.mail.services.campaign.send.transport.deliver_email") as deliver:
             deliver.side_effect = side_effect
             deliver.return_value = result or DeliveryResult(provider="ses", message_id="SES-1")
             send_result = _send_via_ses(
@@ -91,7 +91,7 @@ class SendViaSesTests(TestCase):
         )
 
     def test_smtp_messages_do_not_include_ses_event_tags(self):
-        with patch("apps.mail.services.send_campaign.transport.deliver_email") as deliver:
+        with patch("apps.mail.services.campaign.send.transport.deliver_email") as deliver:
             deliver.return_value = DeliveryResult(provider="smtp", message_id="smtp-1")
             _send_via_ses(
                 ses_client=MagicMock(provider="smtp"),

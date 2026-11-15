@@ -1,9 +1,9 @@
 """Services the campaign admin views use; tests patch names here."""
 
 from apps.mail.services.audience import get_recipients
-from apps.mail.services.campaign.personalize import recipients_without_login_link
-from apps.mail.services.campaign.preview import render_preview
-from apps.mail.services.gmail_import import (
+from apps.mail.services.campaign.content.personalize import recipients_without_login_link
+from apps.mail.services.campaign.content.preview import render_preview
+from apps.mail.services.campaign.gmail_import import (
     GMAIL_FOLDER_DISPLAY,
     GmailImportError,
     import_message_into_campaign,

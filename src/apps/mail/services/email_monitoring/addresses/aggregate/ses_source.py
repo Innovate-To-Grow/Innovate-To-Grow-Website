@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from apps.core.services.email.telemetry import text
 from apps.mail.models import BouncedAddress, BouncedAddressCampaign
-from apps.mail.services.suppression import normalize_address
+from apps.mail.services.audience.suppression import normalize_address
 
 from .sources import Match, Source, _reopen, locked_row
 

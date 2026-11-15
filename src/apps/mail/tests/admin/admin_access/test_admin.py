@@ -9,7 +9,7 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig, GmailAcces
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import EmailCampaign
 from apps.mail.services import GMAIL_FOLDER_DISPLAY
-from apps.mail.services.campaign.preview import HTML_MARKER
+from apps.mail.services.campaign.content.preview import HTML_MARKER
 
 
 class EmailCampaignAdminImportTest(TestCase):

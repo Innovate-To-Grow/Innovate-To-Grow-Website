@@ -21,8 +21,8 @@ from datetime import datetime, timedelta
 
 from apps.core.models import EmailServiceConfig, OutboundEmail
 from apps.core.services.email.inbound import Evidence, Verdict, auth_summary, classify
+from apps.mail.services.audience.suppression import normalize_address
 from apps.mail.services.scam_detector import analyze_email
-from apps.mail.services.suppression import normalize_address
 
 from ....models import HelpdeskSettings
 from ..reading.message import ParsedMessage

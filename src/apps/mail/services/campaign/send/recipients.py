@@ -3,7 +3,7 @@ their one-click unsubscribe URL (shared by the in-process runner and the backgro
 
 from apps.mail.services.tokens.login_links import issue_login_link, sign_in_page_url
 
-from ..tokens.unsubscribe import build_oneclick_unsubscribe_url
+from ...tokens.unsubscribe import build_oneclick_unsubscribe_url
 
 
 class RecipientContext(dict):

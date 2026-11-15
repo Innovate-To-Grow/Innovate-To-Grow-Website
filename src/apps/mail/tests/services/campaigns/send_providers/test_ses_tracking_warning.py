@@ -8,10 +8,8 @@ from apps.core.models import (
 )
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign
-from apps.mail.services.send_campaign.runner import send_campaign
-from apps.mail.services.send_campaign.transport import (
-    SesSendResult,
-)
+from apps.mail.services.campaign.send.runner import send_campaign
+from apps.mail.services.campaign.send.transport import SesSendResult
 from apps.mail.tests.services.campaigns.send_providers.test_send_campaign_provider_neutral import (
     AWS_SECRET,
     RUNNER_LOGGER,

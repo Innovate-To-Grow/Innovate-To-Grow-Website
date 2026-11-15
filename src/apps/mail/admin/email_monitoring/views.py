@@ -22,7 +22,8 @@ from apps.core.models import EmailBounce, EmailCategory, OutboundEmail
 from apps.core.services.email.telemetry import KIND_LABELS
 from apps.core.utils.access import user_can_access_app
 from apps.mail.models import EmailCampaign
-from apps.mail.services.email_monitoring import campaigns, charts, detail, health, log, overview, scope
+from apps.mail.services.email_monitoring import charts
+from apps.mail.services.email_monitoring.dashboard import campaigns, detail, health, log, overview, scope
 
 TEMPLATES = "admin/mail/email_monitoring"
 

@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign.dispatch.email_job import _render_recipient_email
-from apps.mail.services.send_campaign.recipients import RecipientContext
+from apps.mail.services.campaign.send.recipients import RecipientContext
 
 from ..durable_queue_helpers import DurableCampaignQueueTestCase
 

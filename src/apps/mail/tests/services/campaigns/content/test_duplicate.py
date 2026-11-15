@@ -6,7 +6,7 @@ from django.utils import timezone
 from apps.authn.models import Member
 from apps.event.tests.helpers import make_event, make_superuser, make_ticket
 from apps.mail.models import EmailCampaign, LoginLinkToken, RecipientLog
-from apps.mail.services.campaign.duplicate import NAME_MAX_LENGTH, base_name, copy_name, duplicate_campaign
+from apps.mail.services.campaign.content.duplicate import NAME_MAX_LENGTH, base_name, copy_name, duplicate_campaign
 
 
 def sent_campaign(**overrides):

@@ -148,5 +148,5 @@ class AccessTests(BackfillTestCase):
             self.assertIn('name="csrfmiddlewaretoken"', form)
 
 
-READERS = "apps.mail.services.email_monitoring.health.inbox_readers"
+READERS = "apps.mail.services.email_monitoring.dashboard.health.inbox_readers"
 INTAKE_URL = "/admin/helpdesk/helpdesksettings/#helpdesk-intake"

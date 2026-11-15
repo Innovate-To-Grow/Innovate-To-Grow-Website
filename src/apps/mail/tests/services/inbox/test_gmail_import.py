@@ -6,11 +6,8 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.core.models import GmailAccessAccount
-from apps.mail.services.gmail_import import (
-    fetch_message_html_fragment,
-    list_recent_sent_messages,
-)
-from apps.mail.services.gmail_import.credential_mail import WITHOUT_CREDENTIAL_MAIL
+from apps.mail.services.campaign.gmail_import import fetch_message_html_fragment, list_recent_sent_messages
+from apps.mail.services.campaign.gmail_import.credential_mail import WITHOUT_CREDENTIAL_MAIL
 
 UNTAGGED = str(WITHOUT_CREDENTIAL_MAIL)
 
@@ -61,7 +58,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
             ]
         )
 
-        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+        with patch("apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
             messages = list_recent_sent_messages(limit=5)
 
         self.assertEqual(len(messages), 1)
@@ -79,7 +76,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
         mailbox = _FakeMailbox([])
 
         with patch(
-            "apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)
+            "apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)
         ) as mock_open:
             list_recent_sent_messages(limit=5, mailbox="shared@ucmerced.edu")
 
@@ -98,7 +95,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
             ]
         )
 
-        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+        with patch("apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
             fragment = fetch_message_html_fragment("1001")
 
         self.assertEqual(fragment, "<p>Hello <strong>world</strong></p>")
@@ -121,7 +118,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
         )
 
         with patch(
-            "apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)
+            "apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)
         ) as mock_open:
             fetch_message_html_fragment("1001", mailbox="shared@ucmerced.edu")
 
@@ -143,7 +140,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
             ]
         )
 
-        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+        with patch("apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
             fragment = fetch_message_html_fragment("1001")
 
         self.assertIn("{{ login_link }}", fragment)
@@ -166,7 +163,7 @@ class GmailImportServiceTest(_GmailImportServiceCase):
             ]
         )
 
-        with patch("apps.mail.services.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
+        with patch("apps.mail.services.campaign.gmail_import._open_mailbox", return_value=_mailbox_context(mailbox)):
             fragment = fetch_message_html_fragment("1001")
 
         self.assertIn("{{ login_link }}", fragment)

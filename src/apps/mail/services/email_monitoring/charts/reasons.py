@@ -3,7 +3,7 @@ from django.db.models import Count, Max
 from apps.core.models import EmailBounce, OutboundEmail, OutboundEmailAttempt
 from apps.core.services.email.telemetry import kind_label
 
-from ..scope import Scope
+from ..dashboard.scope import Scope
 
 Status = OutboundEmail.Status
 

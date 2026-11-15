@@ -4,12 +4,12 @@ from django.test import SimpleTestCase, TestCase, override_settings
 
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipientLog
+from apps.mail.services.campaign.delivery.state import campaign_state
 from apps.mail.services.campaign.dispatch import (
     dispatch_email_campaign,
     dispatch_sms_campaign,
 )
 from apps.mail.services.campaign.dispatch.launch import _run_in_process_email_campaign, _run_in_process_sms_campaign
-from apps.mail.services.campaign.state import campaign_state
 
 
 class CampaignStateTests(SimpleTestCase):

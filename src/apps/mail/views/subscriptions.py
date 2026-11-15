@@ -14,7 +14,7 @@ from django.views.decorators.cache import never_cache
 from rest_framework.permissions import AllowAny
 from rest_framework.views import APIView
 
-from apps.mail.services.subscriptions import (
+from apps.mail.services.audience.subscriptions import (
     member_has_subscribed_email,
     resubscribe_emails,
     unsubscribe_all_emails,

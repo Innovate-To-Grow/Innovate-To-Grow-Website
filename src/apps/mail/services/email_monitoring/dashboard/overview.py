@@ -18,7 +18,7 @@ from django.db.models.functions import Coalesce
 
 from apps.core.models import EmailBounce, OutboundEmail, OutboundEmailAttempt
 from apps.core.services.email.telemetry import kind_label
-from apps.mail.services.campaign.pacing import email_send_rate_line
+from apps.mail.services.campaign.delivery.pacing import email_send_rate_line
 
 from .scope import Scope
 

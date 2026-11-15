@@ -13,11 +13,11 @@ from imap_tools.errors import MailboxLoginError
 from apps.core.models import DeliveryRateState, GmailAccessAccount
 from apps.core.services.delivery_rates.runtime import feedback
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
-from apps.mail.services.gmail_import import GmailImportBusy, GmailImportError, list_recent_sent_messages
+from apps.mail.services.campaign.gmail_import import GmailImportBusy, GmailImportError, list_recent_sent_messages
 from apps.mail.services.inbox import InboxBusy, InboxError, list_inbox_messages
 
 INBOX_MAILBOX = "apps.mail.services.inbox.connection.MailBox"
-IMPORT_MAILBOX = "apps.mail.services.gmail_import.MailBox"
+IMPORT_MAILBOX = "apps.mail.services.campaign.gmail_import.MailBox"
 IDENTITY = "imap.gmail.com:i2g@example.edu"
 
 

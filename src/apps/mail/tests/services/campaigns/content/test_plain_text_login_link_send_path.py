@@ -7,8 +7,8 @@ from rest_framework.test import APIClient
 from apps.core.models import EmailServiceConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, LoginLinkToken, RecipientLog
-from apps.mail.services.send_campaign.runner import _send_one_recipient
-from apps.mail.services.send_campaign.transport import SesSendResult
+from apps.mail.services.campaign.send.runner import _send_one_recipient
+from apps.mail.services.campaign.send.transport import SesSendResult
 from apps.mail.tests.services.campaigns.content.test_campaign_autolink import _hrefs
 
 
@@ -44,7 +44,7 @@ class PlainTextLoginLinkSendPathTests(TestCase):
             status="sending",
             include_unsubscribe_header=False,
         )
-        with patch("apps.mail.services.send_campaign.runner._send_via_ses") as mock_send:
+        with patch("apps.mail.services.campaign.send.runner._send_via_ses") as mock_send:
             mock_send.return_value = SesSendResult(message_id="SES-001")
             _send_one_recipient(campaign, self.config, MagicMock(), "", self.recipient)
         log = RecipientLog.objects.get(campaign=campaign, email_address="reader@example.com")

@@ -41,7 +41,7 @@ class QueuedSmsPolicyTests(DurableCampaignQueueTestCase):
         campaign = SmsCampaign.objects.create(
             name="Night", message="Hi", audience_type="manual", manual_phones="+12095550101"
         )
-        with at(QUIET_MOMENT), patch("apps.mail.services.campaign.dispatch.launch.timezone", clock(QUIET_MOMENT)):
+        with at(QUIET_MOMENT), patch("apps.mail.services.campaign.dispatch.queueing.timezone", clock(QUIET_MOMENT)):
             queue_sms_campaign(campaign, sent_by=self.sender)
 
         log = SmsRecipientLog.objects.get(campaign=campaign)

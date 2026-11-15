@@ -50,13 +50,13 @@ def get_gmail_config() -> GmailAccessAccount:
 
 
 def resolve_mailbox(mailbox: str | None = None) -> str:
-    from apps.mail.services.gmail_import import resolve_gmail_mailbox
+    from apps.mail.services.campaign.gmail_import import resolve_gmail_mailbox
 
     return resolve_gmail_mailbox(mailbox)
 
 
 def _select_sent_folder(client) -> None:
-    from apps.mail.services.gmail_import.connection import GmailImportError, select_sent_folder
+    from apps.mail.services.campaign.gmail_import.connection import GmailImportError, select_sent_folder
 
     try:
         select_sent_folder(client)
@@ -67,7 +67,7 @@ def _select_sent_folder(client) -> None:
 @contextmanager
 def _open_inbox(mailbox: str | None = None, folder: str = INBOX_FOLDER):
     # gmail_import is imported lazily (like resolve_mailbox) to avoid an inbox -> gmail_import cycle.
-    from apps.mail.services.gmail_import.session import busy_text, gmail_imap_session
+    from apps.mail.services.campaign.gmail_import.session import busy_text, gmail_imap_session
 
     config = get_gmail_config()
     resolved_mailbox = resolve_mailbox(mailbox or config.mailbox)

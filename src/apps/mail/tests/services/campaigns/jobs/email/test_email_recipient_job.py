@@ -17,7 +17,7 @@ from apps.core.services.email import DeliveryResult
 from apps.core.services.email.sending.exceptions import EmailRateDeferred
 from apps.mail.models import RecipientLog
 from apps.mail.services.campaign.dispatch.failures import DEFERRED_LOG_MESSAGE
-from apps.mail.services.send_campaign import SesSendResult
+from apps.mail.services.campaign.send import SesSendResult
 
 from ..durable_queue_helpers import DurableCampaignQueueTestCase
 
@@ -99,7 +99,7 @@ class EmailRecipientJobTests(DurableCampaignQueueTestCase):
     @patch("apps.mail.services.campaign.dispatch.email_job._unsubscribe_url_for", return_value="")
     @patch("apps.mail.services.campaign.dispatch.email_job._recipient_context", return_value={})
     @patch(
-        "apps.mail.services.send_campaign.transport.deliver_email",
+        "apps.mail.services.campaign.send.transport.deliver_email",
         return_value=DeliveryResult(provider="ses", message_id="ses-rate"),
     )
     @patch("apps.mail.services.campaign.dispatch.email_job._get_ses_client")
@@ -115,7 +115,7 @@ class EmailRecipientJobTests(DurableCampaignQueueTestCase):
 
     @patch("apps.mail.services.campaign.dispatch.email_job._unsubscribe_url_for", return_value="")
     @patch("apps.mail.services.campaign.dispatch.email_job._recipient_context", return_value={})
-    @patch("apps.mail.services.send_campaign.transport.deliver_email")
+    @patch("apps.mail.services.campaign.send.transport.deliver_email")
     @patch("apps.mail.services.campaign.dispatch.email_job._get_ses_client")
     @patch("apps.mail.services.campaign.dispatch.email_job.EmailServiceConfig.load")
     def test_a_recipient_held_back_by_the_delivery_rate_waits_without_using_an_attempt(

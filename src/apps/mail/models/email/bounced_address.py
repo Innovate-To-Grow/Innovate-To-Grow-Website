@@ -12,7 +12,7 @@ member, a contact email or a subscription: every change is an explicit staff act
 ``BouncedAddressAction``.
 
 ``suppressed_at`` is the site's one bulk-mail suppression list: every campaign audience skips a suppressed address
-(``apps.mail.services.suppression``). Transactional mail (sign-in codes, tickets, notifications) is never suppressed.
+(``apps.mail.services.audience.suppression``). Transactional mail (sign-in codes, tickets, notifications) is never suppressed.
 """
 
 from django.conf import settings

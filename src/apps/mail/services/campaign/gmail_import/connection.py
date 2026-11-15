@@ -45,7 +45,7 @@ def normalize_mailbox(value: str) -> str:
 
 
 def get_gmail_config():
-    import apps.mail.services.gmail_import as gmail_api
+    import apps.mail.services.campaign.gmail_import as gmail_api
 
     try:
         config = gmail_api.GmailAccessAccount.load()
@@ -61,7 +61,7 @@ def resolve_gmail_mailbox(mailbox: str | None = None) -> str:
     if explicit_mailbox:
         return explicit_mailbox
 
-    import apps.mail.services.gmail_import as gmail_api
+    import apps.mail.services.campaign.gmail_import as gmail_api
 
     try:
         config = gmail_api.GmailAccessAccount.load()
@@ -75,7 +75,7 @@ def _open_mailbox(mailbox: str | None = None):
     config = get_gmail_config()
     resolved_mailbox = resolve_gmail_mailbox(mailbox or config.mailbox)
     try:
-        import apps.mail.services.gmail_import as gmail_api
+        import apps.mail.services.campaign.gmail_import as gmail_api
 
         with gmail_imap_session(gmail_api.MailBox, config, resolved_mailbox, initial_folder=None) as client:
             select_sent_folder(client)
