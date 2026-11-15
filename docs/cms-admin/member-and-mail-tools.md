@@ -222,7 +222,7 @@ campaigns, inbox replies, and the **Send Test Email** action (which tests the me
 
 ### Campaign model
 
-`EmailCampaign` (`src/apps/mail/models/campaign.py`):
+`EmailCampaign` (`src/apps/mail/models/email/campaign.py`):
 
 | Field | Purpose |
 |-------|---------|
@@ -428,7 +428,7 @@ provider stops sending: [Delivery rates](../integrations/delivery-rates.md).
 
 ### Login link tokens
 
-`LoginLinkToken` (`src/apps/mail/models/login_link.py`) is the single mechanism behind emailed one-click login links — both campaign `{{login_link}}` links and the login button in event ticket confirmation emails. Clicking a link authenticates the user via `POST /mail/login-link/` (legacy alias: `/mail/magic-login/`) and redirects to the configured destination (campaign `login_redirect_path`, or the per-token path — `/event-registration?event=<event-slug>` for ticket links).
+`LoginLinkToken` (`src/apps/mail/models/email/login_link.py`) is the single mechanism behind emailed one-click login links — both campaign `{{login_link}}` links and the login button in event ticket confirmation emails. Clicking a link authenticates the user via `POST /mail/login-link/` (legacy alias: `/mail/magic-login/`) and redirects to the configured destination (campaign `login_redirect_path`, or the per-token path — `/event-registration?event=<event-slug>` for ticket links).
 
 Policy is configured at the issuing source and enforced per token:
 
@@ -444,7 +444,7 @@ The campaign admin includes a Gmail import feature (`src/apps/mail/services/gmai
 
 ### Recipient logs
 
-`RecipientLog` (`src/apps/mail/models/recipient_log.py`) tracks per-recipient delivery:
+`RecipientLog` (`src/apps/mail/models/email/recipient_log.py`) tracks per-recipient delivery:
 
 | Field | Purpose |
 |-------|---------|

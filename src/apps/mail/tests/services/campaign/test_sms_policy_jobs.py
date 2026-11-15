@@ -12,7 +12,7 @@ from apps.core.services.aws.sms_errors import SmsOptedOut
 from apps.core.services.background_jobs import claim_jobs, process_claimed_job
 from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsCampaign, SmsLinkToken, SmsRecipientLog
-from apps.mail.models.sms_campaign import LINKS_OFF_MESSAGE
+from apps.mail.models.sms.campaign_options import LINKS_OFF_MESSAGE
 from apps.mail.services.campaign.dispatch import (
     queue_sms_campaign,
     resolve_stale_delivery_job,

@@ -11,7 +11,7 @@ campaign's shared link to its event's registration page.
 import re
 
 from apps.mail.models import SmsCampaign, SmsConfig
-from apps.mail.models.sms_campaign import SMS_LINK_PLACEHOLDERS
+from apps.mail.models.sms.campaign_options import SMS_LINK_PLACEHOLDERS
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_link_redirect_path
 
 from ..campaign.personalize import personalize, uses_placeholder

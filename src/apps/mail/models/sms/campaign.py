@@ -1,62 +1,18 @@
-import re
-
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 
 from apps.core.models import ProjectControlModel
-from apps.mail.models.campaign import STATUS_CHOICES
+from apps.mail.models.email.campaign_options import STATUS_CHOICES
 
-SMS_AUDIENCE_CHOICES = [
-    ("subscribers", "SMS Subscribers"),
-    ("event_registrants", "Event Registrants"),
-    ("ticket_type", "Event Ticket Type"),
-    ("checked_in", "Checked-In Attendees"),
-    ("not_checked_in", "No-Shows (Not Checked In)"),
-    ("all_members", "All Active Members"),
-    ("staff", "Staff Members"),
-    ("selected_members", "Selected Members"),
-    ("manual", "Manual Phones"),
-]
-
-SMS_EXCLUDE_AUDIENCE_CHOICES = [
-    ("", "No exclusion"),
-    ("subscribers", "SMS Subscribers"),
-    ("event_registrants", "Event Registrants"),
-    ("ticket_type", "Event Ticket Type"),
-    ("checked_in", "Checked-In Attendees"),
-    ("not_checked_in", "No-Shows (Not Checked In)"),
-    ("all_members", "All Active Members"),
-    ("staff", "Staff Members"),
-    ("selected_members", "Selected Members"),
-]
-
-SMS_PHONE_POLICY_CHOICES = [
-    ("verified_opt_in", "Verified opt-ins"),
-    ("any_verified", "Any verified phone"),
-]
-
-SMS_LOG_STATUS_CHOICES = [
-    ("pending", "Pending"),
-    ("processing", "Processing"),
-    ("retry", "Retry scheduled"),
-    # Held back by a delivery limit (a provider pause or a daily budget); "Resume paused recipients" sends them.
-    ("paused", "Paused by delivery limits"),
-    ("sent", "Sent"),
-    ("failed", "Failed"),
-    ("uncertain", "Uncertain delivery"),
-    # Not sent: the number is on the SMS opt-out list (it replied STOP), or AWS refused it as opted out.
-    ("opted_out", "Opted out"),
-]
-
-# The short-link placeholders (``services.sms.compose``): usable only while links in SMS are allowed.
-SMS_LINK_PLACEHOLDERS = ("login_link", "ticket_link", "event_link")
-
-E164_RE = re.compile(r"^\+[1-9]\d{6,14}$")
-
-LINKS_OFF_MESSAGE = (
-    "Links in SMS are turned off (Mail → SMS Settings). They stay off until the sending number's 10DLC or toll-free "
-    "registration is confirmed to allow embedded links."
+from .campaign_options import (
+    E164_RE,
+    LINKS_OFF_MESSAGE,
+    SMS_AUDIENCE_CHOICES,
+    SMS_EXCLUDE_AUDIENCE_CHOICES,
+    SMS_LINK_PLACEHOLDERS,
+    SMS_PHONE_POLICY_CHOICES,
+    parse_manual_sms_phones,
 )
 
 
@@ -205,7 +161,7 @@ class SmsCampaign(ProjectControlModel):
         from apps.mail.redirects import is_strict_internal_path
         from apps.mail.services.campaign.personalize import uses_placeholder
 
-        from .sms_config import SmsConfig
+        from .config import SmsConfig
 
         used = [name for name in SMS_LINK_PLACEHOLDERS if uses_placeholder(name, self.message)]
         if used and not SmsConfig.load().links_enabled:
@@ -225,53 +181,3 @@ class SmsCampaign(ProjectControlModel):
         invalid = [phone for phone in phones if not E164_RE.match(phone)]
         if invalid:
             raise ValidationError({"manual_phones": f"Invalid E.164 phone number: {invalid[0]}"})
-
-
-class SmsRecipientLog(ProjectControlModel):
-    campaign = models.ForeignKey(
-        "mail.SmsCampaign",
-        on_delete=models.CASCADE,
-        related_name="recipient_logs",
-    )
-    member = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="+",
-    )
-    phone_number = models.CharField(max_length=20)
-    recipient_name = models.CharField(max_length=300, blank=True, default="")
-    status = models.CharField(max_length=16, choices=SMS_LOG_STATUS_CHOICES, default="pending")
-    provider = models.CharField(max_length=16, blank=True, default="")
-    error_message = models.TextField(blank=True, default="")
-    sns_message_id = models.CharField(max_length=256, blank=True, default="", db_index=True)
-    sent_at = models.DateTimeField(null=True, blank=True)
-    attempts = models.PositiveSmallIntegerField(default=0, db_default=0)
-    available_at = models.DateTimeField(null=True, blank=True)
-    claim_token = models.UUIDField(null=True, blank=True, editable=False)
-    claimed_at = models.DateTimeField(null=True, blank=True, editable=False)
-    uncertain_at = models.DateTimeField(null=True, blank=True, editable=False)
-
-    class Meta:
-        ordering = ["-updated_at"]
-        verbose_name = "SMS Recipient Log"
-        verbose_name_plural = "SMS Recipient Logs"
-        constraints = [
-            models.UniqueConstraint(fields=["campaign", "phone_number"], name="unique_sms_campaign_recipient"),
-        ]
-
-    def __str__(self):
-        return f"{self.phone_number} - {self.get_status_display()}"
-
-
-def parse_manual_sms_phones(body: str) -> list[str]:
-    phones = []
-    seen = set()
-    for line in (body or "").strip().splitlines():
-        phone = line.strip()
-        if not phone or phone in seen:
-            continue
-        seen.add(phone)
-        phones.append(phone)
-    return phones

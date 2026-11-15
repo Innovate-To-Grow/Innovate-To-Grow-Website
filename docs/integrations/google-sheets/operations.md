@@ -146,7 +146,7 @@ credentials with `python manage.py verify_service_configs --strict --require-goo
 
 ## Configuring credentials
 
-Google service-account credentials are stored in the database via [`GoogleCredentialConfig`](../../../src/apps/core/models/base/service_credentials/google.py). Paste the service-account JSON into Django admin → Site Settings → Google Credential Configs and mark the config as active. No process env vars are required, and the ECS task definition no longer carries `GOOGLE_SHEETS_*` keys.
+Google service-account credentials are stored in the database via [`GoogleCredentialConfig`](../../../src/apps/core/models/base/service_credentials/shared/google.py). Paste the service-account JSON into Django admin → Site Settings → Google Credential Configs and mark the config as active. No process env vars are required, and the ECS task definition no longer carries `GOOGLE_SHEETS_*` keys.
 
 ## Troubleshooting
 

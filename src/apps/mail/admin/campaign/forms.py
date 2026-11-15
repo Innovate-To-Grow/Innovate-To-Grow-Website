@@ -9,7 +9,7 @@ from unfold.widgets import (
 
 from apps.event.models import Ticket
 from apps.mail.models import EmailCampaign
-from apps.mail.models.campaign import ALL_AUDIENCE_CHOICES, EXCLUDE_AUDIENCE_CHOICES
+from apps.mail.models.email.campaign_options import ALL_AUDIENCE_CHOICES, EXCLUDE_AUDIENCE_CHOICES
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
 from apps.mail.services.campaign.preview import HTML_MARKER, split_html_marker
 

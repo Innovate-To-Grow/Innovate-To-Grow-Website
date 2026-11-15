@@ -4,7 +4,7 @@ from django.contrib import admin
 from unfold.admin import TabularInline
 
 from apps.mail.models import RecipientLog
-from apps.mail.models.campaign import ALL_AUDIENCE_CHOICES
+from apps.mail.models.email.campaign_options import ALL_AUDIENCE_CHOICES
 
 
 class RecipientLogInline(TabularInline):

@@ -1,7 +1,6 @@
 from django.db import models, transaction
 
-from apps.core.models import ProjectControlModel
-from apps.core.models.mixins import ActiveModel
+from apps.core.models import ActiveModel, ProjectControlModel
 
 
 class PastProjectsSheetConfig(ActiveModel, ProjectControlModel):
