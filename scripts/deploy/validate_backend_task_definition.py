@@ -4,142 +4,29 @@
 from __future__ import annotations
 
 import argparse
-import ipaddress
 import json
-import re
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
 
-WEB_CONTAINER = "itg-backend"
-WORKER_CONTAINER = "itg-background-worker"
-WORKER_ENTRYPOINT = ["python"]
-WORKER_COMMAND = [
-    "manage.py",
-    "run_background_worker",
-    "--settings=config.settings.environments.production",
-]
-REQUIRED_SHARED_ENV = {
-    "DJANGO_SETTINGS_MODULE",
-    "DB_NAME",
-    "DB_USER",
-    "DB_HOST",
-    "DB_PORT",
-    "AWS_REGION",
-    "AMPLIFY_APP_ID",
-    "AMPLIFY_BACKEND_PROXY_URL",
-    "AMPLIFY_PROXY_ADMIN_PATHS",
-    "AMPLIFY_CONFIG_REVISION",
-    "BACKGROUND_JOBS_ENABLED",
-    "LEGACY_VIEW_ENABLED",
-    "LEGACY_ORIGIN_URL",
-    "LEGACY_VIEWER_URL",
-    "LEGACY_ORIGIN_HEADER_NAME",
-    "LEGACY_CONNECT_TIMEOUT_SECONDS",
-    "LEGACY_READ_TIMEOUT_SECONDS",
-    "NUM_PROXIES",
-}
-REQUIRED_SHARED_SECRETS = {"DJANGO_SECRET_KEY", "DB_PASSWORD"}
-# Secrets that authenticate inbound HTTP and must never reach the worker.
-WEB_ONLY_SECRETS = {"LEGACY_ORIGIN_HEADER_VALUE"}
-SECRET_ARN_PREFIXES = ("arn:aws:secretsmanager:", "arn:aws:ssm:")
-TRUE_VALUES = {"1", "true", "yes", "on"}
-HEADER_NAME_RE = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
-CLOUDFRONT_HOST_RE = re.compile(r"^d[a-z0-9]+\.cloudfront\.net$")
-LEGACY_TIMEOUT_LIMITS = {"LEGACY_CONNECT_TIMEOUT_SECONDS": 30.0, "LEGACY_READ_TIMEOUT_SECONDS": 120.0}
-PLACEHOLDER_RE = re.compile(r"__[A-Z0-9_]+__")
-AMPLIFY_CONFIG_REVISION_RE = re.compile(r"^[1-9][0-9]*\.[1-9][0-9]*$")
-POSITIVE_INT_RE = re.compile(r"^[1-9][0-9]*$")
-
-
-class TaskDefinitionValidationError(ValueError):
-    """The task definition cannot safely run the web/worker topology."""
-
-
-def _require(condition: bool, message: str) -> None:
-    if not condition:
-        raise TaskDefinitionValidationError(message)
-
-
-def _environment(container: dict[str, Any]) -> dict[str, str]:
-    items = container.get("environment") or []
-    names = [str(item.get("name") or "") for item in items]
-    _require(len(names) == len(set(names)), f"{container.get('name')} has duplicate environment names.")
-    return {str(item["name"]): str(item.get("value") or "") for item in items}
-
-
-def _secrets(container: dict[str, Any]) -> dict[str, str]:
-    items = container.get("secrets") or []
-    names = [str(item.get("name") or "") for item in items]
-    _require(len(names) == len(set(names)), f"{container.get('name')} has duplicate secret names.")
-    return {str(item["name"]): str(item.get("valueFrom") or "") for item in items}
-
-
-def _contains_placeholder(value: Any) -> bool:
-    if isinstance(value, str):
-        return bool(PLACEHOLDER_RE.search(value))
-    if isinstance(value, dict):
-        return any(_contains_placeholder(item) for item in value.values())
-    if isinstance(value, list):
-        return any(_contains_placeholder(item) for item in value)
-    return False
-
-
-def _validate_legacy_view(env: dict[str, str], secrets: dict[str, str]) -> None:
-    """Reject rendered Legacy viewer settings the runbook forbids."""
-
-    for name, maximum in LEGACY_TIMEOUT_LIMITS.items():
-        try:
-            timeout = float(env[name])
-        except ValueError:
-            timeout = -1.0
-        _require(0.1 <= timeout <= maximum, f"{name} must be between 0.1 and {maximum:g} seconds.")
-
-    origin_url = env["LEGACY_ORIGIN_URL"].strip()
-    if origin_url:
-        try:
-            origin = urlsplit(origin_url)
-            origin_port = origin.port
-            origin_ip = ipaddress.ip_address(origin.hostname or "")
-        except ValueError:
-            origin, origin_port, origin_ip = None, None, None
-        _require(
-            origin is not None
-            and origin.scheme == "http"
-            and origin_ip is not None
-            and origin_ip.is_private
-            and origin_port is not None
-            and not (origin.username or origin.password or origin.query or origin.fragment)
-            and origin.path in {"", "/"},
-            "LEGACY_ORIGIN_URL must be a private http://<ip>:<port> origin without a path.",
-        )
-
-    viewer_url = env["LEGACY_VIEWER_URL"].strip()
-    if viewer_url:
-        try:
-            viewer = urlsplit(viewer_url)
-            viewer_port = viewer.port
-        except ValueError:
-            viewer, viewer_port = None, None
-        _require(
-            viewer is not None
-            and viewer.scheme == "https"
-            and bool(CLOUDFRONT_HOST_RE.fullmatch((viewer.hostname or "").lower()))
-            and viewer_port in {None, 443}
-            and not (viewer.username or viewer.password or viewer.query or viewer.fragment)
-            and viewer.path in {"", "/"},
-            "LEGACY_VIEWER_URL must be an HTTPS *.cloudfront.net origin without a path.",
-        )
-
-    header_name = env["LEGACY_ORIGIN_HEADER_NAME"].strip()
-    if header_name:
-        _require(bool(HEADER_NAME_RE.fullmatch(header_name)), "LEGACY_ORIGIN_HEADER_NAME is not a valid header name.")
-
-    if env["LEGACY_VIEW_ENABLED"].strip().lower() in TRUE_VALUES:
-        _require(
-            bool(origin_url and viewer_url and header_name and "LEGACY_ORIGIN_HEADER_VALUE" in secrets),
-            "An enabled Legacy viewer requires its origin URL, CloudFront viewer URL, header name, and header secret.",
-        )
+from .task_definition_legacy_view import _validate_legacy_view
+from .task_definition_rules import (
+    AMPLIFY_CONFIG_REVISION_RE,
+    POSITIVE_INT_RE,
+    REQUIRED_SHARED_ENV,
+    REQUIRED_SHARED_SECRETS,
+    SECRET_ARN_PREFIXES,
+    WEB_CONTAINER,
+    WEB_ONLY_SECRETS,
+    WORKER_COMMAND,
+    WORKER_CONTAINER,
+    WORKER_ENTRYPOINT,
+    TaskDefinitionValidationError,
+    _contains_placeholder,
+    _environment,
+    _require,
+    _secrets,
+)
+from .task_definition_rules import PLACEHOLDER_RE as PLACEHOLDER_RE  # the ECS topology tests read it from here
 
 
 def validate_task_definition(taskdef: dict[str, Any], *, rendered: bool) -> None:

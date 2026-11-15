@@ -315,7 +315,7 @@ Local and CI validation is credential-free:
 ```sh
 cfn-lint aws/legacy/cloudformation/template.yaml aws/legacy/cloudformation/monitoring-us-east-1.yaml
 python -m scripts.ci.legacy_infrastructure
-python scripts/deploy/validate_backend_task_definition.py aws/ecs/backend-task-definition.json
+python -m scripts.deploy.validate_backend_task_definition aws/ecs/backend-task-definition.json
 ```
 
 Then ask AWS to validate the template and deploy it in `us-west-2`:

@@ -1,20 +1,23 @@
 import copy
-import importlib.util
+import importlib
 import json
 import re
+import sys
 from pathlib import Path
 
 from django.test import SimpleTestCase
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[6]
 TASK_DEFINITION_PATH = REPOSITORY_ROOT / "aws" / "ecs" / "backend-task-definition.json"
-VALIDATOR_PATH = REPOSITORY_ROOT / "scripts" / "deploy" / "validate_backend_task_definition.py"
 WORKFLOW_PATH = REPOSITORY_ROOT / ".github" / "workflows" / "deploy-backend.yml"
 
-spec = importlib.util.spec_from_file_location("validate_backend_task_definition", VALIDATOR_PATH)
-validator = importlib.util.module_from_spec(spec)
-assert spec and spec.loader
-spec.loader.exec_module(validator)
+# The validator is a module of scripts.deploy (deploy-backend.yml runs it with `python -m` from the repository
+# root, so it can import its sibling modules): import it the same way.
+sys.path.insert(0, str(REPOSITORY_ROOT))
+try:
+    validator = importlib.import_module("scripts.deploy.validate_backend_task_definition")
+finally:
+    sys.path.remove(str(REPOSITORY_ROOT))
 
 
 class ECSTaskDefinitionTopologyTests(SimpleTestCase):
@@ -132,6 +135,6 @@ class ECSTaskDefinitionTopologyTests(SimpleTestCase):
             workflow,
         )
         self.assertIn(
-            "python scripts/deploy/validate_backend_task_definition.py rendered-task-definition.json --rendered",
+            "python -m scripts.deploy.validate_backend_task_definition rendered-task-definition.json --rendered",
             workflow,
         )
