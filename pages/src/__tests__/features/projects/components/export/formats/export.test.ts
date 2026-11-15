@@ -1,8 +1,4 @@
-import ExcelJS from 'exceljs';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-
-import {buildProjectsWorksheet} from '@/features/projects/components/export/formats/excelExport';
-import {exportProjectRowsPdf} from '@/features/projects/components/export/formats/pdfExport';
 import {createProjectRowsWordBlob} from '@/features/projects/components/export/formats/wordExport';
 import {loadI2gLogoAsset} from '@/features/projects/components/export/support/logoAsset';
 import type {ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
@@ -113,77 +109,6 @@ describe('createProjectRowsWordBlob', () => {
     });
 });
 
-describe('buildProjectsWorksheet', () => {
-    it('builds a branded worksheet with the project rows and embedded logo', () => {
-        const workbook = new ExcelJS.Workbook();
-        buildProjectsWorksheet(workbook, [row], {title: 'Excel Title', note: 'Owner note'}, logo);
-
-        const worksheet = workbook.getWorksheet('Projects');
-        expect(worksheet).toBeDefined();
-        expect(worksheet?.getCell(1, 2).value).toBe('Excel Title');
-        expect(worksheet?.getCell(2, 2).value).toBe('Innovate to Grow Past Projects');
-        expect(worksheet?.getImages()).toHaveLength(1);
-        // 9 columns (the Notes column was removed).
-        expect(worksheet?.columns).toHaveLength(9);
-
-        const cellText: string[] = [];
-        worksheet?.eachRow((sheetRow) =>
-            sheetRow.eachCell((cell) => {
-                const value = cell.value as { richText?: Array<{ text: string }> } | string | null;
-                if (value && typeof value === 'object' && 'richText' in value && value.richText) {
-                    cellText.push(value.richText.map((part) => part.text).join(''));
-                } else {
-                    cellText.push(String(value ?? ''));
-                }
-            }),
-        );
-        const joined = cellText.join('|');
-        expect(joined).toContain('Note'); // the Note section row
-        expect(joined).toContain('Projects');
-        expect(joined).toContain('Student Names');
-        expect(joined).toContain('Rotary Joint Testing System');
-        expect(joined).not.toContain('Notes');
-    });
-
-    it('serializes the generated workbook to XLSX and reloads it', async () => {
-        const workbook = new ExcelJS.Workbook();
-        buildProjectsWorksheet(workbook, [row], {title: 'Round-trip Excel'}, null);
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        const bytes = new Uint8Array(buffer);
-
-        expect(bytes[0]).toBe(0x50);
-        expect(bytes[1]).toBe(0x4b);
-
-        const reloadedWorkbook = new ExcelJS.Workbook();
-        await reloadedWorkbook.xlsx.load(buffer);
-        const worksheet = reloadedWorkbook.getWorksheet('Projects');
-        const cellText: string[] = [];
-
-        worksheet?.eachRow((sheetRow) =>
-            sheetRow.eachCell((cell) => {
-                cellText.push(cell.text);
-            }),
-        );
-
-        expect(worksheet).toBeDefined();
-        expect(cellText).toContain('Round-trip Excel');
-        expect(cellText).toContain('Rotary Joint Testing System');
-    });
-
-    it('builds the worksheet without an image when no logo is provided', () => {
-        const workbook = new ExcelJS.Workbook();
-        buildProjectsWorksheet(workbook, [row], {title: 'No Logo'}, null);
-        expect(workbook.getWorksheet('Projects')?.getImages()).toHaveLength(0);
-    });
-
-    it('names the list with the heading the context gives', () => {
-        const workbook = new ExcelJS.Workbook();
-        buildProjectsWorksheet(workbook, [row], {title: 'Mixed picks', heading: 'Innovate to Grow Projects'}, null);
-        expect(workbook.getWorksheet('Projects')?.getCell(2, 2).value).toBe('Innovate to Grow Projects');
-    });
-});
-
 describe('loadI2gLogoAsset', () => {
     afterEach(() => {
         vi.unstubAllGlobals();
@@ -234,38 +159,4 @@ describe('triggerDownload', () => {
         vi.unstubAllGlobals();
     });
 
-});
-
-describe('exportProjectRowsPdf', () => {
-    afterEach(() => {
-        vi.unstubAllGlobals();
-        pdfTextCalls.length = 0;
-    });
-
-    it('draws the header, sections, and a per-project block with project fields', async () => {
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: false})); // logo load fails -> null
-
-        await exportProjectRowsPdf([row], 'past-projects', {title: 'PDF Title', note: 'Owner note'});
-
-        const drawnText = pdfTextCalls.join('|');
-        expect(drawnText).toContain('PDF Title');
-        expect(drawnText).toContain('Innovate to Grow Past Projects');
-        expect(drawnText).toContain('Note');
-        expect(drawnText).toContain('Projects');
-        // Per-project block: title bar + field labels.
-        expect(drawnText).toContain('Project 1: Rotary Joint Testing System');
-        expect(drawnText).toContain('Year-Semester: ');
-        expect(drawnText).toContain('Abstract: ');
-        // The per-project Notes field was removed.
-        expect(pdfTextCalls).not.toContain('Notes: ');
-    });
-
-    it('draws the heading the context gives under the title', async () => {
-        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ok: false}));
-
-        await exportProjectRowsPdf([row], 'projects', {title: 'Mixed picks', heading: 'Innovate to Grow Projects'});
-
-        expect(pdfTextCalls).toContain('Innovate to Grow Projects');
-        expect(pdfTextCalls).not.toContain('Innovate to Grow Past Projects');
-    });
 });

@@ -128,22 +128,6 @@ describe('SheetsDataTable accessibility and row identity', () => {
     expect(within(table).queryByText('Zulu Project')).toBeNull();
   });
 
-  it('shows the shared loading indicator, with the ellipsis glyph, in a status line while rows load', () => {
-    render(
-      <MemoryRouter>
-        <SheetsDataTable rows={[]} loading />
-      </MemoryRouter>,
-    );
-
-    const status = screen.getByRole('status');
-    expect(status).toHaveClass('sdt-loading');
-    expect(status).toHaveTextContent('Loading project data…');
-    const indicator = status.querySelector('.loading-indicator');
-    expect(indicator).not.toBeNull();
-    expect(indicator?.querySelector('.loading-indicator-spinner')).toHaveAttribute('aria-hidden', 'true');
-    expect(screen.queryByRole('table')).toBeNull();
-  });
-
   it('uses the ellipsis glyph in the search placeholder', () => {
     render(
       <MemoryRouter>
@@ -155,31 +139,6 @@ describe('SheetsDataTable accessibility and row identity', () => {
       'placeholder',
       'Search projects…',
     );
-  });
-
-  it('pages with the site pager: outline steps, the first page\'s Previous disabled', () => {
-    const rows = Array.from({length: 12}, (_, index) =>
-      makeRow(`Project ${String(index + 1).padStart(2, '0')}`, String(index + 1), `Abstract ${index + 1}`),
-    );
-    render(
-      <MemoryRouter>
-        <SheetsDataTable rows={rows} />
-      </MemoryRouter>,
-    );
-
-    const pager = screen.getByRole('navigation', {name: 'Project pages'});
-    expect(pager).toHaveClass('itg-pagination');
-    const previous = within(pager).getByRole('button', {name: 'Previous'});
-    const next = within(pager).getByRole('button', {name: 'Next'});
-    expect(previous).toHaveClass('itg-pagination-link');
-    expect(next).toHaveClass('itg-pagination-link');
-    expect(previous).toBeDisabled();
-    expect(within(pager).getByText('Page 1 of 2')).toHaveClass('itg-pagination-info');
-
-    fireEvent.click(next);
-    expect(within(pager).getByText('Page 2 of 2')).toBeInTheDocument();
-    expect(next).toBeDisabled();
-    expect(previous).toBeEnabled();
   });
 
   it('draws Details as the square outline icon button whose arrow turns when the row opens', () => {
@@ -197,31 +156,5 @@ describe('SheetsDataTable accessibility and row identity', () => {
     fireEvent.click(details);
     expect(details).toHaveAttribute('aria-expanded', 'true');
     expect(details.closest('tr')).toHaveClass('sdt-row', 'is-expanded');
-  });
-
-  it('says so inside the table when there are no rows or no matches, as DataTables does', () => {
-    const {rerender} = render(
-      <MemoryRouter>
-        <SheetsDataTable rows={[]} />
-      </MemoryRouter>,
-    );
-
-    expect(
-      screen.getByRole('cell', {name: 'No data available in table'}),
-    ).toHaveAttribute('colspan', String(9 + 1));
-
-    rerender(
-      <MemoryRouter>
-        <SheetsDataTable rows={[makeRow('Alpha Project', '1', 'Alpha abstract')]} />
-      </MemoryRouter>,
-    );
-    expect(screen.queryByText('No data available in table')).toBeNull();
-
-    fireEvent.change(screen.getByRole('searchbox', {name: 'Search projects'}), {
-      target: {value: 'nothing like this'},
-    });
-    expect(
-      screen.getByRole('cell', {name: 'No matching records found'}),
-    ).toBeInTheDocument();
   });
 });

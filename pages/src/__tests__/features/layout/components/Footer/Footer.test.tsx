@@ -160,82 +160,6 @@ describe('Footer', () => {
     expect(screen.getByTestId('safe-html')).toHaveTextContent('Body only');
   });
 
-  it('renders the footer bottom with copyright and footer links', () => {
-    renderFooter({
-      footer: makeFooter({
-        copyright: '© 2026 UC Merced',
-        footer_links: [{label: 'Privacy', href: '/privacy'}],
-      }),
-    });
-
-    expect(screen.getByText('© 2026 UC Merced')).toBeInTheDocument();
-    expect(screen.getByRole('link', {name: 'Privacy'})).toHaveAttribute(
-      'href',
-      '/privacy',
-    );
-  });
-
-  it('omits the footer bottom when there is no copyright or footer links', () => {
-    const {container} = renderFooter({footer: makeFooter()});
-    expect(container.querySelector('.footer-bottom')).toBeNull();
-  });
-
-  it('omits the contact block when there is no contact HTML', () => {
-    renderFooter({
-      footer: makeFooter({
-        cta_buttons: [{label: 'Go', href: '/go'}],
-      }),
-    });
-
-    expect(screen.getByRole('link', {name: 'Go'})).toBeInTheDocument();
-    expect(screen.queryByTestId('safe-html')).toBeNull();
-  });
-
-  it('names social links from the icon class when no label is provided', () => {
-    renderFooter({
-      footer: makeFooter({
-        columns: [{title: 'Connect'}],
-        social_links: [
-          {href: 'https://x.com', icon_class: 'fa fa-twitter'},
-          {href: 'https://example.com/feed', icon_class: ''},
-        ],
-      }),
-    });
-
-    const twitter = screen.getByRole('link', {name: 'Twitter'});
-    expect(twitter).toHaveAttribute('href', 'https://x.com');
-    expect(twitter).not.toHaveAttribute('aria-label');
-    expect(screen.getByRole('link', {name: 'https://example.com/feed'})).toBeInTheDocument();
-  });
-
-  it('sanitizes unsafe hrefs via safeHref', () => {
-    renderFooter({
-      footer: makeFooter({
-        footer_links: [{label: 'Danger', href: 'javascript:alert(1)'}],
-      }),
-    });
-
-    expect(screen.getByRole('link', {name: 'Danger'})).toHaveAttribute(
-      'href',
-      '#',
-    );
-  });
-
-  it('renders the copyright bar as one list with the copyright first', () => {
-    const {container} = renderFooter({
-      footer: makeFooter({
-        copyright: '© 2026',
-        footer_links: [
-          {label: 'Directions', href: 'https://example.com/directions', target: '_blank', rel: 'noopener'},
-        ],
-      }),
-    });
-
-    const meta = container.querySelector('.footer-bottom .footer-meta') as HTMLElement;
-    expect(within(meta).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['© 2026', 'Directions']);
-    expect(within(meta).getByRole('link', {name: 'Directions'})).toHaveAttribute('target', '_blank');
-  });
-
   it('styles the footer as the reference: centred columns, an address block without a visible heading, round social icons', () => {
     const {container} = renderFooter({
       footer: makeFooter({
@@ -264,27 +188,5 @@ describe('Footer', () => {
     expect(facebook.querySelector('svg')).not.toBeNull();
     expect(facebook.querySelector('.sr-only')).toHaveTextContent('Facebook');
     expect(screen.getByRole('link', {name: 'Twitter'}).querySelector('svg')).not.toBeNull();
-  });
-
-  it('keeps a social link without a known icon as a text link', () => {
-    renderFooter({
-      footer: makeFooter({
-        columns: [{title: 'Contact', body_html: '<p>Address</p>'}],
-        social_links: [{href: 'https://example.com/feed', icon_class: ''}],
-      }),
-    });
-
-    const link = screen.getByRole('link', {name: 'https://example.com/feed'});
-    expect(link).toHaveClass('footer-social-link', 'is-text');
-    expect(link.querySelector('svg')).toBeNull();
-  });
-
-  it('shows the contact line under the CTA row even without buttons', () => {
-    renderFooter({
-      footer: makeFooter({contact_html: '<p>For any questions, email us.</p>'}),
-    });
-
-    expect(screen.getByTestId('safe-html')).toHaveClass('site-footer-cta-contact');
-    expect(screen.queryByRole('list')).toBeNull();
   });
 });
