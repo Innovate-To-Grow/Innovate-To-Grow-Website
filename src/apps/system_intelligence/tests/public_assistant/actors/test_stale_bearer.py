@@ -15,7 +15,7 @@ from apps.authn.tests.stale_bearer import (
 )
 from apps.core.tests.request_limits.helpers import view_limit
 from apps.system_intelligence.services.public_assistant.chat import actors
-from apps.system_intelligence.tests.public_assistant.test_actor_limits_api import ActorLimitsTestBase
+from apps.system_intelligence.tests.public_assistant.actors.test_actor_limits_api import ActorLimitsTestBase
 
 Member = get_user_model()
 
