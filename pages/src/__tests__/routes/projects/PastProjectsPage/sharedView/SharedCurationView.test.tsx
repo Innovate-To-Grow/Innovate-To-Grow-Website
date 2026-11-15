@@ -6,7 +6,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 import type {PastProjectShare} from '@/features/projects/api';
 import {ALL_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
 import {SharedCurationView} from '@/routes/projects/PastProjectsPage/SharedCurationView';
-import {renderView, SHARE, view} from '@/__tests__/routes/projects/PastProjectsPage/sharedCurationViewFixtures';
+import {renderView, SHARE, view} from '@/__tests__/routes/projects/PastProjectsPage/sharedView/sharedCurationViewFixtures';
 
 /** A curation whose load failed; Try Again loads it again, as usePastProjectShareData does. */
 const RetryHarness = () => {

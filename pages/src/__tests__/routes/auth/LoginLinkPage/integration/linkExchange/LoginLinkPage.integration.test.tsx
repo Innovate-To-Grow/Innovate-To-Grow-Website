@@ -29,7 +29,7 @@ import {
   seedStaleSession,
   STALE_ACCESS,
   useAdapter,
-} from '@/__tests__/routes/auth/LoginLinkPage/integration/loginLinkIntegrationFixtures';
+} from '@/__tests__/routes/auth/LoginLinkPage/integration/fixtures/loginLinkIntegrationFixtures';
 
 const mockRequestLoginCode = vi.fn();
 
