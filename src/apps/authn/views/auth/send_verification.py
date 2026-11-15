@@ -17,8 +17,8 @@ from apps.authn.services.send_verification import (
     serialize_request_status,
     verification_error_response,
 )
-from apps.authn.services.send_verification.destinations import resolve_operation_destination
-from apps.authn.services.send_verification.principal import authenticate_for_operation
+from apps.authn.services.send_verification.guard.destinations import resolve_operation_destination
+from apps.authn.services.send_verification.proofs.principal import authenticate_for_operation
 
 
 @method_decorator(never_cache, name="dispatch")

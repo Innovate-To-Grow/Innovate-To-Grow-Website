@@ -14,7 +14,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from apps.authn.models import PhoneVerificationChallenge, SendQuotaWindow
-from apps.authn.services.send_verification.outcomes import SendOutcome
+from apps.authn.services.send_verification.guard.outcomes import SendOutcome
 from apps.authn.services.sms import PhoneVerificationBusy, PhoneVerificationThrottled, start_phone_verification
 from apps.authn.services.sms.sns_verify import MAX_SENDS_PER_HOUR
 from apps.authn.tests.sms_provider import patch_sms_provider, sms_budget_used

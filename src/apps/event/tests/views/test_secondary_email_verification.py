@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 
 from apps.authn.models import ContactEmail, EmailAuthChallenge, SendVerificationRequest
 from apps.authn.services.email.challenges import AuthChallengeDeliveryError
-from apps.authn.services.send_verification.constants import OP_EVENT_SEND_SECONDARY_EMAIL_CODE
+from apps.authn.services.send_verification.rules.constants import OP_EVENT_SEND_SECONDARY_EMAIL_CODE
 from apps.authn.tests.send_verification import mint_send_verification
 from apps.core.tests.request_limits.helpers import view_limit
 from apps.event.tests.helpers import make_event, make_member

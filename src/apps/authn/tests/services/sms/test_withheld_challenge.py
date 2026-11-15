@@ -13,9 +13,9 @@ from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from apps.authn.models import PhoneVerificationChallenge, SendQuotaWindow
-from apps.authn.services.send_verification import quotas
-from apps.authn.services.send_verification.exceptions import SendThrottled, SendVerificationUnavailable
-from apps.authn.services.send_verification.quotas import check_sms_dispatch
+from apps.authn.services.send_verification.guard import quotas
+from apps.authn.services.send_verification.guard.quotas import check_sms_dispatch
+from apps.authn.services.send_verification.rules.exceptions import SendThrottled, SendVerificationUnavailable
 from apps.authn.services.sms import latency
 from apps.authn.services.sms.sns_verify import (
     MAX_SENDS_PER_HOUR,

@@ -25,7 +25,7 @@ from apps.authn.services import (
 )
 from apps.authn.services.contacts.contact_phones import national_to_e164, normalize_to_national
 from apps.authn.services.send_verification import OP_PHONE_AUTH_REQUEST_CODE
-from apps.authn.services.send_verification.constants import KIND_PHONE, SMS_CHANNEL
+from apps.authn.services.send_verification.rules.constants import KIND_PHONE, SMS_CHANNEL
 from apps.authn.services.sms import check_phone_verification
 
 from ..auth.email_code_helpers import protected_save

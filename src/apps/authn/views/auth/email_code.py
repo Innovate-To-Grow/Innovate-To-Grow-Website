@@ -36,7 +36,7 @@ from apps.authn.services.send_verification import (
     OP_PASSWORD_RESET_REQUEST_CODE,
     OP_REGISTER_RESEND_CODE,
 )
-from apps.authn.services.send_verification.constants import EMAIL_CHANNEL, KIND_EMAIL, KIND_PHONE, SMS_CHANNEL
+from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL, KIND_EMAIL, KIND_PHONE, SMS_CHANNEL
 
 from ..helpers import build_auth_success_payload
 from .email_code_helpers import auth_challenge_response, protected_save

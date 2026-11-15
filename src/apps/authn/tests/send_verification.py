@@ -12,7 +12,7 @@ from django.conf import settings
 from django.test.client import Client
 from rest_framework.test import APIClient
 
-from apps.authn.services.send_verification.constants import (
+from apps.authn.services.send_verification.rules.constants import (
     FIELD_CHALLENGE_ID,
     FIELD_PAYLOAD,
     FIELD_REQUEST_ID,

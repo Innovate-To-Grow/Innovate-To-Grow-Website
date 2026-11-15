@@ -28,7 +28,7 @@ from apps.authn.models import (
     SendVerificationChallenge,
     SendVerificationRequest,
 )
-from apps.authn.services.send_verification.constants import OP_PHONE_AUTH_REQUEST_CODE
+from apps.authn.services.send_verification.rules.constants import OP_PHONE_AUTH_REQUEST_CODE
 from apps.authn.services.sms import PhoneVerificationDeliveryError
 from apps.authn.services.sms.sns_verify import MAX_SENDS_PER_HOUR
 from apps.authn.tests.send_verification import mint_send_verification
@@ -64,7 +64,7 @@ class SmsBudgetTestCase(APITestCase):
         cache.clear()
         self.publish = patch_sms_provider(self)
         patcher = patch(
-            "apps.authn.services.send_verification.quotas._day_window_start", side_effect=lambda _now: BUDGET_DAY
+            "apps.authn.services.send_verification.guard.quotas._day_window_start", side_effect=lambda _now: BUDGET_DAY
         )
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -404,7 +404,7 @@ class FlowsThatAlwaysSendKeepTheirTruthful429Tests(SmsBudgetTestCase):
         proof = mint_send_verification(self.client, OP_PHONE_AUTH_REQUEST_CODE, {"phone_number": "2025550151"})
 
         # The early check ran before the winner's reservation committed, so it still saw a unit.
-        with patch("apps.authn.services.send_verification.quotas._sms_budget_spent", return_value=False):
+        with patch("apps.authn.services.send_verification.guard.quotas._sms_budget_spent", return_value=False):
             loser = self.client.post(PHONE_AUTH_URL, {"phone_number": "2025550151", **proof}, format="json")
             replay = self.client.post(PHONE_AUTH_URL, {"phone_number": "2025550151", **proof}, format="json")
 
@@ -426,7 +426,7 @@ class FlowsThatAlwaysSendKeepTheirTruthful429Tests(SmsBudgetTestCase):
         self.spend_budget(BUDGET - 1)
         first = self.phone_auth("2025550150")
 
-        with patch("apps.authn.services.send_verification.quotas._sms_budget_spent", return_value=False):
+        with patch("apps.authn.services.send_verification.guard.quotas._sms_budget_spent", return_value=False):
             second = self.phone_auth("2025550150")
 
         self.assert_budget_spent_answer(second)
@@ -464,7 +464,7 @@ class FlowsThatAlwaysSendKeepTheirTruthful429Tests(SmsBudgetTestCase):
         """None of their views turns the dispatch-time refusal into another answer (a 503, a generic 400)."""
         self.spend_budget()
 
-        with patch("apps.authn.services.send_verification.quotas._sms_budget_spent", return_value=False):
+        with patch("apps.authn.services.send_verification.guard.quotas._sms_budget_spent", return_value=False):
             for name, member, url, payload in self.authenticated_sms_requests():
                 with self.subTest(flow=name):
                     self.client.force_authenticate(member)

@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase, override_settings
 from django.utils.crypto import salted_hmac
 
-from apps.authn.services.send_verification.hashing import fingerprint_payload
+from apps.authn.services.send_verification.rules.hashing import fingerprint_payload
 
 
 @override_settings(SECRET_KEY="test-payload-fingerprint-key")

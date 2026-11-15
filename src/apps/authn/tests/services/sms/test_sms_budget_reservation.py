@@ -1,4 +1,4 @@
-"""Where and how the global SMS daily budget is reserved (``send_verification.quotas`` and ``sns_verify``).
+"""Where and how the global SMS daily budget is reserved (``send_verification.guard.quotas`` and ``sns_verify``).
 
 The budget is reserved at dispatch, in the transaction that stores the code, and nowhere else. The API-level
 behaviour is in ``apps.authn.tests.api.send_verification.test_sms_daily_budget``; real row-lock contention is in
@@ -16,13 +16,13 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.authn.models import PhoneVerificationChallenge, SendDestinationState, SendQuotaWindow
-from apps.authn.services.send_verification.config import load_settings
-from apps.authn.services.send_verification.exceptions import SendThrottled, SendVerificationUnavailable
-from apps.authn.services.send_verification.quotas import (
+from apps.authn.services.send_verification.guard.quotas import (
     _sms_budget_spent,
     reserve_send_quotas,
     reserve_sms_dispatch,
 )
+from apps.authn.services.send_verification.rules.config import load_settings
+from apps.authn.services.send_verification.rules.exceptions import SendThrottled, SendVerificationUnavailable
 from apps.authn.services.sms.sns_verify import (
     MAX_SENDS_PER_HOUR,
     PhoneVerificationDeliveryError,

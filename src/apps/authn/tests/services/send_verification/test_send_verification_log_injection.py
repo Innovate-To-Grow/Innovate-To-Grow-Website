@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from apps.authn.services.send_verification.metrics import _log_token, emit
+from apps.authn.services.send_verification.rules.metrics import _log_token, emit
 
 
 class SendVerificationLogInjectionTests(SimpleTestCase):

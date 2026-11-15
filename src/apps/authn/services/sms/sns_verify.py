@@ -259,7 +259,7 @@ def _reserve_challenge(phone_number: str, *, purpose, member, context_identifier
     A crash or database failure after delivery can no longer erase the hourly cap. ``spend_budget=False`` (a withheld
     code, which is never sent) refuses a spent SMS daily budget exactly as a send would, but takes no unit of it.
     """
-    from apps.authn.services.send_verification.quotas import check_sms_dispatch, reserve_sms_dispatch
+    from apps.authn.services.send_verification.guard.quotas import check_sms_dispatch, reserve_sms_dispatch
 
     try:
         with transaction.atomic():
@@ -302,7 +302,7 @@ def _reserve_challenge(phone_number: str, *, purpose, member, context_identifier
 
 
 def _deliver_otp(challenge, *, phone_number: str, message: str, aws_config, admission) -> str:
-    from apps.authn.services.send_verification.outcomes import record_otp_challenge
+    from apps.authn.services.send_verification.guard.outcomes import record_otp_challenge
 
     try:
         record_otp_challenge(str(challenge.pk))
@@ -346,7 +346,7 @@ def _withhold_otp(challenge) -> None:
 
     ``sent_at`` stays empty: that, and the log line, are what tell an operator that no SMS went out.
     """
-    from apps.authn.services.send_verification.outcomes import record_otp_challenge
+    from apps.authn.services.send_verification.guard.outcomes import record_otp_challenge
 
     record_otp_challenge(str(challenge.pk))
     PhoneVerificationChallenge.objects.filter(pk=challenge.pk, status=PhoneVerificationChallenge.Status.SENDING).update(

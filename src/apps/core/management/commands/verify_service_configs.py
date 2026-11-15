@@ -11,8 +11,8 @@ from django.core.exceptions import ValidationError
 from django.core.management.base import BaseCommand, CommandError
 from django.core.validators import validate_email
 
-from apps.authn.services.send_verification.config import require_ready
-from apps.authn.services.send_verification.exceptions import SendPaused, SendVerificationError
+from apps.authn.services.send_verification.rules.config import require_ready
+from apps.authn.services.send_verification.rules.exceptions import SendPaused, SendVerificationError
 from apps.core.models import (
     AWSCredentialConfig,
     EmailServiceConfig,
