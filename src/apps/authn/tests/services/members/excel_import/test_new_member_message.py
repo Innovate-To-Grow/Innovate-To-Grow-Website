@@ -5,7 +5,7 @@ from django.test import TestCase
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.authn.services.members.import_ import import_members_from_excel
-from apps.authn.services.members.import_.parsing import PHONE_VERIFIED_IGNORED
+from apps.authn.services.members.import_.workbook.parsing import PHONE_VERIFIED_IGNORED
 from apps.authn.tests.services.members.excel_import.test_import_members_messages import HEADERS, _member
 
 from ..import_sheets import FULL_HEADERS, PHONE_VERIFIED_HEADERS, build_sheet, full_row

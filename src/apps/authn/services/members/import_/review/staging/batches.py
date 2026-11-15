@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from apps.authn.models import MemberImportBatch, MemberImportRow
 
-from ...parsing import values_from_json, values_to_json
+from ...workbook.parsing import values_from_json, values_to_json
 from ..analysis.resolution import Context
 from ..analysis.rows import RowAnalysis, analyse_rows
 from ..lookup.load import load_snapshot

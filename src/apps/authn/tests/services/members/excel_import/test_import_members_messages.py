@@ -12,7 +12,7 @@ from django.test import TestCase
 
 from apps.authn.models import ContactEmail, Member
 from apps.authn.services.members.import_ import import_members_from_excel
-from apps.authn.services.members.import_.types import ImportMessage
+from apps.authn.services.members.import_.workbook.types import ImportMessage
 
 from ..import_sheets import build_sheet
 

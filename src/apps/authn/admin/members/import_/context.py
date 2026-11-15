@@ -4,13 +4,13 @@ Everything comes from what the batch stored at upload (the rows' values and the 
 review shows exactly what was analysed; the apply re-reads the records and refuses anything that changed.
 """
 
-from ....services.members.import_.reader import COLUMN_LABELS
 from ....services.members.import_.review import stored_analysis
 from ....services.members.import_.review.analysis.choices import BULK_CHOICES, BULK_LABELS
 from ....services.members.import_.review.analysis.describe import PRECEDENCE, conflict_code, conflict_title
 from ....services.members.import_.review.analysis.risky import RISKY_TYPES
 from ....services.members.import_.review.lookup import snapshot_from_slice
 from ....services.members.import_.review.staging.selection import plan_for, selection_problems, summarize, tick_items
+from ....services.members.import_.workbook.reader import COLUMN_LABELS
 from .member_cards import _candidates, _url
 
 CELL_ORDER = (

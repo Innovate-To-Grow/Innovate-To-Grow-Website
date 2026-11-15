@@ -7,9 +7,9 @@ is forged, and the guarded writes refuse a "verified" flag on a number even if a
 """
 
 from apps.authn.models import ContactPhone, MemberImportRow
-from apps.authn.services.members.import_.parsing import PHONE_VERIFIED_IGNORED
 from apps.authn.services.members.import_.review import apply_batch
 from apps.authn.services.members.import_.review.staging.selection import plan_for
+from apps.authn.services.members.import_.workbook.parsing import PHONE_VERIFIED_IGNORED
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, read, row
 
 # Every kind of cell a Phone Verified column may hold: text and booleans in both directions, garbage, and blank.

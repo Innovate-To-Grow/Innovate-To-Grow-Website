@@ -12,7 +12,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from ....models import MemberImportBatch
-from ....services.members.import_.reader import read_upload
 from ....services.members.import_.review import (
     create_batch,
     purge_member_imports,
@@ -26,6 +25,7 @@ from ....services.members.import_.review.staging.batches import (
 )
 from ....services.members.import_.review.staging.saving import StaleVersion
 from ....services.members.import_.review.staging.selection import ForgedSelection
+from ....services.members.import_.workbook.reader import read_upload
 from .context import review_sections
 from .forms import MemberImportForm, parse_review_post
 from .rights import (

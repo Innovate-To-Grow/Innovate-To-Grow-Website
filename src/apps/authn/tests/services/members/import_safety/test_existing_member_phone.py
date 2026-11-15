@@ -5,16 +5,13 @@ from django.test import SimpleTestCase, TestCase
 from openpyxl import load_workbook
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
-from apps.authn.services.members.export_excel import export_members_to_excel
+from apps.authn.services.members.export.excel import export_members_to_excel
 from apps.authn.services.members.import_ import generate_template_excel, import_members_from_excel
-from apps.authn.services.members.import_.parsing import (
-    PHONE_VERIFIED_IGNORED,
-    parse_row,
-)
 from apps.authn.services.members.import_.review.apply.execute import execute_update
 from apps.authn.services.members.import_.review.lookup import load_snapshot
 from apps.authn.services.members.import_.review.plan import plan_row
 from apps.authn.services.members.import_.review.plan.actions import UPDATE, Action
+from apps.authn.services.members.import_.workbook.parsing import PHONE_VERIFIED_IGNORED, parse_row
 from apps.authn.tests.services.members.import_safety.test_import_members_phone_verified import (
     CELLS,
     _number,

@@ -11,7 +11,6 @@ from unittest.mock import patch
 from django.utils import timezone
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
-from apps.authn.services.members.import_.parsing import parse_row
 from apps.authn.services.members.import_.review.lookup import (
     EmailRecord,
     MemberRecord,
@@ -22,6 +21,7 @@ from apps.authn.services.members.import_.review.lookup import (
     snapshot_from_slice,
     us_phone,
 )
+from apps.authn.services.members.import_.workbook.parsing import parse_row
 from apps.authn.tests.services.members.import_.helpers import ImportTestCase
 
 

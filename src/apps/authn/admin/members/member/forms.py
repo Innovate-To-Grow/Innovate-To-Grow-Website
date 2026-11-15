@@ -12,7 +12,7 @@ from django.utils.translation import gettext_lazy as _
 from unfold.forms import UserChangeForm, UserCreationForm
 
 from ....models import Member
-from ....services.members.profile_image import ALLOWED_CONTENT_TYPES
+from ....services.members.accounts.profile_image import ALLOWED_CONTENT_TYPES
 from ..shared.help_texts import MEMBER_HELP_TEXTS, MEMBER_LABELS
 from .profile_image import Base64ImageField, Base64ImageWidget
 

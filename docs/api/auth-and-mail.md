@@ -184,7 +184,7 @@ Password-based login with an **email or phone** identifier and an RSA-encrypted 
 The `email` field accepts an email address or a phone number and is kept for backward
 compatibility; an explicit `identifier` field is also accepted and takes precedence when
 both are sent. The identifier is resolved via `resolve_login_identifier`
-(`services/email/auth_email.py`): an `@`-containing value matches a **verified** `ContactEmail`
+(`services/email/auth_email/`): an `@`-containing value matches a **verified** `ContactEmail`
 (email-first), otherwise the digits are normalized and matched against a **verified**
 `ContactPhone`. Unverified contacts never authenticate.
 

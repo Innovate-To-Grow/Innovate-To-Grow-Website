@@ -89,7 +89,7 @@ class ImportMembersExcelTests(_ImportMembersExcelCase):
         self.assertEqual(member.organization, "Updated Org")
 
     def test_openpyxl_missing_returns_error(self):
-        with patch("apps.authn.services.members.import_.reader.load_workbook", None):
+        with patch("apps.authn.services.members.import_.workbook.reader.load_workbook", None):
             result = import_members_from_excel(BytesIO(b""))
         self.assertFalse(result.success)
         self.assertIn("openpyxl library not installed. Please run: pip install openpyxl", result.errors)

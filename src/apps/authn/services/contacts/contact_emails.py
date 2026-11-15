@@ -10,10 +10,6 @@ from django.db import IntegrityError, transaction
 
 from apps.authn.models import ContactEmail
 from apps.authn.models.security import EmailAuthChallenge
-from apps.authn.services.account.recovery import (
-    LastRecoveryContactError,
-    count_verified_recovery_contacts,
-)
 from apps.authn.services.email.auth_email import normalize_email, registration_email_conflicts
 from apps.authn.services.email.challenges import (
     AuthChallengeInvalid,
@@ -21,6 +17,10 @@ from apps.authn.services.email.challenges import (
     verify_email_code,
 )
 from apps.core.services.helpers.in_process import start_in_process_task
+
+# Re-exported: the contacts package, the member import, the primary switch and mail's address actions import them here.
+from .contact_email_changes import delete_contact_email as delete_contact_email
+from .contact_email_changes import make_contact_email_primary as make_contact_email_primary
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ def _notify_email_owner_in_background(email: str):
 
     if getattr(settings, "BACKGROUND_JOBS_ENABLED", False):
         try:
-            from apps.authn.services.email.notification_jobs import enqueue_notification_email
+            from apps.authn.services.email.send_email.notification_jobs import enqueue_notification_email
 
             enqueue_notification_email(**notification)
         except Exception:
@@ -158,88 +158,3 @@ def resend_contact_email_verification(*, member, contact_email_id):
     issue_email_challenge(member=member, purpose=PURPOSE, target_email=contact_email.email_address)
 
     return {"message": "Verification code sent."}
-
-
-@transaction.atomic
-def delete_contact_email(*, member, contact_email_id):
-    """Delete a contact email, enforcing the recovery-contact and primary invariants.
-
-    Deletion is blocked when it would remove the member's last verified recovery
-    contact (a verified phone or another verified email counts as a survivor). If
-    the deleted email is the primary, another remaining email is promoted
-    deterministically (prefer verified, else oldest); if no email remains, the
-    account may legitimately have no primary (e.g. a phone-only account).
-    """
-    # The member row is the shared mutex for email and phone deletion. Locking
-    # only the target contact cannot serialize cross-table "last recovery
-    # method" checks.
-    Member.objects.select_for_update().get(pk=member.pk)
-    contact = ContactEmail.objects.select_for_update().filter(pk=contact_email_id, member=member).first()
-    if contact is None:
-        raise AuthChallengeInvalid("Contact email not found.")
-
-    # Deleting an *unverified* email never reduces recovery capability, so only
-    # guard verified emails. The guard checks what would remain *after* deletion.
-    if contact.verified and count_verified_recovery_contacts(member, exclude_email_pk=contact.pk) == 0:
-        raise LastRecoveryContactError(
-            "You can't remove your only verified recovery method. Add and verify another email or phone first."
-        )
-
-    was_primary = contact.email_type == "primary"
-    contact.delete()
-
-    if was_primary:
-        replacement = (
-            ContactEmail.objects.select_for_update().filter(member=member).order_by("-verified", "created_at").first()
-        )
-        if replacement is not None:
-            replacement.email_type = "primary"
-            replacement.save(update_fields=["email_type", "updated_at"])
-
-
-@transaction.atomic
-def make_contact_email_primary(*, member, contact_email_id):
-    """
-    Set a verified non-primary contact email as primary.
-
-    The previous primary becomes ``secondary`` (not deleted). Requires the target email to be verified.
-    """
-    Member.objects.select_for_update().get(pk=member.pk)
-    contact = ContactEmail.objects.select_for_update().filter(pk=contact_email_id, member=member).first()
-    if contact is None:
-        raise AuthChallengeInvalid("Contact email not found.")
-
-    if contact.email_type == "primary":
-        return contact
-
-    if not contact.verified:
-        raise AuthChallengeInvalid("Verify this email before setting it as primary.")
-
-    old_primary = (
-        ContactEmail.objects.select_for_update()
-        .filter(member=member, email_type="primary")
-        .order_by("created_at")
-        .first()
-    )
-    if old_primary:
-        # Demote existing secondary to "other" before the old primary takes its slot
-        # The newest secondary; ``pk`` breaks a tie on equal timestamps, so the choice is deterministic and the admin's
-        # preview (``primary_switch.plan_primary_switch``) names the same row.
-        existing_secondary = (
-            ContactEmail.objects.select_for_update()
-            .filter(member=member, email_type="secondary")
-            .exclude(pk=contact.pk)
-            .order_by("-created_at", "-pk")
-            .first()
-        )
-        if existing_secondary:
-            existing_secondary.email_type = "other"
-            existing_secondary.save(update_fields=["email_type", "updated_at"])
-
-        old_primary.email_type = "secondary"
-        old_primary.save(update_fields=["email_type", "updated_at"])
-
-    contact.email_type = "primary"
-    contact.save(update_fields=["email_type", "updated_at"])
-
-    return contact

@@ -10,7 +10,7 @@ from django.shortcuts import redirect
 from django.urls import path
 
 from ....models import ImpersonationToken
-from ....services.members.profile_image import ALLOWED_CONTENT_TYPES, ProfileImageError, split_data_uri
+from ....services.members.accounts.profile_image import ALLOWED_CONTENT_TYPES, ProfileImageError, split_data_uri
 from ..import_ import confirm_views
 from ..import_ import views as import_views
 from .helpers import (
