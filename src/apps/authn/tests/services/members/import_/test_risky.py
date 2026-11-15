@@ -9,8 +9,8 @@ unsubscribes) needs no tick, and contacts added to an existing member start unve
 from django.core import mail
 
 from apps.authn.models import ContactEmail, ContactPhone
+from apps.authn.services.members.import_.review.analysis.risky import MASTER_ONLY, MATCHED, PENDING, PRIVILEGED
 from apps.authn.services.members.import_.review.plan import PENDING_NOTE
-from apps.authn.services.members.import_.review.risky import MASTER_ONLY, MATCHED, PENDING, PRIVILEGED
 from apps.authn.tests.services.members.import_.helpers import ImportTestCase, row
 
 LAST_ADA = "It is the only verified sign-in contact of Ada Lovelace"

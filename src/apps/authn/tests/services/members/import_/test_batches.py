@@ -8,14 +8,10 @@ from django.utils import timezone
 
 from apps.authn.models import ContactEmail, Member, MemberImportBatch
 from apps.authn.services.members.import_.review.analysis import SKIP_EXISTING
-from apps.authn.services.members.import_.review.batches import (
-    ReviewClosed,
-    StaleVersion,
-    save_choices,
-    stored_analysis,
-)
-from apps.authn.services.members.import_.review.choices import NEEDS_NAMES
-from apps.authn.services.members.import_.review.selection import ForgedSelection
+from apps.authn.services.members.import_.review.analysis.choices import NEEDS_NAMES
+from apps.authn.services.members.import_.review.staging.batches import stored_analysis
+from apps.authn.services.members.import_.review.staging.saving import ReviewClosed, StaleVersion, save_choices
+from apps.authn.services.members.import_.review.staging.selection import ForgedSelection
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row
 
 UUID_HEADERS = [*HEADERS, "Member UUID"]

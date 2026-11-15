@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from .actions import CREATE, CREATE_CLAIM, UPDATE, Action
-from .lookup import EmailRecord, Snapshot
+from ..lookup.records import EmailRecord, Snapshot
+from ..plan.actions import CREATE, CREATE_CLAIM, UPDATE, Action
 
 # Conflict slug → (code, title). The review lists the groups in this order of precedence.
 CONFLICTS = {

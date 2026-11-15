@@ -11,10 +11,11 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 
-from .actions import CREATE, CREATE_CLAIM, SKIP, UPDATE, RowPlan, resolve_action
-from .choices import allowed_values
-from .lookup import Snapshot, address_key, snapshot_from_slice
-from .plan import plan_row
+from ..analysis.choices import allowed_values
+from ..lookup.load import snapshot_from_slice
+from ..lookup.records import Snapshot, address_key
+from ..plan.actions import CREATE, CREATE_CLAIM, SKIP, UPDATE, RowPlan, resolve_action
+from ..plan.rows import plan_row
 
 INVALID = "invalid"
 

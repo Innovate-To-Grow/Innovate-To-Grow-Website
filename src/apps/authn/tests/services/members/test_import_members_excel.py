@@ -296,7 +296,8 @@ class ImportMembersExcelTests(TestCase):
         )
 
         with patch(
-            "apps.authn.services.members.import_.review.apply.execute_update", side_effect=RuntimeError("update boom")
+            "apps.authn.services.members.import_.review.apply.rows.execute_update",
+            side_effect=RuntimeError("update boom"),
         ):
             result = import_members_from_excel(workbook, update_existing=True)
 

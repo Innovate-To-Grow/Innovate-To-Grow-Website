@@ -21,7 +21,7 @@ from apps.authn.models import ContactEmail, ContactPhone, Member, MemberImportBa
 from apps.authn.services.members.import_ import import_members_from_excel
 from apps.authn.services.members.import_.reader import read_upload
 from apps.authn.services.members.import_.review import purge_member_imports
-from apps.authn.services.members.import_.review.risky import MASTER_ONLY, PENDING
+from apps.authn.services.members.import_.review.analysis.risky import MASTER_ONLY, PENDING
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row, upload, workbook_bytes
 
 

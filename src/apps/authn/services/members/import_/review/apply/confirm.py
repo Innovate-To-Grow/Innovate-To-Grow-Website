@@ -18,36 +18,20 @@ from django.contrib.auth.hashers import make_password
 from django.db import DatabaseError, transaction
 from django.utils import timezone
 
-from apps.authn.models import Member, MemberImportBatch, MemberImportRow
+from apps.authn.models import MemberImportBatch, MemberImportRow
 
-from ..parsing import generate_random_password, values_from_json
-from .actions import CREATE, CREATE_CLAIM, SKIP
-from .analysis import INVALID, Context, analyse_rows
-from .batches import activity_event, forget_password, to_stored
-from .choices import allowed_values
-from .execute import RowWriteError, execute_creations, execute_update, log_batch, log_member_changes
-from .lookup import load_snapshot
-from .selection import plan_for, selection_problems, tick_items
+from ...parsing import generate_random_password, values_from_json
+from ..analysis.choices import allowed_values
+from ..analysis.resolution import INVALID, Context
+from ..analysis.rows import analyse_rows
+from ..lookup.load import load_snapshot
+from ..plan.actions import SKIP
+from ..staging.batches import activity_event, forget_password, to_stored
+from ..staging.selection import selection_problems, tick_items
+from .execute import RowWriteError, log_batch
+from .rows import RowOutcome, lock_members, run_import
 
 logger = logging.getLogger(__name__)
-
-MATCHED_BY = {
-    "uuid": "matched by Member UUID",
-    "primary": "matched by primary email",
-    "secondary": "matched by secondary email",
-    "other": 'matched by an "other" email',
-}
-
-
-@dataclass
-class RowOutcome:
-    row_number: int
-    outcome: str
-    changes: list[str] = field(default_factory=list)
-    notes: list[str] = field(default_factory=list)
-    member: Member | None = None
-    reason: str = ""
-    listed: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -62,61 +46,6 @@ class _Stale(Exception):
         super().__init__(f"{len(changed)} rows changed")
         self.fresh = fresh
         self.changed = changed
-
-
-def lock_members(member_ids) -> dict[str, Member]:
-    """Lock the members by primary key, in a fixed order; return them by id."""
-    ids = sorted({str(member_id) for member_id in member_ids if member_id})
-    query = Member.objects.select_for_update().filter(pk__in=ids).order_by("pk").defer("profile_image", "password")
-    return {str(member.pk): member for member in query}
-
-
-def run_import(analyses, selections: dict, snapshot, *, password_hash: str, members: dict, actor_id=None, label=""):
-    """Write every row's chosen plan (inside the caller's transaction) and return one ``RowOutcome`` per row."""
-    outcomes: dict[int, RowOutcome] = {}
-    planned = []
-    for analysis in analyses:
-        number = analysis.row_number
-        if analysis.status == INVALID:
-            outcomes[number] = RowOutcome(number, "not_imported", reason=analysis.facts.get("invalid", ""))
-            continue
-        choice, ticks = selections.get(number, (analysis.default, []))
-        plan = plan_for(analysis, choice, ticks, snapshot)
-        if plan.problems:
-            raise RowWriteError(number, plan.problems[0])
-        planned.append((analysis, plan))
-    created = execute_creations(
-        [(a.row_number, plan) for a, plan in planned if plan.kind in (CREATE, CREATE_CLAIM)], password_hash
-    )
-    history = []
-    for analysis, plan in planned:
-        outcome = _write_row(analysis, plan, created, members, getattr(snapshot, "objects", {}))
-        outcomes[outcome.row_number] = outcome
-        if outcome.outcome == "created":
-            history.append((outcome.member, True, f"Created by member import {label}, row {outcome.row_number}"))
-        elif outcome.outcome == "updated":
-            how = MATCHED_BY.get(analysis.facts.get("matched_by"), "")
-            prefix = f"Member import {label}, row {outcome.row_number}: " + (f"{how}; " if how else "")
-            history.append((outcome.member, False, prefix + "; ".join(plan.changes)))
-    log_member_changes(actor_id, history)
-    return [outcomes[analysis.row_number] for analysis in analyses]
-
-
-def _write_row(analysis, plan, created: dict, members: dict, known: dict) -> RowOutcome:
-    number = analysis.row_number
-    listed = {kind: list(items) for kind, items in plan.listed.items()}
-    if plan.kind == SKIP:
-        member = members.get(analysis.target) or known.get(analysis.target)
-        return RowOutcome(number, "skipped", member=member, reason=analysis.facts.get("why", ""))
-    if plan.kind in (CREATE, CREATE_CLAIM):
-        return RowOutcome(number, "created", plan.changes, plan.notes, created[number], listed=listed)
-    member = members.get(plan.target)
-    if member is None:
-        raise RowWriteError(number, "the member the review showed no longer exists")
-    if not plan.writes:
-        return RowOutcome(number, "no_change", notes=plan.notes, member=member)
-    execute_update(number, plan, member)
-    return RowOutcome(number, "updated", plan.changes, plan.notes, member, listed=listed)
 
 
 def changed_rows(stored_rows, fresh) -> list[int]:

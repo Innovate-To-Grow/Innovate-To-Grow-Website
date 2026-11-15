@@ -10,10 +10,10 @@ from apps.authn.models import ContactEmail, ContactPhone, Member, MemberImportRo
 from apps.authn.services.members.import_.contacts import ContactWriteError, set_phone_flags
 from apps.authn.services.members.import_.parsing import PHONE_VERIFIED_IGNORED
 from apps.authn.services.members.import_.review import apply_batch
-from apps.authn.services.members.import_.review.actions import CREATE, UPDATE, Op, RowPlan
-from apps.authn.services.members.import_.review.execute import RowWriteError, execute_creations, execute_update
-from apps.authn.services.members.import_.review.risky import RISKY_TYPES
-from apps.authn.services.members.import_.review.selection import ForgedSelection, clean_selection, plan_for
+from apps.authn.services.members.import_.review.analysis.risky import RISKY_TYPES
+from apps.authn.services.members.import_.review.apply.execute import RowWriteError, execute_creations, execute_update
+from apps.authn.services.members.import_.review.plan.actions import CREATE, UPDATE, Op, RowPlan
+from apps.authn.services.members.import_.review.staging.selection import ForgedSelection, clean_selection, plan_for
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, read, row
 
 # Every kind of cell a Phone Verified column may hold: text and booleans in both directions, garbage, and blank.
