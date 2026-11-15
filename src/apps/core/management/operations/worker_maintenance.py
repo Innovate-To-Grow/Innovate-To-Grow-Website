@@ -3,9 +3,9 @@
 
 import logging
 
-from apps.authn.services.login_guard import purge_expired_failure_windows
 from apps.authn.services.members.import_.review.staging.purge import purge_member_imports
-from apps.authn.services.security.rsa_manager import purge_retired_auth_keypairs
+from apps.authn.services.security.login_guard import purge_expired_failure_windows
+from apps.authn.services.security.rsa.rsa_manager import purge_retired_auth_keypairs
 from apps.authn.services.send_verification import cleanup_expired_records, clear_expired_sessions
 from apps.core.services.delivery_rates import run_maintenance as run_delivery_rate_maintenance
 from apps.core.services.email.bounces import ensure_scheduled as ensure_bounce_scan_scheduled

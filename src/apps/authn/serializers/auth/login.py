@@ -4,7 +4,8 @@ Login serializer for user authentication.
 
 from rest_framework import serializers
 
-from apps.authn.services import login_guard, resolve_login_identifier
+from apps.authn.services import resolve_login_identifier
+from apps.authn.services.security import login_guard
 
 from ..shared.encrypted_passwords import decrypt_field
 

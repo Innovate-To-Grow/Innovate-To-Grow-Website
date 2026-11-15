@@ -16,7 +16,7 @@ The auth system is built on `rest_framework_simplejwt` with custom extensions fo
 | Models | `src/apps/authn/models/` |
 | URLs | `src/apps/authn/urls.py` |
 | Throttles | `src/apps/authn/security/throttles.py` |
-| Password-login lockout | `src/apps/authn/services/login_guard/` |
+| Password-login lockout | `src/apps/authn/services/security/login_guard/` |
 | Mail views | `src/apps/mail/views/` |
 
 ## Rate-limit policy (no client-IP limits on sign-in)

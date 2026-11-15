@@ -5,7 +5,7 @@ from django.dispatch.dispatcher import _make_id
 from django.test import TestCase, override_settings
 
 from apps.authn.models import LoginFailureWindow
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 from apps.authn.tests.helpers.clock import (
     SECONDS_LEFT_IN_DAY,
     SECONDS_LEFT_IN_SHORT_WINDOW,

@@ -41,7 +41,7 @@ Related models are grouped into tabs in the admin interface. Tab configuration i
 
 `AdminLoginView` (`src/apps/authn/views/admin/login/view.py`) replaces the default Django admin login at `/admin/login/`. It integrates with the platform's auth system.
 
-Password guessing is bounded per account by the same lockout as member sign-in (`apps.authn.services.login_guard`: 10 failures per 15 minutes or 30 per UTC day, counted in PostgreSQL), never per client IP, so one admin's typos cannot lock out other staff on the campus network. The two password forms count separately:
+Password guessing is bounded per account by the same lockout as member sign-in (`apps.authn.services.security.login_guard`: 10 failures per 15 minutes or 30 per UTC day, counted in PostgreSQL), never per client IP, so one admin's typos cannot lock out other staff on the campus network. The two password forms count separately:
 
 - The email + password form counts on the submitted email, the same counter as the member login for that address. Anyone who knows a staff address can lock this form for it by failing on purpose (by design: an anonymous request can only be counted by the address it names).
 - The remembered-admin form (it shows your name instead of an email field, and is offered to a browser holding the signed `i2g_last_admin_member` cookie from an earlier admin sign-in) counts on the member in that cookie, in a counter that no typed email or phone number can reach. Failed attempts against a staff address elsewhere do not lock it; only wrong passwords entered on that form do.

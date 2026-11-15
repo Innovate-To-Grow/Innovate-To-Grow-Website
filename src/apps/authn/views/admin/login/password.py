@@ -1,6 +1,6 @@
 """Password sign-in for the Django admin: the email + password form and the remembered-admin form.
 
-Guessing is bounded by ``apps.authn.services.login_guard`` and never keyed on the client IP (staff share the campus
+Guessing is bounded by ``apps.authn.services.security.login_guard`` and never keyed on the client IP (staff share the campus
 public IP, so an address-keyed counter locked every admin out together). The two forms count separately:
 
 * The email + password form counts on the submitted email: the same counter as the member password login
@@ -23,7 +23,7 @@ from django.contrib import auth
 from django.contrib.auth import authenticate
 from django.shortcuts import redirect
 
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 
 from .page import render_admin_login
 from .state import (

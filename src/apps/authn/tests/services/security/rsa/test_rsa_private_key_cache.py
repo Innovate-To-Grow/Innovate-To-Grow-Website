@@ -13,9 +13,9 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from apps.authn.models import RSAKeypair
-from apps.authn.services.security import key_encryption, rsa_manager
-from apps.authn.services.security.decryption import RSADecryptionError, decrypt_password
-from apps.authn.services.security.rsa_manager import (
+from apps.authn.services.security.rsa import key_encryption, rsa_manager
+from apps.authn.services.security.rsa.decryption import RSADecryptionError, decrypt_password
+from apps.authn.services.security.rsa.rsa_manager import (
     KEY_DECRYPTION_GRACE_PERIOD,
     KEY_PURGE_RETENTION,
     get_or_create_auth_keypair,

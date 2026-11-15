@@ -2,7 +2,7 @@
 
 from django.test import TestCase
 
-import apps.authn.services.security.rsa_manager as rsa_manager
+import apps.authn.services.security.rsa.rsa_manager as rsa_manager
 from apps.authn.models import RSAKeypair
 
 

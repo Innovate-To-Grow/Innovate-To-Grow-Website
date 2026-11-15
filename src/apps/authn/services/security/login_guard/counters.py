@@ -15,7 +15,7 @@ from django.utils.crypto import salted_hmac
 from apps.authn.models import LoginFailureWindow
 from apps.authn.models.contact.phone_regions import PHONE_REGION_CHOICES
 
-from ..contacts.contact_phones import normalize_to_national
+from ...contacts.contact_phones import normalize_to_national
 
 # (label, window length in seconds, failures that lock the identifier). A window locks once its counter reaches the
 # limit; the longer window is the backstop against an attacker who paces guesses just under the short one.

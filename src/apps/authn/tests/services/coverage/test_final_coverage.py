@@ -9,8 +9,8 @@ from django.test import TestCase
 from apps.authn.models import ContactEmail, RSAKeypair
 from apps.authn.services.email.challenges import _random_code
 from apps.authn.services.members.export.vcard import _build_vcard, _escape, _profile_image
-from apps.authn.services.security.decryption import RSADecryptionError, decrypt_password
-from apps.authn.services.security.rsa_manager import get_or_create_auth_keypair
+from apps.authn.services.security.rsa.decryption import RSADecryptionError, decrypt_password
+from apps.authn.services.security.rsa.rsa_manager import get_or_create_auth_keypair
 
 Member = get_user_model()
 
@@ -41,19 +41,19 @@ class RsaManagerEdgeTests(TestCase):
             decrypt_password("bm90LXZhbGlkLWVuY3J5cHRlZA==", key_id="00000000-0000-0000-0000-000000000000")
 
     def test_database_rejects_duplicate_active_key_name(self):
-        from apps.authn.services.security.rsa_manager import AUTH_KEY_NAME
+        from apps.authn.services.security.rsa.rsa_manager import AUTH_KEY_NAME
 
         RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
         with self.assertRaises(IntegrityError), transaction.atomic():
             RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
 
-    @patch("apps.authn.services.security.rsa_manager.rotate_auth_keypair")
+    @patch("apps.authn.services.security.rsa.rsa_manager.rotate_auth_keypair")
     def test_get_or_create_rotates_stale_key(self, mock_rotate):
         from datetime import timedelta
 
         from django.utils import timezone
 
-        from apps.authn.services.security.rsa_manager import AUTH_KEY_NAME
+        from apps.authn.services.security.rsa.rsa_manager import AUTH_KEY_NAME
 
         keypair = RSAKeypair.objects.create(name=AUTH_KEY_NAME, is_active=True)
         RSAKeypair.objects.filter(pk=keypair.pk).update(created_at=timezone.now() - timedelta(days=2))
