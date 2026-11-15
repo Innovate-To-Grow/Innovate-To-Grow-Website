@@ -11,7 +11,7 @@ from typing import Any
 import jmespath
 from jmespath.exceptions import JMESPathError
 
-from ..core.errors import CliError
+from ...core.errors import CliError
 
 
 def run_query(data: Any, expression: str | None) -> Any:

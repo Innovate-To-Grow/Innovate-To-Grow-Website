@@ -2,9 +2,9 @@
 
 import typer
 
-from .. import auth, config
-from ..core import runtime
-from ..core.errors import CliError
+from ... import auth, config
+from ...core import runtime
+from ...core.errors import CliError
 
 configure_app = typer.Typer(help="Manage CLI configuration (base URL, profiles).")
 
