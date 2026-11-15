@@ -7,7 +7,7 @@ from apps.core.models import (
     MicrosoftGraphProviderConfig,
     SMTPProviderConfig,
 )
-from apps.core.tests.models.graph.test_microsoft_graph_config import (
+from apps.core.tests.models.graph.config.test_microsoft_graph_config import (
     MAILBOX,
     graph_fields,
     make_graph,

@@ -5,7 +5,12 @@ from django.test import TestCase
 from apps.core.models import (
     MicrosoftGraphProviderConfig,
 )
-from apps.core.tests.models.graph.test_microsoft_graph_config import OBJECT_ID, graph_fields, loaded, make_graph
+from apps.core.tests.models.graph.config.test_microsoft_graph_config import (
+    OBJECT_ID,
+    graph_fields,
+    loaded,
+    make_graph,
+)
 
 
 class GraphConfigSaveTest(TestCase):
