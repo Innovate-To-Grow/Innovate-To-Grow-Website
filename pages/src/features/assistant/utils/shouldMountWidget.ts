@@ -1,4 +1,4 @@
-import {isIsolatedRoute} from '@/lib/isolatedRoute';
+import {isIsolatedRoute} from '@/lib/preview/isolatedRoute';
 
 /**
  * Encodes the rule for hiding the assistant widget on iframe-isolated routes.

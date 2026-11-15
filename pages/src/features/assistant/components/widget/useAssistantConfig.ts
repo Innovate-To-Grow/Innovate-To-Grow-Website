@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 
 import {DEFAULT_ASSISTANT_CONFIG, fetchAssistantConfig, type AssistantConfig} from '@/features/assistant/api';
-import {isIsolatedRoute} from '@/lib/isolatedRoute';
+import {isIsolatedRoute} from '@/lib/preview/isolatedRoute';
 
 /**
  * The assistant's public config, fetched once the visitor first interacts (or the browser is idle);
