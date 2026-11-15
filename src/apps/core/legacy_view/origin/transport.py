@@ -16,8 +16,8 @@ from .policies import (
     PathDecision,
     canonicalize_legacy_path,
     classify_legacy_path,
-    filter_query_string,
 )
+from .query import filter_query_string
 
 _RANGE_PATTERN = re.compile(r"^bytes=(?:\d+-\d*|\d*-\d+)(?:,\s*(?:\d+-\d*|\d*-\d+)){0,4}$")
 

@@ -12,8 +12,8 @@ from urllib.parse import urlsplit
 from django.test import RequestFactory, SimpleTestCase, override_settings
 from django.urls import resolve
 
-from apps.core.legacy_view.config import get_gateway_config
-from apps.core.legacy_view.transport import LegacyOriginUnavailable, build_origin_target, open_legacy_origin
+from apps.core.legacy_view.origin.config import get_gateway_config
+from apps.core.legacy_view.origin.transport import LegacyOriginUnavailable, build_origin_target, open_legacy_origin
 
 from .test_transport_and_views import GATEWAY_SETTINGS, HEADER_NAME, SECRET, FakeOriginResponse
 
@@ -109,7 +109,7 @@ class LegacyTransportForgeryTest(SimpleTestCase):
         for query in ("q=1 HTTP/1.1\r\nHost: evil.example", "q=1#fragment", "q=@evil.example:80"):
             with (
                 self.subTest(query=query),
-                patch("apps.core.legacy_view.transport.filter_query_string", return_value=query),
+                patch("apps.core.legacy_view.origin.transport.filter_query_string", return_value=query),
                 self.assertRaises(LegacyOriginUnavailable),
             ):
                 build_origin_target("/about", "q=1")
@@ -128,7 +128,7 @@ class LegacyTransportForgeryTest(SimpleTestCase):
             "/about?q=%0D%0AHost%3A+evil.example&page=..%2F..%2Fadmin%23x&filter=http%3A%2F%2F169.254.169.254%2F",
         )
 
-    @patch("apps.core.legacy_view.transport.http.client.HTTPConnection")
+    @patch("apps.core.legacy_view.origin.transport.http.client.HTTPConnection")
     def test_hostile_paths_are_refused_before_any_connection_opens(self, connection_class):
         config = get_gateway_config()
         for path in HOSTILE_TRANSPORT_PATHS:
@@ -136,7 +136,7 @@ class LegacyTransportForgeryTest(SimpleTestCase):
                 open_legacy_origin(self.factory.get("/legacy-view/about"), path, config)
         connection_class.assert_not_called()
 
-    @patch("apps.core.legacy_view.transport.http.client.HTTPConnection")
+    @patch("apps.core.legacy_view.origin.transport.http.client.HTTPConnection")
     def test_unsafe_methods_are_refused_before_any_connection_opens(self, connection_class):
         config = get_gateway_config()
         for method in ("POST", "PUT", "PATCH", "DELETE", "OPTIONS", "TRACE", "CONNECT"):
@@ -173,7 +173,7 @@ class LegacyViewForgeryTest(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
         patcher = patch(
-            "apps.core.legacy_view.views.legacy_auth.require_legacy_viewer",
+            "apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer",
             return_value=SimpleNamespace(pk="viewer"),
         )
         self.require_viewer = patcher.start()
@@ -184,7 +184,7 @@ class LegacyViewForgeryTest(SimpleTestCase):
         match = resolve(request.path_info)
         return match.func(request, *match.args, **match.kwargs)
 
-    @patch("apps.core.legacy_view.transport.http.client.HTTPConnection")
+    @patch("apps.core.legacy_view.origin.transport.http.client.HTTPConnection")
     def test_hostile_viewer_urls_never_reach_the_origin(self, connection_class):
         for url, expected_status in HOSTILE_VIEWER_URLS.items():
             with self.subTest(url=url):
@@ -192,7 +192,7 @@ class LegacyViewForgeryTest(SimpleTestCase):
         connection_class.assert_not_called()
         self.require_viewer.assert_not_called()
 
-    @patch("apps.core.legacy_view.transport.http.client.HTTPConnection")
+    @patch("apps.core.legacy_view.origin.transport.http.client.HTTPConnection")
     def test_audited_viewer_url_reaches_only_the_pinned_origin(self, connection_class):
         connection = connection_class.return_value
         connection.sock = Mock()

@@ -14,7 +14,7 @@ TEMPLATE_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "template.yaml"
 MONITORING_TEMPLATE_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "monitoring-us-east-1.yaml"
 NGINX_SERVER_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "nginx" / "i2g-legacy-private-readonly.conf"
 NGINX_UWSGI_PATH = REPOSITORY_ROOT / "aws" / "legacy" / "nginx" / "i2g-legacy-readonly-uwsgi.conf"
-DJANGO_POLICY_PATH = REPOSITORY_ROOT / "src" / "apps" / "core" / "legacy_view" / "policies.py"
+DJANGO_POLICY_PATH = REPOSITORY_ROOT / "src" / "apps" / "core" / "legacy_view" / "origin" / "policies.py"
 
 
 class CloudFormationLoader(yaml.SafeLoader):

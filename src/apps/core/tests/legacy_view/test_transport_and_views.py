@@ -9,15 +9,15 @@ from unittest.mock import Mock, patch
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, override_settings
 
-from apps.core.legacy_view.config import get_gateway_config
-from apps.core.legacy_view.transport import (
+from apps.core.legacy_view.gateway.views import MAX_HTML_BYTES, legacy_access_exchange_gateway, legacy_proxy_view
+from apps.core.legacy_view.origin.config import get_gateway_config
+from apps.core.legacy_view.origin.transport import (
     LegacyOriginHandle,
     LegacyOriginUnavailable,
     build_origin_headers,
     build_origin_target,
     open_legacy_origin,
 )
-from apps.core.legacy_view.views import MAX_HTML_BYTES, legacy_access_exchange_gateway, legacy_proxy_view
 from apps.core.services.legacy_access import LegacyViewerAccessDenied
 
 SECRET = "a-random-cloudfront-origin-value-with-32-characters"
@@ -100,7 +100,7 @@ class LegacyTransportTest(SimpleTestCase):
         for sensitive_name in ("Authorization", "Cookie", "X-CSRFToken", "X-Forwarded-For"):
             self.assertNotIn(sensitive_name, headers)
 
-    @patch("apps.core.legacy_view.transport.http.client.HTTPConnection")
+    @patch("apps.core.legacy_view.origin.transport.http.client.HTTPConnection")
     def test_connects_only_to_pinned_origin_and_applies_read_timeout(self, connection_class):
         upstream = FakeOriginResponse(headers={"Content-Type": "text/plain"})
         connection = connection_class.return_value
@@ -138,8 +138,8 @@ class LegacyProxyViewTest(SimpleTestCase):
             headers[HEADER_NAME] = SECRET
         return getattr(self.factory, method)(path, headers=headers, **extra)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_html_is_rewritten_and_sensitive_origin_headers_are_dropped(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(
@@ -173,8 +173,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertTrue(handle.response.closed)
         self.assertTrue(request._i2g_legacy_origin_verified)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_streams_static_content_preserves_range_headers_and_closes_origin(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(
@@ -201,8 +201,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertTrue(handle.connection.closed)
         self.assertTrue(handle.response.closed)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_closing_unconsumed_stream_still_closes_private_origin(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(b"large-asset", headers={"Content-Type": "application/pdf"})
@@ -216,8 +216,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertTrue(handle.connection.closed)
         self.assertTrue(handle.response.closed)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_initial_static_read_failure_returns_generic_502(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(headers={"Content-Type": "application/pdf"})
@@ -232,8 +232,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertNotIn(b"socket", response.content)
         self.assertTrue(handle.closed)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_rewrites_internal_redirect_location(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(
@@ -249,8 +249,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertNotIn("Content-Length", response)
         self.assertTrue(handle.connection.closed)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_malformed_redirect_returns_generic_502_and_closes_origin(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(status=302, headers={"Location": "http://[broken"})
@@ -263,8 +263,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertEqual(response.content, b"Legacy content is temporarily unavailable.")
         self.assertTrue(handle.closed)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_head_returns_headers_without_reading_origin_body(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(b"not-read", headers={"Content-Length": "8", "Content-Type": "text/plain"})
@@ -278,8 +278,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertEqual(handle.response.read_calls, 0)
         self.assertTrue(handle.connection.closed)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_html_head_omits_metadata_for_the_unrewritten_origin_body(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(
@@ -301,8 +301,8 @@ class LegacyProxyViewTest(SimpleTestCase):
             self.assertNotIn(name, response)
         self.assertEqual(handle.response.read_calls, 0)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_partial_html_is_rejected_instead_of_emitting_an_invalid_range(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(
@@ -319,8 +319,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertNotIn("Content-Range", response)
         self.assertTrue(handle.closed)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin", side_effect=LegacyOriginUnavailable("timeout"))
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin", side_effect=LegacyOriginUnavailable("timeout"))
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_origin_failure_returns_generic_502(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
 
@@ -331,8 +331,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertEqual(response.content, b"Legacy content is temporarily unavailable.")
         self.assertNotIn("172.31.69.63", response.content.decode())
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_origin_5xx_body_is_closed_and_replaced_with_generic_502(self, require_viewer, open_origin):
         require_viewer.return_value = self.user
         handle = origin_handle(
@@ -352,17 +352,17 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertTrue(handle.connection.closed)
         self.assertTrue(handle.response.closed)
 
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_missing_cloudfront_header_returns_404_before_auth(self, require_viewer):
         response = legacy_proxy_view(self.request(trusted=False), "about")
 
         self.assertEqual(response.status_code, 404)
         require_viewer.assert_not_called()
 
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_blocked_and_unknown_paths_never_reach_auth_or_origin(self, require_viewer):
         with (
-            patch("apps.core.legacy_view.views.open_legacy_origin") as open_origin,
+            patch("apps.core.legacy_view.gateway.views.open_legacy_origin") as open_origin,
             self.assertLogs("apps.core.legacy_view.views", level="INFO") as captured_logs,
         ):
             blocked = legacy_proxy_view(self.request(path="/legacy-view/admin/secret-token"), "admin/secret-token")
@@ -379,8 +379,8 @@ class LegacyProxyViewTest(SimpleTestCase):
         self.assertIn("outcome=unknown_path", rendered_logs)
         self.assertNotIn("secret-token", rendered_logs)
 
-    @patch("apps.core.legacy_view.views.open_legacy_origin")
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_malformed_utf8_path_returns_404_before_auth_or_origin(self, require_viewer, open_origin):
         for path in ("static/%FF", "static/%25FF", "static/%C3%28"):
             with self.subTest(path=path):
@@ -389,7 +389,7 @@ class LegacyProxyViewTest(SimpleTestCase):
         require_viewer.assert_not_called()
         open_origin.assert_not_called()
 
-    @patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer")
+    @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_non_read_method_is_rejected_before_auth(self, require_viewer):
         response = legacy_proxy_view(self.request(method="post"), "about")
 
@@ -398,7 +398,7 @@ class LegacyProxyViewTest(SimpleTestCase):
         require_viewer.assert_not_called()
 
     @patch(
-        "apps.core.legacy_view.views.legacy_auth.require_legacy_viewer",
+        "apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer",
         side_effect=LegacyViewerAccessDenied("expired"),
     )
     def test_invalid_viewer_session_returns_403_and_clears_cookie(self, require_viewer):
@@ -510,7 +510,7 @@ class LegacyTransportFailureTest(SimpleTestCase):
         self.assertNotIn("Range", headers)
         self.assertNotIn("Accept-Language", headers)
 
-    @patch("apps.core.legacy_view.transport.http.client.HTTPConnection")
+    @patch("apps.core.legacy_view.origin.transport.http.client.HTTPConnection")
     def test_connection_failure_closes_socket_and_raises_generic_error(self, connection_class):
         connection = connection_class.return_value
         connection.connect.side_effect = ConnectionRefusedError("172.31.69.63:8080 refused")
@@ -527,7 +527,7 @@ class LegacyProxyViewFailureTest(SimpleTestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.user = SimpleNamespace(pk="admin-user")
-        patcher = patch("apps.core.legacy_view.views.legacy_auth.require_legacy_viewer", return_value=self.user)
+        patcher = patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer", return_value=self.user)
         self.require_viewer = patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -540,7 +540,7 @@ class LegacyProxyViewFailureTest(SimpleTestCase):
         self.assertEqual(response["Cache-Control"], "private, no-store, max-age=0")
 
     def proxy(self, handle, legacy_path="about"):
-        with patch("apps.core.legacy_view.views.open_legacy_origin", return_value=handle):
+        with patch("apps.core.legacy_view.gateway.views.open_legacy_origin", return_value=handle):
             return legacy_proxy_view(self.request(path=f"/legacy-view/{legacy_path}"), legacy_path)
 
     def test_compressed_html_is_refused_with_generic_502(self):
@@ -624,7 +624,7 @@ class LegacyProxyViewFailureTest(SimpleTestCase):
     def test_misconfigured_gateway_returns_generic_502(self):
         with (
             override_settings(LEGACY_ORIGIN_URL="http://169.254.169.254"),
-            patch("apps.core.legacy_view.views.open_legacy_origin") as open_origin,
+            patch("apps.core.legacy_view.gateway.views.open_legacy_origin") as open_origin,
             self.assertLogs("apps.core.legacy_view.views", level="ERROR"),
         ):
             response = legacy_proxy_view(self.request(), "about")
