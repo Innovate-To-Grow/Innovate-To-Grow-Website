@@ -5,7 +5,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from apps.core.admin.service_credentials.microsoft_graph_scope import WOULD_STOP_EMAIL
+from apps.core.admin.service_credentials.microsoft_graph.scope import WOULD_STOP_EMAIL
 from apps.core.models import EmailServiceConfig, MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
 from apps.core.models.base.service_credentials.microsoft_graph import TAKEOVER_REFUSED
 from apps.core.tests.graph_helpers import create_graph_config

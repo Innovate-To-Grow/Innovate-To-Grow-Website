@@ -7,7 +7,7 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 
-from apps.core.admin.service_credentials.aws import AWSCredentialConfigAdmin, AWSCredentialConfigForm
+from apps.core.admin.service_credentials.aws_smtp.aws import AWSCredentialConfigAdmin, AWSCredentialConfigForm
 from apps.core.models import (
     AWSCredentialConfig,
 )

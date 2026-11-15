@@ -35,12 +35,12 @@ cli_admin = ["core"]
 # Individually justified cross-app imports. `from` is an fnmatch pattern of the
 # importing module, `to` a module (prefix) it may import.
 [[exceptions]]
-from = "apps.core.admin.service_credentials.aws"
+from = "apps.core.admin.service_credentials.aws_smtp.aws"
 to = "apps.system_intelligence.models"
 reason = "The AWS credentials page's 'Test Bedrock API' action reads the default model id; imported lazily inside the action."
 
 [[exceptions]]
-from = "apps.core.admin.service_credentials.helpers"
+from = "apps.core.admin.service_credentials.aws_smtp.helpers"
 to = "apps.authn.services.sms"
 reason = "Admin 'send test SMS' (core AWS page and mail settings) reuses authn's one SMS publisher and its error classification; imported lazily inside the call."
 

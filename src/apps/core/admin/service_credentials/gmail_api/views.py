@@ -20,8 +20,8 @@ from apps.core.services.email.gmail.access_check import precondition_problem, ru
 from apps.core.services.email.gmail.key import install, removal
 from apps.core.services.email.gmail.key.install import KeyChangeError
 
-from .gmail_api_forms import KEY_FIELD, AccessCheckForm, InstallKeyForm, RemoveKeyForm
-from .gmail_api_panel import ACCESS_CHECK_URL_NAME, INSTALL_URL_NAME, REMOVE_URL_NAME, URL_NAME_PREFIX, key_panel
+from .forms import KEY_FIELD, AccessCheckForm, InstallKeyForm, RemoveKeyForm
+from .panel import ACCESS_CHECK_URL_NAME, INSTALL_URL_NAME, REMOVE_URL_NAME, URL_NAME_PREFIX, key_panel
 
 TEMPLATE_DIR = "admin/core/gmailapiproviderconfig"
 CORE_APP_ONLY = "Managing the Gmail API key or running its access check needs the Core app."

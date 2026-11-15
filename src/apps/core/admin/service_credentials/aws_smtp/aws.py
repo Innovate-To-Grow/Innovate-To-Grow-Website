@@ -9,7 +9,7 @@ from unfold.decorators import action, display
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.aws.credentials import resolve_aws_credentials
 
-from ..common.base import BaseModelAdmin
+from ...common.base import BaseModelAdmin
 from .test_send_mixin import TestSendViewsMixin
 
 

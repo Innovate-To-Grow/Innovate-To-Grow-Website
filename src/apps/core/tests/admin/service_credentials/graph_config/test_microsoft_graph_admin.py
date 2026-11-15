@@ -4,7 +4,7 @@ application fields, delete rules, access control and confirm-on-save."""
 from django.test import TestCase
 
 from apps.core.admin.confirmation.post_data import is_sensitive_field
-from apps.core.admin.service_credentials.microsoft_graph import (
+from apps.core.admin.service_credentials.microsoft_graph.config import (
     GRAPH_FORM_FIELDS,
     MicrosoftGraphProviderConfigForm,
 )

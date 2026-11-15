@@ -21,7 +21,7 @@ class AdminTestSendTests(TestCase):
 
     @patch(SES_CLIENT)
     def test_the_admin_test_email_is_admitted_on_the_transactional_lane(self, factory):
-        from apps.core.admin.service_credentials.helpers import _send_test_email
+        from apps.core.admin.service_credentials.aws_smtp.helpers import _send_test_email
 
         factory.return_value.send_raw_email.return_value = {"MessageId": "ses-1"}
         admissions = spy_on_email_admissions(self)

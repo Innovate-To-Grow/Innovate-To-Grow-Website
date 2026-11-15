@@ -43,7 +43,7 @@ class TestSmsViewTest(TestCase):
         with (
             patch.object(AWSCredentialConfig, "load", return_value=AWSCredentialConfig(name="AWS")),
             patch(
-                "apps.core.admin.service_credentials.test_send_mixin._send_test_sms",
+                "apps.core.admin.service_credentials.aws_smtp.test_send_mixin._send_test_sms",
                 return_value="message (ID: m1)",
             ),
         ):
@@ -57,7 +57,7 @@ class TestSmsViewTest(TestCase):
         with (
             patch.object(AWSCredentialConfig, "load", return_value=AWSCredentialConfig(name="AWS")),
             patch(
-                "apps.core.admin.service_credentials.test_send_mixin._send_test_sms",
+                "apps.core.admin.service_credentials.aws_smtp.test_send_mixin._send_test_sms",
                 side_effect=RuntimeError("sms boom"),
             ),
         ):
