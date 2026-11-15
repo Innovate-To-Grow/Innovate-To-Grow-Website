@@ -110,7 +110,10 @@ class FrontendCssIndexTests(SimpleTestCase):
         index = frontend_css_index()
 
         self.assertTrue(index["graph"])
-        self.assertEqual(index["defined"]["maintenance-container"], {"app/MaintenanceMode/MaintenanceMode.css"})
+        self.assertEqual(index["defined"]["maintenance-container"], {"app/MaintenanceMode/maintenanceCard.css"})
         # SheetsDataTable is only reached through a lazily loaded route.
         self.assertNotIn("sdt-search", index["defined"])
-        self.assertEqual(index["route"]["sdt-search"], {"components/SheetsDataTable/SheetsDataTable.css"})
+        self.assertEqual(
+            index["route"]["sdt-search"],
+            {"components/SheetsDataTable/SheetsDataTable.css", "components/SheetsDataTable/SheetsDataTableMedia.css"},
+        )
