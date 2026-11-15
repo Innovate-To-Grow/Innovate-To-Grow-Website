@@ -8,9 +8,7 @@ from apps.authn.services.sms import (
     PhoneVerificationThrottled,
 )
 from apps.event.tests.helpers import load_urlconf, make_event, make_member
-from apps.event.views.registration.phones import (
-    LEGACY_EVENT_REGISTRATION_CONTEXT,
-)
+from apps.event.views.registration.contacts.phones import LEGACY_EVENT_REGISTRATION_CONTEXT
 
 
 class VerifyPhoneCodeViewTest(TestCase):

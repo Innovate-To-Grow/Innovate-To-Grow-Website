@@ -95,7 +95,7 @@ class EventRegistrationCreateViewTest(_EventRegistrationCreateViewCase):
         self.client.raise_request_exception = False
 
         with patch(
-            "apps.event.views.registration.create.sync_registration_to_account",
+            "apps.event.views.registration.create.view.sync_registration_to_account",
             side_effect=RuntimeError("database follow-up failed"),
         ):
             response = self._post(

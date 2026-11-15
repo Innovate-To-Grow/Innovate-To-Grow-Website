@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from apps.event.views.registration.phones import _validate_phone_digits
+from apps.event.views.registration.contacts.phones import _validate_phone_digits
 
 
 class ValidatePhoneDigitsTest(SimpleTestCase):

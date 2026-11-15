@@ -9,9 +9,7 @@ from rest_framework.test import APIClient
 from apps.authn.models import PhoneVerificationChallenge
 from apps.event.models import EventRegistration, Ticket
 from apps.event.tests.helpers import load_urlconf, make_event, make_member
-from apps.event.views.registration.phones import (
-    LEGACY_EVENT_REGISTRATION_CONTEXT,
-)
+from apps.event.views.registration.contacts.phones import LEGACY_EVENT_REGISTRATION_CONTEXT
 
 
 class PhoneVerificationViewsTest(TestCase):

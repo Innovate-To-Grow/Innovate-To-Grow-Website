@@ -7,7 +7,8 @@ from rest_framework.views import APIView
 from apps.event.serializers import EventRegistrationCreateSerializer, build_registration_payload
 from apps.event.throttles import RegistrationCreateThrottle
 
-from .create_support import (
+from .notifications import send_initial_ticket_email
+from .support import (
     RegistrationRequestError,
     create_registration,
     duplicate_registration_response,
@@ -15,7 +16,6 @@ from .create_support import (
     get_event,
     get_ticket,
     question_answers_or_response,
-    send_initial_ticket_email,
     sync_registration_to_account,
 )
 

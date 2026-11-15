@@ -1,0 +1,92 @@
+.dark .i2g-checkin-stats div,
+.dark .i2g-checkin-primary,
+.dark .i2g-checkin-panel {
+    box-shadow: none;
+}
+
+.dark .i2g-checkin-sync,
+.dark .i2g-checkin-input-row input,
+.dark .i2g-checkin-search,
+.dark .i2g-checkin-icon-button,
+.dark .i2g-checkin-row button {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--checkin-border);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .i2g-checkin-scan-form label,
+.dark .i2g-checkin-preview-info span,
+.dark .i2g-checkin-result span,
+.dark .i2g-checkin-row code {
+    color: var(--checkin-muted);
+}
+
+.dark .i2g-checkin-input-row input:focus,
+.dark .i2g-checkin-search:focus {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--checkin-blue) 24%, transparent);
+}
+
+.dark .i2g-checkin-result.is-success {
+    border-color: color-mix(in srgb, var(--checkin-success) 48%, transparent);
+}
+
+.dark .i2g-checkin-result.is-duplicate,
+.dark .i2g-checkin-result.is-busy {
+    border-color: color-mix(in srgb, var(--checkin-warning) 48%, transparent);
+}
+
+.dark .i2g-checkin-result.is-error {
+    border-color: color-mix(in srgb, var(--checkin-error) 48%, transparent);
+}
+
+.dark .i2g-checkin-result.is-preview,
+.dark .i2g-checkin-row button:hover,
+.dark .i2g-checkin-camera-actions button[data-camera-stop] {
+    background: color-mix(in srgb, var(--checkin-blue) 16%, var(--md-sys-color-surface-container));
+    border-color: color-mix(in srgb, var(--checkin-blue) 44%, var(--checkin-border));
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .i2g-checkin-row {
+    border-bottom-color: var(--checkin-border);
+}
+
+@media (max-width: 980px) {
+    .i2g-checkin-console {
+        padding: 12px;
+    }
+
+    .i2g-checkin-header,
+    .i2g-checkin-input-row,
+    .i2g-checkin-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .i2g-checkin-header {
+        align-items: flex-start;
+        display: grid;
+    }
+
+    .i2g-checkin-header-actions {
+        align-items: flex-start;
+    }
+
+    .i2g-checkin-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .i2g-checkin-input-row > button {
+        min-height: 48px;
+    }
+}
+
+@media (max-width: 560px) {
+    .i2g-checkin-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .i2g-checkin-input-row input {
+        font-size: 17px;
+        padding: 12px 14px;
+    }
+}

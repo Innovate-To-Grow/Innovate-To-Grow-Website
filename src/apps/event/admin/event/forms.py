@@ -42,5 +42,5 @@ class EventAdminForm(forms.ModelForm):
             widget.attrs["aria-describedby"] = " ".join(described_by)
 
     class Media:
-        css = {"all": ("event/css/event_admin.css",)}
+        css = {"all": ("event/css/event_admin/event_admin.css",)}
         js = ("event/js/event_admin.js",)

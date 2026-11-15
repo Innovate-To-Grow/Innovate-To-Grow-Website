@@ -24,7 +24,7 @@ from apps.authn.services.send_verification.rules.constants import EMAIL_CHANNEL,
 from apps.event.models import Event
 from apps.event.throttles import EmailCodeUserRequestThrottle, SecondaryEmailCodeVerifyThrottle
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.event.views.registration.secondary_email")  # its log name before the move
 
 
 class SecondaryEmailInputSerializer(serializers.Serializer):

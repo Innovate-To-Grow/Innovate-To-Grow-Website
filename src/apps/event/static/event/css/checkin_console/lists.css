@@ -1,0 +1,122 @@
+.i2g-checkin-side {
+    display: grid;
+    gap: 18px;
+}
+
+.i2g-checkin-panel {
+    overflow: hidden;
+}
+
+.i2g-checkin-panel-header {
+    align-items: center;
+    border-bottom: 1px solid var(--checkin-border);
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+    padding: 14px 16px;
+}
+
+.i2g-checkin-panel-header h2 {
+    font-size: 15px;
+    font-weight: 800;
+    margin: 0;
+}
+
+.i2g-checkin-icon-button {
+    align-items: center;
+    background: #f2f4f7;
+    border: 1px solid var(--checkin-border);
+    border-radius: 8px;
+    color: var(--checkin-blue);
+    cursor: pointer;
+    display: inline-flex;
+    height: 34px;
+    justify-content: center;
+    width: 34px;
+}
+
+.i2g-checkin-icon-button .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.i2g-checkin-search {
+    border: 1px solid var(--checkin-border);
+    border-radius: 8px;
+    display: block;
+    font-size: 15px;
+    margin: 12px 16px;
+    padding: 12px 14px;
+    width: calc(100% - 32px);
+}
+
+.i2g-checkin-search:focus {
+    border-color: var(--checkin-blue);
+    box-shadow: 0 0 0 3px rgb(18 58 95 / 12%);
+    outline: none;
+}
+
+.i2g-checkin-list {
+    max-height: 52vh;
+    min-height: 160px;
+    overflow: auto;
+}
+
+.i2g-checkin-list--compact {
+    max-height: 320px;
+}
+
+.i2g-checkin-row {
+    align-items: center;
+    border-bottom: 1px solid #eef2f6;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 12px 16px;
+}
+
+.i2g-checkin-row:last-child {
+    border-bottom: 0;
+}
+
+.i2g-checkin-row strong {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 3px;
+}
+
+.i2g-checkin-row span {
+    color: var(--checkin-muted);
+    display: block;
+    font-size: 12px;
+}
+
+.i2g-checkin-row code {
+    color: #344054;
+    font-size: 12px;
+}
+
+.i2g-checkin-row button {
+    background: #ffffff;
+    border: 1px solid var(--checkin-border);
+    border-radius: 8px;
+    color: var(--checkin-blue);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 8px 10px;
+}
+
+.i2g-checkin-row button:hover {
+    background: #eff6ff;
+}
+
+.i2g-checkin-row button[data-undo-record] {
+    color: var(--checkin-error);
+}
+
+.i2g-checkin-empty {
+    color: var(--checkin-muted);
+    font-weight: 700;
+    padding: 22px;
+    text-align: center;
+}

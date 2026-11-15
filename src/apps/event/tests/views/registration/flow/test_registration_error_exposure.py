@@ -13,7 +13,7 @@ from apps.authn.services.sms import PhoneVerificationInvalid
 from apps.event.models import EventRegistration
 from apps.event.services.registration.contacts import RegistrationContactError
 from apps.event.tests.helpers import make_event, make_member, make_ticket
-from apps.event.views.registration.create_support import RegistrationRequestError, create_registration
+from apps.event.views.registration.create.support import RegistrationRequestError, create_registration
 
 SENTINEL = "SENTINEL-7f3c-internal"
 PHONE_DETAIL = "Please verify your phone number before completing registration."
@@ -64,7 +64,7 @@ class RegistrationErrorExposureTest(TestCase):
     def test_contact_error_responds_with_declared_detail_not_exception_text(self):
         event = self._event(collect_phone=True)
         with patch(
-            "apps.event.views.registration.create_support.registration_contact_fields",
+            "apps.event.views.registration.create.support.registration_contact_fields",
             side_effect=_contact_error_with_internal_message(),
         ):
             response = self._post(event, attendee_phone="2095551234")
@@ -78,7 +78,7 @@ class RegistrationErrorExposureTest(TestCase):
         original = _contact_error_with_internal_message()
         request = SimpleNamespace(user=self.member)
         with patch(
-            "apps.event.views.registration.create_support.registration_contact_fields",
+            "apps.event.views.registration.create.support.registration_contact_fields",
             side_effect=original,
         ):
             with self.assertRaises(RegistrationRequestError) as ctx:
@@ -118,7 +118,7 @@ class RegistrationErrorExposureTest(TestCase):
         self.client.raise_request_exception = False
         with (
             patch(
-                "apps.event.views.registration.create.send_initial_ticket_email",
+                "apps.event.views.registration.create.view.send_initial_ticket_email",
                 side_effect=RuntimeError(f"{SENTINEL} db=postgres://internal"),
             ),
             self.assertLogs("django.request", level="ERROR") as logs,

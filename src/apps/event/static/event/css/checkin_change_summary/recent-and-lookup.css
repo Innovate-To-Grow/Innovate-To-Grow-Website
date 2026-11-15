@@ -1,0 +1,145 @@
+.i2g-checkin-summary__recent,
+.i2g-checkin-summary__lookup {
+    overflow: hidden;
+}
+
+.i2g-checkin-summary__recent-header,
+.i2g-checkin-summary__lookup-header {
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.875rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.28);
+}
+
+.i2g-checkin-summary__recent-header strong,
+.i2g-checkin-summary__lookup-header strong {
+    font-size: 0.9rem;
+    line-height: 1.3;
+}
+
+.i2g-checkin-summary__recent-list,
+.i2g-checkin-summary__lookup-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.i2g-checkin-summary__recent-row,
+.i2g-checkin-summary__lookup-row {
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0.875rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.i2g-checkin-summary__recent-row:last-child,
+.i2g-checkin-summary__lookup-row:last-child {
+    border-bottom: 0;
+}
+
+.i2g-checkin-summary__recent-row strong,
+.i2g-checkin-summary__lookup-row strong {
+    display: block;
+    font-size: 0.86rem;
+    line-height: 1.35;
+}
+
+.i2g-checkin-summary__recent-row code,
+.i2g-checkin-summary__lookup-row code {
+    display: inline-flex;
+    margin-top: 0.2rem;
+    color: var(--checkin-summary-primary-strong);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.i2g-checkin-summary__lookup-controls {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem);
+    gap: 0.75rem;
+    padding: 0.75rem 0.875rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.i2g-checkin-summary__lookup-search,
+.i2g-checkin-summary__ticket-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.i2g-checkin-summary__lookup-search span,
+.i2g-checkin-summary__ticket-filter span {
+    color: var(--checkin-summary-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0;
+    line-height: 1.2;
+}
+
+.i2g-checkin-summary__lookup-search input,
+.i2g-checkin-summary__ticket-filter select {
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    border-radius: 8px;
+    background: #ffffff;
+    color: #172033;
+    font-size: 0.9rem;
+    line-height: 1.35;
+}
+
+.i2g-checkin-summary__lookup-search input:focus,
+.i2g-checkin-summary__ticket-filter select:focus {
+    border-color: var(--checkin-summary-primary);
+    box-shadow: 0 0 0 3px rgba(15, 79, 143, 0.12);
+    outline: 0;
+}
+
+.i2g-checkin-summary__lookup-status {
+    align-items: flex-end;
+    flex: 0 0 auto;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-align: right;
+}
+
+.i2g-checkin-summary__badge {
+    justify-content: center;
+    min-height: 1.7rem;
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.i2g-checkin-summary__badge.is-checked {
+    background: rgba(236, 253, 243, 0.95);
+    color: var(--checkin-summary-success);
+}
+
+.i2g-checkin-summary__badge.is-missing {
+    background: rgba(255, 251, 235, 0.95);
+    color: var(--checkin-summary-warning);
+}
+
+.i2g-checkin-summary__lookup-more {
+    padding: 0.75rem 0.875rem;
+    border-top: 1px solid rgba(148, 163, 184, 0.22);
+    font-weight: 700;
+}
+
+.i2g-checkin-summary__recent-time {
+    flex: 0 0 auto;
+    color: var(--checkin-summary-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+}
+
+.i2g-checkin-summary__empty {
+    padding: 0.875rem;
+}
