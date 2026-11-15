@@ -15,7 +15,7 @@ from apps.projects.services.ai_search import (
 )
 from apps.system_intelligence.models import SystemIntelligenceConfig
 
-from .ai_search_helpers import create_project
+from ..helpers.ai_search_helpers import create_project
 
 TABLE_FIELDS = {
     "id",

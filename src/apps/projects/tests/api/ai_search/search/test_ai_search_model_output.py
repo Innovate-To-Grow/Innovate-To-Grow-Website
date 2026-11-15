@@ -10,7 +10,7 @@ from apps.core.models import AWSCredentialConfig
 from apps.projects.models import Semester
 from apps.system_intelligence.models import AssistantMessageLog, SystemIntelligenceConfig
 
-from .ai_search_helpers import SEARCH_URL, SERVICE_AGENT, Member, create_project
+from ..helpers.ai_search_helpers import SEARCH_URL, SERVICE_AGENT, Member, create_project
 
 
 class AISearchModelOutputTests(TestCase):

@@ -17,7 +17,7 @@ from apps.system_intelligence.services.public_assistant import (
     record_usage,
 )
 
-from .ai_search_helpers import BUDGET_MESSAGE, Member, create_project
+from ..helpers.ai_search_helpers import BUDGET_MESSAGE, Member, create_project
 
 
 class _PastProjectAISearchAPIViewCase(TestCase):

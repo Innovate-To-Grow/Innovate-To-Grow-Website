@@ -13,7 +13,7 @@ from apps.system_intelligence.models import (
     SystemIntelligenceConfig,
 )
 
-from .ai_search_helpers import SERVICE_AGENT, agent_result, create_project
+from ..helpers.ai_search_helpers import SERVICE_AGENT, agent_result, create_project
 
 
 class PreparePastProjectAISearchTests(TestCase):

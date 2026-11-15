@@ -3,10 +3,14 @@ from unittest.mock import MagicMock, patch
 from rest_framework.test import APIClient
 
 from apps.core.models import AWSCredentialConfig
-from apps.projects.tests.api.ai_search.test_ai_search_scope import ALL_PROMPT, TABLE_FIELDS, AISearchScopeTestCase
+from apps.projects.tests.api.ai_search.scope.test_ai_search_scope import (
+    ALL_PROMPT,
+    TABLE_FIELDS,
+    AISearchScopeTestCase,
+)
 from apps.system_intelligence.models import AssistantMessageLog
 
-from .ai_search_helpers import SEARCH_URL, SERVICE_AGENT, VIEW_SEARCH, Member
+from ..helpers.ai_search_helpers import SEARCH_URL, SERVICE_AGENT, VIEW_SEARCH, Member
 
 
 class AISearchScopeEndpointTests(AISearchScopeTestCase):
