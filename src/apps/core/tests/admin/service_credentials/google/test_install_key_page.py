@@ -23,7 +23,7 @@ from apps.core.tests.gmail_api_helpers import (
     token_error,
     token_response,
 )
-from apps.core.tests.services.gmail_api.test_gmail_access_check import ScopedTokenAnswers
+from apps.core.tests.services.gmail_api.access.test_gmail_access_check import ScopedTokenAnswers
 
 
 class InstallKeyPageTests(GmailAdminTestCase):

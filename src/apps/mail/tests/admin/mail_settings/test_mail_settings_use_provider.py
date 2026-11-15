@@ -5,7 +5,7 @@ from django.test import override_settings
 from django.urls import reverse
 
 from apps.core.tests.graph_helpers import create_graph_config
-from apps.core.tests.models.graph.test_graph_go_live_gate import DENY, evidence
+from apps.core.tests.project.models.graph.test_graph_go_live_gate import DENY, evidence
 from apps.event.tests.helpers import make_admin
 from apps.mail.tests.admin.mail_settings.test_mail_settings_providers import (
     GRAPH_NOT_READY,
