@@ -5,15 +5,9 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {ProjectGridTable} from '@/features/projects/components/grid/table/ProjectGridTable';
 import {useProjectGridTable} from '@/features/projects/components/grid/state/useProjectGridTable';
-import {
-  PAST_PROJECT_GRID_COLUMNS,
-  createProjectGridItems,
-  type ProjectGridColumnKey,
-  type ProjectGridItem,
-  type ProjectGridRow,
-  type ProjectGridSortDirection,
-} from '@/features/projects/components/grid/contracts/projectGrid';
+import {type ProjectGridItem} from '@/features/projects/components/grid/contracts/projectGrid';
 import {stubGridLayout} from '@/__tests__/features/projects/fixtures/gridLayout';
+import {baseProps, emptyState, makeRows, noRows, rows} from '@/__tests__/features/projects/components/grid/table/states/statesFixtures';
 
 // The grid's empty, loading and failure states, its count line, and a row's copy feedback.
 
@@ -22,64 +16,6 @@ vi.mock('@/features/projects/api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/projects/api')>()),
   fetchProjectDetail: fetchDetail,
 }));
-
-// Each test uses its own ids: loaded (or failed) details are kept per project between renders.
-const makeRows = (prefix: string, count: number, overrides: Partial<ProjectGridRow> = {}): ProjectGridItem[] =>
-  createProjectGridItems(
-    Array.from(
-      {length: count},
-      (_, index): ProjectGridRow => ({
-        id: `${prefix}-${index}`,
-        semester_label: '2025-1 Spring',
-        class_code: 'CAP',
-        team_number: `${index + 1}`,
-        team_name: `Team ${index + 1}`,
-        project_title: `Project ${index + 1}`,
-        organization: 'Acme',
-        industry: 'Energy',
-        abstract: 'An abstract',
-        student_names: 'Ada',
-        is_presenting: '',
-        ...overrides,
-      }),
-    ),
-    prefix,
-  );
-
-const rows = makeRows('states', 2);
-
-const baseProps = {
-  columns: PAST_PROJECT_GRID_COLUMNS,
-  rows,
-  pagedRows: rows,
-  filteredCount: 2,
-  totalCount: 2,
-  search: '',
-  sortField: 'semester_label' as ProjectGridColumnKey,
-  sortDirection: 'asc' as ProjectGridSortDirection,
-  onSearchChange: vi.fn(),
-  onSortChange: vi.fn(),
-  expandedKeys: new Set<string>(),
-  onToggleExpanded: vi.fn(),
-  page: 0,
-  totalPages: 1,
-  onPageChange: vi.fn(),
-  pageSize: 10,
-  pageSizeOptions: [10, 25],
-  onPageSizeChange: vi.fn(),
-};
-
-const noRows = {rows: [], pagedRows: [], filteredCount: 0, totalCount: 0};
-
-const emptyState = {
-  emptyTitle: 'No current projects yet',
-  emptyMessage: "This semester's projects appear here once the schedule is published.",
-  emptyActions: (
-    <a className="itg-btn itg-btn-outline" href="/past-projects">
-      Search Past Projects
-    </a>
-  ),
-};
 
 /** A past-projects table of one row, opened from its Details button so the row reports its own state. */
 const OneRowGrid = ({row}: {row: ProjectGridItem}) => {
