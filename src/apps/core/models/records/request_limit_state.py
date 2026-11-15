@@ -2,7 +2,7 @@
 
 from django.db import models
 
-from ..base.control import ProjectControlModel
+from ..base.abstract.control import ProjectControlModel
 
 
 class RequestRateLimitState(ProjectControlModel):

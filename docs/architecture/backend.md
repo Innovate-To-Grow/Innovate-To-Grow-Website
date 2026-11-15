@@ -20,7 +20,7 @@ Allowed imports between these apps, and the registration hooks that keep `core` 
 
 ## Base model: ProjectControlModel
 
-Defined in `src/apps/core/models/base/control.py`. Nearly all domain models inherit from this abstract class.
+Defined in `src/apps/core/models/base/abstract/control.py`. Nearly all domain models inherit from this abstract class.
 
 ```
 ProjectControlModel (abstract)
@@ -34,7 +34,7 @@ ProjectControlModel (abstract)
 
 ### Model mixins
 
-Additional abstract mixins in `src/apps/core/models/mixins.py`:
+Additional abstract mixins in `src/apps/core/models/base/abstract/mixins.py`:
 
 | Mixin | Fields |
 |-------|--------|

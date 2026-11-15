@@ -11,7 +11,7 @@ from apps.core.models import (
     GoogleCredentialConfig,
     SMTPProviderConfig,
 )
-from apps.core.models.base.service_credentials.google import validate_google_credentials_json
+from apps.core.models.base.service_credentials.shared.google import validate_google_credentials_json
 
 VALID_GOOGLE_JSON = {
     "type": "service_account",

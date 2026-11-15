@@ -1,7 +1,7 @@
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import BaseUserManager
 
-from apps.core.models.managers import ProjectControlQuerySet
+from apps.core.models import ProjectControlQuerySet
 
 
 class MemberManager(BaseUserManager):

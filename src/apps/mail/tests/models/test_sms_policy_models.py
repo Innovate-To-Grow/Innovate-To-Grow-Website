@@ -15,7 +15,7 @@ from apps.mail.models import (
     SmsOptOutSyncState,
     TicketSms,
 )
-from apps.mail.models.sms_config import SETTINGS_PK
+from apps.mail.models.sms.personal_links import SETTINGS_PK
 
 
 class SmsConfigTests(TestCase):

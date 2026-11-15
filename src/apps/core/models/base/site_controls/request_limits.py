@@ -9,7 +9,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
-from .control import ProjectControlModel
+from ..abstract.control import ProjectControlModel
 
 # Marked for translation; the site ships no translations yet, so they render as written. Mirrors the delivery-rate
 # wording ("智能限流：根据实际情况（负载、错误率、滥用）自动调整限额").

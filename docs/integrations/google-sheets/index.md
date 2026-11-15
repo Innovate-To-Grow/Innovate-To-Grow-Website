@@ -32,7 +32,7 @@ All integrations authenticate via a Google service account whose credentials are
 ## Authentication
 
 Credentials are stored in `GoogleCredentialConfig`
-(`src/apps/core/models/base/service_credentials/google.py`) as a JSON text
+(`src/apps/core/models/base/service_credentials/shared/google.py`) as a JSON text
 field containing a Google service account key. The model validates that the
 JSON includes:
 

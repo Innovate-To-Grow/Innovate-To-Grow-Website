@@ -36,8 +36,8 @@ from django.utils import timezone
 
 from apps.authn.models import ContactPhone
 from apps.mail.models import SmsConfig, SmsLinkToken
-from apps.mail.models.sms_config import PersonalLinkState, revoke_personal_links
-from apps.mail.models.sms_link import SmsLinkRevocation
+from apps.mail.models.sms.links import SmsLinkRevocation
+from apps.mail.models.sms.personal_links import PersonalLinkState, revoke_personal_links
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, is_strict_internal_path
 
 from .opt_outs import US_REGION, normalize_phone, us_national_digits
