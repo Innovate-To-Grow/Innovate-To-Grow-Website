@@ -15,7 +15,7 @@ pre-push hooks run the same commands.
 | TypeScript advisory report | `cd pages && npm run quality:report` (`-- --json out.json`) | never (always exits 0) |
 | Frontend layer boundaries, cycles, directory size | `cd pages && npm run check:structure` | a boundary violation, a new cycle, or a directory over the hard limit |
 | `core/services` structure (existing, stricter) | `cd src && python manage.py test apps.core.tests.services.test_core_services_structure --settings=config.settings.environments.local` | a file over 200 physical lines, or more than 10 `.py` files in one directory |
-| Repository structure (architecture spec R001–R004) | `python -m scripts.structure.checker report` (`--verbose` lists every finding, `--json out.json`) | never in report mode; with `--mode enforce`, an open finding or a stale entry |
+| Repository structure (architecture spec R001–R004) | `python -m scripts.structure.checker report --mode enforce` (`--verbose` lists every finding, `--json out.json`; without `--mode enforce` it only reports) | a finding that is neither fixed nor a listed exception, or a stale exception entry |
 | Migration guard (spec R024) | `python -m scripts.structure.checker migrations --base origin/main --head HEAD` | an existing file under any `migrations/` directory was modified, deleted, renamed or changed type |
 
 Run both Python checks from the repository root with the dev virtualenv active: complexity comes from
@@ -202,10 +202,14 @@ every file git tracks, from the repository root. Limits and exceptions live in
   fixes, and files that cannot be split without changing behavior. Never add a pattern that covers a whole source tree.
 - An entry that no longer matches anything is reported as stale, so the lists only shrink.
 
-**Mode.** CI's `Repository Structure and Migration Guard` job runs the structure check in **report-only**
-mode: the counts and every open finding go to the job summary and never fail the run, because the tree
-predates the spec and the architecture refactor fixes it module by module. Once it lands, the job switches to
-`--mode enforce` (fails on an open finding or a stale entry).
+**Mode.** CI's `Repository Structure and Migration Guard` job **enforces** the structure check
+(`--mode enforce`): a finding that is neither fixed nor listed in `structure.toml` fails the run, and so does
+an entry that no longer matches anything. The counts and any open finding also go to the job summary.
+Exceptions are kept to what a fix would break: a module path a migration imports, a name or location a
+framework, tool or deployment fixes (Django app roots and admin override templates, `__init__.py` and
+`__main__.py`, a feature's public `index.ts` and `api/index.ts`, `.github/workflows`), the API contract, plus
+third-party and frozen archive content and the entries approved earlier (the single-closure admin scripts and
+the CMS CSS contract). Each entry states its reason.
 
 **Migration guard (enforcing).** The same job fails when an existing file under any `migrations/` directory is
 modified, deleted, renamed or changes type between the merge base of the PR (or merge-group, or push) base
