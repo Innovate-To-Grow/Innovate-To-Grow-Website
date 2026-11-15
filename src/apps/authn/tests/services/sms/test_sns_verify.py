@@ -383,7 +383,7 @@ class SnsVerifyServiceTest(TestCase):
             start_phone_verification(self.phone)
 
     @patch(
-        "apps.authn.services.sms.sns_verify._mark_challenge_sent",
+        "apps.authn.services.sms.challenges._mark_challenge_sent",
         side_effect=RuntimeError("database unavailable after provider success"),
     )
     @patch("apps.core.services.aws.sms_send.boto3.client")
