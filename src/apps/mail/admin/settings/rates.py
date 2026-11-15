@@ -29,10 +29,10 @@ from .rate_cards import (
     build_card,
     card_groups,
     in_use_identities,
-    placeholders,
     primary_states,
     status_payload,
 )
+from .rate_cards.placeholders import placeholders
 from .rates_forms import MANUAL_RATE_NOTE, DeliveryRatePolicyForm
 
 Channel = DeliveryRatePolicy.Channel
