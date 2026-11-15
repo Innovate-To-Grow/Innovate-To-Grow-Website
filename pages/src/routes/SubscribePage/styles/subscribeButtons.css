@@ -1,0 +1,42 @@
+@layer itg.components {
+/* ---- buttons.css ---- */
+/* Visuals come from .itg-btn / -primary / -outline / -text. */
+
+.subscribe-submit {
+  margin-top: 0;
+}
+
+.subscribe-link {
+  margin-top: 24px;
+}
+
+.subscribe-code-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 20px;
+  margin-top: 12px;
+}
+
+.subscribe-spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: subscribe-spin 0.8s linear infinite;
+}
+
+@keyframes subscribe-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .subscribe-spinner {
+    animation-duration: 2.4s;
+  }
+}
+}

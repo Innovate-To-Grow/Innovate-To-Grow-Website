@@ -1,0 +1,8 @@
+/* SubscribePage.css, split into ordered sections. They are imported in their original cascade order
+   (later files override earlier ones at equal specificity), so do not reorder this list;
+   add new rules to the file that owns them. */
+@import './subscribeBase.css';
+@import './subscribeButtons.css';
+@import './subscribeFeedback.css';
+@import './subscribeManage.css';
+@import './subscribeResponsive.css';
