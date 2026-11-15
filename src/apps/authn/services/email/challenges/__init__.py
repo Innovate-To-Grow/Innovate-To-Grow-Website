@@ -5,16 +5,10 @@ from __future__ import annotations
 import secrets
 from datetime import timedelta
 
+from .consume import consume_login_or_registration_challenge, consume_verification_token, mark_challenge_verified
 from .issue import create_challenge_record as _create_challenge_record
 from .issue import issue_email_challenge
-from .verify import (
-    consume_login_or_registration_challenge,
-    consume_verification_token,
-    mark_challenge_verified,
-    verify_email_code,
-    verify_email_code_and_mint_token,
-    verify_email_code_for_purposes,
-)
+from .verify import verify_email_code, verify_email_code_and_mint_token, verify_email_code_for_purposes
 
 CHALLENGE_TTL = timedelta(minutes=10)
 RESEND_COOLDOWN = timedelta(seconds=60)

@@ -9,14 +9,12 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.authn.models import RSAKeypair
+from apps.authn.services.security.decryption import RSADecryptionError, decrypt_password, is_encrypted_password
 from apps.authn.services.security.rsa_manager import (
     KEY_DECRYPTION_GRACE_PERIOD,
     KEY_PURGE_RETENTION,
-    RSADecryptionError,
-    decrypt_password,
     get_or_create_auth_keypair,
     get_public_key_pem,
-    is_encrypted_password,
     purge_retired_auth_keypairs,
     rotate_auth_keypair,
 )
