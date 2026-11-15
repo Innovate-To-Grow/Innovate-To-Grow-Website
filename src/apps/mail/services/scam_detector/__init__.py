@@ -8,12 +8,11 @@ from .checks import (
     check_address_alignment,
     check_authentication,
     check_body,
-    check_links,
     check_sender,
     check_structure,
     check_subject,
-    link_warning_details,
 )
+from .links import check_links, link_warning_details
 from .patterns import BRAND_NAMES, HIGH_THRESHOLD, MEDIUM_THRESHOLD
 
 
