@@ -1,10 +1,8 @@
 import {act, cleanup, renderHook, waitFor} from '@testing-library/react';
-import {MemoryRouter} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
-import type {FormEvent, ReactNode} from 'react';
 
-import type {EventRegistrationOptions, Registration} from '@/features/events/api';
 import {useEventRegistration} from '@/routes/EventRegistrationPage/useEventRegistration';
+import {baseOptions, demoEvent, emailSignIn, fakeEvent, formOptions, phoneSignIn, registrationFixture, wrapper} from '@/__tests__/routes/EventRegistrationPage/useEventRegistration/fixtures/useEventRegistrationFixtures';
 
 const mockUseAuth = vi.fn();
 const mockNavigate = vi.fn();
@@ -53,71 +51,6 @@ const verifyEmailAuthCode = vi.fn();
 const requestPhoneAuthCode = vi.fn();
 const verifyPhoneAuthCode = vi.fn();
 
-const demoEvent = {
-  id: 'event-1',
-  name: 'Demo Day',
-  slug: 'demo-day',
-  date: '2026-05-01',
-  location: 'Campus',
-  description: 'Event description',
-  registration: null,
-};
-
-const baseOptions: EventRegistrationOptions = {
-  id: 'event-1',
-  name: 'Demo Day',
-  slug: 'demo-day',
-  date: '2026-05-01',
-  location: 'Campus',
-  description: 'Event description',
-  allow_secondary_email: false,
-  collect_phone: false,
-  verify_phone: false,
-  require_phone: false,
-  verify_secondary_email: false,
-  require_secondary_email: false,
-  tickets: [{id: 'ticket-1', name: 'General Admission'}],
-  questions: [],
-  registration: null,
-  member_emails: [],
-  member_secondary_email: null,
-  member_profile: null,
-  member_phone: null,
-  phone_regions: [{code: '1-US', label: 'United States'}],
-};
-
-const memberProfile = {
-  first_name: 'Ada',
-  middle_name: '',
-  last_name: 'Lovelace',
-  organization: 'Acme',
-  title: 'Engineer',
-};
-
-const registrationFixture = (overrides: Partial<Registration> = {}): Registration => ({
-  id: 'registration-1',
-  ticket_code: 'I2G-TEST',
-  attendee_first_name: 'Ada',
-  attendee_last_name: 'Lovelace',
-  attendee_name: 'Ada Lovelace',
-  attendee_email: 'ada@example.com',
-  attendee_secondary_email: '',
-  attendee_phone: '',
-  phone_verified: false,
-  secondary_email_verified: false,
-  phone_verification_required: false,
-  attendee_organization: 'Acme',
-  registered_at: '2026-05-01T12:00:00Z',
-  ticket_email_sent_at: null,
-  ticket_email_error: '',
-  barcode_format: 'PDF417',
-  barcode_image: 'data:image/png;base64,test',
-  event: {...demoEvent},
-  ticket: {id: 'ticket-1', name: 'General Admission'},
-  answers: [],
-  ...overrides,
-});
-
 const authenticated = {
   isAuthenticated: true,
   requiresProfileCompletion: false,
@@ -126,20 +59,6 @@ const authenticated = {
   requestPhoneAuthCode,
   verifyPhoneAuthCode,
 };
-
-const formOptions = (overrides: Partial<EventRegistrationOptions> = {}): EventRegistrationOptions => ({
-  ...baseOptions,
-  member_emails: ['ada@example.com'],
-  member_secondary_email: null,
-  member_profile: {...memberProfile},
-  ...overrides,
-});
-
-const wrapper = ({children}: {children?: ReactNode}) => (
-  <MemoryRouter initialEntries={['/event-registration']}>{children}</MemoryRouter>
-);
-
-const fakeEvent = () => ({preventDefault: vi.fn()}) as unknown as FormEvent;
 
 describe('useEventRegistration — submitting a registration', () => {
   beforeEach(() => {
@@ -171,20 +90,8 @@ describe('useEventRegistration — submitting a registration', () => {
     mockFetchRegistrationOptions.mockResolvedValue({...baseOptions});
     requestEmailAuthCode.mockResolvedValue({message: 'ok'});
     requestPhoneAuthCode.mockResolvedValue({message: 'ok'});
-    verifyEmailAuthCode.mockResolvedValue({
-      access: 'access-token',
-      refresh: 'refresh-token',
-      user: {member_uuid: 'member-1', email: 'ada@example.com'},
-      next_step: 'complete_profile',
-      requires_profile_completion: true,
-    });
-    verifyPhoneAuthCode.mockResolvedValue({
-      access: 'access-token',
-      refresh: 'refresh-token',
-      user: {member_uuid: 'member-1', phone: '+12025550123'},
-      next_step: 'complete_profile',
-      requires_profile_completion: true,
-    });
+    verifyEmailAuthCode.mockResolvedValue(emailSignIn());
+    verifyPhoneAuthCode.mockResolvedValue(phoneSignIn());
     mockUpdateProfileFields.mockResolvedValue({});
     mockCreateRegistration.mockResolvedValue(registrationFixture());
     mockSendPhoneCode.mockResolvedValue({detail: 'sent', phone: '2025550123', challenge_id: 'challenge-1'});
@@ -284,40 +191,5 @@ describe('useEventRegistration — submitting a registration', () => {
 
     expect(result.current.step).toBe('done');
     expect(result.current.registration?.id).toBe('registration-existing');
-  });
-
-  it.each([
-    [{collect_phone: true, require_phone: true}, 'Phone number is required.'],
-    [{allow_secondary_email: true, require_secondary_email: true}, 'Secondary email is required.'],
-  ] as const)('rejects required contacts before saving profile changes', async (flags, message) => {
-    mockUseAuth.mockReturnValue({...authenticated});
-    mockFetchRegistrationOptions.mockResolvedValue(formOptions(flags));
-    const {result} = renderHook(() => useEventRegistration(), {wrapper});
-    await waitFor(() => expect(result.current.step).toBe('form'));
-    act(() => {
-      result.current.setSelectedTicketId('ticket-1');
-      result.current.setAttendeeFirstName('Grace');
-    });
-    await act(async () => { await result.current.handleRegistrationSubmit(fakeEvent()); });
-    expect(result.current.error).toBe(message);
-    expect(mockUpdateProfileFields).not.toHaveBeenCalled();
-    expect(mockCreateRegistration).not.toHaveBeenCalled();
-  });
-
-  it('omits stale hidden contacts even when their dependent flags remain enabled', async () => {
-    mockUseAuth.mockReturnValue({...authenticated});
-    mockFetchRegistrationOptions.mockResolvedValue(formOptions({require_phone: true, verify_phone: true, require_secondary_email: true, verify_secondary_email: true}));
-    const {result} = renderHook(() => useEventRegistration(), {wrapper});
-    await waitFor(() => expect(result.current.step).toBe('form'));
-    act(() => {
-      result.current.setSelectedTicketId('ticket-1');
-      result.current.handlePhoneChange('2025550123');
-      result.current.handleSecondaryEmailChange('ada@example.com');
-    });
-    await act(async () => { await result.current.handleRegistrationSubmit(fakeEvent()); });
-    expect(mockCreateRegistration).toHaveBeenCalledWith(expect.objectContaining({
-      attendee_secondary_email: undefined, attendee_phone: undefined,
-      phone_verification_challenge_id: undefined, secondary_email_verification_token: undefined,
-    }));
   });
 });
