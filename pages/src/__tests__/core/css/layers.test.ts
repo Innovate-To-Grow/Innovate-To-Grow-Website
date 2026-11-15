@@ -12,7 +12,7 @@ import {COMPONENTS_LAYER, inComponentsLayer} from '@/lib/css';
 // Layered rules lose to unlayered ones whatever their specificity, so one unlayered rule in the
 // bundle would beat Site Settings' custom CSS (itg.overrides). Every bundled rule sits in a layer.
 
-const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
+const SRC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 const PAGES_DIR = dirname(SRC_DIR);
 const TESTS_DIR = join(SRC_DIR, '__tests__');
 const LAYERS_FILE = join(SRC_DIR, 'styles', 'layers.css');

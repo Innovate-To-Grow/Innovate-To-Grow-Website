@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(testDir, '../../../..');
+const repoRoot = resolve(testDir, '../../../../..');
 const previewScript = readFileSync(
   resolve(repoRoot, 'src/apps/system_intelligence/static/system_intelligence/js/action-preview.js'),
   'utf8',

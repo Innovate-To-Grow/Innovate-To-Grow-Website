@@ -13,7 +13,7 @@ import contract from '@/styles/contract/contract-classes.json';
 // the contract keeps at least one rule in styles/contract/ (which ships in the entry bundle, so
 // every CMS page has it); dropping one needs a production content audit first.
 
-const CONTRACT_DIR = join(resolve(dirname(fileURLToPath(import.meta.url)), '../..'), 'styles', 'contract');
+const CONTRACT_DIR = join(resolve(dirname(fileURLToPath(import.meta.url)), '../../..'), 'styles', 'contract');
 
 const listCss = (dir: string): string[] =>
   readdirSync(dir, {withFileTypes: true}).flatMap((entry) => {
