@@ -1,4 +1,4 @@
-"""Tests for mail.services.ses_events dispatcher.
+"""Tests for mail.services.email_monitoring.ses_events dispatcher.
 
 Covers the state machine on RecipientLog: a Bounce/Complaint wins over a
 late-arriving Delivery, DeliveryDelay is informational only, identical SNS

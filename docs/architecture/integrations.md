@@ -50,7 +50,7 @@ selection. There is no per-message routing or automatic failover.
 | Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph/`) — Entra tenant ID, client ID and optional sender mailbox; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
 | Gmail API credentials | Active `GmailApiProviderConfig` (`src/apps/core/models/base/service_credentials/gmail_api/`) — the pinned version of the service-account key in the credential store (AWS Secrets Manager in production), its public facts, and the account allow-list (`GmailApiSubject`). Domain-wide delegation for gmail.send only; Core app |
 | Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`, the Gmail API in `gmail/`, the bounded HTTPS client both use in `transport.py`) |
-| Campaign sending | `src/apps/mail/services/send_campaign/` |
+| Campaign sending | `src/apps/mail/services/campaign/send/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
 | Ticket confirmation | `src/apps/event/services/ticket/mail.py` |
 
@@ -164,7 +164,7 @@ cooldown and pauses the rest on a long hold ("Resume paused recipients" on the S
 ### Gmail IMAP (admin inbox, Import from Gmail)
 
 Each uncached Gmail read is one IMAP login session on the `gmail_imap` delivery channel for
-`<imap host>:<username>` (`src/apps/mail/services/gmail_import/session.py`), connected with
+`<imap host>:<username>` (`src/apps/mail/services/campaign/gmail_import/session.py`), connected with
 `channels.gmail_imap.timeout_seconds`. Google publishes no IMAP rate, so the channel only reacts to Gmail's
 answers (`DELIVERY_RATES["signals"]["imap"]`): "Too many simultaneous connections" pauses reads, a bandwidth
 suspension (`[OVERQUOTA]`) stops them for `bandwidth_breaker_seconds` with no connection attempted, `[UNAVAILABLE]`
