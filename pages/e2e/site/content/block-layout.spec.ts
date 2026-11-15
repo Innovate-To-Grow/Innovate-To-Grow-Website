@@ -3,8 +3,8 @@
 // column beside the image, 'right' keeps the float the live capstone pages use, and the hero,
 // CTA, notice and numbered-list blocks render with the design system.
 import type {Page} from '@playwright/test';
-import {test, expect} from '../helpers/fixtures';
-import {cmsEmbedResponse, cmsPageResponse, mockCmsEmbed, mockCmsPage} from '../helpers';
+import {test, expect} from '../../helpers/fixtures';
+import {cmsEmbedResponse, cmsPageResponse, mockCmsEmbed, mockCmsPage} from '../../helpers';
 
 const PARAGRAPH =
   'Teams of UC Merced engineering students partner with organisations to design, build and test systems ' +

@@ -2,13 +2,13 @@
 // launcher, chat panel, message sending, starter questions, and error states.
 import AxeBuilder from '@axe-core/playwright';
 
-import {test, expect} from '../helpers/fixtures';
+import {test, expect} from '../../helpers/fixtures';
 import {
   assistantChatSuccess,
   assistantConfig,
   mockAssistantChat,
   mockAssistantConfig,
-} from '../helpers';
+} from '../../helpers';
 
 test('widget launcher button is visible on page load', async ({page}) => {
   await mockAssistantConfig(page, assistantConfig());

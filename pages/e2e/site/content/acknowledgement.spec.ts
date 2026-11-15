@@ -1,6 +1,6 @@
 // /acknowledgement: an ordinary CMS page served by the CMS catch-all; its copy and sponsors come from the CMS.
-import {test, expect} from '../helpers/fixtures';
-import {cmsAcknowledgementPage, mockCmsPage} from '../helpers';
+import {test, expect} from '../../helpers/fixtures';
+import {cmsAcknowledgementPage, mockCmsPage} from '../../helpers';
 
 test('acknowledgement page renders from the CMS payload', {tag: '@core'}, async ({page}) => {
   await mockCmsPage(page, 'acknowledgement', cmsAcknowledgementPage());

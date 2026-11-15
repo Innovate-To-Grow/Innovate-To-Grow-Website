@@ -3,9 +3,9 @@
 // used where a request may carry a query string (glob `?`/`*` handling is
 // finicky); exact slash-terminated paths use string globs.
 import type {Page} from '@playwright/test';
-import type {EmailAuthVerifyResponse, LoginResponse} from '../../../src/features/auth/api/contracts/types';
-import {loginResponse} from '../factories';
-import {mockAuthenticatedLogin} from '../auth';
+import type {EmailAuthVerifyResponse, LoginResponse} from '../../src/features/auth/api/contracts/types';
+import {loginResponse} from '../helpers/factories';
+import {mockAuthenticatedLogin} from '../helpers/session';
 import {json} from './json';
 
 export async function mockSendVerification(page: Page): Promise<void> {
@@ -165,89 +165,3 @@ export async function mockPhoneAuthFlow(
 
   return {requestPayloads, verifyPayloads};
 }
-
-export interface PasswordResetMockResult {
-  requestPayloads: unknown[];
-  verifyPayloads: unknown[];
-  confirmPayloads: unknown[];
-}
-
-export async function mockPasswordResetFlow(
-  page: Page,
-  opts: {
-    requestChallengeId?: string;
-    verifyToken?: string;
-    confirmMessage?: string;
-  } = {},
-): Promise<PasswordResetMockResult> {
-  const requestPayloads: unknown[] = [];
-  const verifyPayloads: unknown[] = [];
-  const confirmPayloads: unknown[] = [];
-
-  await mockSendVerification(page);
-
-  await page.route('**/authn/password-reset/request-code/', async (route) => {
-    requestPayloads.push(route.request().postDataJSON());
-    await route.fulfill(
-      json({
-        message: 'Reset code sent.',
-        ...(opts.requestChallengeId
-          ? {challenge_id: opts.requestChallengeId}
-          : {}),
-      }),
-    );
-  });
-
-  await page.route('**/authn/password-reset/verify-code/', async (route) => {
-    verifyPayloads.push(route.request().postDataJSON());
-    await route.fulfill(
-      json({message: 'Code verified.', verification_token: opts.verifyToken ?? 'reset-token-e2e'}),
-    );
-  });
-
-  await page.route('**/authn/password-reset/confirm/', async (route) => {
-    confirmPayloads.push(route.request().postDataJSON());
-    await route.fulfill(json({message: opts.confirmMessage ?? 'Password reset successful.'}));
-  });
-
-  return {requestPayloads, verifyPayloads, confirmPayloads};
-}
-
-// -- password login ----------------------------------------------------------
-
-export interface PasswordLoginMockResult {
-  loginPayloads: unknown[];
-}
-
-export async function mockPasswordLogin(
-  page: Page,
-  opts: {
-    response?: LoginResponse;
-    status?: number;
-  } = {},
-): Promise<PasswordLoginMockResult> {
-  const loginPayloads: unknown[] = [];
-  const response = opts.response ?? loginResponse();
-  const status = opts.status ?? 200;
-
-  if (status < 400) {
-    await mockAuthenticatedLogin(page, response);
-  }
-
-  await page.route('**/authn/login/', async (route) => {
-    if (route.request().method() !== 'POST') {
-      await route.fallback();
-      return;
-    }
-    loginPayloads.push(route.request().postDataJSON());
-    if (status >= 400) {
-      await route.fulfill(json({detail: 'Invalid credentials.'}, status));
-      return;
-    }
-    await mockAuthenticatedLogin(page, response);
-    await route.fulfill(json(response));
-  });
-
-  return {loginPayloads};
-}
-

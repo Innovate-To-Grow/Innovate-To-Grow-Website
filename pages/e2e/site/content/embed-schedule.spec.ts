@@ -6,10 +6,10 @@
 //   > active schedule (no schedule_id sent to /event/schedule/).
 // The standalone /schedule route reads ?schedule_id= from its own URL.
 import type {Page} from '@playwright/test';
-import {test, expect} from '../helpers/fixtures';
-import {cmsEmbedResponse, cmsPageResponse, mockCmsEmbed, mockCmsPage, schedulePayload} from '../helpers';
-import type {CMSBlock} from '../../src/features/cms/api';
-import type {EmbedWidgetData} from '../../src/features/cms/components/blocks/content/embed/EmbedWidgetBlock';
+import {test, expect} from '../../helpers/fixtures';
+import {cmsEmbedResponse, cmsPageResponse, mockCmsEmbed, mockCmsPage, schedulePayload} from '../../helpers';
+import type {CMSBlock} from '../../../src/features/cms/api';
+import type {EmbedWidgetData} from '../../../src/features/cms/components/blocks/content/embed/EmbedWidgetBlock';
 
 const UUID_A = '11111111-1111-4111-8111-111111111111';
 const UUID_B = '22222222-2222-4222-8222-222222222222';

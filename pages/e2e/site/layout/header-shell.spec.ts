@@ -1,8 +1,8 @@
 // Page shell around the routed page: the phone header's reserved room, the
 // mobile-menu bar, the phone empty-state targets and the main landmark.
 // The bundle carries all of the site's CSS, so the shell mock's empty /layout/theme.css is enough.
-import {test, expect} from '../helpers/fixtures';
-import {cmsEmbedResponse, mockCmsEmbed} from '../helpers';
+import {test, expect} from '../../helpers/fixtures';
+import {cmsEmbedResponse, mockCmsEmbed} from '../../helpers';
 
 const PHONE = {width: 390, height: 844};
 
