@@ -51,7 +51,7 @@ So no route is ever unlimited by accident. `apps.core.tests.request_limits.test_
 fails when a site view names no scope or exemption, or when a table key matches no route. A new view sets
 `rate_limit_scope` (or `rate_limit_exempt` with its reason).
 
-Scope seeds, tiers and identities: `src/config/settings/base/integrations/request_limits/scopes.py` (route scopes)
+Scope seeds, tiers and identities: `src/config/settings/base/integrations/request_limits/defaults/scopes.py` (route scopes, P0 in `critical_scopes.py`)
 and `view_scopes.py` (the 24 per-view limits, `view-…`, each with a `parent` route scope whose Smart factor it
 follows).
 

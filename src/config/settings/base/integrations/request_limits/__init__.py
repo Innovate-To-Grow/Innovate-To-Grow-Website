@@ -2,9 +2,12 @@
 Request limits: one middleware (``apps.core.middleware.RequestRateLimitMiddleware``) limits every request the site
 answers — DRF and plain views, the Django admin, the CLI API and webhooks — by **scope** (an endpoint group).
 
-- ``scopes.py``: every scope with its priority tier, identity and seeds (each seeds a ``RequestRateLimitPolicy``).
-- ``routes.py``: which routes belong to which scope, and the reasoned exemptions.
-- ``runtime.py``: the Smart controller and its tier order, admission control, abuse escalation, the counter store.
+- ``defaults/scopes.py`` (and ``critical_scopes.py``, ``view_scopes.py``): every scope with its priority tier,
+  identity and seeds (each seeds a ``RequestRateLimitPolicy``).
+- ``defaults/routes.py``: which routes belong to which scope, and the reasoned exemptions.
+- ``defaults/runtime.py``: the Smart controller and its tier order, admission control, abuse escalation, the counter
+  store.
+- ``validation/``: the deep merge of the overrides and the checks.
 
 Smart limiting is on by default for every scope and takes priority over the manual limit (as delivery rates do):
 the limit is the scope's baseline × a Smart factor that falls under overload (P3 first, then P2, then P1; never P0)
@@ -22,9 +25,9 @@ the environment enables it, and dedicated tests switch it on with ``override_set
 
 import os
 
-from .routes import EXEMPT, ROUTES
-from .runtime import ABUSE, ADMISSION, CONTROLLER, FALLBACK, STORE, TIERS
-from .scopes import SCOPES
+from .defaults.routes import EXEMPT, ROUTES
+from .defaults.runtime import ABUSE, ADMISSION, CONTROLLER, FALLBACK, STORE, TIERS
+from .defaults.scopes import SCOPES
 from .validation import OVERRIDES_ENV, load_request_limits
 
 __all__ = ["REQUEST_RATE_LIMITS", "REQUEST_RATE_LIMITS_ENABLED"]
