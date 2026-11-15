@@ -6,10 +6,8 @@ from apps.core.admin import BaseModelAdmin
 from apps.core.services.background_jobs import jobs_enabled
 from apps.mail.models import EmailCampaign, LoginLinkToken
 
-from .display import CampaignDisplayMixin
-from .forms import EmailCampaignForm
-from .inlines import AudienceTypeFilter
-from .views import (
+from ..forms import EmailCampaignForm
+from ..views import (
     CampaignDuplicateMixin,
     CampaignGmailMixin,
     CampaignPreviewMixin,
@@ -17,6 +15,8 @@ from .views import (
     CampaignStatusMixin,
     CampaignUrlsMixin,
 )
+from .display import CampaignDisplayMixin
+from .inlines import AudienceTypeFilter
 
 
 @admin.register(EmailCampaign)

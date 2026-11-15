@@ -23,17 +23,10 @@ from apps.core.services.delivery_rates import (
     snapshot,
 )
 
-from .admin import _require_mail_access
-from .rate_cards import (
-    ACTIONS,
-    build_card,
-    card_groups,
-    in_use_identities,
-    primary_states,
-    status_payload,
-)
-from .rate_cards.placeholders import placeholders
-from .rates_forms import MANUAL_RATE_NOTE, DeliveryRatePolicyForm
+from ..admin.access import _require_mail_access
+from .card_placeholders import placeholders
+from .cards import ACTIONS, build_card, card_groups, in_use_identities, primary_states, status_payload
+from .forms import MANUAL_RATE_NOTE, DeliveryRatePolicyForm
 
 Channel = DeliveryRatePolicy.Channel
 # How often the open page re-reads the live status (plan §2). A display refresh of data the limiter already holds:

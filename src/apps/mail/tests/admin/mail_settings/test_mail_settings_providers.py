@@ -11,7 +11,7 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SMTPProvid
 from apps.core.models.base.service_credentials.email import GMAIL_ACTIVATION_REQUIRED
 from apps.event.tests.helpers import make_admin, make_superuser
 
-SEND_TEST = "apps.mail.admin.settings.test_send._send_test_email"
+SEND_TEST = "apps.mail.admin.settings.admin.test_send._send_test_email"
 GRAPH_NOT_READY = (
     "An active Microsoft Graph configuration whose mailbox scope lets the sender mailbox and the From address "
     "send is required before activation."

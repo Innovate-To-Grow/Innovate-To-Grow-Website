@@ -1,7 +1,7 @@
 from apps.core.services.delivery_rates import channel_info
 from apps.core.services.delivery_rates.runtime import context
 from apps.core.services.delivery_rates.status_text import age, clock, number
-from apps.mail.admin.settings.rate_cards.placeholders import Channel
+from apps.mail.admin.settings.rates.card_placeholders import Channel
 
 
 def reported_lines(state) -> tuple[str, ...]:

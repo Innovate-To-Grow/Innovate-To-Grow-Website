@@ -1,9 +1,10 @@
-"""Email campaign admin. View services live in ``campaign.services`` (patch them there)."""
+"""Email campaign admin. View services live in ``campaign.views.services`` (patch them there)."""
 
 from .admin import EmailCampaignAdmin
+from .admin.inlines import AudienceTypeFilter, RecipientLogInline
 from .forms import EmailCampaignForm
-from .inlines import AudienceTypeFilter, RecipientLogInline
-from .services import (
+from .forms.widgets import BODY_FORMAT_CHOICES, ManualEmailsWidget, PersonalizationTextInput, TicketSelectWidget
+from .views.services import (
     GMAIL_FOLDER_DISPLAY,
     GmailImportError,
     get_recipients,
@@ -12,7 +13,6 @@ from .services import (
     render_preview,
     resolve_gmail_mailbox,
 )
-from .widgets import BODY_FORMAT_CHOICES, ManualEmailsWidget, PersonalizationTextInput, TicketSelectWidget
 
 __all__ = [
     "AudienceTypeFilter",

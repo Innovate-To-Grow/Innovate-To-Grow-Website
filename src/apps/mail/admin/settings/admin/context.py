@@ -9,7 +9,7 @@ from apps.core.models import (
 from apps.core.utils.access import user_can_access_app
 from apps.mail.services.campaign.pacing import email_send_rate_line, sms_send_rate_line
 
-from ..rate_cards import EMAIL_CHANNELS
+from ..rates.cards import EMAIL_CHANNELS
 
 
 def _graph_context(request, graph_config) -> dict:

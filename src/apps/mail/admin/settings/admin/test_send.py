@@ -15,8 +15,8 @@ from django.urls import path, reverse
 from apps.core.admin.service_credentials.helpers import _normalize_phone_number, _send_test_email, _send_test_sms
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 
+from ..providers import Provider, as_provider, provider_or_404, provider_problem
 from .access import _require_mail_access
-from .providers import Provider, as_provider, provider_or_404, provider_problem
 
 TEST_FORM_TEMPLATE = "admin/core/test_send_form.html"
 

@@ -16,10 +16,10 @@ from apps.core.models import (
 )
 from apps.mail.admin.settings.admin.context import _notification_delivery_context
 
-from ..access import _require_mail_access
-from ..forms import AwsDeliveryForm, EmailDeliveryForm, SMTPDeliveryForm
 from ..providers import get_provider_urls, in_use_label
-from ..test_send import get_test_send_urls
+from .access import _require_mail_access
+from .forms import AwsDeliveryForm, EmailDeliveryForm, SMTPDeliveryForm
+from .test_send import get_test_send_urls
 
 
 def get_mail_settings_urls():

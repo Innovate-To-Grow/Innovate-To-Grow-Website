@@ -28,7 +28,7 @@ from apps.core.models import (
 from apps.core.utils.security import is_plain_address
 from apps.mail.admin.settings.providers.details import Provider, _configure_url, _details
 
-from ..access import _require_mail_access
+from ..admin.access import _require_mail_access
 
 NO_SENDER_CONFIG = "Save the Notification Delivery settings (sender name and From email) first."
 
