@@ -7,8 +7,8 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from ..models import PastProjectShare
-from ..services.share_names import default_share_name
-from ..services.share_rows import UnknownShareRows, rebuild_share_rows, rows_for_display
+from ..services.shares.names import default_share_name
+from ..services.shares.rows import UnknownShareRows, rebuild_share_rows, rows_for_display
 
 # Allowlist for a share's stored rich text (the note): inline emphasis + line/paragraph structure, no
 # attributes. Defense-in-depth so safety does not rely solely on every client render calling
@@ -75,7 +75,7 @@ class PastProjectShareRowSerializer(serializers.Serializer):
     abstract = serializers.CharField(allow_blank=True, max_length=ROW_ABSTRACT_MAX_LENGTH)
     student_names = serializers.CharField(allow_blank=True, max_length=ROW_STUDENT_NAMES_MAX_LENGTH)
     # Accepted so clients that send the presenting flag ('Yes'/'No'/'') keep validating; it is never stored as
-    # sent. The row is rebuilt from the catalog (services/share_rows.py): "" for an archive project, and the
+    # sent. The row is rebuilt from the catalog (services/shares/): "" for an archive project, and the
     # event's flag as "Yes"/"No" for a current-semester one.
     is_presenting = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
     # "archive" or "current": the catalog the stored row was rebuilt from. Read-only, so that a row kept as stored
@@ -119,7 +119,7 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "share_url", "can_edit", "created_at"]
 
     # name is optional: a blank/omitted name is replaced with the first line of the owner's note, else a
-    # generic title for the stored rows (services.share_names.default_share_name), in create()/update(). It is
+    # generic title for the stored rows (services.shares.names.default_share_name), in create()/update(). It is
     # never a row's project title. trim_whitespace=True still trims a given name.
 
     def to_representation(self, instance):
@@ -139,7 +139,7 @@ class PastProjectShareSerializer(serializers.ModelSerializer):
         if len(value) > MAX_SHARE_ROWS:
             raise serializers.ValidationError(f"At most {MAX_SHARE_ROWS} rows may be shared.")
         self._check_member_row_total(len(value))
-        # Store what the catalog says, never the text a client sent (services/share_rows.py).
+        # Store what the catalog says, never the text a client sent (services/shares/).
         try:
             return rebuild_share_rows(value, stored_rows=self.instance.rows if self.instance else ())
         except UnknownShareRows as exc:

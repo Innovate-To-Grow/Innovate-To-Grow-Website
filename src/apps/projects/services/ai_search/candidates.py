@@ -17,12 +17,12 @@ from django.db.models import Q, QuerySet
 
 from apps.projects.models import Project
 from apps.projects.ordering import archive_ordering
-from apps.projects.services.catalog_filters import SEARCH_FIELDS, current_matches
-from apps.projects.services.current_project_links import (
+from apps.projects.services.catalog.current_project_links import (
     CurrentProjectLink,
     active_current_project_links,
     resolve_current_project_links,
 )
+from apps.projects.services.catalog.filters import SEARCH_FIELDS, current_matches
 
 SCOPE_PAST = "past"
 SCOPE_ALL = "all"

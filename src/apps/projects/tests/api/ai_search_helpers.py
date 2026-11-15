@@ -32,7 +32,7 @@ SEARCH_GLOBAL_KEY = global_budget_key(FEATURE_AI_SEARCH)
 SEARCH_URL = "/projects/past-ai-search/"
 
 
-SERVICE_AGENT = "apps.projects.services.ai_search.run_tool_free_agent"
+SERVICE_AGENT = "apps.projects.services.ai_search.search.run_tool_free_agent"
 
 
 VIEW_SEARCH = "apps.projects.views.ai_search.run_past_project_ai_search"

@@ -98,7 +98,7 @@ The response is the same for every visitor (no authentication is read). A `404` 
 
 The id can also be a current-semester project link (an event `CurrentProject` id) from an earlier schedule: the
 response is then the team's archive project once its semester is imported, else the `CurrentProject` in the same
-shape (`apps/projects/services/current_project_links.py`). A team that schedule only listed (Track `(Fall)` or
+shape (`apps/projects/services/catalog/current_project_links.py`). A team that schedule only listed (Track `(Fall)` or
 `(Spring)`: it presents in another semester) resolves to its row in the schedule it presents in, matched by class,
 Team# and title. That step goes by `is_presenting`, which the sync sets from Track (and gives a slot only when it is
 set). The archive match that follows goes by the slot instead, because admins also toggle `is_presenting` to show or
@@ -118,7 +118,7 @@ Creates a versioned shared-project snapshot.
 1,000 rows, and one member's shares at most 5,000 in all: a create or update that adds rows past that is a `400` on
 `rows` (an update that does not add rows is always allowed, so a member past the bound can still edit and trim).
 
-**Rows come from the catalog** (`apps/projects/services/share_rows.py`): each submitted row must name a published
+**Rows come from the catalog** (`apps/projects/services/shares/`): each submitted row must name a published
 project, by `id` or (for a row without one) by Year-Semester + Class + Team#, and is stored as the archive has it —
 the text a client sends is never stored. The `id` may also be a `CurrentProject` id from any schedule: that row is
 stored as the event has it (its term as "2026 Fall", `is_presenting` "Yes"/"No"), or as its archive project once
@@ -138,7 +138,7 @@ ignored.
 **Name:** optional. A blank or missing `name` here or on a `PUT`, or a blank `name` sent in a `PATCH`, is replaced
 with the first line of the owner's own `note` text, truncated to 60 characters, else `"Project Curation"` when a
 stored row (the rows this write stores, or for a `PATCH` without `rows` the stored ones) has `catalog: "current"`, and
-`"Past Project Curation"` otherwise (`apps/projects/services/share_names.py`). A `PATCH` without `name` keeps the
+`"Past Project Curation"` otherwise (`apps/projects/services/shares/names.py`). A `PATCH` without `name` keeps the
 stored name. Project details added by "Insert projects into note" never count as the owner's text, even once "Clear
 formatting" has made them plain text, so an owner's line that starts like one of their fields (`Organization: …`) is
 skipped as well. The name is never a row's project title.

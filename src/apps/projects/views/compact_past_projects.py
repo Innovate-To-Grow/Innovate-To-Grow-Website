@@ -5,7 +5,7 @@ from apps.core.utils.http_cache import public_json_response
 
 from ..pagination import CompactPastProjectsPagination
 from ..serializers import CompactPastProjectSerializer, PastProjectQuerySerializer
-from ..services.catalog_filters import archive_queryset
+from ..services.catalog.filters import archive_queryset
 
 
 class CompactPastProjectsAPIView(APIView):

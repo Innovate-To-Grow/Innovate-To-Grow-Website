@@ -1,7 +1,7 @@
 """The search and term filters of the project lists, for archive projects and for current-semester ones alike.
 
 /projects/archive/ and /projects/all/ take the same params (PastProjectQuerySerializer): an archive project is
-filtered in the database, a current project (apps.projects.services.all_projects) in Python, the same way.
+filtered in the database, a current project (apps.projects.services.catalog.all_projects) in Python, the same way.
 """
 
 from __future__ import annotations

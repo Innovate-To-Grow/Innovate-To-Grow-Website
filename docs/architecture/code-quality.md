@@ -151,7 +151,7 @@ app. Apps plug in instead:
 **Exceptions** are listed individually in the TOML file as `from` (an fnmatch pattern of the importing
 module), `to` (a module prefix), and a `reason`. There are six today. Five are lazily imported admin or
 ticket helpers whose target cannot move without changing a Django app label. The sixth is the projects app's one
-gateway to current-semester projects: `projects.services.current_project_links` reads event `CurrentProject`s through
+gateway to current-semester projects: `projects.services.catalog.current_project_links` reads event `CurrentProject`s through
 `event.services.current_projects` (lazily, inside its lookups) for `/projects/<id>/`, `/projects/all/`, shares and AI
 search, so no other projects module imports `event`. **Known import cycles** would
 be listed with their member modules and a reason; there are none. (The last two, in `mail.admin.campaign`

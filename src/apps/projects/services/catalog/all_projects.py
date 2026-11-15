@@ -2,7 +2,7 @@
 
 The list is that part (in team_ordering()) followed by the archive (in archive_ordering()). A current team that is
 already archived is listed once, as its archive row, matched as /projects/<id>/ matches it
-(apps.projects.services.current_project_links); that row names the CurrentProject it stands in for.
+(apps.projects.services.catalog.current_project_links); that row names the CurrentProject it stands in for.
 """
 
 from __future__ import annotations
@@ -11,8 +11,8 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from apps.projects.services.catalog_filters import current_matches
-from apps.projects.services.current_project_links import CurrentProjectLink, active_current_project_links
+from apps.projects.services.catalog.current_project_links import CurrentProjectLink, active_current_project_links
+from apps.projects.services.catalog.filters import current_matches
 
 # The compact archive row's fields (CompactPastProjectSerializer), in its order: the abstract stays on the detail.
 _COMPACT_ROW_FIELDS = (

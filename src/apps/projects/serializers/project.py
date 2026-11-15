@@ -53,7 +53,7 @@ class _ArchiveCatalogFields(serializers.Serializer):
 class AllProjectsArchiveRowSerializer(_ArchiveCatalogFields, CompactPastProjectSerializer):
     """An archive row of /projects/all/: the compact row, its catalog, and the current project it stands in for.
 
-    The view passes ``current_ids_by_archive_id`` in the context (apps.projects.services.all_projects.CurrentCatalog).
+    The view passes ``current_ids_by_archive_id`` in the context (apps.projects.services.catalog.all_projects.CurrentCatalog).
     """
 
     current_project_id = serializers.SerializerMethodField()

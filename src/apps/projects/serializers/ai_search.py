@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
-from ..services.ai_search_candidates import AI_SEARCH_SCOPES, SCOPE_PAST
-from ..services.current_project_links import CurrentProjectLink
+from ..services.ai_search.candidates import AI_SEARCH_SCOPES, SCOPE_PAST
+from ..services.catalog.current_project_links import CurrentProjectLink
 from .project import ProjectTableSerializer, _ArchiveCatalogFields
 
 
@@ -28,7 +28,7 @@ class PastProjectAISearchSerializer(serializers.Serializer):
 class PastProjectAISearchResultSerializer(_ArchiveCatalogFields, ProjectTableSerializer):
     """An AI search result: a project table row with its catalog fields, as /projects/all/ rows carry them.
 
-    It serializes what apps.projects.services.ai_search_candidates.ai_search_results returns: an archive project, or
+    It serializes what apps.projects.services.ai_search.candidates.ai_search_results returns: an archive project, or
     a current project (a CurrentProjectLink), whose detail already holds every field, catalog "current" included.
     """
 

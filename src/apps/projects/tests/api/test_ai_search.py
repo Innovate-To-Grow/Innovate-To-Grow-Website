@@ -191,7 +191,7 @@ class PastProjectAISearchAPIViewTests(TestCase):
             usage={"inputTokens": 8, "outputTokens": 4, "totalTokens": 12},
         )
 
-        with patch("apps.projects.services.ai_search.run_tool_free_agent", return_value=result) as mock_agent:
+        with patch("apps.projects.services.ai_search.search.run_tool_free_agent", return_value=result) as mock_agent:
             outcome = run_past_project_ai_search(query="solar", limit=2, config=self.config)
 
         self.assertEqual(outcome["project_ids"], [str(self.past_project_b.id), str(self.past_project_a.id)])
@@ -329,7 +329,7 @@ class PreparePastProjectAISearchTests(TestCase):
 
         with (
             patch(SERVICE_AGENT, return_value=result) as mock_agent,
-            patch("apps.projects.services.ai_search.find_ai_search_candidates") as mock_candidates,
+            patch("apps.projects.services.ai_search.search.find_ai_search_candidates") as mock_candidates,
         ):
             outcome = run_past_project_ai_search(query="solar", limit=5, config=self.config, prepared=prepared)
 

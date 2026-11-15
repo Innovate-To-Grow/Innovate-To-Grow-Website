@@ -7,7 +7,7 @@ from django.test.utils import CaptureQueriesContext
 from apps.event.models import CurrentProject, CurrentProjectSchedule
 from apps.event.services import sync_schedule
 from apps.projects.models import PastProjectShare, Project, Semester
-from apps.projects.services.share_names import DEFAULT_PROJECT_SHARE_NAME, DEFAULT_SHARE_NAME
+from apps.projects.services.shares.names import DEFAULT_PROJECT_SHARE_NAME, DEFAULT_SHARE_NAME
 
 from .share_helpers import PastProjectShareTestCase, sample_payload, sample_row
 
