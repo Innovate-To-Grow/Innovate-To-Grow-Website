@@ -11,6 +11,8 @@ Content management, Django admin operations, and member/mail tooling for the Inn
 - [CSS contract](css-contract.md) — Classes CMS content may use, and how to change them
 - [Theme: design tokens and custom CSS](theme-and-custom-css.md) — Site-wide CSS changes without a deploy
 - [i2g-admin CLI](cli-admin.md) — Terminal CRUD over `/admin-api/` via OAuth2 + PKCE, riding the admin login
+- [Legacy event pages](legacy-event-pages-cms-html.md) — Copy-paste CMS HTML for the legacy event pages
+- [Staff handbook](../staff/README.md) — Step-by-step admin tasks for non-developer staff
 
 ## Who this is for
 

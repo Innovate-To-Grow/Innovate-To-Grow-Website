@@ -1,0 +1,6 @@
+{# A sortable column header: the link keeps every filter and flips the direction when the column is already sorted. #}
+<th scope="col"{% if numeric %} class="num"{% endif %}{% if listing.sort == column %} aria-sort="{% if listing.descending %}descending{% else %}ascending{% endif %}"{% endif %}>
+  <a class="i2g-monitor-sort" href="?{{ filter_query }}&amp;page_size={{ listing.page_size }}&amp;sort={{ column }}&amp;dir={% if listing.sort == column and listing.descending %}asc{% else %}desc{% endif %}">
+    {{ label }}{% if listing.sort == column %}<span class="material-symbols-outlined" aria-hidden="true">{% if listing.descending %}arrow_downward{% else %}arrow_upward{% endif %}</span>{% endif %}
+  </a>
+</th>

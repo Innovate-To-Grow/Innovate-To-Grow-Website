@@ -27,8 +27,8 @@ It is the third choice of the **Provider** setting:
 | Credentials | Shared AWS IAM key in Secrets Manager, referenced by `AWSCredentialConfig` | Host, port, optional username and password (`SMTPProviderConfig`) | Entra tenant ID and client ID, an installed certificate whose private key is kept in the credential store (AWS Secrets Manager in production), and a mailbox scope (`MicrosoftGraphProviderConfig`, `MicrosoftGraphCertificate`) |
 | Transport | SES API, raw MIME | SMTP submission | HTTPS `sendMail`: base64 MIME, or JSON for credential mail |
 | Message ID recorded | SES message ID | MIME `Message-ID` | MIME `Message-ID` (none for a JSON send) |
-| Delivery events | Yes, through the [SNS webhook](ses-event-tracking.md) | No | No |
-| Bounced and complained addresses skipped | Yes, by the SES account-level suppression list | No | No: the site keeps no suppression list of its own, so addresses SES suppressed are mailed again |
+| Delivery events | Yes, through the [SNS webhook](ses-event-tracking.md) | No | Failures only: bounce reports read from the sending mailbox ([Email monitoring](email-monitoring.md)) |
+| Bounced and complained addresses skipped | Yes, by the SES account-level suppression list; campaigns also skip the addresses staff suppressed on [Bounced addresses](email-monitoring.md#bounced-addresses) | Campaigns only: the addresses staff suppressed on [Bounced addresses](email-monitoring.md#bounced-addresses) | Campaigns only: the addresses staff suppressed on [Bounced addresses](email-monitoring.md#bounced-addresses). Nothing is suppressed automatically, so addresses SES suppressed are mailed again until staff suppress them there too |
 | Provider limits | SES account quotas | The SMTP server's | Per mailbox: 30 messages per minute, 10,000 recipients per day, and the tenant's own policies ([Limits](#limits)) |
 
 - **One provider for all app email.** Login codes, ticket emails, admin invitations, inbox replies,
@@ -101,14 +101,16 @@ go-live.
 10. **Disclosures to InfoSec.** The AI scam review sends some Inbox mail to Amazon Bedrock
     ([Admin inbox](#admin-inbox)); campaign messages with `{{login_link}}` are sent without a Sent Items
     copy and therefore without the one-click `List-Unsubscribe` header
-    ([Sent Items](#sent-items-and-credential-mail)); addresses SES suppressed are mailed again under Graph.
+    ([Sent Items](#sent-items-and-credential-mail)); addresses SES suppressed are mailed again under Graph until
+    staff suppress them on [Bounced addresses](email-monitoring.md#bounced-addresses).
     Agree with InfoSec which records count as the logging record (admin history, recorded access checks,
     CloudTrail) and their retention ([Retention](#retention)).
 
 Known gaps that remain (not fixed by this change): a campaign the web process is already sending keeps its
 provider when the provider is switched ([Emergency revocation](#emergency-revocation)); the inbox cache keys
 do not include the mailbox; the site does not log which admin opened which message; the AI scam review's
-request carries the admin assistant's tool definitions; there is no app-level bounce suppression.
+request carries the admin assistant's tool definitions; a bounce never suppresses an address by itself: staff
+suppress it on [Bounced addresses](email-monitoring.md#bounced-addresses), and only campaigns skip it.
 
 ## Prerequisites
 
@@ -610,11 +612,11 @@ Email** prove the credentials.
   provider message ID in the Email Log.
 - **202 means queued, not delivered.** A later failure, such as an unknown recipient, a rejection by the
   recipient's server or a sending restriction, comes back as a non-delivery report in the sender mailbox's
-  Inbox. The app shows that Inbox to admins (see [Admin inbox](#admin-inbox)) but does not parse it, and
-  receives no delivery events, so Email Log rows stay `sent`; they never become `delivered`, `bounced`, or
-  `complained`, as with SMTP. Someone should watch the sender mailbox for non-delivery reports and untick
-  **Subscribed** on contacts whose address bounces. The Delivery Dashboard charts SES CloudWatch metrics only
-  and says so in a notice while another provider is active.
+  Inbox. The app shows that Inbox to admins (see [Admin inbox](#admin-inbox)), and bounce processing reads the
+  reports and records them on Email Monitoring ([Email monitoring](email-monitoring.md)), where staff decide what
+  to do about an address. Graph sends no delivery events, so Email Log rows stay `sent`; they never become
+  `delivered`, `bounced`, or `complained`, as with SMTP. Email Monitoring's **Amazon SES** tab (the former Delivery
+  Dashboard) charts SES CloudWatch metrics only and says so in a notice while another provider is active.
 - **Sent Items.** A MIME `sendMail` is always saved in the sender mailbox's Sent Items folder; credential
   mail is sent as JSON and leaves no copy. See [Sent Items and credential mail](#sent-items-and-credential-mail).
 - **Bcc.** The MIME builder writes no Bcc header and Graph has no separate envelope for MIME, so a MIME
@@ -768,7 +770,8 @@ configured.
 | Use of the key secret | CloudTrail for `itg/backend/microsoft-graph/certificate-key`: `GetSecretValue`, `PutSecretValue`, `UpdateSecretVersionStage`, resource-policy changes | Only `ecsTaskRole` sessions are expected: reads about hourly per process, writes only when a Core admin installs a certificate. |
 | Sign-ins of the app | Entra → Enterprise applications → the app → **Sign-in logs** (service principal sign-ins) | Unexpected IPs or failures. |
 | Mailbox activity | Microsoft Purview audit log for `i2g@ucmerced.edu` (`Send`, `MailItemsAccessed`), run by the M365 admins | Investigations. |
-| Non-delivery reports, mailbox size | The I2G Inbox and Sent Items | Watch for bounces and sending restrictions (`550 5.1.8`); a full mailbox stops sending (`507`). |
+| Every send, its attempts and Microsoft's answers; bounce reports | **Broadcast Delivery → Delivery Operations**, which opens **Email Monitoring** ([Email monitoring](email-monitoring.md)) | Error categories, 429 incidents, failed recipients per campaign, the bounce processor's health. |
+| Non-delivery reports, mailbox size | The I2G Inbox and Sent Items; matched reports on the Email Monitoring dashboard | Watch for bounces and sending restrictions (`550 5.1.8`); a full mailbox stops sending (`507`). |
 
 Suggested CloudWatch metric filters: `"Microsoft Graph sendMail was not accepted"`,
 `"Microsoft Graph mailbox read was refused"`, `"Microsoft rejected the Graph credentials"` and
@@ -791,7 +794,8 @@ deploy also catches certificate expiry.
   removed when the cache is culled (above 2,000 entries), or the task is replaced. The site stores no other
   copy of received mail.
 - **Site records.** The Email Log (`RecipientLog`) and campaign records keep recipients, subjects, status and
-  the `Message-ID`; nothing deletes them. Recorded access checks, removed certificate rows (public data and
+  the `Message-ID`; nothing deletes them. The email telemetry and bounce records are deleted after 180 and 365
+  days ([Email monitoring](email-monitoring.md#configuration)). Recorded access checks, removed certificate rows (public data and
   the removal reason) and the admin history are kept until deleted; access checks and certificate rows go
   with their Graph configuration. Access tokens live only in process memory for about an hour.
 - **Logs.** Graph log lines carry status, error code and request ID only. This repository sets no retention

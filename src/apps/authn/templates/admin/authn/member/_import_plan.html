@@ -1,0 +1,14 @@
+{% if plan.kind != "skip" %}
+    <div class="text-xs bg-base-50 dark:bg-base-800 rounded-default p-2 mt-1">
+        {% if plan.changes %}
+            <p class="font-semibold mb-0.5">With this choice, the import will:</p>
+            <ul class="list-disc list-inside">{% for change in plan.changes %}<li>{{ change }}</li>{% endfor %}</ul>
+        {% else %}
+            <p>With this choice, nothing changes for this member.</p>
+        {% endif %}
+        {% if plan.notes %}
+            <ul class="list-disc list-inside text-font-subtle-light dark:text-font-subtle-dark mt-1">{% for note in plan.notes %}<li>{{ note }}</li>{% endfor %}</ul>
+        {% endif %}
+        {% for problem in plan.problems %}<p class="text-red-600 dark:text-red-400 font-semibold mt-1">{{ problem }}</p>{% endfor %}
+    </div>
+{% endif %}

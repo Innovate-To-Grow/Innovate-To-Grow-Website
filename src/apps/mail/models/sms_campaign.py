@@ -45,9 +45,19 @@ SMS_LOG_STATUS_CHOICES = [
     ("sent", "Sent"),
     ("failed", "Failed"),
     ("uncertain", "Uncertain delivery"),
+    # Not sent: the number is on the SMS opt-out list (it replied STOP), or AWS refused it as opted out.
+    ("opted_out", "Opted out"),
 ]
 
+# The short-link placeholders (``services.sms.compose``): usable only while links in SMS are allowed.
+SMS_LINK_PLACEHOLDERS = ("login_link", "ticket_link", "event_link")
+
 E164_RE = re.compile(r"^\+[1-9]\d{6,14}$")
+
+LINKS_OFF_MESSAGE = (
+    "Links in SMS are turned off (Mail → SMS Settings). They stay off until the sending number's 10DLC or toll-free "
+    "registration is confirmed to allow embedded links."
+)
 
 
 class SmsCampaign(ProjectControlModel):
@@ -55,9 +65,21 @@ class SmsCampaign(ProjectControlModel):
     message = models.TextField(
         verbose_name="SMS Message",
         help_text=(
-            "Plain text message. Supports {{first_name}}, {{last_name}}, and {{full_name}}. "
-            "Opt-out wording is not added automatically."
+            "Plain text message. Supports {{first_name}}, {{last_name}} and {{full_name}}; with links in SMS allowed "
+            "(Mail → SMS Settings) also {{login_link}}, {{ticket_link}} and {{event_link}}. The opt-out footer is "
+            "added when the message does not say STOP."
         ),
+    )
+    login_redirect_path = models.CharField(
+        max_length=200,
+        default="/account",
+        verbose_name="Sign-in destination",
+        help_text="Where {{login_link}} lands after signing in.",
+    )
+    link_validity_days = models.PositiveSmallIntegerField(
+        default=3,
+        verbose_name="Link validity (days)",
+        help_text="How long the links in this campaign's texts work after it is sent.",
     )
     phone_policy = models.CharField(
         max_length=24,
@@ -77,7 +99,7 @@ class SmsCampaign(ProjectControlModel):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="sms_campaigns",
-        help_text="Required for event-based SMS audiences.",
+        help_text="Required for event-based SMS audiences; also the event {{event_link}} and {{ticket_link}} open.",
     )
     ticket_id = models.CharField(
         max_length=64,
@@ -169,6 +191,7 @@ class SmsCampaign(ProjectControlModel):
             raise ValidationError({"ticket_id": "A ticket type must be selected."})
         if self.audience_type == "manual":
             self._clean_manual_phones()
+        self._clean_links()
 
         ex = (self.exclude_audience_type or "").strip()
         if ex:
@@ -176,6 +199,24 @@ class SmsCampaign(ProjectControlModel):
                 raise ValidationError({"exclude_event": "Select an event for this exclusion audience."})
             if ex == "ticket_type" and not self.exclude_ticket_id.strip():
                 raise ValidationError({"exclude_ticket_id": "A ticket type must be selected for ticket exclusion."})
+
+    def _clean_links(self):
+        """Link placeholders only while links in SMS are allowed; ``{{event_link}}`` needs an event."""
+        from apps.mail.redirects import is_strict_internal_path
+        from apps.mail.services.campaign.personalize import uses_placeholder
+
+        from .sms_config import SmsConfig
+
+        used = [name for name in SMS_LINK_PLACEHOLDERS if uses_placeholder(name, self.message)]
+        if used and not SmsConfig.load().links_enabled:
+            raise ValidationError({"message": LINKS_OFF_MESSAGE})
+        if "event_link" in used and not self.event_id:
+            raise ValidationError({"event": "Choose the event {{event_link}} opens."})
+        maximum = settings.SMS_POLICY["link_max_validity_days"]
+        if not 1 <= (self.link_validity_days or 0) <= maximum:
+            raise ValidationError({"link_validity_days": f"Choose 1 to {maximum} days."})
+        if not is_strict_internal_path(self.login_redirect_path):
+            raise ValidationError({"login_redirect_path": "Please select a valid internal destination."})
 
     def _clean_manual_phones(self):
         phones = parse_manual_sms_phones(self.manual_phones)

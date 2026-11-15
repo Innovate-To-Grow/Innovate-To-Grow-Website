@@ -13,6 +13,8 @@ from apps.mail.services.campaign.duplicate import NAME_MAX_LENGTH, copy_name, du
 
 # Detail actions that only make sense while a campaign is still a draft; a locked campaign does not show them.
 DRAFT_ONLY_DETAIL_ACTIONS = ("_send_campaign_action", "_import_gmail_html_action")
+# ...and those that only make sense once it has been sent: a draft does not show them.
+SENT_ONLY_DETAIL_ACTIONS = ("_delivery_monitoring_action",)
 AUDIENCE_CHOICES = ("same", "manual")
 
 
@@ -29,8 +31,9 @@ class CampaignDuplicateMixin:
 
     def get_actions_detail(self, request, object_id=None):
         actions = super().get_actions_detail(request, object_id)
-        if object_id is not None and not _is_draft(object_id):
-            actions = [item for item in actions if not item.action_name.endswith(DRAFT_ONLY_DETAIL_ACTIONS)]
+        if object_id is not None:
+            hidden = SENT_ONLY_DETAIL_ACTIONS if _is_draft(object_id) else DRAFT_ONLY_DETAIL_ACTIONS
+            actions = [item for item in actions if not item.action_name.endswith(hidden)]
         return actions
 
     @action(description="Duplicate campaign", url_path="duplicate", icon="content_copy", permissions=["change"])

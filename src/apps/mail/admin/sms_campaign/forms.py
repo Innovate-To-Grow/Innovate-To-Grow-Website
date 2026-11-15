@@ -7,6 +7,7 @@ from apps.event.models import Ticket
 from apps.mail.admin.campaign.widgets import TicketSelectWidget
 from apps.mail.models import SmsCampaign
 from apps.mail.models.sms_campaign import SMS_AUDIENCE_CHOICES, SMS_EXCLUDE_AUDIENCE_CHOICES
+from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_redirect_choices
 
 
 class SmsCampaignForm(forms.ModelForm):
@@ -21,6 +22,15 @@ class SmsCampaignForm(forms.ModelForm):
         required=False,
         label="Exclude ticket type",
         widget=TicketSelectWidget,
+    )
+    # The link fields matter only for a message with a link placeholder: left out, they keep the model defaults.
+    login_redirect_path = forms.ChoiceField(
+        choices=(),
+        required=False,
+        initial=DEFAULT_LOGIN_REDIRECT_PATH,
+        label="Sign-in destination",
+        help_text="Where {{login_link}} lands after signing in.",
+        widget=UnfoldAdminSelectWidget,
     )
 
     class Meta:
@@ -45,6 +55,11 @@ class SmsCampaignForm(forms.ModelForm):
             self.fields["audience_type"].choices = SMS_AUDIENCE_CHOICES
         if "exclude_audience_type" in self.fields:
             self.fields["exclude_audience_type"].choices = SMS_EXCLUDE_AUDIENCE_CHOICES
+        if "login_redirect_path" in self.fields:
+            current = self.initial.get("login_redirect_path") or getattr(self.instance, "login_redirect_path", None)
+            self.fields["login_redirect_path"].choices = get_login_redirect_choices(current_path=current)
+        if "link_validity_days" in self.fields:
+            self.fields["link_validity_days"].required = False
 
         if self.instance and self.instance.pk and self.instance.status != "draft":
             self._disable_sent_campaign_fields()
@@ -52,6 +67,13 @@ class SmsCampaignForm(forms.ModelForm):
             self._restore_ticket_initial()
         if self.instance and self.instance.pk and self.instance.exclude_audience_type == "ticket_type":
             self._restore_exclude_ticket_initial()
+
+    def clean_login_redirect_path(self):
+        return self.cleaned_data.get("login_redirect_path") or DEFAULT_LOGIN_REDIRECT_PATH
+
+    def clean_link_validity_days(self):
+        value = self.cleaned_data.get("link_validity_days")
+        return value if value is not None else SmsCampaign._meta.get_field("link_validity_days").default
 
     def clean(self):
         cleaned = super().clean()
@@ -83,6 +105,8 @@ class SmsCampaignForm(forms.ModelForm):
         for field_name in (
             "name",
             "message",
+            "login_redirect_path",
+            "link_validity_days",
             "phone_policy",
             "audience_type",
             "event",

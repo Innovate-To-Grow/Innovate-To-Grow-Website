@@ -18,6 +18,27 @@ describe('auth callback parameter handoff', () => {
     window.history.replaceState({}, '', '/');
   });
 
+  it('moves an SMS link token out of the path and shows /l', () => {
+    window.history.replaceState({}, '', '/l/AbCdEfGhIjKlMnOpQrStUv');
+
+    captureAuthCallbackParams();
+
+    expect(window.location.pathname).toBe('/l');
+    expect(window.location.href).not.toContain('AbCdEfGhIjKlMnOpQrStUv');
+    expect(
+      readAuthCallbackParams('sms-link', new URLSearchParams()).get('token'),
+    ).toBe('AbCdEfGhIjKlMnOpQrStUv');
+  });
+
+  it('leaves an /l path that holds no token alone', () => {
+    for (const path of ['/l/short', '/l/AbCdEfGhIjKlMnOpQrStUv/extra', '/legal']) {
+      window.history.replaceState({}, '', path);
+      captureAuthCallbackParams();
+      expect(window.location.pathname).toBe(path);
+    }
+    expect(readAuthCallbackParams('sms-link', new URLSearchParams()).get('token')).toBeNull();
+  });
+
   it('captures and immediately scrubs legacy query credentials', () => {
     window.history.replaceState(
       {},

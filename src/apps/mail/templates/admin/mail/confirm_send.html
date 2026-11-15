@@ -21,6 +21,8 @@
         </div>
     </div>
 
+    {% include "admin/mail/_suppressed_notice.html" %}
+
     {% if without_login_link_count %}
     <!-- Recipients without an account get the sign-in page for the login link -->
     <div id="confirm-send-no-login-link" class="mb-6 rounded-default border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">

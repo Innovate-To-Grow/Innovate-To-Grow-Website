@@ -13,6 +13,7 @@ from unfold.forms import UserChangeForm, UserCreationForm
 
 from ...models import Member
 from ...services.members.profile_image import ALLOWED_CONTENT_TYPES, ProfileImageError, encode_profile_image
+from .help_texts import MEMBER_HELP_TEXTS, MEMBER_LABELS
 
 
 def admin_app_choices():
@@ -132,6 +133,8 @@ class MemberCreationForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = Member
         fields = ()
+        labels = MEMBER_LABELS
+        help_texts = MEMBER_HELP_TEXTS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -196,6 +199,10 @@ class MemberChangeForm(UserChangeForm):
     class Meta(UserChangeForm.Meta):
         model = Member
         fields = "__all__"
+        # "Account active" rather than the inherited "Active", so it is not read as a flag of an address. Meta (not
+        # the model) also labels the read-only display, and needs no migration.
+        labels = MEMBER_LABELS
+        help_texts = MEMBER_HELP_TEXTS
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -221,57 +228,3 @@ class MemberChangeForm(UserChangeForm):
         if value is None and self.instance.pk:
             return self.instance.profile_image
         return value
-
-
-class MemberImportForm(forms.Form):
-    """Form for importing members from Excel file."""
-
-    _input_classes = (
-        "w-full border border-base-200 dark:border-base-700 bg-white dark:bg-base-900"
-        " text-font-default-light dark:text-font-default-dark rounded-default px-3 py-2 text-sm"
-    )
-    _file_classes = "i2g-admin-file-input block w-full text-sm text-font-default-light dark:text-font-default-dark"
-
-    excel_file = forms.FileField(
-        label="Excel File",
-        help_text="Upload a .xlsx or .xls format Excel file",
-        widget=forms.FileInput(
-            attrs={
-                "accept": ".xlsx,.xls",
-                "class": _file_classes,
-            }
-        ),
-    )
-
-    set_password = forms.CharField(
-        label="Default Password",
-        required=False,
-        help_text="Set a default password for imported users (leave empty to generate random passwords)",
-        widget=forms.PasswordInput(
-            attrs={
-                "class": _input_classes,
-                "autocomplete": "new-password",
-            }
-        ),
-    )
-
-    update_existing = forms.BooleanField(
-        label="Update Existing Members",
-        required=False,
-        initial=False,
-        help_text="If a member with the same primary email already exists, update their info instead of skipping",
-    )
-
-    def clean_excel_file(self):
-        """Validate the uploaded file."""
-        file = self.cleaned_data.get("excel_file")
-        if file:
-            # Check file extension
-            if not file.name.endswith((".xlsx", ".xls")):
-                raise forms.ValidationError("Please upload a .xlsx or .xls format file")
-
-            # Check file size (max 5MB)
-            if file.size > 5 * 1024 * 1024:
-                raise forms.ValidationError("File size cannot exceed 5MB")
-
-        return file

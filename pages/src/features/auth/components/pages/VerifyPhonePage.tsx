@@ -10,6 +10,14 @@ import {
   parsePhoneInputToNationalDigits,
 } from '@/lib/format/phoneInput';
 
+/**
+ * Shown under the code field. A number saved on an account but never verified gets no text (the server answers as
+ * if it had sent one), so tell the visitor what to do instead.
+ */
+export const PHONE_CODE_HINT =
+  "No text? Only a verified phone number can be used to sign in. If this number was added to your account for you, "
+  + 'sign in with your email and verify it on your Account page.';
+
 export const VerifyPhonePage = () => {
   const { isAuthenticated, requiresProfileCompletion } = useAuth();
   const [searchParams] = useSearchParams();
@@ -80,6 +88,7 @@ const VerifyPhonePageContent = ({ phone, returnTo }: VerifyPhonePageContentProps
       localSuccess={null}
       error={error}
       isLoading={isLoading}
+      hint={PHONE_CODE_HINT}
       onCodeChange={(value) => {
         setCode(value);
         clearError();

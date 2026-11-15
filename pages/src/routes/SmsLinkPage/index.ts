@@ -1,0 +1,1 @@
+export {SmsLinkPage} from './SmsLinkPage';

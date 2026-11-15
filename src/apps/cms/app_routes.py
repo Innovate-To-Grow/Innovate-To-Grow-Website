@@ -60,6 +60,7 @@ PUBLIC_APP_ROUTES = [
     {"url": "/schedule", "title": "Event Schedule"},
     {"url": "/subscribe", "title": "Subscribe"},
     {"url": "/login-link", "title": "Login Link"},
+    {"url": "/l", "title": "SMS Link"},
     {"url": "/magic-login", "title": "Legacy Magic Login"},
     {"url": "/ticket-login", "title": "Legacy Ticket Login"},
     {"url": "/unsubscribe-login", "title": "Legacy Unsubscribe Link"},
@@ -90,6 +91,8 @@ PUBLIC_APP_ROUTE_PATTERNS = [
     "/projects/:id",
     "/events/:eventSlug",
     "/_embed/:embedSlug",
+    # SMS short links (/l/<token>): the SPA moves the token out of the address at start-up, then shows /l.
+    "/l/:token",
 ]
 
 # React-only utility routes that must never be claimed as CMS pages or legacy

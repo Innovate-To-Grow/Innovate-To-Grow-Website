@@ -8,7 +8,8 @@ Two reservations, taken at two different moments:
 * ``reserve_sms_dispatch`` runs only when an SMS is about to be handed to the provider
   (``start_phone_verification``). It reserves one unit of the global SMS daily budget, so the budget counts
   provider calls and nothing else: a request that sends no SMS (a password reset for a number without an account,
-  a number over its own hourly cap) costs nothing.
+  a number over its own hourly cap, a withheld phone sign-in code) costs nothing. A withheld code still gets the
+  answer a real send would (``check_sms_dispatch``).
 
 Both counters live in PostgreSQL rows locked with ``SELECT ... FOR UPDATE``; nothing is keyed on the client IP.
 """
@@ -160,6 +161,19 @@ def reserve_sms_dispatch(*, destination: str, now: datetime | None = None) -> No
     if window.reserved_count >= int(config.sms_daily_limit):
         raise _sms_budget_spent_error(destination)
     SendQuotaWindow.objects.filter(pk=window.pk).update(reserved_count=window.reserved_count + 1)
+
+
+def check_sms_dispatch(*, destination: str, now: datetime | None = None) -> None:
+    """Refuse exactly as ``reserve_sms_dispatch`` would, but reserve nothing (a plain read, no lock, no row).
+
+    For a code that is issued like a real one but never sent (a withheld phone sign-in code, see
+    ``start_phone_verification(..., deliver=False)``): its answer must be the one a real send gets, a spent budget
+    included, while it spends no unit of the budget.
+    """
+    config = load_settings()
+    _require_sms_budget_when_enforced(config)
+    if _sms_budget_spent(config, now or timezone.now()):
+        raise _sms_budget_spent_error(destination)
 
 
 def destination_hourly_count(*, destination_kind: str, destination_normalized: str, now=None) -> int:

@@ -114,6 +114,24 @@ class MemberToolingAuthorizationTests(TestCase):
         self.client.force_login(attacker)
         self.assertEqual(self.client.get(reverse("admin:authn_member_import_template")).status_code, 403)
 
+    def test_non_authn_staff_get_403_on_every_import_review_url(self):
+        from apps.authn.models import MemberImportBatch
+
+        owner = _staff(admin_apps=["authn"], first_name="Owner", last_name="Admin")
+        batch = MemberImportBatch.objects.create(
+            created_by=owner, file_name="m.xlsx", file_sha256="0" * 64, expires_at="2999-01-01T00:00:00Z"
+        )
+        attacker = _staff(admin_apps=["event"], first_name="Low", last_name="Priv")
+        self.client.force_login(attacker)
+        for name in ("review", "confirm", "result", "discard"):
+            url = reverse(f"admin:authn_member_import_{name}", args=[batch.pk])
+            with self.subTest(name=name):
+                self.assertEqual(self.client.get(url).status_code, 403)
+                self.assertEqual(self.client.post(url, {"version": 0, "action": "save"}).status_code, 403)
+        self.assertEqual(self.client.get(reverse("admin:authn_memberimportbatch_changelist")).status_code, 403)
+        batch.refresh_from_db()
+        self.assertEqual(batch.status, "review")
+
     def test_authn_admin_can_export_members(self):
         authn_admin = _staff(admin_apps=["authn"], first_name="Authn", last_name="Admin")
         self.client.force_login(authn_admin)

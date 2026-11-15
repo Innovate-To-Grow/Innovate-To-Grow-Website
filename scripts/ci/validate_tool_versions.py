@@ -143,6 +143,12 @@ PIN_GROUPS: dict[str, tuple[Source, ...]] = {
         Regex(CI, rf'GITLEAKS_VERSION="{VERSION}"'),
         Regex(GITLEAKS_HOOK, re.escape("${GITLEAKS_VERSION:-") + VERSION),
     ),
+    # Every image scan installs Trivy from GitHub releases: the backend and archive image jobs in ci.yml and the
+    # archive deploy's scan before it publishes.
+    "trivy": (
+        Regex(CI, yaml_literal("TRIVY_VERSION"), minimum=2),
+        Regex(DEPLOY_ARCHIVE, yaml_literal("TRIVY_VERSION")),
+    ),
     # The smoke and E2E job containers, the runner-image pre-pull and the runner smoke test.
     "playwright-image": (
         Regex(CI, PLAYWRIGHT_IMAGE, minimum=2),

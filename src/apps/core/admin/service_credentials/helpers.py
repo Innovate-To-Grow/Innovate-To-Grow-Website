@@ -8,7 +8,7 @@ def _normalize_phone_number(country_code, recipient):
 
 def _send_test_email(*, config, recipient):
     """Send through the central email facade and return its selected provider."""
-    from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
+    from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email, email_tracking
 
     subject = "Test Email — Innovate to Grow Admin"
     html_body = (
@@ -18,7 +18,8 @@ def _send_test_email(*, config, recipient):
     )
 
     try:
-        deliver_email(EmailMessage(subject=subject, to=(recipient,), html_body=html_body), config=config)
+        with email_tracking(category="test"):
+            deliver_email(EmailMessage(subject=subject, to=(recipient,), html_body=html_body), config=config)
     except EmailDeliveryError as exc:
         raise RuntimeError(str(exc)) from exc
     return config.get_provider_display()

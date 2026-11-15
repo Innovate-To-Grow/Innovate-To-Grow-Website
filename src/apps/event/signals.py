@@ -1,9 +1,14 @@
-"""Keep registration sheet dirty state in the same transaction as source edits, and the current-projects cache fresh."""
+"""Keep registration sheet dirty state in the same transaction as source edits, and the current-projects cache fresh.
+
+``initial_ticket_issued`` is the event app's own signal: sent (robustly) inside the registration's transaction when a
+new registration's first ticket goes out, so other apps add their own first-ticket delivery without the event app
+importing them (mail texts the ticket to a phone-only registrant).
+"""
 
 from django.core.cache import cache
 from django.db import transaction
 from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
+from django.dispatch import Signal, receiver
 from django.utils import timezone
 
 from apps.event.models import (
@@ -24,6 +29,9 @@ EVENT_AUDIT_FIELDS = {
     "updated_at",
 }
 REGISTRATION_AUDIT_FIELDS = {"ticket_email_sent_at", "ticket_email_error", "updated_at"}
+
+# Sent with ``registration=`` (an EventRegistration) when its first ticket is issued, inside its transaction.
+initial_ticket_issued = Signal()
 
 
 def _schedule(event):

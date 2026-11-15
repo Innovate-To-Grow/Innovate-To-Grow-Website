@@ -1,0 +1,68 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block monitoring_content %}
+<p><a class="i2g-monitor-back" href="{% url 'admin:mail_email_monitoring_emails' %}"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Email log</a></p>
+
+<section class="i2g-monitor-card" aria-labelledby="email-summary">
+  <h2 id="email-summary" class="i2g-monitor-heading">{{ email.get_category_display }}{% if email.subcategory %} <span>{{ email.subcategory }}</span>{% endif %}</h2>
+  {% if is_probe %}<p class="i2g-monitor-muted">A Microsoft Graph access check probe: diagnostics, left out of the dashboard's figures.</p>{% endif %}
+  <dl class="i2g-monitor-facts">
+    <div><dt>API status</dt><dd>{% include "admin/mail/email_monitoring/_status.html" with value=email.status label=email.get_status_display %}</dd></div>
+    <div><dt>Delivery status</dt><dd>{% include "admin/mail/email_monitoring/_status.html" with value=email.delivery_status label=email.get_delivery_status_display %}{% if email.bounce_classification %} · {{ email.bounce_label }}{% endif %}</dd></div>
+    <div><dt>Recipient{{ email.recipient_count|pluralize }}</dt><dd>{{ email.recipients|join:", "|default:"–" }}</dd></div>
+    <div><dt>Subject</dt><dd>{{ email.subject|default:"(not stored)" }}</dd></div>
+    <div><dt>Provider</dt><dd>{{ email.provider|default:"–" }}{% if email.mailbox %} · {{ email.mailbox }}{% endif %}{% if email.send_format %} · {{ email.send_format|upper }} sendMail{% endif %}</dd></div>
+    <div><dt>Recorded</dt><dd>{{ email.created_at|date:"M j, Y H:i:s" }}</dd></div>
+    <div><dt>Accepted</dt><dd>{{ email.accepted_at|date:"M j, Y H:i:s"|default:"–" }}</dd></div>
+    <div><dt>Attempts</dt><dd>{{ email.attempt_count }}{% if email.deferral_count %} · held back {{ email.deferral_count }} time{{ email.deferral_count|pluralize }} by the delivery rate{% endif %}</dd></div>
+    <div><dt>Processing time</dt><dd>{% if email.total_duration_ms %}{{ email.total_duration_ms }} ms{% else %}–{% endif %}</dd></div>
+    <div><dt>Correlation id</dt><dd><code>{{ email.correlation_id }}</code></dd></div>
+    <div><dt>Message-ID</dt><dd>{% if email.internet_message_id %}<code>{{ email.internet_message_id }}</code>{% else %}none known (JSON sendMail returns none){% endif %}</dd></div>
+    {% if campaign %}<div><dt>Campaign</dt><dd><a href="{% url 'admin:mail_email_monitoring_campaign' campaign.pk %}">{{ campaign.name|default:campaign.subject }}</a> · <a href="{{ campaign_link }}">open campaign</a></dd></div>{% endif %}
+    {% if source_link %}<div><dt>Source record</dt><dd><a href="{{ source_link }}">{{ email.source_type }}</a></dd></div>{% endif %}
+    {% if job_link %}<div><dt>Background job</dt><dd><a href="{{ job_link }}">{{ email.job_id }}</a></dd></div>{% endif %}
+  </dl>
+  <p class="i2g-monitor-muted"><strong>{{ email.get_status_display }}:</strong> {{ status_meaning }}</p>
+  <p class="i2g-monitor-muted"><strong>{{ email.get_delivery_status_display }}:</strong> {{ delivery_meaning }}</p>
+  {% if email.last_error and email.status != "accepted" %}
+    <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ kind }}{% if email.last_error_code %} ({{ email.last_error_code }}){% endif %}: {{ email.last_error }}</p>
+  {% endif %}
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="email-attempts">
+  <h2 id="email-attempts" class="i2g-monitor-heading">Attempts <span>each provider call, in order</span></h2>
+  <div class="i2g-monitor-card">
+    {% if attempts %}
+    <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+      <thead><tr>
+        <th scope="col">#</th><th scope="col">Started</th><th scope="col">Step reached</th><th scope="col">Outcome</th>
+        <th scope="col" class="num">HTTP</th><th scope="col">Error</th><th scope="col">Retry-After</th>
+        <th scope="col">Microsoft ids</th><th scope="col" class="num">Duration</th>
+      </tr></thead>
+      <tbody>{% for row in attempts %}{% with attempt=row.attempt %}
+        <tr>
+          <td>{{ attempt.attempt_number }}{% if attempt.job_attempt %}<br><span class="i2g-monitor-muted">job try {{ attempt.job_attempt }}</span>{% endif %}</td>
+          <td>{{ attempt.started_at|date:"M j, H:i:s" }}</td>
+          <td>{{ attempt.get_operation_display }}{% if attempt.endpoint %}<br><code>{{ attempt.endpoint }}</code>{% endif %}{% if attempt.token_fresh is not None %}<br><span class="i2g-monitor-muted">{% if attempt.token_fresh %}new access token{% else %}cached access token{% endif %}</span>{% endif %}</td>
+          <td>{% if row.interrupted %}Interrupted: outcome unknown{% else %}{{ attempt.get_outcome_display }}{% endif %}</td>
+          <td class="num">{{ attempt.http_status|default:"–" }}</td>
+          <td>{% if row.kind %}<strong>{{ row.kind }}</strong>{% endif %}{% if attempt.error_code %}<br><code>{{ attempt.error_code }}</code>{% endif %}{% if attempt.inner_error_code and attempt.inner_error_code != attempt.error_code %} / <code>{{ attempt.inner_error_code }}</code>{% endif %}{% if attempt.error_message %}<br>{{ attempt.error_message }}{% endif %}{% if not row.kind and not attempt.error_message %}–{% endif %}</td>
+          <td>{% if attempt.retry_after_seconds is not None %}{{ attempt.retry_after_seconds }} s{% else %}–{% endif %}</td>
+          <td>{% if attempt.request_id %}request-id <code>{{ attempt.request_id }}</code>{% endif %}{% if attempt.client_request_id %}<br>client-request-id <code>{{ attempt.client_request_id }}</code>{% endif %}{% for name, value in row.diagnostics %}<br><span class="i2g-monitor-muted">{{ name }}: <code>{{ value }}</code></span>{% endfor %}{% if not attempt.request_id and not attempt.client_request_id %}–{% endif %}</td>
+          <td class="num">{% if attempt.duration_ms is not None %}{{ attempt.duration_ms }} ms{% if attempt.response_ms is not None %}<br><span class="i2g-monitor-muted">API {{ attempt.response_ms }} ms</span>{% endif %}{% else %}–{% endif %}</td>
+        </tr>
+      {% endwith %}{% endfor %}</tbody>
+    </table></div>
+    {% else %}
+      <p class="i2g-monitor-empty">No attempt was made: the site stopped this email before calling the provider{% if email.last_error %} ({{ email.last_error }}){% endif %}.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="i2g-monitor-section" aria-labelledby="email-bounces">
+  <h2 id="email-bounces" class="i2g-monitor-heading">Bounce reports <span>matched to this email</span></h2>
+  <div class="i2g-monitor-card">
+    {% include "admin/mail/email_monitoring/_bounce_table.html" with bounces=bounces show_email=False %}
+  </div>
+</section>
+{% endblock %}

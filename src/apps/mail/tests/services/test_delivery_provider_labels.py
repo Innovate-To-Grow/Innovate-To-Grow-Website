@@ -237,56 +237,49 @@ class DashboardProviderMetaTests(ProviderFixtureMixin, TestCase):
         self.assertEqual((aws["provider"], aws["provider_label"]), ("ses", "AWS SES"))
 
 
-class DeliveryDashboardBannerTests(ProviderFixtureMixin, TestCase):
+class SesTabNoticeTests(ProviderFixtureMixin, TestCase):
+    """Email Monitoring → Amazon SES (the former Delivery Dashboard) names the active provider before anything else."""
+
     def setUp(self):
         self.create_provider_configs()
-        self.page_url = reverse("admin:mail_delivery_dashboard")
+        self.page_url = reverse("admin:mail_email_monitoring_ses")
 
-    def embedded_payload(self, response):
-        match = re.search(
-            r'<script id="mail-delivery-dashboard-data" type="application/json">(.*?)</script>',
-            response.content.decode(),
-            re.S,
+    def test_a_graph_sender_gets_the_provider_notice_not_the_ses_one(self):
+        self.use_provider("graph")
+
+        with no_aws_calls():
+            response = self.client.get(self.page_url)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            (response.context["aws"]["provider"], response.context["aws"]["provider_label"]),
+            ("graph", "Microsoft Graph"),
         )
-        self.assertIsNotNone(match, "the dashboard payload is not embedded")
-        return json.loads(match.group(1))
-
-    def test_page_embeds_the_graph_provider_and_the_non_ses_banner_branch(self):
-        self.use_provider("graph")
-
-        with no_aws_calls():
-            response = self.client.get(self.page_url)
-
-        self.assertEqual(response.status_code, 200)
-        aws = self.embedded_payload(response)["aws"]
-        self.assertEqual((aws["provider"], aws["provider_label"]), ("graph", "Microsoft Graph"))
-        self.assertContains(response, "aws.provider !== 'ses'")
-        self.assertContains(response, "The active email provider is ")
+        self.assertEqual(response.context["notice"]["key"], "provider")
+        self.assertContains(response, "The active email provider is Microsoft Graph")
         self.assertContains(response, "which reports no delivery events here")
+        # A Graph or SMTP sender is never "SES configured", so the provider notice has to win, or staff would be
+        # told that AWS SES is not fully configured.
+        self.assertNotContains(response, "AWS SES is not fully configured")
 
-    def test_non_ses_banner_is_decided_before_the_ses_not_configured_message(self):
-        with no_aws_calls():
-            html = self.client.get(self.page_url).content.decode()
-
-        # A Graph or SMTP sender is never "SES configured", so the provider check has to come first or the
-        # banner would tell staff that AWS SES is not fully configured.
-        self.assertLess(html.index("aws.provider !== 'ses'"), html.index("if (!aws.configured)"))
-
-    def test_page_for_ses_embeds_the_ses_provider(self):
+    def test_an_ses_sender_without_aws_access_is_told_so(self):
         with no_aws_calls():
             response = self.client.get(self.page_url)
 
-        self.assertEqual(self.embedded_payload(response)["aws"]["provider"], "ses")
+        self.assertEqual(response.context["aws"]["provider"], "ses")
+        self.assertNotEqual(response.context["notice"]["key"], "provider")
+        self.assertNotContains(response, "The active email provider is")
 
-    def test_data_endpoint_names_the_provider_for_the_banner_refresh(self):
+    def test_data_endpoints_name_the_provider(self):
         self.use_provider("graph")
 
-        with no_aws_calls():
-            response = self.client.get(reverse("admin:mail_delivery_dashboard_data"))
+        for name in ("admin:mail_email_monitoring_ses_data", "admin:mail_delivery_dashboard_data"):
+            with self.subTest(name=name), no_aws_calls():
+                response = self.client.get(reverse(name))
 
-        self.assertEqual(response.status_code, 200)
-        aws = response.json()["aws"]
-        self.assertEqual((aws["provider"], aws["provider_label"]), ("graph", "Microsoft Graph"))
+            self.assertEqual(response.status_code, 200)
+            aws = response.json()["aws"]
+            self.assertEqual((aws["provider"], aws["provider_label"]), ("graph", "Microsoft Graph"))
 
 
 class TestEmailFormHelpTextTests(ProviderFixtureMixin, TestCase):

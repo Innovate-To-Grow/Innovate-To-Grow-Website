@@ -29,6 +29,7 @@ from .contacts.contact_phones import (
 )
 from .contacts.phone_auth import (
     PhoneAccountInactive,
+    PhoneNotVerified,
     request_phone_auth,
     resolve_or_create_member_by_phone,
 )
@@ -73,6 +74,7 @@ from .security import (
     rotate_auth_keypair,
 )
 from .sms import (
+    PhoneNumberOptedOut,
     PhoneVerificationBusy,
     PhoneVerificationDeliveryError,
     PhoneVerificationError,
@@ -133,11 +135,13 @@ __all__ = [
     "request_phone_auth",
     "resolve_or_create_member_by_phone",
     "PhoneAccountInactive",
+    "PhoneNotVerified",
     # SMS exceptions
     "PhoneVerificationError",
     "PhoneVerificationInvalid",
     "PhoneVerificationThrottled",
     "PhoneVerificationDeliveryError",
+    "PhoneNumberOptedOut",
     "PhoneVerificationBusy",
     # RSA Manager
     "get_or_create_auth_keypair",

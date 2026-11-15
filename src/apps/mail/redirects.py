@@ -1,14 +1,26 @@
 """Allowed redirect destinations for emailed login links."""
 
+import re
+
 from apps.cms.app_routes import APP_ROUTES
 from apps.cms.models import CMSPage
 
 DEFAULT_LOGIN_REDIRECT_PATH = "/account"
+_UNSAFE_PATH_RE = re.compile(r"^/[/\\]|\\|%(?:2f|5c|09|0a|0d)", re.IGNORECASE)
 
 
 def is_safe_internal_redirect_path(path: str | None) -> bool:
     value = (path or "").strip()
     return bool(value) and value.startswith("/") and not value.startswith("//")
+
+
+def is_strict_internal_path(path: str | None) -> bool:
+    """A page on this site by the SPA's own rule (``getSafeInternalRedirectPath``): one leading slash, no backslash,
+    no space or control character, and no encoded slash, backslash, tab or line break. SMS links use it."""
+    value = (path or "").strip()
+    if not value.startswith("/") or _UNSAFE_PATH_RE.search(value):
+        return False
+    return not any(ord(char) <= 0x20 or ord(char) == 0x7F for char in value)
 
 
 def get_login_link_redirect_path(campaign) -> str:

@@ -53,7 +53,7 @@ A `merge_group` run is routed like a push.
 | Frontend | ESLint and `check:structure`, TypeScript, Vitest with the coverage thresholds in `pages/vitest.config.ts`, production build, bundle size, built CSS/HTML checks, the required Chromium smoke test, SBOM and license allowlist |
 | End-to-end | All 10 Playwright projects, see below |
 | Security | gitleaks on the commit range, Semgrep, `npm audit`, `pip-audit` |
-| Archive | `archive/page` pytest |
+| Archive | `archive/page` pytest; Docker build with hadolint, a runtime smoke test (`/healthz` and an event page), and Trivy with the archive deploy's settings (fixable CRITICAL/HIGH) |
 
 Backend jobs run Python 3.14, the minor of the production image
 (`BACKEND_PYTHON_VERSION`); lint, audit, and CLI jobs run Python 3.11
@@ -62,7 +62,8 @@ AWS runner guard test (`node --test`) uses the `ubuntu-latest` image's default N
 
 Semgrep fails the job on error-severity findings and on a Semgrep failure.
 Warnings and notes do not block; push runs upload every finding to the
-repository's Security tab, as does the Trivy image scan. Suppress a reviewed
+repository's Security tab, as does the backend image's Trivy scan (the archive
+image's scan reports in its job log only). Suppress a reviewed
 false positive in place with `# nosemgrep: <rule id>` on the line where the
 finding starts.
 
@@ -215,8 +216,17 @@ rule list.
 
 ### Archive (`deploy-archive.yml`)
 
-The archive workflow checks out the approved commit, builds and publishes its
-container image, deploys the ECS service, and runs HTTPS smoke checks.
+The archive workflow checks out the approved commit, builds its container image,
+scans it with Trivy (fixable CRITICAL/HIGH findings stop the job before anything
+is pushed), publishes it, deploys the ECS service, and runs HTTPS smoke checks.
+
+The image is rebuilt from the `python:3.11-slim` tag on every deploy and runs
+`apt-get upgrade` while it is built, so a Debian security fix reaches it without
+waiting for the base tag to be rebuilt. CI's `Archive Docker Build and Scan` job
+builds the same `archive/page/` context and scans it with the same Trivy
+settings (`ArchiveImageScanTests` keeps them equal), so a finding fails CI
+before a deploy is approved. Both scans install Trivy from GitHub releases, and
+`scripts/ci/validate_tool_versions.py` keeps their `TRIVY_VERSION` pins equal.
 
 All component workflows use environment-specific OIDC role ARNs.
 CI publishes the already tested/scanned backend image using its own main-only role.

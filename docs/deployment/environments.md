@@ -48,6 +48,8 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | `NUM_PROXIES` | Trusted reverse-proxy hops in front of uvicorn (the ALB is 1); must be ≥ 1. Drives per-IP throttle and request-limit identity — see [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust) | No (defaults to 1; deploy renders the `NUM_PROXIES` AWS deployment setting, default `1`) |
 | `BACKGROUND_JOBS_ENABLED` | Queue durable background work, including Amplify route reconciliation | Enabled in production through `itg/backend/deploy-config`; code defaults to false |
 | `BACKGROUND_JOB_METRICS_NAMESPACE` | Optional CloudWatch namespace for worker heartbeat/queue metrics | No (empty disables publishing) |
+| `EMAIL_TELEMETRY_ENABLED`, `EMAIL_TELEMETRY_STORE_SUBJECTS` | Record every outgoing email and attempt; keep subjects ([Email monitoring](../integrations/email-monitoring.md#configuration)) | No (both default to true) |
+| `EMAIL_BOUNCE_PROCESSING_ENABLED`, `EMAIL_BOUNCE_MAILBOXES` | Read bounce reports in the Graph sending mailbox; the only mailboxes it may read (comma-separated) | No (default true, `i2g@ucmerced.edu`) |
 
 ### AWS / Storage
 

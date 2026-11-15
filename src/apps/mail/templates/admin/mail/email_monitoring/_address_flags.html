@@ -1,0 +1,8 @@
+{# Flags: verified and subscribed (the live contact email), and the campaign suppression. #}
+<span class="i2g-monitor-badges">
+  {% if contact %}
+    {% if contact.verified %}<span class="i2g-monitor-badge i2g-monitor-badge--good">Verified</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Unverified</span>{% endif %}
+    {% if contact.subscribe %}<span class="i2g-monitor-badge">Subscribed</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Unsubscribed</span>{% endif %}
+  {% endif %}
+  {% if row.suppressed_at %}<span class="i2g-monitor-badge i2g-monitor-badge--danger" title="{{ row.suppressed_reason }}">{{ row.get_suppression_display|default:"Suppressed" }}</span>{% endif %}
+</span>

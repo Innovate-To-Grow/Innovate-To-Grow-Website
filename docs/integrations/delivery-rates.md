@@ -3,7 +3,9 @@
 Every message the site sends and every inbox session it opens goes through one limiter,
 `apps.core.services.delivery_rates`. It paces seven **delivery channels** with the same rules, the same policy model
 and the same settings card on **Mail → Delivery Operations → Delivery Rates**. Each channel has a **manual rate** and
-a **Smart rate** switch. Smart rate is on for every channel by default.
+a **Smart rate** switch. Smart rate is on for every channel by default. The active email channel's status line also
+appears on Notification Delivery, on Email Monitoring's Overview (its **Send rate** line, which the former Delivery
+Dashboard showed) and on the campaign send confirmation.
 
 Items marked **[CONFIRM LIVE]** come from provider documentation or from reasoning about it. Nothing in this change
 was tried against AWS, Microsoft or Google: the tests use stubs (botocore `Stubber`, mocked HTTP).

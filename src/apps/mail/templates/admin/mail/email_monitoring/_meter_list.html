@@ -1,0 +1,17 @@
+{# A ranked bar list: one row per item, its name, a bar scaled to the largest and the count printed beside it. #}
+<div class="i2g-monitor-card">
+  <h3>{{ title }}</h3>
+  {% if rows %}
+  <ul class="i2g-monitor-meters">
+    {% for row in rows %}
+      <li>
+        <span class="i2g-monitor-meter-label">{{ row.label }}</span>
+        <span class="i2g-monitor-meter-track" aria-hidden="true"><span class="i2g-monitor-meter-fill" style="width: {{ row.share|stringformat:'.1f' }}%"></span></span>
+        <span class="i2g-monitor-meter-value">{{ row.count }}</span>
+      </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p class="i2g-monitor-empty">{{ empty }}</p>
+  {% endif %}
+</div>

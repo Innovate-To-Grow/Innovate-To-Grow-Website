@@ -21,7 +21,18 @@ def dispatch_email_campaign(campaign: EmailCampaign, *, sent_by):
 
 
 def dispatch_sms_campaign(campaign: SmsCampaign, *, sent_by):
+    """Queue the campaign (inside SMS quiet hours its texts wait for them to end), or start the in-process sender,
+    which cannot wait: during quiet hours it refuses with ``QuietHoursActive``. A message whose links are turned
+    off raises ``LinksDisabled``; both before anything changes."""
+    from apps.mail.services.sms.compose import refuse_unsendable
+    from apps.mail.services.sms.errors import QuietHoursActive
+    from apps.mail.services.sms.quiet_hours import held_until
+
+    refuse_unsendable(campaign)
     if not jobs_enabled():
+        until = held_until()
+        if until is not None:
+            raise QuietHoursActive(until)
         return _start_in_process_sms_campaign(campaign, sent_by=sent_by)
     return queue_sms_campaign(campaign, sent_by=sent_by)
 
@@ -129,17 +140,19 @@ def _run_in_process_sms_campaign(campaign_id, sent_by_id) -> None:
 def _queue_campaign(channel: DeliveryChannel, campaign, *, sent_by) -> dict[str, int]:
     """Create (or reset) one recipient log and one outbox job per recipient, atomically.
 
-    Every job is due at once: the delivery-rate limiter paces them as they run, and the worker leaves the campaign
-    lane unclaimed while it waits for its next slot, so jobs queued meanwhile still run first.
+    Every job is due at once (an SMS queued inside quiet hours: when they end): the delivery-rate limiter paces them
+    as they run, and the worker leaves the campaign lane unclaimed while it waits for its next slot, so jobs queued
+    meanwhile still run first.
     """
     recipients = channel.recipients(campaign)
     now = timezone.now()
+    available_at = channel.available_at(now)
     with transaction.atomic():
         campaign = channel.campaign_model.objects.select_for_update().get(pk=campaign.pk)
         if campaign.status != "draft":
             raise ValueError(channel.not_draft_message)
         for recipient in recipients:
-            _queue_recipient(channel, campaign, recipient, available_at=now)
+            _queue_recipient(channel, campaign, recipient, available_at=available_at)
         campaign.status = "queued" if recipients else "sent"
         campaign.sent_by = sent_by
         campaign.total_recipients = len(recipients)

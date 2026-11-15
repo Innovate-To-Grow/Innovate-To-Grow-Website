@@ -1,9 +1,6 @@
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render
 from django.urls import reverse
-
-from .forms import MemberImportForm
 
 
 def get_primary_email_display(member):
@@ -11,7 +8,11 @@ def get_primary_email_display(member):
 
 
 def get_primary_phone_display(member):
-    return member.get_primary_phone() or "-"
+    phone = member.get_primary_contact_phone()
+    if phone is None:
+        return "-"
+    # An unverified number cannot be used to sign in: say so where staff see the member list.
+    return phone.to_e164() if phone.verified else f"{phone.to_e164()} (unverified)"
 
 
 def get_full_name_display(member):
@@ -110,59 +111,6 @@ def export_members_vcard_response(queryset):
     return build_vcard_response(content, filename)
 
 
-def import_excel_view(admin_obj, request):
-    from ...services.members.import_ import import_members_from_excel
-
-    # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-    # per-app access itself — otherwise a staff member without the authn app
-    # could create members here. Updating existing members is additionally
-    # gated below.
-    if not admin_obj.has_view_permission(request):
-        raise PermissionDenied("You do not have permission to import members.")
-
-    context = build_import_context(admin_obj, request, MemberImportForm(), result=None)
-    if request.method != "POST":
-        return render(request, "admin/authn/member/import_excel.html", context)
-
-    form = MemberImportForm(request.POST, request.FILES)
-    context["form"] = form
-    if form.is_valid():
-        update_existing = form.cleaned_data.get("update_existing", False)
-        if update_existing and not admin_obj.has_change_permission(request):
-            raise PermissionDenied("You do not have permission to update existing members.")
-
-        result = import_members_from_excel(
-            file=form.cleaned_data["excel_file"],
-            default_password=form.cleaned_data.get("set_password") or None,
-            update_existing=update_existing,
-            update_member_allowed=(
-                (
-                    lambda member: (
-                        admin_obj.has_change_permission(request, member)
-                        and admin_obj.can_manage_target(request, member)
-                    )
-                )
-                if update_existing
-                else None
-            ),
-            # The export writes a Staff column, so an unrestricted round trip would let any
-            # authn-app admin grant themselves staff or revoke the I2G Master's.
-            allow_privilege_fields=getattr(getattr(request, "user", None), "is_superuser", False),
-        )
-        context["result"] = result
-        if result.success:
-            message = (
-                f"Import complete: {result.created_count} created, "
-                f"{result.updated_count} updated, "
-                f"{result.skipped_count} skipped"
-            )
-            if result.errors:
-                message += f", {len(result.errors)} error(s)"
-            admin_obj.message_user(request, message, level="success" if not result.errors else "warning")
-
-    return render(request, "admin/authn/member/import_excel.html", context)
-
-
 def download_template_view(admin_obj, request):
     from ...services.members.import_ import generate_template_excel
 
@@ -183,13 +131,3 @@ def export_excel_view(admin_obj, request):
     if not admin_obj.has_view_permission(request):
         raise PermissionDenied("You do not have permission to export members.")
     return export_members_response(admin_obj.get_queryset(request))
-
-
-def build_import_context(admin_obj, request, form, result):
-    return {
-        **admin_obj.admin_site.each_context(request),
-        "title": "Import Members",
-        "opts": admin_obj.model._meta,
-        "form": form,
-        "result": result,
-    }

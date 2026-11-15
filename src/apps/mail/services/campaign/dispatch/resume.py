@@ -28,7 +28,15 @@ def resume_paused_email_recipients(campaign) -> int:
 
 
 def resume_paused_sms_recipients(campaign) -> int:
-    """The same for an SMS campaign."""
+    """The same for an SMS campaign; queued ones wait for SMS quiet hours to end, while the in-process sender
+    refuses during them (``QuietHoursActive``)."""
+    if not jobs_enabled():
+        from apps.mail.services.sms.errors import QuietHoursActive
+        from apps.mail.services.sms.quiet_hours import held_until
+
+        until = held_until()
+        if until is not None:
+            raise QuietHoursActive(until)
     return _resume(SMS, campaign, _run_paused_sms)
 
 
@@ -40,20 +48,21 @@ def _resume(channel: DeliveryChannel, campaign, runner) -> int:
 
 def _queue_paused(channel: DeliveryChannel, campaign) -> int:
     now = timezone.now()
+    available_at = channel.available_at(now)
     with transaction.atomic():
         campaign = channel.campaign_model.objects.select_for_update().get(pk=campaign.pk)
         if campaign.status in _BUSY_STATUSES:
             return 0
         logs = list(channel.log_model.objects.select_for_update().filter(campaign=campaign, status=PAUSED_STATUS))
         for log in logs:
-            _reset(channel.log_model.objects.filter(pk=log.pk), now)
+            _reset(channel.log_model.objects.filter(pk=log.pk), now, available_at=available_at)
             enqueue_job(
                 kind=channel.job_kind,
                 # A fresh key: the log may already have a finished job from an earlier queued send.
                 dedupe_key=f"{campaign.pk}:{log.pk}:resume:{uuid.uuid4().hex}",
                 payload={"recipient_log_id": str(log.pk)},
                 can_retry_after_claim=False,
-                available_at=now,
+                available_at=available_at,
             )
     if logs:
         aggregate_campaign(channel, campaign.pk)
@@ -79,12 +88,12 @@ def _start_paused_run(channel: DeliveryChannel, campaign, runner) -> int:
     return resumed
 
 
-def _reset(logs, now) -> int:
+def _reset(logs, now, *, available_at=None) -> int:
     return logs.update(
         status="pending",
         error_message="",
         attempts=0,
-        available_at=now,
+        available_at=available_at or now,
         claim_token=None,
         claimed_at=None,
         uncertain_at=None,

@@ -27,7 +27,10 @@ gh api -X PATCH repos/Innovate-To-Grow/Innovate-To-Grow-Website/code-scanning/al
 ```
 
 Trivy findings in the backend image are fixed with a Debian package floor under `src/docker/security/debian/`
-(one package per file; the Dockerfile installs and verifies them).
+(one package per file; the Dockerfile installs and verifies them). The archive image (`archive/page/Dockerfile`)
+has no floors: it runs `apt-get upgrade` when it is built, so a Debian fix reaches it on the next build. Its scan
+(`Archive Docker Build and Scan` in CI, and again in `deploy-archive.yml`) fails the job instead of uploading to
+the Security tab.
 
 ## Triage of 2026-11-05 (62 open alerts)
 

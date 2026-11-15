@@ -459,7 +459,8 @@ class MemberAdminInlineUUIDSubmitTest(TestCase):
         self.assertEqual(resp.status_code, 302, content)
         phone = ContactPhone.objects.get(member=self.target, phone_number="2095765113")
         self.assertEqual(phone.region, "1-US")
-        self.assertTrue(phone.verified)
+        # A phone added by staff starts unverified whatever is posted: only an SMS code verifies a number.
+        self.assertFalse(phone.verified)
 
     def test_change_member_rejects_contact_phone_owned_by_other_member(self):
         """Admin inline must not move another member's phone onto this member."""

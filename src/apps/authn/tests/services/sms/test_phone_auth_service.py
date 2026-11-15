@@ -7,7 +7,11 @@ from django.test import TestCase
 
 from apps.authn.models import ContactPhone
 from apps.authn.services.contacts.contact_phones import create_contact_phone
-from apps.authn.services.contacts.phone_auth import PhoneAccountInactive, resolve_or_create_member_by_phone
+from apps.authn.services.contacts.phone_auth import (
+    PhoneAccountInactive,
+    PhoneNotVerified,
+    resolve_or_create_member_by_phone,
+)
 from apps.authn.services.email.challenges import AuthChallengeInvalid
 
 Member = get_user_model()
@@ -34,6 +38,35 @@ class ResolveOrCreateMemberByPhoneTests(TestCase):
         member, flow = resolve_or_create_member_by_phone("2025550123", "1-US")
         self.assertEqual(flow, "login")
         self.assertEqual(member.id, existing.id)
+
+    def test_rejects_unverified_phone_on_login_without_mutating(self):
+        # Only a verified number signs anyone in: one staff or an import saved on an account was never proven to be
+        # the member's. The guard runs before any write, so the phone stays unverified and no account is created.
+        existing = Member.objects.create_user(is_active=True, first_name="A", last_name="B")
+        ContactPhone.objects.create(member=existing, phone_number="2025550123", region="1-US", verified=False)
+        members = Member.objects.count()
+        with self.assertRaises(PhoneNotVerified):
+            resolve_or_create_member_by_phone("2025550123", "1-US")
+        self.assertEqual(Member.objects.count(), members)
+        contact = ContactPhone.objects.get(phone_number="2025550123")
+        self.assertEqual((contact.member_id, contact.verified), (existing.id, False))
+
+    @patch("apps.authn.services.contacts.phone_auth.create_contact_phone", side_effect=AuthChallengeInvalid("dup"))
+    @patch("apps.authn.services.contacts.phone_auth.ContactPhone")
+    def test_create_race_refuses_a_competitor_whose_phone_is_unverified(self, mock_contact_phone, _mock_create):
+        # The race re-fetch goes through the same login guard: losing a signup race to a row someone saved
+        # unverified (an import, staff) must not sign in to that row's member.
+        winner = Member.objects.create_user(is_active=True, first_name="W", last_name="X")
+        competitor = MagicMock()
+        competitor.member = winner
+        competitor.verified = False
+        chain = (
+            mock_contact_phone.objects.select_for_update.return_value.select_related.return_value.filter.return_value
+        )
+        chain.first.side_effect = [None, competitor]
+
+        with self.assertRaises(PhoneNotVerified):
+            resolve_or_create_member_by_phone("2025550123", "1-US")
 
     def test_rejects_inactive_member_on_login_without_mutating(self):
         # A disabled account must not be silently revived by proving phone

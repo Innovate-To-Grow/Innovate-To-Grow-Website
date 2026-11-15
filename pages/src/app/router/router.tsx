@@ -66,6 +66,7 @@ const EventArchivePage = React.lazy(() => import('@/routes/EventArchivePage').th
 const EventRegistrationPage = React.lazy(() => import('@/routes/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
 const SubscribePage = React.lazy(() => import('@/routes/SubscribePage').then(m => ({default: m.SubscribePage})));
 const LoginLinkPage = React.lazy(() => import('@/routes/LoginLinkPage').then(m => ({default: m.LoginLinkPage})));
+const SmsLinkPage = React.lazy(() => import('@/routes/SmsLinkPage').then(m => ({default: m.SmsLinkPage})));
 const EmailAuthLinkPage = React.lazy(() => import('@/routes/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
 const ImpersonateLoginPage = React.lazy(() => import('@/routes/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
@@ -125,6 +126,9 @@ const pageRoutes = (): RouteObject[] => [
 
     // Auto-login from email links
     {path: 'login-link', element: lazyRoute(<LoginLinkPage/>), ...titled('Sign In')},
+    // SMS short links: the token is moved out of the address at start-up (/l/<token> → /l).
+    {path: 'l', element: lazyRoute(<SmsLinkPage/>), ...titled('Opening Link')},
+    {path: 'l/:token', element: lazyRoute(<SmsLinkPage/>), ...titled('Opening Link')},
     // Legacy aliases: previously-sent emails point at /magic-login (still
     // valid tokens) and /ticket-login (tokens already invalidated).
     {path: 'magic-login', element: <LegacyLoginLinkRedirect/>},

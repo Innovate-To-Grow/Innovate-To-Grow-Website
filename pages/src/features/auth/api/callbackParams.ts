@@ -1,7 +1,8 @@
 export type AuthCallbackRoute =
   | 'login-link'
   | 'impersonate-login'
-  | 'email-auth-link';
+  | 'email-auth-link'
+  | 'sms-link';
 
 const CALLBACK_STORAGE_PREFIX = 'i2g_callback_params:';
 const CALLBACK_MAX_AGE_MS = 15 * 60 * 1000;
@@ -128,8 +129,25 @@ const takeFields = (
 const scrubbedUrl = (pathname: string, query: string, hash: string) =>
   pathname + (query ? `?${query}` : '') + (hash ? `#${hash}` : '');
 
+/**
+ * An SMS short link carries its token in the path (`/l/<token>`), not in the
+ * query or the fragment: keep the token and show `/l` instead, so nothing that
+ * reads the address later (analytics, the referrer of the next request) sees it.
+ */
+const SMS_LINK_PATH = /^\/l\/([A-Za-z0-9_-]{16,64})\/?$/;
+export const SMS_LINK_ROUTE_PATH = '/l';
+
+const captureSmsLinkToken = (): boolean => {
+  const match = SMS_LINK_PATH.exec(window.location.pathname);
+  if (!match) return false;
+  storeHandoff('sms-link', {capturedAt: Date.now(), params: {token: match[1]}});
+  window.history.replaceState(window.history.state, '', SMS_LINK_ROUTE_PATH);
+  return true;
+};
+
 export const captureAuthCallbackParams = (): void => {
   if (typeof window === 'undefined') return;
+  if (captureSmsLinkToken()) return;
   const config = CALLBACK_ROUTES[window.location.pathname];
   if (!config) return;
 

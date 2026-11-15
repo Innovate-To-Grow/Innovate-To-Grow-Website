@@ -1,4 +1,5 @@
 from django import forms
+from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.forms.models import BaseInlineFormSet, InlineForeignKeyField
@@ -8,17 +9,22 @@ from apps.core.admin import AppAccessInlineMixin
 from apps.core.utils.access import user_can_manage_member
 
 from ...models import ContactEmail, ContactPhone, Member
+from .contact.phone_verification import ContactPhoneAdminForm, sms_sign_in_status
+from .help_texts import EMAIL_HELP_TEXTS, EMAIL_LABELS
+from .primary_switch import primary_switch_cell
 
 PRIMARY_EMAIL_INLINE_EDIT_ERROR = (
-    "The current primary email's address and type cannot be edited directly. "
-    "Make another verified email primary from the Contact Emails admin."
+    "The current primary email's address and type cannot be edited directly. To use another verified address as the "
+    "primary, click “Switch primary email” at the top of this page (or “Make primary…” on that address's row). To "
+    "correct the primary's address, add the right address as a secondary, have it verified, then switch."
 )
 PRIMARY_EMAIL_INLINE_DELETE_ERROR = (
-    "The current primary email cannot be deleted directly. Make another email primary first."
+    "The current primary email cannot be deleted directly. Switch the primary to another verified address first "
+    "(“Switch primary email” at the top of this page), then delete this one."
 )
 PRIMARY_EMAIL_INLINE_PROMOTION_ERROR = (
-    "A primary email cannot be assigned directly. "
-    "Use the 'Make selected email primary' action in the Contact Emails admin."
+    "A primary email cannot be assigned directly. Use “Make primary…” on the address's row (verified addresses only) "
+    "or “Switch primary email” at the top of this page."
 )
 PRIMARY_EMAIL_INLINE_UNVERIFIED_ERROR = (
     "A member's first primary email must be marked verified. An unverified primary email cannot be used to sign in."
@@ -188,17 +194,39 @@ def _validate_contact_email_rows(formset) -> None:
         raise ValidationError("A member may only have one primary email.")
 
 
+class ContactEmailInlineForm(forms.ModelForm):
+    """The member page's contact-email row: the shared labels and help text (shown as "?" in the column headers)."""
+
+    class Meta:
+        model = ContactEmail
+        fields = "__all__"
+        labels = EMAIL_LABELS
+        help_texts = EMAIL_HELP_TEXTS
+
+
 class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
-    """Inline admin for contact email records."""
+    """Inline admin for contact email records.
+
+    The primary is switched with "Make primary…" on a verified row (or "Switch primary email" at the top of the page),
+    which opens a confirmation page; the row's own type and address never make an address primary.
+    """
 
     model = ContactEmail
+    form = ContactEmailInlineForm
     extra = 0
     verbose_name = "Contact Email"
     verbose_name_plural = "Contact Emails"
-    fields = ("email_address", "email_type", "verified", "subscribe", "created_at")
-    readonly_fields = ("created_at",)
+    fields = ("email_address", "email_type", "verified", "subscribe", "primary_switch", "created_at")
+    readonly_fields = ("primary_switch", "created_at")
+    # Set per request in get_formset (Django builds new inline instances for every request).
+    may_switch_primary = False
+
+    @admin.display(description="Primary email")
+    def primary_switch(self, obj):
+        return primary_switch_cell(obj, enabled=self.may_switch_primary)
 
     def get_formset(self, request, obj=None, **kwargs):
+        self.may_switch_primary = obj is not None and self._may_write(request, obj)
         formset_class = super().get_formset(request, obj, **kwargs)
         original_clean = formset_class.clean
 
@@ -211,11 +239,21 @@ class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInl
 
 
 class ContactPhoneInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
-    """Inline admin for contact phone records."""
+    """Inline admin for contact phone records.
+
+    ``verified`` can be switched off here but never on: only an SMS code verifies a number, and a changed number
+    starts unverified (``ContactPhoneAdminForm``). The SMS sign-in column links unverified numbers to the staff
+    "Verify by SMS code" page.
+    """
 
     model = ContactPhone
+    form = ContactPhoneAdminForm
     extra = 0
     verbose_name = "Contact Phone"
     verbose_name_plural = "Contact Phones"
-    fields = ("phone_number", "region", "verified", "subscribe", "created_at")
-    readonly_fields = ("created_at",)
+    fields = ("phone_number", "region", "verified", "sms_sign_in_status", "subscribe", "created_at")
+    readonly_fields = ("sms_sign_in_status", "created_at")
+
+    @admin.display(description="SMS sign-in")
+    def sms_sign_in_status(self, obj):
+        return sms_sign_in_status(obj)

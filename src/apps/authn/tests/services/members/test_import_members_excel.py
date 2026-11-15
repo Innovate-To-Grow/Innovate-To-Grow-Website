@@ -89,7 +89,7 @@ class ImportMembersExcelTests(TestCase):
     # ── File-level guards ────────────────────────────────
 
     def test_openpyxl_missing_returns_error(self):
-        with patch("apps.authn.services.members.import_.excel.load_workbook", None):
+        with patch("apps.authn.services.members.import_.reader.load_workbook", None):
             result = import_members_from_excel(BytesIO(b""))
         self.assertFalse(result.success)
         self.assertIn("openpyxl library not installed. Please run: pip install openpyxl", result.errors)
@@ -130,7 +130,7 @@ class ImportMembersExcelTests(TestCase):
         self.assertEqual(result.skipped_count, 1)
         self.assertIn("Row 2: Missing primary email", result.errors)
 
-    def test_duplicate_email_within_file_skips_second(self):
+    def test_duplicate_email_within_file_skips_both_until_one_is_chosen(self):
         workbook = self._build_workbook(
             [
                 ["dup@example.com", "Ada", "Lovelace", "Acme"],
@@ -139,9 +139,9 @@ class ImportMembersExcelTests(TestCase):
         )
         result = import_members_from_excel(workbook)
         self.assertTrue(result.success)
-        self.assertEqual(result.created_count, 1)
-        self.assertEqual(result.skipped_count, 1)
-        self.assertTrue(any("Duplicate email in file" in e for e in result.errors))
+        self.assertEqual(result.created_count, 0)
+        self.assertEqual(result.skipped_count, 2)
+        self.assertTrue(all("The same person appears more than once in the sheet" in e for e in result.errors))
 
     def test_no_valid_parsed_rows_returns_early(self):
         workbook = self._build_workbook([["", "Ada", "Lovelace", "Acme"]])
@@ -155,12 +155,12 @@ class ImportMembersExcelTests(TestCase):
         ContactEmail.objects.create(
             member=member, email_address="exists@example.com", email_type="primary", verified=True
         )
-        workbook = self._build_workbook([["exists@example.com", "New", "Name", "NewOrg"]])
+        workbook = self._build_workbook([["exists@example.com", "Ex", "Member", "NewOrg"]])
         result = import_members_from_excel(workbook, update_existing=False)
         self.assertTrue(result.success)
         self.assertEqual(result.created_count, 0)
         self.assertEqual(result.skipped_count, 1)
-        self.assertTrue(any("already exists" in e for e in result.errors))
+        self.assertTrue(any("the upload said to skip rows that match an existing member" in e for e in result.errors))
 
     def test_missing_first_name_skips_new_member(self):
         workbook = self._build_workbook([["nofn@example.com", "", "Lovelace", "Acme"]])
@@ -186,13 +186,13 @@ class ImportMembersExcelTests(TestCase):
     def test_exception_during_create_sets_failure(self):
         workbook = self._build_workbook([["boom@example.com", "Ada", "Lovelace", "Acme"]])
         with patch(
-            "apps.authn.services.members.import_.excel.Member.objects.bulk_create",
+            "apps.authn.models.Member.objects.bulk_create",
             side_effect=RuntimeError("db blew up"),
         ):
             result = import_members_from_excel(workbook)
         self.assertFalse(result.success)
         self.assertEqual(result.created_count, 0)
-        self.assertTrue(any("Error creating members" in e for e in result.errors))
+        self.assertEqual(result.errors, ["Error importing members: db blew up. Nothing was imported"])
 
     # ── Update path (operations.py) ──────────────────────
 
@@ -203,14 +203,14 @@ class ImportMembersExcelTests(TestCase):
         )
         workbook = self._build_full_workbook(
             [
-                ["upd@example.com", "New", "Name", "second@example.com", "+12095559999", "NewOrg"],
+                ["upd@example.com", "Old", "Name", "second@example.com", "+12095559999", "NewOrg"],
             ]
         )
         result = import_members_from_excel(workbook, update_existing=True)
         member.refresh_from_db()
         self.assertTrue(result.success)
         self.assertEqual(result.updated_count, 1)
-        self.assertEqual(member.first_name, "New")
+        self.assertEqual(member.first_name, "Old")
         self.assertEqual(member.organization, "NewOrg")
         self.assertTrue(ContactEmail.objects.filter(member=member, email_type="secondary").exists())
         self.assertTrue(ContactPhone.objects.filter(member=member, phone_number="2095559999").exists())
@@ -236,7 +236,8 @@ class ImportMembersExcelTests(TestCase):
         self.assertFalse(ContactEmail.objects.filter(member=member, email_address="attacker@example.net").exists())
         self.assertTrue(any("permission" in error for error in result.errors))
 
-    def test_update_existing_replaces_phone_and_clears_secondary(self):
+    def test_update_existing_keeps_the_secondary_and_adds_the_new_phone(self):
+        # A blank Secondary cell and a different phone used to delete the secondary and overwrite the phone.
         member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")
         ContactEmail.objects.create(
             member=member, email_address="repl@example.com", email_type="primary", verified=True
@@ -245,49 +246,62 @@ class ImportMembersExcelTests(TestCase):
             member=member, email_address="oldsec@example.com", email_type="secondary", verified=True
         )
         ContactPhone.objects.create(member=member, phone_number="2095550000", region="1-US")
-        # Import with no secondary email and a new phone -> secondary deleted, phone replaced
         workbook = self._build_full_workbook(
             [
-                ["repl@example.com", "New", "Name", "", "+12095557777", "Org"],
+                ["repl@example.com", "Old", "Name", "", "+12095557777", "Org"],
             ]
         )
         result = import_members_from_excel(workbook, update_existing=True)
         member.refresh_from_db()
         self.assertTrue(result.success)
         self.assertEqual(result.updated_count, 1)
-        self.assertFalse(ContactEmail.objects.filter(member=member, email_type="secondary").exists())
+        self.assertEqual(member.organization, "Org")
+        self.assertTrue(ContactEmail.objects.filter(member=member, email_address="oldsec@example.com").exists())
         self.assertTrue(ContactPhone.objects.filter(member=member, phone_number="2095557777").exists())
-        self.assertFalse(ContactPhone.objects.filter(member=member, phone_number="2095550000").exists())
+        self.assertTrue(ContactPhone.objects.filter(member=member, phone_number="2095550000").exists())
+        self.assertEqual(result.errors, [])
+        self.assertEqual(len(result.warnings), 1)
+        self.assertIn("Row 2: Secondary Email is blank; kept oldsec@example.com", result.warnings[0])
+        self.assertIn(
+            "Adds phone +12095557777 (unverified, not subscribed); keeps +12095550000", result.details[0]["changes"][1]
+        )
 
-    def test_update_existing_member_not_resolved_is_skipped(self):
-        # The primary ContactEmail exists (so the row is routed to update), but the
-        # row's email only matches a *secondary* contact -> member_map lookup misses
-        # -> bulk_update_members skips it (operations.py lines 30-32).
+    def test_update_existing_secondary_address_needs_a_decision(self):
+        # The address is only a member's *secondary* (Row 5): without a review the row is skipped, the message says
+        # whose secondary it is, and nothing changes (the blank cells delete nothing).
         member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")
-        # Primary contact under a DIFFERENT casing-insensitive address so the
-        # existing_emails set sees it (routes to update), but it is stored as secondary.
         ContactEmail.objects.create(
             member=member, email_address="ghost@example.com", email_type="secondary", verified=True
         )
-        workbook = self._build_workbook([["ghost@example.com", "New", "Name", "Org"]])
+        workbook = self._build_workbook([["ghost@example.com", "Old", "Name", "Org"]])
 
         result = import_members_from_excel(workbook, update_existing=True)
 
-        # No primary-type contact matched -> member_map miss -> skipped.
         self.assertEqual(result.updated_count, 0)
         self.assertEqual(result.skipped_count, 1)
+        self.assertEqual(len(result.errors), 1)
+        self.assertIn("needs a decision (C7: The address is a member's secondary or other email)", result.errors[0])
+        self.assertIn(f"ghost@example.com is the secondary email of Old Name (member {member.pk})", result.errors[0])
+        member.refresh_from_db()
+        self.assertIsNone(member.organization)
+        self.assertTrue(ContactEmail.objects.filter(email_address="ghost@example.com", member=member).exists())
 
-    def test_update_single_member_error_is_recorded(self):
+    def test_a_failing_update_writes_nothing(self):
         member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")
         ContactEmail.objects.create(
             member=member, email_address="errrow@example.com", email_type="primary", verified=True
         )
-        workbook = self._build_workbook([["errrow@example.com", "New", "Name", "Org"]])
+        workbook = self._build_workbook(
+            [["new@example.com", "New", "Person", "Org"], ["errrow@example.com", "Old", "Name", "Org"]]
+        )
 
-        from apps.authn.services.members.import_ import operations
-
-        with patch.object(operations, "update_single_member", side_effect=RuntimeError("update boom")):
+        with patch(
+            "apps.authn.services.members.import_.review.apply.execute_update", side_effect=RuntimeError("update boom")
+        ):
             result = import_members_from_excel(workbook, update_existing=True)
 
-        self.assertEqual(result.skipped_count, 1)
-        self.assertTrue(any("update boom" in e for e in result.errors))
+        self.assertFalse(result.success)
+        self.assertEqual(result.errors, ["Error importing members: update boom. Nothing was imported"])
+        self.assertFalse(ContactEmail.objects.filter(email_address="new@example.com").exists())
+        member.refresh_from_db()
+        self.assertIsNone(member.organization)

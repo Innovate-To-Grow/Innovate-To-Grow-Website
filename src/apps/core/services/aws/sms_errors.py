@@ -1,8 +1,11 @@
-"""The errors of the SMS send (``sms_send``): a sanitized, classified failure, and the limiter's deferral."""
+"""The errors of the SMS send (``sms_send``): a sanitized, classified failure, the limiter's deferral, and the
+refusal of a destination that opted out."""
 
 from apps.core.services.delivery_rates import RateDeferred, not_now
 
-from .provider_outcomes import PROVIDER_OUTCOME_TRANSIENT, ProviderDeliveryError
+from .provider_outcomes import PROVIDER_OUTCOME_PERMANENT, PROVIDER_OUTCOME_TRANSIENT, ProviderDeliveryError
+
+OPTED_OUT_MESSAGE = "This phone number has opted out of text messages from us."
 
 
 class SmsDeliveryError(ProviderDeliveryError):
@@ -32,3 +35,12 @@ class SmsRateDeferred(RateDeferred, SmsDeliveryError):
             retry_after=deferred.retry_after,
         )
         self.until, self.reason, self.resume_at = deferred.until, deferred.reason, deferred.resume_at
+
+
+class SmsOptedOut(SmsDeliveryError):
+    """The destination opted out of the site's texts (it replied STOP, or staff opted it out): nothing was sent, and
+    nothing will be until it opts back in. ``refused_by_provider`` is True when AWS itself refused it."""
+
+    def __init__(self, *, code: str = "", signal=None, refused_by_provider: bool = False):
+        super().__init__(OPTED_OUT_MESSAGE, outcome=PROVIDER_OUTCOME_PERMANENT, code=code, signal=signal)
+        self.refused_by_provider = refused_by_provider

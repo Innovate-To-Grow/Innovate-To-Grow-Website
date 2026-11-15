@@ -7,6 +7,7 @@ from apps.mail.services.sns.signature import SnsVerificationError, verify_sns_me
 
 from .login_link import LoginLinkView
 from .ses_webhook import SesEventThrottle, SesEventWebhookView, SnsEnvelopeParser
+from .sms_link import RegisterLinkView, SmsLinkView
 from .subscriptions import (
     OneClickUnsubscribeView,
     ResubscribeView,
@@ -15,10 +16,12 @@ from .subscriptions import (
 __all__ = [
     "LoginLinkView",
     "OneClickUnsubscribeView",
+    "RegisterLinkView",
     "ResubscribeView",
     "SesEventError",
     "SesEventThrottle",
     "SesEventWebhookView",
+    "SmsLinkView",
     "SnsEnvelopeParser",
     "SnsVerificationError",
     "process_sns_envelope",

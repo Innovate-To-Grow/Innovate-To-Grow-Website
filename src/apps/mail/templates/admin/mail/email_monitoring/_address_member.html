@@ -1,0 +1,10 @@
+{# The member(s) holding the address, read live; linked for staff who also hold the Members app. #}
+{% for owner in owners %}
+  {% if owner.link %}<a href="{{ owner.link }}">{{ owner.member.get_full_name|default:owner.member.pk }}</a>{% else %}{{ owner.member.get_full_name|default:owner.member.pk }}{% endif %}
+  <span class="i2g-monitor-badges">
+    {% if owner.member.is_active %}<span class="i2g-monitor-badge i2g-monitor-badge--good">Active</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Inactive</span>{% endif %}
+    {% if owner.member.is_superuser %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">I2G Master</span>{% elif owner.member.is_staff %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">Staff</span>{% endif %}
+  </span>{% if not forloop.last %}<br>{% endif %}
+{% empty %}
+  <span class="i2g-monitor-muted">{% if match.role == "unlinked" %}contact without a member{% else %}no member{% endif %}</span>
+{% endfor %}

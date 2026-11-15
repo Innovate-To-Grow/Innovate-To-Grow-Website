@@ -33,3 +33,16 @@ PUBLIC_LINK_DESCRIPTIONS = {
     "event_registration": ("Use this secure link within the next 10 minutes to continue with event registration."),
     "register": ("Use this secure link within the next 10 minutes to continue setting up your account."),
 }
+
+# The email-monitoring category (``apps.core.models.EmailCategory`` values) each code purpose is filed under on
+# Mail → Delivery Operations → Email Monitoring.
+PURPOSE_CATEGORIES = {
+    "register": "verification",
+    "contact_email_verify": "verification",
+    "event_registration": "verification",
+    "login": "sign_in",
+    "admin_login": "sign_in",
+    "password_reset": "password",
+    "password_change": "password",
+    "account_delete": "account",
+}

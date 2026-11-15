@@ -28,3 +28,17 @@ def count_verified_recovery_contacts(member, *, exclude_email_pk=None, exclude_p
     if exclude_phone_pk is not None:
         phones = phones.exclude(pk=exclude_phone_pk)
     return emails.count() + phones.count()
+
+
+def members_with_sign_in_contact(member_ids) -> set:
+    """Of ``member_ids``, the members who have at least one verified email or phone (a way to sign in).
+
+    The admin compares this before and after a change to warn when a member is left with none (see
+    ``apps.authn.admin.members.sign_in_warning``).
+    """
+    ids = {pk for pk in member_ids if pk is not None}
+    if not ids:
+        return set()
+    emails = ContactEmail.objects.filter(member_id__in=ids, verified=True).values_list("member_id", flat=True)
+    phones = ContactPhone.objects.filter(member_id__in=ids, verified=True).values_list("member_id", flat=True)
+    return set(emails) | set(phones)

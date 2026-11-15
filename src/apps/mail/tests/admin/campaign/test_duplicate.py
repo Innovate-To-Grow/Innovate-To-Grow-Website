@@ -138,7 +138,9 @@ class LockedCampaignTests(TestCase):
             with self.subTest(status=status):
                 names = self.detail_action_names(make_campaign(status=status))
 
-                self.assertEqual(names, ["preview_email", "preview_recipients", "duplicate_campaign"])
+                self.assertEqual(
+                    names, ["preview_email", "preview_recipients", "duplicate_campaign", "delivery_monitoring"]
+                )
 
     def test_change_page_of_a_locked_campaign_explains_the_lock_and_links_to_duplicate(self):
         campaign = make_campaign(status="partial")

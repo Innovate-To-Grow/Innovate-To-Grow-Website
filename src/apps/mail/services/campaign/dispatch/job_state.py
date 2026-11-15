@@ -4,6 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.models import BackgroundJob
+from apps.mail.services.sms.quiet_hours import HELD_LOG_MESSAGE
 
 from .channels import CHANNELS_BY_KIND, EMAIL, aggregate_email_campaign, aggregate_sms_campaign
 from .failures import DEFERRED_LOG_MESSAGE
@@ -15,6 +16,9 @@ _MIRRORED_STATES = {
     BackgroundJob.Status.UNCERTAIN: ("uncertain", "Provider call outcome is uncertain; review before retrying."),
 }
 _FAILED_LOG_STATUSES = {"failed", "bounced", "complained", "rejected"}
+# What a handler notes when it holds a recipient back without a failure (the delivery rate, SMS quiet hours): a retry
+# the outbox mirrors keeps it.
+_HELD_BACK_MESSAGES = frozenset({DEFERRED_LOG_MESSAGE, HELD_LOG_MESSAGE})
 
 
 def prepare_delivery_log_retry(job) -> None:
@@ -30,7 +34,7 @@ def resolve_stale_delivery_job(job) -> str | None:
     if not log_id or channel is None:
         return None
     status = channel.log_model.objects.select_for_update().filter(pk=log_id).values_list("status", flat=True).first()
-    if status in channel.success_statuses:
+    if status in channel.success_statuses or status in channel.skipped_statuses:
         return BackgroundJob.Status.SUCCEEDED
     if status == "uncertain":
         return BackgroundJob.Status.UNCERTAIN
@@ -66,8 +70,8 @@ def sync_delivery_job_state(job) -> None:
             return
         if not succeeded:
             status, error = mapped
-            if status == "retry" and log.status == "retry" and log.error_message == DEFERRED_LOG_MESSAGE:
-                error = DEFERRED_LOG_MESSAGE  # the handler noted that the delivery rate, not a failure, held it back
+            if status == "retry" and log.status == "retry" and log.error_message in _HELD_BACK_MESSAGES:
+                error = log.error_message  # the handler noted that the delivery rate or quiet hours held it back
             channel.log_model.objects.filter(pk=log.pk).exclude(status__in=channel.terminal_statuses).update(
                 status=status,
                 available_at=job.available_at,

@@ -1,0 +1,110 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} - {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; <a href="{% url 'admin:authn_member_changelist' %}">Members</a>
+        &rsaquo; <a href="{{ change_url }}">{{ member }}</a>
+        &rsaquo; Switch primary email
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-8 px-4 text-sm text-font-default-light dark:text-font-default-dark">
+    <h1 class="text-2xl font-bold mb-2">Switch primary email</h1>
+    <p class="text-font-subtle-light dark:text-font-subtle-dark mb-6">
+        {{ member }} &middot; {% if member.is_active %}account active{% else %}account inactive{% endif %}{% if member.is_superuser %} &middot; I2G Master{% elif member.is_staff %} &middot; staff{% endif %}
+    </p>
+
+    {% if target %}
+        <p class="text-lg mb-4" id="switch-question">
+            Make <strong>{{ target.email_address }}</strong> the primary email{% if previous %} instead of <strong>{{ previous.email_address }}</strong>{% endif %}?
+        </p>
+    {% elif candidates %}
+        <p class="mb-4">Choose the verified address that becomes the primary email. Nothing changes until you confirm on the next page.</p>
+    {% else %}
+        {% with message="This member has no other verified email address, so the primary cannot be switched yet." %}{% include "unfold/helpers/messages/warning.html" %}{% endwith %}
+        <ol class="pl-5 mb-4 flex flex-col gap-2" style="list-style: decimal" id="switch-how-to">
+            <li>On the member page, add the address under Contact Emails as <strong>Secondary</strong> (or <strong>Other</strong>), and save.</li>
+            <li>The member verifies it from their account page (a code is sent to it). Tick <strong>Verified</strong> yourself only if you are sure the address is theirs: a verified address can sign in to this account.</li>
+            <li>Come back to <strong>Switch primary email</strong>.</li>
+        </ol>
+        <p class="mb-6 text-font-subtle-light dark:text-font-subtle-dark">The primary's own address cannot be edited in place: its verification would carry over to an address nobody proved.</p>
+    {% endif %}
+
+    <div class="mb-6 rounded-default border border-base-200 dark:border-base-700 overflow-x-auto">
+        <table class="w-full text-sm" id="switch-addresses">
+            <thead>
+                <tr class="border-b border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800">
+                    <th class="text-left px-4 py-2 font-medium">Address</th>
+                    <th class="text-left px-4 py-2 font-medium">Type now</th>
+                    {% if target %}<th class="text-left px-4 py-2 font-medium">After the switch</th>{% endif %}
+                    <th class="text-left px-4 py-2 font-medium">Verified (sign-in)</th>
+                    <th class="text-left px-4 py-2 font-medium">Subscribed (newsletters)</th>
+                    {% if not target %}<th class="text-left px-4 py-2 font-medium"></th>{% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr class="border-b border-base-200 dark:border-base-700">
+                        <td class="px-4 py-2">{% if row.is_target %}<strong>{{ row.email.email_address }}</strong>{% else %}{{ row.email.email_address }}{% endif %}</td>
+                        <td class="px-4 py-2">{{ row.type }}</td>
+                        {% if target %}<td class="px-4 py-2">{% if row.after %}<strong class="text-primary-600 dark:text-primary-500">{{ row.after }}</strong>{% else %}<span class="text-font-subtle-light dark:text-font-subtle-dark">unchanged</span>{% endif %}</td>{% endif %}
+                        <td class="px-4 py-2">{% if row.email.verified %}Yes{% else %}No{% endif %}</td>
+                        <td class="px-4 py-2">{% if row.email.subscribe %}Yes{% else %}No{% endif %}</td>
+                        {% if not target %}
+                            <td class="px-4 py-2 whitespace-nowrap">{% if row.choose_url %}<a class="text-primary-600 dark:text-primary-500 underline" href="{{ row.choose_url }}">Make primary…</a>{% else %}<span class="text-font-subtle-light dark:text-font-subtle-dark">{{ row.reason }}</span>{% endif %}</td>
+                        {% endif %}
+                    </tr>
+                {% empty %}
+                    <tr><td class="px-4 py-2" colspan="5">This member has no email address.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if target %}
+        <h2 class="text-lg font-semibold mb-2">Signing in</h2>
+        <ul class="pl-5 mb-6 flex flex-col gap-2" style="list-style: disc" id="switch-sign-in">
+            {% for note in notes.sign_in %}<li>{{ note }}</li>{% endfor %}
+        </ul>
+
+        <h2 class="text-lg font-semibold mb-2">Newsletters and campaigns</h2>
+        <div class="mb-6" id="switch-newsletters">
+            {% for note in notes.newsletters %}
+                {% if note.level == "warning" %}{% include "unfold/helpers/messages/warning.html" with message=note.text %}{% else %}{% include "unfold/helpers/messages/info.html" with message=note.text %}{% endif %}
+            {% endfor %}
+        </div>
+
+        <h2 class="text-lg font-semibold mb-2">What does not change</h2>
+        <ul class="pl-5 mb-6 flex flex-col gap-2" style="list-style: disc" id="switch-unchanged">
+            {% for note in notes.unchanged %}<li>{{ note }}</li>{% endfor %}
+        </ul>
+        {% if notes.bounce %}<p class="mb-6 text-font-subtle-light dark:text-font-subtle-dark" id="switch-bounce">{{ notes.bounce }}</p>{% endif %}
+
+        <form method="post" action="{{ page_url }}" class="flex flex-col gap-3">
+            {% csrf_token %}
+            <input type="hidden" name="to" value="{{ target.pk }}">
+            <input type="hidden" name="fingerprint" value="{{ fingerprint }}">
+            {% if confirm_word %}
+                <label for="id_switch_confirm" class="block font-medium">Type <strong>{{ confirm_word }}</strong> to confirm:</label>
+                <input type="text" id="id_switch_confirm" name="confirm" autocomplete="off" required
+                       class="w-full border border-base-200 dark:border-base-700 bg-white dark:bg-base-900 rounded-default px-3 py-2"
+                       style="max-width: 20rem">
+            {% endif %}
+            <div class="flex flex-wrap items-center gap-3">
+                <button type="submit" class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors">
+                    Switch primary email
+                </button>
+                <a href="{{ change_url }}" class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500">Cancel</a>
+                {% if candidates|length > 1 %}<a href="{{ page_url }}" class="text-sm font-medium text-primary-600 dark:text-primary-500 underline">Choose another address</a>{% endif %}
+            </div>
+        </form>
+    {% else %}
+        <a href="{{ change_url }}" class="text-sm font-medium text-font-subtle-light dark:text-font-subtle-dark hover:text-primary-600 dark:hover:text-primary-500">Back to the member</a>
+    {% endif %}
+</div>
+{% endblock %}

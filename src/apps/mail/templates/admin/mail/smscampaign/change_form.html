@@ -1,4 +1,5 @@
 {% extends "admin/change_form.html" %}
+{% load static %}
 
 {% block form_before %}
   {% if add %}
@@ -9,5 +10,15 @@
       Fill in the <strong>Audience</strong>, <strong>Phone eligibility</strong>, and <strong>SMS Message</strong>, then
       <strong>save</strong> to preview recipients and send.
     </div>
+  {% endif %}
+{% endblock %}
+
+{% block after_field_sets %}
+  {{ block.super }}
+  {% if sms_composer %}
+    {# The live counter under the message (mail/js/sms-composer.js): encoding, characters, segments and cost. #}
+    {{ sms_composer|json_script:"sms-composer-settings" }}
+    <div id="sms-composer-counter" class="hidden" aria-live="polite"></div>
+    <script src="{% static 'mail/js/sms-composer.js' %}?v=20261111-sms" defer></script>
   {% endif %}
 {% endblock %}

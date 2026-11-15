@@ -1,0 +1,72 @@
+<div id="row-{{ view.number }}" class="border {% if view.row.changed_since_review or view.plan.problems %}border-yellow-400 dark:border-yellow-600{% else %}border-base-200 dark:border-base-700{% endif %} rounded-default p-4 mb-4 bg-white dark:bg-base-900">
+    <div class="flex flex-wrap items-center gap-2 mb-3">
+        <span class="font-semibold">Row {{ view.number }}</span>
+        <span class="text-xs px-2 py-0.5 rounded-full bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300">{{ view.code }} · {{ view.title }}</span>
+        {% if view.row.changed_since_review %}<span class="text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300">Changed since you reviewed it</span>{% endif %}
+        {% if view.row.chosen_by %}<span class="text-xs text-font-subtle-light dark:text-font-subtle-dark">chosen by {{ view.row.chosen_by }} {{ view.row.chosen_at|date:"Y-m-d H:i" }}</span>{% endif %}
+        {% if view.target_url %}<a href="{{ view.target_url }}" target="_blank" rel="noopener" class="text-xs underline ml-auto">open member ↗</a>{% endif %}
+    </div>
+
+    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-sm mb-3">
+        {% for cell in view.cells %}
+            <div class="flex gap-2 {% if cell.differs %}bg-yellow-50 dark:bg-yellow-900/20{% endif %}">
+                <dt class="text-font-subtle-light dark:text-font-subtle-dark shrink-0">{{ cell.label }}:</dt>
+                <dd class="break-all">{% if cell.blank %}<em class="text-font-subtle-light dark:text-font-subtle-dark">(blank, column present)</em>{% else %}{{ cell.text }}{% endif %}</dd>
+            </div>
+        {% endfor %}
+    </dl>
+
+    {% if view.members or view.unlinked %}
+        <div class="grid grid-cols-1 gap-2 mb-3">
+            {% for card in view.members %}{% include "admin/authn/member/_import_member_card.html" %}{% endfor %}
+            {% for record in view.unlinked %}
+                <div class="border border-base-200 dark:border-base-700 rounded-default p-3 text-xs">
+                    <a href="{{ record.url }}" target="_blank" rel="noopener" class="underline font-semibold">{{ record.address }}</a>
+                    · a contact email with no member · added {{ record.created|default:"?" }} · verified {% if record.verified %}✓{% else %}✗{% endif %} · subscribed {% if record.subscribe %}✓{% else %}✗{% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if view.why %}<p class="text-sm mb-3"><strong>Why:</strong> {{ view.why }}</p>{% endif %}
+
+    <fieldset class="mb-2">
+        <legend class="text-sm font-semibold mb-1">Choose</legend>
+        {% for option in view.options %}
+            <div class="mb-1">
+                <label class="flex items-start gap-2 text-sm {% if not option.enabled %}opacity-60{% endif %}">
+                    <input type="radio" name="choice-{{ view.number }}" value="{{ option.value }}"{% if option.checked %} checked{% endif %}{% if not option.enabled or not editable %} disabled{% endif %} class="mt-1">
+                    <span>
+                        {{ option.label }}{% if option.suggested %} <span class="text-xs text-primary-600 dark:text-primary-500">(suggested)</span>{% endif %}
+                        {% if option.hint %}<span class="block text-xs text-font-subtle-light dark:text-font-subtle-dark">{{ option.hint }}</span>{% endif %}
+                        {% if option.reason %}<span class="block text-xs text-red-600 dark:text-red-400">Not available: {{ option.reason }}</span>{% endif %}
+                    </span>
+                </label>
+            </div>
+        {% endfor %}
+    </fieldset>
+
+    {% include "admin/authn/member/_import_plan.html" with plan=view.plan %}
+
+    {% if view.tick_groups %}
+        <input type="hidden" name="ticks-{{ view.number }}" value="1">
+        <div class="mt-2">
+            <p class="text-sm font-semibold mb-1">Risky changes (only if ticked, and only for the member you choose to update)</p>
+            {% for group in view.tick_groups %}
+                {% if view.tick_groups|length > 1 %}<p class="text-xs mt-1">If you update {{ group.member }}:</p>{% endif %}
+                {% for tick in group.items %}
+                    <label class="flex items-start gap-2 text-sm {% if not tick.enabled %}opacity-60{% endif %}">
+                        <input type="checkbox" name="tick-{{ view.number }}" value="{{ tick.id }}"{% if tick.checked %} checked{% endif %}{% if not tick.enabled or not editable %} disabled{% endif %} class="mt-1">
+                        <span>{{ tick.code }} · {{ tick.label }}{% if tick.reason %} <span class="block text-xs text-red-600 dark:text-red-400">Disabled: {{ tick.reason }}</span>{% endif %}</span>
+                    </label>
+                {% endfor %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if view.warnings %}
+        <ul class="mt-2 text-xs text-yellow-800 dark:text-yellow-300 list-disc list-inside">
+            {% for warning in view.warnings %}<li>{{ warning.code }}: {{ warning.text }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+</div>

@@ -1,0 +1,75 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} - {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; <a href="{% url 'admin:authn_member_changelist' %}">Members</a>
+        &rsaquo; <a href="{% url 'admin:authn_member_import_excel' %}">Import Members</a>
+        &rsaquo; <a href="{% url 'admin:authn_member_import_review' batch.pk %}">Review</a>
+        &rsaquo; Confirm
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto py-8 px-4">
+    <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Confirm import</h1>
+    {% include "admin/authn/member/_import_steps.html" with step=3 %}
+    <p class="text-sm mb-4"><strong>{{ batch.file_name }}</strong> · {{ batch.row_count }} rows · uploaded by {{ batch.created_by|default:"a deleted admin" }} on {{ batch.created_at|date:"Y-m-d H:i" }}</p>
+    {% for note in batch.columns.notes %}<p class="text-sm mb-4 text-primary-600 dark:text-primary-400"><strong>Note:</strong> {{ note }}</p>{% endfor %}
+
+    <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+        <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ rows_summary.created|default:0 }}</div><div class="text-xs mt-1">Will create</div></div>
+        <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ rows_summary.updated|default:0 }}</div><div class="text-xs mt-1">Will update</div></div>
+        <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold">{{ rows_summary.no_change|default:0 }}</div><div class="text-xs mt-1">No change</div></div>
+        <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ rows_summary.skipped|default:0 }}</div><div class="text-xs mt-1">Skipped (by choice)</div></div>
+        <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold">{{ rows_summary.not_imported|default:0 }}</div><div class="text-xs mt-1">Not imported (invalid)</div></div>
+    </div>
+
+    {% if decision_lines %}
+        <h2 class="text-lg font-semibold mb-2">Decisions</h2>
+        <ul class="text-sm list-disc list-inside mb-6">
+            {% for line in decision_lines %}<li>{{ line.code }} · {{ line.title }}: {{ line.counts }}</li>{% endfor %}
+        </ul>
+    {% endif %}
+
+    <h2 class="text-lg font-semibold mb-2">Risky changes that will be made</h2>
+    {% if listed_lines %}
+        {% for group in listed_lines %}
+            <p class="text-sm font-semibold">{{ group.title }} ({{ group.items|length }})</p>
+            <ul class="text-sm list-disc list-inside mb-3">{% for item in group.items %}<li>{{ item }}</li>{% endfor %}</ul>
+        {% endfor %}
+        {% for group in listed_lines %}{% if group.title == "Primary email changes" %}
+            <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-4">A new primary email does not change the address on event tickets already issued.</p>
+        {% endif %}{% endfor %}
+    {% else %}
+        <p class="text-sm mb-6">None: nothing is deleted, re-subscribed, verified or un-verified, (de)activated or made staff, no primary email changes, and no staff or superuser account changes.</p>
+    {% endif %}
+
+    <div class="mb-6 rounded-default border border-yellow-300 bg-yellow-50 p-4 dark:border-yellow-700 dark:bg-yellow-900/20 text-sm text-yellow-800 dark:text-yellow-300">
+        Every row is written in one go. If a member or contact shown in the review changed since, nothing is written and those rows go back to the review.
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.version }}
+        {% if require_text %}
+            <label for="id_confirmation_text" class="block text-sm font-medium mb-2">Type <strong>import</strong> to confirm:</label>
+            <input type="text" id="id_confirmation_text" name="confirmation_text" autocomplete="off"
+                   class="w-full border border-base-300 dark:border-base-600 rounded-md px-3 py-2 text-sm bg-white dark:bg-base-800 mb-2">
+            {% for error in form.confirmation_text.errors %}<p class="text-xs text-red-600 dark:text-red-400 mb-2">{{ error }}</p>{% endfor %}
+        {% endif %}
+        {% for error in form.version.errors %}<p class="text-xs text-red-600 dark:text-red-400 mb-2">{{ error }}</p>{% endfor %}
+        <div class="flex gap-3 mt-2">
+            <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-red-700 inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">upload</span> Import
+            </button>
+            <a href="{% url 'admin:authn_member_import_review' batch.pk %}" class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-md text-sm font-medium inline-flex items-center gap-2">
+                <span class="material-symbols-outlined !text-[18px]">arrow_back</span> Back to review
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

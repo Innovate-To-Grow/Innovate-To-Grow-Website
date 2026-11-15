@@ -58,8 +58,13 @@ class SmsCampaignAdmin(SmsCampaignSendViewsMixin, BaseModelAdmin):
     @admin.action(description="Resume paused recipients (held back by delivery limits)", permissions=["change"])
     def resume_paused_recipients_action(self, request, queryset):
         from apps.mail.services.campaign.dispatch import resume_paused_sms_recipients
+        from apps.mail.services.sms.errors import SmsSendRefused
 
-        resumed = sum(resume_paused_sms_recipients(campaign) for campaign in queryset)
+        try:
+            resumed = sum(resume_paused_sms_recipients(campaign) for campaign in queryset)
+        except SmsSendRefused as exc:
+            self.message_user(request, str(exc), messages.WARNING)
+            return
         if not resumed:
             self.message_user(request, "No paused recipients to resume (or the campaign is still sending).")
             return
@@ -87,13 +92,18 @@ class SmsCampaignAdmin(SmsCampaignSendViewsMixin, BaseModelAdmin):
             },
         ),
         ("Campaign", {"fields": ("name", "message")}),
+        (
+            "Links",
+            {
+                "fields": ("login_redirect_path", "link_validity_days"),
+                "description": "For {{login_link}}, {{ticket_link}} and {{event_link}}, while links in SMS are allowed "
+                "(SMS Settings).",
+            },
+        ),
     )
     filter_horizontal = ("selected_members", "exclude_members")
+    # The event stays visible for every audience: {{event_link}} and {{ticket_link}} open it.
     conditional_fields = {
-        "event": (
-            "audience_type === 'event_registrants' || audience_type === 'ticket_type'"
-            " || audience_type === 'checked_in' || audience_type === 'not_checked_in'"
-        ),
         "ticket": "audience_type === 'ticket_type'",
         "selected_members": "audience_type === 'selected_members'",
         "manual_phones": "audience_type === 'manual'",
@@ -214,6 +224,8 @@ class SmsCampaignAdmin(SmsCampaignSendViewsMixin, BaseModelAdmin):
                 [
                     "name",
                     "message_readonly",
+                    "login_redirect_path",
+                    "link_validity_days",
                     "phone_policy",
                     "audience_type",
                     "event",
@@ -227,6 +239,12 @@ class SmsCampaignAdmin(SmsCampaignSendViewsMixin, BaseModelAdmin):
                 ]
             )
         return readonly
+
+    def render_change_form(self, request, context, *args, **kwargs):
+        from apps.mail.services.sms.estimate import composer_settings
+
+        context["sms_composer"] = composer_settings()
+        return super().render_change_form(request, context, *args, **kwargs)
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}

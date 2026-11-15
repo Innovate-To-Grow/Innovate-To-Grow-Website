@@ -4,6 +4,9 @@ import {CodeInput} from '../forms/CodeInput';
 import {StatusAlert} from '../shared/StatusAlert';
 import {formatPhoneDisplay} from './internal/helpers';
 
+/** Only a verified number signs in by text (the server refuses any other), so say why verifying matters. */
+export const UNVERIFIED_PHONE_NOTE = 'Verify this number to use it to sign in with a texted code.';
+
 interface PhoneCardProps {
   phone: ContactPhone;
   verifyingId: string | null;
@@ -44,6 +47,9 @@ export const PhoneCard = ({
             {phone.verified ? 'Verified' : 'Unverified'}
           </span>
         </div>
+        {!phone.verified ? (
+          <p className="email-center-card-note">{UNVERIFIED_PHONE_NOTE}</p>
+        ) : null}
         <div className="email-center-actions">
           <label className="email-center-toggle" aria-label="Text Messages">
             <input type="checkbox" checked={phone.subscribe} onChange={() => onToggleSubscribe(phone)} />

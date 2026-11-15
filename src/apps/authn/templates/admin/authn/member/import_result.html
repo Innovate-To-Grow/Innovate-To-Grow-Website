@@ -1,0 +1,67 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} - {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; <a href="{% url 'admin:authn_member_changelist' %}">Members</a>
+        &rsaquo; <a href="{% url 'admin:authn_memberimportbatch_changelist' %}">Member Imports</a>
+        &rsaquo; {{ batch.file_name }}
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8 px-4">
+    <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Member import: {{ batch.get_status_display }}</h1>
+    {% include "admin/authn/member/_import_steps.html" with step=4 %}
+
+    <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-5 mb-6 text-sm space-y-1">
+        <p><strong>{{ batch.file_name }}</strong> · SHA-256 <span class="font-mono">{{ batch.file_sha256|slice:":12" }}</span> · sheet "{{ batch.sheet_name }}" · {{ batch.row_count }} rows · {{ batch.get_mode_display }} for matching rows</p>
+        <p>Uploaded by {{ batch.created_by|default:"a deleted admin" }} on {{ batch.created_at|date:"Y-m-d H:i" }}{% if batch.applied_at %} · applied by {{ batch.applied_by|default:"a deleted admin" }} on {{ batch.applied_at|date:"Y-m-d H:i" }}{% endif %}</p>
+        {% for note in batch.columns.notes %}<p class="text-primary-600 dark:text-primary-400"><strong>Note:</strong> {{ note }}</p>{% endfor %}
+        {% if batch.status == "review" %}<p><a class="underline font-medium" href="{% url 'admin:authn_member_import_review' batch.pk %}">This import is still in review: open it</a></p>{% endif %}
+        {% if batch.status == "expired" %}<p>This review expired before it was applied. Nothing was written; upload the file again to start over.</p>{% endif %}
+        {% if batch.status == "discarded" %}<p>This import was discarded. Nothing was written.</p>{% endif %}
+        {% if batch.values_purged_at %}<p>The sheet values of this import were removed on {{ batch.values_purged_at|date:"Y-m-d" }} (retention).</p>{% endif %}
+    </div>
+
+    {% if batch.status == "applied" %}
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ counts.created|default:0 }}</div><div class="text-xs mt-1">Created</div></div>
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ counts.updated|default:0 }}</div><div class="text-xs mt-1">Updated</div></div>
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold">{{ counts.no_change|default:0 }}</div><div class="text-xs mt-1">No change</div></div>
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ counts.skipped|default:0 }}</div><div class="text-xs mt-1">Skipped by choice</div></div>
+            <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold">{{ counts.not_imported|default:0 }}</div><div class="text-xs mt-1">Not imported</div></div>
+        </div>
+        {% if risky %}
+            <p class="text-sm mb-2">Risky changes applied: {% for line in risky %}{{ line.title }}: {{ line.count }}{% if not forloop.last %} · {% endif %}{% endfor %}</p>
+        {% endif %}
+        {% if primary_changed %}<p class="text-xs text-font-subtle-light dark:text-font-subtle-dark mb-4">A new primary email does not change the address on event tickets already issued.</p>{% endif %}
+
+        <table class="w-full text-sm mb-6">
+            <thead><tr class="text-left text-xs uppercase"><th class="py-1 pr-3">Row</th><th class="py-1 pr-3">Outcome</th><th class="py-1 pr-3">Member</th><th class="py-1 pr-3">Choice</th><th class="py-1">What changed</th></tr></thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr class="border-t border-base-100 dark:border-base-800 align-top">
+                        <td class="py-1 pr-3">{{ row.row_number }}</td>
+                        <td class="py-1 pr-3">{{ row.get_outcome_display }}</td>
+                        <td class="py-1 pr-3">{% if row.result_member %}<a class="underline" href="{% url 'admin:authn_member_change' row.result_member.pk %}">{{ row.result_member.get_full_name|default:row.result_member.pk }}</a>{% else %}—{% endif %}</td>
+                        <td class="py-1 pr-3">{{ row.choice }}{% if row.chosen_by %}<span class="block text-xs text-font-subtle-light dark:text-font-subtle-dark">by {{ row.chosen_by }} {{ row.chosen_at|date:"Y-m-d H:i" }}</span>{% endif %}</td>
+                        <td class="py-1 whitespace-pre-line">{{ row.outcome_detail }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if batch.activity %}
+        <h2 class="text-lg font-semibold mb-2">Activity</h2>
+        <ul class="text-xs space-y-1 mb-6">
+            {% for event in batch.activity %}<li>{{ event.at|slice:":16" }} · {{ event.by_name|default:"?" }} · {{ event.action }}{% if event.detail %}: {{ event.detail }}{% endif %}</li>{% endfor %}
+        </ul>
+    {% endif %}
+    <p class="text-sm"><a class="underline" href="{% url 'admin:authn_memberimportbatch_changelist' %}">All member imports</a> · <a class="underline" href="{% url 'admin:authn_member_import_excel' %}">Import another file</a></p>
+</div>
+{% endblock %}

@@ -58,3 +58,7 @@ CREDENTIAL_STORE_BACKEND = "memory"
 # one IP and one process); dedicated tests switch it on with override_settings, and REQUEST_RATE_LIMITS_ENABLED=true
 # turns it on for a run that should exercise it.
 REQUEST_RATE_LIMITS_ENABLED = enabled_from_env(False)
+
+# SMS quiet hours stay off for the test suites, so no test depends on the time of day it runs; the quiet-hours tests
+# switch them on with override_settings (Mail → SMS Settings holds the window in every deployment).
+SMS_QUIET_HOURS_ENFORCED = False

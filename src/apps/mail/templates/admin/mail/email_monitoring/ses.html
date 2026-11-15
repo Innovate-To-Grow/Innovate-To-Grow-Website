@@ -1,0 +1,117 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+{% load static %}
+{# Email Monitoring → Amazon SES (the former Delivery Dashboard). Every number is rendered here once; the script only filters the suppression-list rows and exports the ones shown. #}
+
+{% block monitoring_head %}
+{{ chart_data|json_script:"i2g-monitor-ses" }}
+<script src="{% static 'mail/js/email-monitoring-ses.js' %}?v=20261112-unified" defer></script>
+{% endblock %}
+
+{% block monitoring_notice %}
+<div class="i2g-monitor-notice" role="note">
+  <span class="material-symbols-outlined" aria-hidden="true">info</span>
+  <p>
+    Amazon SES's own figures, read from AWS when this page loads: daily AWS CloudWatch metrics{% if aws.metrics_source %} ({{ aws.metrics_source }}){% endif %} and the account's suppression list.
+    They count every message sent through SES from that account, not only the site's, and they exist only for mail sent through SES.
+    “Delivered” here is SES's own delivery event: the receiving server accepted the message.
+    The site's own record of the emails it sent through SES is on the <a href="{% url 'admin:mail_email_monitoring' %}?provider=ses">Overview (provider Amazon SES)</a>, and the addresses the site itself stops sending to are under <a href="{% url 'admin:mail_email_monitoring_addresses' %}">Bounced addresses</a>.
+  </p>
+</div>
+{% endblock %}
+
+{% block monitoring_content %}
+{% with s=summary %}
+<form method="get" class="i2g-monitor-filters" aria-label="CloudWatch range">
+  <label class="i2g-monitor-field">
+    <span>Range</span>
+    <select name="days">
+      {% for option in windows %}<option value="{{ option.days }}" {% if option.selected %}selected{% endif %}>{{ option.label }}</option>{% endfor %}
+    </select>
+  </label>
+  <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">refresh</span>Apply</button>
+  <span class="i2g-monitor-muted">Apply reads AWS again.</span>
+</form>
+
+{% if notice %}
+<p class="{% if notice.level == 'info' %}i2g-monitor-notice{% else %}i2g-monitor-error{% endif %}" role="{% if notice.level == 'info' %}note{% else %}alert{% endif %}" data-ses-notice="{{ notice.key }}">
+  <span class="material-symbols-outlined" aria-hidden="true">{% if notice.level == 'info' %}info{% else %}warning{% endif %}</span>{{ notice.text }}
+</p>
+{% endif %}
+
+<section class="i2g-monitor-section" aria-labelledby="ses-key-figures">
+  <h2 id="ses-key-figures" class="i2g-monitor-heading">Key figures <span>AWS CloudWatch · {{ window.label|lower }}</span></h2>
+  <div class="i2g-monitor-tiles" data-ses-kpis>
+    <div class="i2g-monitor-tile"><p>SES attempts</p><strong>{{ s.attempts }}</strong><small>CloudWatch Send metric</small></div>
+    <div class="i2g-monitor-tile"><p>Delivered by SES</p><strong>{{ s.success }}</strong><small>CloudWatch Delivery: the receiving server accepted it</small></div>
+    <div class="i2g-monitor-tile"><p>SES errors</p><strong>{{ s.problems }}</strong><small>{{ s.failure_rate }}% failure rate: bounces, complaints, rejects and rendering failures</small></div>
+  </div>
+</section>
+
+<div class="i2g-monitor-grid">
+  {% include "admin/mail/email_monitoring/_time_chart.html" with key="daily" source="i2g-monitor-ses" title="Daily SES attempts and errors" kind="lines" data=chart_data.daily %}
+  <div class="i2g-monitor-card">
+    <h3>SES errors by type</h3>
+    {% if s.problems %}
+    <ul class="i2g-monitor-meters">
+      {% for row in error_types %}
+        <li>
+          <span class="i2g-monitor-meter-label">{{ row.label }}</span>
+          <span class="i2g-monitor-meter-track" aria-hidden="true"><span class="i2g-monitor-meter-fill" style="width: {{ row.share|stringformat:'.1f' }}%"></span></span>
+          <span class="i2g-monitor-meter-value">{{ row.count }}</span>
+        </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+      <p class="i2g-monitor-empty">No SES errors in this range.</p>
+    {% endif %}
+    <p class="i2g-monitor-muted">{{ s.delayed }} delivery delay{{ s.delayed|pluralize }}: SES was still retrying, so {{ s.delayed|pluralize:"it is,they are" }} not counted as errors.</p>
+  </div>
+</div>
+
+<section class="i2g-monitor-section" aria-labelledby="ses-suppressed" data-ses-recipients data-window-days="{{ window.days }}" data-window-label="{{ window.label }}" data-window-short="{{ window.short }}">
+  <h2 id="ses-suppressed" class="i2g-monitor-heading">Suppressed recipients <span>the AWS SES account suppression list: addresses SES itself refuses to send to, last updated {{ window.label|lower }}</span></h2>
+  <div class="i2g-monitor-card">
+    <dl class="i2g-monitor-facts">
+      <div><dt>Total</dt><dd><strong>{{ recipients.total }}</strong></dd></div>
+      <div><dt>Showing</dt><dd><strong data-ses-showing>{{ recipients.rows|length }}</strong></dd></div>
+      <div><dt>Bounced</dt><dd><strong>{{ recipients.bounced }}</strong></dd></div>
+      <div><dt>Complained</dt><dd><strong>{{ recipients.complained }}</strong></dd></div>
+      <div><dt>Latest</dt><dd><strong>{{ recipients.latest }}</strong></dd></div>
+    </dl>
+    {% if recipients.rows %}
+    <div class="i2g-monitor-filters" role="group" aria-label="Filter and export the suppressed recipients">
+      <label class="i2g-monitor-field i2g-monitor-field--wide">
+        <span>Search</span>
+        <input type="search" data-ses-search placeholder="Email, domain, reason or source">
+      </label>
+      <label class="i2g-monitor-field">
+        <span>Status</span>
+        <select data-ses-status><option value="all">All</option><option value="bounced">Bounced</option><option value="complained">Complained</option></select>
+      </label>
+      <label class="i2g-monitor-field">
+        <span>Export format</span>
+        <select data-ses-format><option value="csv">CSV</option><option value="tsv">TSV</option><option value="json">JSON</option><option value="xls">Excel</option></select>
+      </label>
+      <button type="button" class="i2g-monitor-button" data-ses-export><span class="material-symbols-outlined" aria-hidden="true">download</span>Export the rows shown</button>
+    </div>
+    <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+      <thead><tr><th scope="col">Email</th><th scope="col">Domain</th><th scope="col">Status</th><th scope="col">Last seen</th><th scope="col">Reason</th><th scope="col">Source</th></tr></thead>
+      <tbody>{% for row in recipients.rows %}
+        <tr data-ses-row data-email="{{ row.email }}" data-domain="{{ row.domain }}" data-status="{{ row.status }}" data-label="{{ row.label }}" data-last-seen="{{ row.last_seen }}" data-reason="{{ row.reason }}" data-source="{{ row.source }}" data-context="{{ row.context }}">
+          <td>{{ row.email }}{% if row.count > 1 %}<br><span class="i2g-monitor-muted">{{ row.count }} events</span>{% endif %}</td>
+          <td>{{ row.domain }}</td>
+          <td>{{ row.label }}</td>
+          <td>{{ row.last_seen }}</td>
+          <td>{{ row.reason }}</td>
+          <td>{% if row.source or row.context %}{{ row.source }}{% if row.source and row.context %} - {% endif %}{{ row.context }}{% else %}-{% endif %}</td>
+        </tr>
+      {% endfor %}</tbody>
+    </table></div>
+    <p class="i2g-monitor-empty" data-ses-no-match hidden>No recipients match the current filters.</p>
+    {% else %}
+      <p class="i2g-monitor-empty">{{ recipients.empty }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endwith %}
+{% endblock %}

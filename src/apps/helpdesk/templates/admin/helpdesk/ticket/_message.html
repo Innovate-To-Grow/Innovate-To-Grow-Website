@@ -1,0 +1,54 @@
+{% with message=entry.message %}
+<dl class="i2g-helpdesk-meta">
+  {% if message.subject %}<dt>Subject</dt><dd>{{ message.subject }}</dd>{% endif %}
+  {% if message.to_addresses %}<dt>To</dt><dd>{{ message.to_addresses|join:", " }}</dd>{% endif %}
+  {% if message.cc_addresses %}<dt>Cc</dt><dd>{{ message.cc_addresses|join:", " }}</dd>{% endif %}
+  {% if message.reply_to and message.reply_to != message.from_address %}<dt>Reply-To</dt><dd>{{ message.reply_to }}</dd>{% endif %}
+  {% if message.sent_at %}<dt>Date header</dt><dd>{{ message.sent_at|date:"M j, Y H:i" }} (as claimed by the sender)</dd>{% endif %}
+  {% if message.auth_summary %}<dt>Authentication</dt><dd>{% for key, value in message.auth_summary.items %}{{ key|upper }} {{ value }}{% if not forloop.last %} · {% endif %}{% endfor %}</dd>{% endif %}
+</dl>
+{% if message.scam_level == "medium" %}
+  <p class="i2g-helpdesk-warning" role="note">
+    <span class="material-symbols-outlined" aria-hidden="true">gpp_maybe</span>
+    Suspicious: the scam checks found warning signs. Verify the sender before acting on it, and do not open its links.
+  </p>
+{% endif %}
+{% if message.body_purged_at %}
+  <p class="i2g-helpdesk-muted">The content was removed by retention on {{ message.body_purged_at|date:"M j, Y" }}.</p>
+{% elif entry.frame %}
+  <div class="i2g-helpdesk-frame-wrap">
+    <iframe class="i2g-helpdesk-frame"
+            sandbox="allow-popups allow-popups-to-escape-sandbox"
+            referrerpolicy="no-referrer"
+            loading="lazy"
+            title="Message body"
+            srcdoc="{{ entry.frame }}"></iframe>
+  </div>
+{% elif message.body_text %}
+  <pre class="i2g-helpdesk-text">{{ message.body_text }}</pre>
+{% else %}
+  <p class="i2g-helpdesk-muted">(No text.)</p>
+{% endif %}
+{% if message.body_truncated %}
+  <p class="i2g-helpdesk-muted">This message was cut off here (it was larger than the import limits); the original is in Outlook.</p>
+{% endif %}
+{% for attached in message.attached_messages %}
+  <details class="i2g-helpdesk-attached">
+    <summary>Attached message: {{ attached.subject|default:"(no subject)" }}{% if attached.from %} — from {{ attached.from }}{% endif %}{% if attached.date %} — {{ attached.date }}{% endif %}</summary>
+    {% if attached.text %}<pre class="i2g-helpdesk-text">{{ attached.text }}</pre>{% else %}<p class="i2g-helpdesk-muted">Its text is not stored.</p>{% endif %}
+  </details>
+{% endfor %}
+{% if entry.attachments %}
+  <ul class="i2g-helpdesk-files" aria-label="Attachments">
+    {% for file in entry.attachments %}
+      <li>
+        <span class="material-symbols-outlined" aria-hidden="true">{% if file.blocked %}block{% else %}attach_file{% endif %}</span>
+        {% if file.stored %}<a href="{{ file.url }}" rel="noopener">{{ file.filename }}</a>{% else %}<span>{{ file.filename }}</span>{% endif %}
+        <span class="i2g-helpdesk-muted">{{ file.size|filesizeformat }}{% if file.type %} · {{ file.type }}{% endif %}{% if file.inline %} · inline{% endif %}</span>
+        {% if file.warning and file.stored %}<span class="i2g-helpdesk-badge">archive: download after a warning</span>{% endif %}
+        {% if file.reason %}<span class="i2g-helpdesk-reason">{{ file.reason }}</span>{% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}
+{% endwith %}

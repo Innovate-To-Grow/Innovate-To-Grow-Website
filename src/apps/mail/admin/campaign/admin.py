@@ -55,6 +55,7 @@ class EmailCampaignAdmin(
         "duplicate_campaign_action",
         "import_gmail_html_action",
         "send_campaign_action",
+        "delivery_monitoring_action",
     ]
 
     @admin.action(description="Revoke login links (invalidate emailed sign-in links)")

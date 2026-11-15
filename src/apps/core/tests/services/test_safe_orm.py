@@ -10,8 +10,20 @@ from django.contrib.auth.models import Group
 from django.core.exceptions import PermissionDenied
 from django.test import TestCase
 
+from apps.authn.models import (
+    AdminInvitation,
+    ContactEmail,
+    ContactPhone,
+    EmailAuthChallenge,
+    PhoneVerificationChallenge,
+    RSAKeypair,
+)
+from apps.cli_admin.models import CliAccessToken, CliAuditLog, CliAuthorizationCode
 from apps.cms.models import CMSAsset, CMSBlock
+from apps.core.models import BackgroundJob
 from apps.core.services.db_tools.safe_orm import (
+    DENIED_MODEL_LABELS,
+    DENIED_WRITE_MODEL_LABELS,
     ActionRequestError,
     assert_snapshot_unchanged,
     assign_model_fields,
@@ -35,8 +47,9 @@ from apps.core.services.db_tools.safe_orm import (
     validate_write_payload,
 )
 from apps.event.tests.helpers import make_admin, make_member, make_superuser
-from apps.mail.models import LoginLinkToken
+from apps.mail.models import EmailCampaign, LoginLinkToken
 from apps.projects.models import Project, Semester
+from apps.system_intelligence.models import SystemIntelligenceExport
 
 Member = get_user_model()
 
@@ -133,6 +146,58 @@ class SafetyTests(TestCase):
         pk = uuid.uuid4()
         self.assertEqual(coerce_field_value(Project._meta.get_field("semester"), str(pk)), pk)
         self.assertEqual(coerce_field_value(year, "2030"), 2030)
+
+
+class WriteDenylistTests(TestCase):
+    """Tables a proposed record write never touches. Contact rows (sign-in factors), verification challenges (proofs of
+    a code), admin invitations (they make staff), the RSA sign-in key, the CLI audit log and background jobs can be
+    read, never written; the CLI's sign-in codes and tokens and the assistant's exports can't be read either."""
+
+    WRITE_DENIED = (
+        AdminInvitation,
+        BackgroundJob,
+        CliAuditLog,
+        ContactEmail,
+        ContactPhone,
+        EmailAuthChallenge,
+        PhoneVerificationChallenge,
+        RSAKeypair,
+    )
+    FULLY_DENIED = (CliAccessToken, CliAuthorizationCode, SystemIntelligenceExport)
+
+    def test_each_model_is_listed_by_its_label(self):
+        self.assertEqual(DENIED_WRITE_MODEL_LABELS, {model._meta.label_lower for model in self.WRITE_DENIED})
+        self.assertLessEqual({model._meta.label_lower for model in self.FULLY_DENIED}, DENIED_MODEL_LABELS)
+
+    def test_they_can_be_read_but_not_written(self):
+        for model in self.WRITE_DENIED:
+            label = f"{model._meta.app_label}.{model.__name__}"
+            with self.subTest(model=label):
+                self.assertFalse(is_model_denied(model, write=False))
+                self.assertTrue(is_model_denied(model, write=True))
+                self.assertIs(resolve_model(model._meta.app_label, model.__name__, write=False), model)
+                with self.assertRaises(ActionRequestError) as error:
+                    resolve_model(model._meta.app_label, model.__name__, write=True)
+                self.assertEqual(str(error.exception), f"Write access is not allowed for {label}.")
+
+    def test_cli_sign_in_and_exports_can_be_neither_read_nor_written(self):
+        for model in self.FULLY_DENIED:
+            for write in (False, True):
+                with self.subTest(model=model.__name__, write=write):
+                    self.assertTrue(is_model_denied(model, write=write))
+
+    def test_many_to_many_tables_can_be_read_but_not_written(self):
+        # Written directly, the Member.groups table would skip the "groups" field deny.
+        for through in (Member.groups.through, EmailCampaign.selected_members.through):
+            with self.subTest(model=through._meta.label):
+                self.assertFalse(is_model_denied(through, write=False))
+                self.assertTrue(is_model_denied(through, write=True))
+                with self.assertRaises(ActionRequestError):
+                    resolve_model(through._meta.app_label, through.__name__, write=True)
+
+    def test_members_stay_writable(self):
+        # The assistant's member updates (propose_member_update) write authn.Member; its own guard limits them.
+        self.assertFalse(is_model_denied(Member, write=True))
 
 
 class RecordsTests(TestCase):

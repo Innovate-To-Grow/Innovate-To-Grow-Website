@@ -16,6 +16,7 @@ class CoreConfig(AppConfig):
         from .admin.request_limits import get_request_limit_admin_urls
         from .services.delivery_rates import Family, register_family
         from .services.delivery_rates import receivers as delivery_rate_receivers
+        from .services.email.bounces import register_bounce_jobs
         from .services.request_limits import receivers as request_limit_receivers
 
         delivery_rate_receivers.connect()
@@ -23,6 +24,8 @@ class CoreConfig(AppConfig):
         # The worker's claim-time gates and the inline batch sizes find each family's active channel through these.
         register_family(Family.EMAIL, "apps.core.services.email.registry.active_rate_target")
         register_family(Family.SMS, "apps.core.services.aws.sms_send.active_rate_target")
+        # The bounce processor's scans of the Graph sending mailbox run as background jobs.
+        register_bounce_jobs()
 
         if getattr(admin.AdminSite, "_core_legacy_view_urls_patched", False):
             return

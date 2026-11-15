@@ -1,0 +1,54 @@
+{% extends "admin/mail/email_monitoring/base.html" %}
+
+{% block monitoring_content %}
+<p><a class="i2g-monitor-back" href="{{ back_url }}"><span class="material-symbols-outlined" aria-hidden="true">arrow_back</span>Bounced addresses</a></p>
+
+<section class="i2g-monitor-card" aria-labelledby="bulk-heading">
+  <h2 id="bulk-heading" class="i2g-monitor-heading">{{ spec.label }} <span>several addresses, one at a time</span></h2>
+  <dl class="i2g-monitor-facts">
+    <div><dt>What happens</dt><dd>{{ spec.effect }}</dd></div>
+    <div><dt>Can it be undone?</dt><dd>{{ spec.reversible }}</dd></div>
+  </dl>
+</section>
+
+{% if done %}
+<section class="i2g-monitor-card" aria-labelledby="bulk-result">
+  <h3 id="bulk-result">Result</h3>
+  <p>{{ applied|length }} address{{ applied|length|pluralize:"es" }} updated{% if skipped %}, {{ skipped|length }} skipped{% endif %}.</p>
+  {% if skipped %}
+  <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+    <thead><tr><th scope="col">Skipped address</th><th scope="col">Why</th></tr></thead>
+    <tbody>{% for row, reason in skipped %}<tr><td><a href="{% url 'admin:mail_email_monitoring_address' row.pk %}">{{ row.address }}</a></td><td>{{ reason }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+  {% if applied %}<p class="i2g-monitor-muted">Updated: {% for row in applied %}<a href="{% url 'admin:mail_email_monitoring_address' row.pk %}">{{ row.address }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  <p><a class="i2g-monitor-button" href="{{ back_url }}">Back to the list</a></p>
+</section>
+{% else %}
+<form method="post" class="i2g-monitor-card i2g-monitor-confirm" aria-labelledby="bulk-heading">
+  {% csrf_token %}
+  <input type="hidden" name="step" value="apply">
+  <input type="hidden" name="action" value="{{ action }}">
+  <p>{{ allowed }} of {{ entries|length }} selected address{{ entries|length|pluralize:"es" }} will change; the others are skipped.</p>
+  <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
+    <thead><tr><th scope="col">Address</th><th scope="col">Role</th><th scope="col">Member</th><th scope="col">Outcome</th></tr></thead>
+    <tbody>{% for entry in entries %}
+      <tr>
+        <td>{{ entry.row.address }}{% if entry.verdict.allowed %}<input type="hidden" name="ids" value="{{ entry.row.pk }}"><input type="hidden" name="fp_{{ entry.row.pk }}" value="{{ entry.fingerprint }}">{% endif %}</td>
+        <td>{{ entry.target.role.label }}</td>
+        <td>{% for owner in entry.target.owners %}{{ owner.get_full_name|default:owner.pk }}{% if not owner.is_active %} (inactive){% endif %}{% if not forloop.last %}, {% endif %}{% empty %}–{% endfor %}</td>
+        <td>{% if entry.verdict.allowed %}<span class="i2g-monitor-badge i2g-monitor-badge--good">Will change</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Skipped</span> {{ entry.verdict.reason }}{% endif %}</td>
+      </tr>
+    {% endfor %}</tbody>
+  </table></div>
+  <label class="i2g-monitor-field i2g-monitor-field--wide">
+    <span>{% if action == "dismiss" %}Reason (required, kept on every address){% else %}Note (optional, kept in each address's history){% endif %}</span>
+    <textarea name="note" rows="2" maxlength="500" {% if action == "dismiss" %}required{% endif %}>{{ values.note }}</textarea>
+  </label>
+  <div class="i2g-monitor-actions">
+    <button type="submit" class="i2g-monitor-button" {% if not allowed %}disabled{% endif %}><span class="material-symbols-outlined" aria-hidden="true">check</span>{{ spec.label }}: {{ allowed }} address{{ allowed|pluralize:"es" }}</button>
+    <a class="i2g-monitor-button" href="{{ back_url }}">Cancel</a>
+  </div>
+</form>
+{% endif %}
+{% endblock %}

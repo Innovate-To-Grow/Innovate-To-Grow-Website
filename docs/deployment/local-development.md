@@ -71,10 +71,10 @@ python manage.py test --settings=config.settings.environments.local
 For a clean slate (destroys all data):
 
 ```bash
-python manage.py resetdb --force
+python manage.py resetdb --force --confirm RESET_DB
 ```
 
-This drops the database, regenerates migrations, migrates, and seeds a default admin user (`hongzhe` / `xiehongzhe04@gmail.com` / password: `1`). Dev-only — has safety guards against production databases.
+This drops the database, regenerates migrations, migrates, creates a default superuser and seeds the service configs and the archive CMS pages, menus and footer. Sign in as the superuser with `admin@localhost` / password `changeme` (set `DEV_ADMIN_EMAIL` and `DEV_ADMIN_PASSWORD` in `src/.env` to change them). Dev-only — it refuses to run unless `DEBUG` is on (or `--allow-production` is given).
 
 ## Frontend setup
 

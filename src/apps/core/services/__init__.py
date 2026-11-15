@@ -39,7 +39,10 @@ Subsystem               What it is                                            Im
                         ``graph/credential/`` installs the Graph certificate
                         and ``gmail/key/`` the Gmail service-account key
                         (both in ``credential_store``); ``graph/`` and
-                        ``gmail/access_check/`` record the go-live evidence
+                        ``gmail/access_check/`` record the go-live evidence;
+                        ``telemetry/`` records every send and attempt (the
+                        facade's tracker, ``email_tracking`` categories) and
+                        ``bounces/`` reads Graph bounce reports (worker job)
 ``helpers/``            In-process task runner + sheet formula safety         ``authn``, ``event``, ``mail``, ``system_intelligence``
 ``legacy_access/``      Signed access to the read-only legacy site viewer      ``core`` only (legacy_view, admin, views)
 ``request_limits/``     Inbound request limits for every route (one           ``core`` (its middleware); apps plug in from

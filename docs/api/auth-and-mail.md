@@ -42,8 +42,9 @@ for the residual risks and [WAF rate limits](../deployment/waf-rate-limits.md) f
 
 **When the SMS daily budget is spent.** The budget is reserved only when an SMS is handed to the provider, so requests
 that send nothing (a password reset for a number without an account, a number over its own hourly cap) do not use it.
-Once it is spent, every flow that always sends an SMS (`POST /authn/phone-auth/request-code/`, password change by SMS,
-contact-phone verification, the event phone code) answers:
+Once it is spent, every flow that answers every number as if it sent an SMS (`POST /authn/phone-auth/request-code/`,
+whose withheld codes are refused the same way, password change by SMS, contact-phone verification, the event phone code)
+answers:
 
 ```http
 HTTP/1.1 429 Too Many Requests
@@ -207,7 +208,7 @@ both are sent. The identifier is resolved via `resolve_login_identifier`
 - Generic error message ("Invalid credentials.") for every failure mode (wrong password,
   unknown identifier, unverified phone, inactive account) to prevent account enumeration
 - Phone-only accounts can sign in here once they have set a password (see *Password management*),
-  and continue to use the passwordless phone-OTP flow (`/authn/phone-auth/*`)
+  and continue to use the passwordless phone-OTP flow (`/authn/phone-auth/*`); both need a verified number
 - The supplied `key_id` selects the exact active or retained RSA key; the backend never tries another key
 - Not throttled per IP; guessing is bounded per identifier by the failure lockout below
 
@@ -313,7 +314,7 @@ Starts passwordless signup or login with a US phone number.
 
 `source` may be `login`, `subscribe`, or `event_registration`; it is currently validated for parity with email auth but does not change phone-auth behavior.
 
-The SMS service caps each destination at 10 sends/hour, send verification adds a 60-second per-destination cooldown, and the global SMS daily budget (`sms_daily_limit`), when configured, caps all SMS sends together. Because every number that asks does get an SMS here, a spent budget is answered truthfully: `429` with `code: "send_throttled"`, `detail: "The SMS sending budget for today has been reached."`, `retry_after: 3600` and a `Retry-After: 3600` header. The public request takes a 5/minute per-IP throttle **only as a fallback while no SMS daily budget is configured** (`sms_request_throttles()`); setting the budget in Site Settings removes it without a deploy. Verification (`verify-code`) has no per-IP throttle, only the per-challenge attempt cap (5, or 1 for codes sent to a number with 10+ failed guesses in 24 hours).
+The SMS service caps each destination at 10 sends/hour, send verification adds a 60-second per-destination cooldown, and the global SMS daily budget (`sms_daily_limit`), when configured, caps all SMS sends together. Because every number that asks is answered as if it got an SMS here (see [Only verified numbers sign in](#only-verified-numbers-sign-in)), a spent budget is answered the same way for every number: `429` with `code: "send_throttled"`, `detail: "The SMS sending budget for today has been reached."`, `retry_after: 3600` and a `Retry-After: 3600` header. The public request takes a 5/minute per-IP throttle **only as a fallback while no SMS daily budget is configured** (`sms_request_throttles()`); setting the budget in Site Settings removes it without a deploy. Verification (`verify-code`) has no per-IP throttle, only the per-challenge attempt cap (5, or 1 for codes sent to a number with 10+ failed guesses in 24 hours).
 
 **Response (`202 Accepted`):**
 
@@ -336,11 +337,44 @@ The SMS service caps each destination at 10 sends/hour, send verification adds a
 }
 ```
 
-On success, the endpoint atomically consumes the challenge, resolves or creates the phone member, and returns the standard JWT auth payload. Deactivated accounts receive the same generic invalid-code response as other failures.
+On success, the endpoint atomically consumes the challenge, resolves or creates the phone member, and returns the standard JWT auth payload. Deactivated accounts, and numbers saved on an account but not verified, receive the same generic invalid-code response as other failures.
 
 A wrong code answers `400` with `{"detail": "Verification code is invalid or has expired."}`. The wrong guess that uses up a normal code's fifth attempt answers `429` (`"Too many verification attempts. Please try again later."`) and the code is spent. A code sent to a number under guessing attack allows one guess: a wrong guess spends it and still answers the plain `400` above, exactly like a first wrong guess on any other number, so the answer does not show that the number is degraded. Either way a new code must be requested.
 
 For one compatibility release, callers may omit `challenge_id` and send `phone_number` instead. That path resolves the latest pending `phone_auth` challenge for the normalized number. New clients must persist the request response's `challenge_id` and send it back; the compatibility lookup will be removed.
+
+### Only verified numbers sign in
+
+A phone number signs in only once it is **verified**, that is once someone proved they hold it with a one-time code
+from inside the account (the account page's contact-phone verification, the staff **Verify by SMS code** page, an event
+registration that verifies the phone, or the signup that created the account with it). A number staff or a member
+import saved on an account was never proven to be the member's (it may be mistyped or recycled), so holding it must not
+open the account. The rule, per number (the stored national digits, which are unique):
+
+| The number is | `request-code` | `verify-code` |
+|---|---|---|
+| verified on an active account | sends a code | signs in |
+| saved on an account but not verified | **withheld code**: no SMS, no budget | always the generic `400` |
+| on no account (or on a member-less legacy row) | sends a code | creates the account (signup) |
+| verified on a deactivated account | sends a code | the generic `400` |
+
+A withheld code is answered exactly like a sent one, so the response says nothing about the number: the same `202`
+body with a `challenge_id`, the same send-request status (`provider_accepted`), the same refusals in the same order (SMS
+not configured, the number's 10/hour cap, which withheld codes count toward, a held-back SMS lane, a spent daily
+budget), and the same verification answers (wrong code `400`, the fifth `429`), because the challenge is a real
+`PhoneVerificationChallenge` hashed from a secret no code can equal. No SMS is sent and no budget unit is spent; the
+delivery slot it takes is given back. It answers after about as long as a real provider call takes (a duration drawn
+from this process's recent sends, or from `SMS_WITHHELD_SEND_DELAY_SECONDS` until it has sent one). Residual
+differences: a number AWS would reject as invalid gets `400` when unknown and `202` when saved unverified, and while
+AWS fails before the delivery-rate breaker opens real sends answer `503`.
+
+`verify-code` re-checks the rule when it resolves the member, so a code sent while the number was verified (or before
+it was saved on an account) does not sign in once the number is unverified. It no longer marks a number verified.
+Password sign-in, password reset and the change-password channel already resolve only verified numbers.
+
+A member whose number is unverified signs in with a verified email and verifies the number under **Account → Phone
+Numbers**; a phone-only member with no other way in asks staff, who use **Verify by SMS code** (the member reads the
+code back). Nothing is verified automatically.
 
 ## Email auth challenges
 

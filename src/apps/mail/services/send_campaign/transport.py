@@ -14,7 +14,7 @@ from apps.core.services.aws.provider_outcomes import (
     PROVIDER_OUTCOME_UNCERTAIN,
 )
 from apps.core.services.delivery_rates import Lane, RateDeferred, not_now
-from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email
+from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email, email_tracking
 
 SES_OUTCOME_SUCCESS = PROVIDER_OUTCOME_SUCCESS
 SES_OUTCOME_TRANSIENT = PROVIDER_OUTCOME_TRANSIENT
@@ -87,9 +87,11 @@ def _send_via_ses(
     recipient_log_id=None,
     delivery_attempt=0,
     keep_sent_copy=True,
+    campaign_id=None,
 ) -> SesSendResult:
     """Send one campaign message on the bulk delivery lane. ``keep_sent_copy=False`` marks one that carries the
-    recipient's login link.
+    recipient's login link. The email telemetry files it under ``campaign_id``, and every send for one recipient log
+    (a job retry, the runner's resend after a throttle, a resumed recipient) under one logical email.
 
     Microsoft Graph then files no copy in the sender mailbox's Sent Items, which needs its JSON form, and that form
     cannot carry ``List-Unsubscribe``: such a message keeps only the footer's unsubscribe link.
@@ -102,21 +104,29 @@ def _send_via_ses(
         # SES returns these tags in mail.tags even when the event arrives before
         # send_raw_email returns its provider-assigned message ID.
         headers["X-SES-MESSAGE-TAGS"] = f"i2g_recipient_id={recipient_log_id}, i2g_delivery_attempt={delivery_attempt}"
+    log_key = f"mail.recipientlog:{recipient_log_id}" if recipient_log_id else ""
     try:
-        result = deliver_email(
-            EmailMessage(
-                subject=subject,
-                to=(recipient,),
-                html_body=html_body,
-                headers=headers,
-                keep_sent_copy=keep_sent_copy,
-            ),
-            config=ses_client,
-            retry_config=NO_PROVIDER_RETRIES,
-            configuration_set=configuration_set,
-            before_provider_call=before_provider_call,
-            lane=Lane.BULK,
-        )
+        with email_tracking(
+            category="campaign",
+            campaign_id=campaign_id,
+            source_type="mail.recipientlog" if log_key else "",
+            source_id=recipient_log_id,
+            retry_key=log_key,
+        ):
+            result = deliver_email(
+                EmailMessage(
+                    subject=subject,
+                    to=(recipient,),
+                    html_body=html_body,
+                    headers=headers,
+                    keep_sent_copy=keep_sent_copy,
+                ),
+                config=ses_client,
+                retry_config=NO_PROVIDER_RETRIES,
+                configuration_set=configuration_set,
+                before_provider_call=before_provider_call,
+                lane=Lane.BULK,
+            )
         return SesSendResult(message_id=result.message_id, provider=result.provider, outcome=result.outcome)
     except EmailDeliveryError as exc:
         return SesSendResult(

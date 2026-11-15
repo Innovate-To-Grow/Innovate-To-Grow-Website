@@ -55,10 +55,18 @@ const signInAs = async (page: Page) => {
   await seedAuthenticatedSession(page, {user: {...name, email: 'member@example.com'}, profile: name});
 };
 
-async function openPage(page: Page, width: number, items = MAIN_MENU) {
+async function openPage(page: Page, width: number, {items = MAIN_MENU, signedIn = false} = {}) {
   await page.setViewportSize({width, height: 900});
   await mockMainMenu(page, items);
   await page.goto('/login', {waitUntil: 'domcontentloaded'});
+  // The header mounts before the lazy route. Wait for its final content: the
+  // login form can shift scroll anchoring, and a signed-in visit redirects to
+  // /account and resets scroll to zero. Neither may race the scroll assertions.
+  await expect(page.getByRole('main').getByRole('heading', {
+    level: 1,
+    name: signedIn ? 'Account Dashboard' : 'Welcome to I2G',
+    exact: true,
+  })).toBeVisible();
   await page.addStyleTag({content: '#footer-root { min-height: 3000px; }'});
   await expect(page.locator('.site-header-nav .menu-bar-item')).toHaveCount(items.length);
   await page.evaluate(() => document.fonts.ready);
@@ -171,7 +179,7 @@ const DATE_SHOWN: Record<number, boolean> = {1440: true, 1200: true, 1100: false
 for (const width of [1440, 1200, 1100, 993]) {
   test(`at ${width}px the menu keeps one row and the date shows or hides the same way at the top and pinned`, async ({page}) => {
     await signInAs(page);
-    await openPage(page, width);
+    await openPage(page, width, {signedIn: true});
     await expect(page.locator('.member-label')).toHaveText(/hongzhe xie/i);
     await expect.poll(async () => (await rowState(page)).dateShown).toBe(DATE_SHOWN[width]);
 
@@ -225,7 +233,7 @@ test('a first visit decides the date on the real menu, not on the loading skelet
 test('a longer CMS menu shortens the member name before it wraps, the same way at the top and pinned', async ({page}) => {
   await signInAs(page);
   const longer = [...MAIN_MENU, item('Contact Us', '/contact'), item('Resources', '/resources')];
-  await openPage(page, 993, longer);
+  await openPage(page, 993, {items: longer, signedIn: true});
   const top = await rowState(page);
   await scrollTo(page, SCROLLED_Y);
   await waitForPinnedRow(page);

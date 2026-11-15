@@ -14,6 +14,7 @@ from apps.core.models import EmailServiceConfig
 from apps.core.services.delivery_rates import WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
 from apps.mail.models import RecipientLog
+from apps.mail.services.suppression import SKIPPED_MESSAGE, is_suppressed
 from apps.mail.services.tokens.login_links import issue_login_link, sign_in_page_url
 
 from ..audience import get_recipients
@@ -121,6 +122,11 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
                 recipient_name=recipient["full_name"],
                 attempts=1,
             )
+        if is_suppressed(recipient["email"]):
+            # Suppressed after the audience was resolved (a long campaign, or a resumed one): never sent.
+            if skip_suppressed_log(log):
+                campaign.failed_count += 1
+            return True
         context = _recipient_context(recipient, campaign)
         subject = personalize(campaign.subject, context)
         body_html = personalize(campaign.body, context)
@@ -138,6 +144,7 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
                 recipient_log_id=log.pk,
                 delivery_attempt=log.attempts,
                 keep_sent_copy=not carries_login_link(context, subject, body_html),
+                campaign_id=campaign.pk,
             )
         )
         if result is None:
@@ -156,6 +163,27 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
         )
         campaign.failed_count += 1
     return True
+
+
+def skip_suppressed_log(log, *, claim_token=None) -> bool:
+    """Record that ``log``'s address is suppressed and was not sent, only while it is still unsent (and, for a queued
+    job, still claimed by that job: ``claim_token``); True when this call recorded it."""
+    logs = RecipientLog.objects.filter(pk=log.pk)
+    if claim_token is not None:
+        logs = logs.filter(status="processing", claim_token=claim_token)
+    else:
+        logs = logs.filter(status__in=("pending", "retry", "paused"))
+    return bool(
+        logs.update(
+            status="failed",
+            provider="",
+            error_message=SKIPPED_MESSAGE,
+            claim_token=None,
+            claimed_at=None,
+            uncertain_at=None,
+            updated_at=timezone.now(),
+        )
+    )
 
 
 def _send_when_taken(send) -> SesSendResult | None:
@@ -188,6 +216,7 @@ def _send_with_configured_provider(
     recipient_log_id=None,
     delivery_attempt=0,
     keep_sent_copy=True,
+    campaign_id=None,
 ):
     if ses_client is not None:
         return _send_via_ses(
@@ -201,6 +230,7 @@ def _send_with_configured_provider(
             recipient_log_id=recipient_log_id,
             delivery_attempt=delivery_attempt,
             keep_sent_copy=keep_sent_copy,
+            campaign_id=campaign_id,
         )
     return SesSendResult(provider="", error="Email delivery is not configured.")
 

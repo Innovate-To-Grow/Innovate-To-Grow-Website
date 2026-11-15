@@ -12,6 +12,7 @@
 │   │   ├── event/          # Registration, ticketing, schedule, check-in
 │   │   ├── projects/       # Past projects, semesters, sharing
 │   │   ├── mail/           # Campaigns, recipient logs, login links
+│   │   ├── helpdesk/       # Tickets from the i2g@ mailbox (shadow mode)
 │   │   ├── system_intelligence/  # Admin AI assistant (agents, actions, exports)
 │   │   └── cli_admin/      # OAuth2 + PKCE CRUD API for the i2g-admin CLI
 │   ├── config/             # Django settings (base/, production/ overrides, environments/ entrypoints), routing/, deploy/ (ASGI/WSGI)

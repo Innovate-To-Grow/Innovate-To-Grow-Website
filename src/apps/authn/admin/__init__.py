@@ -5,6 +5,7 @@ Registers all authn models with Django admin for user management.
 Organized into modules by functionality:
 - member: Member and MemberProfile admin
 - contact: ContactEmail, ContactPhone admin
+- import_batch: the read-only history of member imports
 - security: RSAKeypair admin
 - send_verification: SendVerificationConfig admin (a core model owned by this feature)
 """
@@ -15,6 +16,7 @@ from django.contrib.auth.models import Group
 from apps.authn.services.members.sheet_sync.admin import MemberSheetSyncConfigAdmin, MemberSheetSyncLogAdmin
 
 from .members.contact import ContactEmailAdmin, ContactPhoneAdmin
+from .members.import_batch import MemberImportBatchAdmin
 from .members.invitation import AdminInvitationAdmin
 from .members.member import MemberAdmin
 from .security import RSAKeypairAdmin
@@ -30,6 +32,8 @@ __all__ = [
     "ContactPhoneAdmin",
     # Invitation
     "AdminInvitationAdmin",
+    # Member imports (history)
+    "MemberImportBatchAdmin",
     # Security
     "RSAKeypairAdmin",
     "SendVerificationConfigAdmin",

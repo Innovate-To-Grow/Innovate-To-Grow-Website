@@ -1,0 +1,4 @@
+{# A status chip: an icon and the label, so the state never rests on color alone. "accepted" is queued, not delivered. #}
+<span class="i2g-monitor-chip i2g-monitor-chip--{{ value }}">
+  <span class="material-symbols-outlined" aria-hidden="true">{% if value == "accepted" %}outbox{% elif value == "failed" or value == "failure_confirmed" %}cancel{% elif value == "uncertain" or value == "unknown" %}help{% elif value == "delayed" or value == "pending" %}schedule{% elif value == "not_sent" %}block{% else %}remove{% endif %}</span>{{ label }}
+</span>

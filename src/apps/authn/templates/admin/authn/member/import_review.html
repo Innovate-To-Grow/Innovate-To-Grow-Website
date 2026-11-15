@@ -1,0 +1,175 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{{ title }} - {{ site_title|default:_('Django site admin') }}{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; <a href="{% url 'admin:authn_member_changelist' %}">Members</a>
+        &rsaquo; <a href="{% url 'admin:authn_member_import_excel' %}">Import Members</a>
+        &rsaquo; Review
+    </div>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8 px-4">
+    <h1 class="text-2xl font-bold text-font-default-light dark:text-font-default-dark mb-2">Review import</h1>
+    {% include "admin/authn/member/_import_steps.html" with step=2 %}
+
+    <!-- Header: the file, who uploaded it, its columns -->
+    <div class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-5 mb-6 text-sm space-y-1">
+        <p><strong>{{ batch.file_name }}</strong> · {{ batch.file_size|filesizeformat }} · SHA-256 <span class="font-mono">{{ batch.file_sha256|slice:":12" }}</span> · sheet "{{ batch.sheet_name }}" · {{ batch.row_count }} rows</p>
+        <p>Uploaded by {{ batch.created_by|default:"a deleted admin" }} on {{ batch.created_at|date:"Y-m-d H:i" }} · rows that match an existing member: <strong>{{ batch.get_mode_display }}</strong> · expires {{ batch.expires_at|date:"Y-m-d H:i" }}</p>
+        <p>Columns read: {{ batch.columns.recognised|join:", "|default:"none" }}.
+            {% if batch.columns.informational %} Not imported: {{ batch.columns.informational|join:", " }}.{% endif %}
+            {% if batch.columns.ignored %} Ignored (not recognised): {{ batch.columns.ignored|join:", " }}.{% endif %}</p>
+        {% if batch.columns.has_member_uuid %}<p>Member UUID column found: rows are matched by Member UUID first.</p>{% endif %}
+        {% for note in batch.columns.notes %}<p class="text-primary-600 dark:text-primary-400"><strong>Note:</strong> {{ note }}</p>{% endfor %}
+        {% for warning in batch.file_warnings %}<p class="text-yellow-800 dark:text-yellow-300">⚠ {{ warning }}</p>{% endfor %}
+        {% for other in repeats %}
+            <p class="text-yellow-800 dark:text-yellow-300">⚠ The same file is {% if other.status == "review" %}also in review (<a class="underline" href="{% url 'admin:authn_member_import_review' other.pk %}">uploaded {{ other.created_at|date:"Y-m-d H:i" }} by {{ other.created_by|default:"a deleted admin" }}</a>){% else %}already imported (<a class="underline" href="{% url 'admin:authn_member_import_result' other.pk %}">{{ other.applied_at|date:"Y-m-d H:i" }} by {{ other.applied_by|default:"a deleted admin" }}</a>){% endif %}.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Counts -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+        {% with c=counts %}
+            <a href="#ready" class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ c.ready_create }}</div><div class="text-xs mt-1">Ready to create</div></a>
+            <a href="#ready" class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ c.ready_update }}</div><div class="text-xs mt-1">Ready to update</div></a>
+            <a href="#no-change" class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold">{{ c.no_change }}</div><div class="text-xs mt-1">No change</div></a>
+            <a href="#decisions" class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ c.needs_decision }}</div><div class="text-xs mt-1">Needs a decision</div></a>
+            <a href="#risky" class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold text-red-600 dark:text-red-400">{{ c.risky }}</div><div class="text-xs mt-1">Risky changes (not applied unless ticked)</div></a>
+            <a href="#invalid" class="bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3 text-center"><div class="text-2xl font-bold">{{ c.invalid }}</div><div class="text-xs mt-1">Cannot import</div></a>
+        {% endwith %}
+    </div>
+
+    {% if batch.last_error %}
+        <div class="border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 rounded-default p-4 mb-6 text-sm text-red-800 dark:text-red-300">{{ batch.last_error }}</div>
+    {% endif %}
+    {% if problems %}
+        <div class="border border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/30 rounded-default p-4 mb-6 text-sm text-red-800 dark:text-red-300">
+            <p class="font-semibold mb-1">Fix these before you continue:</p>
+            <ul class="list-disc list-inside">{% for problem in problems %}<li>{{ problem }}</li>{% endfor %}</ul>
+        </div>
+    {% endif %}
+    {% if not editable %}
+        <div class="border border-base-200 dark:border-base-700 bg-base-50 dark:bg-base-800 rounded-default p-4 mb-6 text-sm">This import belongs to {{ batch.created_by|default:"a deleted admin" }}. You can look at it; only they or an I2G Master can change it.</div>
+    {% endif %}
+
+    <form method="post" id="import-review-form">
+        {% csrf_token %}
+        <input type="hidden" name="version" value="{{ batch.choices_version }}">
+
+        <!-- 1. Needs a decision -->
+        <h2 id="decisions" class="text-xl font-semibold mb-3">Needs a decision</h2>
+        {% if decisions %}
+            <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-3">Every row here is skipped until you choose otherwise.</p>
+            {% for group in decisions %}
+                <section class="mb-6" id="group-{{ group.conflict }}">
+                    <div class="flex flex-wrap items-center gap-3 mb-3 bg-base-50 dark:bg-base-800 border border-base-200 dark:border-base-700 rounded-default p-3">
+                        <h3 class="font-semibold">{{ group.code }} · {{ group.title }} <span class="text-font-subtle-light dark:text-font-subtle-dark">({{ group.views|length }})</span></h3>
+                        {% if editable %}{% include "admin/authn/member/_import_bulk.html" %}{% endif %}
+                    </div>
+                    {% for view in group.views %}{% include "admin/authn/member/_import_row.html" %}{% endfor %}
+                </section>
+            {% endfor %}
+            {% if editable %}
+                <button type="submit" name="action" value="skipall" class="border border-base-300 dark:border-base-600 px-3 py-1.5 rounded-default text-sm mb-6">Skip every row that needs a decision</button>
+            {% endif %}
+        {% else %}
+            <p class="text-sm mb-6">No row needs a decision.</p>
+        {% endif %}
+
+        <!-- 2. Risky changes of ready rows -->
+        <h2 id="risky" class="text-xl font-semibold mb-3">Risky changes</h2>
+        {% if risky %}
+            <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-3">Nothing below happens unless you tick it. A row that needs a decision shows its own ticks on its card.</p>
+            {% for view in ready %}{% if view.ticks %}<input type="hidden" name="ticks-{{ view.number }}" value="1">{% endif %}{% endfor %}
+            {% for view in no_change %}{% if view.ticks %}<input type="hidden" name="ticks-{{ view.number }}" value="1">{% endif %}{% endfor %}
+            {% for group in risky %}
+                <section class="mb-4 border border-base-200 dark:border-base-700 rounded-default p-3">
+                    <div class="flex flex-wrap items-center gap-3 mb-2">
+                        <h3 class="font-semibold">{{ group.code }} · {{ group.title }}</h3>
+                        {% if editable and group.count %}<button type="submit" name="action" value="tickall:{{ group.code }}" class="border border-base-300 dark:border-base-600 px-2 py-1 rounded-default text-xs">Tick all {{ group.count }}</button>{% endif %}
+                    </div>
+                    {% for entry in group.items %}
+                        <label class="flex items-start gap-2 text-sm {% if not entry.item.enabled %}opacity-60{% endif %}">
+                            <input type="checkbox" name="tick-{{ entry.view.number }}" value="{{ entry.item.id }}"{% if entry.item.checked %} checked{% endif %}{% if not entry.item.enabled or not editable %} disabled{% endif %} class="mt-1">
+                            <span>Row {{ entry.view.number }}{% if entry.view.target_name %} ({{ entry.view.target_name }}){% endif %}: {{ entry.item.label }}{% if entry.item.reason %} <span class="block text-xs text-red-600 dark:text-red-400">Disabled: {{ entry.item.reason }}</span>{% endif %}</span>
+                        </label>
+                    {% empty %}
+                        <p class="text-xs text-font-subtle-light dark:text-font-subtle-dark">Only on rows that need a decision (see their cards).</p>
+                    {% endfor %}
+                </section>
+            {% endfor %}
+        {% else %}
+            <p class="text-sm mb-6">No risky changes.</p>
+        {% endif %}
+
+        <!-- 3. Cannot import -->
+        <h2 id="invalid" class="text-xl font-semibold mb-3 mt-6">Cannot import</h2>
+        {% if invalid %}
+            <p class="text-sm text-font-subtle-light dark:text-font-subtle-dark mb-2">Fix these rows in the sheet and upload it again.</p>
+            <table class="w-full text-sm mb-6">
+                <thead><tr class="text-left text-xs uppercase"><th class="py-1 pr-3">Row</th><th class="py-1 pr-3">Why</th><th class="py-1">Primary Email</th></tr></thead>
+                <tbody>
+                    {% for view in invalid %}
+                        <tr class="border-t border-base-100 dark:border-base-800"><td class="py-1 pr-3">{{ view.number }}</td><td class="py-1 pr-3">{{ view.invalid }}</td><td class="py-1 break-all">{{ view.row.values.raw.primary_email|default:"(blank)" }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p class="text-sm mb-6">Every row can be imported.</p>
+        {% endif %}
+
+        <!-- 4. Ready -->
+        <h2 id="ready" class="text-xl font-semibold mb-3">Ready</h2>
+        <details class="mb-6"{% if ready|length < 30 or ready_changed %} open{% endif %}>
+            <summary class="cursor-pointer text-sm">{{ ready|length }} row(s) will be created or updated unless you tick Skip</summary>
+            <table class="w-full text-sm mt-2">
+                <thead><tr class="text-left text-xs uppercase"><th class="py-1 pr-3">Row</th><th class="py-1 pr-3">Skip</th><th class="py-1 pr-3">Member</th><th class="py-1">What happens</th></tr></thead>
+                <tbody>
+                    {% for view in ready %}
+                        <tr class="border-t border-base-100 dark:border-base-800 align-top">
+                            <td class="py-1 pr-3">{{ view.number }}<input type="hidden" name="ready-{{ view.number }}" value="{{ view.default }}">{% if view.row.changed_since_review %}<span class="block text-xs text-red-700 dark:text-red-300">Changed since you reviewed it</span>{% endif %}</td>
+                            <td class="py-1 pr-3"><input type="checkbox" name="skip-{{ view.number }}" value="1"{% if view.skip_checked %} checked{% endif %}{% if not editable %} disabled{% endif %} aria-label="Skip row {{ view.number }}"></td>
+                            <td class="py-1 pr-3">{% if view.target_url %}<a class="underline" href="{{ view.target_url }}" target="_blank" rel="noopener">{{ view.target_name|default:"member" }}</a>{% else %}New: {{ view.row.values.raw.first_name }} {{ view.row.values.raw.last_name }}{% endif %}</td>
+                            <td class="py-1">{% include "admin/authn/member/_import_plan.html" with plan=view.plan %}
+                                {% for warning in view.warnings %}<p class="text-xs text-yellow-800 dark:text-yellow-300">{{ warning.code }}: {{ warning.text }}</p>{% endfor %}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </details>
+
+        <!-- 5. No change -->
+        <h2 id="no-change" class="text-xl font-semibold mb-3">No change</h2>
+        <details class="mb-6"{% if no_change_changed %} open{% endif %}>
+            <summary class="cursor-pointer text-sm">{{ no_change|length }} row(s) match a member and change nothing</summary>
+            <ul class="text-sm mt-2">
+                {% for view in no_change %}
+                    <li>Row {{ view.number }}: <a class="underline" href="{{ view.target_url }}" target="_blank" rel="noopener">{{ view.target_name|default:"member" }}</a>{% if view.row.changed_since_review %} <span class="text-xs text-red-700 dark:text-red-300">Changed since you reviewed it</span>{% endif %}{% if view.plan.notes %} · {{ view.plan.notes|join:"; " }}{% endif %}
+                        <input type="hidden" name="ready-{{ view.number }}" value="{{ view.default }}">
+                        <label class="text-xs ml-2"><input type="checkbox" name="skip-{{ view.number }}" value="1"{% if view.skip_checked %} checked{% endif %}{% if not editable %} disabled{% endif %}> Skip</label>
+                    </li>
+                {% endfor %}
+            </ul>
+        </details>
+
+        {% if editable %}
+            <div class="flex flex-wrap items-center gap-3 pt-4 border-t border-base-100 dark:border-base-800">
+                <button type="submit" name="action" value="save" class="border border-base-300 dark:border-base-600 px-4 py-2 rounded-default text-sm font-medium">Save choices</button>
+                <button type="submit" name="action" value="continue" class="bg-primary-600 hover:bg-primary-700 text-white font-medium text-sm px-5 py-2.5 rounded-default transition-colors">Continue to confirm</button>
+            </div>
+        {% endif %}
+    </form>
+
+    {% if editable %}
+        <form method="post" action="{% url 'admin:authn_member_import_discard' batch.pk %}" class="mt-4">
+            {% csrf_token %}
+            <button type="submit" class="text-sm text-red-600 dark:text-red-400 underline">Discard this import</button>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

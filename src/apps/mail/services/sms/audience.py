@@ -2,8 +2,23 @@ from apps.authn.models import ContactPhone, Member
 from apps.event.models import EventRegistration
 from apps.mail.models.sms_campaign import E164_RE, parse_manual_sms_phones
 
+from .opt_outs import split_opted_out
+
+
+class SmsRecipients(list):
+    """An SMS campaign's recipients, with ``skipped``: the rows left out because their number is on the SMS opt-out
+    list (it replied STOP, or staff opted it out)."""
+
+    def __init__(self, recipients=(), skipped=()):
+        super().__init__(recipients)
+        self.skipped = list(skipped)
+
 
 def get_sms_recipients(campaign):
+    return SmsRecipients(*split_opted_out(_audience_recipients(campaign)))
+
+
+def _audience_recipients(campaign):
     recipients = recipients_for_sms_audience(
         campaign.audience_type,
         phone_policy=campaign.phone_policy,

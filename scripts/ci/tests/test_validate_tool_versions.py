@@ -74,6 +74,14 @@ jobs:
   backend-docker-smoke:
     steps:
       - run: postgres_image="postgres:16"
+  backend-docker-build:
+    steps:
+      - env:
+          TRIVY_VERSION: "0.70.0"
+  archive-docker-build:
+    steps:
+      - env:
+          TRIVY_VERSION: "0.70.0"
   e2e:
     container:
       image: "<image>"
@@ -96,7 +104,13 @@ steps:
   - run: pip-audit --ignore-vuln PYSEC-2026-1 --ignore-vuln GHSA-aaaa-bbbb-cccc
 """,
     ".github/workflows/deploy-backend.yml": 'steps:\n  - with:\n      python-version: "3.14"\n',
-    ".github/workflows/deploy-archive.yml": 'steps:\n  - with:\n      python-version: "3.14"\n',
+    ".github/workflows/deploy-archive.yml": """\
+steps:
+  - with:
+      python-version: "3.14"
+  - env:
+      TRIVY_VERSION: "0.70.0"
+""",
     ".github/workflows/deploy-frontend.yml": """\
 steps:
   - with:
@@ -153,6 +167,7 @@ EXPECTED = {
     "ruff": ("0.17.2", 3),
     "bandit": ("1.7.10", 2),
     "gitleaks": ("8.21.2", 2),
+    "trivy": ("0.70.0", 2),
     "playwright-image": (IMAGE, 3),
     "playwright": ("1.64.0", 3),
     "node": ("22.22.2", 6),
@@ -169,6 +184,9 @@ DRIFTS = (
     ("ruff", "src/requirements/local.txt", "ruff==0.17.2", "ruff==0.18.0", "0.17.2", "0.18.0"),
     ("bandit", PRE_COMMIT, "bandit[toml]==1.7.10", "bandit[toml]==1.8.0", "1.7.10", "1.8.0"),
     ("gitleaks", "scripts/pre-commit/gitleaks-protect.sh", ":-8.21.2", ":-8.22.0", "8.21.2", "8.22.0"),
+    # The likely slip: bumping the CI scans but not the archive deploy's, or one CI scan but not the other.
+    ("trivy", ".github/workflows/deploy-archive.yml", '"0.70.0"', '"0.71.0"', "0.70.0", "0.71.0"),
+    ("trivy", CI, 'TRIVY_VERSION: "0.70.0"', 'TRIVY_VERSION: "0.71.0"', "0.70.0", "0.71.0"),
     ("playwright-image", BAKE_IMAGE, DIGEST, "f" * 64, IMAGE, IMAGE.replace(DIGEST, "f" * 64)),
     ("playwright", CI, "pw-v1.64.0-noble", "pw-v1.62.1-noble", "1.64.0", "1.62.1"),
     ("playwright", PACKAGE_LOCK, '"version": "1.64.0"', '"version": "1.65.0"', "1.64.0", "1.65.0"),
@@ -282,6 +300,8 @@ class CollectPinsTests(unittest.TestCase):
             (CI, "image: postgres:16", "image: postgres:latest", "postgres", "found 3"),
             (CI, f'"{IMAGE}"', '"mcr.microsoft.com/playwright:v1.64.0-noble"', "sha256", "found 1"),
             (CI, '"pip-audit==2.7.3"', "pip-audit", "pip-audit", "found 0"),
+            # An image scan that stops pinning a literal version drops out of the trivy group.
+            (CI, 'TRIVY_VERSION: "0.70.0"', "TRIVY_VERSION: ${{ env.TRIVY }}", "TRIVY_VERSION", "found 1"),
             (BAKE_IMAGE, "$RUNNER_TOOL_CACHE/node/22.22.2/x64/bin/", "$NODE_HOME/bin/", "node", "found 7"),
         )
         for path, old, new, looked_for, found in cases:

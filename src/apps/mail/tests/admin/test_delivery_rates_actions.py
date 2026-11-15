@@ -165,14 +165,17 @@ class OtherPagesTests(DeliveryRatesTestCase):
         self.assertContains(edit, 'href="/admin/mail/settings/rates/#rate-card-graph_send"')
         self.assertContains(edit, 'href="/admin/mail/settings/rates/#rate-card-gmail_api_send"')
 
-    def test_the_delivery_dashboard_shows_the_send_rate_with_a_link(self):
+    def test_the_email_monitoring_overview_shows_the_send_rate_with_a_link(self):
+        # The line the Delivery Dashboard showed: it moved to Email Monitoring's Overview with that page's merge.
         line = email_send_rate_line()
-        with patch(
-            "apps.mail.admin.delivery_dashboard.get_delivery_dashboard_data",
-            return_value={"aws": {"send_rate": line}},
-        ):
-            response = self.client.get(reverse("admin:mail_delivery_dashboard"))
+
+        response = self.client.get(reverse("admin:mail_email_monitoring"))
 
         self.assertIn("recipients/sec · Smart", line)
-        self.assertContains(response, f"<span data-delivery-send-rate>{line}</span>")
-        self.assertContains(response, 'href="/admin/mail/settings/rates/"')
+        self.assertEqual(response.context["send_rate"], line)
+        self.assertContains(
+            response,
+            f'<p class="i2g-monitor-muted" data-monitor-send-rate>Send rate: {line} · '
+            '<a href="/admin/mail/settings/rates/">Delivery Rates</a></p>',
+            html=True,
+        )
