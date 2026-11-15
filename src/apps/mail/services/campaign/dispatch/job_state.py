@@ -4,7 +4,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from apps.core.models import BackgroundJob
-from apps.mail.services.sms.quiet_hours import HELD_LOG_MESSAGE
+from apps.mail.services.sms.policy.quiet_hours import HELD_LOG_MESSAGE
 
 from .channels import CHANNELS_BY_KIND, EMAIL, aggregate_email_campaign, aggregate_sms_campaign
 from .failures import DEFERRED_LOG_MESSAGE

@@ -76,14 +76,14 @@ class RevocationConcurrencyTests(TransactionTestCase):
     def test_a_link_stored_after_a_concurrent_switch_off_never_signs_in(self):
         state_read, switched_off = threading.Event(), threading.Event()
         issued, errors = [], []
-        real_token = links._new_token
+        real_token = links.issuing._new_token
 
         def token_once_switched_off():
             state_read.set()  # The issuer has read the switch as on; the INSERT comes next.
             switched_off.wait(WAIT_SECONDS)
             return real_token()
 
-        with patch.object(links, "_new_token", side_effect=token_once_switched_off):
+        with patch.object(links.issuing, "_new_token", side_effect=token_once_switched_off):
             issuer = start_thread(lambda: issued.append(self.issue()), errors)
             try:
                 self.assertTrue(state_read.wait(WAIT_SECONDS))

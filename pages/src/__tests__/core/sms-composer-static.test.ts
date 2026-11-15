@@ -1,5 +1,5 @@
 // mail/js/sms-composer.js: the Broadcast SMS composer's live count. It must count as the server does
-// (apps/core/services/delivery_rates/rules/sms_parts.py) and compose as the sender does (services/sms/compose.py).
+// (apps/core/services/delivery_rates/rules/sms_parts.py) and compose as the sender does (services/sms/content/compose.py).
 import {afterEach, beforeAll, describe, expect, it} from 'vitest';
 
 import {readRepoFile} from '@/__tests__/core/adminStatic';

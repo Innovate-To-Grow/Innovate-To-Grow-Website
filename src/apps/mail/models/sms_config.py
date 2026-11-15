@@ -12,7 +12,7 @@ is revoked, with a ``SmsLinkRevocation`` for the audit. A personal link carries 
 in only while that is still the epoch, so it can't come back: not when the switch is turned on again, not when its
 own row is edited, and not when it was being issued while the switch went off.
 
-``SmsOptOutSyncState`` is written only by the sync (``services.sms.opt_out_sync``), with UPDATEs, never by a form,
+``SmsOptOutSyncState`` is written only by the sync (``services.sms.policy.opt_out_sync``), with UPDATEs, never by a form,
 so saving the settings can never overwrite what a running sync records.
 """
 

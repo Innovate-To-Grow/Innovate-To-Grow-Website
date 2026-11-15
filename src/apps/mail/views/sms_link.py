@@ -20,7 +20,7 @@ from rest_framework.views import APIView
 
 from apps.authn.views.helpers import build_auth_success_payload, read_body_string
 from apps.mail.services.sms.links import open_link
-from apps.mail.services.sms.register_link import register_destination
+from apps.mail.services.sms.links.register_link import register_destination
 
 from .login_link import CODE_MISSING_CREDENTIAL
 

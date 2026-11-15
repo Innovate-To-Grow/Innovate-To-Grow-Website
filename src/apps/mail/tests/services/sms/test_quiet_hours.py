@@ -6,8 +6,8 @@ from zoneinfo import ZoneInfo
 
 from django.test import SimpleTestCase, TestCase, override_settings
 
-from apps.mail.services.sms import quiet_hours
-from apps.mail.services.sms.quiet_hours import QuietWindow
+from apps.mail.services.sms.policy import quiet_hours
+from apps.mail.services.sms.policy.quiet_hours import QuietWindow
 
 from .policy_helpers import DAYTIME, QUIET_ENDS, QUIET_MOMENT, sms_settings
 

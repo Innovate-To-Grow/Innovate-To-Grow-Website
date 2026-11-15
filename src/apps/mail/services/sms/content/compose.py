@@ -14,9 +14,9 @@ from apps.mail.models import SmsCampaign, SmsConfig
 from apps.mail.models.sms_campaign import SMS_LINK_PLACEHOLDERS
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, get_login_link_redirect_path
 
-from ..campaign.personalize import personalize, uses_placeholder
-from .errors import LinksDisabled, SmsSendRefused
-from .links import Purpose, event_page_path, issue_personal_link, may_text_personal_link, shared_link, sign_in_path
+from ...campaign.personalize import personalize, uses_placeholder
+from ..links import Purpose, event_page_path, issue_personal_link, may_text_personal_link, shared_link, sign_in_path
+from ..policy.errors import LinksDisabled, SmsSendRefused
 
 # An opt-out instruction the text already gives ("Reply STOP", "text stop to quit", "Send STOP", "STOP to opt out").
 # A plain "stop" ("Stop by our booth", "the bus stop") tells nobody how to opt out, so such a text still gets the

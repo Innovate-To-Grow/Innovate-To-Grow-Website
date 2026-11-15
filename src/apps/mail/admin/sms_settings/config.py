@@ -17,8 +17,8 @@ from apps.core.admin import BaseModelAdmin
 from apps.mail.models import SmsConfig, SmsLinkRevocation, SmsLinkToken, SmsOptOutSyncState
 from apps.mail.models.sms_config import DEFAULT_REGISTER_PATH
 from apps.mail.redirects import get_login_redirect_choices
-from apps.mail.services.sms.quiet_hours import held_until
-from apps.mail.services.sms.register_link import register_qr, register_url
+from apps.mail.services.sms.links.register_link import register_qr, register_url
+from apps.mail.services.sms.policy.quiet_hours import held_until
 
 SIGN_IN_CHOICE = (DEFAULT_REGISTER_PATH, f"Sign-in page: email or phone sign-up ({DEFAULT_REGISTER_PATH})")
 LINKS_FIELDSET = "Links in SMS"

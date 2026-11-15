@@ -24,9 +24,9 @@ def dispatch_sms_campaign(campaign: SmsCampaign, *, sent_by):
     """Queue the campaign (inside SMS quiet hours its texts wait for them to end), or start the in-process sender,
     which cannot wait: during quiet hours it refuses with ``QuietHoursActive``. A message whose links are turned
     off raises ``LinksDisabled``; both before anything changes."""
-    from apps.mail.services.sms.compose import refuse_unsendable
-    from apps.mail.services.sms.errors import QuietHoursActive
-    from apps.mail.services.sms.quiet_hours import held_until
+    from apps.mail.services.sms.content.compose import refuse_unsendable
+    from apps.mail.services.sms.policy.errors import QuietHoursActive
+    from apps.mail.services.sms.policy.quiet_hours import held_until
 
     refuse_unsendable(campaign)
     if not jobs_enabled():
@@ -121,7 +121,7 @@ def _start_in_process_sms_campaign(campaign: SmsCampaign, *, sent_by) -> dict[st
 def _run_in_process_sms_campaign(campaign_id, sent_by_id) -> None:
     from django.contrib.auth import get_user_model
 
-    from apps.mail.services.sms.sender import send_sms_campaign
+    from apps.mail.services.sms.delivery.sender import send_sms_campaign
 
     try:
         campaign = SmsCampaign.objects.get(pk=campaign_id)

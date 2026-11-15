@@ -15,11 +15,11 @@ from apps.core.services.background_jobs import DeferredJobError, JobClaimLost, P
 from apps.core.services.background_jobs.delivery import deferral_of, provider_call_guard
 from apps.core.services.delivery_rates import Lane
 from apps.mail.models import SmsConfig, SmsRecipientLog
-from apps.mail.services.sms.compose import CampaignLinks, render_campaign_text
-from apps.mail.services.sms.errors import SmsSendRefused
-from apps.mail.services.sms.opt_outs import is_opted_out
-from apps.mail.services.sms.quiet_hours import HELD_LOG_MESSAGE, held_until
-from apps.mail.services.sms.sender import skip_opted_out_log
+from apps.mail.services.sms.content.compose import CampaignLinks, render_campaign_text
+from apps.mail.services.sms.delivery.sender import skip_opted_out_log
+from apps.mail.services.sms.policy.errors import SmsSendRefused
+from apps.mail.services.sms.policy.opt_outs import is_opted_out
+from apps.mail.services.sms.policy.quiet_hours import HELD_LOG_MESSAGE, held_until
 
 from .channels import SMS, aggregate_sms_campaign, mark_log_processing, release_failed_log
 from .failures import _classify_pre_provider_error, _classify_sms_job_error, _delivery_failure_values

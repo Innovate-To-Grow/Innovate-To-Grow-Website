@@ -1,46 +1,21 @@
-"""SMS short links (``/l/<token>``): issuing the tokens behind ``{{login_link}}``, ``{{ticket_link}}`` and
-``{{event_link}}``, and exchanging one when it is opened.
-
-A token is ``SMS_POLICY["link_token_bytes"]`` random bytes (128 bits by default, 22 URL-safe characters), so the URL
-holds no member, phone or event and cannot be guessed. Only its SHA-256 digest is stored, except for a shared link,
-which signs nobody in. Every link expires; a personal one signs its member in once (``first_used_at`` is claimed
-with one conditional UPDATE, so two clicks cannot both sign in) and is never issued to staff, a superuser or an
-inactive member.
-
-A personal link reaches no further than signing in with a code texted to the same number would: it is issued only
-when the number it is texted to is the member's own verified account phone, and opening it checks that the member
-still has that phone (``phone_digest``). Any other recipient gets a link that opens the sign-in page. Destinations
-must pass ``is_strict_internal_path`` (the SPA's own rule). Opening a link is limited by the request limiter's
-``auth-email-link`` scope.
-
-Turning personal sign-in links off (or links in SMS) revokes every outstanding one for good (``SmsConfig.save``
-settles them in its transaction). A personal link carries the SMS Settings epoch it was issued in, read together with
-the switches, and signs in only while that epoch is current and it was never revoked: turning the switch on again
-brings none back, and one stored while the switch was going off is dead on arrival. A revoked personal link, or any
-personal link while they are off, opens the sign-in page with its return path and signs nobody in. Shared links
-are no credential and are not affected.
-"""
+"""Issuing the tokens behind SMS short links, and who may get a personal one."""
 
 import hashlib
 import re
 import secrets
-from dataclasses import dataclass
 from datetime import timedelta
 from urllib.parse import quote
 
 from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import F
-from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.authn.models import ContactPhone
 from apps.mail.models import SmsConfig, SmsLinkToken
-from apps.mail.models.sms_config import PersonalLinkState, revoke_personal_links
-from apps.mail.models.sms_link import SmsLinkRevocation
+from apps.mail.models.sms_config import PersonalLinkState
 from apps.mail.redirects import DEFAULT_LOGIN_REDIRECT_PATH, is_strict_internal_path
 
-from .opt_outs import US_REGION, normalize_phone, us_national_digits
+from ..policy.opt_outs import US_REGION, normalize_phone, us_national_digits
 
 LINK_PATH = "/l/"
 SIGN_IN_PATH = "/login"
@@ -189,76 +164,3 @@ def revoke_links(queryset) -> int:
     the sign-in page."""
     now = timezone.now()
     return queryset.filter(expires_at__gt=now).update(expires_at=now, revoked_at=now, updated_at=now)
-
-
-@dataclass(frozen=True)
-class Opened:
-    """The outcome of opening a link: ``sign_in`` (``member``), ``redirect``, or ``rejected`` with ``code``."""
-
-    kind: str
-    redirect_to: str = ""
-    member: object = None
-    code: str = ""
-    reason: str = ""
-
-
-def open_link(token: str) -> Opened:
-    """Exchange ``token``: sign its member in once, or send the visitor on; never says whose link it was."""
-    if not TOKEN_RE.fullmatch(token or ""):
-        return Opened("rejected", code="invalid_link", reason="malformed")
-    link = SmsLinkToken.objects.select_related("member").filter(token_hash=token_digest(token)).first()
-    if link is None:
-        return Opened("rejected", code="invalid_link", reason="unknown_token")
-    return _open_personal(link) if link.is_personal else _open_shared(link)
-
-
-def _open_shared(link: SmsLinkToken) -> Opened:
-    if link.revoked_at is not None or link.is_expired:
-        return Opened("rejected", redirect_to=link.redirect_path, code="expired", reason="expired")
-    now = timezone.now()
-    SmsLinkToken.objects.filter(pk=link.pk).update(
-        use_count=F("use_count") + 1, first_used_at=Coalesce("first_used_at", now), updated_at=now
-    )
-    return Opened("redirect", redirect_to=link.redirect_path)
-
-
-def _open_personal(link: SmsLinkToken) -> Opened:
-    if not may_sign_in_by_sms(link.member):
-        return Opened("rejected", code="invalid_link", reason="member_not_allowed")
-    if not _still_owns(link):
-        # The phone it was texted to is no longer the member's own verified phone (removed, moved, recycled).
-        return Opened("rejected", code="invalid_link", reason="phone_not_owned")
-    state = personal_link_state()
-    if link.revoked_at is not None or link.epoch != state.epoch:
-        # Revoked: personal sign-in links were turned off after it was issued (whatever its row says now), or staff
-        # revoked it. Checked before its expiry, which a revocation also sets.
-        return _sign_in_page(link, "revoked")
-    if not state.on:
-        # Off, yet never revoked: they were turned off outside the app. Revoke every outstanding link now, so
-        # turning them on again cannot bring this one or any other back.
-        revoke_personal_links(via=SmsLinkRevocation.Via.LINK_OPENED)
-        return _sign_in_page(link, "switched_off")
-    if link.is_expired:
-        return Opened("rejected", redirect_to=link.redirect_path, code="expired", reason="expired")
-    if _claim(link):
-        return Opened("sign_in", redirect_to=link.redirect_path, member=link.member)
-    # Lost the claim: used by another click, or revoked while it was being opened.
-    link.refresh_from_db(fields=["revoked_at"])
-    if link.revoked_at is not None:
-        return _sign_in_page(link, "revoked")
-    return Opened("rejected", redirect_to=link.redirect_path, code="already_used", reason="already_used")
-
-
-def _claim(link: SmsLinkToken) -> bool:
-    """Take the link's one sign-in with one conditional UPDATE: two clicks cannot both sign in, and a revocation
-    that commits first wins (its ``revoked_at``)."""
-    now = timezone.now()
-    unused = SmsLinkToken.objects.filter(
-        pk=link.pk, first_used_at__isnull=True, revoked_at__isnull=True, expires_at__gt=now
-    )
-    return bool(unused.update(first_used_at=now, use_count=F("use_count") + 1, updated_at=now))
-
-
-def _sign_in_page(link: SmsLinkToken, reason: str) -> Opened:
-    """A personal link that signs nobody in: the sign-in page, which returns to its page; the link stays unused."""
-    return Opened("redirect", redirect_to=sign_in_path(link.redirect_path), reason=reason)

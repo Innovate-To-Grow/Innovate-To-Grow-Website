@@ -19,8 +19,8 @@ from apps.mail.services.campaign.dispatch import (
     resume_paused_sms_recipients,
 )
 from apps.mail.services.sms.links import open_link
-from apps.mail.services.sms.opt_outs import SKIPPED_MESSAGE
-from apps.mail.services.sms.quiet_hours import HELD_LOG_MESSAGE
+from apps.mail.services.sms.policy.opt_outs import SKIPPED_MESSAGE
+from apps.mail.services.sms.policy.quiet_hours import HELD_LOG_MESSAGE
 
 from ..sms.policy_helpers import QUIET_ENDS, QUIET_MOMENT, add_phone, at, opt_out, sms_settings
 from .durable_queue_helpers import DurableCampaignQueueTestCase, _provider_failure

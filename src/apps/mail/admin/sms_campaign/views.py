@@ -13,11 +13,11 @@ from apps.core.services.background_jobs import jobs_enabled
 from apps.mail.admin.campaign.views.status import _short_error
 from apps.mail.models import SmsCampaign, SmsConfig, SmsRecipientLog
 from apps.mail.services.sms.audience import get_sms_recipients
-from apps.mail.services.sms.compose import EXAMPLE_NAMES, links_used, preview_text
-from apps.mail.services.sms.errors import SmsSendRefused
-from apps.mail.services.sms.estimate import estimate
+from apps.mail.services.sms.content.compose import EXAMPLE_NAMES, links_used, preview_text
+from apps.mail.services.sms.content.estimate import estimate
 from apps.mail.services.sms.links import example_link
-from apps.mail.services.sms.quiet_hours import held_until
+from apps.mail.services.sms.policy.errors import SmsSendRefused
+from apps.mail.services.sms.policy.quiet_hours import held_until
 
 
 def _send_context(campaign, recipients) -> dict:

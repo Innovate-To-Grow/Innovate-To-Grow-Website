@@ -28,7 +28,7 @@ EXPECTED_KINDS = {
     "helpdesk.intake_scan",
     "mail.email_recipient",
     "mail.sms_recipient",
-    # A phone-only registrant's ticket text (apps.mail.services.sms.ticket).
+    # A phone-only registrant's ticket text (apps.mail.services.sms.delivery.ticket).
     "mail.ticket_sms",
 }
 

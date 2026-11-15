@@ -12,11 +12,11 @@ from apps.core.services.aws.credentials import AwsCredentialsError
 from apps.core.services.aws.sms_opt_outs import OptedOutList, OptedOutNumber, OptOutListError
 from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsOptOut, SmsOptOutSyncState
-from apps.mail.services.sms import opt_out_sync
+from apps.mail.services.sms.policy import opt_out_sync
 
 from .policy_helpers import ORIGINATION, add_phone, opt_out, sms_aws_config, sms_settings
 
-READ = "apps.mail.services.sms.opt_out_sync.read_opted_out_list"
+READ = "apps.mail.services.sms.policy.opt_out_sync.read_opted_out_list"
 RUN_AT = datetime(2026, 11, 11, 12, 0, tzinfo=UTC)
 STOPPED_AT = datetime(2026, 11, 10, 8, 0, tzinfo=UTC)
 
@@ -47,7 +47,7 @@ class SyncOutcomeTests(TestCase):
         sms_aws_config()
         opt_out("+12095550101")
         with patch(READ, side_effect=OptOutListError("AWS refused to read the opted-out list.", code="AccessDenied")):
-            with self.assertLogs("apps.mail.services.sms.opt_out_sync", level="WARNING"):
+            with self.assertLogs("apps.mail.services.sms.policy.opt_out_sync", level="WARNING"):
                 result = opt_out_sync.sync_opt_outs(now=RUN_AT)
         self.assertEqual(result.status, "failed")
         state = SmsOptOutSyncState.load()

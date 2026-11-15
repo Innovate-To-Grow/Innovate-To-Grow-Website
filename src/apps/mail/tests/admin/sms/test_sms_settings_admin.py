@@ -13,7 +13,7 @@ from apps.authn.models import ContactPhone
 from apps.event.tests.helpers import make_admin, make_event, make_member, make_registration, make_superuser, make_ticket
 from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken, SmsOptOut, SmsRecipientLog, TicketSms
 from apps.mail.services.sms import links
-from apps.mail.services.sms.opt_out_sync import SyncResult
+from apps.mail.services.sms.policy.opt_out_sync import SyncResult
 
 from ...services.sms.policy_helpers import QUIET_MOMENT, add_phone, at, opt_out, sms_aws_config, sms_settings
 
