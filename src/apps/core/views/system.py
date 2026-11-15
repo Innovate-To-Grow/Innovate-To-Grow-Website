@@ -48,7 +48,7 @@ robots_txt.rate_limit_exempt = "A static text file crawlers fetch; refusing it w
 def root_index(request):
     """Static landing page"""
 
-    return render(request, "index.html", status=200)
+    return render(request, "core/index.html", status=200)
 
 
 root_index.rate_limit_scope = "public-read"
@@ -62,5 +62,5 @@ _HTML_404_PREFIXES = ("/admin/", "/legacy-view/")
 def custom_404(request, exception):
     """404 for unknown paths: the admin-themed page inside the admin, JSON like DRF's everywhere else."""
     if request.path.startswith(_HTML_404_PREFIXES):
-        return render(request, "404.html", status=404)
+        return render(request, "core/404.html", status=404)
     return JsonResponse({"detail": "Not found."}, status=404)

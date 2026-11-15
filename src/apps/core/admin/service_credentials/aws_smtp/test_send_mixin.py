@@ -71,7 +71,7 @@ class TestSendViewsMixin:
             "submit_label": "Send Test Email",
             "cancel_url": changelist_url,
         }
-        return TemplateResponse(request, "admin/core/test_send_form.html", context)
+        return TemplateResponse(request, "admin/core/test_send/test_send_form.html", context)
 
     def test_sms_list_view(self, request):
         config = AWSCredentialConfig.load()
@@ -103,4 +103,4 @@ class TestSendViewsMixin:
             "submit_label": "Send Test SMS",
             "cancel_url": changelist_url,
         }
-        return TemplateResponse(request, "admin/core/test_send_form.html", context)
+        return TemplateResponse(request, "admin/core/test_send/test_send_form.html", context)

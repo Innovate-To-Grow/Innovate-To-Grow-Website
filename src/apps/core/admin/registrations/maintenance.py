@@ -10,7 +10,7 @@ from ..common.base import BaseModelAdmin
 
 
 class MaterialOutlinedPasswordWidget(UnfoldAdminPasswordWidget):
-    template_name = "admin/material_password_widget.html"
+    template_name = "admin/widgets/material_password_widget.html"
 
     class Media:
         js = ("admin/js/material-web-text-field.js",)

@@ -119,7 +119,7 @@ class TestEmailViewTest(TestCase):
         request = _request("get", self.user)
         with patch.object(EmailServiceConfig, "load", return_value=EmailServiceConfig(name="Prod")):
             response = self.admin.test_email_list_view(request)
-        self.assertEqual(response.template_name, "admin/core/test_send_form.html")
+        self.assertEqual(response.template_name, "admin/core/test_send/test_send_form.html")
         self.assertIn("Send Test Email", response.context_data["title"])
 
     def test_post_missing_recipient_errors(self):

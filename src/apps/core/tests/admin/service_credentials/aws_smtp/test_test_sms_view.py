@@ -18,7 +18,7 @@ class TestSmsViewTest(TestCase):
         request = _request("get", self.user, path="/admin/test-sms/")
         with patch.object(AWSCredentialConfig, "load", return_value=AWSCredentialConfig(name="AWS")):
             response = self.admin.test_sms_list_view(request)
-        self.assertEqual(response.template_name, "admin/core/test_send_form.html")
+        self.assertEqual(response.template_name, "admin/core/test_send/test_send_form.html")
         self.assertIn("Send Test SMS", response.context_data["title"])
 
     def test_post_missing_recipient_redirects_to_canonical_form(self):
