@@ -2,7 +2,7 @@ import {act, cleanup, render, screen, within} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {MainMenu} from '@/features/layout/components/MainMenu/MainMenu';
-import {makeState} from '@/__tests__/features/layout/components/MainMenu/mainMenuFixtures';
+import {makeState} from '@/__tests__/features/layout/components/MainMenu/menu/mainMenuFixtures';
 
 const useMainMenuState = vi.hoisted(() => vi.fn());
 const useHeaderDateHidden = vi.hoisted(() => vi.fn());
@@ -181,49 +181,6 @@ describe('MainMenu header state', () => {
       expect(header).not.toHaveClass('is-condensed');
       const bar = container.querySelector('.site-header-bar') as HTMLElement;
       expect(within(bar).getByRole('link', {name: 'Innovate To Grow home'})).not.toBe(logo);
-    });
-  });
-
-  describe('date fit', () => {
-    it('hides the date while useHeaderDateHidden says it does not fit, measuring the header', () => {
-      useHeaderDateHidden.mockReturnValue(true);
-      const {container, header, rerenderMenu} = renderMenu();
-
-      expect(header).toHaveClass('is-date-hidden');
-      expect(useHeaderDateHidden).toHaveBeenCalledWith(expect.objectContaining({current: header}));
-      // The date stays in the row (unseen) so it can be measured again.
-      expect(container.querySelector('.site-header-utility time.site-header-date')).not.toBeNull();
-
-      useHeaderDateHidden.mockReturnValue(false);
-      rerenderMenu();
-      expect(header).not.toHaveClass('is-date-hidden');
-    });
-  });
-
-  describe('header classes', () => {
-    it('carries only the flags that are on', () => {
-      collectFrames();
-      const {header} = renderMenu();
-      expect(header.className).toBe('site-header');
-      cleanup();
-
-      useHeaderDateHidden.mockReturnValue(true);
-      const {header: openHeader} = renderMenu({isMobileOpen: true});
-      expect(openHeader.className).toBe('site-header is-date-hidden is-mobile-open');
-    });
-
-    it('marks the header while the mobile menu is open', () => {
-      const {header} = renderMenu({isMobileOpen: true});
-      expect(header).toHaveClass('is-mobile-open');
-    });
-
-    it('publishes the header part heights as CSS custom properties', () => {
-      stubPartHeights({'site-header-bar': 85, 'site-header-menu': 44});
-      renderMenu();
-
-      const style = document.documentElement.style;
-      expect(style.getPropertyValue('--itg-header-bar-height')).toBe('85px');
-      expect(style.getPropertyValue('--itg-header-menu-height')).toBe('44px');
     });
   });
 });

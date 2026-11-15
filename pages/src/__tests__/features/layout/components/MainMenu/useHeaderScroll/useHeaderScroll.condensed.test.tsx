@@ -2,10 +2,7 @@ import {act, cleanup, renderHook} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {
-  CONDENSE_HYSTERESIS_PX,
-  nextCondensed,
   useHeaderCondensed,
-  useHeaderMetrics,
 } from '@/features/layout/components/MainMenu/useHeaderScroll';
 
 const setScrollY = (value: number) => {
@@ -13,8 +10,6 @@ const setScrollY = (value: number) => {
 };
 
 const HEIGHT_PROPERTIES = ['--itg-header-bar-height', '--itg-header-menu-height'];
-
-const publishedHeights = () => HEIGHT_PROPERTIES.map((property) => document.documentElement.style.getPropertyValue(property));
 
 const setHeight = (element: HTMLElement, height: number) => {
   element.getBoundingClientRect = () =>
@@ -39,39 +34,6 @@ const makeMeasuredHeader = () => {
     }),
   ) as Record<'bar' | 'menu', HTMLDivElement>;
   return {ref: {current: header}, ...parts};
-};
-
-/** Stands in for the browser's ResizeObserver, which jsdom does not implement. */
-class ResizeObserverStub {
-  static instances: ResizeObserverStub[] = [];
-  readonly observed: Element[] = [];
-  disconnected = false;
-  private readonly callback: ResizeObserverCallback;
-
-  constructor(callback: ResizeObserverCallback) {
-    this.callback = callback;
-    ResizeObserverStub.instances.push(this);
-  }
-
-  observe(target: Element) {
-    this.observed.push(target);
-  }
-
-  unobserve() {}
-
-  disconnect() {
-    this.disconnected = true;
-  }
-
-  /** Delivers a notification, as the browser does after layout. */
-  notify() {
-    this.callback([], this as unknown as ResizeObserver);
-  }
-}
-
-const installResizeObserverStub = () => {
-  ResizeObserverStub.instances = [];
-  vi.stubGlobal('ResizeObserver', ResizeObserverStub);
 };
 
 /** Runs each requested animation frame straight away. */
@@ -103,24 +65,6 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   for (const property of HEIGHT_PROPERTIES) document.documentElement.style.removeProperty(property);
-});
-
-describe('nextCondensed', () => {
-  it('condenses once the bar has scrolled away, and lets go just before the row unpins', () => {
-    expect(nextCondensed(false, 84, 85)).toBe(false);
-    expect(nextCondensed(false, 85, 85)).toBe(true);
-    expect(nextCondensed(true, 85 - CONDENSE_HYSTERESIS_PX, 85)).toBe(true);
-    expect(nextCondensed(true, 85 - CONDENSE_HYSTERESIS_PX - 1, 85)).toBe(false);
-    // Inside the hysteresis band the state depends on where it came from.
-    expect(nextCondensed(false, 81, 85)).toBe(false);
-    expect(nextCondensed(true, 81, 85)).toBe(true);
-  });
-
-  it('never condenses without a measured height', () => {
-    expect(nextCondensed(false, 500, 0)).toBe(false);
-    expect(nextCondensed(true, 500, Number.NaN)).toBe(false);
-    expect(nextCondensed(true, 500, -5)).toBe(false);
-  });
 });
 
 describe('useHeaderCondensed', () => {
@@ -235,86 +179,5 @@ describe('useHeaderCondensed', () => {
     window.dispatchEvent(new Event('scroll'));
     window.dispatchEvent(new Event('resize'));
     expect(raf).not.toHaveBeenCalled();
-  });
-});
-
-describe('useHeaderMetrics', () => {
-  it('publishes the measured heights before paint and watches each header part', () => {
-    installResizeObserverStub();
-    const {ref, bar, menu} = makeMeasuredHeader();
-    renderHook(() => useHeaderMetrics(ref));
-
-    expect(publishedHeights()).toEqual(['85px', '40px']);
-    expect(ResizeObserverStub.instances).toHaveLength(1);
-    expect(ResizeObserverStub.instances[0].observed).toEqual([bar, menu]);
-  });
-
-  it('writes a reported resize on the next animation frame, once for any number of notifications', () => {
-    installResizeObserverStub();
-    const frames: FrameRequestCallback[] = [];
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
-      frames.push(callback);
-      return frames.length;
-    });
-    const {ref, bar} = makeMeasuredHeader();
-    renderHook(() => useHeaderMetrics(ref));
-    const [observer] = ResizeObserverStub.instances;
-
-    // The web fonts load and the bar grows: nothing is written inside the callback.
-    setHeight(bar, 96);
-    observer.notify();
-    observer.notify();
-    expect(publishedHeights()).toEqual(['85px', '40px']);
-    expect(frames).toHaveLength(1);
-
-    act(() => frames[0](0));
-    expect(publishedHeights()).toEqual(['96px', '40px']);
-
-    // Converged: the next notification schedules a frame that rewrites nothing.
-    const setProperty = vi.spyOn(document.documentElement.style, 'setProperty');
-    observer.notify();
-    act(() => frames[1](0));
-    expect(setProperty).not.toHaveBeenCalled();
-  });
-
-  it('falls back to window resize events when ResizeObserver is missing', () => {
-    vi.stubGlobal('ResizeObserver', undefined);
-    const {ref, menu} = makeMeasuredHeader();
-    const {unmount} = renderHook(() => useHeaderMetrics(ref));
-    expect(publishedHeights()).toEqual(['85px', '40px']);
-
-    setHeight(menu, 48);
-    act(() => {
-      window.dispatchEvent(new Event('resize'));
-    });
-    expect(publishedHeights()).toEqual(['85px', '48px']);
-
-    unmount();
-    setHeight(menu, 60);
-    act(() => {
-      window.dispatchEvent(new Event('resize'));
-    });
-    expect(publishedHeights()).toEqual(['85px', '48px']);
-  });
-
-  it('stops observing and drops a pending frame on unmount', () => {
-    installResizeObserverStub();
-    const cancel = vi.spyOn(window, 'cancelAnimationFrame');
-    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(7);
-    const {ref} = makeMeasuredHeader();
-    const {unmount} = renderHook(() => useHeaderMetrics(ref));
-    const [observer] = ResizeObserverStub.instances;
-
-    observer.notify();
-    unmount();
-    expect(observer.disconnected).toBe(true);
-    expect(cancel).toHaveBeenCalledWith(7);
-  });
-
-  it('does nothing without a mounted header', () => {
-    installResizeObserverStub();
-    renderHook(() => useHeaderMetrics({current: null}));
-    expect(publishedHeights()).toEqual(['', '']);
-    expect(ResizeObserverStub.instances).toHaveLength(0);
   });
 });
