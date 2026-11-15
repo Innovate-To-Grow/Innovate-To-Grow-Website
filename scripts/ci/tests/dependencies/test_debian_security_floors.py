@@ -8,7 +8,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[4]
-INSTALLER = ROOT / "src/docker/security/install-debian-floors.sh"
+INSTALLER = ROOT / "src/docker/security/debian/install-debian-floors.sh"
 FLOORS = ROOT / "src/docker/security/debian"
 
 
