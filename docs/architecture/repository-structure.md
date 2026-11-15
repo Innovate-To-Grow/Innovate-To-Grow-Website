@@ -38,11 +38,11 @@
 ├── cli/                    # Standalone i2g-admin Python CLI (own pyproject.toml, uv.lock, tests)
 ├── archive/                # legacy/webpages.zip (old-site fixture for the legacy-view tests) and page/ (Flask archive service)
 ├── aws/                    # ecs/ (backend + archive task-definition templates), cicd/ (deploy-config keys, identity stack),
-│                           #   ci-runners/ (Terraform for the self-hosted runners), legacy/ (CloudFormation + nginx of the old site)
+│                           #   legacy/ (CloudFormation + nginx of the old site)
 ├── scripts/                # ci/ (planner, validators, quality + dependency checks, and their tests), deploy/ (load_config,
 │                           #   migrate_ecs, publish_image, validate_backend_task_definition), dev/ (e2e-local.sh), pre-commit/
 ├── docs/                   # Technical documentation (this directory): api/, architecture/, cms-admin/, deployment/, integrations/
-├── .github/                # workflows/ (CI/CD), actions/ (composite setup actions), codeql/, dependabot.yml, actionlint.yaml
+├── .github/                # workflows/ (CI/CD), actions/ (composite setup actions), codeql/, dependabot.yml
 ├── pyproject.toml          # Ruff, Bandit and coverage config for src/
 ├── .pre-commit-config.yaml # Local git hooks (fast checks on commit, Bandit + frontend checks on push)
 ├── .bandit-baseline.json   # Accepted Bandit findings; only new ones fail
@@ -176,7 +176,7 @@ Allowed imports between these layers are listed in
 | `aws/ecs/archive-task-definition.json` | ECS task template of the archive service |
 | `aws/cicd/deploy-config-keys.json` | The allow-list of deploy-config keys `scripts/deploy/load_config.py` accepts |
 | `scripts/ci/python_quality.toml`, `scripts/ci/python_dependencies.toml` | Size/complexity thresholds and app dependency rules |
-| `.github/actionlint.yaml`, `.github/codeql/codeql-config.yml`, `.github/dependabot.yml` | Workflow lint, CodeQL and Dependabot settings |
+| `.github/codeql/codeql-config.yml`, `.github/dependabot.yml` | CodeQL and Dependabot settings |
 
 ## Related pages
 

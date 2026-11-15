@@ -12,7 +12,6 @@ on:
       - "pages/**"
       - "aws/**"
       - "scripts/**"
-      - ".github/actionlint.yaml"
       - ".github/actions/**"
       - ".github/codeql/**"
       - ".github/dependabot.yml"
@@ -35,10 +34,8 @@ on:
   merge_group:
     types: [checks_requested]
 
-# Runners: CPU-bound jobs use the AWS fleet when vars.AWS_RUNNERS_ENABLED is
-# 'true'; every other job runs on a GitHub-hosted runner, which starts faster
-# than an AWS cold boot. RoutingTests in
-# scripts/ci/tests/test_ci_workflow_invariants.py pins the list of fleet jobs.
+# Runners: every job runs on a GitHub-hosted runner; RunnerTests in
+# scripts/ci/tests/test_ci_workflow_invariants.py keeps self-hosted labels out.
 permissions:
   contents: read
 
@@ -123,9 +120,6 @@ jobs:
 
       - name: Validate CI planner scripts
         run: python -m unittest discover -s scripts/ci/tests
-
-      - name: Validate AWS runner trust boundary
-        run: node --test aws/ci-runners/guard/trust.test.mjs
 
       - name: Validate Legacy viewer infrastructure
         run: python scripts/ci/validate_legacy_infrastructure.py
@@ -279,10 +273,9 @@ jobs:
   backend-checks:
     name: Backend Migration and Production Checks
     # Migration drift on PostgreSQL plus the production-settings checks: a venv
-    # and a few manage.py calls, so a GitHub-hosted runner starts it faster than
-    # an AWS cold boot. Not a dependency of the Django matrix: every test leg
-    # applies all migrations to its own PostgreSQL test database anyway, and
-    # backend-required-result still requires this job.
+    # and a few manage.py calls. Not a dependency of the Django matrix: every
+    # test leg applies all migrations to its own PostgreSQL test database
+    # anyway, and backend-required-result still requires this job.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [lint, changes]
@@ -352,7 +345,7 @@ jobs:
 
   django-test-coverage:
     name: Django Test and Coverage (${{ matrix.app }})
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [lint, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -544,9 +537,8 @@ jobs:
   frontend-static:
     name: Frontend Lint, Build and Static Checks
     # ESLint, structure, type check, build, bundle budgets and the npm SBOM in
-    # one GitHub-hosted job: each used to be a separate AWS job shorter than its
-    # own cold boot. Every check after setup runs even when an earlier one
-    # failed, so one run reports all of them.
+    # one job. Every check after setup runs even when an earlier one failed, so
+    # one run reports all of them.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [preflight, changes]
@@ -628,7 +620,7 @@ jobs:
 
   frontend-unit-coverage:
     name: Frontend Unit Test Coverage
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -695,7 +687,6 @@ jobs:
 
   frontend-chromium-smoke:
     name: Required Chromium Smoke
-    # Short; the Playwright image pull on a hosted runner costs about one AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     # Keep the browser and its OS dependencies out of the runner's live APT
@@ -969,7 +960,7 @@ jobs:
 
   backend-docker-build:
     name: Backend Docker Build and Scan
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     needs:
       - lint
@@ -1232,7 +1223,7 @@ jobs:
 
   backend-image-publish:
     name: Backend Image Publish
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     needs: [backend-required-result, backend-docker-build, changes]
     # Pushes itg-backend:<sha> for deploy-backend.yml. Off while deployments are
@@ -1330,7 +1321,7 @@ jobs:
     # ubuntu-26.04 (2026-10-29) that build needs OpenSSL >= 3.3, which the
     # noble image below does not have, so `import ssl` failed in every leg.
     # Move this together with the Playwright image's Ubuntu release.
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # The image already contains the browsers and Linux packages required by
     # this Playwright version. Keeping E2E off the runner's live APT path avoids
@@ -1637,7 +1628,7 @@ jobs:
     # deploy is approved. Until 2026-11 the image was built and scanned only
     # inside Deploy Production, in parallel with the backend rollout: a zlib1g
     # CVE in its base image failed every approved deploy from 2026-11-11 while
-    # main CI stayed green. About a minute of work, so a GitHub-hosted runner.
+    # main CI stayed green.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: changes

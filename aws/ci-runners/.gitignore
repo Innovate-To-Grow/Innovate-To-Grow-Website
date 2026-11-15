@@ -1,6 +1,0 @@
-.terraform/
-*.tfstate*
-*.tfplan
-*.auto.tfvars*
-.artifacts/
-crash.log

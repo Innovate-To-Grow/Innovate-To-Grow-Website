@@ -16,7 +16,6 @@ BACKEND_VENV_USES = "./.github/actions/setup-backend-venv"
 BACKEND_DOCKERFILE = REPOSITORY_ROOT / "src" / "Dockerfile"
 PLAYWRIGHT_CONFIG = REPOSITORY_ROOT / "pages" / "playwright.config.ts"
 COVERAGE_FLOORS = REPOSITORY_ROOT / "scripts" / "ci" / "backend_coverage_floors.json"
-FLEET_LABEL = "i2g-aws"
 DEPENDABOT_CONFIG = REPOSITORY_ROOT / ".github" / "dependabot.yml"
 WORKFLOW_DIRECTORY = REPOSITORY_ROOT / ".github" / "workflows"
 DEPLOY_ARCHIVE_WORKFLOW = WORKFLOW_DIRECTORY / "deploy-archive.yml"
@@ -264,39 +263,20 @@ class DependabotCoverageTests(unittest.TestCase):
                 )
 
 
-class RoutingTests(unittest.TestCase):
-    """Only jobs that are CPU-bound, or need per-leg isolation, wait for an AWS cold boot.
+class RunnerTests(unittest.TestCase):
+    """Every workflow job runs on a GitHub-hosted runner.
 
-    The AWS fleet starts every job on a fresh machine, about a minute of boot
-    before the first step. Jobs shorter than that ran slower on the fleet than
-    on a GitHub-hosted runner, and in a burst of runs they queued behind the
-    32-machine cap (aws/ci-runners/README.md).
+    The AWS self-hosted runner fleet (aws/ci-runners) was removed in 2026-11. A job that
+    asked for its labels again would wait in the queue for a runner that no longer exists.
     """
 
-    FLEET_JOBS = {
-        "backend-docker-build",
-        "backend-image-publish",
-        "django-test-coverage",
-        "e2e",
-        "frontend-unit-coverage",
-    }
-
-    def setUp(self) -> None:
-        self.jobs = load_ci()["jobs"]
-
-    def test_only_the_heavy_jobs_target_the_fleet(self) -> None:
-        on_fleet = {name for name, job in self.jobs.items() if FLEET_LABEL in str(job.get("runs-on", ""))}
-        self.assertEqual(on_fleet, self.FLEET_JOBS)
-
-    def test_fleet_jobs_fall_back_to_hosted_runners_for_forks(self) -> None:
-        # The webhook guard refuses fork runs, so a fork PR must never ask for the
-        # fleet label; with AWS_RUNNERS_ENABLED off, everything runs hosted.
-        for name in self.FLEET_JOBS:
-            with self.subTest(job=name):
-                runs_on = self.jobs[name]["runs-on"]
-                self.assertIn("vars.AWS_RUNNERS_ENABLED == 'true'", runs_on)
-                self.assertIn("github.event.pull_request.head.repo.full_name == github.repository", runs_on)
-                self.assertIn("'[\"ubuntu-24.04\"]'", runs_on)
+    def test_no_job_asks_for_a_self_hosted_runner(self) -> None:
+        for path in sorted(WORKFLOW_DIRECTORY.glob("*.yml")):
+            for name, job in (load_yaml(path).get("jobs") or {}).items():
+                with self.subTest(workflow=path.name, job=name):
+                    runs_on = str(job.get("runs-on", ""))
+                    for marker in ("self-hosted", "i2g-aws", "AWS_RUNNERS_ENABLED"):
+                        self.assertNotIn(marker, runs_on)
 
 
 class ActionPinningTests(unittest.TestCase):

@@ -15,7 +15,6 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 
 CI = ".github/workflows/ci.yml"
 DEPENDENCY_AUDIT = ".github/workflows/dependency-audit.yml"
-BAKE_IMAGE = "aws/ci-runners/bake-image.sh"
 PRE_COMMIT = ".pre-commit-config.yaml"
 PACKAGE_LOCK = "pages/package-lock.json"
 
@@ -118,38 +117,6 @@ steps:
   - with:
       node-version: "22.22.2"
 """,
-    ".github/workflows/aws-runner-smoke.yml": """\
-jobs:
-  verify:
-    services:
-      postgres:
-        image: postgres:16
-    steps:
-      - with:
-          python-version: "3.14"
-      - with:
-          node-version: "22.22.2"
-      - run: docker image inspect <image> >/dev/null
-""",
-    BAKE_IMAGE: """\
-curl -fsSL https://nodejs.org/dist/v22.22.2/node-v22.22.2-linux-x64.tar.xz -o node.tar.xz
-curl -fsSL https://nodejs.org/dist/v22.22.2/SHASUMS256.txt -o node-shasums.txt
-expected=$(awk '$2 == "node-v22.22.2-linux-x64.tar.xz" { print $1 }' node-shasums.txt)
-mkdir -p "$RUNNER_TOOL_CACHE/node/22.22.2/x64"
-tar -xJf node.tar.xz --strip-components=1 -C "$RUNNER_TOOL_CACHE/node/22.22.2/x64"
-touch "$RUNNER_TOOL_CACHE/node/22.22.2/x64.complete"
-ln -sf "$RUNNER_TOOL_CACHE/node/22.22.2/x64/bin/"* /usr/local/bin/
-for version in 3.11.18 3.14.10; do
-  echo "$version"
-done
-docker pull postgres:16
-docker pull <image>
-""",
-    "aws/ci-runners/image.tf": """\
-inputs = { commands = [
-  "node --version | grep '^v22.22.2$'",
-] }
-""",
     PACKAGE_LOCK: json.dumps(
         {
             "lockfileVersion": 3,
@@ -168,12 +135,12 @@ EXPECTED = {
     "bandit": ("1.7.10", 2),
     "gitleaks": ("8.21.2", 2),
     "trivy": ("0.70.0", 2),
-    "playwright-image": (IMAGE, 3),
+    "playwright-image": (IMAGE, 1),
     "playwright": ("1.64.0", 3),
-    "node": ("22.22.2", 6),
-    "python-backend": ("3.14", 6),
-    "python-tooling": ("3.11", 4),
-    "postgres": ("16", 3),
+    "node": ("22.22.2", 3),
+    "python-backend": ("3.14", 4),
+    "python-tooling": ("3.11", 3),
+    "postgres": ("16", 1),
     "pip-audit": ("2.7.3", 2),
     "pip-audit-ignores": (IGNORED, 2),
 }
@@ -187,15 +154,16 @@ DRIFTS = (
     # The likely slip: bumping the CI scans but not the archive deploy's, or one CI scan but not the other.
     ("trivy", ".github/workflows/deploy-archive.yml", '"0.70.0"', '"0.71.0"', "0.70.0", "0.71.0"),
     ("trivy", CI, 'TRIVY_VERSION: "0.70.0"', 'TRIVY_VERSION: "0.71.0"', "0.70.0", "0.71.0"),
-    ("playwright-image", BAKE_IMAGE, DIGEST, "f" * 64, IMAGE, IMAGE.replace(DIGEST, "f" * 64)),
+    # One of ci.yml's two job containers, the Chromium smoke's, moves alone.
+    ("playwright-image", CI, DIGEST, "f" * 64, IMAGE, IMAGE.replace(DIGEST, "f" * 64)),
     ("playwright", CI, "pw-v1.64.0-noble", "pw-v1.62.1-noble", "1.64.0", "1.62.1"),
     ("playwright", PACKAGE_LOCK, '"version": "1.64.0"', '"version": "1.65.0"', "1.64.0", "1.65.0"),
-    ("node", "aws/ci-runners/image.tf", "^v22.22.2$", "^v22.22.3$", "22.22.2", "22.22.3"),
-    ("node", BAKE_IMAGE, "node/22.22.2/x64.complete", "node/22.22.3/x64.complete", "22.22.2", "22.22.3"),
-    ("python-backend", BAKE_IMAGE, "3.11.18 3.14.10", "3.11.18 3.15.0", "3.14", "3.15"),
+    ("node", DEPENDENCY_AUDIT, 'NODE_VERSION: "22.22.2"', 'NODE_VERSION: "22.22.3"', "22.22.2", "22.22.3"),
+    ("node", ".github/workflows/deploy-frontend.yml", '"22.22.2"', '"22.22.3"', "22.22.2", "22.22.3"),
+    ("python-backend", ".github/workflows/deploy-backend.yml", '"3.14"', '"3.15"', "3.14", "3.15"),
     ("python-backend", ".github/workflows/deploy-archive.yml", '"3.14"', '"3.13"', "3.14", "3.13"),
     ("python-tooling", ".github/workflows/lint.yml", '"3.11"', '"3.12"', "3.11", "3.12"),
-    ("python-tooling", BAKE_IMAGE, "3.11.18 3.14.10", "3.12.9 3.14.10", "3.11", "3.12"),
+    ("python-tooling", DEPENDENCY_AUDIT, 'PYTHON_VERSION: "3.11"', 'PYTHON_VERSION: "3.12"', "3.11", "3.12"),
     ("postgres", CI, "postgres:16", "postgres:17", "16", "17"),
     ("pip-audit", DEPENDENCY_AUDIT, "==2.7.3", "==2.8.0", "2.7.3", "2.8.0"),
     ("pip-audit-ignores", DEPENDENCY_AUDIT, "--ignore-vuln PYSEC-2026-1 ", "", IGNORED, "GHSA-aaaa-bbbb-cccc"),
@@ -267,7 +235,7 @@ class CollectPinsTests(unittest.TestCase):
             return ",".join(str(number) for number, line in enumerate(lines, 1) if text in line)
 
         self.assertTrue(problem.startswith(f"postgres: 17 ({CI}:{lines_with('postgres:17')}) vs 16 ({CI}:"), problem)
-        self.assertIn(f"{CI}:{lines_with('postgres:16')}, ", problem)
+        self.assertTrue(problem.endswith(f"vs 16 ({CI}:{lines_with('postgres:16')})"), problem)
 
     def test_a_source_that_finds_nothing_names_its_file_and_target(self) -> None:
         cases = (
@@ -279,8 +247,6 @@ class CollectPinsTests(unittest.TestCase):
                 "node-version: ${{ env.NODE_VERSION }}",
                 "node-version",
             ),
-            # A third baked interpreter breaks the tooling/backend split by position.
-            (BAKE_IMAGE, "3.11.18 3.14.10", "3.11.18 3.12.9 3.14.10", "for version in"),
             (PRE_COMMIT, "astral-sh/ruff-pre-commit", "charliermarsh/ruff-pre-commit", "astral-sh/ruff-pre-commit"),
             (PRE_COMMIT, '"bandit[toml]==1.7.10"', '"bandit[toml]"', "bandit"),
             (PACKAGE_LOCK, '"node_modules/@playwright/test"', '"node_modules/playwright"', "@playwright/test"),
@@ -302,7 +268,6 @@ class CollectPinsTests(unittest.TestCase):
             (CI, '"pip-audit==2.7.3"', "pip-audit", "pip-audit", "found 0"),
             # An image scan that stops pinning a literal version drops out of the trivy group.
             (CI, 'TRIVY_VERSION: "0.70.0"', "TRIVY_VERSION: ${{ env.TRIVY }}", "TRIVY_VERSION", "found 1"),
-            (BAKE_IMAGE, "$RUNNER_TOOL_CACHE/node/22.22.2/x64/bin/", "$NODE_HOME/bin/", "node", "found 7"),
         )
         for path, old, new, looked_for, found in cases:
             with self.subTest(path=path, looked_for=looked_for), fake_repository() as root:

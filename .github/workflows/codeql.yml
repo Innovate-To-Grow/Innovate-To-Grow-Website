@@ -18,7 +18,7 @@ concurrency:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
       # Required for CodeQL to upload results to the Security tab.

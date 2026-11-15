@@ -20,7 +20,6 @@ repository or a restricted UC Merced Drive/Box folder).
 | Google Cloud / Workspace | Sheets syncs (service account), Gmail API and IMAP accounts | I2G | Project, service accounts, account owners → private ops doc |
 | GitHub | Code, CI, deploy workflows, production approval | I2G web team | Organisation admins, environment reviewers → private ops doc |
 | DNS and campus network | The site's domain names; campus egress ranges for the WAF | UC Merced OIT | Records, ranges, contacts → private ops doc |
-| CI runner fleet (optional) | Self-hosted CI runners | I2G web team | Account, network, state storage → private ops doc |
 
 ## 2. Access
 

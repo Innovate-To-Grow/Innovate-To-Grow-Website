@@ -56,7 +56,7 @@ updates:
     schedule:
       interval: weekly
       # A day after pip: each update PR runs the full CI suite, and the two
-      # ecosystems landing together queued ten full runs on the AWS fleet.
+      # ecosystems landing together queued ten full runs at once.
       day: tuesday
       time: "09:00"
       timezone: "Etc/UTC"
@@ -93,11 +93,10 @@ updates:
           - minor
           - patch
     ignore:
-      # Pinned exactly: it must match the Playwright container image in
-      # .github/workflows/ci.yml and aws-runner-smoke.yml, which the AWS runner
-      # image pre-pulls (aws/ci-runners/bake-image.sh). Upgrade all of them,
-      # and the e2e venv cache label, together by hand;
-      # scripts/ci/validate_tool_versions.py fails CI if they drift.
+      # Pinned exactly: it must match the Playwright container images in
+      # .github/workflows/ci.yml. Upgrade them, and the e2e venv cache label,
+      # together by hand; scripts/ci/validate_tool_versions.py fails CI if they
+      # drift.
       - dependency-name: "@playwright/test"
 
   # Archived event-pages Flask app
