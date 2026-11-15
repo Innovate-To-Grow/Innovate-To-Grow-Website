@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.authn.models import ContactEmail, ContactPhone, EmailAuthChallenge
 from apps.event.models import EventRegistration
 from apps.event.tests.helpers import make_member
-from apps.event.tests.views.registration.test_registration_contacts import _RegistrationContactPolicyCase
+from apps.event.tests.views.registration.contacts.test_registration_contacts import _RegistrationContactPolicyCase
 
 
 class RegistrationContactPolicyTest(_RegistrationContactPolicyCase):
