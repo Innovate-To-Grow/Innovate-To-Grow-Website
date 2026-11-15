@@ -168,7 +168,7 @@ list outgrows a pattern, add another pattern to the same set instead of
 loosening one (an `/authn/` prefix would also rate-limit `/authn/refresh/` and
 `/authn/session/`).
 
-`apps/authn/tests/misc/test_waf_runbook_patterns.py` reads these five lines and
+`apps/authn/tests/security/test_waf_runbook_patterns.py` (and `test_waf_runbook_pattern_sets.py` beside it) read these five lines and
 checks them against every route Django serves (`src/config/routing/urls.py`
 and everything it includes): each listed path matches its own set, and no other
 set, with and without `/api` and the trailing slash; no other route matches any
