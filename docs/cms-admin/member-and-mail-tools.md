@@ -28,7 +28,7 @@ In Django admin → Members & Auth → Members:
 - Search by email address (the exact address first, then addresses starting with it), name, organization, title or
   Member UUID; a phone number typed on its own (any format, at least 3 digits) searches phone numbers. Member pickers
   on other pages search the same way. See [Member and contact admin search](django-admin.md#member-and-contact-admin-search)
-- Filters (`src/apps/authn/admin/members/filters.py`): **Account active** (yes / no / unfinished sign-up), **Primary
+- Filters (`src/apps/authn/admin/members/shared/filters.py`): **Account active** (yes / no / unfinished sign-up), **Primary
   email** (verified / unverified / none), **Unverified emails**, **Newsletter (All subscribers)** (subscribed at the
   primary / at another address only / nowhere), **Phone** (verified / unverified only / none), staff status, date
   joined. Contact Emails: **Verified (sign-in)** (incl. unverified emails and unverified primaries), **Subscribed
@@ -68,7 +68,7 @@ To stop campaign mail to one bad address, use Email Monitoring → Bounced addre
 campaign audience skips it, at resolution and at send time). Unticking Verified stops sign-in only; deactivating the
 account stops sign-in and the member audiences for every address.
 
-The admin labels and help text say this on every Members form (`src/apps/authn/admin/members/help_texts.py`). They
+The admin labels and help text say this on every Members form (`src/apps/authn/admin/members/shared/help_texts.py`). They
 are set through the forms' `Meta.labels` / `Meta.help_texts`, which Django also applies to read-only fields, so the
 models (and their migrations) are unchanged. Unticking a member's last verified email or phone, deleting it, or
 moving it to another member is allowed but warned about (`sign_in_warning.py`): after the save or delete, and for an

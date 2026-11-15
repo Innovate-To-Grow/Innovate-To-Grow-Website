@@ -14,7 +14,7 @@ from apps.authn.models import AdminInvitation
 from apps.core.admin import BaseModelAdmin
 from apps.core.services.delivery_rates import Family, inline_batch_limit
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.authn.admin.members.invitation")  # its log name before the move
 
 
 @admin.register(AdminInvitation)

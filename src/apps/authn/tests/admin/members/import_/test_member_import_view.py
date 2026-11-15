@@ -7,7 +7,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.authn.admin.members.import_forms import MemberImportForm
+from apps.authn.admin.members.import_.forms import MemberImportForm
 from apps.authn.models import ContactEmail, ContactPhone, Member, MemberImportBatch
 from apps.authn.tests.services.members.import_sheets import build_sheet
 

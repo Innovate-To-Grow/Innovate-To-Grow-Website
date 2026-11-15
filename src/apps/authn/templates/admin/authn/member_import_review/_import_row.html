@@ -18,7 +18,7 @@
 
     {% if view.members or view.unlinked %}
         <div class="grid grid-cols-1 gap-2 mb-3">
-            {% for card in view.members %}{% include "admin/authn/member/_import_member_card.html" %}{% endfor %}
+            {% for card in view.members %}{% include "admin/authn/member_import_review/_import_member_card.html" %}{% endfor %}
             {% for record in view.unlinked %}
                 <div class="border border-base-200 dark:border-base-700 rounded-default p-3 text-xs">
                     <a href="{{ record.url }}" target="_blank" rel="noopener" class="underline font-semibold">{{ record.address }}</a>
@@ -46,7 +46,7 @@
         {% endfor %}
     </fieldset>
 
-    {% include "admin/authn/member/_import_plan.html" with plan=view.plan %}
+    {% include "admin/authn/member_import_review/_import_plan.html" with plan=view.plan %}
 
     {% if view.tick_groups %}
         <input type="hidden" name="ticks-{{ view.number }}" value="1">

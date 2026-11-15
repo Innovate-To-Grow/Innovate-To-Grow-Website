@@ -26,7 +26,7 @@ from unfold.decorators import action
 
 from apps.core.utils.access import user_can_manage_member
 
-from ...services.contacts.primary_switch import (
+from ....services.contacts.primary_switch import (
     PRIMARY,
     StaleSwitch,
     SwitchRefused,
@@ -36,7 +36,7 @@ from ...services.contacts.primary_switch import (
     plan_primary_switch,
     switch_primary_email,
 )
-from .primary_switch_notes import outcome_messages, row_reason, switch_notes, why_not
+from .notes import outcome_messages, row_reason, switch_notes, why_not
 
 ACTION = "switch_primary_email"
 URL_NAME = "admin:authn_member_switch_primary_email"

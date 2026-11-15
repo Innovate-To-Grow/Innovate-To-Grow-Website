@@ -12,7 +12,7 @@ What reads the primary (checked against the sign-in and audience code):
 
 from django.contrib import messages
 
-from ...services.contacts.primary_switch import NOT_VERIFIED, OTHER, PRIMARY, current_primary, plan_primary_switch
+from ....services.contacts.primary_switch import NOT_VERIFIED, OTHER, PRIMARY, current_primary, plan_primary_switch
 
 
 def row_reason(email) -> str:

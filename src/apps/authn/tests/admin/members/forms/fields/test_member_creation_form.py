@@ -1,7 +1,7 @@
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
 
-from apps.authn.admin.members.forms import MemberChangeForm, MemberCreationForm
+from apps.authn.admin.members.member.forms import MemberChangeForm, MemberCreationForm
 from apps.authn.models import Member
 from apps.authn.tests.helpers import PNG_1PX, PNG_1PX_DATA_URI, png_upload
 

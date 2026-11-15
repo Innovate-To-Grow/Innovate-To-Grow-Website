@@ -13,7 +13,7 @@ from django.contrib.messages.storage.fallback import FallbackStorage
 from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase, override_settings
 
-from apps.authn.admin.members.member import MemberAdmin
+from apps.authn.admin.members.member.admin import MemberAdmin
 from apps.authn.models import (
     ContactEmail,
 )

@@ -8,7 +8,7 @@ from django.utils.translation import gettext_lazy as _
 
 from apps.core.admin import BaseModelAdmin
 
-from ..models import RSAKeypair
+from ...models import RSAKeypair
 
 
 @admin.register(RSAKeypair)
