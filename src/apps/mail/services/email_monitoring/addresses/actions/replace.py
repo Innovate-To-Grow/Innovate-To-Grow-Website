@@ -19,9 +19,9 @@ from apps.authn.services.email.challenges import AuthChallengeError
 from apps.mail.models import BouncedAddress, BouncedAddressAction
 from apps.mail.services.suppression import normalize_address
 
+from ..listing.matching import match_address
 from . import audit, effects
 from .effects import ActionRefused
-from .matching import match_address
 from .specs import confirmation_required
 
 Role = BouncedAddress.Role

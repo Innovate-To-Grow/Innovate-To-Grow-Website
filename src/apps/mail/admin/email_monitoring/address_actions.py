@@ -20,25 +20,27 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from apps.mail.models import BouncedAddress, BouncedAddressAction
-from apps.mail.services.email_monitoring.addresses import aggregate, audit
+from apps.mail.services.email_monitoring.addresses import aggregate
 from apps.mail.services.email_monitoring.addresses.actions import (
     ActionRefused,
     StaleConfirmation,
     apply_action,
+    audit,
     deletion_summary,
 )
-from apps.mail.services.email_monitoring.addresses.guards import availability, fingerprint, load_target
-from apps.mail.services.email_monitoring.addresses.replace import (
+from apps.mail.services.email_monitoring.addresses.actions.guards import availability
+from apps.mail.services.email_monitoring.addresses.actions.replace import (
     NEW_ROLES,
     attest_allowed,
     secondary_taken,
 )
-from apps.mail.services.email_monitoring.addresses.specs import (
+from apps.mail.services.email_monitoring.addresses.actions.specs import (
     QUICK_ACTIONS,
     SPECS,
     confirmation_required,
     confirmation_text,
 )
+from apps.mail.services.email_monitoring.addresses.actions.targets import fingerprint, load_target
 
 from .views import TEMPLATES, _context, require_mail_access
 
