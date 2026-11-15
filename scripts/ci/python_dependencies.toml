@@ -3,8 +3,10 @@
 
 # Composition roots: project-wide entry points that wire apps together.
 # - core management commands are the project's operational CLI (the background
-#   worker and its maintenance list, dev/E2E seeding, service-config checks).
-composition = ["apps.core.management.commands.*"]
+#   worker and its maintenance list, dev/E2E seeding, service-config checks);
+#   management/operations holds the parts of those commands that live outside
+#   commands/ (Django would list a helper module there as a command).
+composition = ["apps.core.management.commands.*", "apps.core.management.operations.*"]
 
 # What each app may import besides itself. An entry is an app label or a
 # module path inside that app (its public interface). Layers, lowest first:
