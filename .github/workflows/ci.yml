@@ -400,14 +400,38 @@ jobs:
         env:
           APP_UNDER_TEST: ${{ matrix.app }}
 
-      # apps.cli_admin and the shared safe_orm service are held at 100%.
+      # apps.cli_admin and the shared safe_orm service are held at 100%. Nothing here names a
+      # path: the safe_orm package is found by its directory name (exactly one, outside tests/),
+      # and its own tests are the test classes tagged "safe_orm" (django.test.tag), wherever
+      # they live. No package, more than one, or no tagged test fails this step.
       - name: Enforce coverage for cli_admin and safe_orm
         if: ${{ matrix.app == 'cli_admin' }}
         run: |
-          .venv/bin/coverage run \
-            --source="apps.cli_admin,apps.core.services.db_tools.safe_orm" \
+          set -o pipefail
+          safe_orm="$(.venv/bin/python - <<'PY'
+          from pathlib import Path
+
+          packages = sorted(p.parent for p in Path("apps").glob("**/safe_orm/__init__.py") if "tests" not in p.parts)
+          if len(packages) != 1:
+              raise SystemExit(f"safe_orm coverage gate: expected one safe_orm package under apps/, found {len(packages)}")
+          print(".".join(packages[0].parts))
+          PY
+          )"
+          echo "safe_orm package: $safe_orm"
+          .venv/bin/coverage erase
+          .venv/bin/coverage run --parallel-mode \
+            --source="apps.cli_admin,$safe_orm" \
             --omit="*/migrations/*,*/tests/*" \
-            manage.py test apps.cli_admin apps.core.tests.services.test_safe_orm
+            manage.py test apps.cli_admin
+          .venv/bin/coverage run --parallel-mode \
+            --source="apps.cli_admin,$safe_orm" \
+            --omit="*/migrations/*,*/tests/*" \
+            manage.py test apps --tag safe_orm 2>&1 | tee safe-orm-tests.log
+          if ! grep -Eq '^Ran [1-9][0-9]* tests? in' safe-orm-tests.log; then
+            echo '::error::No test tagged "safe_orm" ran: tag safe_orm test classes with @tag("safe_orm").'
+            exit 1
+          fi
+          .venv/bin/coverage combine
           .venv/bin/coverage json --pretty-print -o coverage-cli-admin-safe-orm.json
           .venv/bin/python - <<'PY'
           import json
@@ -708,7 +732,9 @@ jobs:
       - name: Run required Chromium smoke suite
         env:
           PW_PROJECT: required-chromium-smoke
-        run: npx playwright test e2e/smoke/required-smoke.spec.ts --project=chromium --workers=1 --retries=0
+        # Selected by the spec's tag, not its path; Playwright fails with "No tests found"
+        # if nothing carries the tag.
+        run: npx playwright test --grep @required-smoke --project=chromium --workers=1 --retries=0
 
       - name: Upload required smoke diagnostics
         if: ${{ always() }}
