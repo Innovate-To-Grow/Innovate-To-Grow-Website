@@ -20,7 +20,7 @@ from apps.core.models.base.service_credentials.gmail_api import (
     SERVICE_ACCOUNT_EMAIL_RE,
 )
 
-from ..assertion import SigningKeyError, load_signing_key
+from .assertion import SigningKeyError, load_signing_key
 from .stored_key import PAYLOAD_FIELDS, SERVICE_ACCOUNT_TYPE
 
 # A key file from the console names the accounts.google.com form, one from gcloud the oauth2.googleapis.com form

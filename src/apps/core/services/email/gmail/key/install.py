@@ -31,11 +31,11 @@ from apps.core.services.credential_store import CredentialStoreError, get_store
 from apps.core.services.delivery_rates import receivers
 
 from ...exceptions import EmailDeliveryError, TransientEmailDeliveryError
-from .. import auth
-from ..access import GmailScopeError, require_subject
-from ..errors import DELEGATION_PENDING_CODES, GmailTokenRefused
-from . import stored_key
-from .parsing import ParsedKey
+from ..client import auth
+from ..client.access import GmailScopeError, require_subject
+from ..client.errors import DELEGATION_PENDING_CODES, GmailTokenRefused
+from ..service_account import stored_key
+from ..service_account.parsing import ParsedKey
 
 logger = logging.getLogger(__name__)
 

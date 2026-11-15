@@ -150,7 +150,7 @@ class AccessCheckTests(TestCase):
             type(self.config).objects.filter(pk=self.config.pk).update(key_version_id="9" * 36)
             return original(host, path, body, headers, timeout=timeout)
 
-        with patch("apps.core.services.email.gmail.transport.post", rotate_then_answer):
+        with patch("apps.core.services.email.gmail.client.transport.post", rotate_then_answer):
             report = run_access_check(self.config)
         self.assertFalse(report.recorded)
         self.assertIsNone(GmailApiSubject.objects.get(subject=SUBJECT).verified_at)

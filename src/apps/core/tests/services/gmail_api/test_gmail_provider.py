@@ -14,10 +14,10 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
-from apps.core.services.email.gmail import auth, compose
-from apps.core.services.email.gmail import provider as provider_module
-from apps.core.services.email.gmail.access import credential_for, require_subject
-from apps.core.services.email.gmail.provider import GmailProvider
+from apps.core.services.email.gmail.client import auth, compose
+from apps.core.services.email.gmail.client import provider as provider_module
+from apps.core.services.email.gmail.client.access import credential_for, require_subject
+from apps.core.services.email.gmail.client.provider import GmailProvider
 from apps.core.services.email.mime import CREDENTIAL_MAIL_CLASS, MAIL_CLASS_HEADER
 from apps.core.services.email.transport import ConnectFailed, ResponseLost
 from apps.core.tests.gmail_api_helpers import (
@@ -99,7 +99,7 @@ class RequestShapeTests(GmailProviderTestCase):
             order.append(path)
             return original(host, path, body, headers, timeout=timeout)
 
-        with patch("apps.core.services.email.gmail.transport.post", recording):
+        with patch("apps.core.services.email.gmail.client.transport.post", recording):
             self.provider().send(self.message(), before_provider_call=lambda: order.append("callback"))
         self.assertEqual(order, ["/token", "callback", SEND[1]])
 
