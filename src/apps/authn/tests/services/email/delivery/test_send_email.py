@@ -1,0 +1,120 @@
+"""Tests for authn.services.email.send_email."""
+
+from unittest.mock import MagicMock, patch
+
+from django.test import TestCase
+from django.utils import timezone
+
+from apps.authn.services.email.send_email import (
+    _send_via_ses,
+    send_admin_invitation_email,
+)
+from apps.core.services.aws.provider_outcomes import (
+    PROVIDER_OUTCOME_TRANSIENT,
+    ProviderDeliveryError,
+)
+
+
+def _fake_config(**overrides):
+    """Return a mock EmailServiceConfig with sensible defaults."""
+    defaults = {
+        "ses_configured": False,
+        "delivery_configured": False,
+        "provider": "ses",
+        "ses_from_email": "test@example.com",
+        "ses_from_name": "Test",
+        "source_address": "Test <test@example.com>",
+    }
+    defaults.update(overrides)
+    if "ses_configured" in overrides and "delivery_configured" not in overrides:
+        defaults["delivery_configured"] = overrides["ses_configured"]
+    config = MagicMock(**defaults)
+    return config
+
+
+class SendViaSesTests(TestCase):
+    """Tests for the central email facade adapter."""
+
+    def test_returns_false_when_not_configured(self):
+        config = _fake_config(ses_configured=False)
+        result = _send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>")
+        self.assertFalse(result)
+
+    @patch("apps.authn.services.email.send_email.transport.deliver_email")
+    def test_returns_true_on_success(self, mock_deliver):
+        config = _fake_config(ses_configured=True, delivery_configured=True)
+        callback = MagicMock()
+        result = _send_via_ses(
+            config=config,
+            recipient="a@b.com",
+            subject="Hi",
+            html_body="<p>Hi</p>",
+            before_provider_call=callback,
+        )
+        self.assertTrue(result)
+        callback_arg = mock_deliver.call_args.kwargs["before_provider_call"]
+        callback_arg()
+        callback.assert_called_once_with()
+        message = mock_deliver.call_args.args[0]
+        self.assertEqual(message.to, ("a@b.com",))
+        self.assertEqual(message.subject, "Hi")
+        self.assertEqual(message.html_body, "<p>Hi</p>")
+        self.assertIs(mock_deliver.call_args.kwargs["config"], config)
+
+    @patch("apps.authn.services.email.send_email.transport.deliver_email")
+    def test_returns_false_on_delivery_error(self, mock_deliver):
+        from apps.core.services.email import PermanentEmailDeliveryError
+
+        mock_deliver.side_effect = PermanentEmailDeliveryError("rejected")
+        config = _fake_config(ses_configured=True)
+        self.assertFalse(_send_via_ses(config=config, recipient="a@b.com", subject="Hi", html_body="<p>Hi</p>"))
+
+    @patch("apps.authn.services.email.send_email.transport.deliver_email")
+    def test_worker_mode_preserves_normalized_outcome(self, mock_deliver):
+        from apps.core.services.email import TransientEmailDeliveryError
+
+        mock_deliver.side_effect = TransientEmailDeliveryError("temporary failure")
+        config = _fake_config(ses_configured=True)
+        with self.assertRaises(ProviderDeliveryError) as raised:
+            _send_via_ses(
+                config=config,
+                recipient="a@b.com",
+                subject="Hi",
+                html_body="<p>Hi</p>",
+                raise_provider_errors=True,
+            )
+        self.assertEqual(raised.exception.outcome, PROVIDER_OUTCOME_TRANSIENT)
+
+
+class SendAdminInvitationEmailTests(TestCase):
+    """Tests for the admin invitation email flow."""
+
+    def _invitation(self):
+        invitation = MagicMock()
+        invitation.email = "new-admin@example.com"
+        invitation.expires_at = timezone.now() + timezone.timedelta(days=7)
+        invitation.invited_by = None
+        invitation.message = "Please help manage the spring event."
+        invitation.get_acceptance_url.return_value = "https://admin.example.com/authn/invite/token/"
+        invitation.get_role_display.return_value = "Admin"
+        return invitation
+
+    @patch("apps.authn.services.email.send_email._send_via_ses", return_value=False)
+    @patch("apps.authn.services.email.send_email._load_config")
+    def test_ses_failure_raises(self, mock_config, mock_ses):
+        mock_config.return_value = _fake_config(ses_configured=False)
+        invitation = self._invitation()
+
+        with self.assertRaises(RuntimeError):
+            send_admin_invitation_email(invitation=invitation)
+
+        mock_ses.assert_called_once()
+
+    @patch("apps.authn.services.email.send_email._send_via_ses", return_value=True)
+    @patch("apps.authn.services.email.send_email._load_config")
+    def test_ses_success_sends_invitation(self, mock_config, mock_ses):
+        mock_config.return_value = _fake_config(ses_configured=True)
+
+        send_admin_invitation_email(invitation=self._invitation())
+
+        mock_ses.assert_called_once()

@@ -1,0 +1,174 @@
+from datetime import timedelta
+from unittest.mock import patch
+
+from django.contrib.auth.hashers import make_password
+from django.core.cache import cache
+from rest_framework.test import APITestCase
+
+from apps.authn.models import ContactEmail, EmailAuthChallenge
+from apps.authn.tests.api.email_code.login.test_email_code_edge_cases import PURPOSE_LOGIN, PURPOSE_REGISTER, Member
+from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
+
+
+@patch("apps.authn.services.email.send_email.send_verification_email")
+@patch("apps.authn.services.email.challenges._random_code", return_value="654321")
+class PublicEmailCodeViewEdgeTests(APITestCase):
+    def setUp(self):
+        cache.clear()
+        self.active = Member.objects.create_user(password="StrongPass123!", is_active=True)
+        ContactEmail.objects.create(
+            member=self.active, email_address="active@example.com", email_type="primary", verified=True
+        )
+        self.inactive = Member.objects.create_user(password="StrongPass123!", is_active=False)
+        ContactEmail.objects.create(
+            member=self.inactive, email_address="inactive@example.com", email_type="primary", verified=True
+        )
+
+    # ── invalid serializer payloads (return 400) ──────────
+
+    def test_login_verify_invalid_payload(self, _c, _s):
+        resp = self.client.post("/authn/login/verify-code/", {}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_email_auth_verify_invalid_payload(self, _c, _s):
+        resp = self.client.post("/authn/email-auth/verify-code/", {"email": "x@y.com", "code": "12"}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_register_verify_invalid_payload(self, _c, _s):
+        resp = self.client.post("/authn/register/verify-code/", {}, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    # ── inactive member on login verify (lines 58-62) ─────
+
+    def test_login_verify_inactive_member_rejected(self, _c, _s):
+        from django.utils import timezone
+
+        EmailAuthChallenge.objects.create(
+            member=self.inactive,
+            purpose=PURPOSE_LOGIN,
+            target_email="inactive@example.com",
+            code_hash=make_password("654321"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+            max_attempts=5,
+            last_sent_at=timezone.now(),
+        )
+        resp = self.client.post(
+            "/authn/login/verify-code/",
+            {"email": "inactive@example.com", "code": "654321"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(
+            EmailAuthChallenge.objects.get(member=self.inactive, purpose=PURPOSE_LOGIN).status,
+            EmailAuthChallenge.Status.PENDING,
+        )
+
+    # ── unified verify login-with-inactive (lines 91-95) ──
+
+    def test_email_auth_verify_inactive_login_rejected(self, _c, _s):
+        from django.utils import timezone
+
+        # A LOGIN-purpose challenge for an inactive member -> flow="login" + inactive -> 400.
+        EmailAuthChallenge.objects.create(
+            member=self.inactive,
+            purpose=PURPOSE_LOGIN,
+            target_email="inactive@example.com",
+            code_hash=make_password("654321"),
+            expires_at=timezone.now() + timedelta(minutes=10),
+            max_attempts=5,
+            last_sent_at=timezone.now(),
+        )
+        resp = self.client.post(
+            "/authn/email-auth/verify-code/",
+            {"email": "inactive@example.com", "code": "654321"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(
+            EmailAuthChallenge.objects.get(member=self.inactive, purpose=PURPOSE_LOGIN).status,
+            EmailAuthChallenge.Status.PENDING,
+        )
+
+    # ── resend code view (line 140) ───────────────────────
+
+    def test_register_resend_code_for_pending_member(self, _c, mock_send):
+        pending = Member.objects.create_user(password="StrongPass123!", is_active=False, registration_pending=True)
+        ContactEmail.objects.create(
+            member=pending, email_address="pending@example.com", email_type="primary", verified=False
+        )
+        resp = self.client.post(
+            "/authn/register/resend-code/",
+            {"email": "pending@example.com"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 202)
+        mock_send.assert_called()
+
+    def test_register_resend_code_no_pending_returns_400(self, _c, _s):
+        resp = self.client.post(
+            "/authn/register/resend-code/",
+            {"email": "nobody@example.com"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 400)
+
+    # ── request_code_response delivery failure (helpers) ──
+
+    def test_login_request_code_delivery_error_returns_503(self, _c, mock_send):
+        mock_send.side_effect = ProviderDeliveryError("ses rejected", outcome="permanent")
+        resp = self.client.post(
+            "/authn/login/request-code/",
+            {"email": "active@example.com"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 503)
+
+    # ── unified request-code registration path (_create_pending_member) ──
+
+    def test_email_auth_request_creates_pending_member_for_new_email(self, _c, mock_send):
+        resp = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": "brandnew@example.com", "source": "subscribe"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 202)
+        # A pending (inactive) member with an unclaimed-then-claimed contact email is created.
+        contact = ContactEmail.objects.get(email_address="brandnew@example.com")
+        self.assertIsNotNone(contact.member)
+        self.assertFalse(contact.member.is_active)
+        mock_send.assert_called()
+
+    def test_email_auth_request_claims_unclaimed_contact_email(self, _c, mock_send):
+        # An unclaimed ContactEmail should be claimed by the new pending member.
+        ContactEmail.objects.create(
+            email_address="unclaimed@example.com", email_type="primary", member=None, verified=False
+        )
+        resp = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": "unclaimed@example.com"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 202)
+        contact = ContactEmail.objects.get(email_address="unclaimed@example.com")
+        self.assertIsNotNone(contact.member)
+
+    def test_email_auth_request_existing_active_member_logs_in(self, _c, mock_send):
+        resp = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": "active@example.com"},
+            format="json",
+        )
+        self.assertEqual(resp.status_code, 202)
+        # A LOGIN challenge is issued for the existing active member.
+        self.assertTrue(EmailAuthChallenge.objects.filter(member=self.active, purpose=PURPOSE_LOGIN).exists())
+
+    def test_email_auth_request_reuses_pending_member(self, _c, mock_send):
+        Member.objects.filter(pk=self.inactive.pk).update(registration_pending=True)
+        resp = self.client.post(
+            "/authn/email-auth/request-code/",
+            {"email": "inactive@example.com"},
+            format="json",
+        )
+        # inactive member already owns a primary contact -> pending_member path reused.
+        self.assertEqual(resp.status_code, 202)
+        self.assertTrue(EmailAuthChallenge.objects.filter(member=self.inactive, purpose=PURPOSE_REGISTER).exists())
