@@ -120,7 +120,7 @@ def _link(reference: CurrentProjectReference, archived: Project | None) -> Curre
 def resolve_current_project_links(project_ids: Iterable) -> dict[str, CurrentProjectLink]:
     """The projects current-semester links point to, from any schedule, keyed by the id as requested (as text); an id
     that is no CurrentProject is left out. A fixed number of queries, plus one for each term among them."""
-    # The event app owns current projects; projects may read them only here (scripts/ci/python_dependencies.toml).
+    # The event app owns current projects; projects may read them only here (scripts/ci/python_dependencies/python_dependencies.toml).
     from apps.event.services.current_projects import find_current_projects
 
     references = find_current_projects(project_ids)

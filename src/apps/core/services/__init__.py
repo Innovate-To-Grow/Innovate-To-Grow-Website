@@ -6,7 +6,7 @@ several apps share and that names no business app: domain behaviour belongs in
 the owning app (e.g. the Bedrock client and the assistant's query tools now live
 in ``system_intelligence``, the sitemap in ``cms``). Read this before adding a
 module: put it in the owning app unless it is genuinely shared. ``core`` must not
-import business apps at module level (``scripts/ci/check_python_dependencies.py``);
+import business apps at module level (``python -m scripts.ci.python_dependencies``);
 apps plug into shared machinery through registration hooks instead.
 Consumers below are the apps that import each path today (verified, excluding
 ``core``'s own modules).
