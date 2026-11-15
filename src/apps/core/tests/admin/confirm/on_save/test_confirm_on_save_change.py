@@ -4,7 +4,11 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.cms.models import CMSEmbedAllowedHost
-from apps.core.tests.admin.confirm.test_confirm_on_save import _confirm_change_data, _make_staff, _make_superuser
+from apps.core.tests.admin.confirm.on_save.test_confirm_on_save import (
+    _confirm_change_data,
+    _make_staff,
+    _make_superuser,
+)
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)

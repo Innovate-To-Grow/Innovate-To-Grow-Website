@@ -2,7 +2,11 @@ from django.contrib.admin import helpers
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from apps.core.tests.admin.confirm.test_confirm_action import _confirm_action_data, _make_semester, _make_superuser
+from apps.core.tests.admin.confirm.action.test_confirm_action import (
+    _confirm_action_data,
+    _make_semester,
+    _make_superuser,
+)
 from apps.projects.models import Semester
 
 
