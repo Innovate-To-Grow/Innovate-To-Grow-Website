@@ -1,0 +1,111 @@
+    {# Winners #}
+    {% if winners %}
+        <div class="mt-6 mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+            <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700">
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-1.5">
+                    <span class="material-symbols-outlined !text-[18px] text-yellow-500">emoji_events</span>
+                    Winners
+                </span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="bg-base-50 dark:bg-base-800 text-font-subtle-light dark:text-font-subtle-dark">
+                            <th class="px-3 py-2 text-left font-medium">Section</th>
+                            <th class="px-3 py-2 text-left font-medium">Track</th>
+                            <th class="px-3 py-2 text-left font-medium">Topic</th>
+                            <th class="px-3 py-2 text-left font-medium">Winner</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-100 dark:divide-base-800">
+                        {% for track in winners %}
+                            <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ track.section.label }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">Track {{ track.track_number }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ track.topic }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark font-semibold text-yellow-600 dark:text-yellow-400">{{ track.winner }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Current Projects Table (presenting) #}
+    {% if current_projects %}
+        <div class="mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+            <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700 flex items-center justify-between">
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark">
+                    Current Projects ({{ current_schedule_name }})
+                </span>
+                <span class="inline-flex items-center rounded-full bg-green-50 dark:bg-green-900/30 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:text-green-400 ring-1 ring-inset ring-green-600/20 dark:ring-green-500/30">
+                    {{ current_projects|length }} presenting
+                </span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="bg-base-50 dark:bg-base-800 text-font-subtle-light dark:text-font-subtle-dark">
+                            <th class="px-3 py-2 text-left font-medium">Class</th>
+                            <th class="px-3 py-2 text-left font-medium">Team #</th>
+                            <th class="px-3 py-2 text-left font-medium">Team Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Project Title</th>
+                            <th class="px-3 py-2 text-left font-medium">Organization</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-100 dark:divide-base-800">
+                        {% for project in current_projects %}
+                            <tr class="hover:bg-base-50 dark:hover:bg-base-800/50">
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.class_code }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.team_number }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.team_name }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark font-medium">{{ project.project_title }}</td>
+                                <td class="px-3 py-2 text-font-default-light dark:text-font-default-dark">{{ project.organization }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Non-Presenting Projects Table (fall) #}
+    {% if non_presenting_projects %}
+        <div class="mb-6 border border-base-200 dark:border-base-700 rounded-default overflow-hidden">
+            <div class="bg-base-50 dark:bg-base-800 px-4 py-2.5 border-b border-base-200 dark:border-base-700 flex items-center justify-between">
+                <span class="text-sm font-semibold text-font-important-light dark:text-font-important-dark flex items-center gap-1.5">
+                    <span class="material-symbols-outlined !text-[18px] text-font-subtle-light dark:text-font-subtle-dark">archive</span>
+                    Non-Presenting Projects
+                </span>
+                <span class="inline-flex items-center rounded-full bg-base-50 dark:bg-base-800 px-2 py-0.5 text-[10px] font-medium text-font-subtle-light dark:text-font-subtle-dark ring-1 ring-inset ring-base-200 dark:ring-base-700">
+                    {{ non_presenting_projects|length }} archived
+                </span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs">
+                    <thead>
+                        <tr class="bg-base-50 dark:bg-base-800 text-font-subtle-light dark:text-font-subtle-dark">
+                            <th class="px-3 py-2 text-left font-medium">Class</th>
+                            <th class="px-3 py-2 text-left font-medium">Team #</th>
+                            <th class="px-3 py-2 text-left font-medium">Team Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Project Title</th>
+                            <th class="px-3 py-2 text-left font-medium">Organization</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-base-100 dark:divide-base-800">
+                        {% for project in non_presenting_projects %}
+                            <tr class="hover:bg-base-50 dark:hover:bg-base-800/50 text-font-subtle-light dark:text-font-subtle-dark">
+                                <td class="px-3 py-2">{{ project.class_code }}</td>
+                                <td class="px-3 py-2">{{ project.team_number }}</td>
+                                <td class="px-3 py-2">{{ project.team_name }}</td>
+                                <td class="px-3 py-2 font-medium">{{ project.project_title }}</td>
+                                <td class="px-3 py-2">{{ project.organization }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+
