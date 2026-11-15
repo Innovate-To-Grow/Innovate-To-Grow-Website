@@ -7,10 +7,10 @@ from rest_framework import status
 from rest_framework.exceptions import NotAuthenticated, ValidationError
 
 from apps.core.models import TimeStampedModel
-from apps.core.utils.exceptions import exception_handler
-from apps.core.utils.pagination import DefaultPageNumberPagination
-from apps.core.utils.permissions import IsOwnerOrReadOnly
-from apps.core.utils.serializers import TimeStampedModelSerializer
+from apps.core.rest.exceptions import exception_handler
+from apps.core.rest.pagination import DefaultPageNumberPagination
+from apps.core.rest.permissions import IsOwnerOrReadOnly
+from apps.core.rest.serializers import TimeStampedModelSerializer
 
 
 class TimeStampedModelTests(SimpleTestCase):
