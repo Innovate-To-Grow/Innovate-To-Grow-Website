@@ -5,9 +5,9 @@
 // off without re-selecting (real <mark> wrap/re-select + the sync effect not rewriting the user's
 // own edit). An owner's page also searches every project (/projects/all/) to add more to the
 // curation. Desktop engines only (untagged → no @mobile).
-import type {PastProjectShare, ProjectTableRow} from '../../src/features/projects/api';
-import {mockAllProjects, mockPastProjectShare, pastProjectRows} from '../helpers';
-import {expect, test} from '../helpers/fixtures';
+import type {PastProjectShare, ProjectTableRow} from '../../../src/features/projects/api';
+import {mockAllProjects, mockPastProjectShare, pastProjectRows} from '../../helpers';
+import {expect, test} from '../../helpers/fixtures';
 
 const SHARE_ID = 'share-e2e-1';
 

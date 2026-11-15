@@ -3,9 +3,9 @@
 // list links to, and teams that are not presenting are listed at track 0 by their CurrentProject id. None of
 // those ids is an archive Project id, so /projects/<id>/ answers 404 for all of them, as in production.
 import type {Page} from '@playwright/test';
-import type {EventSchedulePayload} from '../../src/features/events/api';
-import {test, expect} from '../helpers/fixtures';
-import {mockProjectDetail, mockSchedule, projectDetail, schedulePayload} from '../helpers';
+import type {EventSchedulePayload} from '../../../src/features/events/api';
+import {test, expect} from '../../helpers/fixtures';
+import {mockProjectDetail, mockSchedule, projectDetail, schedulePayload} from '../../helpers';
 
 const HVAC_SLOT_ID = '0ef6b199-6fb0-4d9d-9e95-11b5d6f0006c';
 const HVAC_PROJECT_ID = '2280fa08-f914-45fe-8a62-905b2d68e0df';

@@ -1,7 +1,7 @@
 // /projects/:id and /past-projects/project/:id: project detail page. /projects/:id looks in the current
 // schedule first (see current-detail.spec.ts); the schedule mocked here does not have these archive ids.
-import {test, expect} from '../helpers/fixtures';
-import {mockProjectDetail, mockSchedule, projectDetail, schedulePayload} from '../helpers';
+import {test, expect} from '../../helpers/fixtures';
+import {mockProjectDetail, mockSchedule, projectDetail, schedulePayload} from '../../helpers';
 
 test('project detail renders title and abstract', {tag: '@core'}, async ({page}) => {
   await mockSchedule(page, schedulePayload());
