@@ -162,7 +162,7 @@ rules = ["R001"]
 reason = "CloudFormation template of the legacy stack; splitting it needs nested stacks, an infrastructure change."
 
 [[exceptions]]
-paths = ["archive/page/templates/events/*.html", "archive/page/static/css/events/*.css", "archive/page/static/js/events/*.js"]
+paths = ["archive/page/templates/events/*/*.html", "archive/page/static/css/events/*/*.css", "archive/page/static/js/events/*/*.js"]
 rules = ["R001"]
 reason = "Frozen conversions of past event pages from the legacy Drupal site (#204), kept pixel-identical: content snapshots, not maintained application code."
 
