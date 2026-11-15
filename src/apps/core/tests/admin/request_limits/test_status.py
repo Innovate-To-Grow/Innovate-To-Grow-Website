@@ -7,7 +7,8 @@ from datetime import timedelta
 from django.conf import settings
 from django.test import override_settings
 
-from apps.core.admin.request_limits.cards import assessment_line, clock, per_period, smart_line
+from apps.core.admin.request_limits.cards import clock, per_period, smart_line
+from apps.core.admin.request_limits.summary import assessment_line
 from apps.core.models import RequestLimitProcess, RequestRateLimitState
 from apps.core.services.request_limits import overview as overview_module
 from apps.core.services.request_limits.runtime import refusals, signals, smart

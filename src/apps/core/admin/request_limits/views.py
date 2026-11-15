@@ -18,8 +18,9 @@ from django.views.decorators.http import require_GET, require_http_methods
 from apps.core.services.request_limits.overview import overview, policies
 from apps.core.utils.access import user_can_access_app
 
-from .cards import TIER_COPY, build_cards, status_payload, summary, tier_groups
+from .cards import build_cards
 from .forms import MANUAL_LIMIT_NOTE, RequestLimitPolicyForm
+from .summary import TIER_COPY, status_payload, summary, tier_groups
 
 APP_LABEL = "core"
 # How often the open page re-reads the live status (as Mail → Delivery Rates does). A display refresh: it changes no
