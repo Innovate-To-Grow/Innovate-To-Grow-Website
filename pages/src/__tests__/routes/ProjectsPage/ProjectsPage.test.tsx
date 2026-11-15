@@ -5,7 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {ProjectsPage} from '@/routes/ProjectsPage/ProjectsPage';
 import type {ProjectGridRow} from '@/features/projects';
-import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
+import {useCurrentProjectGridData} from '@/features/projects/hooks/data/useProjectGridData.ts';
 
 const viewProps = vi.hoisted(() => ({current: null as Record<string, unknown> | null}));
 
@@ -16,7 +16,7 @@ vi.mock('@/features/projects/components/views/pages/CurrentProjectsView', () => 
   },
 }));
 
-vi.mock('@/features/projects/hooks/useProjectGridData', () => ({
+vi.mock('@/features/projects/hooks/data/useProjectGridData.ts', () => ({
   useCurrentProjectGridData: vi.fn(),
 }));
 

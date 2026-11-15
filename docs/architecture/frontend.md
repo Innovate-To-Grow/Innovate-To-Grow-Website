@@ -144,8 +144,8 @@ Large components keep rendering in the component and move state into a hook besi
 concern. For example:
 
 - **Projects builder** (`features/projects/components/`). `PastProjectsBuilder` composes
-  `builder/draft/useCurationDraft` (the localStorage draft), `search/state/useSearchTables` (the table stack and AI
-  search) and `builder/selection/useSaveSelectedRows`. Each `SearchTableCard` composes `search/state/useSearchTableRows`,
+  `curation/builder/draft/useCurationDraft` (the localStorage draft), `search/state/useSearchTables` (the table stack and AI
+  search) and `curation/builder/selection/useSaveSelectedRows`. Each `SearchTableCard` composes `search/state/useSearchTableRows`,
   `search/state/useSearchTableSelection` and `search/state/useSearchTableSave`. `useProjectGridTable` builds on
   `grid/state/useRowKeySet` and `grid/state/useGridPagination`. The rich-text editor's DOM work is in
   `richText/dom/richTextEditorDom.ts` and `richText/dom/editorSelection.ts`. Which list the builder searches (its
@@ -234,7 +234,7 @@ CSS custom properties define the design vocabulary:
 - One stylesheet owns each selector (`src/__tests__/core/css/css-ownership.test.ts`): chunk CSS loads in navigation order, so a selector defined in two files would get whichever loaded last. Files that one stylesheet `@import`s count as that stylesheet.
 - Cascade layers (`src/styles/layers.css`, imported first by `main.tsx`): `itg.defaults` < `itg.tokens` < `itg.base` < `itg.components` < `itg.overrides` < `itg.page`. Every bundled stylesheet wraps its rules in `@layer itg.components` (fallback tokens and last-resort defaults in `itg.defaults`); `src/__tests__/core/css/layers.test.ts` fails on an unlayered rule, which would beat the Site Settings custom CSS. Styles injected at runtime go through `inComponentsLayer()` from `@/lib/css`. The block-preview rules inline in `index.html` stay unlayered on purpose.
 - The backend serves the Site Settings design tokens (`itg.tokens`) and custom CSS (`itg.overrides`) from `/api/layout/theme.css`, linked before the bundle; it opens with the same layer statement, so the order holds whichever sheet loads first ([Theme](../cms-admin/theme-and-custom-css.md)).
-- `features/projects/components/styles/cascade/projects.css` is an ordered list of `@import`s of the projects pages' feature-owned sheets (`grid/styles/`, `search/styles/`, `merged/styles/`, `richText/editor/`, `builder/dialog/`, ...). The order is the cascade order and `projectsResponsive.css` must stay last, so add rules to the file that owns them rather than reordering the list.
+- `features/projects/components/styles/cascade/projects.css` is an ordered list of `@import`s of the projects pages' feature-owned sheets (`grid/styles/`, `search/styles/`, `curation/merged/styles/`, `richText/editor/`, `curation/builder/dialog/`, ...). The order is the cascade order and `projectsResponsive.css` must stay last, so add rules to the file that owns them rather than reordering the list.
 
 ## Testing
 

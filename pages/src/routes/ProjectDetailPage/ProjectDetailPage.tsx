@@ -3,7 +3,7 @@ import {Link, useLocation, useParams} from 'react-router';
 import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {ProjectsMessagePage} from '@/features/projects/components/views/pages/ProjectsMessagePage';
 import {useCopyLink} from '@/hooks/useCopyLink';
-import {useProjectDetail, type ProjectDetailError} from '@/features/projects/hooks/useProjectDetail';
+import {useProjectDetail, type ProjectDetailError} from '@/features/projects/hooks/data/useProjectDetail';
 import {usePageTitle} from '@/hooks/usePageTitle';
 import {ProjectDetailBody} from './ProjectDetailBody';
 import {ProjectBackLink} from './ProjectBackLink';

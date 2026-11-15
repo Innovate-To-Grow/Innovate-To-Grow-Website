@@ -8,7 +8,7 @@ import {
   useAllProjectGridData,
   usePastProjectGridData,
   usePastProjectShareData,
-} from '@/features/projects/hooks/useProjectGridData';
+} from '@/features/projects/hooks/data/useProjectGridData.ts';
 import {createPastProjectShare, type PastProjectShare, type ProjectGridRow} from '@/features/projects/api';
 import {usePageTitle} from '@/hooks/usePageTitle';
 import {SharedCurationView} from './SharedCurationView';

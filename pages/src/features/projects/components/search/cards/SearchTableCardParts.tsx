@@ -1,6 +1,6 @@
 import {type ReactNode} from 'react';
 import {ProjectGridTable} from '../../grid/table/ProjectGridTable';
-import {PastProjectsDialog} from '../../builder/dialog/PastProjectsDialog';
+import {PastProjectsDialog} from '../../curation/builder/dialog/PastProjectsDialog';
 import {PAST_PROJECT_GRID_COLUMNS} from '../../grid/contracts/projectGrid';
 import {pluralize} from '../../shared/utils/saveResults';
 import {useSearchTableRows} from '../state/useSearchTableRows';

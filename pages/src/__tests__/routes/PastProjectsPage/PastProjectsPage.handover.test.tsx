@@ -50,8 +50,8 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
 });
 
 // The builders' lists are not what this is about; the share's own load is real.
-vi.mock('@/features/projects/hooks/useProjectGridData', async (importOriginal) => {
-    const actual = await importOriginal<typeof import('@/features/projects/hooks/useProjectGridData')>();
+vi.mock('@/features/projects/hooks/data/useProjectGridData.ts', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('@/features/projects/hooks/data/useProjectGridData.ts')>();
     const list = () => ({error: null, loading: false, rows: [], refetch: () => undefined});
     return {...actual, useAllProjectGridData: list, usePastProjectGridData: list};
 });
@@ -62,11 +62,11 @@ vi.mock('@/features/projects', async () =>
         addedRow,
     ),
 );
-vi.mock('@/features/projects/components/builder/composition/PastProjectsBuilder', async () => ({
+vi.mock('@/features/projects/components/curation/builder/composition/PastProjectsBuilder', async () => ({
     PastProjectsBuilder: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
         .pastProjectsModuleStub(archiveRow, addedRow).PastProjectsBuilder,
 }));
-vi.mock('@/features/projects/components/curations/panel/MyCurationsPanel', async () => ({
+vi.mock('@/features/projects/components/curation/myCurations/MyCurationsPanel', async () => ({
     MyCurationsPanel: (await import('@/__tests__/routes/PastProjectsPage/pastProjectsModuleStub'))
         .pastProjectsModuleStub(archiveRow, addedRow).MyCurationsPanel,
 }));

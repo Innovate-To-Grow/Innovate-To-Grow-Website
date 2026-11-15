@@ -1,6 +1,6 @@
 import {Link} from 'react-router';
 import {CurrentProjectsView} from '@/features/projects/components/views/pages/CurrentProjectsView';
-import {useCurrentProjectGridData} from '@/features/projects/hooks/useProjectGridData';
+import {useCurrentProjectGridData} from '@/features/projects/hooks/data/useProjectGridData.ts';
 
 export const ProjectsPage = () => {
   const {rows, loading, error, refetch, classLabels} = useCurrentProjectGridData();

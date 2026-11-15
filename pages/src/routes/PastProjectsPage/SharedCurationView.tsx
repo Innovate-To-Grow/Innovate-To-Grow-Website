@@ -5,7 +5,7 @@ import {MergedResultsTable, SharedPastProjectMergeSearch, type ProjectGridItem} 
 import {DEFAULT_PAST_PROJECT_SHARE_NAME, type PastProjectShare, type ProjectGridRow} from '@/features/projects/api';
 import {ALL_PROJECTS_CATALOG, PAST_PROJECTS_CATALOG} from '@/features/projects/catalog/catalogs';
 import {ProjectCatalogContext, type ProjectCatalog} from '@/features/projects/catalog/projectCatalog';
-import {curationBranding} from '@/features/projects/components/merged/list/curationBranding';
+import {curationBranding} from '@/features/projects/components/curation/merged/note/curationBranding';
 import {useRetryInPlace} from '@/features/projects/components/shared/utils/useRetryInPlace';
 import {SharedListLoadFailed, SharedListUnavailable} from './SharedListMessages';
 import {shareDisplayTitle} from './sharedListMutationParts';

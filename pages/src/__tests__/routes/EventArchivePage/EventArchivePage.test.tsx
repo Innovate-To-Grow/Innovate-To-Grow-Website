@@ -6,7 +6,7 @@ import {EventArchivePage} from '@/routes/EventArchivePage/EventArchivePage';
 
 const mockUsePastProjectsData = vi.fn();
 
-vi.mock('@/features/projects/hooks/usePastProjectsData', () => ({
+vi.mock('@/features/projects/hooks/data/usePastProjectsData', () => ({
     usePastProjectsData: (query: unknown) => mockUsePastProjectsData(query),
 }));
 

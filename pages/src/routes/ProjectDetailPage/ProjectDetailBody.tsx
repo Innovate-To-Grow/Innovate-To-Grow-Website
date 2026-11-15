@@ -4,7 +4,7 @@ import {
   getDisplayTeamNumber,
   splitStudentNames,
 } from '@/features/projects/components/grid/contracts/projectGrid';
-import type {ProjectPresentation, ResolvedProjectDetail} from '@/features/projects/hooks/useProjectDetail';
+import type {ProjectPresentation, ResolvedProjectDetail} from '@/features/projects/hooks/data/useProjectDetail';
 import {formatSemesterLabel} from '@/lib/format';
 
 /** "Track 2 · 1:30 · Glacier 165" for a presenting team (whatever the schedule gives), "Not presenting" otherwise. */
