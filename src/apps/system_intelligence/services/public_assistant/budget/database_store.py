@@ -188,42 +188,8 @@ def _settle_database_reservation(
             charged.delete()
 
 
-def _database_tokens_used(actor_key: str) -> int:
-    value = (
-        PublicAssistantTokenBudget.objects.filter(
-            ip_hash=actor_key,
-            window_expires_at__gt=timezone.now(),
-        )
-        .values_list("tokens_used", flat=True)
-        .first()
-    )
-    return int(value or 0)
-
-
 def _record_database_usage(actor_key: str, tokens: int, window_seconds: int) -> None:
     with transaction.atomic():
         state = _locked_database_budget(actor_key, window_seconds=window_seconds)
         state.tokens_used += tokens
         state.save(update_fields=["window_id", "tokens_used", "window_expires_at"])
-
-
-def purge_expired_public_assistant_budgets(*, batch_size: int = 1000) -> int:
-    """Delete one bounded batch of expired database counters and reservations."""
-    batch_size = max(1, int(batch_size))
-    cutoff = timezone.now()
-    with transaction.atomic():
-        # Skip rows currently being reset/reserved. Rows locked here cannot be
-        # reactivated between the expiry check and the cascading delete.
-        expired_hashes = list(
-            PublicAssistantTokenBudget.objects.select_for_update(skip_locked=True)
-            .filter(window_expires_at__lte=cutoff)
-            .order_by("window_expires_at")
-            .values_list("pk", flat=True)[:batch_size]
-        )
-        if not expired_hashes:
-            return 0
-        _deleted_total, deleted_by_model = PublicAssistantTokenBudget.objects.filter(
-            pk__in=expired_hashes,
-            window_expires_at__lte=cutoff,
-        ).delete()
-        return int(deleted_by_model.get(PublicAssistantTokenBudget._meta.label, 0))

@@ -1,18 +1,5 @@
 """Public, visitor-facing assistant services (tool-free, read-only)."""
 
-from .actors import (
-    KIND_LEGACY,
-    KIND_MEMBER,
-    KIND_VISITOR,
-    VISITOR_FIELD,
-    AssistantActor,
-    actor_token_limit,
-    issue_visitor_token,
-    legacy_actor,
-    member_actor,
-    resolve_chat_actor,
-    visitor_actor,
-)
 from .budget import (
     FEATURE_AI_SEARCH,
     FEATURE_ASSISTANT,
@@ -34,8 +21,22 @@ from .budget import (
     reserve_budget,
     sanitized_usage,
 )
-from .context import build_public_context
-from .invoke import answer_public_question, estimate_prompt_input_tokens, estimate_public_input_tokens
+from .chat.actors import (
+    KIND_LEGACY,
+    KIND_MEMBER,
+    KIND_VISITOR,
+    VISITOR_FIELD,
+    AssistantActor,
+    actor_token_limit,
+    issue_visitor_token,
+    legacy_actor,
+    member_actor,
+    resolve_chat_actor,
+    visitor_actor,
+)
+from .chat.context import build_public_context
+from .chat.estimates import estimate_prompt_input_tokens, estimate_public_input_tokens
+from .chat.invoke import answer_public_question
 
 __all__ = [
     "actor_token_limit",

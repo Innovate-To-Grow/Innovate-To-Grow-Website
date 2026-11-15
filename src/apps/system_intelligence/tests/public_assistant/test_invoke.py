@@ -7,7 +7,7 @@ from django.test import TestCase
 
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.bedrock import BedrockError
-from apps.system_intelligence.services.public_assistant import invoke
+from apps.system_intelligence.services.public_assistant.chat import estimates, invoke
 
 
 def _config(**overrides):
@@ -31,8 +31,8 @@ class InvokeTests(TestCase):
     @contextmanager
     def _patch_agent(self, result):
         with (
-            patch("apps.system_intelligence.services.public_assistant.invoke.run_tool_free_agent") as mock_agent,
-            patch("apps.system_intelligence.services.public_assistant.invoke.AWSCredentialConfig") as mock_aws,
+            patch("apps.system_intelligence.services.public_assistant.chat.invoke.run_tool_free_agent") as mock_agent,
+            patch("apps.system_intelligence.services.public_assistant.chat.invoke.AWSCredentialConfig") as mock_aws,
         ):
             mock_agent.return_value = result
             yield {"run_tool_free_agent": mock_agent, "AWSCredentialConfig": mock_aws}
@@ -81,19 +81,19 @@ class InvokeTests(TestCase):
     def test_public_input_estimate_accounts_for_utf8_token_density(self):
         config = _config(public_assistant_system_prompt="")
 
-        ascii_estimate = invoke.estimate_public_input_tokens(
+        ascii_estimate = estimates.estimate_public_input_tokens(
             config=config,
             message="a" * 8,
             history=[],
             context="",
         )
-        cjk_estimate = invoke.estimate_public_input_tokens(
+        cjk_estimate = estimates.estimate_public_input_tokens(
             config=config,
             message="界" * 8,
             history=[],
             context="",
         )
-        emoji_estimate = invoke.estimate_public_input_tokens(
+        emoji_estimate = estimates.estimate_public_input_tokens(
             config=config,
             message="🙂" * 8,
             history=[],
@@ -144,7 +144,7 @@ class InvokeTests(TestCase):
         wrapped.__cause__ = ValueError("ValidationException: temperature not supported")
         runner = MagicMock(side_effect=[wrapped, _agent_result("ok")])
         with patch.multiple(
-            "apps.system_intelligence.services.public_assistant.invoke",
+            "apps.system_intelligence.services.public_assistant.chat.invoke",
             run_tool_free_agent=runner,
             AWSCredentialConfig=MagicMock(),
         ):
@@ -167,7 +167,7 @@ class InvokeTests(TestCase):
         runner = MagicMock(side_effect=[ValueError("temperature unsupported"), ValueError("still broken")])
         with (
             patch.multiple(
-                "apps.system_intelligence.services.public_assistant.invoke",
+                "apps.system_intelligence.services.public_assistant.chat.invoke",
                 run_tool_free_agent=runner,
                 AWSCredentialConfig=MagicMock(),
             ),
@@ -179,7 +179,7 @@ class InvokeTests(TestCase):
         runner = MagicMock(side_effect=RuntimeError("network down"))
         with (
             patch.multiple(
-                "apps.system_intelligence.services.public_assistant.invoke",
+                "apps.system_intelligence.services.public_assistant.chat.invoke",
                 run_tool_free_agent=runner,
                 AWSCredentialConfig=MagicMock(),
             ),

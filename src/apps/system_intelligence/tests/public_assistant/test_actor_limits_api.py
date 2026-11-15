@@ -25,7 +25,8 @@ from apps.system_intelligence.models import (
     PublicAssistantTokenReservation,
     SystemIntelligenceConfig,
 )
-from apps.system_intelligence.services.public_assistant import actors, budget, estimate_public_input_tokens
+from apps.system_intelligence.services.public_assistant import budget, estimate_public_input_tokens
+from apps.system_intelligence.services.public_assistant.chat import actors
 
 Member = get_user_model()
 

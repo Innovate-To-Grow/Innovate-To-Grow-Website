@@ -10,7 +10,7 @@ from django.utils import timezone
 from apps.cms.models import CMSPage, NewsArticle
 from apps.event.models import CurrentProject, CurrentProjectSchedule
 from apps.projects.models import Project, Semester
-from apps.system_intelligence.services.public_assistant import context
+from apps.system_intelligence.services.public_assistant.chat import context
 
 
 class BuildContextTests(TestCase):

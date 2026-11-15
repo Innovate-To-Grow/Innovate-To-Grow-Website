@@ -14,7 +14,7 @@ public address, so an IP bucket would be one bucket for the whole campus.
 | Legacy | Everyone without a valid token: frontend bundles cached before the token existed, scripts, expired or forged tokens | **One shared actor** for all of them (see [The legacy actor](#the-legacy-actor)) |
 
 Budget rows and throttle keys hold only a keyed hash of the actor
-(`services/public_assistant/actors.py`); the client IP is recorded as `ip_hash`
+(`services/public_assistant/chat/actors.py`); the client IP is recorded as `ip_hash`
 in the conversation log for audit and keys no limit.
 
 ### Visitor token contract

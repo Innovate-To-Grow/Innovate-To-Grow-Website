@@ -115,8 +115,8 @@ admins' grants, or they silently lose access.
 
 A large module becomes a package that keeps the old import path as its public interface. Its
 `__init__.py` re-exports what callers use, and the parts are named by responsibility. Examples:
-`system_intelligence/services/public_assistant/budget/` (limits, usage, database store, cache
-store), `mail/services/campaign/dispatch/` (launch, channels, email job, SMS job, job state,
+`system_intelligence/services/public_assistant/budget/` (limits, usage, reservations, counters,
+database store, cache store), `mail/services/campaign/dispatch/` (launch, channels, email job, SMS job, job state,
 failures), and `cms/services/amplify/` (rules, config, reconcile, jobs). Tests patch the submodule
 that owns a name (for example `budget.cache_store._shared_redis_client`), not the package. The reverse
 also holds: when a package is down to one module, flatten it back into a plain module with the same

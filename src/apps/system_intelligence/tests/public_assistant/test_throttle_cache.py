@@ -18,7 +18,7 @@ from rest_framework.test import APIClient
 from apps.core.models import AWSCredentialConfig
 from apps.core.utils.throttle_cache import throttle_cache
 from apps.system_intelligence.models import SystemIntelligenceConfig
-from apps.system_intelligence.services.public_assistant import actors
+from apps.system_intelligence.services.public_assistant.chat import actors
 from apps.system_intelligence.views import PublicAssistantActorThrottle
 from config.settings.base.framework.cache import THROTTLE_CACHE
 

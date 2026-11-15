@@ -258,7 +258,7 @@ class DatabaseTwoLevelBudgetTests(TestCase):
         self._reserve(self.other, amount=4900)
 
         with (
-            patch.object(budget.cache, "add", side_effect=RuntimeError("cache down")),
+            patch.object(budget.limits.cache, "add", side_effect=RuntimeError("cache down")),
             self.assertLogs("apps.system_intelligence.services.public_assistant.budget", level="WARNING") as logs,
         ):
             refused = self._reserve(amount=150)
@@ -300,7 +300,7 @@ class DatabaseTwoLevelBudgetTests(TestCase):
     def test_settlement_failure_is_reported_as_backend_unavailable(self):
         reservation = self._reserve()
 
-        with patch.object(budget, "_settle_database_reservation", side_effect=RuntimeError("db down")):
+        with patch.object(budget.reservations, "_settle_database_reservation", side_effect=RuntimeError("db down")):
             with self.assertRaises(budget.BudgetBackendUnavailable):
                 budget.reconcile_budget(reservation, 80)
             with self.assertRaises(budget.BudgetBackendUnavailable):
