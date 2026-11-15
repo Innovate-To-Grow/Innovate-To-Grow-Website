@@ -16,7 +16,7 @@ from apps.core.services.delivery_rates.runtime import budget
 from apps.core.services.delivery_rates.snapshot import identity_status
 from apps.core.tests.graph_helpers import create_graph_config
 
-from .helpers import Channel, FakeClock
+from ..helpers import Channel, FakeClock
 
 MAILBOX = "i2g@example.edu"
 OIT_LIMITS = {

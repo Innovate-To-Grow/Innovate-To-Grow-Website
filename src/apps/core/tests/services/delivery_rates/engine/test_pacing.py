@@ -12,7 +12,7 @@ from apps.core.models import DeliveryRateState
 from apps.core.services.delivery_rates.rules.pacing import increment_seconds, next_slot, tolerance_seconds
 from apps.core.services.delivery_rates.rules.policy import effective_rate
 
-from .helpers import START, Channel, policy_for, spec_for, state_for
+from ..helpers import START, Channel, policy_for, spec_for, state_for
 
 SMART = DeliveryRateState.Mode.SMART
 
