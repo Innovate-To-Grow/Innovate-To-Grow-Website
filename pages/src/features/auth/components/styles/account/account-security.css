@@ -1,0 +1,87 @@
+@layer itg.components {
+/* Password + delete flows. */
+.account-password-section,
+.account-password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.account-password-form {
+  margin: 0;
+}
+
+.account-password-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-section .account-password-header .account-section-title {
+  margin-bottom: 4px;
+}
+
+.account-password-help {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
+.account-password-header .account-action-primary--inline {
+  margin-top: 0;
+}
+
+.account-signout-row {
+  margin: 0;
+}
+
+.account-danger-section {
+  border-top-color: var(--itg-color-error);
+}
+
+.account-danger-toggle {
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+}
+
+.account-section .account-danger-toggle .account-section-title,
+.account-danger-toggle .account-section-toggle {
+  color: var(--itg-color-error);
+}
+
+.account-danger-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.account-danger-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-danger-help,
+.account-danger-confirmation {
+  margin: 0;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+}
+
+.account-danger-confirmation {
+  color: var(--itg-color-error);
+  font-weight: 600;
+}
+}

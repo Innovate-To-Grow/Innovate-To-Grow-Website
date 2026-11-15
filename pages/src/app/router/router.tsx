@@ -44,14 +44,14 @@ const ALL_PROJECTS_DESCRIPTION =
     "Search every Innovate to Grow student project at UC Merced, this semester's teams and the archive, and collect them into lists to save, share or export.";
 
 // Auth pages (lazy)
-const LoginPage = React.lazy(() => import('@/features/auth/components/pages/LoginPage').then(m => ({default: m.LoginPage})));
-const RegisterPage = React.lazy(() => import('@/features/auth/components/pages/RegisterPage').then(m => ({default: m.RegisterPage})));
-const AccountPage = React.lazy(() => import('@/features/auth/components/pages/AccountPage').then(m => ({default: m.AccountPage})));
-const PastProjectCurationSharedLinksPage = React.lazy(() => import('@/features/auth/components/pages/PastProjectCurationSharedLinksPage').then(m => ({default: m.PastProjectCurationSharedLinksPage})));
-const CompleteProfilePage = React.lazy(() => import('@/features/auth/components/pages/CompleteProfilePage').then(m => ({default: m.CompleteProfilePage})));
-const ForgotPasswordPage = React.lazy(() => import('@/features/auth/components/pages/ForgotPasswordPage').then(m => ({default: m.ForgotPasswordPage})));
-const VerifyEmailPage = React.lazy(() => import('@/features/auth/components/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
-const VerifyPhonePage = React.lazy(() => import('@/features/auth/components/pages/VerifyPhonePage').then(m => ({default: m.VerifyPhonePage})));
+const LoginPage = React.lazy(() => import('@/features/auth/components/pages/signin/LoginPage').then(m => ({default: m.LoginPage})));
+const RegisterPage = React.lazy(() => import('@/features/auth/components/pages/signin/RegisterPage').then(m => ({default: m.RegisterPage})));
+const AccountPage = React.lazy(() => import('@/features/auth/components/pages/account/dashboard/AccountPage').then(m => ({default: m.AccountPage})));
+const PastProjectCurationSharedLinksPage = React.lazy(() => import('@/features/auth/components/pages/account/sharedLinks/PastProjectCurationSharedLinksPage').then(m => ({default: m.PastProjectCurationSharedLinksPage})));
+const CompleteProfilePage = React.lazy(() => import('@/features/auth/components/pages/completeProfile/CompleteProfilePage').then(m => ({default: m.CompleteProfilePage})));
+const ForgotPasswordPage = React.lazy(() => import('@/features/auth/components/pages/signin/ForgotPasswordPage').then(m => ({default: m.ForgotPasswordPage})));
+const VerifyEmailPage = React.lazy(() => import('@/features/auth/components/pages/verify/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
+const VerifyPhonePage = React.lazy(() => import('@/features/auth/components/pages/verify/VerifyPhonePage').then(m => ({default: m.VerifyPhonePage})));
 
 // Content pages (lazy) — only non-CMS pages
 const NewsPage = React.lazy(() => import('@/routes/NewsPage').then(m => ({default: m.NewsPage})));

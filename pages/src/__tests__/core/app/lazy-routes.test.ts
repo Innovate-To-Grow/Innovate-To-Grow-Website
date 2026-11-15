@@ -2,12 +2,12 @@ import {describe, it, expect} from 'vitest';
 
 describe('Lazy route modules resolve', () => {
   const authPages = [
-    ['LoginPage', () => import('@/features/auth/components/pages/LoginPage')],
-    ['RegisterPage', () => import('@/features/auth/components/pages/RegisterPage')],
-    ['AccountPage', () => import('@/features/auth/components/pages/AccountPage')],
-    ['CompleteProfilePage', () => import('@/features/auth/components/pages/CompleteProfilePage')],
-    ['ForgotPasswordPage', () => import('@/features/auth/components/pages/ForgotPasswordPage')],
-    ['VerifyEmailPage', () => import('@/features/auth/components/pages/VerifyEmailPage')],
+    ['LoginPage', () => import('@/features/auth/components/pages/signin/LoginPage')],
+    ['RegisterPage', () => import('@/features/auth/components/pages/signin/RegisterPage')],
+    ['AccountPage', () => import('@/features/auth/components/pages/account/dashboard/AccountPage')],
+    ['CompleteProfilePage', () => import('@/features/auth/components/pages/completeProfile/CompleteProfilePage')],
+    ['ForgotPasswordPage', () => import('@/features/auth/components/pages/signin/ForgotPasswordPage')],
+    ['VerifyEmailPage', () => import('@/features/auth/components/pages/verify/VerifyEmailPage')],
   ] as const;
 
   const contentPages = [

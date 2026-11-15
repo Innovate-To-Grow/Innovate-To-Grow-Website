@@ -94,7 +94,7 @@ Two cases do not get the fallback straight away. An already-used link in a brows
 
 ### AuthProvider
 
-`src/features/auth/components/AuthContext.tsx`
+`src/features/auth/components/AuthContext/index.tsx`
 
 - Manages user state, authentication status, and profile completion requirement
 - Gates its children during the asynchronous authoritative session bootstrap
@@ -230,7 +230,7 @@ CSS custom properties define the design vocabulary:
 - `src/styles/` — every global stylesheet: `tokens.css` (fallback design tokens), `shared.css` (auth legal notice and phone-consent rules), `layers.css` and the `contract/` tree (both below)
 - `src/index.css` — Imports shared styles, sets up body and app-layout
 - `src/styles/contract/` — the content contract: the design system (`global/`), CMS block styles (`cms-blocks/`), the page classes editors store in content HTML (`cms-pages.css`, `page-home.css`, `legacy-content.css`) and `contract-classes.json`. `index.css` imports `contract/index.css` first, so these rules come before every other stylesheet; `css-contract.test.ts` keeps a rule for every listed class ([CSS contract](../cms-admin/css-contract.md))
-- Component-scoped `.css` files alongside each component. The shell (`features/layout/components/{Container,MainMenu,Footer}`, `app/MaintenanceMode`, `app/ErrorBoundary`) lands in the entry bundle; route CSS (`routes/*`, `features/auth/components/auth.css`) loads with its lazy route chunk. A file that every renderer of a class imports is the rule: a lazy route's CSS is not there when a visitor lands on another route first.
+- Component-scoped `.css` files alongside each component. The shell (`features/layout/components/{Container,MainMenu,Footer}`, `app/MaintenanceMode`, `app/ErrorBoundary`) lands in the entry bundle; route CSS (`routes/*`, `features/auth/components/styles/base/auth.css`) loads with its lazy route chunk. A file that every renderer of a class imports is the rule: a lazy route's CSS is not there when a visitor lands on another route first.
 - One stylesheet owns each selector (`src/__tests__/core/css/css-ownership.test.ts`): chunk CSS loads in navigation order, so a selector defined in two files would get whichever loaded last. Files that one stylesheet `@import`s count as that stylesheet.
 - Cascade layers (`src/styles/layers.css`, imported first by `main.tsx`): `itg.defaults` < `itg.tokens` < `itg.base` < `itg.components` < `itg.overrides` < `itg.page`. Every bundled stylesheet wraps its rules in `@layer itg.components` (fallback tokens and last-resort defaults in `itg.defaults`); `src/__tests__/core/css/layers.test.ts` fails on an unlayered rule, which would beat the Site Settings custom CSS. Styles injected at runtime go through `inComponentsLayer()` from `@/lib/css`. The block-preview rules inline in `index.html` stay unlayered on purpose.
 - The backend serves the Site Settings design tokens (`itg.tokens`) and custom CSS (`itg.overrides`) from `/api/layout/theme.css`, linked before the bundle; it opens with the same layer statement, so the order holds whichever sheet loads first ([Theme](../cms-admin/theme-and-custom-css.md)).
