@@ -4,7 +4,7 @@ from django.urls import reverse
 
 from apps.event.tests.helpers import make_superuser
 from apps.mail.services.inbox import InboxError
-from apps.mail.tests.services.inbox.test_imap_delivery_rate import (
+from apps.mail.tests.services.inbox.gmail_import.test_imap_delivery_rate import (
     INBOX_MAILBOX,
     GmailImapRateTestCase,
     mailbox_factory,

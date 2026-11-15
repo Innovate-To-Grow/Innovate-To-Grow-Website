@@ -3,10 +3,10 @@ from django.utils import timezone
 
 from apps.mail.models import SmsLinkToken
 from apps.mail.services.sms import links
-from apps.mail.tests.services.sms.test_issue_and_open import _IssueAndOpenCase
-from apps.mail.tests.services.sms.test_links import PHONE, token_of
+from apps.mail.tests.services.sms.links.test_issue_and_open import _IssueAndOpenCase
+from apps.mail.tests.services.sms.links.test_links import PHONE, token_of
 
-from .policy_helpers import sms_settings
+from ..policy.policy_helpers import sms_settings
 
 
 @override_settings(FRONTEND_URL="https://i2g.example.edu")

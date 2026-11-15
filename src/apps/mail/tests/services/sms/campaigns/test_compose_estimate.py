@@ -11,7 +11,7 @@ from apps.mail.services.sms.content import compose, estimate
 from apps.mail.services.sms.content.ticket_text import ticket_text
 from apps.mail.services.sms.policy.errors import LinksDisabled, SmsSendRefused
 
-from .policy_helpers import add_phone, sms_settings
+from ..policy.policy_helpers import add_phone, sms_settings
 
 FOOTER = "Reply STOP to opt out."
 

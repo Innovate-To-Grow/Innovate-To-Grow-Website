@@ -20,7 +20,7 @@ from apps.mail.services.inbox.reply import (
     render_reply_html,
     send_reply,
 )
-from apps.mail.tests.services.inbox.test_inbox_services import _fake_message, _inbox_context
+from apps.mail.tests.services.inbox.mailbox.test_inbox_services import _fake_message, _inbox_context
 
 
 class FetchInboxMessageTests(TestCase):

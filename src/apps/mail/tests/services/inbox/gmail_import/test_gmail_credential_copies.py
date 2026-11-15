@@ -24,7 +24,7 @@ from apps.mail.services.campaign.gmail_import.credential_mail import (
     sent_copies_kept,
 )
 from apps.mail.services.inbox import InboxError, fetch_inbox_message, list_inbox_messages
-from apps.mail.tests.services.inbox.test_imap_delivery_rate import (
+from apps.mail.tests.services.inbox.gmail_import.test_imap_delivery_rate import (
     IMPORT_MAILBOX,
     INBOX_MAILBOX,
     mailbox_factory,

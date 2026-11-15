@@ -14,7 +14,11 @@ from apps.mail.services.campaign.gmail_import import (
     list_recent_sent_messages,
     resolve_gmail_mailbox,
 )
-from apps.mail.tests.services.inbox.test_gmail_import import _FakeMailbox, _GmailImportServiceCase, _mailbox_context
+from apps.mail.tests.services.inbox.gmail_import.test_gmail_import import (
+    _FakeMailbox,
+    _GmailImportServiceCase,
+    _mailbox_context,
+)
 
 
 class GmailImportServiceTest(_GmailImportServiceCase):

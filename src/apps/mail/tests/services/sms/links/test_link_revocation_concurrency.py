@@ -20,7 +20,7 @@ from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsConfig, SmsLinkToken
 from apps.mail.services.sms import links
 
-from .policy_helpers import add_phone, sms_settings
+from ..policy.policy_helpers import add_phone, sms_settings
 
 PHONE = "+12095550101"
 WAIT_SECONDS = 10

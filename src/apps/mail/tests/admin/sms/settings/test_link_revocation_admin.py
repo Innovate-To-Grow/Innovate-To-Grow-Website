@@ -12,7 +12,7 @@ from apps.mail.admin.sms_settings.config import REVOKED_FOR_GOOD
 from apps.mail.models import SmsConfig, SmsLinkRevocation
 from apps.mail.services.sms import links
 
-from ...services.sms.policy_helpers import add_phone, sms_settings
+from ....services.sms.policy.policy_helpers import add_phone, sms_settings
 from .test_sms_settings_admin import settings_form
 
 PHONE = "+12095550101"

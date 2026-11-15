@@ -7,9 +7,9 @@ from django.utils import timezone
 
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import SmsConfig, SmsLinkRevocation, SmsLinkToken
-from apps.mail.tests.admin.sms.test_link_revocation_admin import Reason, SwitchTestCase, Via, issue
+from apps.mail.tests.admin.sms.settings.test_link_revocation_admin import Reason, SwitchTestCase, Via, issue
 
-from ...services.sms.policy_helpers import sms_settings
+from ....services.sms.policy.policy_helpers import sms_settings
 from .test_sms_settings_admin import settings_form
 
 
