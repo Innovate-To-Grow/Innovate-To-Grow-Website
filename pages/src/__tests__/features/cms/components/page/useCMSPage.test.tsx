@@ -16,7 +16,7 @@ vi.mock('@/features/cms/api', () => ({
   ),
 }));
 
-import {useCMSPage} from '@/features/cms/components/useCMSPage';
+import {useCMSPage} from '@/features/cms/components/page/useCMSPage';
 
 describe('useCMSPage live polling', () => {
   beforeEach(() => {

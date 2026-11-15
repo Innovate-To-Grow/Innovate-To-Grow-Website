@@ -1,5 +1,5 @@
 import { safeHref } from '@/lib/security';
-import {CMS_PAGE_TITLE_CLASS} from '../headings';
+import {CMS_PAGE_TITLE_CLASS} from '../../shared/headings';
 
 export interface ContactInfoItem {
   label: string;

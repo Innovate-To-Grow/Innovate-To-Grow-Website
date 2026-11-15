@@ -2,7 +2,7 @@ import {cleanup, render} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {LinkListBlock} from '@/features/cms/components/blocks/content/LinkListBlock';
+import {LinkListBlock} from '@/features/cms/components/blocks/content/lists/LinkListBlock';
 
 describe('LinkListBlock', () => {
   afterEach(() => {

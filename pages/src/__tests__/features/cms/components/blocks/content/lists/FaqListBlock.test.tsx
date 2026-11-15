@@ -1,7 +1,7 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {FaqListBlock} from '@/features/cms/components/blocks/content/FaqListBlock';
+import {FaqListBlock} from '@/features/cms/components/blocks/content/lists/FaqListBlock';
 
 describe('FaqListBlock', () => {
   afterEach(() => {

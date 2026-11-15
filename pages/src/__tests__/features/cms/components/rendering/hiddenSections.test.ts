@@ -5,7 +5,7 @@ import {
   buildHiddenSectionsCss,
   HIDDEN_SECTION_SELECTORS,
   VISUALLY_HIDDEN_SECTION_SELECTORS,
-} from '@/features/cms/components/hiddenSections';
+} from '@/features/cms/components/rendering/hiddenSections';
 
 describe('hidden section presets', () => {
   afterEach(() => {

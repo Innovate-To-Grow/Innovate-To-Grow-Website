@@ -17,7 +17,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 // Mock the concrete block components via BlockRenderer so we can assert on
 // rendered output without pulling in styling/API deps. We spy on
 // BlockRenderer's input.
-vi.mock('@/features/cms/components/BlockRenderer', () => ({
+vi.mock('@/features/cms/components/rendering/BlockRenderer', () => ({
   BlockRenderer: ({
     blocks,
     previewMode,
@@ -103,7 +103,7 @@ describe('BlockPreviewPage', () => {
   it('accepts messages from the backend origin configured by VITE_API_BASE_URL', async () => {
     vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com/api');
     vi.resetModules();
-    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/BlockPreviewPage');
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/preview/BlockPreviewPage');
 
     render(<ReloadedBlockPreviewPage />);
     act(() => {
@@ -125,7 +125,7 @@ describe('BlockPreviewPage', () => {
   it('targets resize messages to the trusted parent origin from the accepted message', async () => {
     vi.stubEnv('VITE_ADMIN_ORIGIN', 'https://admin.example.com');
     vi.resetModules();
-    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/BlockPreviewPage');
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/preview/BlockPreviewPage');
     const restoreDimensions = [
       stubLayoutDimension(document.documentElement, 'scrollHeight', 240),
       stubLayoutDimension(document.documentElement, 'offsetHeight', 240),

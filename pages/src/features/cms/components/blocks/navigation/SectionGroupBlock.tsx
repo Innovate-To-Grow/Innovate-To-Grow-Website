@@ -1,6 +1,6 @@
 import type { ElementType } from 'react';
 import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
-import {CMS_PAGE_TITLE_CLASS, headingClassForLevel, normalizeHeadingLevel} from '../headings';
+import {CMS_PAGE_TITLE_CLASS, headingClassForLevel, normalizeHeadingLevel} from '../shared/headings';
 
 export interface SectionGroupSection {
   heading: string;

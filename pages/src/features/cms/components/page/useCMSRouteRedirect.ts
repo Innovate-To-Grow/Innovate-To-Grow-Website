@@ -1,5 +1,5 @@
 import {useEffect, useRef, useState} from 'react';
-import {clearCMSRouteRedirectChain, performCMSRouteRedirect} from '../cmsRouteRedirect';
+import {clearCMSRouteRedirectChain, performCMSRouteRedirect} from './cmsRouteRedirect';
 
 export type RedirectFailure = 'not_found' | 'error';
 

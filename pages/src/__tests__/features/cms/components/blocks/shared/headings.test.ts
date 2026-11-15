@@ -4,7 +4,7 @@ import {
   CMS_PAGE_TITLE_CLASS,
   headingClassForLevel,
   normalizeHeadingLevel,
-} from '@/features/cms/components/blocks/headings';
+} from '@/features/cms/components/blocks/shared/headings';
 
 describe('normalizeHeadingLevel', () => {
   it('accepts heading levels 1-6 given as numbers or strings', () => {

@@ -1,6 +1,6 @@
 import {act, render} from '@testing-library/react';
 import {describe, expect, it} from 'vitest';
-import {EmbedWidgetBlock} from '@/features/cms/components/blocks/content/EmbedWidgetBlock';
+import {EmbedWidgetBlock} from '@/features/cms/components/blocks/content/embed/EmbedWidgetBlock';
 
 describe('EmbedWidgetBlock', () => {
   it('renders an iframe pointing at /_embed/<slug>, unsandboxed so exports download and tabs open normally', () => {

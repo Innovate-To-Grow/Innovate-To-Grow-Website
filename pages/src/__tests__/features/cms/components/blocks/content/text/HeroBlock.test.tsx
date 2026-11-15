@@ -1,7 +1,7 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {HeroBlock} from '@/features/cms/components/blocks/content/HeroBlock';
+import {HeroBlock} from '@/features/cms/components/blocks/content/text/HeroBlock';
 
 describe('HeroBlock', () => {
   afterEach(() => {

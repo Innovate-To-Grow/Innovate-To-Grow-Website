@@ -13,7 +13,7 @@ import {
   isTruthyParam,
   normalizeHiddenSections,
   parseHiddenSectionsParam,
-} from '@/features/cms/components/hiddenSections';
+} from '@/features/cms/components/rendering/hiddenSections';
 import {inComponentsLayer} from '@/lib/css';
 
 function injectIsolatedHiddenSections(searchParams: URLSearchParams) {

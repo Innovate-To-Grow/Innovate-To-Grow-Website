@@ -6,7 +6,7 @@ import {AcknowledgementPage} from '@/routes/events/AcknowledgementPage/Acknowled
 
 const mockUseCMSPage = vi.fn();
 
-vi.mock('@/features/cms/components/useCMSPage', () => ({
+vi.mock('@/features/cms/components/page/useCMSPage', () => ({
   useCMSPage: (...args: unknown[]) => mockUseCMSPage(...args),
 }));
 

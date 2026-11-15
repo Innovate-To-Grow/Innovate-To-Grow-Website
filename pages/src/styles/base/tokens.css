@@ -2,7 +2,7 @@
    Fallback design tokens.
    The live values come from Django Admin (Site Settings -> Design Tokens) and
    are served in the itg.tokens layer of /api/layout/theme.css. These fallbacks
-   sit in itg.defaults, the lowest layer (styles/layers.css), so any token the
+   sit in itg.defaults, the lowest layer (styles/base/layers.css), so any token the
    server defines wins; they only fill in when the server sheet is missing a
    token.
    Keep in sync with default_design_tokens() in

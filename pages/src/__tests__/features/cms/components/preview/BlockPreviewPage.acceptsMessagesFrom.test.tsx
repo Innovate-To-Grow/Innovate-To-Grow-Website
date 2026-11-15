@@ -17,7 +17,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 // Mock the concrete block components via BlockRenderer so we can assert on
 // rendered output without pulling in styling/API deps. We spy on
 // BlockRenderer's input.
-vi.mock('@/features/cms/components/BlockRenderer', () => ({
+vi.mock('@/features/cms/components/rendering/BlockRenderer', () => ({
   BlockRenderer: ({
     blocks,
     previewMode,
@@ -87,7 +87,7 @@ describe('BlockPreviewPage', () => {
   it('accepts messages from loopback admin origins in development', async () => {
     vi.stubEnv('DEV', true);
     vi.resetModules();
-    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/BlockPreviewPage');
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/preview/BlockPreviewPage');
 
     render(<ReloadedBlockPreviewPage />);
     act(() => {
@@ -109,7 +109,7 @@ describe('BlockPreviewPage', () => {
   it('does not trust loopback admin origins outside development', async () => {
     vi.stubEnv('DEV', false);
     vi.resetModules();
-    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/BlockPreviewPage');
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/preview/BlockPreviewPage');
 
     render(<ReloadedBlockPreviewPage />);
     act(() => {
@@ -134,7 +134,7 @@ describe('BlockPreviewPage', () => {
     // origin from the SPA; messages from that admin must pass the guard.
     vi.stubEnv('VITE_ADMIN_ORIGIN', 'https://admin.example.com');
     vi.resetModules();
-    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/BlockPreviewPage');
+    const {BlockPreviewPage: ReloadedBlockPreviewPage} = await import('@/features/cms/components/preview/BlockPreviewPage');
 
     render(<ReloadedBlockPreviewPage />);
     act(() => {

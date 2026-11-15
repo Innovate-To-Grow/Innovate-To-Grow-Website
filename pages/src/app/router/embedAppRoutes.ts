@@ -1,5 +1,5 @@
 import React, {type LazyExoticComponent, type ComponentType} from 'react';
-import type {EmbedAppRouteProps, EmbedAppRoutes} from '@/features/cms/components/EmbedBlockPage';
+import type {EmbedAppRouteProps, EmbedAppRoutes} from '@/features/cms/components/embed/EmbedBlockPage';
 
 /**
  * Registry of app routes that can be rendered inside a CMS Embed Widget iframe.

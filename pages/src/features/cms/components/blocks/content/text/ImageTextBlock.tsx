@@ -1,6 +1,6 @@
 import { SafeHtml } from "@/components/SafeHtml/SafeHtml";
-import { CMS_PAGE_TITLE_CLASS } from "../headings";
-import { LOCAL_IMAGE_SIZES, localImageVariant } from "../localImages";
+import { CMS_PAGE_TITLE_CLASS } from "../../shared/headings";
+import { LOCAL_IMAGE_SIZES, localImageVariant } from "../../shared/localImages";
 
 export interface ImageTextData {
   heading?: string;

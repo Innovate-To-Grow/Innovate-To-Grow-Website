@@ -1,7 +1,7 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {NoticeBlock, type NoticeStyle} from '@/features/cms/components/blocks/content/NoticeBlock';
+import {NoticeBlock, type NoticeStyle} from '@/features/cms/components/blocks/content/text/NoticeBlock';
 
 describe('NoticeBlock', () => {
   afterEach(() => {

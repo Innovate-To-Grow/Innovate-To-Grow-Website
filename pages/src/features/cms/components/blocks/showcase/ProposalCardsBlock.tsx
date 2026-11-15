@@ -1,5 +1,5 @@
 import {SafeHtml} from '@/components/SafeHtml/SafeHtml';
-import {CMS_PAGE_TITLE_CLASS} from '../headings';
+import {CMS_PAGE_TITLE_CLASS} from '../shared/headings';
 
 export interface ProposalCard {
   type: string;

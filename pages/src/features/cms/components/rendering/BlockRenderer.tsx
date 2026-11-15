@@ -1,21 +1,21 @@
 import { memo, type ReactNode } from 'react';
 import type { CMSBlock, CMSKnownBlock, CMSKnownBlockType } from '@/features/cms/api';
-import { ContactInfoBlock } from './blocks/content/ContactInfoBlock';
-import { CtaGroupBlock } from './blocks/content/CtaGroupBlock';
-import { EmbedBlock } from './blocks/content/EmbedBlock';
-import { EmbedWidgetBlock } from './blocks/content/EmbedWidgetBlock';
-import { FaqListBlock } from './blocks/content/FaqListBlock';
-import { HeroBlock } from './blocks/content/HeroBlock';
-import { ImageTextBlock } from './blocks/content/ImageTextBlock';
-import { LinkListBlock } from './blocks/content/LinkListBlock';
-import { NoticeBlock } from './blocks/content/NoticeBlock';
-import { NumberedListBlock } from './blocks/content/NumberedListBlock';
-import { RichTextBlock } from './blocks/content/RichTextBlock';
-import { TableBlock } from './blocks/content/TableBlock';
-import { NavigationGridBlock } from './blocks/navigation/NavigationGridBlock';
-import { SectionGroupBlock } from './blocks/navigation/SectionGroupBlock';
-import { ProposalCardsBlock } from './blocks/showcase/ProposalCardsBlock';
-import { SponsorYearBlock } from './blocks/showcase/SponsorYearBlock';
+import { ContactInfoBlock } from '../blocks/content/text/ContactInfoBlock';
+import { CtaGroupBlock } from '../blocks/content/lists/CtaGroupBlock';
+import { EmbedBlock } from '../blocks/content/embed/EmbedBlock';
+import { EmbedWidgetBlock } from '../blocks/content/embed/EmbedWidgetBlock';
+import { FaqListBlock } from '../blocks/content/lists/FaqListBlock';
+import { HeroBlock } from '../blocks/content/text/HeroBlock';
+import { ImageTextBlock } from '../blocks/content/text/ImageTextBlock';
+import { LinkListBlock } from '../blocks/content/lists/LinkListBlock';
+import { NoticeBlock } from '../blocks/content/text/NoticeBlock';
+import { NumberedListBlock } from '../blocks/content/lists/NumberedListBlock';
+import { RichTextBlock } from '../blocks/content/text/RichTextBlock';
+import { TableBlock } from '../blocks/content/lists/TableBlock';
+import { NavigationGridBlock } from '../blocks/navigation/NavigationGridBlock';
+import { SectionGroupBlock } from '../blocks/navigation/SectionGroupBlock';
+import { ProposalCardsBlock } from '../blocks/showcase/ProposalCardsBlock';
+import { SponsorYearBlock } from '../blocks/showcase/SponsorYearBlock';
 
 type BlockComponentMap = {
   [Type in CMSKnownBlockType]: (props: {
