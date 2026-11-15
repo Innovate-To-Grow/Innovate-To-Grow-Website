@@ -4,7 +4,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from apps.authn.models import ContactEmail, Member, SendVerificationChallenge
-from apps.authn.views.admin.login_helpers import LAST_ADMIN_LOGIN_COOKIE_NAME, set_last_admin_login_cookie
+from apps.authn.views.admin.login.state import LAST_ADMIN_LOGIN_COOKIE_NAME, set_last_admin_login_cookie
 
 
 @override_settings(SEND_VERIFICATION_TEST_AUTOSOLVE=False, SEND_VERIFICATION_MODE="enforce")

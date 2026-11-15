@@ -23,7 +23,7 @@ from django.urls import include, path
 from django.views.static import serve as static_serve
 
 from apps.authn.views.admin.login import AdminLoginView
-from apps.authn.views.admin.send_verification import AdminSendVerificationChallengeView
+from apps.authn.views.admin.login.send_verification import AdminSendVerificationChallengeView
 from apps.cms.views import LayoutAPIView, ThemeStylesheetView, sitemap_xml
 from apps.core.legacy_view import get_legacy_view_urls
 from apps.core.middleware import csp_report

@@ -25,7 +25,7 @@ from apps.authn.models.security import EmailAuthChallenge
 from apps.authn.services import login_guard
 from apps.authn.tests.clock import SECONDS_LEFT_IN_DAY, SECONDS_LEFT_IN_SHORT_WINDOW, freeze_time
 from apps.authn.views.admin.login.password import REMEMBERED_ADMIN_GUARD_SCOPE, remembered_admin_guard_key
-from apps.authn.views.admin.login_helpers import LAST_ADMIN_LOGIN_COOKIE_NAME
+from apps.authn.views.admin.login.state import LAST_ADMIN_LOGIN_COOKIE_NAME
 
 Member = get_user_model()
 

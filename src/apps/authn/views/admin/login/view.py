@@ -3,15 +3,10 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.cache import never_cache
 
-from apps.authn.views.admin.login_helpers import (
-    clear_admin_login_session,
-    get_admin_login_state,
-    render_admin_login,
-    safe_admin_next,
-)
-
 from .email_code import EmailCodeLoginMixin
+from .page import render_admin_login
 from .password import PasswordLoginMixin
+from .state import clear_admin_login_session, get_admin_login_state, safe_admin_next
 
 
 @method_decorator(never_cache, name="dispatch")

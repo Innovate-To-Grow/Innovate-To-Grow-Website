@@ -133,7 +133,7 @@ class AcceptInvitationViewTests(TestCase):
         """The token is caller-chosen: counting before the lookup would mint one cache entry per made-up token."""
         from unittest.mock import patch
 
-        from apps.authn.views.admin import invitation as invitation_view
+        from apps.authn.views.admin.invitation import view as invitation_view
 
         with patch.object(invitation_view, "cache") as cache_mock:
             statuses = [
@@ -148,7 +148,7 @@ class AcceptInvitationViewTests(TestCase):
     def test_post_on_an_expired_or_used_invitation_is_not_counted(self):
         from unittest.mock import patch
 
-        from apps.authn.views.admin import invitation as invitation_view
+        from apps.authn.views.admin.invitation import view as invitation_view
 
         expired = self._create_invitation(
             email="gone@example.com", expires_at=timezone.now() - timezone.timedelta(days=1)

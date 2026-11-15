@@ -26,7 +26,6 @@ from .account.email_code import (
     DeleteAccountCodeVerifyView,
 )
 from .account.profile import ProfileView
-from .admin.impersonate_login import ImpersonateLoginView
 from .admin.invitation import AcceptInvitationView
 from .admin.login import AdminLoginView
 from .auth.codes.email_code import (
@@ -45,6 +44,7 @@ from .auth.codes.send_verification import SendVerificationChallengeView, SendVer
 from .auth.password.login import LoginView
 from .auth.password.public_key import PublicKeyView
 from .auth.password.register import RegisterView
+from .auth.session.impersonate_login import ImpersonateLoginView
 from .auth.session.logout import LogoutView
 from .auth.session.session import SessionView
 from .auth.session.token import PublicTokenRefreshView

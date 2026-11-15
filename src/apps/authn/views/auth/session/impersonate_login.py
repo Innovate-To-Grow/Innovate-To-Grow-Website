@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 
 from apps.authn.models import ImpersonationToken
 
-from ..shared.responses import build_auth_success_payload, read_body_string
+from ...shared.responses import build_auth_success_payload, read_body_string
 
 logger = logging.getLogger(__name__)
 
