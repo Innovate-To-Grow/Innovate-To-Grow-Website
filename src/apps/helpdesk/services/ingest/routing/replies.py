@@ -24,7 +24,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from apps.core.models import EmailCategory, OutboundEmail
-from apps.core.services.email.inbound.rules import AUTO_REPLY_SUBJECT_RE
+from apps.core.services.email.inbound.classification.rules import AUTO_REPLY_SUBJECT_RE
 from apps.core.services.email.telemetry import text
 
 from ....models import Ticket, TicketMessage

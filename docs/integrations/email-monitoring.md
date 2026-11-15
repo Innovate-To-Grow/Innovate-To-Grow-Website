@@ -131,7 +131,7 @@ log: those are business decisions for staff, made on the **Bounced addresses** p
 
 ### Bounce categories
 
-`apps/core/services/email/bounces/classify.py`, with its tables in `bounces/rules/codes.py` (status codes) and
+`apps/core/services/email/bounces/classify/__init__.py`, with its tables in `bounces/rules/codes.py` (status codes) and
 `bounces/rules/phrases.py` (diagnostic phrases). Only **Address does not exist** and **Mailbox disabled** are evidence
 against an address; everything else is temporary, about our own sending, about the recipient's policy, or unclear.
 

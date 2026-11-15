@@ -20,12 +20,13 @@ from apps.core.models.base.delivery_rates import DeliveryChannel
 from apps.core.services.delivery_rates import RateDeferred, admit, mailbox_identity, record, release, uncertain
 from apps.core.services.delivery_rates.adapters.graph import graph_signal
 
-from ...contracts import EmailMessage
-from ...exceptions import PermanentEmailDeliveryError
-from ...mime import build_mime_message
+from ...sending.contracts import EmailMessage
+from ...sending.exceptions import PermanentEmailDeliveryError
+from ...sending.mime import build_mime_message
 from ...telemetry.probes import tracked_probe
-from .. import json_message, transport
-from ..errors import innermost_error_code
+from .. import transport
+from ..provider import json_message
+from ..transport.errors import innermost_error_code
 from .judge import judge, newest_id
 from .report import (
     ALLOWED,

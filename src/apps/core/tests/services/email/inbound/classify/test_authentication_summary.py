@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
 from apps.core.services.email.inbound import auth_summary
-from apps.core.services.email.inbound.classify import spam_confidence_level
+from apps.core.services.email.inbound.classification.classify import spam_confidence_level
 
 
 class AuthenticationSummaryTests(SimpleTestCase):

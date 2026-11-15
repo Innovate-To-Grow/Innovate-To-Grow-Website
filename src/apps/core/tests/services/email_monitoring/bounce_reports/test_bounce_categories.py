@@ -6,7 +6,7 @@ from django.test import SimpleTestCase
 
 from apps.core.models import EmailBounce
 from apps.core.services.email.bounces.classify import classify
-from apps.core.services.email.bounces.dsn import parse_report
+from apps.core.services.email.bounces.recording.dsn import parse_report
 
 from ..review_cases import CASES, CASES_BY_NAME
 

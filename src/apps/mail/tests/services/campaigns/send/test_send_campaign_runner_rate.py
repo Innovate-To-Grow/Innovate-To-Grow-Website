@@ -12,7 +12,7 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.core.services.delivery_rates import Lane, RateDeferred, WaitMode, quota, throttle, uncertain
 from apps.core.services.delivery_rates.runtime import context
 from apps.core.services.email import DeliveryResult
-from apps.core.services.email.exceptions import (
+from apps.core.services.email.sending.exceptions import (
     EmailRateDeferred,
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,

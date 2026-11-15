@@ -14,7 +14,7 @@ from apps.core.services.email import (
     PermanentEmailDeliveryError,
     resolve_provider,
 )
-from apps.core.services.email.registry import register_provider
+from apps.core.services.email.sending.registry import register_provider
 from apps.core.tests import graph_helpers
 from apps.core.tests.services.graph.provider.test_email_graph import (
     CLIENT_ID,

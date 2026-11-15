@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.contrib.admin.models import LogEntry
 
 from apps.core.models import EmailMonitorState
-from apps.core.services.email.bounces import state
+from apps.core.services.email.bounces.scanning import state
 from apps.core.tests.services.email_monitoring.bounce_scan.test_bounce_rescan import STATE_LOGGER, StateTestCase
 
 from ..helpers import SENDER, monitoring_settings

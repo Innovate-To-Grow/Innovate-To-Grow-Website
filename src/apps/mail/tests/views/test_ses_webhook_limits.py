@@ -10,7 +10,7 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from apps.core.services.request_limits.scopes import classify_route
+from apps.core.services.request_limits.classification.scopes import classify_route
 from apps.core.tests.request_limits.helpers import isolate, view_limit
 from apps.mail.services.sns.signature import SnsVerificationError
 from apps.mail.views.ses_webhook import SesEventThrottle, SesEventWebhookView, SesRejectedThrottle

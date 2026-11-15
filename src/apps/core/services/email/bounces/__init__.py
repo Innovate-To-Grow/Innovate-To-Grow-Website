@@ -10,9 +10,9 @@ unknown), with its tables in ``rules``; ``matching`` finds the email a report is
 and ``store`` saves each bounce once (and classifies stored ones again). ``jobs`` runs the scans in the worker.
 """
 
-from .jobs import BOUNCE_SCAN_JOB_KIND, ensure_scheduled, purge_finished_jobs, register_bounce_jobs, run_now
-from .scanner import ScanOutcome, scan_mailbox
-from .source import active_reader
+from .scanning.jobs import BOUNCE_SCAN_JOB_KIND, ensure_scheduled, purge_finished_jobs, register_bounce_jobs, run_now
+from .scanning.scanner import ScanOutcome, scan_mailbox
+from .scanning.source import active_reader
 
 __all__ = [
     "BOUNCE_SCAN_JOB_KIND",

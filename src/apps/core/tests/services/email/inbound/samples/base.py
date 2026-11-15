@@ -2,7 +2,7 @@ from email.message import EmailMessage
 from email.policy import SMTP
 
 from apps.core.services.email.inbound import Evidence
-from apps.core.services.email.inbound import headers as mime
+from apps.core.services.email.inbound.classification import headers as mime
 
 SITE = "i2g@ucmerced.edu"
 

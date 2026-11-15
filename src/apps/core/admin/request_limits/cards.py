@@ -1,4 +1,4 @@
-"""The scope cards of Site Settings → Request Limits, built from ``request_limits.overview`` (the tier summary is in
+"""The scope cards of Site Settings → Request Limits, built from ``request_limits.reporting.overview`` (the tier summary is in
 ``summary``).
 
 Per scope: ``Now: 3,000 / minute per caller · everyone together 12,000 / minute · Smart ×1.00``, the per-process

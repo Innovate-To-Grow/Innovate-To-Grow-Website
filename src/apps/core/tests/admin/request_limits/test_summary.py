@@ -4,7 +4,7 @@ from django.test import override_settings
 
 from apps.core.admin.request_limits.summary import assessment_line
 from apps.core.models import RequestLimitProcess
-from apps.core.services.request_limits import overview as overview_module
+from apps.core.services.request_limits.reporting import overview as overview_module
 from apps.core.services.request_limits.runtime import refusals, signals, smart
 from apps.core.services.request_limits.runtime.context import as_datetime
 from apps.core.tests.admin.request_limits.test_status import CUT_AT, SHED, set_state, store_mode

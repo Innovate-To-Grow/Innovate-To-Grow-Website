@@ -12,9 +12,9 @@ from apps.core.services.email import (
     UncertainEmailDeliveryError,
     deliver_email,
 )
-from apps.core.services.email.exceptions import EmailRateDeferred
 from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadBusy
 from apps.core.services.email.graph.transport import HttpResponse
+from apps.core.services.email.sending.exceptions import EmailRateDeferred
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.graph.mailbox.test_graph_mailbox_reader import (
     GET_TARGET,
@@ -34,7 +34,7 @@ from apps.core.tests.services.graph.provider.test_email_graph import (
 
 from ..helpers import FakeClock
 
-RESOLVE = "apps.core.services.email.delivery.resolve_provider"
+RESOLVE = "apps.core.services.email.sending.delivery.resolve_provider"
 READER_MAILBOX = "i2g@contoso.com"
 
 

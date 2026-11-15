@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.core.models import DeliveryRateState, DeliveryUsageBucket
-from apps.core.services.delivery_rates import families, maintenance
+from apps.core.services.delivery_rates.lifecycle import families, maintenance
 
 THIS = "apps.core.tests.services.delivery_rates.lifecycle.test_maintenance"
 

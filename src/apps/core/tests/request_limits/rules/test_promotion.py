@@ -13,7 +13,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.checks import check_request_limits
 from apps.core.models import RequestRateLimitPolicy
-from apps.core.services.request_limits import priority, register_priority_check, scopes
+from apps.core.services.request_limits import register_priority_check
+from apps.core.services.request_limits.classification import priority, scopes
 
 from ..helpers import TEST_SCOPES, isolate, limiter_on, limits_with, make_scope
 

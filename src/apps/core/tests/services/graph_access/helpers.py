@@ -13,7 +13,8 @@ from unittest.mock import patch
 from django.core.cache import cache
 
 from apps.core.models import EmailServiceConfig, MicrosoftGraphAccessCheck
-from apps.core.services.email.graph import auth, transport
+from apps.core.services.email.graph import transport
+from apps.core.services.email.graph.identity import auth
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, create_graph_config
 from apps.core.tests.services.graph.provider.test_email_graph import error_body, token_response

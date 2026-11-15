@@ -44,7 +44,7 @@ class TicketJobRetryAfterTest(TestCase):
     def test_a_ticket_held_back_by_the_delivery_rate_reruns_at_its_slot(self, _config, deliver):
         from apps.core.services.background_jobs import DeferredJobError
         from apps.core.services.delivery_rates import RateDeferred
-        from apps.core.services.email.exceptions import EmailRateDeferred
+        from apps.core.services.email.sending.exceptions import EmailRateDeferred
 
         now = timezone.now()
         deliver.side_effect = EmailRateDeferred(RateDeferred(now + timedelta(seconds=40), "cooldown", now=now))

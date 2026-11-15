@@ -13,7 +13,7 @@ from apps.core.services.background_jobs import (
     run_claimed_job,
 )
 from apps.core.services.background_jobs.gating import blocked_job_kinds
-from apps.core.services.delivery_rates import families
+from apps.core.services.delivery_rates.lifecycle import families
 from apps.core.tests.services.delivery_rates.helpers import FakeClock, rates_with
 from apps.core.tests.services.platform.jobs.test_background_job_deferrals import (
     BULK_KIND,

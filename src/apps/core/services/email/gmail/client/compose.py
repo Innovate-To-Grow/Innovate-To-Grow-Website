@@ -2,9 +2,9 @@
 
 from apps.core.models.base.service_credentials.gmail_api import GmailApiProviderConfig, normalize_subject
 
-from ...contracts import EmailMessage
-from ...exceptions import PermanentEmailDeliveryError
-from ...mime import build_mime_message, transport_bytes
+from ...sending.contracts import EmailMessage
+from ...sending.exceptions import PermanentEmailDeliveryError
+from ...sending.mime import build_mime_message, transport_bytes
 
 # Headers that would name another sender than the impersonated account; no feature sets them.
 _SENDER_HEADERS = ("sender", "return-path")

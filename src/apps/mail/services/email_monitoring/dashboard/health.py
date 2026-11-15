@@ -15,8 +15,8 @@ from django.utils import timezone
 
 from apps.core.models import BackgroundJob, EmailMonitorState
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND, active_reader
-from apps.core.services.email.bounces import state as bounce_state
-from apps.core.services.email.bounces.jobs import catch_up_seconds, interval_seconds
+from apps.core.services.email.bounces.scanning import state as bounce_state
+from apps.core.services.email.bounces.scanning.jobs import catch_up_seconds, interval_seconds
 from apps.core.services.email.inbound import format_interval, inbox_readers
 
 from .scope import monitoring_began

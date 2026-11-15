@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
 from apps.core.services.email import PermanentEmailDeliveryError
-from apps.core.services.email.mime import build_mime_message
+from apps.core.services.email.sending.mime import build_mime_message
 from apps.core.tests.services.graph.provider.test_email_graph import (
     GraphFixtureMixin,
     make_provider,

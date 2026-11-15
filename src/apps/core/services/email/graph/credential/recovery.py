@@ -15,7 +15,7 @@ from django.views.decorators.debug import sensitive_variables
 
 from apps.core.models import EmailServiceConfig, MicrosoftGraphCertificate
 
-from .. import auth
+from ..identity import auth
 from . import entra_check
 from .lifecycle import CertificateChangeError, lock_config, read_pinned_key, record, relabel_after_commit, summary
 

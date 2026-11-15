@@ -7,17 +7,14 @@ from django.contrib.sessions.models import Session
 from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 
-from apps.core.services.legacy_access import (
+from apps.core.legacy_view.access import (
     LEGACY_VIEWER_COOKIE_NAME,
     LegacyViewerAccessDenied,
     exchange_legacy_access_code,
     issue_legacy_access_grant,
     require_legacy_viewer,
 )
-from apps.core.services.legacy_access.sessions import (
-    database_session_expiry,
-    source_session_is_valid,
-)
+from apps.core.legacy_view.access.sessions import database_session_expiry, source_session_is_valid
 from apps.core.tests.admin.legacy_view.test_access import _MISSING
 from apps.event.tests.helpers import make_admin
 
@@ -70,7 +67,7 @@ class LegacyViewerSessionValidationTests(_LegacyViewerSessionValidationCase):
         request = self._viewer_cookie_request(self._forged_viewer_session())
 
         self.assertEqual(require_legacy_viewer(request).pk, self.user.pk)
-        with patch("apps.core.services.legacy_access.sessions._load_session") as load_session:
+        with patch("apps.core.legacy_view.access.sessions._load_session") as load_session:
             self.assertEqual(require_legacy_viewer(request).pk, self.user.pk)
         load_session.assert_not_called()
 
@@ -102,7 +99,7 @@ class LegacyViewerSessionValidationTests(_LegacyViewerSessionValidationCase):
         session_key = self._viewer_session_key()
 
         with (
-            patch("apps.core.services.legacy_access.sessions._session_store", side_effect=RuntimeError("db down")),
+            patch("apps.core.legacy_view.access.sessions._session_store", side_effect=RuntimeError("db down")),
             self.assertRaises(LegacyViewerAccessDenied),
         ):
             require_legacy_viewer(self._viewer_cookie_request(session_key))

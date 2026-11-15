@@ -21,8 +21,8 @@ from apps.core.services.email.inbound import (
     record,
     register_inbox_reader,
     registered_inbox_readers,
-    registry,
 )
+from apps.core.services.email.inbound.processing import registry
 
 SITE = "i2g@ucmerced.edu"
 Status = InboundMessage.Status
@@ -158,7 +158,7 @@ class RecordTests(TestCase):
 
     def test_a_row_recorded_by_another_process_meanwhile_is_not_an_error(self):
         record(SITE, listed(), self.received, candidate=False)
-        with patch("apps.core.services.email.inbound.queue.InboundMessage.objects.filter") as lookup:
+        with patch("apps.core.services.email.inbound.processing.queue.InboundMessage.objects.filter") as lookup:
             lookup.return_value.exists.return_value = False
             self.assertFalse(record(SITE, listed(), self.received, candidate=False))
 

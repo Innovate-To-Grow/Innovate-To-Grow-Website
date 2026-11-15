@@ -7,7 +7,7 @@ from apps.core.models import (
     MicrosoftGraphMailboxScope,
 )
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND
-from apps.core.services.email.bounces.state import set_paused
+from apps.core.services.email.bounces.scanning.state import set_paused
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.email_monitoring.helpers import (
     monitoring_settings,

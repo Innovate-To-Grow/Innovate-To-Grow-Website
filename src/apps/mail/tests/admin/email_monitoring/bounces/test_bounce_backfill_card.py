@@ -6,7 +6,7 @@ from django.utils import timezone
 from apps.core.models import (
     EmailMonitorState,
 )
-from apps.core.services.email.bounces import state
+from apps.core.services.email.bounces.scanning import state
 from apps.core.services.email.inbound import InboxReader
 from apps.core.tests.services.email_monitoring.helpers import SENDER, monitoring_settings
 from apps.mail.services.email_monitoring.dashboard import health

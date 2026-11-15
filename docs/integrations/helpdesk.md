@@ -76,7 +76,7 @@ its thread lands on the person's ticket.
    half-done). A throttle from Microsoft ends the run and the message waits as long as asked.
    While a campaign is sending, the job waits (`pause_while_campaign_sending`): reads and sends share Outlook's
    per-mailbox limits. While the intake is paused, the import waits too.
-3. **Classification** (`apps/core/services/email/inbound/classify.py`, pure): the site's own message (from its
+3. **Classification** (`apps/core/services/email/inbound/classification/classify.py`, pure): the site's own message (from its
    address *and* proven by DKIM or Exchange's internal marker), bounce or delay report, read or delivery receipt,
    automatic reply (vacation, left the organisation, other), other system mail (calendar replies, quarantine
    notices, auto-generated notices), list or bulk mail, spam (Exchange SCL ≥ 5 or its spam verdict), else human.

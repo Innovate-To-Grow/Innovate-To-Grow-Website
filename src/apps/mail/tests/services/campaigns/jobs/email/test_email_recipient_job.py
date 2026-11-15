@@ -14,7 +14,7 @@ from apps.core.services.background_jobs import (
 )
 from apps.core.services.delivery_rates import Lane, RateDeferred
 from apps.core.services.email import DeliveryResult
-from apps.core.services.email.exceptions import EmailRateDeferred
+from apps.core.services.email.sending.exceptions import EmailRateDeferred
 from apps.mail.models import RecipientLog
 from apps.mail.services.campaign.dispatch.failures import DEFERRED_LOG_MESSAGE
 from apps.mail.services.campaign.send import SesSendResult

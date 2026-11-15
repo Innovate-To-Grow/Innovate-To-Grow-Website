@@ -14,7 +14,7 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     deliver_email,
 )
-from apps.core.services.email.exceptions import EmailRateDeferred
+from apps.core.services.email.sending.exceptions import EmailRateDeferred
 from apps.core.services.email.telemetry import job_tracking
 from apps.core.tests.services.email_monitoring.telemetry.test_telemetry_graph_send import (
     Outcome,
@@ -66,7 +66,7 @@ class RetryAndDeferralTests(TelemetryTestCase):
         return RateDeferred(now + timedelta(seconds=30), "pace", now=now)
 
     def test_a_deferral_with_a_retry_key_stays_pending_and_records_no_attempt(self):
-        with patch("apps.core.services.email.delivery.admit", side_effect=self.deferred()):
+        with patch("apps.core.services.email.sending.delivery.admit", side_effect=self.deferred()):
             with self.assertRaises(EmailRateDeferred):
                 self.send(retry_key="mail.recipientlog:1")
 
@@ -75,14 +75,14 @@ class RetryAndDeferralTests(TelemetryTestCase):
         self.assertEqual(email.last_error_kind, "rate_deferred")
 
     def test_a_deferral_nobody_retries_is_not_sent(self):
-        with patch("apps.core.services.email.delivery.admit", side_effect=self.deferred()):
+        with patch("apps.core.services.email.sending.delivery.admit", side_effect=self.deferred()):
             with self.assertRaises(EmailRateDeferred):
                 self.send()
 
         self.assertEqual(self.only_email().status, Status.NOT_SENT)
 
     def test_a_refusal_by_the_delivery_limits_is_not_sent(self):
-        with patch("apps.core.services.email.delivery.admit", side_effect=RateRefused("daily")):
+        with patch("apps.core.services.email.sending.delivery.admit", side_effect=RateRefused("daily")):
             with self.assertRaises(PermanentEmailDeliveryError):
                 self.send()
 

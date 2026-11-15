@@ -1,7 +1,7 @@
 from django.test import SimpleTestCase
 
 from apps.core.services.email.inbound import classify
-from apps.core.services.email.inbound.autoreply import kind_of, own_subject, own_text
+from apps.core.services.email.inbound.classification.autoreply import kind_of, own_subject, own_text
 from apps.core.tests.services.email.inbound.auto_replies.test_auto_replies import OUT_OF_OFFICE, verdict_of
 
 from .. import samples

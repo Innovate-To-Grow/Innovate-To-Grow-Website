@@ -21,7 +21,7 @@ from django.utils import timezone
 from apps.core.models import InboundMessage
 from apps.core.services.email.bounces import active_reader
 from apps.core.services.email.graph.mailbox import GraphMessageNotFound, GraphReadBusy, GraphReadError
-from apps.core.services.email.inbound import consume
+from apps.core.services.email.inbound.processing import consume
 
 from ....models import HelpdeskSettings, TicketMessage
 from ...intake import state as intake_state

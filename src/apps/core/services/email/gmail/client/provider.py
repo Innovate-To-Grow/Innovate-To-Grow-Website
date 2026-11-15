@@ -16,8 +16,8 @@ from apps.core.models.base.service_credentials.gmail_api import (
 )
 from apps.core.services.delivery_rates import SignalKind, external_recipients, mailbox_identity, none, uncertain
 
-from ...contracts import DeliveryResult, EmailMessage
-from ...exceptions import (
+from ...sending.contracts import DeliveryResult, EmailMessage
+from ...sending.exceptions import (
     EmailDeliveryError,
     PermanentEmailDeliveryError,
     TransientEmailDeliveryError,
