@@ -1,8 +1,8 @@
 // /past-projects/:shareId when the list cannot be shown: a link to a list that does not exist says the list
 // isn't available; any other failure (server error, network) says the list couldn't be loaded and offers to
 // try again, since the link itself may be fine.
-import type {PastProjectShare} from '../../src/features/projects/api';
-import {expect, test} from '../helpers/fixtures';
+import type {PastProjectShare} from '../../../src/features/projects/api';
+import {expect, test} from '../../helpers/fixtures';
 
 const SHARE_ID = '7d7f3f5e-2b8a-4c55-9a51-0f6f7f1c2a10';
 

@@ -4,8 +4,8 @@
 // desktop's corner sits in the margin beside the 1170px column.
 import type {Page} from '@playwright/test';
 
-import {test, expect} from '../helpers/fixtures';
-import {assistantConfig, mockAssistantConfig, mockSchedule, schedulePayload} from '../helpers';
+import {test, expect} from '../../helpers/fixtures';
+import {assistantConfig, mockAssistantConfig, mockSchedule, schedulePayload} from '../../helpers';
 
 /** Sixty teams on one page: the list runs several screens long at any phone or tablet width. */
 function longSchedule() {

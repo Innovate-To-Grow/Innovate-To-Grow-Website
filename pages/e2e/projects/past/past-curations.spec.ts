@@ -2,9 +2,9 @@
 // is at the top of the saved results, the new curation's page says it was saved, and the member's saved
 // curations are listed on Past Projects. Desktop engines only (untagged).
 import type {Page} from '@playwright/test';
-import type {PastProjectShare} from '../../src/features/projects/api';
-import {mockAllProjects, mockPastProjects, pastProjectRows, seedAuthenticatedSession} from '../helpers';
-import {expect, test} from '../helpers/fixtures';
+import type {PastProjectShare} from '../../../src/features/projects/api';
+import {mockAllProjects, mockPastProjects, pastProjectRows, seedAuthenticatedSession} from '../../helpers';
+import {expect, test} from '../../helpers/fixtures';
 
 const json = (body: unknown, status = 200) => ({status, contentType: 'application/json', body: JSON.stringify(body)});
 

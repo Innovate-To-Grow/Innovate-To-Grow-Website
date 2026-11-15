@@ -2,9 +2,9 @@
 // (it used to select every archive row), the in-flight state, retried detail requests, the outcome
 // shown next to Save, and that the table being worked on does not jump when the saved results appear.
 import type {Page} from '@playwright/test';
-import {test, expect} from '../helpers/fixtures';
-import {mockPastProjects, seedAuthenticatedSession} from '../helpers';
-import type {ProjectTableRow} from '../../src/features/projects/api';
+import {test, expect} from '../../helpers/fixtures';
+import {mockPastProjects, seedAuthenticatedSession} from '../../helpers';
+import type {ProjectTableRow} from '../../../src/features/projects/api';
 
 const SEMESTERS = ['2026 Spring', '2025 Fall', '2025 Spring', '2024 Fall', '2024 Spring', '2023 Fall'];
 

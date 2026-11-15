@@ -1,5 +1,5 @@
-import {test, expect} from '../helpers/fixtures';
-import {mockPastProjects, pastProjectRows} from '../helpers';
+import {test, expect} from '../../helpers/fixtures';
+import {mockPastProjects, pastProjectRows} from '../../helpers';
 
 test('@core archive View shows abstract and students while preserving the individual project URL', async ({page}) => {
   const rows = pastProjectRows();

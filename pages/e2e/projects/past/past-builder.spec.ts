@@ -1,14 +1,14 @@
 // /past-projects builder mode: multi-search-table workflow with AI search,
 // merge/remove/undo/reset. Covers authenticated + unauthenticated
 // paths.
-import {test, expect} from '../helpers/fixtures';
+import {test, expect} from '../../helpers/fixtures';
 import {
   aiSearchResponse,
   mockAiSearch,
   mockPastProjects,
   pastProjectRows,
   seedAuthenticatedSession,
-} from '../helpers';
+} from '../../helpers';
 
 test('past projects builder page renders', async ({page}) => {
   await mockPastProjects(page, pastProjectRows());

@@ -1,5 +1,5 @@
-import {test, expect} from '../helpers/fixtures';
-import {mockPastProjects, pastProjectRows} from '../helpers';
+import {test, expect} from '../../helpers/fixtures';
+import {mockPastProjects, pastProjectRows} from '../../helpers';
 
 // The archive list loads without abstracts; a search also asks the server, which reads them, so a word that is only
 // in an abstract finds its project, including from the Current Projects hand-off link (?value=).
