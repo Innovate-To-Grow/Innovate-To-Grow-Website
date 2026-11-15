@@ -4,7 +4,7 @@
     /**
      * System Intelligence CMS action preview: posts each proposed block to its
      * /_block-preview frame, which renders it with the public site's own
-     * components and CSS. Same protocol as cms-block-editor-parts/block-preview.js:
+     * components and CSS. Same protocol as cms/js/block-editor/block-preview.js:
      *   frame -> parent: { type: 'cms-block-preview-ready' | 'cms-block-preview-resize', nonce, height? }
      *   parent -> frame: { type: 'cms-block-preview', nonce, block, pageCssClass }
      */

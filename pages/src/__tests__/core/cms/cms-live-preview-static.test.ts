@@ -1,10 +1,10 @@
-// The CMS live-preview sync (cms-block-editor-parts/live-preview.js) under 429: nothing more is posted until the
+// The CMS live-preview sync (block-editor/live-preview.js) under 429: nothing more is posted until the
 // server's wait has passed, then the latest blocks are resent once.
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {flush, installPollBackoff, jsonResponse, readRepoFile} from '@/__tests__/core/adminStatic';
 
-const SCRIPT = readRepoFile('src/apps/cms/static/cms/js/cms-block-editor-parts/live-preview.js');
+const SCRIPT = readRepoFile('src/apps/cms/static/cms/js/block-editor/live-preview.js');
 const fetchMock = vi.fn();
 
 interface LivePreview {

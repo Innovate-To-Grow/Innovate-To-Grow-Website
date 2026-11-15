@@ -1,0 +1,54 @@
+/* ===== Add Block ===== */
+.cms-add-block-wrapper {
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.cms-add-block-wrapper select {
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-size: 14px;
+    min-width: 200px;
+    background: #fff;
+    color: #333;
+}
+
+.dark .cms-add-block-wrapper select {
+    background: #1f2937;
+    border-color: #374151;
+    color: #e5e7eb;
+}
+
+.cms-add-block-wrapper .btn-add-block {
+    padding: 8px 16px;
+    background: #7c3aed;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.15s;
+}
+
+.cms-add-block-wrapper .btn-add-block:hover {
+    background: #6d28d9;
+}
+
+/* ===== Admin Label Field ===== */
+.cms-block-admin-label {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.cms-block-admin-label input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+}

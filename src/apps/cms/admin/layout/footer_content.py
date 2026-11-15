@@ -24,7 +24,7 @@ class FooterContentAdmin(BaseModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def _get_editor_context(self):
-        # The preview frames the frontend's /_footer-preview (layout/js/footer/editor/preview.js).
+        # The preview frames the frontend's /_footer-preview (layout/js/footer/preview.js).
         frontend_url = (getattr(settings, "FRONTEND_URL", "") or "").rstrip("/")
         return {**build_route_editor_context(), "frontend_url": frontend_url}
 

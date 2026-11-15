@@ -61,8 +61,8 @@ class CMSAdminCSPSourceTests(SimpleTestCase):
     def test_layout_editors_build_no_srcdoc_previews(self):
         # The footer preview frames the frontend's /_footer-preview; the menu editor has no preview.
         editor_sources = (
-            settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "menu" / "editor" / "render.js",
-            settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "footer" / "editor" / "preview.js",
+            settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "menu" / "render.js",
+            settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "footer" / "preview.js",
         )
 
         for path in editor_sources:
@@ -96,9 +96,7 @@ class CMSAdminCSPSourceTests(SimpleTestCase):
         self.assertEqual(source.count('crossorigin="anonymous"'), 2)
 
     def test_footer_preview_only_trusts_its_own_frame(self):
-        source = (
-            settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "footer" / "editor" / "preview.js"
-        ).read_text()
+        source = (settings.BASE_DIR / "apps" / "cms" / "static" / "layout" / "js" / "footer" / "preview.js").read_text()
 
         # Messages count only from the frame's window, at the frame's origin, with the frame's nonce,
         # and content goes only to the frame's origin.

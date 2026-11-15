@@ -24,8 +24,8 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'vendor/codemirror/5.65.16/codemirror.min.css' %}">
     <link rel="stylesheet" href="{% static 'layout/css/menu/visual-editor.css' %}?v=2">
-    <link rel="stylesheet" href="{% static 'cms/css/cms-block-editor.css' %}?v=16">
-    <link rel="stylesheet" href="{% static 'cms/css/cms-route-editor.css' %}?v=2">
+    <link rel="stylesheet" href="{% static 'cms/css/block-editor/editor/cms-block-editor.css' %}?v=16">
+    <link rel="stylesheet" href="{% static 'cms/css/field-editors/cms-route-editor.css' %}?v=2">
 {% endblock %}
 
 {% block after_field_sets %}
@@ -134,12 +134,13 @@
     <script src="{% static 'vendor/codemirror/5.65.16/mode/javascript/javascript.min.js' %}"></script>
     <script src="{% static 'vendor/codemirror/5.65.16/mode/css/css.min.js' %}"></script>
     <script src="{% static 'vendor/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js' %}"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/primitives.js' %}?v=6"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/assets.js' %}?v=3"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/block-preview.js' %}?v=2"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/renderers.js' %}?v=11"></script>
+    <script src="{% static 'cms/js/block-editor/primitives.js' %}?v=6"></script>
+    <script src="{% static 'cms/js/block-editor/asset-helpers.js' %}?v=1"></script>
+    <script src="{% static 'cms/js/block-editor/assets.js' %}?v=3"></script>
+    <script src="{% static 'cms/js/block-editor/block-preview.js' %}?v=2"></script>
+    <script src="{% static 'cms/js/block-editor/renderers.js' %}?v=11"></script>
     <script src="{% static 'admin/js/poll-backoff.js' %}"></script>
-    <script src="{% static 'cms/js/cms-block-editor-parts/live-preview.js' %}?v=4"></script>
-    <script src="{% static 'cms/js/cms-block-editor.js' %}?v=10"></script>
-    <script src="{% static 'cms/js/cms-route-editor.js' %}?v=1"></script>
+    <script src="{% static 'cms/js/block-editor/live-preview.js' %}?v=4"></script>
+    <script src="{% static 'cms/js/block-editor/cms-block-editor.js' %}?v=10"></script>
+    <script src="{% static 'cms/js/field-editors/cms-route-editor.js' %}?v=1"></script>
 {% endblock %}
