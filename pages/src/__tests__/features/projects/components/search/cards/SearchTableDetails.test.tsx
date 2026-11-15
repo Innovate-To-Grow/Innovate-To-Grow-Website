@@ -1,7 +1,7 @@
 import {act, cleanup, fireEvent, render, screen, waitFor, within} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import {SearchTableCard} from '@/features/projects/components/search/cards/SearchTableCard';
-import {ProjectGridRowDetails} from '@/features/projects/components/grid/table/ProjectGridRowDetails';
+import {ProjectGridRowDetails} from '@/features/projects/components/grid/rows/ProjectGridRowDetails';
 import {
   PROJECT_DETAIL_CONCURRENCY,
   compactProjectToGridRow,

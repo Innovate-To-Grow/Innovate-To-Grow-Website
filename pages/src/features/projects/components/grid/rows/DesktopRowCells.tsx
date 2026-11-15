@@ -1,16 +1,13 @@
-import {useId} from 'react';
 import {
   getProjectGridTeamCode,
-  hasProjectGridDetails,
   type ProjectGridColumn,
   type ProjectGridColumnKey,
   type ProjectGridItem,
   type ProjectGridLinkScope,
 } from '../contracts/projectGrid';
-import {ProjectGridRowDetails} from './ProjectGridRowDetails';
 import {ProjectTitleWithChips} from './ProjectTitleWithChips';
 
-interface DesktopRowProps {
+export interface DesktopRowProps {
   row: ProjectGridItem;
   /** Striped like DataTables' "odd" rows: counted over the project rows, not the detail rows between them. */
   isOdd: boolean;
@@ -36,7 +33,7 @@ type DesktopCellProps = Pick<DesktopRowProps, 'row' | 'linkScope' | 'isHighlight
 };
 
 /** One column's cell: the term and team code, the title with its chips and team, or the plain value. */
-const DesktopCell = ({columnKey, row, linkScope, isHighlighted, isSaved, savedRowLabel}: DesktopCellProps) => {
+export const DesktopCell = ({columnKey, row, linkScope, isHighlighted, isSaved, savedRowLabel}: DesktopCellProps) => {
   switch (columnKey) {
     case 'semester_label':
       return (
@@ -71,7 +68,7 @@ type DesktopActionsCellProps = Pick<
 > & {hasDetails: boolean; detailsId: string};
 
 /** The details toggle (or "No details") and the Remove button. */
-const DesktopActionsCell = ({
+export const DesktopActionsCell = ({
   row,
   hasDetails,
   isExpanded,
@@ -111,101 +108,3 @@ const DesktopActionsCell = ({
     ) : null}
   </td>
 );
-
-/** One project row and, when expanded, its details row. */
-export const DesktopRow = ({
-  row,
-  isOdd,
-  columns,
-  linkScope,
-  selectable,
-  isSelected,
-  onToggleSelected,
-  isExpanded,
-  onToggleExpanded,
-  onDeleteRow,
-  deleteDisabled,
-  loadMissingDetails,
-  isSaved,
-  savedRowLabel,
-  isHighlighted,
-  announceDetails,
-}: DesktopRowProps) => {
-  const hasDetails = hasProjectGridDetails(row);
-  const detailsId = useId();
-  const rowClassName = [
-    'project-grid-row',
-    isOdd ? 'is-odd' : '',
-    isSelected ? 'is-selected' : '',
-    isExpanded ? 'is-expanded' : '',
-    isSaved ? 'is-saved' : '',
-    isHighlighted ? 'is-new' : '',
-  ]
-    .filter(Boolean)
-    .join(' ');
-  // The expanded details sit under every column except the leading one (and the checkbox), like the drafts.
-  const leadingColumns = Number(selectable) + 1;
-  const detailColumns = columns.length + Number(selectable) + 1 - leadingColumns;
-
-  return (
-    <>
-      <tr className={rowClassName}>
-        {selectable ? (
-          <td className="project-grid-select-col">
-            <input
-              type="checkbox"
-              aria-label={`Select ${row.project_title}`}
-              checked={isSelected}
-              onChange={() => onToggleSelected?.(row.__key)}
-            />
-          </td>
-        ) : null}
-
-        {columns.map((column) => (
-          <td key={column.key} className={`project-grid-col-${column.key}`}>
-            <DesktopCell
-              columnKey={column.key}
-              row={row}
-              linkScope={linkScope}
-              isHighlighted={isHighlighted}
-              isSaved={isSaved}
-              savedRowLabel={savedRowLabel}
-            />
-          </td>
-        ))}
-
-        <DesktopActionsCell
-          row={row}
-          hasDetails={hasDetails}
-          isExpanded={isExpanded}
-          detailsId={detailsId}
-          onToggleExpanded={onToggleExpanded}
-          onDeleteRow={onDeleteRow}
-          deleteDisabled={deleteDisabled}
-        />
-      </tr>
-
-      {isExpanded ? (
-        <tr className="project-grid-detail-row is-expanded">
-          <td className="project-grid-detail-spacer" colSpan={leadingColumns} />
-          <td colSpan={detailColumns}>
-            {/* A row of its own, away from the title: the group's name says which project these details are of. */}
-            <div
-              id={detailsId}
-              className="project-grid-detail-content"
-              role="group"
-              aria-label={`Details for ${row.project_title}`}
-            >
-              <ProjectGridRowDetails
-                row={row}
-                scope={linkScope}
-                loadMissingDetails={loadMissingDetails}
-                announce={announceDetails}
-              />
-            </div>
-          </td>
-        </tr>
-      ) : null}
-    </>
-  );
-};
