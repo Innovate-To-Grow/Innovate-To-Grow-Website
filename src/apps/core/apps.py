@@ -15,9 +15,9 @@ class CoreConfig(AppConfig):
         from .admin.legacy_view import get_legacy_view_admin_urls
         from .admin.request_limits import get_request_limit_admin_urls
         from .services.delivery_rates import Family, register_family
-        from .services.delivery_rates import receivers as delivery_rate_receivers
+        from .services.delivery_rates.lifecycle import receivers as delivery_rate_receivers
         from .services.email.bounces import register_bounce_jobs
-        from .services.request_limits import receivers as request_limit_receivers
+        from .services.request_limits.enforcement import receivers as request_limit_receivers
 
         delivery_rate_receivers.connect()
         request_limit_receivers.connect()

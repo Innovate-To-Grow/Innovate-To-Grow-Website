@@ -17,7 +17,7 @@ from apps.authn.services.email import send_admin_invitation_email, send_notifica
 from apps.core.models import BackgroundJob, EmailCategory, EmailServiceConfig, OutboundEmail
 from apps.core.services.background_jobs import claim_jobs
 from apps.core.services.background_jobs.worker import run_claimed_job
-from apps.core.services.delivery_rates.families import clear_gate_cache
+from apps.core.services.delivery_rates.lifecycle.families import clear_gate_cache
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import create_graph_config

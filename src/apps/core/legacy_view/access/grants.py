@@ -17,11 +17,7 @@ from .contracts import (
     LegacyViewerAccessDenied,
     LegacyViewerSession,
 )
-from .sessions import (
-    create_viewer_session,
-    database_session_expiry,
-    source_session_is_valid,
-)
+from .sessions import create_viewer_session, database_session_expiry, source_session_is_valid
 
 
 def _digest_code(code: str) -> str:

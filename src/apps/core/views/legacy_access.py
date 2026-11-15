@@ -4,7 +4,7 @@ from django.http import Http404, HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from apps.core.services.legacy_access import (
+from apps.core.legacy_view.access import (
     LegacyViewerAccessDenied,
     exchange_legacy_access_code,
     legacy_view_is_enabled,

@@ -13,7 +13,7 @@ from apps.core.services.delivery_rates.rules import tenant
 from apps.core.services.delivery_rates.rules.defaults import channel_settings, rate_spec
 from apps.core.services.delivery_rates.rules.policy import BoundSource, effective_rate
 from apps.core.services.delivery_rates.runtime import budget
-from apps.core.services.delivery_rates.snapshot import identity_status
+from apps.core.services.delivery_rates.status.snapshot import identity_status
 from apps.core.tests.graph_helpers import create_graph_config
 
 from ..helpers import Channel, FakeClock

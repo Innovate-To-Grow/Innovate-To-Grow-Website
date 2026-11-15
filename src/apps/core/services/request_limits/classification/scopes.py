@@ -22,8 +22,8 @@ Registrations and settings are keyed by the route's ``view_name`` (``"namespace:
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from ..runtime.context import section
 from . import identity, priority
-from .runtime.context import section
 
 SAFE_METHODS = frozenset({"GET", "HEAD"})
 PREFLIGHT = "CORS preflight: answered without running the view."

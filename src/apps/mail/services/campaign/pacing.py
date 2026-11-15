@@ -5,7 +5,7 @@ from math import ceil
 from apps.core.services.background_jobs import jobs_enabled
 from apps.core.services.delivery_rates import Family, active_target, channel_status
 from apps.core.services.delivery_rates.rules.defaults import section
-from apps.core.services.delivery_rates.status_text import number
+from apps.core.services.delivery_rates.status.status_text import number
 
 
 def format_duration(seconds: float) -> str:

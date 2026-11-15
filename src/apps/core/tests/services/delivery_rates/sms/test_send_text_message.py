@@ -8,7 +8,7 @@ from apps.core.models import AWSCredentialConfig, DeliveryRateState, DeliveryUsa
 from apps.core.services import delivery_rates as rates
 from apps.core.services.aws import sms_send
 from apps.core.services.aws.sms import _cache_key
-from apps.core.services.delivery_rates.families import clear_gate_cache
+from apps.core.services.delivery_rates.lifecycle.families import clear_gate_cache
 from apps.core.tests.services.delivery_rates.sms.test_sms_rate_control import (
     CLIENT,
     IDENTITY,

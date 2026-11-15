@@ -13,9 +13,9 @@ from datetime import UTC, datetime, timedelta
 
 from apps.core.models import DeliveryRateState
 
-from .rules.controller import full_speed_at
-from .rules.policy import BoundSource, EffectiveRate
-from .runtime.budget import DAY, Limit, Usage
+from ..rules.controller import full_speed_at
+from ..rules.policy import BoundSource, EffectiveRate
+from ..runtime.budget import DAY, Limit, Usage
 
 CLOSED = DeliveryRateState.BreakerState.CLOSED
 BULK_ONLY = DeliveryRateState.BreakerScope.BULK

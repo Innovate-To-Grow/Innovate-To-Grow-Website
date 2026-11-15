@@ -4,11 +4,11 @@ from unittest.mock import patch
 
 from django.test import override_settings
 
+from apps.core.legacy_view.access import LegacyViewerAccessDenied
 from apps.core.legacy_view.gateway.views import legacy_proxy_view
 from apps.core.legacy_view.origin.transport import (
     LegacyOriginUnavailable,
 )
-from apps.core.services.legacy_access import LegacyViewerAccessDenied
 from apps.core.tests.legacy_view.proxy.test_legacy_proxy_view import _LegacyProxyViewCase
 from apps.core.tests.legacy_view.proxy.test_transport_and_views import GATEWAY_SETTINGS, origin_handle
 

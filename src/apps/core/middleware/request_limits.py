@@ -24,7 +24,7 @@ class RequestRateLimitMiddleware:
     def __call__(self, request):
         if not settings.REQUEST_RATE_LIMITS_ENABLED:
             return self.get_response(request)
-        from apps.core.services.request_limits import limiter
+        from apps.core.services.request_limits.enforcement import limiter
 
         try:
             response = self.get_response(request)
@@ -41,7 +41,7 @@ class RequestRateLimitMiddleware:
     def process_view(self, request, view_func, view_args, view_kwargs):
         if not settings.REQUEST_RATE_LIMITS_ENABLED:
             return None
-        from apps.core.services.request_limits import limiter
+        from apps.core.services.request_limits.enforcement import limiter
 
         try:
             return limiter.admit(request, view_func)

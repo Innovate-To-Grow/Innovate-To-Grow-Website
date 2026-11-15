@@ -16,12 +16,12 @@ from django.utils.module_loading import import_string
 
 from apps.core.models import DeliveryRatePolicy, DeliveryRateState
 
-from .rules.channels import Family, Lane
-from .rules.defaults import rate_spec, section
-from .rules.policy import effective_rate
-from .runtime import context
+from ..rules.channels import Family, Lane
+from ..rules.defaults import rate_spec, section
+from ..rules.policy import effective_rate
+from ..runtime import context
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("apps.core.services.delivery_rates.families")
 
 _RESOLVERS: dict[Family, str] = {}
 _gate_cache: dict[Family, tuple[float, tuple]] = {}
