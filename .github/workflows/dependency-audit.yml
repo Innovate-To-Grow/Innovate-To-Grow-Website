@@ -76,7 +76,7 @@ jobs:
 
       # Accept an advisory here and in ci.yml's python-dependency-audit together,
       # each with `--ignore-vuln <ID>` and a comment naming what blocks the fix.
-      # scripts/ci/validate_tool_versions.py fails while the two lists differ.
+      # scripts/ci/tool_versions/ fails while the two lists differ.
       - name: Audit Python dependencies
         run: |
           set -o pipefail

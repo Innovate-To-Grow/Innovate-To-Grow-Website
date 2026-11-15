@@ -314,7 +314,7 @@ Local and CI validation is credential-free:
 
 ```sh
 cfn-lint aws/legacy/template.yaml aws/legacy/monitoring-us-east-1.yaml
-python scripts/ci/validate_legacy_infrastructure.py
+python -m scripts.ci.legacy_infrastructure
 python scripts/deploy/validate_backend_task_definition.py aws/ecs/backend-task-definition.json
 ```
 

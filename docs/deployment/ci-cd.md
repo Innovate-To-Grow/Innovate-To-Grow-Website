@@ -4,7 +4,7 @@ GitHub Actions pipelines for linting, testing, building, and deploying.
 
 Every job runs on a GitHub-hosted runner: `ubuntu-24.04`, or `ubuntu-latest` for jobs that do
 not depend on the Ubuntu release. The repository has no self-hosted runners
-(`scripts/ci/tests/test_ci_workflow_invariants.py` fails if a workflow asks for one).
+(`scripts/ci/tests/workflow/test_ci_workflow_invariants.py` fails if a workflow asks for one).
 
 ## Workflow files
 
@@ -24,7 +24,7 @@ not depend on the Ubuntu release. The repository has no self-hosted runners
 ### Triggers and scoping
 
 - **`pull_request`** has no path filter, so every pull request reports `CI Result`.
-  The `changes` job (`scripts/ci/plan_changed_areas.py`) runs the full suite when
+  The `changes` job (`scripts/ci/workflow/plan_changed_areas.py`) runs the full suite when
   the diff touches any path in `on.push.paths` or anything else under `.github/`
   (the planner errs toward running). Otherwise it skips every gated job and only
   the ungated checks run: Preflight, `Secrets Scan`, `Frontend npm Audit`, and
@@ -41,9 +41,9 @@ not depend on the Ubuntu release. The repository has no self-hosted runners
 
 | Area | Checks |
 |------|--------|
-| Preflight | actionlint, YAML/TOML/JSON validity, tool-version pins (`scripts/ci/validate_tool_versions.py`), CI script unit tests (`scripts/ci/tests/`), legacy viewer infrastructure, Dependabot labels |
-| Python style (`lint.yml`) | Ruff lint and format (pinned in `src/requirements/local.txt`), code structure (`scripts/ci/check_python_quality.py`), app import boundaries (`scripts/ci/check_python_dependencies.py`), Bandit with `.bandit-baseline.json` |
-| Backend | Migration drift and apply checks on PostgreSQL 16; production settings import and `manage.py check --deploy`; Django tests per app on PostgreSQL with `config.settings.environments.unit` and the per-app floors in `scripts/ci/backend_coverage_floors.json`; `apps.cli_admin` plus `safe_orm` at 100% coverage; Docker build with hadolint, a runtime smoke test, and Trivy (fixable CRITICAL/HIGH) |
+| Preflight | actionlint, YAML/TOML/JSON validity, tool-version pins (`scripts/ci/tool_versions/`), CI script unit tests (`scripts/ci/tests/`), legacy viewer infrastructure, Dependabot labels |
+| Python style (`lint.yml`) | Ruff lint and format (pinned in `src/requirements/local.txt`), code structure (`scripts/ci/python_quality/`), app import boundaries (`scripts/ci/python_dependencies/`), Bandit with `.bandit-baseline.json` |
+| Backend | Migration drift and apply checks on PostgreSQL 16; production settings import and `manage.py check --deploy`; Django tests per app on PostgreSQL with `config.settings.environments.unit` and the per-app floors in `scripts/ci/coverage/backend_coverage_floors.json`; `apps.cli_admin` plus `safe_orm` at 100% coverage; Docker build with hadolint, a runtime smoke test, and Trivy (fixable CRITICAL/HIGH) |
 | CLI | `cli/` pytest with 99% line and 98% branch coverage floors |
 | Frontend | ESLint and `check:structure`, TypeScript, Vitest with the coverage thresholds in `pages/vitest.config.ts`, production build, bundle size, built CSS/HTML checks, the required Chromium smoke test, SBOM and license allowlist |
 | End-to-end | All 10 Playwright projects, see below |
@@ -76,7 +76,7 @@ finding starts.
 - The backend runs the test settings with `REQUEST_RATE_LIMITS_ENABLED: "false"`
   stated in the job: one browser on one IP drives every spec, so the request
   limiter stays off (as in the backend container smoke, which sets
-  `-e REQUEST_RATE_LIMITS_ENABLED=false`). `scripts/ci/tests/test_ci_workflow_invariants.py`
+  `-e REQUEST_RATE_LIMITS_ENABLED=false`). `scripts/ci/tests/workflow/test_ci_workflow_invariants.py`
   fails if either loses it or any workflow switches the limiter on; the limiter's
   own tests turn it on in-process ([Request limits](../integrations/request-limits.md))
 - The Playwright container image, the npm package (pinned exactly in
@@ -95,11 +95,11 @@ its `merge_group` run.
 ## PR / main parity
 
 **A pull request runs the same job set as the push to main that follows it.**
-`scripts/ci/plan_changed_areas.py` returns the full suite for any pull request
+`scripts/ci/workflow/plan_changed_areas.py` returns the full suite for any pull request
 or merge group touching a path listed in `on.push.paths`, and the Django and
 E2E matrices are static: all eight app suites and all 10 Playwright projects on
-every event. `MatrixParityTests` in `scripts/ci/tests/test_ci_workflow_invariants.py`
-keeps those lists equal to `src/apps/*`, `scripts/ci/backend_coverage_floors.json`,
+every event. `MatrixParityTests` in `scripts/ci/tests/workflow/test_ci_workflow_invariants.py`
+keeps those lists equal to `src/apps/*`, `scripts/ci/coverage/backend_coverage_floors.json`,
 and `pages/playwright.config.ts`. A green pull request check therefore implies a
 green main run for the same tree.
 
@@ -122,7 +122,7 @@ Closing that hole took both halves: pull requests now run the same matrix,
 **and** a failing leg fails `CI Result` through `E2E Required Result`.
 Reverting either half reopens it. Don't reintroduce diff-scoping:
 `test_pull_request_and_push_agree_whenever_ci_runs` in
-`scripts/ci/tests/test_plan_changed_areas.py` guards the parity half.
+`scripts/ci/tests/workflow/test_plan_changed_areas.py` guards the parity half.
 
 ## Pausing and resuming deployments
 
@@ -219,7 +219,7 @@ waiting for the base tag to be rebuilt. CI's `Archive Docker Build and Scan` job
 builds the same `archive/page/` context and scans it with the same Trivy
 settings (`ArchiveImageScanTests` keeps them equal), so a finding fails CI
 before a deploy is approved. Both scans install Trivy from GitHub releases, and
-`scripts/ci/validate_tool_versions.py` keeps their `TRIVY_VERSION` pins equal.
+`scripts/ci/tool_versions/` keeps their `TRIVY_VERSION` pins equal.
 
 All component workflows use environment-specific OIDC role ARNs.
 CI publishes the already tested/scanned backend image using its own main-only role.
@@ -251,7 +251,7 @@ When adding new CI stages:
 4. Keep stages independent where possible for parallel execution
 5. Pin every action to a full commit SHA with a `# vX.Y.Z` comment, including the
    `actions/*` ones and those inside `.github/actions/`; `ActionPinningTests` in
-   `scripts/ci/tests/test_ci_workflow_invariants.py` fails preflight otherwise, and
+   `scripts/ci/tests/workflow/test_ci_workflow_invariants.py` fails preflight otherwise, and
    Dependabot's monthly `github-actions` update keeps the pins current
 
 ## Related pages
