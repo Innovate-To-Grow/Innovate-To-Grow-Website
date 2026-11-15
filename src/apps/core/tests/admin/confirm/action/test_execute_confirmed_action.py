@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.http import HttpResponseRedirect
 from django.test import RequestFactory, TestCase, override_settings
 
-from apps.core.tests.admin.confirm.test_confirm_on_save_direct import _semester_admin, _wire_request
+from apps.core.tests.admin.confirm.on_save.test_confirm_on_save_direct import _semester_admin, _wire_request
 from apps.projects.models import Semester
 
 

@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.contrib.admin import helpers
 from django.test import override_settings
 
-from apps.core.tests.admin.confirm.test_response_action_branches import _ResponseActionBranchesCase
+from apps.core.tests.admin.confirm.action.test_response_action_branches import _ResponseActionBranchesCase
 from apps.projects.models import Semester
 
 

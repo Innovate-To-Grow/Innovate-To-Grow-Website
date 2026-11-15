@@ -8,7 +8,7 @@ from django.test import RequestFactory, TestCase, override_settings
 
 from apps.cms.models import CMSEmbedAllowedHost
 from apps.core.admin.confirmation.pending import CACHE_FILE_PREFIX
-from apps.core.tests.admin.confirm.test_confirm_on_save_direct import _asset_admin, _host_admin, _wire_request
+from apps.core.tests.admin.confirm.on_save.test_confirm_on_save_direct import _asset_admin, _host_admin, _wire_request
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
