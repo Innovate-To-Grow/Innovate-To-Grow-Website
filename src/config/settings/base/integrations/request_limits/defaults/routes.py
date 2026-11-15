@@ -10,7 +10,7 @@ third-party views (an app can also register those from ``AppConfig.ready()`` wit
 ``apps.core.services.request_limits.register_scope``). The table takes precedence over both, so a
 ``REQUEST_RATE_LIMITS_OVERRIDES`` entry can move any route, the site's own views included. Everything else falls back by path, method and sign-in: ``/admin-api/`` is ``cli``,
 ``/admin/`` is ``staff-admin``, a GET is ``public-read`` or ``member-read``, other methods ``public-write`` or
-``member-write``. So no route is ever unlimited by accident, and ``apps.core.tests.request_limits.test_coverage``
+``member-write``. So no route is ever unlimited by accident, and ``apps.core.tests.request_limits.routes.test_coverage``
 fails when a key here matches no route.
 """
 
