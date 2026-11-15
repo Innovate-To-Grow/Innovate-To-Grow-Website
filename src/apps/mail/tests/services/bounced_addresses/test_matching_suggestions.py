@@ -9,8 +9,8 @@ from django.utils import timezone
 from apps.authn.models import ContactEmail
 from apps.core.tests.services.email_monitoring.helpers import monitoring_settings
 from apps.mail.models import BouncedAddress
-from apps.mail.services.email_monitoring.addresses.matching import match_address, match_addresses
-from apps.mail.services.email_monitoring.addresses.suggestions import suggest
+from apps.mail.services.email_monitoring.addresses.aggregate.suggestions import suggest
+from apps.mail.services.email_monitoring.addresses.listing.matching import match_address, match_addresses
 
 from .helpers import add_email, make_person, make_row
 
@@ -63,7 +63,7 @@ class MatchingTests(TestCase):
         self.assertEqual(row.role, Role.NONE)
         member = make_person("cached@example.org")
 
-        from apps.mail.services.email_monitoring.addresses.matching import refresh_cached_links
+        from apps.mail.services.email_monitoring.addresses.listing.matching import refresh_cached_links
 
         changed = refresh_cached_links([row])
 

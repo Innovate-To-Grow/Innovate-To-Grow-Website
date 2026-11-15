@@ -12,8 +12,8 @@ from apps.authn.models import ContactEmail, ContactPhone
 from apps.core.tests.services.email_monitoring.helpers import make_bounce
 from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
 from apps.mail.services.email_monitoring.addresses import aggregate
-from apps.mail.services.email_monitoring.addresses.matching import refresh_cached_links
-from apps.mail.services.email_monitoring.addresses.suggestions import suggest
+from apps.mail.services.email_monitoring.addresses.aggregate.suggestions import suggest
+from apps.mail.services.email_monitoring.addresses.listing.matching import refresh_cached_links
 
 Member = get_user_model()
 

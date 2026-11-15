@@ -16,9 +16,10 @@ from openpyxl import load_workbook
 from apps.authn.models import ContactEmail
 from apps.core.models import EmailBounce, InboundMessage
 from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressAction
-from apps.mail.services.email_monitoring.addresses import aggregate, audit, listing
-from apps.mail.services.email_monitoring.addresses.export import COLUMNS, export_rows
-from apps.mail.services.email_monitoring.addresses.suggestions import suggest
+from apps.mail.services.email_monitoring.addresses import aggregate, listing
+from apps.mail.services.email_monitoring.addresses.actions import audit
+from apps.mail.services.email_monitoring.addresses.aggregate.suggestions import suggest
+from apps.mail.services.email_monitoring.addresses.listing.export import COLUMNS, export_rows
 
 from .helpers import count_now, make_bounce, make_person, make_row
 

@@ -15,8 +15,10 @@ from openpyxl import load_workbook
 
 from apps.core.models import EmailBounce
 from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressAction, BouncedAddressCampaign
-from apps.mail.services.email_monitoring.addresses import aggregate, audit, listing, sources
-from apps.mail.services.email_monitoring.addresses.export import COLUMNS, export_rows
+from apps.mail.services.email_monitoring.addresses import aggregate, listing
+from apps.mail.services.email_monitoring.addresses.actions import audit
+from apps.mail.services.email_monitoring.addresses.aggregate import sources
+from apps.mail.services.email_monitoring.addresses.listing.export import COLUMNS, export_rows
 
 from .helpers import count_now, make_bounce, make_campaign, make_row, make_ses_log
 
