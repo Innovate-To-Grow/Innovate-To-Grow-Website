@@ -27,7 +27,7 @@ class PlanChangedAreasTests(unittest.TestCase):
             for changed_file in (
                 "src/apps/authn/models.py",
                 "pages/src/App.tsx",
-                "cli/src/i2g_admin/app.py",
+                "cli/src/i2g_admin/app/__init__.py",
                 "archive/page/app.py",
                 "aws/ecs/backend-task-definition.json",
                 "scripts/ci/validate_tool_versions.py",
