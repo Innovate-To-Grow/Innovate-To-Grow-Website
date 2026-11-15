@@ -16,7 +16,7 @@ from apps.system_intelligence.services.agents.context_manager import (
     ensure_context_summary,
 )
 
-from .stream import build_stream_response, persist_user_message
+from ..stream.send import build_stream_response, persist_user_message
 
 COMPACT_MIN_CANDIDATES = 2
 TITLE_MAX_LENGTH = 200

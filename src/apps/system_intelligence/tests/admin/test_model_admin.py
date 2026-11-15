@@ -10,11 +10,9 @@ from django.utils import timezone
 from django.utils.safestring import SafeString
 
 from apps.event.tests.helpers import make_superuser
-from apps.system_intelligence.admin.model_admin import (
-    SystemIntelligenceActionRequestAdmin,
-    SystemIntelligenceConfigAdmin,
-    SystemIntelligenceConfigForm,
-)
+from apps.system_intelligence.admin.config.action_requests import SystemIntelligenceActionRequestAdmin
+from apps.system_intelligence.admin.config.config_admin import SystemIntelligenceConfigAdmin
+from apps.system_intelligence.admin.config.forms import SystemIntelligenceConfigForm
 from apps.system_intelligence.models import (
     PublicAssistantTokenBudget,
     SystemIntelligenceActionRequest,
@@ -302,10 +300,10 @@ class SystemIntelligenceConfigGlobalUsageAdminTests(TestCase):
     def test_unreadable_budget_store_never_breaks_the_form(self):
         with (
             patch(
-                "apps.system_intelligence.admin.model_admin.global_budget_usage",
+                "apps.system_intelligence.admin.config.config_admin.global_budget_usage",
                 side_effect=budget.BudgetBackendUnavailable("store down"),
             ),
-            self.assertLogs("apps.system_intelligence.admin.model_admin", level="ERROR") as logs,
+            self.assertLogs("apps.system_intelligence.admin.config.config_admin", level="ERROR") as logs,
         ):
             text = self._usage()
 

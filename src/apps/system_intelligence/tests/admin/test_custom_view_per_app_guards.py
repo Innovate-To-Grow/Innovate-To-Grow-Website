@@ -1,6 +1,6 @@
 """Per-app authorization guards on the System Intelligence custom admin views.
 
-Every custom URL in ``apps.system_intelligence.admin.urls`` is wrapped with
+Every custom URL in ``apps.system_intelligence.admin.chat.urls`` is wrapped with
 ``admin.site.admin_view``, which only enforces ``is_staff``/``is_active`` — Django
 never runs the per-app model (``apps.core.utils.access.user_can_access_app``) for a
 standalone admin view. Without an explicit guard, a staff member whose
@@ -97,7 +97,7 @@ class SystemIntelligenceCustomViewGuardTests(TestCase):
                 )
 
     @patch(
-        "apps.system_intelligence.admin.dashboard.get_dashboard_context",
+        "apps.system_intelligence.admin.usage.dashboard.get_dashboard_context",
         return_value={"cloudwatch": {}},
     )
     def test_staff_with_app_is_not_forbidden(self, _mock_dashboard_context):
@@ -113,7 +113,7 @@ class SystemIntelligenceCustomViewGuardTests(TestCase):
                 )
 
     @patch(
-        "apps.system_intelligence.admin.dashboard.get_dashboard_context",
+        "apps.system_intelligence.admin.usage.dashboard.get_dashboard_context",
         return_value={"cloudwatch": {}},
     )
     def test_superuser_is_not_forbidden(self, _mock_dashboard_context):

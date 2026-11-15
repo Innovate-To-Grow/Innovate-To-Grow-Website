@@ -19,7 +19,7 @@ from apps.system_intelligence.admin.actions.lookup import (
     _cms_preview_page,
     _get_user_action_request,
 )
-from apps.system_intelligence.admin.stream_helpers import (
+from apps.system_intelligence.admin.stream.helpers import (
     _handle_stream_event,
     _stream_exception,
     _tool_calls_for_storage,
@@ -86,7 +86,7 @@ class StreamExceptionTests(SimpleTestCase):
             "litellm.ServiceUnavailableError: BedrockException - Cannot connect to host "
             "bedrock-runtime.example.amazonaws.com:443 [Could not contact DNS servers]"
         )
-        with self.assertLogs("apps.system_intelligence.admin.stream_helpers", level="WARNING") as logs:
+        with self.assertLogs("apps.system_intelligence.admin.stream.helpers", level="WARNING") as logs:
             payload = _stream_exception("conv-1", exc, _FakeAwsConfig(default_region="us-west-2"))
         self.assertIn("event: error", payload)
         self.assertIn("Unable to reach AWS Bedrock Runtime in us-west-2", payload)
@@ -97,7 +97,7 @@ class StreamExceptionTests(SimpleTestCase):
     def test_bedrock_connectivity_error_with_invalid_region_falls_back(self):
         # Line 76: region that fails the regex is replaced with the placeholder.
         exc = RuntimeError("BedrockException: could not contact dns servers")
-        with self.assertLogs("apps.system_intelligence.admin.stream_helpers", level="WARNING"):
+        with self.assertLogs("apps.system_intelligence.admin.stream.helpers", level="WARNING"):
             payload = _stream_exception("conv-2", exc, _FakeAwsConfig(default_region="NOT-A-REGION"))
         self.assertIn("Unable to reach AWS Bedrock Runtime in the configured region", payload)
 
@@ -105,7 +105,7 @@ class StreamExceptionTests(SimpleTestCase):
         # Lines 86-89: a non-connectivity error gets the generic message and an
         # exception-level log entry.
         exc = ValueError("internal boom with secrets")
-        with self.assertLogs("apps.system_intelligence.admin.stream_helpers", level="ERROR") as logs:
+        with self.assertLogs("apps.system_intelligence.admin.stream.helpers", level="ERROR") as logs:
             payload = _stream_exception("conv-3", exc, _FakeAwsConfig())
         self.assertIn("could not complete this turn", payload)
         self.assertNotIn("secrets", payload)
@@ -167,7 +167,7 @@ class EventStreamBranchTests(SystemIntelligenceAdminBase):
 
         with (
             patch(
-                "apps.system_intelligence.admin.stream.prepare_conversation_context",
+                "apps.system_intelligence.admin.stream.sync_events.prepare_conversation_context",
                 return_value=_Prepared(),
             ),
             patch("apps.system_intelligence.admin.invoke_system_intelligence_stream") as stream,
@@ -194,7 +194,7 @@ class EventStreamBranchTests(SystemIntelligenceAdminBase):
             "apps.system_intelligence.admin.invoke_system_intelligence_stream",
             side_effect=_boom,
         ):
-            with self.assertLogs("apps.system_intelligence.admin.stream_helpers", level="ERROR"):
+            with self.assertLogs("apps.system_intelligence.admin.stream.helpers", level="ERROR"):
                 response = self.client.post(
                     self._url(),
                     data=json.dumps({"message": "hello"}),
@@ -258,10 +258,10 @@ class ChatCommandViewGuardTests(SystemIntelligenceAdminBase):
 
         with (
             patch(
-                "apps.system_intelligence.admin.commands.AWSCredentialConfig.load",
+                "apps.system_intelligence.admin.chat.commands.AWSCredentialConfig.load",
                 return_value=_Unconfigured(),
             ),
-            patch("apps.system_intelligence.admin.commands.ensure_context_summary") as summarize,
+            patch("apps.system_intelligence.admin.chat.commands.ensure_context_summary") as summarize,
         ):
             response = self.client.post(
                 self._url(),
