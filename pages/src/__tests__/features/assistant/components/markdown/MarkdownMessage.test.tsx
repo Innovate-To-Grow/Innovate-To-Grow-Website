@@ -1,8 +1,8 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {MarkdownMessage} from '@/features/assistant/components/MarkdownMessage';
-import {isSafeHref} from '@/features/assistant/components/markdownLinks';
+import {MarkdownMessage} from '@/features/assistant/components/markdown/MarkdownMessage';
+import {isSafeHref} from '@/features/assistant/components/markdown/markdownLinks';
 
 // react-markdown loads through a lazy/Suspense boundary, so every assertion
 // here must await the async render (findBy*), not the synchronous queries.

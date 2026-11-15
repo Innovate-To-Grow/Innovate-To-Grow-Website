@@ -1,4 +1,4 @@
-export {AssistantWidget} from './components/AssistantWidget';
+export {AssistantWidget} from './components/widget/AssistantWidget';
 export {shouldMountWidget} from './utils/shouldMountWidget';
 export type {
   AssistantChatMessage,

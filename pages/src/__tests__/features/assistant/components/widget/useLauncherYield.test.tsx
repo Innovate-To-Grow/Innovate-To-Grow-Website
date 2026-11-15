@@ -13,8 +13,8 @@ vi.mock('@/features/assistant/api', () => ({
   sendAssistantMessage: vi.fn(),
 }));
 
-import {AssistantWidget} from '@/features/assistant/components/AssistantWidget';
-import {coversPageControl} from '@/features/assistant/components/useLauncherYield';
+import {AssistantWidget} from '@/features/assistant/components/widget/AssistantWidget';
+import {coversPageControl} from '@/features/assistant/components/widget/useLauncherYield';
 
 const LAUNCHER_BOX = new DOMRect(318, 772, 56, 56);
 

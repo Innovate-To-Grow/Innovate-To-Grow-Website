@@ -2,7 +2,7 @@ import {useCallback, useEffect, useReducer, useRef, useState} from 'react';
 
 import {sendAssistantMessage} from '@/features/assistant/api';
 
-import {clearConversation, getSessionId, saveTranscript} from '../utils/sessionStore';
+import {clearConversation, getSessionId, saveTranscript} from '../../utils/sessionStore';
 import {chatReducer, createId, initState, toHistory} from './chatState';
 import type {DisplayMessage} from './types';
 

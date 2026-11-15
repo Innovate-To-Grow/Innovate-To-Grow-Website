@@ -1,6 +1,6 @@
 import {useEffect, useRef} from 'react';
 
-import {MarkdownMessage} from './MarkdownMessage';
+import {MarkdownMessage} from '../markdown/MarkdownMessage';
 import {StarterQuestions} from './StarterQuestions';
 import type {DisplayMessage} from './types';
 
