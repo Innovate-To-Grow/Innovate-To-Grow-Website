@@ -17,8 +17,6 @@ from django.utils import timezone
 
 from apps.authn.services.email import send_admin_invitation_email, send_notification_email, send_verification_email
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SMTPProviderConfig
-from apps.core.services.background_jobs import claim_jobs
-from apps.core.services.background_jobs.worker import run_claimed_job
 from apps.core.services.delivery_rates.families import clear_gate_cache
 from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.tests.graph_helpers import create_graph_config
@@ -26,7 +24,6 @@ from apps.core.tests.services.delivery_rates.helpers import FakeClock
 from apps.event.services.ticket.mail import send_ticket_email
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.campaign.dispatch import queue_email_campaign
 from apps.mail.services.inbox.reply import send_reply
 from apps.mail.services.send_campaign.runner import send_campaign
 from apps.mail.tests.services.campaigns.send_providers.test_send_campaign_provider_neutral import (
@@ -83,7 +80,7 @@ def _graph_recipients(call) -> list[str]:
     return [str(posted_mime(call)["To"])]
 
 
-class SendingMethodReachesAllMailTests(TestCase):
+class _SendingMethodReachesAllMailCase(TestCase):
     def setUp(self):
         cache.clear()
         clear_access_token_cache()
@@ -163,6 +160,8 @@ class SendingMethodReachesAllMailTests(TestCase):
         for other in not_through:
             self.assertEqual(self.transports.recipients(other), [], f"mail still went through {other}")
 
+
+class SendingMethodReachesAllMailTests(_SendingMethodReachesAllMailCase):
     def test_switching_from_ses_to_smtp_moves_all_mail_to_smtp(self):
         self.use_for_email("smtp")
 
@@ -178,24 +177,3 @@ class SendingMethodReachesAllMailTests(TestCase):
         self.use_for_email("ses")
 
         self.assert_all_mail_went_through("ses", not_through=("smtp", "graph"))
-
-    def test_a_campaign_queued_before_the_switch_goes_out_through_the_new_method(self):
-        # Production can send campaigns from the background worker: each recipient's job reads the method as it runs.
-        campaign = EmailCampaign.objects.create(
-            name="Queued",
-            subject="Hello",
-            body="<p>Body</p>",
-            audience_type="manual",
-            manual_emails="worker@example.com",
-        )
-        queue_email_campaign(campaign, sent_by=self.superuser)
-        self.use_for_email("smtp")
-
-        jobs = claim_jobs()
-        for job in jobs:
-            run_claimed_job(job)
-
-        self.assertTrue(jobs)
-        self.assertEqual(self.transports.recipients("smtp"), ["worker@example.com"])
-        self.assertEqual(self.transports.recipients("ses"), [])
-        self.assertEqual(RecipientLog.objects.get(campaign=campaign).status, "sent")

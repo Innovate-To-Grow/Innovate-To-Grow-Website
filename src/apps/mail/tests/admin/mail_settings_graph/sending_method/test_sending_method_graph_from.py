@@ -17,7 +17,7 @@ from apps.core.services.email.registry import resolve_provider
 from apps.core.tests.graph_helpers import create_graph_config, grant
 from apps.core.tests.models.graph.test_graph_go_live_gate import DENY, evidence
 
-from ..mail_settings.test_mail_settings_providers import GRAPH_NOT_READY, SEND_TEST, EmailSendingMethodTestCase
+from ...mail_settings.test_mail_settings_providers import GRAPH_NOT_READY, SEND_TEST, EmailSendingMethodTestCase
 
 FROM = "admin@example.com"  # the From address the sending config starts with (not in the Graph scope)
 MAILBOX = "mailer@example.com"  # the Graph sender mailbox, in the scope

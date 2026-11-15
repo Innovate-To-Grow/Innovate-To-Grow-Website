@@ -8,7 +8,7 @@ from apps.core.models import AWSCredentialConfig, SMTPProviderConfig
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import private_key_lines
 from apps.core.tests.models.graph.test_graph_go_live_gate import DENY, evidence
-from apps.mail.tests.admin.mail_settings_graph.test_mail_settings_admin_graph import (
+from apps.mail.tests.admin.mail_settings_graph.settings.test_mail_settings_admin_graph import (
     FAKE_TOKEN,
     FakeGraphTransport,
     GraphSettingsTestCase,

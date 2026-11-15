@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, MicrosoftGraphProviderConfig, SMTPProviderConfig
 
-from ..mail_settings_graph.test_mail_settings_admin_graph import GraphSettingsTestCase
+from ..mail_settings_graph.settings.test_mail_settings_admin_graph import GraphSettingsTestCase
 
 
 class NotificationDeliveryHistoryTests(GraphSettingsTestCase):
