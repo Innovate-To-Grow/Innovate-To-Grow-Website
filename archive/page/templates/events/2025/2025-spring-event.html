@@ -1,61 +1,65 @@
-{% extends "base.html" %}
-{% block title %}Fall 2025 - Event | Innovate To Grow{% endblock %}
+{% extends "layout/base.html" %}
+{% block title %}Spring 2025 - Event | Innovate To Grow{% endblock %}
 {% block head_extra %}
-    <link type="text/css" rel="stylesheet" href="/static/css/events/2025-fall-event.css" media="all">
+    <link type="text/css" rel="stylesheet" href="/static/css/events/2025/2025-spring-event.css" media="all">
 {% endblock %}
 {% block content %}
     <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha384-fJU6sGmyn07b+uD1nMk7/iSb4yvaowcueiQhfVgQuD98rfva8mcr1eSvjchfpMrH" crossorigin="anonymous"></script><!-- Schedule -->
     <!-- MAIN SCRIPTS FOR PULLING SPREADSHEET DATA -->
-    <script type="text/javascript" src="/static/js/events/2025-fall-event-1-winners-prepend.js"></script>
+    <script type="text/javascript" src="/static/js/events/2025/2025-spring-event-1-winners.js"></script>
     <div class="row-fluid i2gTable ">
-        <div class="ck-text-center"><span style="font-size:28px;"><strong><span
+        <div class="center-block"><span style="font-size:28px;"><strong><span
                                     style="color:#3498db;">Winners!&nbsp; Innovate to Grow</span></strong></span></div>
-        <div style="text-align: center; font-size:20px; color:#DDB119;"><strong>F3 Innovate
-                Engineering Award: CAP-207 Let's Get Saucy </strong></div>
-        <div style="text-align: center; font-size:20px; color:#183C66;"><strong>F3 Innovate Software
-                Award: CSE-416 Trailblazers</strong></div>
+        <div style="text-align: center; font-size:20px; color:#DDB119;"><strong>Lakireddy
+                Engineering Award: CAP-120: Seal Team Five</strong></div>
+        <div style="text-align: center; font-size:20px; color:#183C66;"><strong>Lakireddy Software
+                Award: CSE-336: Full Rack</strong></div>
         <div class="WinnerCAPTable">
             <div class="span10">
-                <div class="ck-text-center">&nbsp;</div>
+                <div class="center-block">&nbsp;</div>
 
                 <!-- <div>&nbsp;</div> -->
 
-                <div class="center-blue"><strong>Engineering Capstone
+                <div class="section-title"><strong>Engineering Capstone
                         (CAP)</strong></div>
 
                 <section class="center">
                     <div class="table__wrapper">
-                        <table class="table width-full">
+                        <table class="table table-full">
                             <thead>
                                 <tr>
                                     <th scope="col" style="background-color: #fff;">&nbsp;</th>
-                                    <th scope="col" class="th-head-cell">
+                                    <th scope="col" class="hdr-cell">
                                         Track 1
                                         </th>
-                                    <th scope="col" class="th-head-cell">
+                                    <th scope="col" class="hdr-cell">
                                         Track 2
                                         </th>
-                                    <!--<th scope="col" style="background-color: #efefef; color: #002856;">Track 3</th>-->
+                                    <th scope="col" class="hdr-cell">
+                                        Track 3
+                                        </th>
                                     <!-- <th scope="col" style="background-color: #efefef; color: #002856;">Track 4</th>
                                     <th scope="col" style="background-color: #efefef; color: #002856;">Track 5</th> -->
                                     </tr>
                                 </thead>
                             <tbody>
                                 <tr>
-                                    <th class="borderLess th-row-cell" scope="row">&nbsp;
+                                    <th class="borderLess row-hdr-cell" scope="row"
+                                                        >&nbsp;
                                         </th>
                                     <td data-header="Track 1"><b class="trackname1">&nbsp;</b></td>
                                     <td data-header="Track 2"><b class="trackname2">&nbsp;</b></td>
-                                    <!--<td data-header="Track 3"><b class="trackname3">&nbsp;</b></td>-->
+                                    <td data-header="Track 3"><b class="trackname3">&nbsp;</b></td>
                                     <!-- <td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
                                     <td data-header="Track 5"><b class="trackname5">&nbsp;</b></td> -->
                                     </tr>
                                 <tr>
-                                    <th class="borderLess th-row-cell" scope="row">&nbsp;
+                                    <th class="borderLess row-hdr-cell" scope="row"
+                                                        >&nbsp;
                                         </th>
                                     <td data-header="Track 1"><b class="winnert1">&nbsp;</b></td>
                                     <td data-header="Track 2"><b class="winnert2">&nbsp;</b></td>
-                                    <!--<td data-header="Track 3"><b class="winnert3">&nbsp;</b></td>-->
+                                    <td data-header="Track 3"><b class="winnert3">&nbsp;</b></td>
                                     <!-- <td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
                                     <td data-header="Track 5"><b class="winnert5">&nbsp;</b></td> -->
                                     </tr>
@@ -69,7 +73,7 @@
         <div class="row-fluid i2gTable ">
             <div class="WinnerCEETable">
                 <div class="span2" style="margin-right: 0px;">
-                    <div class="center-blue"><strong>Civil &amp;
+                    <div class="section-title"><strong>Civil &amp;
                             Environmental</strong></div>
 
                     <section class="center">
@@ -82,18 +86,20 @@
                                             </th>
                                         <th scope="col"
                                                             style="background-color: #efefef; color: #002856; max-width: 150px;">
-                                            Track 3
+                                            Track 4
                                             </th>
                                         </tr>
                                     </thead>
                                 <tbody>
                                     <tr>
-                                        <th class="borderLess th-row-cell" scope="row">&nbsp;
+                                        <th class="borderLess row-hdr-cell" scope="row"
+                                                            >&nbsp;
                                             </th>
                                         <td data-header="Track 4"><b class="trackname4">&nbsp;</b></td>
                                         </tr>
                                     <tr>
-                                        <th class="borderLess th-row-cell" scope="row">&nbsp;
+                                        <th class="borderLess row-hdr-cell" scope="row"
+                                                            >&nbsp;
                                             </th>
                                         <td data-header="Track 4"><b class="winnert4">&nbsp;</b></td>
                                         </tr>
@@ -111,48 +117,57 @@
             <div class="span11">
                 <div>&nbsp;</div>
 
-                <div class="center-blue"><strong>Software Engineering
+                <div class="section-title"><strong>Software Engineering
                         Capstone (CSE)</strong></div>
 
                 <section class="center">
                     <div class="table__wrapper">
-                        <table class="table width-full">
+                        <table class="table table-full">
                             <thead>
                                 <tr>
                                     <th scope="col"
                                                         style="background-color: #fff; color: #002856; max-width: 100px;">
                                         &nbsp;
                                         </th>
-                                    <th scope="col" class="th-head-cell">
-                                        Track 4
-                                        </th>
-                                    <th scope="col" class="th-head-cell">
+                                    <th scope="col" class="hdr-cell">
                                         Track 5
                                         </th>
-                                    <!--<th scope="col" style="background-color: #efefef; color: #002856;">Track 7</th>
-                                    <th scope="col" style="background-color: #efefef; color: #002856;">Track 7</th>-->
+                                    <th scope="col" class="hdr-cell">
+                                        Track 6
+                                        </th>
+                                    <th scope="col" class="hdr-cell">
+                                        Track 7
+                                        </th>
+                                    <th scope="col" class="hdr-cell">
+                                        Track 7
+                                        </th>
                                     </tr>
                                 </thead>
                             <tbody>
+                                <th class="borderLess row-hdr-cell" scope="row"
+                                                    >&nbsp;
+                                    </th>
+                                <td data-header="Track 5" class="cse-cell"><b class="trackname5">&nbsp;</b>
+                                    </td>
+                                <td data-header="Track 6" class="cse-cell"><b class="trackname6">&nbsp;</b>
+                                    </td>
+                                <td data-header="Track 9" class="cse-cell"><b class="trackname7">&nbsp;</b>
+                                    </td>
+                                <td data-header="Track 9" class="cse-cell"><b class="trackname8">&nbsp;</b>
+                                    </td>
+                                </tr>
                                 <tr>
-                                    <th class="borderLess th-row-cell" scope="row">&nbsp;
+                                    <th class="borderLess row-hdr-cell" scope="row"
+                                                        >&nbsp;
                                         </th>
-                                    <td data-header="Track 4" class="winner-cse-cell"><b
-                                                            class="trackname5">&nbsp;</b></td>
-                                    <td data-header="Track 5" class="winner-cse-cell"><b
-                                                            class="trackname6">&nbsp;</b></td>
-                                    <!--<td data-header="Track 9" style="color: #FFBF3C;"><b class="trackname7">&nbsp;</b></td>
-                                    <td data-header="Track 9" style="color: #FFBF3C;"><b class="trackname8">&nbsp;</b></td>-->
-                                    </tr>
-                                <tr>
-                                    <th class="borderLess th-row-cell" scope="row">&nbsp;
-                                        </th>
-                                    <td data-header="Track 4" class="winner-cse-cell"><b
+                                    <td data-header="Track 5" class="cse-cell"><b
                                                             class="winnert5">&nbsp;</b></td>
-                                    <td data-header="Track 5" class="winner-cse-cell"><b
+                                    <td data-header="Track 6" class="cse-cell"><b
                                                             class="winnert6">&nbsp;</b></td>
-                                    <!--<td data-header="Track 9" style="color: #FFBF3C;"><b class="winnert7">&nbsp;</b></td>-->
-                                    <!--<td data-header="Track 9" style="color: #FFBF3C;"><b class="winnert8">&nbsp;</b></td>-->
+                                    <td data-header="Track 9" class="cse-cell"><b
+                                                            class="winnert7">&nbsp;</b></td>
+                                    <td data-header="Track 9" class="cse-cell"><b
+                                                            class="winnert8">&nbsp;</b></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -161,8 +176,8 @@
 
                         <p>&nbsp;</p>
                         </div>
-                    <div class="ck-text-center"><span style="font-size:28px;"><strong><span
-                                                style="color:#3498db;">Mark your calendar!&nbsp; Spring 2026 I2G: Thursday May 14, 2026</span></strong></span>
+                    <div class="center-block"><span style="font-size:28px;"><strong><span
+                                                style="color:#3498db;">Mark your calendar!&nbsp; Spring 2025 I2G: Thursday May 15, 2025</span></strong></span>
                         </div>
                     </section>
                 </div>
@@ -177,7 +192,7 @@
                         <div class="iframe-container">
                             <iframe class="responsive-iframe"
                                                         src="https://www.youtube.com/embed/0KdRs3Dz9G8"></iframe>
-                            <p class="ck-text-center">Welcome and participation instructions,
+                            <p class="center-block">Welcome and participation instructions,
                                 Mark
                                 Matsumoto, Dean,
                                 School of Engineering, University of California, Merced.</p>
@@ -240,39 +255,43 @@
                 <div>&nbsp;</div>
                 <!-- EXPO: POSTERS AND DEMOS -->
 
-                <div class="center-blue">
+                <div class="section-title">
                     <h2>EXPO: POSTERS AND DEMOS</h2>
                     </div>
                 <!-- EXPO table -->
 
                 <section class="center">
                     <div class="table__wrapper">
-                        <table class="table width-full">
+                        <table class="table table-full">
                             <thead>
                                 <tr><!-- EX:      Room:               GYM       -->
-                                    <th scope="col" class="th-head-cell">
+                                    <th scope="col" class="hdr-cell">
                                         Room:
                                         </th>
                                     <th scope="col"
                                                         style="background-color: #efefef; color: #002856; width: 100%; text-align: center;">
-                                        Conference Center&nbsp; &nbsp; (only, NO Zoom)
+                                        Gym&nbsp; &nbsp; (only, NO Zoom)
                                         </th>
                                     </tr>
                                 </thead>
                             <tbody>
                                 <tr><!-- EX:      TIME                EVENT AT THAT TIME    -->
-                                    <th class="borderLess th-head-cell" scope="row">9:00
+                                    <th class="borderLess hdr-cell" scope="row"
+                                                        >9:00
                                         </th>
-                                    <td data-header="Track 1" class="sched-cell">
-                                        <p class="sched-event">
+                                    <td data-header="Track 1"
+                                                        class="schedule-time-cell">
+                                        <p class="schedule-event">
                                             Registration and Coffee</p>
                                         </td>
                                     </tr>
                                 <tr><!-- EX:      TIME                EVENT AT THAT TIME    -->
-                                    <th class="borderLess th-head-cell" scope="row">10:00
+                                    <th class="borderLess hdr-cell" scope="row"
+                                                        >10:00
                                         </th>
-                                    <td data-header="Track 1" class="sched-cell">
-                                        <p class="sched-event">
+                                    <td data-header="Track 1"
+                                                        class="schedule-time-cell">
+                                        <p class="schedule-event">
                                             Demos and Posters - Lunch Boxes</p>
                                         </td>
                                     </tr>
@@ -282,8 +301,9 @@
                                                         style="background-color: #efefef; color: #002856; border-bottom: 1px solid #5B5B5B !important;">
                                         12:00
                                         </th>
-                                    <td data-header="Track 1" class="sched-cell">
-                                        <p class="sched-event">
+                                    <td data-header="Track 1"
+                                                        class="schedule-time-cell">
+                                        <p class="schedule-event">
                                             Networking - Transition to Presentations</p>
                                         </td>
                                     </tr>
@@ -297,7 +317,7 @@
     <!-- INTRO SECTION END --><!-- PRESENTATION SCHEDULES -->
 
     <div class="row-fluid i2gTable ">
-        <div class="center-blue">
+        <div class="section-title">
             <h2>PRESENTATIONS</h2>
             <!-- <h3 style="color: #FF0000"><strong>NOTICE</strong>:&nbsp; <strong>ZOOM </strong>links will go live&nbsp;<strong>10 MINUTES BEFORE</strong>&nbsp;each track starts!</h3> -->
             </div>
@@ -323,16 +343,16 @@
             <div class="span12">
                 <div>&nbsp;</div>
 
-                <div class="center-blue">
+                <div class="section-title">
                     <h2>AWARDS &amp; RECEPTION</h2>
                     </div>
 
                 <section class="center">
                     <div class="table__wrapper">
-                        <table class="table width-full">
+                        <table class="table table-full">
                             <thead>
                                 <tr>
-                                    <th scope="col" class="th-head-cell">
+                                    <th scope="col" class="hdr-cell">
                                         Room:
                                         </th>
                                     <th scope="col"
@@ -343,18 +363,22 @@
                                 </thead>
                             <tbody>
                                 <tr>
-                                    <th class="borderLess th-head-cell" scope="row">4:30
+                                    <th class="borderLess hdr-cell" scope="row"
+                                                        >4:30
                                         </th>
-                                    <td data-header="Track 1" class="sched-cell">
-                                        <p class="sched-event">
+                                    <td data-header="Track 1"
+                                                        class="schedule-time-cell">
+                                        <p class="schedule-event">
                                             Award Ceremony</p>
                                         </td>
                                     </tr>
                                 <tr>
-                                    <th class="borderLess th-head-cell" scope="row">5:00
+                                    <th class="borderLess hdr-cell" scope="row"
+                                                        >5:00
                                         </th>
-                                    <td data-header="Track 1" class="sched-cell">
-                                        <p class="sched-event">
+                                    <td data-header="Track 1"
+                                                        class="schedule-time-cell">
+                                        <p class="schedule-event">
                                             Reception</p>
                                         </td>
                                     </tr>
@@ -396,5 +420,5 @@
     <script src="https://code.jquery.com/jquery-3.3.1.js" integrity="sha384-fJU6sGmyn07b+uD1nMk7/iSb4yvaowcueiQhfVgQuD98rfva8mcr1eSvjchfpMrH" crossorigin="anonymous"></script>
     <script type="text/javascript" charset="utf8"
                                 src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js" integrity="sha384-rgWRqC0OFPisxlUvl332tiM/qmaNxnlY46eksSZD84t+s2vZlqGeHrncwIRX7CGp" crossorigin="anonymous"></script>
-    <script type="text/javascript" src="/static/js/events/2025-fall-event-2-schedule-and-datatable.js"></script>
+    <script type="text/javascript" src="/static/js/events/2025/2025-spring-event-2-schedule-datatable.js"></script>
 {% endblock %}

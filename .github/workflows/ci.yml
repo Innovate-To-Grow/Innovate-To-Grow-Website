@@ -1684,7 +1684,7 @@ jobs:
           fi
 
           page="$(curl --fail --silent --show-error http://127.0.0.1:5001/2025-fall-event.html)"
-          if ! grep -q '/static/js/i2g-embed.js' <<<"$page"; then
+          if ! grep -q '/static/js/site/i2g-embed.js' <<<"$page"; then
             echo "::error::The event page is missing the embed helper."
             exit 1
           fi
