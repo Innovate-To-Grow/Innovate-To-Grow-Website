@@ -7,7 +7,7 @@ from django.conf import settings
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from apps.core.management.commands import run_background_worker
+from apps.core.management.operations import worker_maintenance
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.credential import expiry
 from apps.core.tests.graph_helpers import create_graph_config
@@ -25,7 +25,7 @@ class GraphCertificateExpiryMaintenanceTests(TestCase):
         MicrosoftGraphCertificate.objects.filter(config=self.config).update(not_after=timezone.now() + delta)
 
     def run_check(self):
-        run_background_worker._check_graph_certificate_expiry()
+        worker_maintenance._check_graph_certificate_expiry()
 
     def test_inside_the_warning_window_one_fixed_line_is_logged(self):
         days = settings.GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS - 1
@@ -38,7 +38,7 @@ class GraphCertificateExpiryMaintenanceTests(TestCase):
             [(record.levelname, record.getMessage()) for record in logs.records],
             [("WARNING", f"{PREFIX}{days} days left; install the renewed certificate")],
         )
-        self.assertEqual(logs.records[0].msg, run_background_worker.GRAPH_EXPIRY_WARNING)
+        self.assertEqual(logs.records[0].msg, worker_maintenance.GRAPH_EXPIRY_WARNING)
 
     def test_an_expired_certificate_logs_the_expired_line(self):
         self.expire_in(-HOUR)
@@ -73,8 +73,8 @@ class GraphCertificateExpiryMaintenanceTests(TestCase):
 
     def test_it_runs_with_the_other_maintenance_tasks(self):
         self.assertIn(
-            ("Microsoft Graph certificate expiry check", run_background_worker._check_graph_certificate_expiry),
-            run_background_worker.MAINTENANCE_TASKS,
+            ("Microsoft Graph certificate expiry check", worker_maintenance._check_graph_certificate_expiry),
+            worker_maintenance.MAINTENANCE_TASKS,
         )
 
 

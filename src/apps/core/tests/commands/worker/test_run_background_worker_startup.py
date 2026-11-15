@@ -6,6 +6,7 @@ from unittest.mock import patch
 from django.test import SimpleTestCase, TestCase, override_settings
 
 from apps.core.management.commands import run_background_worker
+from apps.core.management.operations import worker_maintenance
 from apps.core.models import BackgroundJob
 from apps.core.services.background_jobs import enqueue_job
 
@@ -65,8 +66,8 @@ class RunBackgroundWorkerShutdownTests(TestCase):
         command = run_background_worker.Command(stdout=StringIO())
         with (
             patch.object(run_background_worker.signal, "signal", side_effect=install_handler),
-            patch.object(run_background_worker, "purge_retired_auth_keypairs", return_value=0),
-            patch.object(run_background_worker, "purge_expired_public_assistant_budgets", return_value=0),
+            patch.object(worker_maintenance, "purge_retired_auth_keypairs", return_value=0),
+            patch.object(worker_maintenance, "purge_expired_public_assistant_budgets", return_value=0),
             patch.object(run_background_worker, "schedule_startup_reconciliation"),
             patch.object(run_background_worker, "recover_stale_jobs"),
             patch.object(run_background_worker, "worker_metrics", return_value={"heartbeat": 1}),
