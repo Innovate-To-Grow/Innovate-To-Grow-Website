@@ -92,7 +92,7 @@ jobs:
       # trivy-action's own installer downloads through get.trivy.dev, which the
       # runners could not reach on 2026-11-03/04 (UTC); it failed this job then.
       # Install the pinned release from GitHub releases with its checksum
-      # verified, as ci.yml's image scans do (scripts/ci/validate_tool_versions.py
+      # verified, as ci.yml's image scans do (scripts/ci/tool_versions/
       # keeps every TRIVY_VERSION equal).
       - name: Install Trivy from GitHub releases
         env:

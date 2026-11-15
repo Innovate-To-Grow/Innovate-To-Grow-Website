@@ -121,8 +121,8 @@ npx tsc --noEmit         # Type check
 npm run check:structure  # Layer boundaries, import cycles, directory sizes
 
 # Size / complexity / dependency rules (from the project root, venv active)
-python scripts/ci/check_python_quality.py
-python scripts/ci/check_python_dependencies.py
+python -m scripts.ci.python_quality
+python -m scripts.ci.python_dependencies
 ```
 The rules, how lines and complexity are counted, and how to record a justified exception are in
 [docs/architecture/code-quality.md](docs/architecture/code-quality.md). `npm run quality:report` lists the
@@ -196,7 +196,7 @@ For asynchronous frontend tests, wait for the behavior being asserted. A `findBy
 - [ ] PR references related issue(s) and describes the change, motivation, and testing.
 - [ ] Code follows the guidelines above and is scoped to a single concern.
 - [ ] **CI checks pass:** All GitHub Actions workflows (linting, type checks) succeed.
-- [ ] Backend: `ruff check .` and `ruff format --check .` pass, migrations added (if models changed), and `python manage.py test --settings=config.settings.environments.local` passes; `python scripts/ci/check_python_quality.py` and `python scripts/ci/check_python_dependencies.py` pass.
+- [ ] Backend: `ruff check .` and `ruff format --check .` pass, migrations added (if models changed), and `python manage.py test --settings=config.settings.environments.local` passes; `python -m scripts.ci.python_quality` and `python -m scripts.ci.python_dependencies` pass.
 - [ ] Frontend: `npm run lint`, `npm run check:structure`, and `npm run build` succeed locally.
 - [ ] API contracts updated in both backend serializers and frontend TypeScript types.
 - [ ] Screenshots or GIFs attached when UI changes are visible.

@@ -40,11 +40,11 @@ jobs:
       # docs/architecture/code-quality.md.
       - name: Check Python quality limits
         working-directory: .
-        run: python scripts/ci/check_python_quality.py
+        run: python -m scripts.ci.python_quality
 
       - name: Check Python app dependency boundaries
         working-directory: .
-        run: python scripts/ci/check_python_dependencies.py
+        run: python -m scripts.ci.python_dependencies
 
       # Bandit SAST — config lives in pyproject.toml [tool.bandit]. The
       # baseline pins pre-existing findings so only *new* issues break CI.
