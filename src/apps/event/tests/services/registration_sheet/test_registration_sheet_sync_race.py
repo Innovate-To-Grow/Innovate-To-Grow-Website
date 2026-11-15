@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.event.models import Event, EventRegistration, RegistrationSheetSyncConfig
 from apps.event.services.registration_sheet_sync import _flush_pending_sync, sync_registrations_to_sheet
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
-from apps.event.tests.services.sheet_fakes import FakeWorksheet
+from apps.event.tests.services.registration_sheet.sheet_fakes import FakeWorksheet
 
 
 class ManagedSyncRaceTests(TransactionTestCase):

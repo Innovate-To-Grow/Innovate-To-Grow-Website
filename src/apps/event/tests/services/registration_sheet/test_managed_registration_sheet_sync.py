@@ -26,7 +26,7 @@ from apps.event.services.registration_sheet_sync.provider import METADATA_PREFIX
 from apps.event.services.registration_sheet_sync.schema import registration_fields, registration_values
 from apps.event.services.registration_sheet_sync.sheets import RegistrationSyncConflict, RegistrationSyncError
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
-from apps.event.tests.services.sheet_fakes import FakeWorksheet
+from apps.event.tests.services.registration_sheet.sheet_fakes import FakeWorksheet
 
 
 class ManagedRegistrationSheetTests(TestCase):
