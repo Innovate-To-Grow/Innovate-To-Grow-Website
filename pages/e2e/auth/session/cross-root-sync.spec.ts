@@ -2,7 +2,7 @@
 // independent React roots via the `i2g-auth-state-change` event. We observe it
 // through #menu-root's member button (Sign In ⇄ member email). Tagged @core so
 // it also runs on every mobile/tablet device.
-import {test, expect} from '../helpers/fixtures';
+import {test, expect} from '../../helpers/fixtures';
 import {
   expectSignedInAs,
   expectSignedOut,
@@ -10,7 +10,7 @@ import {
   mockAccountDashboard,
   mockEmailAuthFlow,
   seedAuthenticatedSession,
-} from '../helpers';
+} from '../../helpers';
 
 test('logged-out load shows Sign In in the menu root', {tag: '@core'}, async ({page}) => {
   await page.goto('/', {waitUntil: 'domcontentloaded'});
