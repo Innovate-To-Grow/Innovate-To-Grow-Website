@@ -9,11 +9,8 @@ from django.test import TestCase
 from apps.authn.models import ContactEmail, RSAKeypair
 from apps.authn.services.email.challenges import _random_code
 from apps.authn.services.members.export_vcf import _build_vcard, _escape, _profile_image
-from apps.authn.services.security.rsa_manager import (
-    RSADecryptionError,
-    decrypt_password,
-    get_or_create_auth_keypair,
-)
+from apps.authn.services.security.decryption import RSADecryptionError, decrypt_password
+from apps.authn.services.security.rsa_manager import get_or_create_auth_keypair
 
 Member = get_user_model()
 
