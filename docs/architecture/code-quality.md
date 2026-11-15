@@ -198,8 +198,8 @@ every file git tracks, from the repository root. Limits and exceptions live in
 - **Unmeasured** (`[[unmeasured]]`): Django migrations, vendored third-party code, generated files (lockfiles,
   the Bandit baseline) and historical material. They are invisible to every rule.
 - **Exceptions** (`[[exceptions]]`): exact paths (or one-level patterns such as `src/apps/*` for the Django app
-  roots), the rules relaxed for them, and a reason. They cover only layouts a framework or tool fixes and
-  files that cannot be split without changing behavior. Never add a pattern that covers a whole source tree.
+  roots), the rules relaxed for them, and a reason. They cover only layouts a framework, a tool or stored data
+  fixes, and files that cannot be split without changing behavior. Never add a pattern that covers a whole source tree.
 - An entry that no longer matches anything is reported as stale, so the lists only shrink.
 
 **Mode.** CI's `Repository Structure and Migration Guard` job runs the structure check in **report-only**

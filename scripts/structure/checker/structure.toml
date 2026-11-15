@@ -167,6 +167,78 @@ rules = ["R001"]
 reason = "Frozen conversions of past event pages from the legacy Drupal site (#204), kept pixel-identical: content snapshots, not maintained application code."
 
 # ---------------------------------------------------------------------------------------------------------------
+# Classic admin scripts that are one closure (R001). Each file is a single IIFE whose functions share what it sets
+# up; a second file could reach that only through a new global, plus one more <script> wherever the file loads (a
+# loading change a file move cannot prove). Scripts that already extend a namespace are split instead.
+# ---------------------------------------------------------------------------------------------------------------
+
+[[exceptions]]
+paths = ["src/apps/core/static/admin/js/i2g-admin-theme-runtime.js"]
+rules = ["R001"]
+reason = "Render-blocking <head> script of admin/base_site.html and admin/login.html that applies the stored admin theme before the first paint; its 11 functions share one closure, and a second file would add another blocking request to every admin page."
+
+[[exceptions]]
+paths = ["src/apps/core/static/admin/js/material-web-text-field.js"]
+rules = ["R001"]
+reason = "One init-once closure (window.I2GMaterialWebAdminInitialized) whose 15 functions upgrade admin form fields to Material Web; admin/base_site.html and MaterialOutlinedPasswordWidget's Media both load it, so a split adds a global and a second script to each."
+
+[[exceptions]]
+paths = ["src/apps/core/static/admin/js/send-verification.js"]
+rules = ["R001"]
+reason = "Reads its configuration from document.currentScript.dataset while it runs (the data-* attributes of its own <script> tag in admin/login.html); its functions share that configuration and the reassigned request state (pendingRequestId, checkingStatus, statusRegion, loaded), which another script could reach only through a new global."
+
+[[exceptions]]
+paths = ["src/apps/event/static/event/js/checkin_change_summary.js"]
+rules = ["R001"]
+reason = "Live summary of the check-in change page: 23 functions share the state, poll gate, config and root element of one closure; this page has no script namespace, so a split needs a new global and a second script tag."
+
+[[exceptions]]
+paths = ["src/apps/event/static/event/js/checkin_console.js"]
+rules = ["R001"]
+reason = "Check-in console orchestrator: its helpers already live in checkin_shared.js, checkin_ticket_input.js and checkin_camera.js (window.__checkinConsole); the 18 functions left share the state, elements, config and camera context built in this closure, so moving more out is new wiring in the event-day console, not a move."
+
+[[exceptions]]
+paths = ["src/apps/mail/static/mail/js/body_html_editor.js"]
+rules = ["R001"]
+reason = "Campaign body editor: its functions share the CodeMirror instance, text area, toolbar and resize handle that the closure reassigns (cm, cmTextArea, formatToolbar, resizeHandle); another script could reach them only through a new global."
+
+[[exceptions]]
+paths = ["src/apps/mail/static/mail/js/email-monitoring.js"]
+rules = ["R001"]
+reason = "Email Monitoring charts: 16 SVG drawing functions call each other and share the plot constants inside one closure; the page has no script namespace, so a split needs a new global and a second script tag."
+
+# ---------------------------------------------------------------------------------------------------------------
+# The CMS CSS contract (pages/src/styles/contract). CMS migrations 0026 and 0027 retired the database stylesheets and
+# stored notes naming where their rules now live: styles/contract/global/, cms-blocks/, cms-pages.css, page-home.css
+# and legacy-content.css. Migrations are never edited, so those paths stay; docs/cms-admin/css-contract.md maps each
+# content class to its file for CMS admins.
+# ---------------------------------------------------------------------------------------------------------------
+
+[[exceptions]]
+paths = ["pages/src/styles/contract"]
+rules = ["R003-mixed"]
+reason = "cms-pages.css, page-home.css and legacy-content.css are named by the stored notes of CMS migrations 0026/0027 and sit beside the global/ and cms-blocks/ directories those notes also name; index.css (the contract's cascade order) and contract-classes.json (the content classes) belong with them."
+
+[[exceptions]]
+paths = ["pages/src/styles/contract/global", "pages/src/styles/contract/cms-blocks"]
+rules = ["R002"]
+reason = "The directories CMS migration 0027's stored notes name as the home of the retired stylesheets' rules; docs/cms-admin/css-contract.md sends CMS admins to global/*.css (the design system) and cms-blocks/*.css (the block styles), and subdirectories would move those rules away from the paths the notes give."
+
+[[exceptions]]
+paths = ["pages/src/styles/contract/cms-pages.css"]
+rules = ["R001"]
+reason = "CMS migration 0027's stored notes name this file as the home of the retired cms-pages stylesheet's rules; an @import split would leave them in part files the notes do not name."
+
+[[exceptions]]
+paths = [
+    "pages/src/styles/contract/cms-blocks/blocks.css",
+    "pages/src/styles/contract/cms-blocks/body-classes.css",
+    "pages/src/styles/contract/global/buttons.css",
+]
+rules = ["R001"]
+reason = "Their part files would have to go into global/ or cms-blocks/, which are already over the file limit (above), or into subdirectories mixed with files; the stored notes of migration 0027 fix this layout."
+
+# ---------------------------------------------------------------------------------------------------------------
 # Migration guard (R024). Enforced in CI: an existing file under a protected path may not be modified, deleted,
 # renamed or change type; added files pass. List a change in `allowed_changes` (as
 # `{ paths = ["..."], reason = "..." }`) only when the owners explicitly approved it.
