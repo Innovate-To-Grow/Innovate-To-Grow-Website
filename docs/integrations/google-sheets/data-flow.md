@@ -51,6 +51,18 @@ editable wording. The visible header can be renamed, and whole columns can be
 moved or inserted without changing field identity. The configured header row is
 also recorded in the mapping.
 
+A managed worksheet carries one metadata entry per bound column, one marker on
+the header row and one entry per configured label. Google returns entries on
+rows and columns only inside the grid data (`sheets.data.rowMetadata` and
+`columnMetadata`), so the sync asks for them there; a sheet's own
+`developerMetadata` lists sheet-level entries only. Google allows 30,000
+characters of developer metadata per sheet, so a sync reuses the entries it finds
+and, in the same write, deletes the event's entries it no longer needs: exact
+copies, the binding and label of a deleted question, and markers of a header row
+that is no longer configured. When copies bind one field to several columns, the
+column whose header still shows the field is kept; if none or several do, the
+preview reports the duplicate binding.
+
 The protected, hidden **Registration ID** column identifies rows and may appear
 anywhere. Normal synchronization updates only managed cells; it does not clear
 the worksheet or rewrite complete rows containing custom formulas or annotations.
@@ -64,8 +76,9 @@ until the configured label changes again. New fields in an already managed sheet
 receive new columns; they never take over a custom column merely because its
 heading matches a question label.
 
-Metadata must be unambiguous. Duplicate field bindings, duplicate registration
-IDs, unknown registration IDs, and missing identity anchors produce actionable
+Metadata must be unambiguous. Duplicate field bindings that the header row
+cannot resolve, two fields bound to one column, duplicate registration IDs,
+unknown registration IDs, and missing identity anchors produce actionable
 conflicts instead of guessed writes. Moving individual cell contents is different
 from moving entire columns or sorting complete rows: it can break the relationship
 between a row and its notes. Editors should operate on complete records.
@@ -103,8 +116,9 @@ unchanged, deleted, and conflicting rows. Temporary provider failures can retry;
 schema conflicts require an administrator to review the mapping. Old failures
 must not replace the current status of a newer successful run.
 
-Failure logs retain backup and newly created worksheet IDs and indicate whether
-Google had already accepted the managed write. This makes partial cross-system
+Success logs record `metadata_removed`, the number of the event's redundant
+metadata entries the run deleted. Failure logs retain backup and newly created
+worksheet IDs and indicate whether Google had already accepted the managed write. This makes partial cross-system
 completion inspectable without deleting the original sheet or hiding recovery
 artifacts.
 

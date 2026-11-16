@@ -1,24 +1,10 @@
 """Binding plan columns to worksheet columns: metadata ownership, label bootstrapping, managed structure."""
 
 import json
-import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field
 
-from .snapshot import METADATA_PREFIX
-
-
-def normalized_label(value):
-    return " ".join(unicodedata.normalize("NFC", str(value)).split()).casefold()
-
-
-def _cell(snapshot, row, column):
-    return (
-        str(snapshot.values[row - 1][column - 1])
-        if row <= len(snapshot.values) and column <= len(snapshot.values[row - 1])
-        else ""
-    )
-
+from .snapshot import HEADER_MARKER, LABEL_METADATA_PREFIX, METADATA_PREFIX, _cell, normalized_label
 
 _FOREIGN_WORKSHEET = "This worksheet is managed by a different event. Choose a separate worksheet."
 _MAX_COLUMN = 18278  # Column "ZZZ", the last one the A1 notation used here can address.
@@ -48,7 +34,7 @@ def _read_label_setting(plan, metadata, owned):
 def _read_column_binding(plan, metadata, dimension, owned):
     owned.managed = True
     key = metadata.get("metadataValue", "")
-    if key == "__header__":
+    if key == HEADER_MARKER:
         owned.header_markers.append(dimension)
         return
     if dimension.get("dimension") != "COLUMNS":
@@ -63,6 +49,7 @@ def _read_column_binding(plan, metadata, dimension, owned):
 
 def _read_metadata(plan, snapshot, event_id) -> _WorksheetMetadata:
     own_key = f"{METADATA_PREFIX}{event_id}"
+    removed = set(plan.removed_metadata)
     owned = _WorksheetMetadata()
     for metadata in snapshot.metadata:
         dimension = metadata.get("location", {}).get("dimensionRange", {})
@@ -70,9 +57,12 @@ def _read_metadata(plan, snapshot, event_id) -> _WorksheetMetadata:
         if dimension.get("sheetId", location.get("sheetId")) != snapshot.sheet_id:
             continue
         metadata_key = metadata.get("metadataKey", "")
-        if metadata_key == f"i2g.registration-label.v1:{event_id}":
+        if metadata.get("metadataId") in removed:
+            # This sync deletes the entry; it still shows that the event manages the worksheet.
+            owned.managed = True
+        elif metadata_key == f"{LABEL_METADATA_PREFIX}{event_id}":
             _read_label_setting(plan, metadata, owned)
-        elif metadata_key.startswith("i2g.registration-label.v1:"):
+        elif metadata_key.startswith(LABEL_METADATA_PREFIX):
             plan.conflicts.append(_FOREIGN_WORKSHEET)
         elif not metadata_key.startswith(METADATA_PREFIX):
             continue

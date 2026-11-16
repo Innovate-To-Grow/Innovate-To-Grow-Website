@@ -19,16 +19,16 @@ from apps.event.tests.services.registration_sheet.managed.test_managed_registrat
 
 
 class ManagedRegistrationSheetTests(_ManagedRegistrationSheetCase):
-    def test_duplicate_metadata_or_ids_block_all_writes(self):
+    def test_copied_metadata_is_removed_but_duplicate_ids_block_all_writes(self):
         sync_registrations_to_sheet(self.event)
-        count = len(self.sheet.spreadsheet.batches)
+        original = deepcopy(self.sheet.metadata)
         copied = deepcopy(self.sheet.metadata[0])
         copied["metadataId"] = 999
         self.sheet.metadata.append(copied)
-        with self.assertRaises(RegistrationSyncConflict):
-            sync_registrations_to_sheet(self.event)
-        self.assertEqual(len(self.sheet.spreadsheet.batches), count)
-        self.sheet.metadata.pop()
+        # An exact copy carries nothing the original does not: the next sync deletes it instead of stopping.
+        sync_registrations_to_sheet(self.event)
+        self.assertEqual(self.sheet.metadata, original)
+        count = len(self.sheet.spreadsheet.batches)
         self.sheet.values.append(list(self.sheet.values[1]))
         preview = inspect_registration_sheet(self.event)
         self.assertTrue(preview["conflicts"])
