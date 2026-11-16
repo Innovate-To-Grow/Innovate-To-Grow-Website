@@ -14,27 +14,17 @@ from apps.event.services.registration_sheet_sync import schedule_registration_sy
 from apps.event.services.registration_sheet_sync.worksheet.batch_updates import METADATA_STORAGE_FULL
 from apps.event.services.registration_sheet_sync.worksheet.sheets import RegistrationSyncError
 from apps.event.tests.helpers import make_registration
-from apps.event.tests.services.registration_sheet.managed.sheet_fakes import METADATA_LIMIT, api_error
+from apps.event.tests.services.registration_sheet.managed.sheet_fakes import api_error
 from apps.event.tests.services.registration_sheet.managed.test_managed_registration_sheet_sync import (
     _ManagedRegistrationSheetCase,
 )
 from apps.event.tests.services.registration_sheet.managed.test_registration_sheet_sync_race import _ManagedSyncRaceCase
-from apps.event.tests.services.registration_sheet.metadata.old_reader import fill_to_limit
-
-
-def _other_tool_metadata(sheet, *, room):
-    """Another tool's entry on the worksheet, leaving ``room`` characters of the sheet's metadata storage."""
-    key = "com.example.other-tool"
-    span = {"sheetId": sheet.id, "dimension": "COLUMNS", "startIndex": 25, "endIndex": 26}
-    value = "x" * (METADATA_LIMIT - room - len(key))
-    sheet.metadata.append(
-        {"metadataId": 900, "metadataKey": key, "metadataValue": value, "location": {"dimensionRange": span}}
-    )
+from apps.event.tests.services.registration_sheet.metadata.old_reader import add_other_tool_metadata, fill_to_limit
 
 
 class StorageLimitTests(_ManagedRegistrationSheetCase):
     def test_a_full_sheet_is_reported_clearly_and_nothing_is_written(self):
-        _other_tool_metadata(self.sheet, room=100)
+        add_other_tool_metadata(self.sheet, room=100)
         before = deepcopy(self.sheet.metadata)
 
         with self.assertRaises(RegistrationSyncError) as raised:
@@ -90,7 +80,7 @@ class StorageLimitJobTests(_ManagedSyncRaceCase):
 
     def test_a_job_on_a_full_sheet_fails_with_the_clear_error(self):
         make_registration(self.member, self.event, self.ticket)
-        _other_tool_metadata(self.sheet, room=100)
+        add_other_tool_metadata(self.sheet, room=100)
 
         succeeded, job = self.run_job()
 

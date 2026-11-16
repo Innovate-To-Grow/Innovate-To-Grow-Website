@@ -28,6 +28,24 @@ def fill_to_limit(sheet):
     return entries, runs
 
 
+def add_other_tool_metadata(sheet, *, room):
+    """Another tool's entry on the worksheet, leaving ``room`` characters of the sheet's metadata storage free."""
+    key = "com.example.other-tool"
+    length = METADATA_LIMIT - metadata_size(sheet.metadata) - room - len(key)
+    assert length >= 0, "the sheet has too little room left for the entry's key"
+    span = {"sheetId": sheet.id, "dimension": "COLUMNS", "startIndex": 25, "endIndex": 26}
+    sheet.spreadsheet.metadata_counter += 1
+    identity = sheet.spreadsheet.metadata_counter
+    sheet.metadata.append(
+        {
+            "metadataId": identity,
+            "metadataKey": key,
+            "metadataValue": "x" * length,
+            "location": {"dimensionRange": span},
+        }
+    )
+
+
 def old_reader_run(entries):
     """The createDeveloperMetadata requests one more old-reader sync sent for ``entries``."""
     return [

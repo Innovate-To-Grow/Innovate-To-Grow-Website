@@ -121,14 +121,18 @@ def read_snapshot(worksheet):
         values=values,
         row_count=int(grid.get("rowCount", worksheet.row_count)),
         column_count=int(grid.get("columnCount", worksheet.col_count)),
-        metadata=[
-            entry
-            for entry in entries.values()
-            if entry.get("location", {})
-            .get("dimensionRange", {})
-            .get("sheetId", entry.get("location", {}).get("sheetId"))
-            == sheet_id
-        ],
+        # In id order, so the fingerprint never depends on the order Google lists a row's or column's entries in.
+        metadata=sorted(
+            (
+                entry
+                for entry in entries.values()
+                if entry.get("location", {})
+                .get("dimensionRange", {})
+                .get("sheetId", entry.get("location", {}).get("sheetId"))
+                == sheet_id
+            ),
+            key=lambda entry: (entry.get("metadataId") is None, entry.get("metadataId") or 0),
+        ),
         protections=sheet.get("protectedRanges", []),
     )
 

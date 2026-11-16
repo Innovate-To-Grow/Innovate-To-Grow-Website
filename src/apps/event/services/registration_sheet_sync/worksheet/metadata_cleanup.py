@@ -47,26 +47,29 @@ def _label_setting(entry):
     return setting if isinstance(setting, dict) and isinstance(setting.get("key"), str) else {}
 
 
-def _shows_field(snapshot, header_row, place, definition):
-    """Whether the column at ``place`` is headed by one of the field's labels."""
+def _bootstrap_choice(place, mapped, snapshot, header_row, definition):
+    """Whether a sync that could not see metadata bound the field at ``place``: at its column mapping when it has
+    one, otherwise at a column headed by one of its labels."""
     dimension, start, end = place
     if dimension != "COLUMNS" or end != start + 1:
         return False
+    if isinstance(mapped, int) and not isinstance(mapped, bool):
+        return end == mapped
     labels = {normalized_label(label) for label in (definition.label, *definition.aliases)}
     return normalized_label(_cell(snapshot, header_row, start + 1)) in labels
 
 
-def _redundant_bindings(entries, definition, snapshot, header_row):
+def _redundant_bindings(entries, definition, snapshot, header_row, mapped):
     if definition is None:
         # The field no longer exists (a deleted question): its column stays as it is, no longer managed.
         return _all_but(entries, None)
     places = _by_place(entries)
     if len(places) > 1:
-        # Earlier syncs bound the field again wherever its label stood. Keep the column still headed by the field
-        # (where they wrote last); with no single such column the planner reports the duplicate binding.
-        shown = [place for place in places if _shows_field(snapshot, header_row, place, definition)]
-        if len(shown) == 1:
-            return _all_but(entries, places[shown[0]][0])
+        # Earlier syncs bound the field again on every run, where its mapping or label pointed. Keep the column they
+        # would choose now (where they wrote last); with no single such column the planner reports the duplicate.
+        chosen = [place for place in places if _bootstrap_choice(place, mapped, snapshot, header_row, definition)]
+        if len(chosen) == 1:
+            return _all_but(entries, places[chosen[0]][0])
     return _copies(places)
 
 
@@ -87,10 +90,11 @@ def _redundant_labels(entries, definition):
     return _all_but(entries, keep)
 
 
-def redundant_metadata(snapshot, fields, *, event_id, header_row):
+def redundant_metadata(snapshot, fields, *, event_id, header_row, column_mappings=None):
     """Ids of this event's developer metadata on the worksheet that a sync deletes before writing."""
     own_key, label_key = f"{METADATA_PREFIX}{event_id}", f"{LABEL_METADATA_PREFIX}{event_id}"
     definitions = {definition.key: definition for definition in fields}
+    mappings = column_mappings or {}
     markers, bindings, labels = [], defaultdict(list), defaultdict(list)
     # Lowest id first, so every read of the same worksheet keeps the same entry.
     for entry in sorted(snapshot.metadata, key=lambda item: item.get("metadataId") or 0):
@@ -105,7 +109,8 @@ def redundant_metadata(snapshot, fields, *, event_id, header_row):
             labels[setting["key"]].append(entry)
     removed = _redundant_markers(markers, header_row)
     for field_key, entries in bindings.items():
-        removed += _redundant_bindings(entries, definitions.get(field_key), snapshot, header_row)
+        definition = definitions.get(field_key)
+        removed += _redundant_bindings(entries, definition, snapshot, header_row, mappings.get(field_key))
     for field_key, entries in labels.items():
         removed += _redundant_labels(entries, definitions.get(field_key))
     return removed

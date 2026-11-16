@@ -23,10 +23,10 @@ def _label(identity, key, label, start=1):
     return _entry(identity, LABEL, f'{{"key":"{key}","label":"{label}"}}', start=start)
 
 
-def _removed(*metadata, header=("Order", "First Name", "Notes"), header_row=1):
+def _removed(*metadata, header=("Order", "First Name", "Notes"), header_row=1, mappings=None):
     values = [[] for _ in range(header_row - 1)] + [list(header)]
     snapshot = SheetSnapshot(42, "Registrations", values, 100, 26, list(metadata), [])
-    return redundant_metadata(snapshot, FIELDS, event_id="event", header_row=header_row)
+    return redundant_metadata(snapshot, FIELDS, event_id="event", header_row=header_row, column_mappings=mappings)
 
 
 class RedundantMetadataTests(SimpleTestCase):
@@ -58,6 +58,18 @@ class RedundantMetadataTests(SimpleTestCase):
             _entry(8, OWN, "first_name", dimension="ROWS", start=1),
         )
         self.assertEqual(sorted(removed), [2, 6, 8])
+
+    def test_a_mapped_field_bound_at_several_columns_keeps_its_mapped_column(self):
+        # Syncs that could not see metadata bound a mapped field at its mapping, whatever the header says.
+        copies = (
+            _entry(2, OWN, "first_name", start=1),
+            _entry(4, OWN, "first_name", start=2),
+            _entry(6, OWN, "first_name", start=2),
+        )
+        self.assertEqual(_removed(*copies, mappings={"first_name": 3}), [2, 6])
+        self.assertEqual(_removed(*copies, mappings={"first_name": 9}), [6])
+        # A mapping that is not a column number was never applied; the header decides, as without one.
+        self.assertEqual(_removed(*copies, mappings={"first_name": True}), [4, 6])
 
     def test_a_field_bound_at_columns_none_or_several_of_which_show_it_keeps_one_entry_per_column(self):
         neither = _removed(

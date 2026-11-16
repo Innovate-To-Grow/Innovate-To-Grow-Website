@@ -4,14 +4,19 @@ from copy import deepcopy
 
 from gspread.exceptions import APIError
 
-from apps.event.models import RegistrationSheetSyncLog
+from apps.event.models import Question, RegistrationSheetSyncLog
 from apps.event.services.registration_sheet_sync import inspect_registration_sheet, sync_registrations_to_sheet
 from apps.event.services.registration_sheet_sync.worksheet.sheets import RegistrationSyncConflict
 from apps.event.tests.services.registration_sheet.managed.sheet_fakes import METADATA_LIMIT, metadata_size
 from apps.event.tests.services.registration_sheet.managed.test_managed_registration_sheet_sync import (
     _ManagedRegistrationSheetCase,
 )
-from apps.event.tests.services.registration_sheet.metadata.old_reader import add_copies, fill_to_limit, old_reader_run
+from apps.event.tests.services.registration_sheet.metadata.old_reader import (
+    add_copies,
+    add_other_tool_metadata,
+    fill_to_limit,
+    old_reader_run,
+)
 
 
 class BloatedSheetTests(_ManagedRegistrationSheetCase):
@@ -55,6 +60,18 @@ class BloatedSheetTests(_ManagedRegistrationSheetCase):
         )
         sync_registrations_to_sheet(self.event)
         self.assertEqual(self.sheet.metadata, self.clean)
+
+    def test_a_full_sheet_still_takes_a_new_field_because_its_copies_are_deleted_first(self):
+        fill_to_limit(self.sheet)
+        # Less room than any new entry needs: only the deletions earlier in the same write make space.
+        add_other_tool_metadata(self.sheet, room=10)
+        question = Question.objects.create(event=self.event, text="T-shirt size")
+
+        sync_registrations_to_sheet(self.event)
+
+        self.assertEqual(self.sheet.values[0][self.column(f"question:{question.pk}") - 1], "T-shirt size")
+        other_tool = [entry for entry in self.sheet.metadata if entry["metadataKey"] == "com.example.other-tool"]
+        self.assertEqual((len(other_tool), len(self.sheet.metadata)), (1, len(self.clean) + 2))
 
     def test_a_field_bound_again_after_a_header_rename_keeps_the_column_written_last(self):
         old = self.column("first_name")
