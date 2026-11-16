@@ -33,7 +33,7 @@ class PlanChangedAreasTests(unittest.TestCase):
                 "scripts/ci/validate_tool_versions.py",
                 ".github/workflows/ci.yml",
                 ".github/actions/setup-frontend/action.yml",
-                ".github/actionlint.yaml",
+                ".github/dependabot.yml",
                 ".github/codeql/codeql-config.yml",
                 ".gitleaksignore",
                 "pyproject.toml",

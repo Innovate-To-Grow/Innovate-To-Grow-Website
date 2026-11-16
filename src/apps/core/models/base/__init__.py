@@ -1,6 +1,6 @@
-from .control import ProjectControlModel
+from .abstract.control import ProjectControlModel
+from .abstract.time_stamped import TimeStampedModel
 from .delivery_rates import DeliveryRatePolicy
-from .request_limits import RequestRateLimitPolicy
 from .service_credentials import (
     AWSCredentialConfig,
     EmailServiceConfig,
@@ -15,8 +15,8 @@ from .service_credentials import (
     SendVerificationConfig,
     SMTPProviderConfig,
 )
-from .time_stamped import TimeStampedModel
-from .web import SiteMaintenanceControl
+from .site_controls.maintenance import SiteMaintenanceControl
+from .site_controls.request_limits import RequestRateLimitPolicy
 
 __all__ = [
     "AWSCredentialConfig",

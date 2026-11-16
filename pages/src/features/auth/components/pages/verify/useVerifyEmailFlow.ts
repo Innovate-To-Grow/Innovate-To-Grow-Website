@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router';
-import { getPostAuthPath } from '@/features/auth/api/redirects';
+import { getPostAuthPath } from '@/features/auth/api/navigation/redirects';
 import type { LoginResponse } from '@/features/auth/api';
 import { useAuth } from '../../AuthContext';
 import type { VerifyFlow } from './shared';

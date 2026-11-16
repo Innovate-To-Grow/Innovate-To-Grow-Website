@@ -1,7 +1,7 @@
 import {useEffect} from 'react';
 import {bootstrapAuthSession, getStoredSession, type StoredAuthSession} from '@/features/auth/api';
-import type {BootstrapAuthResult} from '@/features/auth/api/session';
-import {AUTH_SESSION_KEY} from '@/features/auth/api/storage';
+import type {BootstrapAuthResult} from '@/features/auth/api/signin/session';
+import {AUTH_SESSION_KEY} from '@/features/auth/api/session/storage';
 import {AUTH_STATE_CHANGE_EVENT} from './shared';
 
 // A session check that fails for a transient reason leaves a valid session unverified,

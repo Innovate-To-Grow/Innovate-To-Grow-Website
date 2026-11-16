@@ -1,0 +1,166 @@
+/* "Read older mail again": Rescan since and the first-scan lookback, folded away until needed. */
+
+.i2g-monitor-backfill {
+    border-top: 1px solid var(--i2g-m-grid);
+    margin-top: 12px;
+    padding-top: 10px;
+}
+
+.i2g-monitor-backfill summary {
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.i2g-monitor-backfill-form {
+    align-items: flex-end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 12px;
+}
+
+.i2g-monitor-backfill .i2g-monitor-muted {
+    margin: 6px 0 0;
+    max-width: 80ch;
+}
+
+/* Status chips --------------------------------------------------------------------------------------------- */
+
+.i2g-monitor-chip {
+    align-items: center;
+    border: 1px solid var(--i2g-m-border);
+    border-radius: 999px;
+    display: inline-flex;
+    font-size: 0.75rem;
+    gap: 4px;
+    padding: 1px 8px 1px 4px;
+    white-space: nowrap;
+}
+
+.i2g-monitor-chip .material-symbols-outlined {
+    color: var(--i2g-status-neutral);
+    font-size: 16px;
+}
+
+.i2g-monitor-chip--accepted .material-symbols-outlined { color: var(--i2g-series-1); }
+.i2g-monitor-chip--failed .material-symbols-outlined,
+.i2g-monitor-chip--failure_confirmed .material-symbols-outlined { color: var(--i2g-status-critical); }
+.i2g-monitor-chip--pending .material-symbols-outlined,
+.i2g-monitor-chip--delayed .material-symbols-outlined { color: var(--i2g-status-warning); }
+
+/* Tables --------------------------------------------------------------------------------------------------- */
+
+.i2g-monitor-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.i2g-monitor-table {
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+    width: 100%;
+}
+
+.i2g-monitor-table th,
+.i2g-monitor-table td {
+    border-bottom: 1px solid var(--i2g-m-grid);
+    padding: 8px 10px 8px 0;
+    text-align: left;
+    vertical-align: top;
+}
+
+.i2g-monitor-table thead th {
+    color: var(--i2g-m-muted);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.i2g-monitor-table .num {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.i2g-monitor-table code {
+    font-size: 0.75rem;
+    overflow-wrap: break-word;
+}
+
+.i2g-monitor-facts code {
+    font-size: 0.75rem;
+    overflow-wrap: anywhere;
+}
+
+.i2g-monitor-sort {
+    align-items: center;
+    color: inherit;
+    display: inline-flex;
+    gap: 2px;
+    text-decoration: none;
+}
+
+.i2g-monitor-sort:hover {
+    text-decoration: underline;
+}
+
+.i2g-monitor-pages {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.i2g-monitor-table-view {
+    margin-top: 8px;
+}
+
+.i2g-monitor-table-view summary {
+    color: var(--i2g-m-muted);
+    cursor: pointer;
+    font-size: 0.8125rem;
+}
+
+/* Ranked bar lists ----------------------------------------------------------------------------------------- */
+
+.i2g-monitor-meters {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.i2g-monitor-meters li {
+    align-items: center;
+    display: grid;
+    font-size: 0.8125rem;
+    gap: 10px;
+    grid-template-columns: minmax(120px, 2fr) 3fr minmax(40px, auto);
+}
+
+.i2g-monitor-meters--plain li {
+    grid-template-columns: 1fr auto;
+}
+
+.i2g-monitor-meter-track {
+    background: color-mix(in srgb, var(--i2g-series-1) 14%, transparent);
+    border-radius: 4px;
+    display: block;
+    height: 8px;
+    overflow: hidden;
+}
+
+.i2g-monitor-meter-fill {
+    background: var(--i2g-series-1);
+    border-radius: 4px;
+    display: block;
+    height: 100%;
+}
+
+.i2g-monitor-meter-value {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}

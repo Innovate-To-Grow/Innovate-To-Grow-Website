@@ -12,7 +12,7 @@ from apps.core.services.aws import sms_opt_outs as core_opt_outs
 from apps.core.services.aws.sms_errors import SmsOptedOut
 from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import SmsOptOut
-from apps.mail.services.sms import opt_outs
+from apps.mail.services.sms.policy import opt_outs
 
 from .policy_helpers import add_phone, opt_out
 

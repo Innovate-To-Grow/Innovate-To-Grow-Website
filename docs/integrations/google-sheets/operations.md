@@ -118,7 +118,7 @@ In Django admin → **Projects → Past Projects Sheet**:
 
 The expected columns are `Year-Semester`, `Class`, `Team#`, `Team Name`, `Project Title`, `Organization`,
 `Industry`, `Abstract`, `Student Names`. If the live header text differs, adjust `COLUMN_MAP` in
-`src/apps/projects/services/sheet_sync/runner.py` (print `worksheet.row_values(1)` in a Django shell to see the
+`src/apps/projects/services/sheet_sync/rows.py` (print `worksheet.row_values(1)` in a Django shell to see the
 exact header strings — the legacy export used non-breaking spaces in some headers).
 
 **Sync semantics:** a sync is a **full replace of sheet-sourced rows only**. Every `Project` with
@@ -146,7 +146,7 @@ credentials with `python manage.py verify_service_configs --strict --require-goo
 
 ## Configuring credentials
 
-Google service-account credentials are stored in the database via [`GoogleCredentialConfig`](../../../src/apps/core/models/base/service_credentials/google.py). Paste the service-account JSON into Django admin → Site Settings → Google Credential Configs and mark the config as active. No process env vars are required, and the ECS task definition no longer carries `GOOGLE_SHEETS_*` keys.
+Google service-account credentials are stored in the database via [`GoogleCredentialConfig`](../../../src/apps/core/models/base/service_credentials/shared/google.py). Paste the service-account JSON into Django admin → Site Settings → Google Credential Configs and mark the config as active. No process env vars are required, and the ECS task definition no longer carries `GOOGLE_SHEETS_*` keys.
 
 ## Troubleshooting
 

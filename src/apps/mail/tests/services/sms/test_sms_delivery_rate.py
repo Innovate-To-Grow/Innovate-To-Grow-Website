@@ -18,7 +18,7 @@ from apps.event.tests.helpers import make_superuser
 from apps.mail.models import SmsCampaign, SmsRecipientLog
 from apps.mail.services.campaign.dispatch import queue_sms_campaign, resume_paused_sms_recipients
 from apps.mail.services.campaign.dispatch.failures import DEFERRED_LOG_MESSAGE
-from apps.mail.services.sms.sender import send_sms_campaign
+from apps.mail.services.sms.delivery.sender import send_sms_campaign
 
 CLIENT = "apps.core.services.aws.sms_send.boto3.client"
 START_TASK = "apps.mail.services.campaign.dispatch.resume.start_in_process_task"

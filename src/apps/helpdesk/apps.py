@@ -8,7 +8,7 @@ class HelpdeskConfig(AppConfig):
     verbose_name = "Helpdesk"
 
     def ready(self):
-        from .services.ingest.jobs import register_ingest
+        from .services.ingest.pipeline.jobs import register_ingest
         from .services.intake.jobs import register_intake
 
         # The intake scans the Inbox on its own schedule and fills core's inbound queue; the ingest drains it into

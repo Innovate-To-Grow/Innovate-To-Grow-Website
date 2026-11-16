@@ -12,7 +12,6 @@ on:
       - "pages/**"
       - "aws/**"
       - "scripts/**"
-      - ".github/actionlint.yaml"
       - ".github/actions/**"
       - ".github/codeql/**"
       - ".github/dependabot.yml"
@@ -35,10 +34,8 @@ on:
   merge_group:
     types: [checks_requested]
 
-# Runners: CPU-bound jobs use the AWS fleet when vars.AWS_RUNNERS_ENABLED is
-# 'true'; every other job runs on a GitHub-hosted runner, which starts faster
-# than an AWS cold boot. RoutingTests in
-# scripts/ci/tests/test_ci_workflow_invariants.py pins the list of fleet jobs.
+# Runners: every job runs on a GitHub-hosted runner; RunnerTests in
+# scripts/ci/tests/test_ci_workflow_invariants.py keeps self-hosted labels out.
 permissions:
   contents: read
 
@@ -124,9 +121,6 @@ jobs:
       - name: Validate CI planner scripts
         run: python -m unittest discover -s scripts/ci/tests
 
-      - name: Validate AWS runner trust boundary
-        run: node --test aws/ci-runners/guard/trust.test.mjs
-
       - name: Validate Legacy viewer infrastructure
         run: python scripts/ci/validate_legacy_infrastructure.py
 
@@ -183,6 +177,39 @@ jobs:
           python scripts/ci/plan_changed_areas.py \
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
+
+  # Architecture spec R024/R032 (docs/architecture/code-quality.md, "Repository
+  # structure"). Ungated like preflight: every run checks every diff.
+  repository-structure:
+    name: Repository Structure and Migration Guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Test the structure checker
+        run: python -m unittest discover -s scripts/structure/tests
+
+      # Enforcing: an existing file under any migrations/ directory may not be
+      # modified, deleted or renamed. Added files (new migrations) pass.
+      - name: Guard existing migrations
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
+        run: python -m scripts.structure.checker migrations --base "$BASE_SHA" --head "$HEAD_SHA"
+
+      # Report-only until the architecture refactor lands: findings go to the
+      # job summary and never fail this job (switch to --mode enforce then).
+      - name: Report repository structure
+        run: python -m scripts.structure.checker report --markdown "$GITHUB_STEP_SUMMARY"
 
   lint:
     name: Python Code Style Check
@@ -246,10 +273,9 @@ jobs:
   backend-checks:
     name: Backend Migration and Production Checks
     # Migration drift on PostgreSQL plus the production-settings checks: a venv
-    # and a few manage.py calls, so a GitHub-hosted runner starts it faster than
-    # an AWS cold boot. Not a dependency of the Django matrix: every test leg
-    # applies all migrations to its own PostgreSQL test database anyway, and
-    # backend-required-result still requires this job.
+    # and a few manage.py calls. Not a dependency of the Django matrix: every
+    # test leg applies all migrations to its own PostgreSQL test database
+    # anyway, and backend-required-result still requires this job.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [lint, changes]
@@ -319,7 +345,7 @@ jobs:
 
   django-test-coverage:
     name: Django Test and Coverage (${{ matrix.app }})
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [lint, changes]
     if: ${{ needs.changes.outputs.backend == 'true' }}
@@ -400,14 +426,38 @@ jobs:
         env:
           APP_UNDER_TEST: ${{ matrix.app }}
 
-      # apps.cli_admin and the shared safe_orm service are held at 100%.
+      # apps.cli_admin and the shared safe_orm service are held at 100%. Nothing here names a
+      # path: the safe_orm package is found by its directory name (exactly one, outside tests/),
+      # and its own tests are the test classes tagged "safe_orm" (django.test.tag), wherever
+      # they live. No package, more than one, or no tagged test fails this step.
       - name: Enforce coverage for cli_admin and safe_orm
         if: ${{ matrix.app == 'cli_admin' }}
         run: |
-          .venv/bin/coverage run \
-            --source="apps.cli_admin,apps.core.services.db_tools.safe_orm" \
+          set -o pipefail
+          safe_orm="$(.venv/bin/python - <<'PY'
+          from pathlib import Path
+
+          packages = sorted(p.parent for p in Path("apps").glob("**/safe_orm/__init__.py") if "tests" not in p.parts)
+          if len(packages) != 1:
+              raise SystemExit(f"safe_orm coverage gate: expected one safe_orm package under apps/, found {len(packages)}")
+          print(".".join(packages[0].parts))
+          PY
+          )"
+          echo "safe_orm package: $safe_orm"
+          .venv/bin/coverage erase
+          .venv/bin/coverage run --parallel-mode \
+            --source="apps.cli_admin,$safe_orm" \
             --omit="*/migrations/*,*/tests/*" \
-            manage.py test apps.cli_admin apps.core.tests.services.test_safe_orm
+            manage.py test apps.cli_admin
+          .venv/bin/coverage run --parallel-mode \
+            --source="apps.cli_admin,$safe_orm" \
+            --omit="*/migrations/*,*/tests/*" \
+            manage.py test apps --tag safe_orm 2>&1 | tee safe-orm-tests.log
+          if ! grep -Eq '^Ran [1-9][0-9]* tests? in' safe-orm-tests.log; then
+            echo '::error::No test tagged "safe_orm" ran: tag safe_orm test classes with @tag("safe_orm").'
+            exit 1
+          fi
+          .venv/bin/coverage combine
           .venv/bin/coverage json --pretty-print -o coverage-cli-admin-safe-orm.json
           .venv/bin/python - <<'PY'
           import json
@@ -511,9 +561,8 @@ jobs:
   frontend-static:
     name: Frontend Lint, Build and Static Checks
     # ESLint, structure, type check, build, bundle budgets and the npm SBOM in
-    # one GitHub-hosted job: each used to be a separate AWS job shorter than its
-    # own cold boot. Every check after setup runs even when an earlier one
-    # failed, so one run reports all of them.
+    # one job. Every check after setup runs even when an earlier one failed, so
+    # one run reports all of them.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [preflight, changes]
@@ -595,7 +644,7 @@ jobs:
 
   frontend-unit-coverage:
     name: Frontend Unit Test Coverage
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: [preflight, changes]
     if: ${{ needs.changes.outputs.frontend == 'true' }}
@@ -662,7 +711,6 @@ jobs:
 
   frontend-chromium-smoke:
     name: Required Chromium Smoke
-    # Short; the Playwright image pull on a hosted runner costs about one AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     # Keep the browser and its OS dependencies out of the runner's live APT
@@ -708,7 +756,9 @@ jobs:
       - name: Run required Chromium smoke suite
         env:
           PW_PROJECT: required-chromium-smoke
-        run: npx playwright test e2e/smoke/required-smoke.spec.ts --project=chromium --workers=1 --retries=0
+        # Selected by the spec's tag, not its path; Playwright fails with "No tests found"
+        # if nothing carries the tag.
+        run: npx playwright test --grep @required-smoke --project=chromium --workers=1 --retries=0
 
       - name: Upload required smoke diagnostics
         if: ${{ always() }}
@@ -936,7 +986,7 @@ jobs:
 
   backend-docker-build:
     name: Backend Docker Build and Scan
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     needs:
       - lint
@@ -1199,7 +1249,7 @@ jobs:
 
   backend-image-publish:
     name: Backend Image Publish
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     needs: [backend-required-result, backend-docker-build, changes]
     # Pushes itg-backend:<sha> for deploy-backend.yml. Off while deployments are
@@ -1297,7 +1347,7 @@ jobs:
     # ubuntu-26.04 (2026-10-29) that build needs OpenSSL >= 3.3, which the
     # noble image below does not have, so `import ssl` failed in every leg.
     # Move this together with the Playwright image's Ubuntu release.
-    runs-on: ${{ fromJSON(vars.AWS_RUNNERS_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '["self-hosted", "Linux", "X64", "i2g-aws"]' || '["ubuntu-24.04"]') }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # The image already contains the browsers and Linux packages required by
     # this Playwright version. Keeping E2E off the runner's live APT path avoids
@@ -1604,7 +1654,7 @@ jobs:
     # deploy is approved. Until 2026-11 the image was built and scanned only
     # inside Deploy Production, in parallel with the backend rollout: a zlib1g
     # CVE in its base image failed every approved deploy from 2026-11-11 while
-    # main CI stayed green. About a minute of work, so a GitHub-hosted runner.
+    # main CI stayed green.
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     needs: changes
@@ -1754,6 +1804,7 @@ jobs:
     needs:
       - preflight
       - changes
+      - repository-structure
       - backend-required-result
       - frontend-required
       - e2e-required-result

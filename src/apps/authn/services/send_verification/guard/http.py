@@ -1,0 +1,194 @@
+from __future__ import annotations
+
+import logging
+from collections.abc import Callable
+
+from rest_framework import status
+from rest_framework.exceptions import APIException
+from rest_framework.response import Response
+
+from apps.authn.models import SendVerificationRequest
+
+from ..rules.constants import OP_PASSWORD_RESET_REQUEST_CODE
+from ..rules.exceptions import SendVerificationError
+from ..rules.metrics import emit
+from .consume import consume_and_reserve
+from .outcomes import SendOutcome, delivery_context, failure_status, public_reset_payload
+from .requests import claim_for_dispatch, finalize_send_request
+
+logger = logging.getLogger(__name__)
+
+
+def _error_payload(exc: SendVerificationError) -> dict:
+    payload = {"code": exc.code, "detail": exc.detail}
+    if exc.retry_after:
+        payload["retry_after"] = exc.retry_after
+    return payload
+
+
+def _with_retry_after(response: Response) -> Response:
+    """Mirror a positive integer ``retry_after`` in the body as the ``Retry-After`` header."""
+    retry_after = response.data.get("retry_after") if isinstance(response.data, dict) else None
+    if type(retry_after) is int and retry_after > 0:
+        response["Retry-After"] = str(retry_after)
+    return response
+
+
+def verification_error_response(exc: SendVerificationError) -> Response:
+    return _with_retry_after(Response(_error_payload(exc), status=exc.http_status))
+
+
+def _reset_payload(record) -> dict:
+    # Every outcome gets the same opaque public projection, even when a process
+    # crashes before serializer.save can return its normal payload.
+    return public_reset_payload(str(record.request_id))
+
+
+def unknown_response(record) -> Response:
+    return Response(
+        {
+            "code": "send_unknown",
+            "detail": "The previous send request is still unresolved. Check your messages before requesting another code.",
+            "request_id": str(record.request_id),
+            "challenge_id": record.otp_challenge_id or None,
+        },
+        status=status.HTTP_409_CONFLICT,
+    )
+
+
+def replay_response(record: SendVerificationRequest) -> Response:
+    if record.operation == OP_PASSWORD_RESET_REQUEST_CODE:
+        return Response(_reset_payload(record), status=status.HTTP_202_ACCEPTED)
+    if record.status in {
+        SendVerificationRequest.Status.UNKNOWN,
+        SendVerificationRequest.Status.SENDING,
+        SendVerificationRequest.Status.PENDING,
+    }:
+        return unknown_response(record)
+    payload = dict(record.result_payload or {})
+    if record.client_error_code:
+        payload.setdefault("code", record.client_error_code)
+    # A refusal raised while dispatching (the SMS daily budget, reserved at the provider call) answers exactly like
+    # the same refusal raised before the claim: same body, same ``Retry-After`` header.
+    return _with_retry_after(Response(payload, status=record.http_status))
+
+
+def _finalize(record, outcome: SendOutcome):
+    try:
+        finalize_send_request(
+            record,
+            status=outcome.status,
+            result_payload=outcome.payload,
+            http_status=outcome.http_status,
+            otp_challenge_id=outcome.otp_challenge_id,
+            provider_message_id=outcome.provider_message_id,
+            client_error_code=(
+                "send_unknown"
+                if outcome.status == SendVerificationRequest.Status.UNKNOWN
+                else str(outcome.payload.get("code") or "")
+            ),
+        )
+    except Exception:  # noqa: BLE001 - dispatch has happened; never authorize a retry.
+        logger.exception("Unable to finalize protected send request %s", record.request_id)
+        record.status = SendVerificationRequest.Status.SENDING
+        if outcome.otp_challenge_id:
+            record.otp_challenge_id = outcome.otp_challenge_id
+
+
+def guarded_send(
+    request,
+    *,
+    operation: str,
+    destination_kind: str,
+    destination_normalized: str,
+    fingerprint: str,
+    channel: str,
+    perform: Callable[[], tuple[dict, int] | SendOutcome],
+) -> Response:
+    try:
+        lease = consume_and_reserve(
+            request,
+            operation=operation,
+            destination_kind=destination_kind,
+            destination_normalized=destination_normalized,
+            fingerprint=fingerprint,
+            channel=channel,
+        )
+    except SendVerificationError as exc:
+        emit("send_rejected", operation=operation, code=exc.code, destination=destination_normalized)
+        return verification_error_response(exc)
+
+    if lease.is_replay:
+        return replay_response(lease.record)
+    if not claim_for_dispatch(lease.record):
+        lease.record.refresh_from_db()
+        return replay_response(lease.record)
+    lease.record.status = SendVerificationRequest.Status.SENDING
+
+    try:
+        with delivery_context(lease.record):
+            result = perform()
+        outcome = result if isinstance(result, SendOutcome) else _outcome_from_response(*result)
+    except SendVerificationError as exc:
+        # Raised before anything reached a provider (for an SMS: the daily budget was spent), so definitely failed.
+        outcome = SendOutcome(
+            _error_payload(exc),
+            exc.http_status,
+            SendVerificationRequest.Status.DEFINITELY_FAILED,
+        )
+    except Exception as exc:  # noqa: BLE001
+        outcome = _outcome_from_exception(exc, lease.record)
+
+    _finalize(lease.record, outcome)
+    return replay_response(lease.record)
+
+
+def serialize_request_status(record: SendVerificationRequest) -> dict:
+    response = replay_response(record)
+    is_reset = record.operation == OP_PASSWORD_RESET_REQUEST_CODE
+    return {
+        "request_id": str(record.request_id),
+        "status": "submitted" if is_reset else record.status,
+        "code": None if is_reset else response.data.get("code") or None,
+        "result": response.data,
+        "challenge_id": response.data.get("challenge_id") if is_reset else record.otp_challenge_id or None,
+        "http_status": response.status_code,
+    }
+
+
+def _outcome_from_response(payload, http_status: int) -> SendOutcome:
+    """A plain ``(payload, status)`` result: 2xx was accepted, 5xx is unknown, anything else definitely failed."""
+    payload = payload if isinstance(payload, dict) else {"detail": payload}
+    if 200 <= http_status < 300:
+        delivery = SendVerificationRequest.Status.PROVIDER_ACCEPTED
+    elif http_status >= 500:
+        delivery = SendVerificationRequest.Status.UNKNOWN
+    else:
+        delivery = SendVerificationRequest.Status.DEFINITELY_FAILED
+    return SendOutcome(payload, http_status, delivery, str(payload.get("challenge_id") or ""))
+
+
+def _outcome_from_exception(exc: Exception, record) -> SendOutcome:
+    """Map a send that raised to the response the caller sees and what is known about delivery."""
+    from apps.authn.views.shared.responses import challenge_error_response
+
+    challenge_id = str(getattr(exc, "challenge_id", "") or record.otp_challenge_id)
+    try:
+        mapped = (
+            Response(exc.detail, status=exc.status_code)
+            if isinstance(exc, APIException)
+            else challenge_error_response(exc)
+        )
+        payload = mapped.data if isinstance(mapped.data, dict) else {"detail": mapped.data}
+        outcome_status = (
+            SendVerificationRequest.Status.DEFINITELY_FAILED if mapped.status_code < 500 else failure_status(exc)
+        )
+        return SendOutcome(payload, mapped.status_code, outcome_status, challenge_id)
+    except Exception:  # noqa: BLE001 - a post-claim unclassified failure is ambiguous.
+        logger.exception("Protected send outcome could not be confirmed for %s", record.request_id)
+        return SendOutcome(
+            {"code": "send_unknown", "detail": "The send request outcome could not be confirmed."},
+            status.HTTP_409_CONFLICT,
+            SendVerificationRequest.Status.UNKNOWN,
+            challenge_id,
+        )

@@ -19,8 +19,8 @@ from rest_framework.test import APIClient, APITestCase
 
 from apps.authn.constants import VERIFICATION_INVALID, VERIFICATION_THROTTLED
 from apps.authn.models import ContactPhone, PhoneVerificationChallenge, SendQuotaWindow, SendVerificationRequest
-from apps.authn.services.send_verification import quotas
-from apps.authn.services.send_verification.constants import OP_PHONE_AUTH_REQUEST_CODE
+from apps.authn.services.send_verification.guard import quotas
+from apps.authn.services.send_verification.rules.constants import OP_PHONE_AUTH_REQUEST_CODE
 from apps.authn.services.sms import PhoneVerificationBusy, PhoneVerificationDeliveryError, latency
 from apps.authn.services.sms.sns_verify import MAX_SENDS_PER_HOUR, MAX_VERIFY_ATTEMPTS
 from apps.authn.tests.send_verification import mint_send_verification
@@ -146,7 +146,7 @@ class WithheldCodeAnswersLikeARealSendTests(VerifiedOnlyTestCase):
         sleep.assert_called_once_with(0.321)
 
     def test_the_delivery_slot_is_given_back(self):
-        with patch("apps.authn.services.sms.sns_verify.release") as release:
+        with patch("apps.authn.services.sms.provider.release") as release:
             self.assertEqual(self.request_code(UNVERIFIED).status_code, 202)
         release.assert_called_once()
 

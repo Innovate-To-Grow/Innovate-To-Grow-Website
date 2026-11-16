@@ -192,19 +192,4 @@ describe('PastProjectCurationSharedLinksPage', () => {
         );
         expect(mockListMyShares).not.toHaveBeenCalled();
     });
-
-    it('redirects incomplete profiles back through profile completion without loading shares', async () => {
-        mockUseAuth.mockReturnValue({
-            isAuthenticated: true,
-            requiresProfileCompletion: true,
-        });
-
-        renderPage();
-
-        expect(await screen.findByText('Complete Profile Page')).toBeInTheDocument();
-        expect(screen.getByTestId('destination-search')).toHaveTextContent(
-            `?returnTo=${encodeURIComponent(pagePath)}`,
-        );
-        expect(mockListMyShares).not.toHaveBeenCalled();
-    });
 });

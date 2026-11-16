@@ -1,0 +1,123 @@
+@layer itg.components {
+/* Moved verbatim from the CMS "layout-footer" stylesheet. */
+
+/* ==========================================================================
+   Site footer (Footer.tsx, #footer-root), as on innovatetogrow.ucmerced.edu (2026)
+   1. On white: centred row of outlined uppercase CTA buttons (gold / navy
+      2px borders) and the centred contact line.
+   2. Grey band (#e5e5e5, 50px below): four centred columns, h2 20px/30px,
+      14px links; the address block with round navy social icons.
+   3. Navy copyright bar (#142d52) with a 3px #d9a928 rule, 40px below.
+   ========================================================================== */
+
+.site-footer {
+  width: 100%;
+  margin-top: auto;
+  font-family: var(--itg-font-family-body);
+  color: var(--itg-color-primary);
+}
+
+.footer-container {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: calc(var(--itg-page-max-width) + 2 * var(--itg-page-gutter, 24px));
+  margin: 0 auto;
+  padding: 0 var(--itg-page-gutter, 24px);
+}
+
+.footer-error {
+  margin: 24px 0;
+  padding: 14px 16px;
+  border-left: 4px solid var(--itg-color-error);
+  background: var(--itg-color-bg-panel);
+  color: var(--itg-color-error);
+  font-weight: 600;
+}
+
+/* ---------- 1. CTA row + contact line (on white) ---------- */
+.site-footer-cta {
+  background: var(--itg-color-white);
+  padding: 10px 0 0;
+}
+
+.site-footer-cta-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site-footer-cta-item {
+  display: flex;
+  margin: 5px 10px 5px 5px;
+  padding-top: 16px;
+}
+
+.site-footer-cta-link {
+  box-sizing: border-box;
+  display: inline-block;
+  padding: 14px 28px;
+  border: 2px solid var(--itg-color-primary);
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition: background-color var(--itg-transition-fast) ease-in-out, color var(--itg-transition-fast) ease-in-out;
+}
+
+.site-footer-cta-link.is-gold {
+  border-color: var(--itg-color-accent-bright);
+}
+
+.site-footer-cta-link:hover,
+.site-footer-cta-link:focus-visible {
+  background: var(--itg-color-primary);
+  border-color: var(--itg-color-primary);
+  color: var(--itg-color-white);
+  text-decoration: none;
+}
+
+.site-footer-cta-link.is-gold:hover,
+.site-footer-cta-link.is-gold:focus-visible {
+  background: var(--itg-color-accent-bright);
+  border-color: var(--itg-color-accent-bright);
+  color: var(--itg-color-primary);
+}
+
+/* "For any questions or comments, please send an email to: …" */
+.site-footer-cta-contact {
+  margin-top: 36px;
+  color: var(--itg-color-text);
+  font-size: 16px;
+  line-height: 24px;
+  text-align: center;
+}
+
+.site-footer-cta-contact p {
+  margin: 0 0 12px;
+}
+
+.site-footer-cta-contact a {
+  color: var(--itg-color-primary);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.site-footer-cta-contact a:hover {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+/* Space between the white area and the grey band (the reference's #footer margin) */
+.site-footer-cta + .footer-main,
+.site-footer-cta + .footer-bottom {
+  margin-top: 50px;
+}
+}

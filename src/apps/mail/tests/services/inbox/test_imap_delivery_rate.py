@@ -8,13 +8,11 @@ from unittest.mock import MagicMock, patch
 
 from django.core.cache import cache
 from django.test import TestCase
-from django.urls import reverse
 from imap_tools.errors import MailboxLoginError
 
 from apps.core.models import DeliveryRateState, GmailAccessAccount
 from apps.core.services.delivery_rates.runtime import feedback
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
-from apps.event.tests.helpers import make_superuser
 from apps.mail.services.gmail_import import GmailImportBusy, GmailImportError, list_recent_sent_messages
 from apps.mail.services.inbox import InboxBusy, InboxError, list_inbox_messages
 
@@ -165,37 +163,3 @@ class GmailImportRateTests(GmailImapRateTestCase):
 
         factory.assert_not_called()
         self.assertIn("Gmail is busy; try again in about", str(caught.exception))
-
-
-class InboxBannerTests(GmailImapRateTestCase):
-    def setUp(self):
-        super().setUp()
-        make_superuser()
-        self.client.login(username="admin@example.com", password="testpass123")
-        self.url = reverse("admin:mail_inbox_fragment")
-
-    def hold_back_reads(self):
-        busy = refused(b"[ALERT] Too many simultaneous connections. (Failure)")
-        with patch(INBOX_MAILBOX, mailbox_factory(login_error=busy)), self.assertRaises(InboxError):
-            self.list_now()
-
-    def test_while_reads_are_held_back_the_last_list_read_is_shown_with_a_banner(self):
-        with patch(INBOX_MAILBOX, mailbox_factory(messages=[message(subject="Last seen subject")])):
-            self.client.get(self.url, {"limit": 15, "refresh": "1"})
-        self.hold_back_reads()
-
-        response = self.client.get(self.url, {"limit": 15, "refresh": "1"})
-
-        self.assertContains(response, "data-inbox-busy")
-        self.assertContains(response, "Gmail is busy; try again in about")
-        self.assertContains(response, "Showing the messages as last loaded.")
-        self.assertContains(response, "Last seen subject")
-
-    def test_without_a_list_read_before_only_the_banner_is_shown(self):
-        self.hold_back_reads()
-
-        response = self.client.get(self.url, {"limit": 15, "refresh": "1"})
-
-        self.assertContains(response, "Gmail is busy; try again in about")
-        self.assertNotContains(response, "Showing the messages as last loaded.")
-        self.assertNotContains(response, "No messages in")

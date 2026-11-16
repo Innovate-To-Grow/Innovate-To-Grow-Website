@@ -10,7 +10,7 @@ from rest_framework.test import APIClient
 from apps.event.tests.helpers import make_member
 from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken
 from apps.mail.services.sms import links
-from apps.mail.services.sms.register_link import CACHE_KEY
+from apps.mail.services.sms.links.register_link import CACHE_KEY
 
 from ..services.sms.policy_helpers import add_phone, sms_settings
 

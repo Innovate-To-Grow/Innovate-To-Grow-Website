@@ -1,0 +1,156 @@
+import {readFile} from 'node:fs/promises';
+import {createServer} from 'node:http';
+import {test, expect} from '../../helpers/fixtures';
+import {
+  assertProof,
+  beginEmailSend,
+  challengeFixture,
+  challengeId,
+  countWorkersOnHighCoreDevice,
+  installChallenge,
+} from './sendVerificationFixtures';
+
+test('HTTP unknown survives reload and checks status without sending a second code', async ({page}) => {
+  await installChallenge(page, await challengeFixture());
+  let sends = 0;
+  let lookups = 0;
+  await page.route('**/authn/email-auth/request-code/', (route) => {
+    sends++;
+    return route.fulfill({status: 409, json: {code: 'send_unknown', request_id: route.request().postDataJSON().send_request_id}});
+  });
+  await page.route('**/authn/send-verification/requests/**', (route) => {
+    lookups++;
+    return route.fulfill({json: {status: 'unknown', code: 'send_unknown', result: {}, http_status: 409}});
+  });
+  await beginEmailSend(page);
+  await expect(page.locator('.auth-alert.error')).toContainText('still unresolved');
+  await beginEmailSend(page);
+  await expect(page.locator('.auth-alert.error')).toContainText('still unresolved');
+  expect(sends).toBe(1);
+  expect(lookups).toBe(2);
+});
+
+test('retired standalone worker closes without accepting work', async ({page}) => {
+  const retiredWorker = await readFile(
+    new URL('../../../../src/assets/vendor/altcha/workers/pbkdf2.js', import.meta.url),
+    'utf8',
+  );
+  await page.goto('/login');
+  const closed = new Promise<void>((resolve) => {
+    page.once('worker', (worker) => worker.once('close', () => resolve()));
+  });
+
+  await page.evaluate((source) => {
+    const worker = new Worker(URL.createObjectURL(new Blob([source], {type: 'text/javascript'})));
+    worker.postMessage({type: 'work'});
+  }, retiredWorker);
+
+  await closed;
+});
+
+for (const action of ['request_code', 'remembered_code', 'resend']) {
+  test(`admin ${action} uses the configured asset and cookie-scoped route with the real widget`, async ({page}) => {
+    const workers = await countWorkersOnHighCoreDevice(page);
+    const challenge = await challengeFixture();
+    const wrapper = await readFile(new URL('../../../../src/apps/core/static/admin/js/send-verification.js', import.meta.url), 'utf8');
+    const widget = await readFile(new URL('../../../../src/assets/vendor/altcha/altcha.umd.js', import.meta.url), 'utf8');
+    const workerUrls: string[] = [];
+    page.on('worker', (worker) => workerUrls.push(worker.url()));
+    let assetLoads = 0;
+    await page.route('https://static.example.test/altcha.js', (route) => {
+      assetLoads++;
+      if (action === 'request_code' && assetLoads === 1) return route.abort('failed');
+      return route.fulfill({contentType: 'text/javascript; charset=utf-8', body: widget});
+    });
+    const challengeRequests: {body: {operation: string}; cookie?: string; csrf?: string | string[]}[] = [];
+    let submitted: URLSearchParams | null = null;
+    // Observe cookies at the HTTP receiver. WebKit's route interception runs
+    // before its cookie jar adds the Cookie header to the outgoing request.
+    const server = createServer(async (request, response) => {
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(Buffer.from(chunk));
+      const body = Buffer.concat(chunks).toString();
+      if (request.url === '/admin-wrapper.js') {
+        response.setHeader('Content-Type', 'text/javascript; charset=utf-8');
+        response.end(wrapper);
+      } else if (request.url === '/admin/send-verification/challenge/') {
+        challengeRequests.push({body: JSON.parse(body), cookie: request.headers.cookie, csrf: request.headers['x-csrftoken']});
+        response.setHeader('Content-Type', 'application/json');
+        response.end(JSON.stringify({challenge_id: challengeId, challenge}));
+      } else if (request.url === '/admin/login/') {
+        response.setHeader('Content-Type', 'text/html; charset=utf-8');
+        if (request.method === 'POST') {
+          submitted = new URLSearchParams(body);
+          response.end('<!DOCTYPE html><meta charset="utf-8"><p>Code sent</p>');
+        } else {
+          response.setHeader('Set-Cookie', 'i2g_last_admin_member=signed-test-cookie; Path=/admin/; HttpOnly; SameSite=Lax');
+          response.end(`<!DOCTYPE html><meta charset="utf-8"><script src="/admin-wrapper.js" data-session-key="browser-test-session" data-challenge-url="/admin/send-verification/challenge/" data-altcha-url="https://static.example.test/altcha.js"></script><div class="login-box"><form method="post"><input name="csrfmiddlewaretoken" value="csrf-test-token" type="hidden"><input name="action" value="${action}" type="hidden">${action === 'request_code' ? '<input name="email" value="admin@example.com">' : ''}<button type="submit">Send code</button></form></div>`);
+        }
+      } else {
+        response.writeHead(404).end();
+      }
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('Admin fixture did not listen on a TCP port');
+    const origin = `http://127.0.0.1:${address.port}`;
+    try {
+      await page.goto(`${origin}/admin/login/`);
+      await page.getByRole('button', {name: 'Send code'}).click();
+      if (action === 'request_code') {
+        await expect(page.locator('.send-verification-status')).toContainText('Unable to load verification assets');
+        await page.getByRole('button', {name: 'Send code'}).click();
+      }
+      await expect(page.getByText('Code sent', {exact: true})).toBeVisible();
+      expect(challengeRequests).toHaveLength(action === 'request_code' ? 2 : 1);
+      for (const request of challengeRequests) {
+        expect(request.body.operation).toBe(`admin.login.${action}`);
+        expect(request.cookie).toContain('i2g_last_admin_member=signed-test-cookie');
+        expect(request.csrf).toBe('csrf-test-token');
+      }
+      expect(submitted).not.toBeNull();
+      await assertProof(submitted!.get('verification_payload')!, challenge);
+      await expect.poll(workers).toBe(1);
+      expect(workerUrls.length).toBeGreaterThan(0);
+      expect(workerUrls.every((url) => url.startsWith('blob:') || url.startsWith('data:'))).toBe(true);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => error ? reject(error) : resolve());
+        server.closeAllConnections();
+      });
+    }
+  });
+}
+
+test('admin retains the request across a lost native response and blocks a duplicate send', async ({page, baseURL}) => {
+  const challenge = await challengeFixture();
+  const wrapper = await readFile(new URL('../../../../src/apps/core/static/admin/js/send-verification.js', import.meta.url), 'utf8');
+  const widget = await readFile(new URL('../../../../src/assets/vendor/altcha/altcha.umd.js', import.meta.url), 'utf8');
+  const origin = new URL(baseURL ?? 'http://127.0.0.1:4173').origin;
+  const statusPath = '/authn/send-verification/requests/00000000-0000-0000-0000-000000000000/';
+  let challenges = 0;
+  let sends = 0;
+  await page.route('**/admin-wrapper.js', (route) => route.fulfill({contentType: 'text/javascript; charset=utf-8', body: wrapper}));
+  await page.route('https://static.example.test/altcha.js', (route) => route.fulfill({contentType: 'text/javascript; charset=utf-8', body: widget}));
+  await page.route('**/admin/send-verification/challenge/', (route) => {
+    challenges++;
+    return route.fulfill({json: {challenge_id: challengeId, challenge}});
+  });
+  await page.route('**/authn/send-verification/requests/**', (route) => route.fulfill({json: {status: 'unknown'}}));
+  await page.route('**/admin/login/', (route) => {
+    if (route.request().method() === 'POST') {
+      sends++;
+      return route.abort('failed');
+    }
+    return route.fulfill({contentType: 'text/html; charset=utf-8', body: `<!DOCTYPE html><meta charset="utf-8"><script src="/admin-wrapper.js" data-session-key="lost-response-session" data-status-url="${statusPath}" data-challenge-url="/admin/send-verification/challenge/" data-altcha-url="https://static.example.test/altcha.js"></script><div class="login-box"><form method="post"><input name="csrfmiddlewaretoken" value="csrf-test-token" type="hidden"><input name="email" value="admin@example.com"><button type="submit">Send code</button></form></div>`});
+  });
+  await page.goto(`${origin}/admin/login/`);
+  await page.getByRole('button', {name: 'Send code'}).click();
+  await expect.poll(() => sends).toBe(1);
+  await page.goto(`${origin}/admin/login/`);
+  await expect(page.locator('.send-verification-status')).toContainText('still unresolved');
+  await page.getByRole('button', {name: 'Send code'}).click();
+  await expect(page.locator('.send-verification-status')).toContainText('still unresolved');
+  expect(challenges).toBe(1);
+  expect(sends).toBe(1);
+});

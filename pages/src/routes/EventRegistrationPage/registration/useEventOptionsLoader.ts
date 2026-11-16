@@ -1,7 +1,7 @@
 import {useCallback, useRef, type Dispatch, type SetStateAction} from 'react';
 import type {NavigateFunction} from 'react-router';
-import {hasRequiredNameFields} from '@/features/auth/api/profileCompletion';
-import {buildCompleteProfilePath} from '@/features/auth/api/redirects';
+import {hasRequiredNameFields} from '@/features/auth/api/account/profileCompletion';
+import {buildCompleteProfilePath} from '@/features/auth/api/navigation/redirects';
 import {
   fetchRegistrationOptions,
   type EventRegistrationOptions,

@@ -1,5 +1,5 @@
 import {Link} from 'react-router';
-import type {ContactEmail, ContactPhone, ProfileResponse} from '@/features/auth/api/types';
+import type {ContactEmail, ContactPhone, ProfileResponse} from '@/features/auth/api/contracts/types';
 import {normalizeEmailAddress} from '@/features/auth/components/sections/internal/emailAddress';
 import {formatPhoneDisplay} from '@/features/auth/components/sections/internal/helpers';
 

@@ -9,7 +9,7 @@ from unfold.decorators import action, display
 from apps.core.admin import BaseModelAdmin
 from apps.core.services.background_jobs import jobs_enabled
 from apps.mail.models import SmsCampaign
-from apps.mail.models.sms_campaign import SMS_AUDIENCE_CHOICES
+from apps.mail.models.sms.campaign_options import SMS_AUDIENCE_CHOICES
 
 from .forms import SmsCampaignForm
 from .recipient_logs import SmsRecipientLogInline
@@ -58,7 +58,7 @@ class SmsCampaignAdmin(SmsCampaignSendViewsMixin, BaseModelAdmin):
     @admin.action(description="Resume paused recipients (held back by delivery limits)", permissions=["change"])
     def resume_paused_recipients_action(self, request, queryset):
         from apps.mail.services.campaign.dispatch import resume_paused_sms_recipients
-        from apps.mail.services.sms.errors import SmsSendRefused
+        from apps.mail.services.sms.policy.errors import SmsSendRefused
 
         try:
             resumed = sum(resume_paused_sms_recipients(campaign) for campaign in queryset)
@@ -241,7 +241,7 @@ class SmsCampaignAdmin(SmsCampaignSendViewsMixin, BaseModelAdmin):
         return readonly
 
     def render_change_form(self, request, context, *args, **kwargs):
-        from apps.mail.services.sms.estimate import composer_settings
+        from apps.mail.services.sms.content.estimate import composer_settings
 
         context["sms_composer"] = composer_settings()
         return super().render_change_form(request, context, *args, **kwargs)

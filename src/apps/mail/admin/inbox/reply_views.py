@@ -93,7 +93,7 @@ def inbox_reply_view(request, uid):
         "detail_url": detail_url,
         "list_url": list_url,
     }
-    return TemplateResponse(request, "admin/mail/inbox/reply.html", context)
+    return TemplateResponse(request, "admin/mail/inbox/reply/reply.html", context)
 
 
 def inbox_reply_fragment_view(request, uid):
@@ -121,7 +121,7 @@ def inbox_reply_fragment_view(request, uid):
 
     return TemplateResponse(
         request,
-        "admin/mail/inbox/_inbox_reply_form.html",
+        "admin/mail/inbox/reply/_inbox_reply_form.html",
         {
             "msg": msg,
             "reply_subject": reply_subject,
@@ -165,4 +165,4 @@ def _reply_load_error_response(request, error=None):
     error = error or inbox_api.INBOX_MESSAGE_ERROR_MESSAGE
     if request.method == "POST":
         return JsonResponse({"ok": False, "error": error})
-    return TemplateResponse(request, "admin/mail/inbox/_fragment_error.html", {"error_message": error})
+    return TemplateResponse(request, "admin/mail/inbox/shared/_fragment_error.html", {"error_message": error})

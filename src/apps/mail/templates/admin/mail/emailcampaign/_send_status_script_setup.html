@@ -1,0 +1,113 @@
+(function() {
+    var statusUrl = "{{ status_json_url }}";
+    var total = {{ campaign.total_recipients }};
+    var polling = null;
+    // admin/js/poll-backoff.js: polls pause while the server says it is busy (429), longer each time in a row.
+    var backoff = window.I2GPollBackoff;
+    var gate = backoff ? backoff.createGate({baseMs: 1000}) : null;
+    var startedAt = null;
+    var seenLogKeys = {};
+    var activityEntries = [];
+
+    function fmtDuration(secs) {
+        if (secs < 0 || !isFinite(secs)) return '--:--';
+        var h = Math.floor(secs / 3600);
+        var m = Math.floor((secs % 3600) / 60);
+        var s = Math.floor(secs % 60);
+        if (h > 0) return h + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+        return m + ':' + String(s).padStart(2,'0');
+    }
+
+    function fmtTime(isoStr) {
+        if (!isoStr) return '--:--:--';
+        var d = new Date(isoStr);
+        return String(d.getHours()).padStart(2,'0') + ':' +
+               String(d.getMinutes()).padStart(2,'0') + ':' +
+               String(d.getSeconds()).padStart(2,'0');
+    }
+
+    function escHtml(s) {
+        var d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function updateStats(data) {
+        if (!startedAt && data.started_at) {
+            startedAt = new Date(data.started_at);
+        }
+        var done = (data.sent || 0) + (data.failed || 0);
+        var elapsedEl = document.getElementById('stat-elapsed');
+        var rateEl = document.getElementById('stat-rate');
+        var etaEl = document.getElementById('stat-eta');
+
+        if (!startedAt) {
+            elapsedEl.textContent = '--:--';
+            rateEl.textContent = '--';
+            etaEl.textContent = '--:--';
+            return;
+        }
+
+        var nowSecs = (Date.now() - startedAt.getTime()) / 1000;
+        elapsedEl.textContent = fmtDuration(nowSecs);
+
+        if (done > 0 && nowSecs > 0) {
+            var rate = done / nowSecs;
+            rateEl.textContent = rate.toFixed(1);
+            var remaining = total - done;
+            if (remaining > 0 && data.status === 'sending') {
+                etaEl.textContent = fmtDuration(remaining / rate);
+            } else {
+                etaEl.textContent = data.status === 'sending' ? '--:--' : 'Done';
+            }
+        } else {
+            rateEl.textContent = '--';
+            etaEl.textContent = '--:--';
+        }
+    }
+
+    function updateActivityLog(logs) {
+        var container = document.getElementById('activity-log');
+        var newEntries = [];
+
+        for (var i = logs.length - 1; i >= 0; i--) {
+            var log = logs[i];
+            var key = log.email + '|' + log.status;
+            if (seenLogKeys[key]) continue;
+            seenLogKeys[key] = true;
+
+            var div = document.createElement('div');
+            div.className = 'flex items-start gap-2';
+
+            var time = fmtTime(log.sent_at);
+            var displayName = log.name
+                ? escHtml(log.name) + ' &lt;' + escHtml(log.email) + '&gt;'
+                : escHtml(log.email);
+
+            if (log.status === 'sent') {
+                div.innerHTML =
+                    '<span class="text-base-400 shrink-0">' + time + '</span>' +
+                    '<span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">SENT</span>' +
+                    '<span class="text-base-600 dark:text-base-300 truncate">' + displayName + '</span>';
+            } else {
+                div.innerHTML =
+                    '<span class="text-base-400 shrink-0">' + time + '</span>' +
+                    '<span class="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">FAIL</span>' +
+                    '<span class="text-base-600 dark:text-base-300 truncate">' + displayName + '</span>' +
+                    (log.error ? '<span class="text-red-500 dark:text-red-400 truncate">&mdash; ' + escHtml(log.error) + '</span>' : '');
+            }
+            newEntries.push(div);
+        }
+
+        if (newEntries.length > 0) {
+            if (activityEntries.length === 0) {
+                container.innerHTML = '';
+            }
+            newEntries.forEach(function(el) {
+                container.appendChild(el);
+                activityEntries.push(el);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+

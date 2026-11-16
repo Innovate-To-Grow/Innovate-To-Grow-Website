@@ -16,7 +16,7 @@ from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipi
 from apps.mail.services.audience import get_recipients
 from apps.mail.services.campaign.state import campaign_state
 from apps.mail.services.sms.audience import get_sms_recipients
-from apps.mail.services.sms.quiet_hours import next_send_time
+from apps.mail.services.sms.policy.quiet_hours import next_send_time
 
 EMAIL_SUCCESS_STATUSES = frozenset({"sent", "delivered"})
 EMAIL_PROVIDER_TERMINAL_STATUSES = frozenset({*EMAIL_SUCCESS_STATUSES, "bounced", "complained", "rejected"})

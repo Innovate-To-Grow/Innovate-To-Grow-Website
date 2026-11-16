@@ -14,12 +14,8 @@ from apps.core.services.background_jobs import (
 from apps.mail.models import RecipientLog
 from apps.mail.services.campaign.personalize import personalize
 from apps.mail.services.campaign.preview import render_email_html
-from apps.mail.services.send_campaign.runner import (
-    _recipient_context,
-    _unsubscribe_url_for,
-    carries_login_link,
-    skip_suppressed_log,
-)
+from apps.mail.services.send_campaign.recipient_logs import skip_suppressed_log
+from apps.mail.services.send_campaign.recipients import _recipient_context, _unsubscribe_url_for, carries_login_link
 from apps.mail.services.send_campaign.transport import _get_configuration_set_name, _get_ses_client, _send_via_ses
 from apps.mail.services.suppression import is_suppressed
 

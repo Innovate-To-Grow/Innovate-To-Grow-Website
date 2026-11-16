@@ -3,10 +3,10 @@ Delivery rates: the defaults behind Mail → Delivery Rates, and the controller 
 (Microsoft Graph send and read, Amazon SES, SMTP, Gmail IMAP, the Gmail API and AWS SMS).
 
 Nothing about a channel's rate is hard-coded elsewhere. Each channel's ``DeliveryRatePolicy`` row is seeded from
-``DELIVERY_RATES["channels"]`` (``channels.py``, every value with its source) and edited by mail staff, who can
-lower a documented provider limit but never raise it above the value here. Smart rate (on by default everywhere)
-adjusts within those limits using the controller and runtime sections (``runtime.py``) and the provider answers in
-``signals.py``.
+``DELIVERY_RATES["channels"]`` (``defaults/channels.py`` and ``sending_channels.py``, every value with its source)
+and edited by mail staff, who can lower a documented provider limit but never raise it above the value here. Smart
+rate (on by default everywhere) adjusts within those limits using the controller and runtime sections
+(``defaults/runtime.py``) and the provider answers in ``defaults/signals.py``.
 
 A deployment changes any value with the ``DELIVERY_RATES_OVERRIDES`` environment variable, a JSON object
 deep-merged into the defaults, for example after an AWS quota increase::
@@ -19,9 +19,9 @@ Only existing settings can be overridden, and the result is validated here at im
 
 import os
 
-from .channels import CHANNELS
-from .runtime import CONTROLLER, DISCOVERY, JOBS, LANES, USAGE, WAITS
-from .signals import SIGNALS
+from .defaults.channels import CHANNELS
+from .defaults.runtime import CONTROLLER, DISCOVERY, JOBS, LANES, USAGE, WAITS
+from .defaults.signals import SIGNALS
 from .validation import OVERRIDES_ENV, load_delivery_rates
 
 __all__ = ["DELIVERY_RATES"]

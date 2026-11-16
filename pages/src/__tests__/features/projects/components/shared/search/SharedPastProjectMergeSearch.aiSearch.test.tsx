@@ -4,6 +4,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 import {SharedPastProjectMergeSearch} from '@/features/projects/components/shared/search/SharedPastProjectMergeSearch';
 import type {ProjectGridRow} from '@/features/projects/components/grid/contracts/projectGrid';
 import type {ProjectTableRow} from '@/features/projects/api';
+import {alphaRow, bravoRow, charlieRow, makeRow} from '@/__tests__/features/projects/components/shared/search/sharedPastProjectMergeSearchFixtures';
 
 const mockUseAuth = vi.fn();
 const mockSearchPastProjectsWithAI = vi.fn();
@@ -18,8 +19,8 @@ vi.mock('@/features/auth', async (importOriginal) => {
   };
 });
 
-vi.mock('@/features/auth/api/redirects', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/features/auth/api/redirects')>();
+vi.mock('@/features/auth/api/navigation/redirects', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/features/auth/api/navigation/redirects')>();
   return {
     ...actual,
     buildLoginPath: (...args: unknown[]) => mockBuildLoginPath(...args),
@@ -33,20 +34,6 @@ vi.mock('@/features/projects/api', async (importOriginal) => {
     searchPastProjectsWithAI: (...args: unknown[]) => mockSearchPastProjectsWithAI(...args),
     hydrateProjectGridRowsSettled: (...args: unknown[]) => mockHydrateProjectGridRowsSettled(...args),
   };
-});
-
-const makeRow = (overrides: Partial<ProjectGridRow>): ProjectGridRow => ({
-  semester_label: '2025-1 Spring',
-  class_code: 'ENGR 120',
-  team_number: 'T01',
-  team_name: 'Team Alpha',
-  project_title: 'Alpha Project',
-  organization: 'Acme',
-  industry: 'Technology',
-  abstract: '',
-  student_names: '',
-  is_presenting: '',
-  ...overrides,
 });
 
 const makeProjectTableRow = (overrides: Partial<ProjectTableRow>): ProjectTableRow => ({
@@ -64,10 +51,6 @@ const makeProjectTableRow = (overrides: Partial<ProjectTableRow>): ProjectTableR
   presentation_order: null,
   ...overrides,
 });
-
-const alphaRow = makeRow({team_number: 'T01', team_name: 'Team Alpha', project_title: 'Alpha Project'});
-const bravoRow = makeRow({team_number: 'T02', team_name: 'Team Bravo', project_title: 'Bravo Project'});
-const charlieRow = makeRow({team_number: 'T03', team_name: 'Team Charlie', project_title: 'Charlie Project'});
 
 describe('SharedPastProjectMergeSearch — AI search table', () => {
   beforeEach(() => {
@@ -201,187 +184,5 @@ describe('SharedPastProjectMergeSearch — AI search table', () => {
     });
 
     expect(await screen.findByRole('heading', {level: 3, name: 'AI Search Table: solar pump'})).toBeInTheDocument();
-  });
-
-  it('does not add an empty AI table when all AI matches already exist in the shared result', async () => {
-    const onAddRows = vi.fn().mockResolvedValue(undefined);
-    const formattedAlphaRow = {...alphaRow, semester_label: '2025 Spring'};
-    mockSearchPastProjectsWithAI.mockResolvedValue({
-      available: true,
-      query: 'alpha',
-      results: [
-        makeProjectTableRow({
-          semester_label: '2025-1 Spring',
-          class_code: alphaRow.class_code,
-          team_number: alphaRow.team_number,
-          team_name: alphaRow.team_name,
-          project_title: alphaRow.project_title,
-          organization: alphaRow.organization,
-          industry: alphaRow.industry,
-          abstract: alphaRow.abstract,
-          student_names: alphaRow.student_names,
-        }),
-      ],
-      usage: {inputTokens: 8, outputTokens: 2, totalTokens: 10},
-    });
-
-    render(
-      <SharedPastProjectMergeSearch
-        currentRows={[formattedAlphaRow]}
-        error={null}
-        loading={false}
-        rows={[formattedAlphaRow, bravoRow]}
-        onAddRows={onAddRows}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
-      target: {value: 'alpha'},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
-
-    expect(await screen.findByText('AI found projects that are already in this curation.')).toBeInTheDocument();
-    expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
-    expect(onAddRows).not.toHaveBeenCalled();
-  });
-
-  it('allows only one AI Search Table in the shared add-projects flow', () => {
-    render(
-      <SharedPastProjectMergeSearch
-        currentRows={[alphaRow]}
-        error={null}
-        loading={false}
-        rows={[alphaRow, bravoRow, charlieRow]}
-        onAddRows={vi.fn()}
-      />,
-    );
-
-    const addAIButton = screen.getByRole('button', {name: /\+ ai search table/i});
-    expect(addAIButton).toBeEnabled();
-
-    fireEvent.click(addAIButton);
-
-    expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
-    expect(addAIButton).toBeDisabled();
-    expect(screen.getAllByRole('heading', {level: 3, name: /ai search table/i})).toHaveLength(1);
-  });
-
-  it('does not number the only standard Search Table when an AI Search Table is also open', () => {
-    render(
-      <SharedPastProjectMergeSearch
-        currentRows={[alphaRow]}
-        error={null}
-        loading={false}
-        rows={[alphaRow, bravoRow, charlieRow]}
-        onAddRows={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-
-    expect(screen.getByRole('heading', {level: 3, name: 'Search Table'})).toBeInTheDocument();
-    expect(screen.queryByRole('heading', {level: 3, name: 'Search Table 1'})).toBeNull();
-    expect(screen.getByRole('heading', {level: 3, name: 'AI Search Table'})).toBeInTheDocument();
-  });
-
-  it('shows a sign-in dialog when a signed-out visitor clicks the AI Search Table button', () => {
-    mockUseAuth.mockReturnValue({isAuthenticated: false});
-
-    render(
-      <SharedPastProjectMergeSearch
-        currentRows={[alphaRow]}
-        error={null}
-        loading={false}
-        rows={[alphaRow, bravoRow, charlieRow]}
-        onAddRows={vi.fn()}
-      />,
-    );
-
-    const addAIButton = screen.getByRole('button', {name: 'AI Search Table'});
-    expect(addAIButton).toBeEnabled();
-    expect(addAIButton).not.toHaveAttribute('aria-disabled');
-    expect(addAIButton).toHaveClass('is-login-required');
-
-    fireEvent.click(addAIButton);
-
-    expect(screen.getByRole('dialog', {name: /sign in required/i})).toBeInTheDocument();
-    expect(screen.getByText('You need to sign in before using AI search.')).toBeInTheDocument();
-    expect(mockSearchPastProjectsWithAI).not.toHaveBeenCalled();
-  });
-
-  it('shows an unavailable message when AI search is not configured', async () => {
-    mockSearchPastProjectsWithAI.mockResolvedValue({
-      available: false,
-      message: 'Not configured.',
-      query: 'solar',
-      results: [],
-      usage: {},
-    });
-
-    render(
-      <SharedPastProjectMergeSearch
-        currentRows={[alphaRow]}
-        error={null}
-        loading={false}
-        rows={[alphaRow, bravoRow, charlieRow]}
-        onAddRows={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
-      target: {value: 'solar'},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
-
-    expect(await screen.findByText(/AI search is not available on this site right now/)).toBeInTheDocument();
-    expect(screen.queryByText('Not configured.')).toBeNull();
-  });
-
-  it('shows a no-results message when AI search finds nothing', async () => {
-    mockSearchPastProjectsWithAI.mockResolvedValue({
-      available: true,
-      query: 'solar',
-      results: [],
-      usage: {},
-    });
-
-    render(
-      <SharedPastProjectMergeSearch
-        currentRows={[alphaRow]}
-        error={null}
-        loading={false}
-        rows={[alphaRow, bravoRow, charlieRow]}
-        onAddRows={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', {name: /\+ ai search table/i}));
-    fireEvent.change(screen.getByPlaceholderText(/ask about past projects/i), {
-      target: {value: 'solar'},
-    });
-    fireEvent.click(screen.getByRole('button', {name: 'Search'}));
-
-    expect(await screen.findByText('AI search did not find matching past projects.')).toBeInTheDocument();
-  });
-
-  it('navigates to login when the sign-in dialog is confirmed', () => {
-    mockUseAuth.mockReturnValue({isAuthenticated: false});
-
-    render(
-      <SharedPastProjectMergeSearch
-        currentRows={[alphaRow]}
-        error={null}
-        loading={false}
-        rows={[alphaRow, bravoRow, charlieRow]}
-        onAddRows={vi.fn()}
-      />,
-    );
-
-    fireEvent.click(screen.getByRole('button', {name: 'AI Search Table'}));
-    fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', {name: /sign in/i}));
-
-    expect(mockBuildLoginPath).toHaveBeenCalled();
   });
 });

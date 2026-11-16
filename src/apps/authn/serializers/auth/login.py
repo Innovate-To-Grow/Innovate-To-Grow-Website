@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from apps.authn.services import login_guard, resolve_login_identifier
 
-from ..helpers import decrypt_field
+from ..shared.encrypted_passwords import decrypt_field
 
 INVALID_CREDENTIALS = "Invalid credentials."
 

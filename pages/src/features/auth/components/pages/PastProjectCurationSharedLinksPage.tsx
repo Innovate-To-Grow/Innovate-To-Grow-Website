@@ -1,18 +1,18 @@
 import '../auth.css';
 import {useMemo, useState} from 'react';
 import {Navigate} from 'react-router';
-import {buildCompleteProfilePath, buildLoginPath} from '@/features/auth/api/redirects';
+import {buildCompleteProfilePath, buildLoginPath} from '@/features/auth/api/navigation/redirects';
 import {useAuth} from '../AuthContext';
 import {StatusAlert} from '../shared/StatusAlert';
 import {
   getSharedLinkSearchText,
   PAST_PROJECT_CURATION_SHARED_LINKS_PATH,
   PAST_PROJECT_CURATION_SHARED_LINKS_TITLE,
-} from '../sections/internal/sharedLinkUtils';
-import {SharedLinksList} from '../sections/internal/SharedLinksList';
-import {useMySharedLinks} from '../sections/internal/useMySharedLinks';
+} from '../sections/sharedLinks/sharedLinkUtils';
+import {SharedLinksList} from '../sections/sharedLinks/SharedLinksList';
+import {useMySharedLinks} from '../sections/sharedLinks/useMySharedLinks';
 
-import './account/accountSharedLinks.css';
+import './account/dashboard/accountSharedLinks.css';
 
 export const PastProjectCurationSharedLinksPage = () => {
   const {isAuthenticated, isInitializing, requiresProfileCompletion} = useAuth();

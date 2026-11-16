@@ -1,9 +1,11 @@
 import {useRef, type ClipboardEvent, type MouseEvent, type RefObject} from 'react';
 import {
-  RICH_DETAIL_INLINE_FORMAT_TAGS,
   getEditorSelectionRange,
   rangeContainsFormatting,
   rangeContainsHighlight,
+} from '../dom/formattingQueries';
+import {
+  RICH_DETAIL_INLINE_FORMAT_TAGS,
   replaceRangeWithoutMatchingFormatting,
   replaceEditorWithPlainFormatting,
   replaceRangeWithPlainFormatting,

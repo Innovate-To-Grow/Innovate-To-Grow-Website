@@ -49,7 +49,7 @@ SMS endpoint. A number that replied STOP is put on AWS's opted-out list, and AWS
 
 ### The sync
 
-`apps.mail.services.sms.opt_out_sync` runs in the background worker's hourly maintenance (and from **Sync with AWS
+`apps.mail.services.sms.policy.opt_out_sync` runs in the background worker's hourly maintenance (and from **Sync with AWS
 now** on SMS Opt-outs). It is read-only on AWS's side:
 
 1. `DescribePhoneNumbers` finds the sending number (the configured origination number, else the first active SMS
@@ -138,7 +138,7 @@ With **Allow links in SMS** on, a Broadcast SMS may use:
   credential and are not affected. How it holds on every path:
   - **In the save's transaction.** Every write to SMS Settings (the admin, a `save()` in code, a bulk `update()`)
     locks the row and settles personal links before it commits (`SmsConfig.save`, `settle_personal_links` in
-    `apps/mail/models/sms_config.py`). Unless personal sign-in links were on before and are still on, the settings'
+    `apps/mail/models/sms/config.py`). Unless personal sign-in links were on before and are still on, the settings'
     **epoch** (`personal_links_epoch`) moves on and every outstanding personal link (unused, unexpired) is revoked
     (`revoked_at`). The epoch never moves back, not even from an outdated copy of the settings.
   - **When a link is opened.** A personal link carries the epoch it was issued in, read together with the switches,

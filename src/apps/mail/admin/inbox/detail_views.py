@@ -50,7 +50,7 @@ def inbox_detail_view(request, uid):
         "scam_analysis": scam_analysis,
         "folder": folder,
     }
-    return TemplateResponse(request, "admin/mail/inbox/detail.html", context)
+    return TemplateResponse(request, "admin/mail/inbox/detail/detail.html", context)
 
 
 def inbox_detail_fragment_view(request, uid):
@@ -66,14 +66,14 @@ def inbox_detail_fragment_view(request, uid):
         inbox_api.logger.warning("Inbox message uid=%s could not be loaded: %s", uid, exc)
         return TemplateResponse(
             request,
-            "admin/mail/inbox/_fragment_error.html",
+            "admin/mail/inbox/shared/_fragment_error.html",
             {"error_message": message_load_error(exc)},
         )
     except Exception:
         inbox_api.logger.exception("Unexpected error fetching message uid=%s.", uid)
         return TemplateResponse(
             request,
-            "admin/mail/inbox/_fragment_error.html",
+            "admin/mail/inbox/shared/_fragment_error.html",
             {"error_message": inbox_api.INBOX_MESSAGE_ERROR_MESSAGE},
         )
     if sent_mail_denied(request, folder, msg):
@@ -83,7 +83,7 @@ def inbox_detail_fragment_view(request, uid):
     scam_analysis = inbox_api.assess_email(msg, folder=folder)
     return TemplateResponse(
         request,
-        "admin/mail/inbox/_inbox_preview.html",
+        "admin/mail/inbox/detail/_inbox_preview.html",
         {
             "msg": msg,
             "body_html_json": safe_json(body_html),
@@ -99,7 +99,7 @@ def sent_mail_denied_fragment(request):
     """The preview-pane answer when the user may not read this Sent mail (``helpers.sent_mail_denied``)."""
     return TemplateResponse(
         request,
-        "admin/mail/inbox/_fragment_error.html",
+        "admin/mail/inbox/shared/_fragment_error.html",
         {"error_message": inbox_api.SENT_MAIL_DENIED_MESSAGE},
         status=403,
     )

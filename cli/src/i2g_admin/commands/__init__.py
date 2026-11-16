@@ -5,7 +5,9 @@ top-level command append exactly one line under their numbered anchor below, so
 parallel branches never edit the same line.
 """
 
-from . import auth, meta, records
+from . import records
+from .introspection import meta
+from .setup import auth
 
 
 def register(app) -> None:
@@ -13,7 +15,8 @@ def register(app) -> None:
     meta.register(app)
     records.register(app)
     # --- wave-2 extension points ---
-    from . import apps_cmd, completion
+    from .introspection import apps_cmd
+    from .setup import completion
 
     completion.register(app)  # U6
     apps_cmd.register(app)  # U10

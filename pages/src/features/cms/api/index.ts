@@ -1,131 +1,16 @@
 import { api } from '@/lib/api';
-import {rateLimitRetryDelay} from '@/lib/api/rateLimit';
-import type {ContactInfoData} from '@/features/cms/components/blocks/content/ContactInfoBlock';
-import type {CtaGroupData} from '@/features/cms/components/blocks/content/CtaGroupBlock';
-import type {EmbedData} from '@/features/cms/components/blocks/content/EmbedBlock';
-import type {EmbedWidgetData} from '@/features/cms/components/blocks/content/EmbedWidgetBlock';
-import type {FaqListData} from '@/features/cms/components/blocks/content/FaqListBlock';
-import type {HeroData} from '@/features/cms/components/blocks/content/HeroBlock';
-import type {ImageTextData} from '@/features/cms/components/blocks/content/ImageTextBlock';
-import type {LinkListData} from '@/features/cms/components/blocks/content/LinkListBlock';
-import type {NoticeData} from '@/features/cms/components/blocks/content/NoticeBlock';
-import type {NumberedListData} from '@/features/cms/components/blocks/content/NumberedListBlock';
-import type {RichTextData} from '@/features/cms/components/blocks/content/RichTextBlock';
-import type {TableBlockData} from '@/features/cms/components/blocks/content/TableBlock';
-import type {NavigationGridData} from '@/features/cms/components/blocks/navigation/NavigationGridBlock';
-import type {SectionGroupData} from '@/features/cms/components/blocks/navigation/SectionGroupBlock';
-import type {ProposalCardsData} from '@/features/cms/components/blocks/showcase/ProposalCardsBlock';
-import type {SponsorYearBlockData} from '@/features/cms/components/blocks/showcase/SponsorYearBlock';
-import type {AxiosRequestConfig} from 'axios';
-
-const URL_SCHEME_RE = /^[A-Za-z][A-Za-z0-9+.-]*:/;
-
-function hasControlCharacter(value: string): boolean {
-  return Array.from(value).some((character) => {
-    const code = character.charCodeAt(0);
-    return code <= 0x1f || code === 0x7f;
-  });
-}
-
-interface CMSBlockBase {
-  block_type: string;
-  sort_order: number;
-  data: Record<string, unknown>;
-}
-
-export type CMSKnownBlock =
-  | {block_type: 'hero'; sort_order: number; data: HeroData}
-  | {block_type: 'rich_text'; sort_order: number; data: RichTextData}
-  | {block_type: 'contact_info'; sort_order: number; data: ContactInfoData}
-  | {block_type: 'navigation_grid'; sort_order: number; data: NavigationGridData}
-  | {block_type: 'link_list'; sort_order: number; data: LinkListData}
-  | {block_type: 'cta_group'; sort_order: number; data: CtaGroupData}
-  | {block_type: 'faq_list'; sort_order: number; data: FaqListData}
-  | {block_type: 'image_text'; sort_order: number; data: ImageTextData}
-  | {block_type: 'notice'; sort_order: number; data: NoticeData}
-  | {block_type: 'section_group'; sort_order: number; data: SectionGroupData}
-  | {block_type: 'proposal_cards'; sort_order: number; data: ProposalCardsData}
-  | {block_type: 'table'; sort_order: number; data: TableBlockData}
-  | {block_type: 'numbered_list'; sort_order: number; data: NumberedListData}
-  | {block_type: 'sponsor_year'; sort_order: number; data: SponsorYearBlockData}
-  | {block_type: 'embed'; sort_order: number; data: EmbedData}
-  | {block_type: 'embed_widget'; sort_order: number; data: EmbedWidgetData};
+import {
+  type CMSEmbedResponse,
+  type CMSKnownBlock,
+  type CMSPageRedirectResponse,
+  type CMSPageResponse,
+} from './types';
+import {getWithOneRetry} from './retry';
+import {normalizeCMSRoute} from './routes';
 
 export type CMSKnownBlockType = CMSKnownBlock['block_type'];
 
-export interface CMSUnknownBlock extends CMSBlockBase {
-  block_type: string;
-}
-
-export type CMSBlock = CMSKnownBlock | CMSUnknownBlock;
-
-export interface CMSPageResponse {
-  slug: string;
-  route: string;
-  title: string;
-  page_css_class: string;
-  meta_description: string;
-  blocks: CMSBlock[];
-  expires_at?: string;
-}
-
-export interface CMSPageRedirectResponse {
-  redirect_to: string;
-  permanent: true;
-}
-
 export type CMSPageFetchResponse = CMSPageResponse | CMSPageRedirectResponse;
-
-const RETRYABLE_GET_STATUSES = new Set([408, 429, 502, 503, 504]);
-/** The cap on a 408/5xx retry's wait. A 429 waits as long as the server asks, up to the shared client's limit. */
-const MAX_RETRY_DELAY_MS = 2000;
-
-/** Retry-After (seconds or an HTTP date) in milliseconds, capped; null when absent or unusable. */
-function retryAfterDelay(retryAfter: string | undefined): number | null {
-  if (!retryAfter) return null;
-  const seconds = Number(retryAfter);
-  if (Number.isFinite(seconds) && seconds >= 0) {
-    return Math.min(seconds * 1000, MAX_RETRY_DELAY_MS);
-  }
-  const dateDelay = Date.parse(retryAfter) - Date.now();
-  if (Number.isFinite(dateDelay) && dateDelay >= 0) {
-    return Math.min(dateDelay, MAX_RETRY_DELAY_MS);
-  }
-  return null;
-}
-
-function retryDelay(error: unknown): number | null {
-  const candidate = error as {
-    code?: string;
-    response?: {status?: number; headers?: Record<string, string | undefined>};
-  };
-  if (candidate.code === 'ERR_CANCELED') return null;
-  const status = candidate.response?.status;
-  if (status !== undefined && !RETRYABLE_GET_STATUSES.has(status)) return null;
-  // Retrying a 429 before its Retry-After only earns another 429. The shared client has normally spent the one
-  // retry already (null then), and a wait longer than it allows fails the page at once rather than early.
-  if (status === 429) return rateLimitRetryDelay(error);
-
-  const requested = retryAfterDelay(candidate.response?.headers?.['retry-after']);
-  return requested ?? 150 + Math.floor(Math.random() * 151);
-}
-
-async function getWithOneRetry<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-  try {
-    return (await api.get<T>(url, config)).data;
-  } catch (error) {
-    const delay = retryDelay(error);
-    if (delay === null || config?.signal?.aborted) throw error;
-    await new Promise<void>((resolve, reject) => {
-      const timeout = window.setTimeout(resolve, delay);
-      config?.signal?.addEventListener?.('abort', () => {
-        window.clearTimeout(timeout);
-        reject(new DOMException('The request was aborted.', 'AbortError'));
-      }, {once: true});
-    });
-    return (await api.get<T>(url, config)).data;
-  }
-}
 
 export function isCMSPageRedirectResponse(
   response: CMSPageFetchResponse,
@@ -135,46 +20,6 @@ export function isCMSPageRedirectResponse(
     && typeof response.redirect_to === 'string'
     && response.permanent === true
   );
-}
-
-export function normalizeCMSRoute(route: string): string {
-  const trimmed = route.trim();
-  if (!trimmed || trimmed === '/') {
-    return '/';
-  }
-
-  if (
-    URL_SCHEME_RE.test(trimmed)
-    || trimmed.startsWith('//')
-    || trimmed.includes('\\')
-    || trimmed.includes('?')
-    || trimmed.includes('#')
-    || hasControlCharacter(trimmed)
-  ) {
-    throw new Error('CMS route must be a safe site-relative pathname.');
-  }
-
-  const segments = trimmed.split('/').filter(Boolean).map((segment) => {
-    let decoded: string;
-    try {
-      decoded = decodeURIComponent(segment);
-    } catch {
-      throw new Error('CMS route contains invalid percent encoding.');
-    }
-
-    if (
-      decoded === '.'
-      || decoded === '..'
-      || decoded.includes('/')
-      || decoded.includes('\\')
-      || hasControlCharacter(decoded)
-    ) {
-      throw new Error('CMS route contains an unsafe path segment.');
-    }
-    return decoded;
-  });
-
-  return segments.length > 0 ? `/${segments.join('/')}` : '/';
 }
 
 export async function fetchCMSPage(
@@ -258,18 +103,6 @@ export async function fetchCMSLivePreview(
   return response.data;
 }
 
-export type CMSEmbedWidgetType = 'blocks' | 'app_route';
-
-export interface CMSEmbedResponse {
-  widget_type?: CMSEmbedWidgetType;
-  app_route?: string;
-  blocks: CMSBlock[];
-  page_css_class: string;
-  hidden_sections?: string[];
-  hide_section_titles?: boolean;
-  schedule_id?: string | null;
-}
-
 // The embed-host allowlist is read by the shared HTML sanitizer, so it lives in lib/api.
 export {fetchCMSEmbedHosts, type CMSEmbedHostsResponse} from '@/lib/api/embedHosts';
 
@@ -279,3 +112,7 @@ export async function fetchCMSEmbed(
   const response = await api.get<CMSEmbedResponse>(`/cms/embed/${embedSlug}/`);
   return response.data;
 }
+
+// Re-exported so '@/features/cms/api' keeps its public surface.
+export type {CMSBlock, CMSEmbedResponse, CMSEmbedWidgetType, CMSKnownBlock, CMSPageRedirectResponse, CMSPageResponse, CMSUnknownBlock} from './types';
+export {normalizeCMSRoute} from './routes';

@@ -24,14 +24,15 @@ from apps.core.utils.access import user_can_access_app
 from apps.event.models import EventRegistration
 from apps.mail.models import BouncedAddress, BouncedAddressCampaign, EmailCampaign, RecipientLog
 from apps.mail.services.email_monitoring.addresses import aggregate, listing
-from apps.mail.services.email_monitoring.addresses.export import export_rows
-from apps.mail.services.email_monitoring.addresses.guards import Target, availability, load_target
-from apps.mail.services.email_monitoring.addresses.matching import (
+from apps.mail.services.email_monitoring.addresses.actions.guards import availability
+from apps.mail.services.email_monitoring.addresses.actions.specs import QUICK_ACTIONS, SPECS
+from apps.mail.services.email_monitoring.addresses.actions.targets import Target, load_target
+from apps.mail.services.email_monitoring.addresses.listing.export import export_rows
+from apps.mail.services.email_monitoring.addresses.listing.matching import (
     AddressMatch,
     match_addresses,
     refresh_cached_links,
 )
-from apps.mail.services.email_monitoring.addresses.specs import QUICK_ACTIONS, SPECS
 from apps.mail.services.suppression import normalize_address
 
 from .views import TEMPLATES, _context, require_mail_access

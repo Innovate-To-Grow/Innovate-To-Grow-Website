@@ -17,13 +17,13 @@ from apps.event.signals import initial_ticket_issued
 from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
 from apps.event.views.registration.create_support.notifications import send_initial_ticket_email
 from apps.mail.models import SmsLinkToken, TicketSms
-from apps.mail.services.sms import ticket
-from apps.mail.services.sms.opt_outs import SKIPPED_MESSAGE
-from apps.mail.services.sms.quiet_hours import HELD_LOG_MESSAGE
+from apps.mail.services.sms.delivery import ticket
+from apps.mail.services.sms.policy.opt_outs import SKIPPED_MESSAGE
+from apps.mail.services.sms.policy.quiet_hours import HELD_LOG_MESSAGE
 
 from .policy_helpers import QUIET_ENDS, QUIET_MOMENT, add_phone, at, opt_out, sms_aws_config, sms_settings
 
-SEND = "apps.mail.services.sms.ticket.send_text_message"
+SEND = "apps.mail.services.sms.delivery.ticket.send_text_message"
 PHONE = "+12095550101"
 
 
@@ -94,7 +94,7 @@ class QueueTicketSmsTests(TicketSmsTestCase):
         with (
             transaction.atomic(),
             patch.object(ticket, "_queue", side_effect=RuntimeError("boom")),
-            self.assertLogs("apps.mail.services.sms.ticket", level="ERROR"),
+            self.assertLogs("apps.mail.services.sms.delivery.ticket", level="ERROR"),
         ):
             self.assertIsNone(self.queue())
             # The transaction is still usable (a broken one would refuse this query on PostgreSQL).
@@ -122,7 +122,9 @@ class InProcessTicketSmsTests(TicketSmsTestCase):
     def test_without_jobs_it_is_sent_after_the_commit(self, send):
         self.turn_on()
         with (
-            patch("apps.mail.services.sms.ticket.start_in_process_task", side_effect=lambda fn, *a, **k: fn(*a)),
+            patch(
+                "apps.mail.services.sms.delivery.ticket.start_in_process_task", side_effect=lambda fn, *a, **k: fn(*a)
+            ),
             self.captureOnCommitCallbacks(execute=True),
         ):
             record = self.queue()
@@ -147,7 +149,7 @@ class InProcessTicketSmsTests(TicketSmsTestCase):
         self.assertEqual(record.status, "failed")
 
     def test_a_thread_failure_is_logged_not_raised(self):
-        with self.assertLogs("apps.mail.services.sms.ticket", level="ERROR"):
+        with self.assertLogs("apps.mail.services.sms.delivery.ticket", level="ERROR"):
             ticket._send_in_process("00000000-0000-0000-0000-000000000000")
 
 

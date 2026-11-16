@@ -20,8 +20,8 @@ from apps.authn.models import Member
 from .parsing import generate_random_password
 from .reader import read_upload
 from .review.analysis import INVALID, NEEDS_DECISION, SKIP_EXISTING, UPDATE_EXISTING, Context, analyse_rows
+from .review.analysis.describe import conflict_code, conflict_title
 from .review.apply import lock_members, run_import
-from .review.describe import conflict_code, conflict_title
 from .review.lookup import load_snapshot
 from .types import ImportResult
 

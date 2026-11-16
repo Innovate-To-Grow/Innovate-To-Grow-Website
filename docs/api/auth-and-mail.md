@@ -16,7 +16,7 @@ The auth system is built on `rest_framework_simplejwt` with custom extensions fo
 | Models | `src/apps/authn/models/` |
 | URLs | `src/apps/authn/urls.py` |
 | Throttles | `src/apps/authn/security/throttles.py` |
-| Password-login lockout | `src/apps/authn/services/login_guard.py` |
+| Password-login lockout | `src/apps/authn/services/login_guard/` |
 | Mail views | `src/apps/mail/views/` |
 
 ## Rate-limit policy (no client-IP limits on sign-in)
@@ -703,7 +703,7 @@ Token-based paths for email-originated actions:
 
 | Endpoint | Token source | Service |
 |----------|-------------|---------|
-| `POST /authn/impersonate-login/` | Five-minute admin-issued impersonation token | `src/apps/authn/views/admin/impersonate_login.py` |
+| `POST /authn/impersonate-login/` | Five-minute admin-issued impersonation token | `src/apps/authn/views/auth/session/impersonate_login.py` |
 | `POST /mail/login-link/` | Login link in campaign and ticket emails (`LoginLinkToken`) | `src/apps/mail/views/login_link.py` |
 | `POST /mail/magic-login/` | Legacy alias of `/mail/login-link/` for already-sent emails | `src/apps/mail/views/login_link.py` |
 
@@ -713,13 +713,13 @@ Token-based paths for email-originated actions:
 
 **Removed endpoints.** `POST /authn/unsubscribe-login/` (the exchange behind the old `/unsubscribe-login#token=X` email links) and `POST /authn/subscribe/` (an anonymous newsletter sign-up with a 30/minute per-IP throttle, which the SPA no longer called) no longer exist and return `404`. Newsletter opt-out is the backend page behind the [one-click unsubscribe link](#one-click-unsubscribe-and-resubscribe), plus the per-address flags on `/account`; the SPA keeps `/unsubscribe-login` only as a redirect to `/account` that drops the old token and calls nothing.
 
-The emailed links carry their token in the URL fragment (`/login-link#token=X`, `/impersonate-login#token=X`); the frontend still accepts the legacy `?token=X` query form. A missing, blank, or non-string `token` (or a non-object body) returns `400 "Token is required."`; so does a token that could never be real and is therefore never looked up: one the database layer cannot take (a lone UTF-16 surrogate, or a NUL character) or one longer than 2048 characters once trimmed (real tokens are at most 128; `MAX_CREDENTIAL_LENGTH` in `src/apps/authn/views/helpers.py`).
+The emailed links carry their token in the URL fragment (`/login-link#token=X`, `/impersonate-login#token=X`); the frontend still accepts the legacy `?token=X` query form. A missing, blank, or non-string `token` (or a non-object body) returns `400 "Token is required."`; so does a token that could never be real and is therefore never looked up: one the database layer cannot take (a lone UTF-16 surrogate, or a NUL character) or one longer than 2048 characters once trimmed (real tokens are at most 128; `MAX_CREDENTIAL_LENGTH` in `src/apps/authn/views/shared/responses.py`).
 
 The application-level `400` rejections of `/mail/login-link/` (`token_required`, `invalid_link`, `expired`, `already_used`) carry a stable machine-readable `code` next to the unchanged `detail`; `invalid_link` covers both an unknown token and an inactive member, which are deliberately indistinguishable. Framework-generated errors (`415` unsupported media type, unparseable JSON) carry only `detail`, so clients branch on the HTTP status for those and use `code` only for the four rejections above. None of the token endpoints (login link, impersonation, one-click unsubscribe and resubscribe) has a per-view throttle (campus users share one address; the token is the control). The request limiter exempts one-click unsubscribe (a legal opt-out) and counts the login-link and impersonation exchanges only in their site-wide P0 cap (`auth-email-link`, 1,200/minute, never per IP); resubscribe is in `tokenized-link` (60/minute per anonymous client IP). Only those caps can answer `429` (`code: "rate_limited"`, see [Throttling](index.md#the-429-answer)).
 
 The `expired` and `already_used` rejections also carry `redirect_to`: the link's own post-login destination, the same value a successful exchange returns (the campaign's post-login destination, or the ticket link's `/event-registration?event=<slug>`; the server keeps a stored path only when it starts with a single `/`, and returns `/account` when the link has none or an unsafe one). A client that cannot use the link and falls back to another sign-in method can send the member where the email intended. It is not account state, and only a caller holding the real token gets it: `token_required` and `invalid_link` (unknown token or inactive member) never include it, so an inactive member's response stays byte-identical to an unknown token's. `redirect_to` is optional for clients; when it is absent (an older backend), use the default landing.
 
-**Clients MUST re-validate `redirect_to` before navigating to it, on the `400` bodies and on the `200` body alike.** The server-side check is deliberately weaker than the SPA's: it only requires a leading `/` and no leading `//`, so it does not reject backslashes (`/\evil.example`), control or whitespace characters, or percent-encoded slashes (`/%2f/evil.example`), which some browsers or downstream parsers fold into an off-site target. The SPA passes every `redirect_to` through `getSafeInternalRedirectPath` (`pages/src/features/auth/api/redirects.ts`) and falls back to `/account` when it returns `null`; other clients must apply an equivalent check.
+**Clients MUST re-validate `redirect_to` before navigating to it, on the `400` bodies and on the `200` body alike.** The server-side check is deliberately weaker than the SPA's: it only requires a leading `/` and no leading `//`, so it does not reject backslashes (`/\evil.example`), control or whitespace characters, or percent-encoded slashes (`/%2f/evil.example`), which some browsers or downstream parsers fold into an off-site target. The SPA passes every `redirect_to` through `getSafeInternalRedirectPath` (`pages/src/features/auth/api/navigation/redirects.ts`) and falls back to `/account` when it returns `null`; other clients must apply an equivalent check.
 
 **Credential-exchange views set `authentication_classes = []`** (login-link, impersonation, logout, one-click unsubscribe, resubscribe; refresh inherits it from SimpleJWT). Each is authenticated by a credential the request itself carries (an emailed token or a refresh token), but the SPA attaches its stored access token to every request and DRF authenticates before checking permissions, so a stale, expired, or other-account `Authorization: Bearer` header would return `401` before the credential was consumed. A refresh token whose member was deleted returns `401`, never `500`.
 

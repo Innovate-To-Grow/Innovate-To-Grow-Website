@@ -1,0 +1,79 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}Inbox{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style nonce="{{ request.csp_nonce }}">
+{% include "admin/mail/inbox/list/_styles_shell.html" %}
+{% include "admin/mail/inbox/list/_styles_folders.html" %}
+{% include "admin/mail/inbox/list/_styles_list.html" %}
+    </style>
+{% endblock %}
+
+{% block content %}
+<div id="inbox-all-dynamic" class="w-full max-w-none" data-fragment-url="{{ fragment_url }}">
+    <!-- Loading skeleton: shown while JS fetches the real content -->
+    <div id="inbox-loading-skeleton">
+        <div class="i2g-mail-shell">
+            <div class="i2g-mail-toolbar">
+                <div class="i2g-mail-toolbar__identity">
+                    <div class="i2g-skel" style="width:36px;height:36px;border-radius:8px;"></div>
+                    <div class="flex flex-col gap-1.5">
+                        <div class="i2g-skel" style="width:110px;height:14px;"></div>
+                        <div class="i2g-skel" style="width:210px;height:11px;"></div>
+                    </div>
+                </div>
+                <div class="i2g-mail-toolbar__actions">
+                    <div class="i2g-skel" style="width:104px;height:32px;border-radius:999px;"></div>
+                    <div class="i2g-skel" style="width:122px;height:32px;border-radius:999px;"></div>
+                </div>
+            </div>
+            <div class="i2g-mail-account-panel">
+                <div class="i2g-skel" style="width:80%;height:28px;"></div>
+                <div class="i2g-skel" style="width:70%;height:28px;"></div>
+                <div class="i2g-skel" style="width:50%;height:28px;"></div>
+            </div>
+            <!-- Split pane skeleton -->
+            <div class="i2g-inbox-split">
+                <div class="i2g-inbox-list-panel">
+                    <div class="i2g-inbox-list-head">
+                        <div class="i2g-skel" style="width:80px;height:12px;"></div>
+                        <div class="i2g-skel" style="width:72px;height:10px;"></div>
+                    </div>
+                    <div class="i2g-inbox-list overflow-hidden">
+                        {% for _ in "123456789012" %}
+                        <div class="flex gap-2.5 px-4 py-3">
+                            <div class="i2g-skel shrink-0" style="width:18px;height:18px;margin-top:2px;"></div>
+                            <div class="flex-1 flex flex-col gap-1.5">
+                                <div class="flex items-center gap-2">
+                                    <div class="i2g-skel" style="width:45%;height:12px;"></div>
+                                    <div class="i2g-skel ml-auto" style="width:80px;height:10px;"></div>
+                                </div>
+                                <div class="i2g-skel" style="width:75%;height:12px;"></div>
+                                <div class="i2g-skel" style="width:90%;height:10px;"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="i2g-inbox-preview flex items-center justify-center">
+                    <div class="text-center text-base-400">
+                        <span class="material-symbols-outlined !text-[36px] mb-2 block i2g-inbox-refresh-icon" style="animation:i2g-inbox-spin 1s linear infinite;display:inline-block;">sync</span>
+                        <p class="text-sm">Loading inbox...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script nonce="{{ request.csp_nonce }}">
+{% include "admin/mail/inbox/list/_script_state.html" %}
+{% include "admin/mail/inbox/list/_script_fetch.html" %}
+{% include "admin/mail/inbox/list/_script_preview.html" %}
+{% include "admin/mail/inbox/list/_script_events.html" %}
+</script>
+{% endblock %}

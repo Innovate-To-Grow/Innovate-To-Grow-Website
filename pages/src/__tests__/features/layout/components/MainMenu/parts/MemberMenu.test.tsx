@@ -1,7 +1,7 @@
 import {cleanup, fireEvent, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import type {User} from '@/features/auth/api/types';
+import type {User} from '@/features/auth/api/contracts/types';
 import {MemberMenu} from '@/features/layout/components/MainMenu/parts/MemberMenu';
 
 afterEach(() => {

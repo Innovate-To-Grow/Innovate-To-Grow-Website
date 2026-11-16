@@ -1,7 +1,7 @@
 /*
  * Broadcast SMS composer: a live count, under the message field, of what one text costs.
  *
- * It measures the text as it will be sent (apps/mail/services/sms/compose.py): example names, every link placeholder
+ * It measures the text as it will be sent (apps/mail/services/sms/content/compose.py): example names, every link placeholder
  * as long as a real link, line breaks as the form submits them (CR LF), and the opt-out footer unless the message
  * already tells people how to opt out ("Reply STOP"). The count follows apps/core/services/delivery_rates/rules/sms_parts.py (GSM 03.38): 160 GSM-7
  * characters fit one text and 153 each part once it is split, an extension character takes two; any other character

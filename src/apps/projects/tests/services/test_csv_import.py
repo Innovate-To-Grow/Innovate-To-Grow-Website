@@ -3,7 +3,7 @@ import io
 from django.test import TestCase
 
 from apps.projects.models import Project, Semester
-from apps.projects.services.csv_import import ImportResult, _parse_semester, import_projects_from_csv
+from apps.projects.services.catalog.csv_import import ImportResult, _parse_semester, import_projects_from_csv
 
 
 class ParseSemesterTest(TestCase):

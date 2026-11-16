@@ -1,0 +1,136 @@
+.sheet-sync-field-table {
+  min-width: 650px;
+}
+
+.sheet-sync-field-table td:first-child {
+  width: 65px;
+  text-align: center;
+}
+
+.sheet-sync-field-table th:nth-child(2) {
+  width: 28%;
+}
+
+.sheet-sync-field-table td:nth-child(3) {
+  width: 38%;
+}
+
+.sheet-sync-field-table .sheet-sync-hint {
+  display: block;
+  font-size: .7rem;
+}
+
+.sheet-sync-check {
+  display: flex;
+  gap: .65rem;
+  align-items: flex-start;
+  margin: 1rem 0;
+  font-size: .9rem;
+  line-height: 1.5;
+}
+
+.sheet-sync-check input {
+  margin-top: .2rem;
+}
+
+.sheet-sync-advanced summary {
+  font-size: .95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sheet-sync-advanced p {
+  margin: 1rem 0;
+}
+
+.sheet-sync-review {
+  border-color: var(--color-primary-300,#93c5fd);
+}
+
+.sheet-sync-page .errorlist {
+  color: #b91c1c;
+  font-size: .8rem;
+  margin: .4rem 0;
+  list-style: none;
+}
+
+.dark .sheet-sync-page {
+  color: var(--color-base-300,#d1d5db);
+}
+
+.dark .sheet-sync-card {
+  background: var(--color-base-900,#111827);
+  border-color: var(--color-base-700,#374151);
+}
+
+.dark .sheet-sync-card h2 {
+  color: var(--color-base-100,#f3f4f6);
+}
+
+.dark .sheet-sync-input:not([type=checkbox]):not([type=radio]),.dark .sheet-sync-button,.dark .sheet-sync-table th,.dark .sheet-sync-table td {
+  border-color: var(--color-base-700,#374151);
+}
+
+.dark .sheet-sync-button:hover {
+  background: var(--color-base-800,#1f2937);
+}
+
+.dark .sheet-sync-notice {
+  background: var(--color-base-800,#1f2937);
+  border-color: var(--color-primary-700,#1d4ed8);
+}
+
+.dark .sheet-sync-notice--error {
+  background: #450a0a;
+  border-color: #7f1d1d;
+  color: #fecaca;
+}
+
+.dark .sheet-sync-page .errorlist {
+  color: #fca5a5;
+}
+
+@media(max-width:900px) {
+  .sheet-sync-heading {
+    flex-direction: column;
+  }
+  .sheet-sync-status-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  .sheet-sync-card-heading {
+    flex-wrap: wrap;
+  }
+}
+
+@media(max-width:600px) {
+  .sheet-sync-card {
+    padding: 1rem;
+  }
+  .sheet-sync-form-grid {
+    grid-template-columns: 1fr;
+  }
+  .sheet-sync-heading h1 {
+    font-size: 1.4rem;
+  }
+  .sheet-sync-status-grid {
+    gap: 1rem;
+  }
+  .sheet-sync-savebar .sheet-sync-button {
+    flex: 1;
+  }
+  .sheet-sync-links {
+    gap: .8rem;
+  }
+  #id_sync_mode {
+    flex-direction: column;
+    gap: .75rem;
+  }
+}
+
+.sheet-sync-page fieldset {
+  min-width: 0;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

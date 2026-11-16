@@ -1,0 +1,128 @@
+  function renderTokensChart(cloudwatch) {
+    destroyChart('tokens');
+    const daily = (cloudwatch && cloudwatch.daily) || [];
+    const labels = daily.map(function (d) { return shortDate(d.date); });
+    const colors = palette();
+    if (preferSvgCharts || !window.Chart) {
+      renderFallbackBars(
+        'si-usage-tokens-chart',
+        daily.map(function (d) { return Object.assign({ label: shortDate(d.date) }, d); }),
+        [
+          { key: 'input_tokens', label: 'Input', color: colors.inputBar },
+          { key: 'output_tokens', label: 'Output', color: colors.outputBar }
+        ],
+        { stacked: true, label: 'Tokens over the last 30 days', emptyMessage: 'No token metrics recorded yet.' }
+      );
+      return;
+    }
+    charts.tokens = new Chart(showCanvas('si-usage-tokens-chart'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Input', data: daily.map(function (d) { return d.input_tokens; }), backgroundColor: colors.inputBar, stack: 'tokens', borderRadius: 3 },
+          { label: 'Output', data: daily.map(function (d) { return d.output_tokens; }), backgroundColor: colors.outputBar, stack: 'tokens', borderRadius: 3 }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: true, labels: { color: textColor(), boxWidth: 12, font: { size: 11 } } },
+          datalabels: { display: false },
+          tooltip: Object.assign(tooltipStyle(), { callbacks: { label: function (ctx) { return ctx.dataset.label + ': ' + fmt(ctx.parsed.y); } } })
+        },
+        scales: { x: Object.assign(baseScales().x, { stacked: true }), y: Object.assign(baseScales().y, { stacked: true }) }
+      }
+    });
+  }
+
+  function renderInvocationsChart(cloudwatch) {
+    destroyChart('invocations');
+    const daily = (cloudwatch && cloudwatch.daily) || [];
+    const labels = daily.map(function (d) { return shortDate(d.date); });
+    const colors = palette();
+    if (preferSvgCharts || !window.Chart) {
+      renderFallbackBars(
+        'si-usage-invocations-chart',
+        daily.map(function (d) { return Object.assign({ label: shortDate(d.date) }, d); }),
+        [{ key: 'invocations', label: 'Invocations', color: colors.invocationBar }],
+        { label: 'Invocations over the last 30 days', emptyMessage: 'No invocation metrics recorded yet.' }
+      );
+      return;
+    }
+    charts.invocations = new Chart(showCanvas('si-usage-invocations-chart'), {
+      type: 'bar',
+      data: { labels: labels, datasets: [{ label: 'Invocations', data: daily.map(function (d) { return d.invocations; }), backgroundColor: colors.invocationBar, borderRadius: 3 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: false,
+        plugins: {
+          legend: { display: false },
+          datalabels: { anchor: 'end', align: 'top', color: textColor(), font: { size: 9 }, display: function (ctx) { return ctx.dataset.data[ctx.dataIndex] > 0; } },
+          tooltip: Object.assign(tooltipStyle(), { displayColors: false, callbacks: { label: function (ctx) { return fmt(ctx.parsed.y) + ' invocations'; } } })
+        },
+        scales: baseScales()
+      }
+    });
+  }
+
+  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+  function cell(text, extraClass) {
+    const td = document.createElement('td');
+    td.className = 'si-usage-table-cell py-1.5 px-2 ' + (extraClass || '');
+    td.textContent = text;
+    return td;
+  }
+
+  function renderByModel(cloudwatch) {
+    const tbody = document.getElementById('si-usage-by-model');
+    clear(tbody);
+    const rows = (cloudwatch && cloudwatch.by_model) || [];
+    if (!rows.length) {
+      const tr = document.createElement('tr');
+      const td = cell('No model metrics available.', 'si-usage-muted');
+      td.colSpan = 4; tr.appendChild(td); tbody.appendChild(tr);
+      return;
+    }
+    rows.forEach(function (r) {
+      const tr = document.createElement('tr');
+      tr.className = 'si-usage-row border-b border-base-100 dark:border-base-800';
+      tr.appendChild(cell(r.model_id, 'pr-2 truncate'));
+      tr.appendChild(cell(fmt(r.input_tokens), 'text-right'));
+      tr.appendChild(cell(fmt(r.output_tokens), 'text-right'));
+      tr.appendChild(cell(fmt(r.invocations), 'pl-2 text-right'));
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderAll(data) {
+    lastRenderData = data;
+    const cloudwatch = data.cloudwatch || {};
+    renderBanner(cloudwatch);
+    renderStatCards(cloudwatch);
+    renderTokensChart(cloudwatch);
+    renderInvocationsChart(cloudwatch);
+    renderByModel(cloudwatch);
+  }
+
+  function refresh() {
+    const button = document.getElementById('si-usage-refresh');
+    if (button) button.setAttribute('aria-busy', 'true');
+    fetch(dataUrl + '?force=1', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) { renderAll(data); })
+      .catch(function () { /* keep the last good render */ })
+      .finally(function () { if (button) button.removeAttribute('aria-busy'); });
+  }
+
+  const refreshButton = document.getElementById('si-usage-refresh');
+  if (refreshButton) refreshButton.addEventListener('click', refresh);
+
+  new MutationObserver(function () {
+    if (lastRenderData) renderAll(lastRenderData);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+  // Initial render from the server-injected JSON (no fetch needed on load).
+  renderAll({ cloudwatch: readJson('si-usage-cloudwatch') });
+})();

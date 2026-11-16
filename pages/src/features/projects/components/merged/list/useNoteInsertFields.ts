@@ -1,6 +1,9 @@
 import {useMemo, useState} from 'react';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
-import {appendPastProjectsNoteInsertHtml, type PastProjectNoteInsertField} from '../../richText/content/pastProjectsDetailText';
+import {
+    appendPastProjectsNoteInsertHtml,
+    type PastProjectNoteInsertField,
+} from '../../richText/content/pastProjectsNoteInsert';
 import {pluralize} from '../../shared/utils/saveResults';
 import {NOTE_MAX_LENGTH, prepareNoteForSave} from './curationNote';
 

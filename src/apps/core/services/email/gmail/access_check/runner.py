@@ -15,8 +15,8 @@ from django.views.decorators.debug import sensitive_variables
 
 from apps.core.models import EmailServiceConfig, GmailApiProviderConfig, GmailApiSubject
 
-from ..access import credential_for
-from ..subject import issue
+from ..client.access import credential_for
+from ..client.subject import issue
 from . import checks
 from .report import BREADTH, CONFIG, FAIL, PASS, SEND, SKIP, AccessReport, CheckResult
 

@@ -1,0 +1,169 @@
+import {act, render} from '@testing-library/react';
+import {describe, expect, it} from 'vitest';
+import {EmbedWidgetBlock} from '@/features/cms/components/blocks/content/EmbedWidgetBlock';
+
+describe('EmbedWidgetBlock', () => {
+  it('renders an iframe pointing at /_embed/<slug>, unsandboxed so exports download and tabs open normally', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const iframe = container.querySelector('iframe');
+    expect(iframe).not.toBeNull();
+    expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
+    expect(iframe?.hasAttribute('sandbox')).toBe(false);
+    expect(iframe?.getAttribute('loading')).toBe('lazy');
+  });
+
+  it('appends ?hide-titles=1 when hide_section_titles is set', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', hide_section_titles: true}} />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed?hide-titles=1');
+  });
+
+  it('appends ?hide-sections=<keys> when hidden_sections is set', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', hidden_sections: ['schedule_header', 'schedule_projects']}} />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe(
+      '/_embed/schedule-embed?hide-sections=schedule_header%2Cschedule_projects',
+    );
+  });
+
+  it('treats hidden_sections as authoritative over legacy hide_section_titles', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', hidden_sections: [], hide_section_titles: true}} />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
+  });
+
+  it('appends ?schedule_id=<uuid> when the block pins a schedule', () => {
+    const {container} = render(
+      <EmbedWidgetBlock
+        data={{slug: 'schedule-embed', schedule_id: '6F1D2C3B-4A5E-4F60-8A9B-0C1D2E3F4A5B'}}
+      />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe(
+      '/_embed/schedule-embed?schedule_id=6f1d2c3b-4a5e-4f60-8a9b-0c1d2e3f4a5b',
+    );
+  });
+
+  it('combines schedule_id with hidden sections on the iframe URL', () => {
+    const {container} = render(
+      <EmbedWidgetBlock
+        data={{
+          slug: 'schedule-embed',
+          hidden_sections: ['schedule_header'],
+          schedule_id: '6f1d2c3b-4a5e-4f60-8a9b-0c1d2e3f4a5b',
+        }}
+      />,
+    );
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('src')).toBe(
+      '/_embed/schedule-embed?hide-sections=schedule_header&schedule_id=6f1d2c3b-4a5e-4f60-8a9b-0c1d2e3f4a5b',
+    );
+  });
+
+  it('drops a schedule_id that is not a UUID', () => {
+    for (const bad of ['', '   ', 'not-a-uuid', '../../etc', null, undefined]) {
+      const {container, unmount} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed', schedule_id: bad}} />);
+      expect(container.querySelector('iframe')?.getAttribute('src')).toBe('/_embed/schedule-embed');
+      unmount();
+    }
+  });
+
+  it('renders a placeholder when slug is missing or invalid', () => {
+    const {container: empty} = render(<EmbedWidgetBlock data={{slug: ''}} />);
+    expect(empty.querySelector('iframe')).toBeNull();
+    expect(empty.querySelector('.cms-embed-widget--invalid')).not.toBeNull();
+
+    const {container: bad} = render(<EmbedWidgetBlock data={{slug: 'Not Valid!'}} />);
+    expect(bad.querySelector('iframe')).toBeNull();
+    expect(bad.querySelector('.cms-embed-widget--invalid')).not.toBeNull();
+  });
+
+  it('uses fixed height when provided', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', height: 480}} />,
+    );
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement | null;
+    expect(frame?.style.height).toBe('480px');
+    expect(frame?.style.aspectRatio).toBe('');
+  });
+
+  it('loads eagerly and starts taller in preview mode', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed'}} previewMode />,
+    );
+    const iframe = container.querySelector('iframe');
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement | null;
+    expect(iframe?.getAttribute('loading')).toBe('eager');
+    expect(frame?.style.height).toBe('360px');
+  });
+
+  it('uses aspect ratio when provided and no fixed height', () => {
+    const {container} = render(
+      <EmbedWidgetBlock data={{slug: 'schedule-embed', aspect_ratio: '16:9'}} />,
+    );
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement | null;
+    expect(frame?.style.aspectRatio).toBe('16 / 9');
+  });
+
+  it('auto-resizes when receiving a matching postMessage event', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+    // Starts with a small placeholder height until content reports back.
+    expect(frame.style.height).toBe('120px');
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: 742},
+          source: iframe.contentWindow,
+          origin: window.location.origin,
+        }),
+      );
+    });
+
+    expect(frame.style.height).toBe('742px');
+  });
+
+  it('ignores postMessage events for a different slug', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+    const iframe = container.querySelector('iframe') as HTMLIFrameElement;
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'i2g-embed-resize', slug: 'other-widget', height: 900},
+          source: iframe.contentWindow,
+          origin: window.location.origin,
+        }),
+      );
+    });
+
+    expect(frame.style.height).toBe('120px');
+  });
+
+  it('ignores postMessage events from a foreign window', () => {
+    const {container} = render(<EmbedWidgetBlock data={{slug: 'schedule-embed'}} />);
+    const frame = container.querySelector('.cms-embed-widget__frame') as HTMLElement;
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          data: {type: 'i2g-embed-resize', slug: 'schedule-embed', height: 900},
+          // source is not this block's iframe.contentWindow — must be rejected.
+          source: window,
+          origin: window.location.origin,
+        }),
+      );
+    });
+
+    expect(frame.style.height).toBe('120px');
+  });
+});

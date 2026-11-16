@@ -10,10 +10,10 @@ from django.test import TestCase
 from apps.core.services.credential_store import CredentialStoreError, TransientCredentialStoreError
 from apps.core.services.delivery_rates import Reason, SignalKind
 from apps.core.services.email import PermanentEmailDeliveryError, TransientEmailDeliveryError
-from apps.core.services.email.gmail import auth
-from apps.core.services.email.gmail.access import credential_for, require_subject
-from apps.core.services.email.gmail.errors import GmailTokenRefused
-from apps.core.services.email.gmail.key import stored_key
+from apps.core.services.email.gmail.client import auth
+from apps.core.services.email.gmail.client.access import credential_for, require_subject
+from apps.core.services.email.gmail.client.errors import GmailTokenRefused
+from apps.core.services.email.gmail.service_account import stored_key
 from apps.core.services.email.transport import ConnectFailed, HttpResponse, ResponseLost
 from apps.core.tests.gmail_api_helpers import (
     CLIENT_ID,

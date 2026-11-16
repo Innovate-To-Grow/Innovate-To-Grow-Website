@@ -8,7 +8,7 @@ describe('curationBranding', () => {
       eyebrow: 'Curation · All Projects',
       exportHeading: 'Innovate to Grow Projects',
       filePrefix: 'projects',
-      // As the server names it when saved without a name (share_names.DEFAULT_PROJECT_SHARE_NAME).
+      // As the server names it when saved without a name (shares.names.DEFAULT_PROJECT_SHARE_NAME).
       defaultName: 'Project Curation',
       searchLink: {to: '/all-projects', label: 'Search all projects'},
     });

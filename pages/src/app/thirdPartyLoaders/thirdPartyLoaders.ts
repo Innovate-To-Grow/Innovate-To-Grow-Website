@@ -1,4 +1,4 @@
-import {isIsolatedRoute} from '@/lib/isolatedRoute';
+import {isIsolatedRoute} from '@/lib/preview/isolatedRoute';
 
 const USERWAY_SCRIPT_ID = 'i2g-userway-loader';
 const SITEIMPROVE_SCRIPT_ID = 'i2g-siteimprove-loader';

@@ -1,6 +1,6 @@
 from django.test import SimpleTestCase
 
-from apps.projects.services.share_names import (
+from apps.projects.services.shares.names import (
     DEFAULT_NAME_MAX_CHARS,
     DEFAULT_PROJECT_SHARE_NAME,
     DEFAULT_SHARE_NAME,

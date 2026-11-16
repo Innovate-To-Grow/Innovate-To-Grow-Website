@@ -12,7 +12,8 @@ import {
 import {createPastProjectShare, type PastProjectShare, type ProjectGridRow} from '@/features/projects/api';
 import {usePageTitle} from '@/hooks/usePageTitle';
 import {SharedCurationView} from './SharedCurationView';
-import {shareDisplayTitle, useSharedListMutations} from './useSharedListMutations';
+import {shareDisplayTitle} from './sharedListMutationParts';
+import {useSharedListMutations} from './useSharedListMutations';
 
 /**
  * Whether the viewer may edit a curation (`can_edit`) is the server's answer for whoever was signed in when it

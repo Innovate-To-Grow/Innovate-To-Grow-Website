@@ -16,7 +16,7 @@ from apps.core.models import EmailServiceConfig, MicrosoftGraphAccessCheck
 from apps.core.services.email.graph import auth, transport
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, create_graph_config
-from apps.core.tests.services.test_email_graph import error_body, token_response
+from apps.core.tests.services.graph.provider.test_email_graph import error_body, token_response
 
 SCOPED = "i2g@contoso.com"
 DENY = "intruder-test@contoso.com"

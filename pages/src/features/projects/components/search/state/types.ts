@@ -33,3 +33,14 @@ export interface SaveProgress {
   done: number;
   total: number;
 }
+
+export interface SearchTableState {
+  id: string;
+  initialRows?: ProjectGridRow[];
+  isLoading?: boolean;
+  message?: string;
+  messageTone?: 'error' | 'loading' | 'success';
+  rowsResetKey?: number;
+  title?: string;
+  type: 'standard' | 'ai';
+}

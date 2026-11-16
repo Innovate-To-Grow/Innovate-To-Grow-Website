@@ -26,7 +26,7 @@ keeps its destination cooldown, hourly cap, SMS daily budget, challenge attempt 
 who collects repeated 429s is blocked with a growing cooldown ([Abuse escalation](#abuse-escalation)).
 
 **User-initiated only.** An anonymous verification-code request is P0 only when its body carries a valid
-send-verification (ALTCHA) proof, checked without spending it (`apps/authn/services/send_verification/priority.py`); a
+send-verification (ALTCHA) proof, checked without spending it (`apps/authn/services/send_verification/proofs/priority.py`); a
 signed-in person is P0 anyway. Anything else is counted in the shared P2 scope `auth-code-unproven` and shed like
 background traffic. A promoted code goes out on the transactional lane of the delivery-rate limiter, so it is never
 queued behind a campaign ([Delivery rates: lanes](delivery-rates.md#budgets-the-transactional-reserve-and-lanes)).
@@ -51,7 +51,7 @@ So no route is ever unlimited by accident. `apps.core.tests.request_limits.test_
 fails when a site view names no scope or exemption, or when a table key matches no route. A new view sets
 `rate_limit_scope` (or `rate_limit_exempt` with its reason).
 
-Scope seeds, tiers and identities: `src/config/settings/base/integrations/request_limits/scopes.py` (route scopes)
+Scope seeds, tiers and identities: `src/config/settings/base/integrations/request_limits/defaults/scopes.py` (route scopes, P0 in `critical_scopes.py`)
 and `view_scopes.py` (the 24 per-view limits, `view-…`, each with a `parent` route scope whose Smart factor it
 follows).
 
@@ -241,7 +241,7 @@ The limiter never takes the site down with it: an error inside it is logged (`re
 | Concern | Where |
 |---------|-------|
 | Settings | `src/config/settings/base/integrations/request_limits/` (`scopes.py`, `view_scopes.py`, `routes.py`, `runtime.py`, `validation.py`) |
-| Models | `RequestRateLimitPolicy` (`apps/core/models/base/request_limits.py`), `RequestRateLimitState`, `RequestLimitProcess` (`apps/core/models/records/request_limit_state.py`); migrations `core.0039`, `core.0040` |
+| Models | `RequestRateLimitPolicy` (`apps/core/models/base/site_controls/request_limits.py`), `RequestRateLimitState`, `RequestLimitProcess` (`apps/core/models/records/request_limit_state.py`); migrations `core.0039`, `core.0040` |
 | Middleware | `apps/core/middleware/request_limits.py` (after CORS, health checks and sessions, before CSRF so CSRF failures are counted too; the `core` system checks refuse another order) |
 | Pure rules | `apps/core/services/request_limits/rules/` (`limits.py` precedence and slot shares, `controller.py`) |
 | Runtime | `apps/core/services/request_limits/` (`limiter.py`, `scopes.py`, `identity.py`, `priority.py`, `view_limits.py`), `runtime/` (`store.py`, `heartbeat.py`, `registry.py`, `signals.py`, `smart.py`, `abuse.py`, `refusals.py`) |

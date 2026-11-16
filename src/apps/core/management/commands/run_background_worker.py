@@ -8,7 +8,7 @@ from django.conf import settings
 from django.core.management.base import BaseCommand
 
 from apps.authn.services.login_guard import purge_expired_failure_windows
-from apps.authn.services.members.import_.review.purge import purge_member_imports
+from apps.authn.services.members.import_.review.staging.purge import purge_member_imports
 from apps.authn.services.security.rsa_manager import purge_retired_auth_keypairs
 from apps.authn.services.send_verification import cleanup_expired_records, clear_expired_sessions
 from apps.core.services.background_jobs import (
@@ -27,14 +27,14 @@ from apps.core.services.email.graph.credential import expiry
 from apps.core.services.email.graph.credential.expiry import active_certificate_expiry
 from apps.core.services.email.inbound import purge_expired as purge_expired_inbound_queue
 from apps.core.services.email.telemetry.retention import purge_expired as purge_expired_email_telemetry
-from apps.helpdesk.services.ingest.jobs import ensure_scheduled as ensure_helpdesk_ingest_scheduled
-from apps.helpdesk.services.ingest.jobs import purge_finished_jobs as purge_finished_helpdesk_ingests
+from apps.helpdesk.services.ingest.pipeline.jobs import ensure_scheduled as ensure_helpdesk_ingest_scheduled
+from apps.helpdesk.services.ingest.pipeline.jobs import purge_finished_jobs as purge_finished_helpdesk_ingests
 from apps.helpdesk.services.intake.jobs import ensure_scheduled as ensure_helpdesk_intake_scheduled
 from apps.helpdesk.services.intake.jobs import purge_finished_jobs as purge_finished_helpdesk_intake_scans
-from apps.helpdesk.services.retention import purge_expired as purge_expired_helpdesk
+from apps.helpdesk.services.tickets.retention import purge_expired as purge_expired_helpdesk
 from apps.mail.services.email_monitoring.addresses.aggregate import refresh_all as refresh_bounced_address_links
 from apps.mail.services.email_monitoring.addresses.aggregate import run as count_bounced_addresses
-from apps.mail.services.sms.opt_out_sync import run_scheduled as sync_sms_opt_outs
+from apps.mail.services.sms.policy.opt_out_sync import run_scheduled as sync_sms_opt_outs
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
 logger = logging.getLogger(__name__)

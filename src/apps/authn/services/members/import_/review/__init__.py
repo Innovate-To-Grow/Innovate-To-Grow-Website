@@ -8,9 +8,10 @@ retention of staged imports.
 
 from .analysis import Context, analyse_rows
 from .apply import ApplyResult, apply_batch, lock_members, run_import
-from .batches import create_batch, discard_batch, save_choices, stored_analysis
 from .lookup import load_snapshot
-from .purge import purge_member_imports
+from .staging.batches import create_batch, discard_batch, stored_analysis
+from .staging.purge import purge_member_imports
+from .staging.saving import save_choices
 
 __all__ = [
     "ApplyResult",

@@ -50,7 +50,7 @@ merged ticket's status (a merge is final: its messages are on the ticket it was 
 **Merging** puts every selected ticket into the oldest one; nothing is deleted. It never goes into automated mail or
 spam (a person's messages would be hidden there), and spam is never merged: when the oldest selected ticket is
 automated mail or spam, or another selected ticket is spam, nothing is merged and the reason is shown before the
-confirmation is asked for. The rule is the helpdesk service's (`services/tickets.py`), so it holds when the merge
+confirmation is asked for. The rule is the helpdesk service's (`services/tickets/merging.py`), so it holds when the merge
 runs too, and `Ticket.clean()` refuses such a merge target for any form. Automated mail merged into a person's ticket
 shows there collapsed and changes nothing else on it (not its status, unread mark, participants or last activity),
 as when it threads there by itself; the merged ticket stays hidden (still automated, now merged), and later mail of
@@ -85,7 +85,7 @@ its thread lands on the person's ticket.
    `possible_auto_reply`). A human message is also scored by the Mail app's rule-based scam checks (never the
    optional Bedrock review): high → spam, medium → a "suspicious" flag. A message that claims the site's address
    without proof is flagged suspicious. In more detail:
-   - **Replies to the site's mail** (`ingest/replies.py`, before classifying): a message whose In-Reply-To or
+   - **Replies to the site's mail** (`ingest/routing/replies.py`, before classifying): a message whose In-Reply-To or
      References name an email the site sent (the telemetry's `OutboundEmail`, kept 180 days), or, for an email sent
      without a Message-ID the site knows (Graph JSON: campaign mail carrying a sign-in link), a reply from the address
      it went to with the same subject once "RE:", "Automatic reply:" and gateway tags such as "[EXTERNAL]" come off,

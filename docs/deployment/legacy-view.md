@@ -242,7 +242,7 @@ server {
     }
 
     # Retired Flask-Admin and write routes: mirror _BLOCKED_PREFIXES in
-    # src/apps/core/legacy_view/policies.py. /event itself is informational;
+    # src/apps/core/legacy_view/origin/policies.py. /event itself is informational;
     # only descendants of /event are blocked.
     location ~* ^/(?:admin|catch_bounces|confirm|contact|documentation|edit_form|event-registration|events|full-registration|info-form|manual_email|membership|otp|project-submission|prospects|resend|resend-page|signup|tracking_pixel|update|user)(?:/|$) {
         return 410;

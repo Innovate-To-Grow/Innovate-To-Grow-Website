@@ -8,34 +8,8 @@ import {
   within,
 } from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import type {User} from '@/features/auth/api/types';
-import type {MenuItem} from '@/features/layout/api';
-import type {LayoutLoadState} from '@/features/layout/components/LayoutProvider/context';
 import {MobileMenuPanel} from '@/features/layout/components/MainMenu/parts/MobileMenuPanel';
-
-const projects: MenuItem = {
-  title: 'Projects',
-  url: '/projects',
-  type: 'app',
-  open_in_new_tab: false,
-  children: [
-    {title: 'Current Projects', url: '/current-projects', type: 'app', open_in_new_tab: false, children: []},
-    {title: 'Past Projects', url: '/past-projects', type: 'app', open_in_new_tab: false, children: []},
-  ],
-};
-
-const news: MenuItem = {title: 'News', url: '/news', type: 'app', open_in_new_tab: false, children: []};
-
-interface HarnessProps {
-  menuItems?: MenuItem[];
-  state?: LayoutLoadState;
-  hasMemberIdentity?: boolean;
-  user?: User | null;
-  current?: {menuIndex: number | null; currentPath: string; isExact: boolean} | null;
-  initiallyOpen?: boolean;
-  withTrigger?: boolean;
-  handlers?: {onAccountClick?: () => void; onLoginClick?: () => void; onLogoutClick?: () => void};
-}
+import {getPanel, getTrigger, type HarnessProps, news, pressTab, projects} from '@/__tests__/features/layout/components/MainMenu/parts/mobileMenuPanelFixtures';
 
 /** The panel with the page's own menu button in front of it, toggling it as the header's button does. */
 const Harness = ({
@@ -78,12 +52,6 @@ const Harness = ({
     </>
   );
 };
-
-const getPanel = () => document.getElementById('mobile-menu') as HTMLElement;
-const getTrigger = () => screen.getByRole('button', {name: 'Toggle menu'});
-
-/** Presses Tab (or Shift+Tab); true when the keypress was left to the browser's own focus move. */
-const pressTab = (shiftKey = false) => fireEvent.keyDown(document, {key: 'Tab', shiftKey});
 
 describe('MobileMenuPanel', () => {
   afterEach(() => {
@@ -223,149 +191,5 @@ describe('MobileMenuPanel', () => {
     } finally {
       outside.remove();
     }
-  });
-
-  it('keeps the loop ends on controls that show, with a section collapsed or expanded', () => {
-    render(<Harness initiallyOpen menuItems={[news, projects]} />);
-    const panel = getPanel();
-    const give = within(panel).getByRole('link', {name: 'Give'});
-    const expand = within(panel).getByRole('button', {name: 'Projects pages'});
-
-    // "Past Projects" sits in a collapsed (hidden) list, so it is not a Tab stop.
-    const pastProjects = panel.querySelector('a[href="/past-projects"]') as HTMLElement;
-    expect(pastProjects.closest('[hidden]')).not.toBeNull();
-    getTrigger().focus();
-    expect(pressTab(true)).toBe(false);
-    expect(give).toHaveFocus();
-
-    fireEvent.click(expand);
-    expect(pastProjects.closest('[hidden]')).toBeNull();
-    give.focus();
-    expect(pressTab()).toBe(false);
-    expect(getTrigger()).toHaveFocus();
-  });
-
-  it('starts the loop at the first panel control when there is no menu button', () => {
-    render(<Harness initiallyOpen withTrigger={false} menuItems={[news]} />);
-    const panel = getPanel();
-    const newsLink = within(panel).getByRole('link', {name: 'News'});
-
-    within(panel).getByRole('link', {name: 'Give'}).focus();
-    expect(pressTab()).toBe(false);
-    expect(newsLink).toHaveFocus();
-  });
-
-  it('leaves controls under a hidden ancestor out of the loop, parking focus on the panel when none is left', () => {
-    // Every control sits under a hidden ancestor (as the links of a collapsed section do) and there is no
-    // menu button, so nothing is left to Tab to.
-    render(
-      <div hidden>
-        <Harness initiallyOpen withTrigger={false} />
-      </div>,
-    );
-    const panel = getPanel();
-    // jsdom will not move focus under a hidden ancestor, so watch the call itself.
-    const focus = vi.spyOn(panel, 'focus');
-
-    expect(pressTab()).toBe(false);
-    expect(focus).toHaveBeenCalledTimes(1);
-  });
-
-  it('renders the menu as 48px rows with an expand button for sections', () => {
-    render(<Harness initiallyOpen menuItems={[news, projects]} />);
-    const panel = getPanel();
-
-    expect(within(panel).getByRole('link', {name: 'News'})).toHaveAttribute('href', '/news');
-    const expand = within(panel).getByRole('button', {name: 'Projects pages'});
-    expect(expand).toHaveAttribute('aria-expanded', 'false');
-
-    const list = document.getElementById(expand.getAttribute('aria-controls') ?? '');
-    expect(list).toHaveAttribute('hidden');
-
-    fireEvent.click(expand);
-    expect(expand).toHaveAttribute('aria-expanded', 'true');
-    expect(list).not.toHaveAttribute('hidden');
-    expect(within(list as HTMLElement).getByRole('link', {name: 'Past Projects'})).toHaveAttribute(
-      'href',
-      '/past-projects',
-    );
-    // Opening a section is a tap inside the panel: it stays open.
-    expect(panel).not.toHaveAttribute('hidden');
-
-    fireEvent.click(expand);
-    expect(expand).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('starts with the current section expanded and marks the current page', () => {
-    render(
-      <Harness
-        initiallyOpen
-        menuItems={[news, projects]}
-        current={{menuIndex: 1, currentPath: '/current-projects', isExact: true}}
-      />,
-    );
-    const panel = getPanel();
-
-    expect(within(panel).getByRole('button', {name: 'Projects pages'})).toHaveAttribute('aria-expanded', 'true');
-    expect(within(panel).getByRole('link', {name: 'Projects'})).toHaveAttribute('aria-current', 'true');
-    expect(within(panel).getByRole('link', {name: 'Current Projects'})).toHaveAttribute('aria-current', 'page');
-    expect(within(panel).getByRole('link', {name: 'News'})).not.toHaveAttribute('aria-current');
-  });
-
-  it('shows a loading skeleton and an error message', () => {
-    const {rerender} = render(<Harness initiallyOpen state="loading" />);
-    const nav = screen.getByRole('navigation', {name: 'Mobile navigation'});
-    expect(nav).toHaveAttribute('aria-busy', 'true');
-    expect(nav.querySelectorAll('.header-mobile-nav-skeleton-row')).toHaveLength(7);
-
-    rerender(<Harness initiallyOpen state="error" />);
-    expect(screen.getByText('Menu unavailable')).toBeInTheDocument();
-  });
-
-  it('offers sign in to visitors and the account actions to members', () => {
-    const onLoginClick = vi.fn();
-    const {unmount} = render(<Harness initiallyOpen handlers={{onLoginClick}} />);
-    fireEvent.click(screen.getByRole('button', {name: 'Sign In / Sign Up'}));
-    expect(onLoginClick).toHaveBeenCalledTimes(1);
-    unmount();
-
-    const onAccountClick = vi.fn();
-    const onLogoutClick = vi.fn();
-    render(
-      <Harness
-        initiallyOpen
-        hasMemberIdentity
-        user={{member_uuid: 'm', email: 'member@example.com'}}
-        handlers={{onAccountClick, onLogoutClick}}
-      />,
-    );
-    const member = document.querySelector('.header-mobile-member') as HTMLElement;
-    expect(member).toHaveTextContent('member@example.com');
-    fireEvent.click(within(member).getByRole('button', {name: 'Account'}));
-    fireEvent.click(within(member).getByRole('button', {name: 'Sign Out'}));
-    expect(onAccountClick).toHaveBeenCalledTimes(1);
-    expect(onLogoutClick).toHaveBeenCalledTimes(1);
-    expect(member.querySelector('img')).toBeNull();
-  });
-
-  it("shows the member's profile image when there is one", () => {
-    render(
-      <Harness
-        initiallyOpen
-        hasMemberIdentity
-        user={{member_uuid: 'm', email: 'member@example.com', profile_image: 'https://example.com/me.png'}}
-      />,
-    );
-    const avatar = document.querySelector('.header-mobile-member-info img') as HTMLImageElement;
-    expect(avatar).toHaveClass('header-mobile-member-avatar');
-    expect(avatar).toHaveAttribute('src', 'https://example.com/me.png');
-    expect(avatar).toHaveAttribute('alt', '');
-  });
-
-  it('lists the UC Merced links at the bottom', () => {
-    render(<Harness initiallyOpen />);
-    const links = within(screen.getByRole('list', {name: 'UC Merced links'})).getAllByRole('link');
-    expect(links.map((link) => link.textContent)).toEqual(['Directory', 'Apply', 'Give']);
-    links.forEach((link) => expect(link).toHaveAttribute('target', '_blank'));
   });
 });

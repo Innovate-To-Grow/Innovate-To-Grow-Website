@@ -31,7 +31,6 @@ env:
 jobs:
   frontend-audit:
     name: Frontend npm Audit (scheduled)
-    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
@@ -56,7 +55,6 @@ jobs:
 
   backend-audit:
     name: Python Security Audit (scheduled)
-    # Short and not CPU-bound: a GitHub-hosted runner starts it faster than an AWS cold boot.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:

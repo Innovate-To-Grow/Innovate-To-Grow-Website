@@ -1,0 +1,76 @@
+@layer itg.components {
+/* Titles read as the reference's content links: navy, underlined, normal weight; hover #005487 without the
+   underline. A title without a page is plain text. */
+.project-grid-title {
+  font-weight: 400;
+}
+
+a.project-grid-title-link {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+  text-underline-offset: 0.12em;
+}
+
+a.project-grid-title-link:hover,
+a.project-grid-title-link:focus {
+  color: var(--itg-color-primary-hover);
+  text-decoration: none;
+}
+
+.project-grid-team-name {
+  display: block;
+  font-style: italic;
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-no-details {
+  font-size: var(--itg-font-size-small);
+  color: var(--itg-color-disabled-text);
+}
+
+/* The details under an open row: on white, below the open row's rule, spaced like the reference's child row (its
+   8px cell padding plus the 8px padding of the table inside it). */
+.project-grid-table .project-grid-detail-row > td {
+  padding-top: 16px;
+  padding-bottom: 16px;
+  border-top: 0;
+}
+
+.project-grid-detail-content,
+.project-grid-mobile-card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  line-height: var(--itg-line-height-body);
+}
+
+.project-grid-detail-content p,
+.project-grid-mobile-card-details p {
+  margin: 0;
+}
+
+.project-grid-detail-state {
+  color: var(--itg-color-text-secondary);
+}
+
+.project-grid-detail-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem 1.25rem;
+}
+
+/* A row's details that could not load: the message, then Try Again beside it (under it when the cell is narrow). */
+.project-grid-detail-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+/* Tags after a title: "Current" (a current-catalog row in a list that mixes catalogs), "New" (just saved) and
+   "Added" or "Saved" (already in the list). */
+.project-grid-row-chip {
+  white-space: nowrap;
+}
+}

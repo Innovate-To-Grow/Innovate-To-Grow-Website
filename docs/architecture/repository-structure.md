@@ -38,11 +38,11 @@
 ├── cli/                    # Standalone i2g-admin Python CLI (own pyproject.toml, uv.lock, tests)
 ├── archive/                # legacy/webpages.zip (old-site fixture for the legacy-view tests) and page/ (Flask archive service)
 ├── aws/                    # ecs/ (backend + archive task-definition templates), cicd/ (deploy-config keys, identity stack),
-│                           #   ci-runners/ (Terraform for the self-hosted runners), legacy/ (CloudFormation + nginx of the old site)
+│                           #   legacy/ (CloudFormation + nginx of the old site)
 ├── scripts/                # ci/ (planner, validators, quality + dependency checks, and their tests), deploy/ (load_config,
 │                           #   migrate_ecs, publish_image, validate_backend_task_definition), dev/ (e2e-local.sh), pre-commit/
 ├── docs/                   # Technical documentation (this directory): api/, architecture/, cms-admin/, deployment/, integrations/
-├── .github/                # workflows/ (CI/CD), actions/ (composite setup actions), codeql/, dependabot.yml, actionlint.yaml
+├── .github/                # workflows/ (CI/CD), actions/ (composite setup actions), codeql/, dependabot.yml
 ├── pyproject.toml          # Ruff, Bandit and coverage config for src/
 ├── .pre-commit-config.yaml # Local git hooks (fast checks on commit, Bandit + frontend checks on push)
 ├── .bandit-baseline.json   # Accepted Bandit findings; only new ones fail
@@ -76,14 +76,14 @@ src/apps/<app>/
 Not every app has all directories — `system_intelligence/` has no public REST surface. A
 directory is used only where there is more than one module to hold; single-module concerns
 stay as plain `.py` files (for example `apps/core/renderers.py`, `apps/cms/signals.py`,
-`apps/mail/redirects.py`, `apps/system_intelligence/views.py`). The exceptions are the packages Django
+`apps/mail/redirects.py`). The exceptions are the packages Django
 or the migration history require: `management/commands/` is always a package, and
 `apps/core/models/base/system_intelligence/` is a migration-compatibility shim that must stay byte-stable.
 
 ### A note on `apps/core`
 
 `core` holds the framework primitives every other app builds on: `ProjectControlModel`,
-the model mixins (`core/models/mixins.py`), reusable DRF utilities, `BaseModelAdmin`, `utils/access.py`, the
+the model mixins (`core/models/base/abstract/mixins.py`), reusable DRF utilities, `BaseModelAdmin`, `utils/access.py`, the
 `middleware/` package, and the service-credential singletons. It also holds shared infrastructure
 that names no business app:
 
@@ -115,8 +115,8 @@ admins' grants, or they silently lose access.
 
 A large module becomes a package that keeps the old import path as its public interface. Its
 `__init__.py` re-exports what callers use, and the parts are named by responsibility. Examples:
-`system_intelligence/services/public_assistant/budget/` (limits, usage, database store, cache
-store), `mail/services/campaign/dispatch/` (launch, channels, email job, SMS job, job state,
+`system_intelligence/services/public_assistant/budget/` (limits, usage, reservations, counters,
+database store, cache store), `mail/services/campaign/dispatch/` (launch, channels, email job, SMS job, job state,
 failures), and `cms/services/amplify/` (rules, config, reconcile, jobs). Tests patch the submodule
 that owns a name (for example `budget.cache_store._shared_redis_client`), not the package. The reverse
 also holds: when a package is down to one module, flatten it back into a plain module with the same
@@ -176,7 +176,7 @@ Allowed imports between these layers are listed in
 | `aws/ecs/archive-task-definition.json` | ECS task template of the archive service |
 | `aws/cicd/deploy-config-keys.json` | The allow-list of deploy-config keys `scripts/deploy/load_config.py` accepts |
 | `scripts/ci/python_quality.toml`, `scripts/ci/python_dependencies.toml` | Size/complexity thresholds and app dependency rules |
-| `.github/actionlint.yaml`, `.github/codeql/codeql-config.yml`, `.github/dependabot.yml` | Workflow lint, CodeQL and Dependabot settings |
+| `.github/codeql/codeql-config.yml`, `.github/dependabot.yml` | CodeQL and Dependabot settings |
 
 ## Related pages
 

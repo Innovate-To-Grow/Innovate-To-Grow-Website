@@ -19,7 +19,7 @@ from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign import dispatch
 from apps.mail.services.ses_events import process_sns_envelope
 from apps.mail.services.ses_events.handlers import apply_delivery
-from apps.mail.tests.services.campaign.test_campaign_event_races import event_envelope
+from apps.mail.tests.services.campaigns.recovery.test_campaign_event_races import event_envelope
 
 
 class SesJobReconciliationTests(TestCase):

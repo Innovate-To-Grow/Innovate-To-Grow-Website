@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useLocation } from 'react-router';
 import { trackPageView } from '@/lib/api';
-import {isIsolatedRoute} from '@/lib/isolatedRoute';
+import {isIsolatedRoute} from '@/lib/preview/isolatedRoute';
 
 /** Siteimprove's command queue, present once its script (thirdPartyLoaders) has loaded. */
 type SiteimproveWindow = Window & {_sz?: {push: (command: unknown[]) => unknown}};

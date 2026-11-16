@@ -1,0 +1,17 @@
+"""Keep admin verification challenges inside the remembered cookie's path."""
+
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
+
+from apps.authn.services.send_verification.rules.constants import (
+    OP_ADMIN_LOGIN_REMEMBERED_CODE,
+    OP_ADMIN_LOGIN_REQUEST_CODE,
+    OP_ADMIN_LOGIN_RESEND,
+)
+from apps.authn.views.auth.codes.send_verification import SendVerificationChallengeView
+
+
+@method_decorator(csrf_protect, name="dispatch")
+class AdminSendVerificationChallengeView(SendVerificationChallengeView):
+    rate_limit_scope = "auth-challenge"
+    allowed_operations = frozenset({OP_ADMIN_LOGIN_REQUEST_CODE, OP_ADMIN_LOGIN_REMEMBERED_CODE, OP_ADMIN_LOGIN_RESEND})

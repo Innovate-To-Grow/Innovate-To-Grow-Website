@@ -1,0 +1,84 @@
+import type {FormEvent} from 'react';
+import {StatusAlert} from '../../shared/StatusAlert';
+
+interface EmailAddFormProps {
+  addEmail: string;
+  addType: 'secondary' | 'other';
+  addSubscribe: boolean;
+  addLoading: boolean;
+  addError: string | null;
+  secondaryDisabled: boolean;
+  onEmailChange: (value: string) => void;
+  onTypeChange: (value: 'secondary' | 'other') => void;
+  onSubscribeChange: (checked: boolean) => void;
+  onSubmit: (event: FormEvent) => void;
+  onCancel: () => void;
+}
+
+export const EmailAddForm = ({
+  addEmail,
+  addType,
+  addSubscribe,
+  addLoading,
+  addError,
+  secondaryDisabled,
+  onEmailChange,
+  onTypeChange,
+  onSubscribeChange,
+  onSubmit,
+  onCancel,
+}: EmailAddFormProps) => (
+  <div className="email-center-add-form email-add-form">
+    <h3 className="account-subsection-title">Add Email</h3>
+    {addError ? <StatusAlert tone="error" message={addError} /> : null}
+    <form onSubmit={onSubmit} className="email-center-add-fields email-add-form-fields">
+      <div className="auth-form-group">
+        <label className="itg-label auth-form-label" htmlFor="add-contact-email">Email Address</label>
+        <input
+          id="add-contact-email"
+          type="email"
+          className="itg-input auth-form-input"
+          value={addEmail}
+          onChange={(event) => onEmailChange(event.target.value)}
+          placeholder="email@example.com"
+          required
+          disabled={addLoading}
+        />
+      </div>
+      <div className="auth-form-group">
+        <label className="itg-label auth-form-label" htmlFor="add-contact-type">Type</label>
+        <select
+          id="add-contact-type"
+          className="itg-select auth-form-select"
+          value={addType}
+          onChange={(event) => onTypeChange(event.target.value as 'secondary' | 'other')}
+          disabled={addLoading}
+        >
+          <option
+            value="secondary"
+            disabled={secondaryDisabled}
+            title={secondaryDisabled ? 'Another address is already set as secondary.' : undefined}
+          >
+            Secondary
+          </option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div className="auth-form-group email-add-newsletters-group">
+        <label className="email-center-toggle">
+          <input type="checkbox" checked={addSubscribe} onChange={(event) => onSubscribeChange(event.target.checked)} disabled={addLoading} />
+          <span className="email-center-toggle-slider" />
+          <span className="email-center-toggle-label">Newsletters</span>
+        </label>
+      </div>
+      <div className="email-add-form-actions">
+        <button type="submit" className="itg-btn itg-btn-primary email-add-form-submit" disabled={addLoading || !addEmail.trim()}>
+          {addLoading ? <><span className="auth-spinner" /> Adding...</> : 'Add & Send Verification'}
+        </button>
+        <button type="button" className="itg-btn itg-btn-outline email-add-form-cancel" onClick={onCancel}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+);

@@ -1,0 +1,181 @@
+import {cleanup, render, screen} from '@testing-library/react';
+import {MemoryRouter} from 'react-router';
+import {afterEach, describe, expect, it, vi} from 'vitest';
+
+import type {CMSBlock} from '@/features/cms/api';
+import {BlockRenderer} from '@/features/cms/components/BlockRenderer';
+
+/**
+ * Sanity tests for the block-type -> component map. These guard against a
+ * future developer accidentally dropping `embed` or `embed_widget` from
+ * `BLOCK_COMPONENTS` and silently rendering nothing.
+ */
+
+describe('BlockRenderer', () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it('renders an <iframe> for the "embed" block type', () => {
+    const blocks: CMSBlock[] = [
+      {
+        block_type: 'embed',
+        sort_order: 0,
+        data: {src: 'https://docs.google.com/forms/d/xyz/viewform'},
+      },
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} />);
+    const iframe = container.querySelector('iframe');
+    expect(iframe).not.toBeNull();
+    expect(iframe?.getAttribute('src')).toBe(
+      'https://docs.google.com/forms/d/xyz/viewform',
+    );
+  });
+
+  it('renders an <iframe> for the "embed_widget" block type', () => {
+    const blocks: CMSBlock[] = [
+      {
+        block_type: 'embed_widget',
+        sort_order: 0,
+        data: {slug: 'schedule-embed'},
+      },
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} />);
+    const iframe = container.querySelector('iframe');
+    expect(iframe).not.toBeNull();
+    expect(iframe?.getAttribute('src')).toBe('/_embed/schedule-embed');
+  });
+
+  it('passes previewMode through to embed blocks', () => {
+    const blocks: CMSBlock[] = [
+      {
+        block_type: 'embed',
+        sort_order: 0,
+        data: {src: 'https://docs.google.com/forms/d/xyz/viewform'},
+      },
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} previewMode />);
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('loading')).toBe('eager');
+  });
+
+  it('passes previewMode through to embed widget blocks', () => {
+    const blocks: CMSBlock[] = [
+      {
+        block_type: 'embed_widget',
+        sort_order: 0,
+        data: {slug: 'schedule-embed'},
+      },
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} previewMode />);
+    const iframe = container.querySelector('iframe');
+    expect(iframe?.getAttribute('loading')).toBe('eager');
+  });
+
+  it('logs a console.warn and renders nothing for an unknown block type', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const blocks: CMSBlock[] = [
+      {block_type: 'nonexistent_block', sort_order: 0, data: {}},
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} />);
+    expect(container.textContent).toBe('');
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('Unknown CMS block type'),
+    );
+  });
+
+  it('renders multiple block types in order', () => {
+    const blocks: CMSBlock[] = [
+      {
+        block_type: 'embed',
+        sort_order: 0,
+        data: {src: 'https://docs.google.com/a'},
+      },
+      {
+        block_type: 'embed_widget',
+        sort_order: 1,
+        data: {slug: 'schedule-embed'},
+      },
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} />);
+    const iframes = container.querySelectorAll('iframe');
+    expect(iframes).toHaveLength(2);
+    expect(iframes[0].getAttribute('src')).toContain('docs.google.com');
+    expect(iframes[1].getAttribute('src')).toBe('/_embed/schedule-embed');
+  });
+
+  it('filters out falsy blocks defensively', () => {
+    const blocks = [
+      null,
+      undefined,
+      {
+        block_type: 'embed_widget',
+        sort_order: 0,
+        data: {slug: 'schedule-embed'},
+      },
+    ] as unknown as CMSBlock[];
+    const {container} = render(<BlockRenderer blocks={blocks} />);
+    expect(container.querySelectorAll('iframe')).toHaveLength(1);
+  });
+
+  it('prioritizes only the first homepage image block', () => {
+    const blocks: CMSBlock[] = [
+      {block_type: 'image_text', sort_order: 0, data: {image_url: '/assets/images/home_img.jpg', body_html: ''}},
+      {block_type: 'image_text', sort_order: 1, data: {image_url: '/other.jpg', body_html: ''}},
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} prioritizeFirstImage />);
+    const images = container.querySelectorAll('img');
+    expect(images[0]).toHaveAttribute('loading', 'eager');
+    expect(images[0]).toHaveAttribute('fetchpriority', 'high');
+    expect(images[0]).toHaveAttribute('decoding', 'async');
+    expect(images[0]).toHaveAttribute('width', '1600');
+    expect(images[0]).toHaveAttribute('height', '500');
+    expect(images[0]).toHaveAttribute('srcset');
+    expect(images[1]).toHaveAttribute('loading', 'lazy');
+    expect(images[1]).toHaveAttribute('decoding', 'async');
+    expect(images[1]).not.toHaveAttribute('fetchpriority');
+  });
+
+  it('also prioritizes a hero image when the hero opens the page', () => {
+    const blocks: CMSBlock[] = [
+      {block_type: 'hero', sort_order: 0, data: {heading: 'Welcome', image_url: '/assets/images/home_img.jpg'}},
+      {block_type: 'hero', sort_order: 1, data: {image_url: '/second.jpg'}},
+    ];
+    const {container} = render(<BlockRenderer blocks={blocks} prioritizeFirstImage />);
+    const images = container.querySelectorAll('img.cms-hero-image');
+    expect(images[0]).toHaveAttribute('loading', 'eager');
+    expect(images[0]).toHaveAttribute('fetchpriority', 'high');
+    expect(images[1]).toHaveAttribute('loading', 'lazy');
+  });
+
+  it('renders the hero, cta_group, notice and numbered_list types the admin offers', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const blocks: CMSBlock[] = [
+      {block_type: 'hero', sort_order: 0, data: {heading: 'Hero title', subheading: 'Hero lead'}},
+      {block_type: 'cta_group', sort_order: 1, data: {items: [{label: 'Register', href: '/event-registration', style: 'primary'}]}},
+      {block_type: 'notice', sort_order: 2, data: {heading: 'Notice title', style: 'warning', body_html: '<p>Notice body</p>'}},
+      {block_type: 'numbered_list', sort_order: 3, data: {heading: 'Steps', preamble_html: '<p>Intro</p>', items: ['One', 'Two']}},
+    ];
+    const {container} = render(
+      <MemoryRouter>
+        <BlockRenderer blocks={blocks} />
+      </MemoryRouter>,
+    );
+
+    expect(warnSpy).not.toHaveBeenCalled();
+    expect(screen.getByRole('heading', {name: 'Hero title', level: 1})).toBeInTheDocument();
+    expect(container.querySelector('.cms-hero .itg-lead')).toHaveTextContent('Hero lead');
+    expect(screen.getByRole('link', {name: 'Register'})).toHaveClass('itg-btn', 'itg-btn-primary');
+    expect(screen.getByRole('note')).toHaveClass('itg-notice', 'itg-notice-warning');
+    expect(screen.getByText('Notice body')).toBeInTheDocument();
+    expect(container.querySelectorAll('.cms-numbered-list ol > li')).toHaveLength(2);
+    // Blocks keep their order.
+    expect(Array.from(container.children).map((el) => el.className.split(' ')[0])).toEqual([
+      'cms-hero',
+      'cms-cta-group',
+      'cms-notice',
+      'cms-numbered-list',
+    ]);
+  });
+});

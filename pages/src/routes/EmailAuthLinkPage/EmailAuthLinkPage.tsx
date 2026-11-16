@@ -3,11 +3,11 @@ import {useEffect, useMemo, useState} from 'react';
 import {useNavigate, useSearchParams} from 'react-router';
 import {dispatchAuthStateChange, getAuthErrorMessage} from '@/features/auth/components/context/shared';
 import {verifyEmailAuthCode, type EmailAuthSource} from '@/features/auth';
-import {getEmailAuthSourcePath} from '@/features/auth/api/redirects';
+import {getEmailAuthSourcePath} from '@/features/auth/api/navigation/redirects';
 import {
   clearAuthCallbackParams,
   readAuthCallbackParams,
-} from '@/features/auth/api/callbackParams';
+} from '@/features/auth/api/navigation/callbackParams';
 
 const isEmailAuthSource = (value: string | null): value is EmailAuthSource =>
   value === 'login' || value === 'subscribe' || value === 'event_registration' || value === 'register';

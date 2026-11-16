@@ -9,16 +9,16 @@ from django.test import TestCase, override_settings
 from apps.authn.services.sms import PhoneNumberOptedOut
 from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import SmsCampaign, SmsRecipientLog
-from apps.mail.models.sms_campaign import LINKS_OFF_MESSAGE
+from apps.mail.models.sms.campaign_options import LINKS_OFF_MESSAGE
 from apps.mail.services.campaign.dispatch import dispatch_sms_campaign, resume_paused_sms_recipients
 from apps.mail.services.sms.audience import get_sms_recipients
-from apps.mail.services.sms.errors import LinksDisabled, QuietHoursActive
-from apps.mail.services.sms.quiet_hours import PAUSED_LOG_MESSAGE
-from apps.mail.services.sms.sender import send_sms_campaign
+from apps.mail.services.sms.delivery.sender import send_sms_campaign
+from apps.mail.services.sms.policy.errors import LinksDisabled, QuietHoursActive
+from apps.mail.services.sms.policy.quiet_hours import PAUSED_LOG_MESSAGE
 
 from .policy_helpers import QUIET_ENDS, QUIET_MOMENT, add_phone, at, opt_out, sms_aws_config, sms_settings
 
-PUBLISH = "apps.mail.services.sms.sender.publish_plain_sms"
+PUBLISH = "apps.mail.services.sms.delivery.sender.publish_plain_sms"
 
 
 class SmsPolicySenderTests(TestCase):
@@ -52,7 +52,7 @@ class SmsPolicySenderTests(TestCase):
         campaign = self.campaign()
         resolved = get_sms_recipients(campaign)
         opt_out("+12095550102")
-        with patch("apps.mail.services.sms.sender.get_sms_recipients", return_value=resolved):
+        with patch("apps.mail.services.sms.delivery.sender.get_sms_recipients", return_value=resolved):
             send_sms_campaign(campaign, sent_by=self.sender)
 
         logs = {log.phone_number: log for log in SmsRecipientLog.objects.filter(campaign=campaign)}

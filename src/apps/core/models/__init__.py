@@ -19,8 +19,8 @@ from .base import (
     SMTPProviderConfig,
     TimeStampedModel,
 )
-from .managers import ProjectControlManager, ProjectControlQuerySet
-from .mixins import ActiveModel, AuthoredModel, OrderedModel
+from .base.abstract.managers import ProjectControlManager, ProjectControlQuerySet
+from .base.abstract.mixins import ActiveModel, AuthoredModel, OrderedModel
 from .records import (
     BackgroundJob,
     DeliveryRateLimit,

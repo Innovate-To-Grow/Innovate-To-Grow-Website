@@ -56,7 +56,7 @@ def register_background_jobs():
     # A ticket text carries the registrant's ticket link: transactional, claimed before campaign jobs.
     register_job_kind(
         "mail.ticket_sms",
-        handler="apps.mail.services.sms.ticket.send_ticket_sms_job",
+        handler="apps.mail.services.sms.delivery.ticket.send_ticket_sms_job",
         family=Family.SMS,
         lane=Lane.TRANSACTIONAL,
     )
@@ -70,7 +70,9 @@ def register_sms_policy():
 
     from apps.event.signals import initial_ticket_issued
     from apps.mail.models import SmsConfig
-    from apps.mail.services.sms import opt_outs, register_link, ticket
+    from apps.mail.services.sms.delivery import ticket
+    from apps.mail.services.sms.links import register_link
+    from apps.mail.services.sms.policy import opt_outs
 
     opt_outs.register()
     initial_ticket_issued.connect(ticket.queue_ticket_sms, dispatch_uid="mail_queue_ticket_sms")

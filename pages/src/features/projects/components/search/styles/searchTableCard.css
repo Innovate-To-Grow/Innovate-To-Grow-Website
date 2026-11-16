@@ -1,0 +1,116 @@
+@layer itg.components {
+/* ---- One search table -------------------------------------------------------- */
+
+.search-table-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-page);
+}
+
+.project-grid-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.project-grid-card-title:not(.itg-page-title) {
+  margin: 0;
+  font-size: var(--itg-font-size-h2);
+  line-height: var(--itg-line-height-heading);
+  font-weight: 600;
+  color: var(--itg-color-primary);
+}
+
+/* Each search table is titled with an h3 (24px), under the "Search Tables" h2. */
+.search-table-card .project-grid-card-title {
+  font-size: var(--itg-font-size-h3);
+}
+
+.project-grid-card-copy {
+  margin: 0;
+}
+
+/* Framed like the draft's table (mergedResults.css): every table inside a builder card has the same edge. */
+.search-table-card .project-grid-table-wrap {
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-bg-page);
+}
+
+.search-table-card .search-table-remove-button {
+  color: var(--itg-color-text-secondary);
+}
+
+.search-table-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.search-table-save-row,
+.search-table-bottom-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 1rem;
+}
+
+.search-table-bottom-actions {
+  margin-top: 1.25rem;
+}
+
+.search-table-save-group {
+  gap: 0.5rem 0.875rem;
+}
+
+.search-table-save-count {
+  display: none;
+}
+
+.search-table-selection-count {
+  color: var(--itg-color-text-secondary);
+}
+
+/* "Selection" and "Tidy this table": one labelled line each (the pair does not fit one line in the
+   main column), as text buttons. */
+.search-table-secondary-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+
+.search-table-action-group {
+  gap: 0 1.125rem;
+}
+
+.search-table-group-label {
+  min-width: 7.5rem;
+}
+
+.search-table-group-divider {
+  display: none;
+}
+
+.search-table-save-status {
+  min-width: 0;
+}
+
+/* AI results fade in once, calmly. */
+.search-table-results-motion {
+  animation: search-table-results-enter 0.3s ease-out;
+}
+
+@keyframes search-table-results-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+}

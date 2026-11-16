@@ -3,7 +3,7 @@
 // used where a request may carry a query string (glob `?`/`*` handling is
 // finicky); exact slash-terminated paths use string globs.
 import type {Page} from '@playwright/test';
-import type {EmailAuthVerifyResponse, LoginResponse} from '../../../src/features/auth/api/types';
+import type {EmailAuthVerifyResponse, LoginResponse} from '../../../src/features/auth/api/contracts/types';
 import {loginResponse} from '../factories';
 import {mockAuthenticatedLogin} from '../auth';
 import {json} from './json';

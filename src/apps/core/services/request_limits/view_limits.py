@@ -1,4 +1,4 @@
-"""The finer, per-view limits (``config/settings/base/integrations/request_limits/view_scopes.py``), read live.
+"""The finer, per-view limits (``config/settings/base/integrations/request_limits/defaults/view_scopes.py``), read live.
 
 Each per-view limit is a request-limit scope with a ``parent`` route scope. ``view_rate(scope)`` is its rate now:
 

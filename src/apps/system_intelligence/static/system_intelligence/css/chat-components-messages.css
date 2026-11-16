@@ -1,0 +1,121 @@
+.si-message {
+  display: flex;
+  margin: 0 auto 16px;
+  max-width: 920px;
+}
+
+.si-message-user {
+  justify-content: flex-end;
+}
+
+.si-message-body {
+  max-width: min(760px, 82%);
+  border-radius: 20px;
+  padding: 12px 16px;
+  color: var(--md-sys-color-on-surface, #202124);
+  font-size: 14px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.si-message-user .si-message-body {
+  background: var(--md-sys-color-primary-container, #d5e3ff);
+}
+
+.si-message-assistant .si-message-body {
+  border-radius: 4px;
+  background: transparent;
+  padding-inline: 0;
+}
+
+.si-message-assistant.is-streaming .si-message-body::after {
+  content: "Thinking\2026";
+  color: var(--md-sys-color-on-surface-variant, #5f6368);
+  animation: si-thinking-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes si-thinking-pulse {
+  from {
+    opacity: 0.45;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.si-tool-call,
+.si-action-card {
+  max-width: 920px;
+  margin: 8px auto 16px;
+  border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface-container-low, #fcf9f8);
+  padding: 10px 12px;
+}
+
+.si-tool-call {
+  color: var(--md-sys-color-on-surface-variant, #5f6368);
+  font-size: 12px;
+}
+
+.si-action-card h4 {
+  margin: 0 0 6px;
+  color: var(--md-sys-color-on-surface, #202124);
+  font-size: 14px;
+}
+
+.si-action-card p,
+.si-action-card pre {
+  margin: 0 0 8px;
+  color: var(--md-sys-color-on-surface-variant, #5f6368);
+  font-size: 12px;
+}
+
+.si-action-card pre {
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.si-action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.si-chat-composer textarea {
+  max-height: 160px;
+  min-height: 54px;
+  resize: none;
+  border: 1px solid var(--md-sys-color-outline-variant, #c4c7ca);
+  border-radius: 8px;
+  background: var(--md-sys-color-surface-container-lowest, #fff);
+  color: var(--md-sys-color-on-surface, #202124);
+  line-height: 1.45;
+  padding: 16px 18px;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.si-chat-composer textarea:focus {
+  outline: none;
+  border-color: var(--md-sys-color-primary, #305f9d);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary, #305f9d) 20%, transparent);
+}
+
+.si-chat-composer button {
+  align-self: end;
+  min-width: 72px;
+  min-height: 54px;
+  border-radius: 8px;
+  border-color: var(--md-sys-color-primary, #305f9d);
+  background: var(--md-sys-color-primary, #305f9d);
+  color: var(--md-sys-color-on-primary, #fff);
+}
+
+@media (max-width: 640px) {
+  .si-chat-empty h3 {
+    font-size: 32px;
+  }
+}

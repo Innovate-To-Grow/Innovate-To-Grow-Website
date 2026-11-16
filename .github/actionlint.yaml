@@ -1,3 +1,0 @@
-self-hosted-runner:
-  labels:
-    - i2g-aws

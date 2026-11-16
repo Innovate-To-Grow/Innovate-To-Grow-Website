@@ -1,0 +1,168 @@
+from django.db import IntegrityError
+from django.test import TestCase
+from rest_framework.test import APIClient
+
+from apps.cms.models import CMSBlock, CMSEmbedWidget, CMSPage
+
+
+class _EmbedBlockViewCase(TestCase):
+    # noinspection PyPep8Naming
+    def setUp(self):
+        self.client = APIClient()
+        self.page = CMSPage.objects.create(
+            slug="embed-host",
+            route="/embed-host",
+            title="Embed Host Page",
+            page_css_class="host-wrapper",
+            status="published",
+        )
+        CMSBlock.objects.create(
+            page=self.page,
+            block_type="rich_text",
+            sort_order=0,
+            data={"body_html": "<p>Block A</p>"},
+        )
+        CMSBlock.objects.create(
+            page=self.page,
+            block_type="rich_text",
+            sort_order=1,
+            data={"body_html": "<p>Block B (excluded)</p>"},
+        )
+        CMSBlock.objects.create(
+            page=self.page,
+            block_type="rich_text",
+            sort_order=2,
+            data={"body_html": "<p>Block C</p>"},
+        )
+        self.widget = CMSEmbedWidget.objects.create(
+            page=self.page,
+            slug="contact-widget",
+            admin_label="Contact widget",
+            block_sort_orders=[0, 2],
+        )
+
+
+class EmbedBlockViewTest(_EmbedBlockViewCase):
+    """Tests for the public /cms/embed/<slug>/ endpoint that serves embed widgets.
+
+    Widgets are stored as ``CMSEmbedWidget`` rows (FK to CMSPage). The endpoint
+    resolves a slug to its blocks in the declared ``block_sort_orders``, sets
+    permissive CORS, and is x-frame-exempt so third-party sites can iframe the
+    result.
+    """
+
+    def test_returns_blocks_in_declared_order(self):
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertEqual(response.status_code, 200)
+
+        data = response.json()
+        blocks = data["blocks"]
+        self.assertEqual(len(blocks), 2)
+        self.assertEqual(blocks[0]["sort_order"], 0)
+        self.assertEqual(blocks[0]["data"]["body_html"], "<p>Block A</p>")
+        self.assertEqual(blocks[1]["sort_order"], 2)
+        self.assertEqual(blocks[1]["data"]["body_html"], "<p>Block C</p>")
+
+    def test_returns_the_page_class(self):
+        response = self.client.get("/cms/embed/contact-widget/")
+        data = response.json()
+        self.assertEqual(data["page_css_class"], "host-wrapper")
+
+    def test_preserves_declared_order_even_if_reversed(self):
+        self.widget.block_sort_orders = [2, 0]
+        self.widget.save(update_fields=["block_sort_orders"])
+        response = self.client.get("/cms/embed/contact-widget/")
+        data = response.json()
+        orders = [b["sort_order"] for b in data["blocks"]]
+        self.assertEqual(orders, [2, 0])
+
+    def test_unknown_slug_returns_404(self):
+        response = self.client.get("/cms/embed/nope/")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json()["detail"], "Not found.")
+
+    def test_draft_page_not_served(self):
+        self.page.status = "draft"
+        self.page.save(update_fields=["status"])
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_archived_page_not_served(self):
+        self.page.status = "archived"
+        self.page.save(update_fields=["status"])
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_cors_header_set_on_success(self):
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "*")
+
+    def test_cors_header_set_on_404(self):
+        response = self.client.get("/cms/embed/nope/")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.headers.get("Access-Control-Allow-Origin"), "*")
+
+    def test_x_frame_options_exempt(self):
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertNotIn("X-Frame-Options", response.headers)
+
+    def test_anonymous_access_allowed(self):
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertEqual(response.status_code, 200)
+
+    def test_missing_block_sort_orders_returns_empty_blocks(self):
+        self.widget.block_sort_orders = []
+        self.widget.save(update_fields=["block_sort_orders"])
+        response = self.client.get("/cms/embed/contact-widget/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["blocks"], [])
+
+    def test_stale_block_sort_orders_are_skipped(self):
+        self.widget.block_sort_orders = [0, 99, 2]
+        self.widget.save(update_fields=["block_sort_orders"])
+        response = self.client.get("/cms/embed/contact-widget/")
+        data = response.json()
+        orders = [b["sort_order"] for b in data["blocks"]]
+        self.assertEqual(orders, [0, 2])
+
+    def test_slug_is_globally_unique(self):
+        other_page = CMSPage.objects.create(
+            slug="other",
+            route="/other",
+            title="Other Page",
+            status="published",
+        )
+        CMSBlock.objects.create(page=other_page, block_type="rich_text", sort_order=0, data={})
+        with self.assertRaises(IntegrityError):
+            CMSEmbedWidget.objects.create(
+                page=other_page,
+                slug="contact-widget",
+                block_sort_orders=[0],
+            )
+
+    def test_block_type_is_exposed(self):
+        response = self.client.get("/cms/embed/contact-widget/")
+        for block in response.json()["blocks"]:
+            self.assertEqual(block["block_type"], "rich_text")
+            self.assertIn("data", block)
+            self.assertIn("sort_order", block)
+
+    def test_admin_label_not_leaked(self):
+        CMSBlock.objects.filter(page=self.page, sort_order=0).update(admin_label="Internal note")
+        response = self.client.get("/cms/embed/contact-widget/")
+        for block in response.json()["blocks"]:
+            self.assertNotIn("admin_label", block)
+
+    def test_html_fields_are_sanitized(self):
+        CMSBlock.objects.filter(page=self.page, sort_order=0).update(
+            data={"body_html": '<p>Safe</p><script>alert("xss")</script><a href="javascript:evil()">click</a>'}
+        )
+        response = self.client.get("/cms/embed/contact-widget/")
+        html = response.json()["blocks"][0]["data"]["body_html"]
+        self.assertIn("<p>Safe</p>", html)
+        self.assertNotIn("<script>", html)
+        self.assertNotIn("javascript:", html)
+
+    def test_slug_matching_is_exact(self):
+        response = self.client.get("/cms/embed/widget/")
+        self.assertEqual(response.status_code, 404)

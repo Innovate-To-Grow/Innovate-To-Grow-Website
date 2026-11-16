@@ -100,7 +100,7 @@ def sms_request_throttles() -> list:
     Without a budget the per-IP throttle is the only aggregate speed bump left (a caller with many addresses gets
     a bucket per address, so it is not a bound), so it stays. A settings error keeps it too: fail safe.
     """
-    from apps.authn.services.send_verification.config import load_settings
+    from apps.authn.services.send_verification.rules.config import load_settings
 
     try:
         budget_configured = bool(load_settings().sms_daily_limit)

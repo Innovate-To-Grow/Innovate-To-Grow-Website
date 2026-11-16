@@ -1,0 +1,150 @@
+@layer itg.components {
+/* Moved verbatim from the CMS "page-subscribe" stylesheet. */
+
+/* ==========================================================================
+   Subscribe page (/subscribe): page title + lede, then one feature panel
+   (.itg-panel) per step (email, code, profile, manage). Buttons, inputs and
+   labels use the global classes; this sheet lays the steps out and styles the
+   org toggle, notices, preference rows and the on/off switch.
+   Reference rhythm (innovatetogrow.ucmerced.edu): the page flows like the
+   theme's #content, so the global margins apply (h1 12px 0, .lead 0 0 24px,
+   16px / 24px text); 16px labels 5px above their control, 12px between
+   fields; notices in the .itg-notice look (#f7f7f7, 4px left rule).
+   ========================================================================== */
+
+/* ---- base.css ---- */
+
+/* Block flow: every part of the page sits 24px above the next. */
+.subscribe-page {
+  padding-bottom: 24px;
+}
+
+.subscribe-page > * {
+  margin-top: 0;
+  margin-bottom: 24px;
+}
+
+.subscribe-page > :last-child {
+  margin-bottom: 0;
+}
+
+/* The shell's 16px + this 12px put the h1 where the reference's sits; the
+   lead follows 12px below it. */
+.subscribe-page > .subscribe-title {
+  margin: 12px 0;
+}
+
+.subscribe-lead {
+  margin: 0;
+}
+
+.subscribe-info-note {
+  margin: 12px 0 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-body);
+  font-style: italic;
+  line-height: 24px;
+}
+
+/* Each step is a feature panel (.itg-panel). */
+.subscribe-section {
+  max-width: 680px;
+}
+
+.subscribe-section form {
+  margin: 0;
+}
+
+.subscribe-hint {
+  margin: 0 0 12px;
+  color: var(--itg-color-text);
+  font-size: var(--itg-font-size-body);
+  line-height: 24px;
+  overflow-wrap: anywhere;
+}
+
+.subscribe-section > .subscribe-hint:last-child {
+  margin-bottom: 0;
+}
+
+/* The theme's form rhythm: label, 5px, control, 12px to the next field. */
+.subscribe-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  margin: 0 0 12px;
+}
+
+.subscribe-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0 20px;
+}
+
+.subscribe-form-group--full-width {
+  grid-column: 1 / -1;
+}
+
+.subscribe-required {
+  margin-left: 0.125rem;
+  color: var(--itg-color-error);
+}
+
+.subscribe-optional {
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  font-weight: 400;
+}
+
+/* Organization / Individual: square two-segment toggle. */
+.subscribe-org-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.subscribe-org-toggle + .subscribe-input {
+  margin-top: 5px;
+}
+
+/* Segments drawn like the system's outline buttons (2px navy, 16px 400). */
+.subscribe-org-toggle-btn {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 2px solid var(--itg-color-primary);
+  border-radius: 0;
+  background: var(--itg-color-white);
+  color: var(--itg-color-primary);
+  font: inherit;
+  font-size: var(--itg-font-size-body);
+  font-weight: 400;
+  cursor: pointer;
+  transition: background-color var(--itg-transition-fast), color var(--itg-transition-fast);
+}
+
+.subscribe-org-toggle-btn + .subscribe-org-toggle-btn {
+  border-left-width: 0;
+}
+
+.subscribe-org-toggle-btn:hover:not(:disabled):not(.is-active) {
+  background: var(--itg-color-bg-light);
+}
+
+.subscribe-org-toggle-btn.is-active {
+  background: var(--itg-color-primary);
+  color: var(--itg-color-white);
+}
+
+.subscribe-org-toggle-btn:disabled {
+  border-color: var(--itg-color-disabled-border);
+  background: var(--itg-color-disabled-bg);
+  color: var(--itg-color-disabled-text);
+  cursor: not-allowed;
+}
+
+.subscribe-org-toggle-btn.is-active:disabled {
+  background: var(--itg-color-disabled-text);
+  color: var(--itg-color-white);
+}
+}
