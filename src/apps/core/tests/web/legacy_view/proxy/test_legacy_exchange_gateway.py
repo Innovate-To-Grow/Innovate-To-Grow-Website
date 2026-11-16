@@ -66,6 +66,22 @@ class LegacyExchangeGatewayTest(SimpleTestCase):
         self.assertEqual(response["Allow"], "POST")
         exchange_view.assert_not_called()
 
+    @patch("apps.core.views.legacy_access.legacy_access_exchange_view")
+    def test_untrusted_method_is_never_written_to_exchange_logs(self, exchange_view):
+        for trusted in (False, True):
+            with self.subTest(trusted=trusted):
+                headers = {HEADER_NAME: SECRET} if trusted else {}
+                request = self.factory.get("/legacy-view/_i2g-auth/exchange", headers=headers)
+                request.method = "GET\nforged=1"
+
+                with self.assertLogs("apps.core.legacy_view.views", level="INFO") as captured:
+                    response = legacy_access_exchange_gateway(request)
+
+                self.assertEqual(response.status_code, 405 if trusted else 404)
+                self.assertIn("method=OTHER", captured.output[0])
+                self.assertNotIn("forged=1", " ".join(captured.output))
+        exchange_view.assert_not_called()
+
 
 @override_settings(**GATEWAY_SETTINGS)
 class LegacyTransportFailureTest(SimpleTestCase):

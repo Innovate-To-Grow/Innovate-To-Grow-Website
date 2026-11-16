@@ -1,11 +1,12 @@
 from unittest.mock import patch
 
 from django.test import TestCase
+from django.urls import reverse
 
 from apps.authn.models import ContactPhone
 from apps.core.models import AWSCredentialConfig
 from apps.core.services.delivery_rates import Lane
-from apps.event.tests.helpers import make_member
+from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import SmsCampaign, SmsRecipientLog
 from apps.mail.services.campaign.delivery.errors import UNEXPECTED_DELIVERY_ERROR
 from apps.mail.services.sms.delivery.sender import send_sms_campaign
@@ -102,9 +103,17 @@ class SendSmsCampaignTests(TestCase):
         self.assertEqual(campaign.status, "partial")
         self.assertEqual(SmsRecipientLog.objects.filter(campaign=campaign, status="sent").count(), 1)
         failed = SmsRecipientLog.objects.get(campaign=campaign, status="failed")
-        self.assertEqual(failed.error_message, f"{UNEXPECTED_DELIVERY_ERROR} (RuntimeError)")
+        self.assertEqual(failed.error_message, UNEXPECTED_DELIVERY_ERROR)
         self.assertNotIn("private-value", failed.error_message)
+        self.assertNotIn("RuntimeError", failed.error_message)
         self.assertIn("AKIA-private-value@internal-host", "\n".join(captured.output))
+
+        self.client.force_login(make_superuser())
+        status = self.client.get(reverse("admin:mail_smscampaign_send_status_json", args=[campaign.pk]))
+        self.assertEqual(status.status_code, 200)
+        self.assertEqual(status.json()["failed_logs"][0]["error"], UNEXPECTED_DELIVERY_ERROR)
+        self.assertNotIn("private-value", status.content.decode())
+        self.assertNotIn("RuntimeError", status.content.decode())
 
     @patch("apps.mail.services.sms.delivery.sender.publish_plain_sms", side_effect=RuntimeError("SNS rejected"))
     def test_fallback_campaign_with_all_provider_failures_is_failed(self, _publish):

@@ -17,7 +17,7 @@ from apps.core.services.background_jobs.delivery import deferral_of
 from apps.core.services.delivery_rates import Lane, WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
 from apps.mail.models import SmsConfig, SmsRecipientLog
-from apps.mail.services.campaign.delivery.errors import unexpected_delivery_error_message
+from apps.mail.services.campaign.delivery.errors import UNEXPECTED_DELIVERY_ERROR
 from apps.mail.services.sms.audience import get_sms_recipients
 
 from ..content.compose import CampaignLinks, render_campaign_text
@@ -128,9 +128,9 @@ def _send_one_recipient(campaign, recipient, log, *, links, config) -> bool:
         skip_opted_out_log(log)
     except SmsSendRefused as exc:
         _record_failure(log, str(exc))
-    except Exception as exc:
+    except Exception:
         logger.exception("Failed to send SMS campaign %s to %s", campaign.pk, recipient.get("phone", ""))
-        _record_failure(log, unexpected_delivery_error_message(exc))
+        _record_failure(log, UNEXPECTED_DELIVERY_ERROR)
     return True
 
 
