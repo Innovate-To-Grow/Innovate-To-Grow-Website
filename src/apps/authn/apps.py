@@ -27,7 +27,7 @@ def register_background_jobs():
     # Security notices: transactional mail, claimed before campaign jobs.
     register_job_kind(
         "authn.notification_email",
-        handler="apps.authn.services.email.notification_jobs.send_notification_email_job",
+        handler="apps.authn.services.email.send_email.notification_jobs.send_notification_email_job",
         family=Family.EMAIL,
         lane=Lane.TRANSACTIONAL,
     )

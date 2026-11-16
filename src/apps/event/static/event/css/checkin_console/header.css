@@ -1,0 +1,153 @@
+.i2g-checkin-console {
+    --checkin-blue: #123a5f;
+    --checkin-blue-strong: #0b2b49;
+    --checkin-border: #d7dde7;
+    --checkin-muted: #667085;
+    --checkin-bg: #f7f8fb;
+    --checkin-panel: #ffffff;
+    --checkin-success: #067647;
+    --checkin-success-bg: #ecfdf3;
+    --checkin-warning: #b54708;
+    --checkin-warning-bg: #fffaeb;
+    --checkin-error: #b42318;
+    --checkin-error-bg: #fef3f2;
+    color: #111827;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    max-width: 1400px;
+    min-height: calc(100vh - 96px);
+    padding: 18px;
+}
+
+.dark .i2g-checkin-console {
+    --checkin-blue: var(--md-sys-color-primary);
+    --checkin-blue-strong: color-mix(in srgb, var(--md-sys-color-primary) 82%, var(--md-sys-color-on-surface));
+    --checkin-border: var(--md-sys-color-outline-variant);
+    --checkin-muted: var(--md-sys-color-on-surface-variant);
+    --checkin-bg: var(--md-sys-color-surface);
+    --checkin-panel: var(--md-sys-color-surface-container);
+    --checkin-success-bg: color-mix(in srgb, var(--md-sys-color-success, #4ade80) 18%, var(--md-sys-color-surface-container));
+    --checkin-warning-bg: color-mix(in srgb, var(--md-sys-color-warning, #fbbf24) 18%, var(--md-sys-color-surface-container));
+    --checkin-error-bg: color-mix(in srgb, var(--md-sys-color-error) 18%, var(--md-sys-color-surface-container));
+    color: var(--md-sys-color-on-surface);
+}
+
+.i2g-checkin-header {
+    align-items: center;
+    background: transparent;
+    background-color: transparent !important;
+    border: 0;
+    box-shadow: none;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+    padding: 0;
+}
+
+.i2g-checkin-header h1 {
+    font-size: clamp(28px, 4vw, 52px);
+    font-weight: 800;
+    line-height: 1;
+    margin: 8px 0 4px;
+}
+
+.i2g-checkin-header p {
+    color: var(--checkin-muted);
+    font-size: 16px;
+    margin: 0;
+}
+
+.i2g-checkin-header-actions {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.i2g-checkin-back {
+    align-items: center;
+    color: var(--checkin-blue);
+    display: inline-flex;
+    font-size: 14px;
+    font-weight: 700;
+    gap: 6px;
+    text-decoration: none;
+}
+
+.i2g-checkin-back .material-symbols-outlined {
+    font-size: 18px;
+}
+
+.i2g-checkin-sync {
+    align-items: center;
+    background: #f8fafc;
+    border: 1px solid var(--checkin-border);
+    border-radius: 999px;
+    color: var(--checkin-muted);
+    display: inline-flex;
+    font-size: 12px;
+    font-weight: 800;
+    gap: 8px;
+    min-height: 32px;
+    padding: 7px 12px;
+    white-space: nowrap;
+}
+
+.i2g-checkin-sync-dot {
+    background: currentcolor;
+    border-radius: 999px;
+    display: inline-block;
+    height: 8px;
+    width: 8px;
+}
+
+.i2g-checkin-sync.is-syncing {
+    color: var(--checkin-blue);
+}
+
+.i2g-checkin-sync.is-live {
+    color: var(--checkin-success);
+}
+
+.i2g-checkin-sync.is-paused {
+    color: var(--checkin-warning);
+}
+
+.i2g-checkin-sync.is-issue {
+    color: var(--checkin-error);
+}
+
+.i2g-checkin-stats {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.i2g-checkin-stats div,
+.i2g-checkin-primary,
+.i2g-checkin-panel {
+    background: var(--checkin-panel);
+    border: 1px solid var(--checkin-border);
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgb(16 24 40 / 5%);
+}
+
+.i2g-checkin-stats div {
+    padding: 14px 16px;
+}
+
+.i2g-checkin-stats span {
+    color: var(--checkin-muted);
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.i2g-checkin-stats strong {
+    display: block;
+    font-size: 34px;
+    line-height: 1;
+}

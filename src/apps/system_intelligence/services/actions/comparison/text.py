@@ -5,7 +5,7 @@ from typing import Any
 
 from django.core.serializers.json import DjangoJSONEncoder
 
-from ..constants import COMPARISON_TEXT_LIMIT
+from ..engine.constants import COMPARISON_TEXT_LIMIT
 
 
 def extract_block_text(block: dict[str, Any]) -> str:

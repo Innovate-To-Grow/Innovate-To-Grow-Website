@@ -1,7 +1,7 @@
 import {cleanup, render, screen, within} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {NumberedListBlock} from '@/features/cms/components/blocks/content/NumberedListBlock';
+import {NumberedListBlock} from '@/features/cms/components/blocks/content/lists/NumberedListBlock';
 
 describe('NumberedListBlock', () => {
   afterEach(() => {

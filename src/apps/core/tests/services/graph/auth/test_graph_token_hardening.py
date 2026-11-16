@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.conf import settings
 
 from apps.core.services.email import TransientEmailDeliveryError
-from apps.core.services.email.graph import auth
+from apps.core.services.email.graph.identity import auth
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.services.graph.auth.test_email_graph_auth import FakeClock, TokenTestCase
 from apps.core.tests.services.graph.provider.test_email_graph import token_response

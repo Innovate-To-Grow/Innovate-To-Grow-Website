@@ -1,5 +1,5 @@
 export {createSendChallenge, fetchSendRequestStatus} from './api';
-export {VerifiedSendStatus} from './VerifiedSendStatus';
+export {VerifiedSendStatus} from '../components/shared/VerifiedSendStatus';
 export {withVerifiedSend} from './withVerifiedSend';
 export type {
   ChallengeResponse,

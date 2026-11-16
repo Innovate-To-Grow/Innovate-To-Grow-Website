@@ -9,7 +9,7 @@ from apps.core.models import AWSCredentialConfig, EmailServiceConfig, GmailAcces
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import EmailCampaign
 from apps.mail.services import GMAIL_FOLDER_DISPLAY
-from apps.mail.services.campaign.preview import HTML_MARKER
+from apps.mail.services.campaign.content.preview import HTML_MARKER
 
 
 class EmailCampaignAdminImportTest(TestCase):
@@ -57,7 +57,7 @@ class EmailCampaignAdminImportTest(TestCase):
         self.assertContains(response, "Edit Notification Delivery")
 
     def test_import_gmail_html_view_renders_recent_messages(self):
-        with patch("apps.mail.admin.campaign.services.list_recent_sent_messages") as mock_list:
+        with patch("apps.mail.admin.campaign.views.services.list_recent_sent_messages") as mock_list:
             mock_list.return_value = [
                 {
                     "message_id": "msg-1",
@@ -97,7 +97,7 @@ class EmailCampaignAdminImportTest(TestCase):
             return campaign.body
 
         with patch(
-            "apps.mail.admin.campaign.services.import_message_into_campaign", side_effect=_fake_import
+            "apps.mail.admin.campaign.views.services.import_message_into_campaign", side_effect=_fake_import
         ) as mock_import:
             response = self.client.post(
                 reverse("admin:mail_emailcampaign_import_gmail_html_confirm", args=[self.campaign.pk]),

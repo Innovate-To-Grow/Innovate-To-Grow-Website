@@ -17,7 +17,7 @@
 │   │   └── cli_admin/      # OAuth2 + PKCE CRUD API for the i2g-admin CLI
 │   ├── config/             # Django settings (base/, production/ overrides, environments/ entrypoints), routing/, deploy/ (ASGI/WSGI)
 │   ├── assets/             # Pinned third-party static libs (vendor/), app-agnostic
-│   ├── docker/             # Container pieces: entrypoint.sh and security/ (Debian package floors the image installs)
+│   ├── docker/             # Container pieces: runtime/entrypoint.sh and security/debian/ (Debian package floors + their installer)
 │   ├── requirements/       # base.txt (shared) ← production.txt (servers, PostgreSQL, Redis, S3) ← local.txt (+ dev/CI tooling)
 │   ├── requirements.txt    # `-r requirements/local.txt`: the include every consumer uses (pip, Docker, pip-audit)
 │   ├── manage.py           # Django management entry point
@@ -40,7 +40,7 @@
 ├── aws/                    # ecs/ (backend + archive task-definition templates), cicd/ (deploy-config keys, identity stack),
 │                           #   legacy/ (CloudFormation + nginx of the old site)
 ├── scripts/                # ci/ (planner, validators, quality + dependency checks, and their tests), deploy/ (load_config,
-│                           #   migrate_ecs, publish_image, validate_backend_task_definition), dev/ (e2e-local.sh), pre-commit/
+│                           #   migrate_ecs, publish_image, validate_backend_task_definition + its task_definition_* modules), dev/ (e2e-local.sh), pre-commit/
 ├── docs/                   # Technical documentation (this directory): api/, architecture/, cms-admin/, deployment/, integrations/
 ├── .github/                # workflows/ (CI/CD), actions/ (composite setup actions), codeql/, dependabot.yml
 ├── pyproject.toml          # Ruff, Bandit and coverage config for src/
@@ -99,7 +99,7 @@ Domain subsystems that used to live here have moved to their owners. The Bedrock
 `system_intelligence/services/bedrock/`, the assistant's query tools are
 `system_intelligence/services/query_tools/`, and the sitemap view is `cms/views/sitemap.py`.
 `core` does not import business apps at module level, and
-`scripts/ci/check_python_dependencies.py` enforces that. See
+`scripts/ci/python_dependencies/` enforces that. See
 [Code Quality Rules](code-quality.md#dependency-directions) for the allowed direction of every app
 and for the registration hooks.
 
@@ -140,8 +140,9 @@ pages/src/
 ├── index.css           # Imports the contract, the shared styles and the app layout
 ├── app/                # Composition: providers/, router/ (routes + EMBED_APP_ROUTES), ErrorBoundary/,
 │                       #   MaintenanceMode/, thirdPartyLoaders/
-├── routes/             # Routed pages, lazy-loaded via deep imports; page-only hooks and sections
-│                       #   live beside the page (e.g. EventRegistrationPage/registration/)
+├── routes/             # Routed pages by area (auth/, events/, news/, projects/, subscription/), lazy-loaded via
+│                       #   deep imports; page-only hooks and sections live beside the page (e.g.
+│                       #   events/EventRegistrationPage/registration/)
 ├── features/<domain>/  # assistant, auth, cms, events, layout, news, projects:
 │                       #   api/, components/, optional hooks/, types.ts, public index.ts
 ├── components/         # Cross-feature UI, one folder per component (Icon/, NotFoundPage/, SafeHtml/,
@@ -150,8 +151,8 @@ pages/src/
 ├── lib/                # Framework-agnostic: api/ (client, error messages, embed hosts), format/, security/,
 │                       #   css/, preview/, documentHead.ts, isolatedRoute.ts
 ├── types/              # Shared API types
-├── styles/             # Every global stylesheet: tokens.css (fallback design tokens), shared.css, layers.css
-│                       #   and contract/ (the CSS contract editors rely on)
+├── styles/             # Every global stylesheet: base/ (tokens.css: fallback design tokens, shared.css,
+│                       #   layers.css) and contract/ (the CSS contract editors rely on)
 └── __tests__/          # Vitest tests mirroring the source tree, plus core/ for project-level checks
                         #   (CSS contract and layers, index.html, lazy routes, barrels) and the Django admin
                         #   static JS evaluated in jsdom
@@ -175,7 +176,7 @@ Allowed imports between these layers are listed in
 | `aws/ecs/backend-task-definition.json` | ECS Fargate task template (web + background-worker containers) with env var placeholders |
 | `aws/ecs/archive-task-definition.json` | ECS task template of the archive service |
 | `aws/cicd/deploy-config-keys.json` | The allow-list of deploy-config keys `scripts/deploy/load_config.py` accepts |
-| `scripts/ci/python_quality.toml`, `scripts/ci/python_dependencies.toml` | Size/complexity thresholds and app dependency rules |
+| `scripts/ci/python_quality/python_quality.toml`, `scripts/ci/python_dependencies/python_dependencies.toml` | Size/complexity thresholds and app dependency rules |
 | `.github/codeql/codeql-config.yml`, `.github/dependabot.yml` | CodeQL and Dependabot settings |
 
 ## Related pages

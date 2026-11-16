@@ -11,10 +11,10 @@ from django.test.utils import CaptureQueriesContext
 from django.utils.html import escape
 from rest_framework.test import APIClient
 
-from apps.core.admin.service_credentials import microsoft_graph_certificate_forms as forms_module
+from apps.core.admin.service_credentials.microsoft_graph import certificate_forms as forms_module
 from apps.core.models import MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
-from apps.core.services.email.graph.certificate import describe_certificate
 from apps.core.services.email.graph.credential import lifecycle
+from apps.core.services.email.graph.identity.certificate import describe_certificate
 from apps.core.tests.admin.service_credentials.graph_certificate.test_graph_certificate_no_echo import (
     CACHE_WRITES,
     every_log_record,

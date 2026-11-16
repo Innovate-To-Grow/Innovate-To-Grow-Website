@@ -1,8 +1,14 @@
-from .checkin import build_checkin_export
 from .registration import (
     sync_name_to_account,
     sync_phone_to_account,
     sync_secondary_email_to_account,
+)
+from .registration.checkin_export import build_checkin_export
+from .registration.event_copy import (
+    EventCopyTemplate,
+    QuestionCopySnapshot,
+    TicketCopySnapshot,
+    build_event_copy_template,
 )
 from .schedule_sync import (
     ScheduleSyncError,
@@ -10,12 +16,6 @@ from .schedule_sync import (
     fetch_schedule_sheet_records,
     resolve_sync_targets,
     sync_schedule,
-)
-from .template import (
-    EventCopyTemplate,
-    QuestionCopySnapshot,
-    TicketCopySnapshot,
-    build_event_copy_template,
 )
 from .ticket import (
     build_ticket_access_token,

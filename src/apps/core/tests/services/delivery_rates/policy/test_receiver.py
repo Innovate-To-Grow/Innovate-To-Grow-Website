@@ -5,7 +5,7 @@ from django.db.models.signals import post_save
 from django.test import TestCase
 
 from apps.core.models import MicrosoftGraphProviderConfig
-from apps.core.services.delivery_rates import receivers
+from apps.core.services.delivery_rates.lifecycle import receivers
 from apps.core.tests.services.delivery_rates.policy.test_snapshot import MAILBOX, SES, state
 
 from ..helpers import START, Channel, FakeClock

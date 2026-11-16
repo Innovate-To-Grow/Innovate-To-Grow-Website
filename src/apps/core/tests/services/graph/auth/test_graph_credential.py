@@ -12,9 +12,9 @@ from django.test import SimpleTestCase, override_settings
 
 from apps.core.services.credential_store import CredentialStoreError, TransientCredentialStoreError
 from apps.core.services.email import PermanentEmailDeliveryError, TransientEmailDeliveryError
-from apps.core.services.email.graph import auth
-from apps.core.services.email.graph.certificate import describe_certificate
 from apps.core.services.email.graph.credential import stored_key
+from apps.core.services.email.graph.identity import auth
+from apps.core.services.email.graph.identity.certificate import describe_certificate
 from apps.core.tests.graph_helpers import make_certificate, make_test_credential, private_key_lines
 from apps.core.tests.services.graph.provider.test_email_graph import (
     ACCESS_TOKEN,

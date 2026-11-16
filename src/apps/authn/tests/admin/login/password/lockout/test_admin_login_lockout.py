@@ -6,7 +6,7 @@ locked that form for all of them. The lockout is now keyed on the account alone 
 work. The email + password form counts on the submitted email (the counter of the member login). The remembered-admin
 form counts on a ``login_guard.ScopedKey`` of the member in the signed cookie, which no typed identifier reaches, so
 somebody who merely knows a staff address cannot lock a returning admin's remembered form. The email-code login is
-untouched by either. Time is frozen (``apps.authn.tests.clock``) so a window can never roll over mid-test.
+untouched by either. Time is frozen (``apps.authn.tests.helpers.clock``) so a window can never roll over mid-test.
 """
 
 from unittest.mock import patch
@@ -17,8 +17,8 @@ from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 
 from apps.authn.models import ContactEmail, LoginFailureWindow
-from apps.authn.services import login_guard
-from apps.authn.tests.clock import freeze_time
+from apps.authn.services.security import login_guard
+from apps.authn.tests.helpers.clock import freeze_time
 from apps.authn.views.admin.login.state import LAST_ADMIN_LOGIN_COOKIE_NAME
 
 Member = get_user_model()

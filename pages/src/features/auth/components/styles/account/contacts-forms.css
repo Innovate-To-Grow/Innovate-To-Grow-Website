@@ -1,0 +1,99 @@
+@layer itg.components {
+.email-center-verify-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.email-center-verify-hint {
+  margin: 0;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
+.email-center-card-note {
+  margin: 0 0 8px;
+  color: var(--itg-color-text-secondary);
+  font-size: var(--itg-font-size-small);
+  line-height: 21px;
+}
+
+.email-center-verify-form,
+.email-center-pending-verify-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.email-center-verify-code-wrap,
+.email-center-pending-verify-code {
+  margin: 0;
+}
+
+.email-center-verify-actions,
+.email-center-pending-verify-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+.email-center-verify-secondary-row,
+.email-center-pending-verify-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+}
+
+.email-center-verify-alert,
+.email-center-pending-verify-alert {
+  margin-top: 0;
+}
+
+/* Add-email / add-phone / pending-phone sub-panels. */
+.email-center-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--itg-color-border);
+  background: var(--itg-color-white);
+}
+
+.email-center-add-form > .account-subsection-title {
+  margin: 0;
+}
+
+.email-center-add-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+
+.email-add-newsletters-group {
+  padding-top: 12px;
+  border-top: 1px solid var(--itg-color-border);
+}
+
+.email-add-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.email-center-pending-verify-title {
+  margin: 0;
+}
+
+.email-center-pending-verify-intro {
+  line-height: 24px;
+}
+}

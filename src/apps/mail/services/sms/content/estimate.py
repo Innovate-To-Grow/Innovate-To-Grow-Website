@@ -14,7 +14,7 @@ from apps.core.services.delivery_rates.rules.sms_parts import sms_encoding, sms_
 from apps.mail.models import SmsConfig
 from apps.mail.models.sms.campaign_options import SMS_LINK_PLACEHOLDERS
 
-from ...campaign.personalize import personalize
+from ...campaign.content.personalize import personalize
 from ..links import example_link
 from .compose import EXAMPLE_NAMES, apply_footer, name_values
 

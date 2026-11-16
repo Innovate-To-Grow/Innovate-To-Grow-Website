@@ -12,8 +12,8 @@ repos:
     hooks:
       - id: check-yaml
         # CloudFormation intrinsic tags are parsed and validated by
-        # scripts/ci/validate_legacy_infrastructure.py in the preflight job.
-        exclude: ^aws/legacy/(?:monitoring-us-east-1|template)\.yaml$
+        # scripts/ci/legacy_infrastructure/ in the preflight job.
+        exclude: ^aws/legacy/cloudformation/(?:monitoring-us-east-1|template)\.yaml$
         stages: [pre-commit]
       - id: check-toml
         stages: [pre-commit]
@@ -82,14 +82,14 @@ repos:
       # Both need the dev environment's ruff on PATH (complexity is ruff's C901).
       - id: python-quality
         name: Python size / complexity / nesting limits
-        entry: python scripts/ci/check_python_quality.py --quiet
+        entry: python -m scripts.ci.python_quality --quiet
         language: system
         pass_filenames: false
         always_run: true
         stages: [pre-push]
       - id: python-dependencies
         name: Python app dependency boundaries
-        entry: python scripts/ci/check_python_dependencies.py
+        entry: python -m scripts.ci.python_dependencies
         language: system
         pass_filenames: false
         always_run: true

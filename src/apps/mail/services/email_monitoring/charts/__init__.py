@@ -13,7 +13,7 @@ from apps.mail.services.email_monitoring.charts.reasons import FAILED, Classific
 from apps.mail.services.email_monitoring.charts.reasons import bounce_reasons as bounce_reasons
 from apps.mail.services.email_monitoring.charts.reasons import failure_reasons as failure_reasons
 
-from ..scope import Scope
+from ..dashboard.scope import Scope
 
 BOUNCE_SERIES = (
     Classification.HARD,

@@ -7,7 +7,7 @@ from django.urls import resolve, reverse
 
 from apps.core.models import BackgroundJob
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND
-from apps.core.services.request_limits.scopes import classify_route
+from apps.core.services.request_limits.classification.scopes import classify_route
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import BouncedAddress
 
@@ -50,7 +50,7 @@ class DeliveryDashboardRedirectTests(TestCase):
         response = self.client.get(self.old, {"days": "365"}, follow=True)
 
         self.assertEqual(response.redirect_chain, [(f"{self.new}?days=365", 302)])
-        self.assertTemplateUsed(response, "admin/mail/email_monitoring/ses.html")
+        self.assertTemplateUsed(response, "admin/mail/email_monitoring/pages/ses.html")
         dashboard.assert_called_once_with(days=365)
 
     def test_only_get_and_head_are_redirected(self):

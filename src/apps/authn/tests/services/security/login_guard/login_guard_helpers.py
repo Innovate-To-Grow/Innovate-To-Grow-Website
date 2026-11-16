@@ -6,10 +6,8 @@ from django.core.cache import cache
 from django.test import TestCase
 
 from apps.authn.models import LoginFailureWindow
-from apps.authn.services import login_guard
-from apps.authn.tests.clock import (
-    freeze_time,
-)
+from apps.authn.services.security import login_guard
+from apps.authn.tests.helpers.clock import freeze_time
 
 EMAIL = "victim@example.com"
 

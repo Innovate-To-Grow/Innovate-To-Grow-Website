@@ -1,4 +1,4 @@
-/* Mail → Delivery Rates (admin/mail/settings_rates.html, rate_card.html). */
+/* Mail → Delivery Rates (admin/mail/settings/delivery_rates/settings_rates.html, rate_card.html). */
 
 .i2g-rates .i2g-rate-status {
     background: var(--md-sys-color-surface-container-low, transparent);

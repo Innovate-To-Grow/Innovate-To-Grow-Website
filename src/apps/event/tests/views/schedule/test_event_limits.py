@@ -17,9 +17,9 @@ from apps.event.throttles import (
     SecondaryEmailCodeVerifyThrottle,
     TicketEmailResendThrottle,
 )
-from apps.event.views.registration.create import EventRegistrationCreateView
-from apps.event.views.registration.sms import VerifyPhoneCodeView
-from apps.event.views.registration.tickets import ResendTicketEmailView
+from apps.event.views.registration.contacts.sms import VerifyPhoneCodeView
+from apps.event.views.registration.create.view import EventRegistrationCreateView
+from apps.event.views.registration.flow.tickets import ResendTicketEmailView
 
 
 class EventLimitTestCase(TestCase):

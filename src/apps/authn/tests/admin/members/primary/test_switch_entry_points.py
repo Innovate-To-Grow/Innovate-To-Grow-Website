@@ -47,7 +47,7 @@ class MemberPageEntryPointTests(SwitchFixture):
         self.assertContains(response, f"{switch_url(self.jane)}?to={self.secondary.pk}")
 
     def test_the_inline_errors_point_at_the_new_button(self):
-        from apps.authn.admin.members import inlines
+        from apps.authn.admin.members.inlines import contacts as inlines
 
         for message in (
             inlines.PRIMARY_EMAIL_INLINE_EDIT_ERROR,

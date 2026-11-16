@@ -1,4 +1,4 @@
-from apps.authn.tests.stale_bearer import assert_stale_bearer_reads_as_anonymous
+from apps.authn.tests.helpers.stale_bearer import assert_stale_bearer_reads_as_anonymous
 from apps.event.models import CurrentProject, CurrentProjectSchedule
 from apps.projects.tests.api.all_projects.test_all_projects import URL, AllProjectsTestCase
 

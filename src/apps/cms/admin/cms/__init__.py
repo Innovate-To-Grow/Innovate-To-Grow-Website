@@ -1,7 +1,7 @@
 from .cms_asset import CMSAssetAdmin
-from .cms_embed_allowed_host import CMSEmbedAllowedHostAdmin
-from .cms_embed_widget import CMSEmbedWidgetAdmin
 from .cms_page import CMSPageAdmin
+from .embed.allowed_host import CMSEmbedAllowedHostAdmin
+from .embed.widget import CMSEmbedWidgetAdmin
 from .route_redirect import RouteRedirectAdmin
 
 __all__ = [

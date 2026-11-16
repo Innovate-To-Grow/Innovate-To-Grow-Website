@@ -1,0 +1,159 @@
+@layer itg.components {
+/* ---- Narrow screens, continued (the 768px rules of projectsResponsiveNarrow.css) ---- */
+
+@media (max-width: 768px) {
+  /* "More Table Actions": the table-tidying buttons, folded away until opened. */
+  .search-table-more-actions {
+    border-top: 1px solid var(--itg-color-border);
+  }
+
+  .search-table-more-actions-summary {
+    display: flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--itg-color-primary);
+    font-size: var(--itg-font-size-small);
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .search-table-more-actions[open] > .search-table-action-group {
+    padding-bottom: 0.5rem;
+  }
+
+  /* On phones the text buttons become 44px outlined buttons (2px navy, like .itg-btn-outline). */
+  .search-table-action-group .itg-btn-text {
+    min-height: 2.75rem;
+    padding: 0 0.25rem;
+    border: 2px solid var(--itg-color-primary);
+    background: var(--itg-color-white);
+    color: var(--itg-color-primary);
+    font-size: var(--itg-font-size-small);
+    text-decoration: none;
+  }
+
+  .search-table-action-group .itg-btn-text:hover,
+  .search-table-action-group .itg-btn-text:focus-visible {
+    background: var(--itg-color-primary);
+    color: var(--itg-color-white);
+  }
+
+  /* Disabled, or soft-disabled (aria-disabled keeps focus on a button that has nothing to do yet): greyed out as
+     above 768px, and not filled navy on hover or focus. */
+  .search-table-action-group .itg-btn-text:disabled,
+  .search-table-action-group .itg-btn-text[aria-disabled='true'],
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:hover,
+  .search-table-action-group .itg-btn-text[aria-disabled='true']:focus-visible {
+    border-color: var(--itg-color-disabled-border);
+    background: var(--itg-color-disabled-bg);
+    color: var(--itg-color-disabled-text);
+    cursor: not-allowed;
+  }
+
+  /* Saved Merged Results and shared lists. */
+  .project-grid-merged .project-grid-phone-list-toggle {
+    display: flex;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 1px solid var(--itg-color-border);
+    background: var(--itg-color-bg-page);
+    text-decoration: none;
+  }
+
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-controls,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-results-bar,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-mobile-cards,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-pagination,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-empty,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-no-results,
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-edit-group {
+    display: none;
+  }
+
+  .project-grid-merged .project-grid-phone-list:not(.is-open) .project-grid-toolbar--bottom {
+    margin-top: 0;
+  }
+
+  .project-grid-merged .project-grid-inline-actions,
+  .project-grid-export-group {
+    width: 100%;
+  }
+
+  .project-grid-export-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .project-grid-export-group .project-grid-group-label {
+    grid-column: 1 / -1;
+  }
+
+  .project-grid-share-result-row {
+    flex-direction: column;
+  }
+
+  .project-grid-share-result-input {
+    flex: none;
+  }
+
+  .past-projects-dialog-actions .itg-btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* ---- Small phones ---------------------------------------------------------------- */
+
+@media (max-width: 480px) {
+  /* The AI question gets the full width, and its Search button goes under it: side by side, the field was too
+     narrow for its placeholder. */
+  .past-projects-ai-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .past-projects-ai-search > .itg-btn {
+    width: 100%;
+  }
+}
+
+/* ---- The narrowest phones (320-360px, and 400% zoom) ---------------------------- */
+
+@media (max-width: 360px) {
+  /* Class and Industry one above the other: "All industries" does not fit half a row. */
+  .project-grid-controls-row.has-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* "Sort by" over a full-width select, so the longest choice ("Team number (low to high)") is not cut off. */
+  .project-grid-results-controls .project-grid-sort {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .project-grid-results-controls .project-grid-sort .project-grid-select {
+    width: 100%;
+  }
+
+  /* Per page and View All Details a row each, so the button's label stays on one line. */
+  .project-grid-controls-row > .project-grid-page-size,
+  .project-grid-controls-row > .project-grid-toggle-details {
+    grid-column: 1 / -1;
+  }
+
+  /* Previous / Page x of y / Next stay on one line. */
+  .project-grid-pagination {
+    flex-wrap: nowrap;
+  }
+
+  .project-grid-pager-status {
+    text-align: center;
+  }
+
+  /* + Search Table and AI Search Table one above the other, each on one line. */
+  .past-projects-action-bar-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+}

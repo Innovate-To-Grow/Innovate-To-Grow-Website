@@ -3,7 +3,7 @@ import {type MenuItem} from '@/features/layout/api';
 import {type User} from '@/features/auth/api/contracts/types';
 import {formatE164ForDisplay} from '@/lib/format/phoneInput';
 import {Icon} from '@/components/Icon/Icon';
-import {type SectionMatch} from '@/features/layout/sections';
+import {type SectionMatch} from '@/features/layout/components/MainMenu/parts/sections';
 import {type LayoutLoadState} from '../../LayoutProvider/context';
 import {MobileMenuTree} from './MobileMenuTree';
 import {MENU_BAR_SKELETON_WIDTHS_PX, UNIVERSITY_LINKS, memberDisplayName} from './shared';

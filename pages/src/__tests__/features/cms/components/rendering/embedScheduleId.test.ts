@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {normalizeScheduleId} from '@/features/cms/components/embedScheduleId';
+import {normalizeScheduleId} from '@/features/cms/components/rendering/embedScheduleId';
 
 describe('normalizeScheduleId', () => {
   it('returns a lower-cased canonical UUID', () => {

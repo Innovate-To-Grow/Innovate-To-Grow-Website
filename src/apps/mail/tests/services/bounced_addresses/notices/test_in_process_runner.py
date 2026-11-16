@@ -9,17 +9,17 @@ from apps.core.services.background_jobs import claim_jobs, process_claimed_job
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import BouncedAddress, RecipientLog
 from apps.mail.services.audience import get_recipients
+from apps.mail.services.audience.suppression import SKIPPED_MESSAGE
 from apps.mail.services.campaign.dispatch import queue_email_campaign
-from apps.mail.services.send_campaign import SesSendResult
-from apps.mail.services.send_campaign.runner import send_campaign, send_to_recipients
-from apps.mail.services.suppression import SKIPPED_MESSAGE
+from apps.mail.services.campaign.send import SesSendResult
+from apps.mail.services.campaign.send.runner import send_campaign, send_to_recipients
 from apps.mail.tests.services.bounced_addresses.notices.test_send_path import _make_active_aws, campaign, suppress
 
 from ..helpers import make_person
 
 
-@patch("apps.mail.services.send_campaign.runner._get_ses_client", return_value=MagicMock())
-@patch("apps.mail.services.send_campaign.runner._send_via_ses", return_value=SesSendResult(message_id="SES-1"))
+@patch("apps.mail.services.campaign.send.runner._get_ses_client", return_value=MagicMock())
+@patch("apps.mail.services.campaign.send.runner._send_via_ses", return_value=SesSendResult(message_id="SES-1"))
 class InProcessRunnerTests(TestCase):
     """Background jobs off: the in-process runner."""
 
@@ -50,7 +50,7 @@ class InProcessRunnerTests(TestCase):
         resolved = get_recipients(self.campaign)
         suppress("bob@example.org")
 
-        with patch("apps.mail.services.send_campaign.runner.get_recipients", return_value=resolved):
+        with patch("apps.mail.services.campaign.send.runner.get_recipients", return_value=resolved):
             send_campaign(self.campaign, self.sender)
 
         self.assertEqual(self.sent_to(send), ["alice@example.org"])

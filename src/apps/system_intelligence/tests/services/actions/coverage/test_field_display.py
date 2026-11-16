@@ -11,7 +11,7 @@ from apps.cms.models.content.news.article import NewsArticle
 from apps.system_intelligence.services.actions.cms import helpers as cms_helpers
 from apps.system_intelligence.services.actions.cms.preview import normalize_cms_blocks
 from apps.system_intelligence.services.actions.comparison import field_display as fd
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
 
 
 # ---------------------------------------------------------------------------

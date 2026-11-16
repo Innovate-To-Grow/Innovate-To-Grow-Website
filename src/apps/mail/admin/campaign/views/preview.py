@@ -8,15 +8,15 @@ from unfold.decorators import action
 
 from apps.core.utils.json_helpers import safe_json
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign.personalize import personalize
-from apps.mail.services.campaign.preview import (
+from apps.mail.services.campaign.content.personalize import personalize
+from apps.mail.services.campaign.content.preview import (
     HTML_MARKER,
     SAMPLE_CONTEXT,
     build_email_render_context,
     split_html_marker,
 )
 
-from .. import services as campaign_api
+from . import services as campaign_api
 
 _PREVIEW_CSP = (
     "sandbox; default-src 'none'; img-src 'self' data: https:; "
@@ -50,7 +50,7 @@ class CampaignPreviewMixin:
             "skipped_count": len(skipped),
             "back_url": reverse("admin:mail_emailcampaign_change", args=[object_id]),
         }
-        return TemplateResponse(request, "admin/mail/preview_recipients.html", context)
+        return TemplateResponse(request, "admin/mail/emailcampaign_send/preview_recipients.html", context)
 
     def send_campaign_preview_view(self, request, object_id):
         """Show email preview and step 1 of send flow for drafts."""
@@ -73,7 +73,7 @@ class CampaignPreviewMixin:
             "confirm_url": reverse("admin:mail_emailcampaign_send_confirm", args=[object_id]) if is_draft else None,
             "cancel_url": change_url,
         }
-        return TemplateResponse(request, "admin/mail/send_preview.html", context)
+        return TemplateResponse(request, "admin/mail/emailcampaign_send/send_preview.html", context)
 
     def inline_preview_view(self, request):
         """Render email preview from POST data."""

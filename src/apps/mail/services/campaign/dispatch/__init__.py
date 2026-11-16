@@ -1,7 +1,7 @@
 """Campaign delivery through the durable outbox.
 
-``launch`` starts a send (one outbox job per recipient, or the legacy in-process
-run); ``resume`` sends the recipients the delivery limits paused; ``email_job`` / ``sms_job`` are the per-recipient handlers registered in
+``launch`` starts a send (one outbox job per recipient, queued by ``queueing``, or the legacy
+in-process run); ``resume`` sends the recipients the delivery limits paused; ``email_job`` / ``sms_job`` are the per-recipient handlers registered in
 ``MailConfig.ready()``; ``job_state`` mirrors outbox state into recipient logs;
 ``channels`` describes what email and SMS delivery share.
 """

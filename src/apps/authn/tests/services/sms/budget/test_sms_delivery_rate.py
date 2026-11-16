@@ -17,7 +17,7 @@ from apps.authn.models import PhoneVerificationChallenge, SendQuotaWindow
 from apps.authn.services.send_verification.guard.outcomes import SendOutcome
 from apps.authn.services.sms import PhoneVerificationBusy, PhoneVerificationThrottled, start_phone_verification
 from apps.authn.services.sms.sns_verify import MAX_SENDS_PER_HOUR
-from apps.authn.tests.sms_provider import patch_sms_provider, sms_budget_used
+from apps.authn.tests.helpers.sms_provider import patch_sms_provider, sms_budget_used
 from apps.authn.views.shared.responses import challenge_error_response
 from apps.core.models import AWSCredentialConfig, DeliveryRateState
 from apps.core.services.delivery_rates.runtime import context
@@ -146,7 +146,7 @@ class BusyResponseTests(TestCase):
         self.assertIn("about 12 seconds", response.data["detail"])
 
     def test_the_event_registration_send_reports_busy_as_definitely_not_sent(self):
-        from apps.event.views.registration.sms import _send_registration_code
+        from apps.event.views.registration.contacts.sms_codes import _send_registration_code
 
         with patch("apps.authn.services.sms.start_phone_verification", side_effect=PhoneVerificationBusy(30)):
             outcome = _send_registration_code(MagicMock(), PHONE, "event-registration:1")

@@ -13,7 +13,7 @@ from apps.authn.services.contacts.contact_emails import (
     verify_contact_email_code,
 )
 from apps.authn.services.email.challenges import AuthChallengeInvalid
-from apps.authn.services.security.key_encryption import decrypt_pem, encrypt_pem, is_encrypted
+from apps.authn.services.security.rsa.key_encryption import decrypt_pem, encrypt_pem, is_encrypted
 from apps.authn.tests.services.coverage.test_service_coverage import _member
 
 
@@ -115,7 +115,7 @@ class ContactEmailServiceTests(TestCase):
         self.assertTrue(start_task.call_args.kwargs["best_effort_start"])
 
     @override_settings(FRONTEND_URL="https://example.com", BACKGROUND_JOBS_ENABLED=True)
-    @patch("apps.authn.services.email.notification_jobs.enqueue_notification_email")
+    @patch("apps.authn.services.email.send_email.notification_jobs.enqueue_notification_email")
     def test_notify_email_owner_uses_durable_queue_when_enabled(self, mock_enqueue):
         from apps.authn.services.contacts import contact_emails as svc
 

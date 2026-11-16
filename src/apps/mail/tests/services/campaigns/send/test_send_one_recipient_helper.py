@@ -5,9 +5,9 @@ from django.test import TestCase
 from apps.core.models import EmailServiceConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.campaign.errors import UNEXPECTED_DELIVERY_ERROR
-from apps.mail.services.send_campaign.runner import send_campaign
-from apps.mail.services.send_campaign.transport import SesSendResult
+from apps.mail.services.campaign.delivery.errors import UNEXPECTED_DELIVERY_ERROR
+from apps.mail.services.campaign.send.runner import send_campaign
+from apps.mail.services.campaign.send.transport import SesSendResult
 from apps.mail.tests.services.campaigns.send.test_send_campaign_runner import _make_active_aws
 
 
@@ -31,7 +31,7 @@ class SendOneRecipientHelperTests(TestCase):
         )
 
     def test_send_with_configured_provider_returns_unconfigured_when_no_client(self):
-        from apps.mail.services.send_campaign.runner import _send_with_configured_provider
+        from apps.mail.services.campaign.send.runner import _send_with_configured_provider
 
         result = _send_with_configured_provider(
             config=self.config,
@@ -47,17 +47,17 @@ class SendOneRecipientHelperTests(TestCase):
         self.assertEqual(result.error, "Email delivery is not configured.")
 
     def test_configured_provider_returns_empty_when_no_client(self):
-        from apps.mail.services.send_campaign.runner import _configured_provider
+        from apps.mail.services.campaign.send.runner import _configured_provider
 
         self.assertEqual(_configured_provider(None), "")
         self.assertEqual(_configured_provider(self.config), "ses")
 
     @patch(
-        "apps.mail.services.send_campaign.runner.personalize",
+        "apps.mail.services.campaign.send.runner.personalize",
         side_effect=RuntimeError("smtp://user:private-value@internal-host/private/path"),
     )
     def test_send_one_recipient_records_failure_on_exception(self, mock_personalize):
-        from apps.mail.services.send_campaign.runner import _send_one_recipient
+        from apps.mail.services.campaign.send.runner import _send_one_recipient
 
         recipient = {
             "member_id": None,
@@ -67,7 +67,7 @@ class SendOneRecipientHelperTests(TestCase):
             "last_name": "User",
         }
 
-        with self.assertLogs("apps.mail.services.send_campaign.runner", level="ERROR") as captured:
+        with self.assertLogs("apps.mail.services.campaign.send.runner", level="ERROR") as captured:
             _send_one_recipient(self.campaign, self.config, MagicMock(), "", recipient)
 
         log = RecipientLog.objects.get(campaign=self.campaign, email_address="boom@example.com")
@@ -81,7 +81,7 @@ class SendOneRecipientHelperTests(TestCase):
         self.assertEqual(self.campaign.failed_count, 1)
 
     def test_record_send_result_handles_external_status_change(self):
-        from apps.mail.services.send_campaign.runner import _record_send_result
+        from apps.mail.services.campaign.send.runner import _record_send_result
 
         log = RecipientLog.objects.create(
             campaign=self.campaign,
@@ -98,7 +98,7 @@ class SendOneRecipientHelperTests(TestCase):
         self.assertEqual(self.campaign.sent_count, 0)
 
     def test_record_send_result_external_non_terminal_counts_sent(self):
-        from apps.mail.services.send_campaign.runner import _record_send_result
+        from apps.mail.services.campaign.send.runner import _record_send_result
 
         log = RecipientLog.objects.create(
             campaign=self.campaign,
@@ -114,8 +114,8 @@ class SendOneRecipientHelperTests(TestCase):
 
 
 class SendCampaignPeriodicSaveTests(TestCase):
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_periodic_save_runs_for_many_recipients(self, mock_client, mock_send):
         _make_active_aws()
         EmailServiceConfig.objects.create(

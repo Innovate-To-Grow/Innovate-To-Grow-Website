@@ -112,7 +112,7 @@ describe('CSS import scanner', () => {
   it('resolves ./, ../ and @/ specifiers to absolute paths and skips package CSS', () => {
     expect(resolveCssSpecifier(importer, './Demo.css')).toBe(join(SRC_DIR, 'features', 'demo', 'Demo.css'));
     expect(resolveCssSpecifier(importer, '../shared/x.css')).toBe(join(SRC_DIR, 'features', 'shared', 'x.css'));
-    expect(resolveCssSpecifier(importer, '@/styles/tokens.css')).toBe(join(SRC_DIR, 'styles', 'tokens.css'));
+    expect(resolveCssSpecifier(importer, '@/styles/base/tokens.css')).toBe(join(SRC_DIR, 'styles', 'base', 'tokens.css'));
     expect(resolveCssSpecifier(importer, 'some-package/dist/style.css')).toBeNull();
   });
 });
@@ -120,7 +120,7 @@ describe('CSS import scanner', () => {
 describe('every stylesheet is used', () => {
   it('finds the stylesheets it checks', () => {
     expect(CSS_FILES.map(fromPages)).toEqual(
-      expect.arrayContaining(['src/index.css', 'src/styles/tokens.css', 'src/app/MaintenanceMode/MaintenanceMode.css']),
+      expect.arrayContaining(['src/index.css', 'src/styles/base/tokens.css', 'src/app/MaintenanceMode/MaintenanceMode.css']),
     );
   });
 
@@ -140,7 +140,12 @@ describe('maintenance page styles are bundled with the app', () => {
   // The maintenance page is shown when the backend is down, and the backend also serves
   // /api/layout/theme.css, so the page must never depend on that sheet.
   const maintenanceDir = join(SRC_DIR, 'app', 'MaintenanceMode');
-  const maintenanceCss = stripCssComments(readFileSync(join(maintenanceDir, 'MaintenanceMode.css'), 'utf8'));
+  // MaintenanceMode.css is an ordered @import list of its sections (maintenanceCard.css, ...): read them in place.
+  const withImports = (file: string): string =>
+    readFileSync(file, 'utf8').replace(/@import\s+['"](\.\/[^'"]+)['"];/g, (_match, specifier: string) =>
+      withImports(join(dirname(file), specifier)),
+    );
+  const maintenanceCss = stripCssComments(withImports(join(maintenanceDir, 'MaintenanceMode.css')));
 
   /** Declarations of the top-level rule whose whole selector is `selector`. */
   const ruleBody = (selector: string) => {
@@ -165,7 +170,7 @@ describe('maintenance page styles are bundled with the app', () => {
   });
 
   it('every --itg- token it reads without a fallback is defined in the bundled tokens.css', () => {
-    const tokensCss = readFileSync(join(SRC_DIR, 'styles', 'tokens.css'), 'utf8');
+    const tokensCss = readFileSync(join(SRC_DIR, 'styles', 'base', 'tokens.css'), 'utf8');
     const defined = new Set(Array.from(tokensCss.matchAll(/(--itg-[\w-]+)\s*:/g), (match) => match[1]));
     const required = new Set(Array.from(maintenanceCss.matchAll(/var\(\s*(--itg-[\w-]+)\s*\)/g), (match) => match[1]));
 

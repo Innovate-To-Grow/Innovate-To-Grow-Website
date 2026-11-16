@@ -1,6 +1,15 @@
 from django.db import close_old_connections
 
-from .approval_tools import (
+from .cms import (
+    get_footer_content_detail,
+    get_menu_detail,
+    get_news_source_detail,
+    get_site_settings_detail,
+    search_cms_assets,
+    search_menus,
+)
+from .domains.analytics import get_page_view_summary, get_page_view_trend, get_top_paths
+from .domains.approval_tools import (
     get_cms_page_detail,
     get_model_schema,
     get_record,
@@ -16,27 +25,7 @@ from .approval_tools import (
     propose_project_update,
     search_records,
 )
-from .cms import (
-    get_footer_content_detail,
-    get_menu_detail,
-    get_news_source_detail,
-    get_site_settings_detail,
-    search_cms_assets,
-    search_menus,
-)
-from .domains.analytics import get_page_view_summary, get_page_view_trend, get_top_paths
-from .domains.mail import get_campaign_recipient_logs, get_failed_recipient_report
-from .domains.members import get_member_activity_summary, get_member_detail, search_contact_info
-from .domains.projects import get_current_project_schedule, get_project_detail, get_semester_project_summary
-from .events import (
-    get_checkin_breakdown,
-    get_event_detail,
-    get_event_question_summary,
-    get_registration_detail,
-    get_ticket_capacity_summary,
-    search_event_registrations,
-)
-from .legacy import (
+from .domains.legacy import (
     count_members,
     get_campaign_stats,
     get_checkin_stats,
@@ -51,7 +40,18 @@ from .legacy import (
     search_projects,
     search_semesters,
 )
-from .registry import get_agent_tool_callables, get_agent_tool_metadata
+from .domains.mail import get_campaign_recipient_logs, get_failed_recipient_report
+from .domains.members import get_member_activity_summary, get_member_detail, search_contact_info
+from .domains.projects import get_current_project_schedule, get_project_detail, get_semester_project_summary
+from .events import (
+    get_checkin_breakdown,
+    get_event_detail,
+    get_event_question_summary,
+    get_registration_detail,
+    get_ticket_capacity_summary,
+    search_event_registrations,
+)
+from .framework.registry import get_agent_tool_callables, get_agent_tool_metadata
 
 __all__ = [
     "close_old_connections",

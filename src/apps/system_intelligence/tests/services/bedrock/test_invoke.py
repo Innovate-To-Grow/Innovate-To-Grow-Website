@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError
 from django.test import SimpleTestCase, TestCase
 
+from apps.system_intelligence.services.bedrock.clients.exceptions import BedrockError
 from apps.system_intelligence.services.bedrock.clients.prepare import build_kwargs, prepare
-from apps.system_intelligence.services.bedrock.exceptions import BedrockError
 
 
 def _client_error():

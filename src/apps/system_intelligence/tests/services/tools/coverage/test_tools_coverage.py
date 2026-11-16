@@ -27,9 +27,9 @@ from apps.event.tests.helpers import (
 )
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.system_intelligence.services import tools as si_tools
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
-from apps.system_intelligence.services.query_tools.tool_modules.helpers import MAX_ROWS
-from apps.system_intelligence.services.tools.query_helpers import (
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
+from apps.system_intelligence.services.query_tools.tool_modules.domains.helpers import MAX_ROWS
+from apps.system_intelligence.services.tools.framework.query_helpers import (
     apply_date_range,
     bounded_limit,
     require_one,

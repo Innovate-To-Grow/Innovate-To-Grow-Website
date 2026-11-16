@@ -15,7 +15,7 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from django.views.decorators.http import require_GET, require_http_methods
 
-from apps.core.services.request_limits.overview import overview, policies
+from apps.core.services.request_limits.reporting.overview import overview, policies
 from apps.core.utils.access import user_can_access_app
 
 from .cards import build_cards
@@ -93,7 +93,7 @@ def request_limits_view(request):
         "groups": tier_groups(cards, status),
         "history_url": reverse("admin:admin_logentry_changelist"),
     }
-    return TemplateResponse(request, "admin/core/request_limits.html", context)
+    return TemplateResponse(request, "admin/core/request_limits/request_limits.html", context)
 
 
 @require_GET

@@ -9,7 +9,7 @@ from django.utils.dateparse import parse_date
 from apps.core.models import EmailBounce
 from apps.mail.models import BouncedAddress
 
-from ...log import PAGE_SIZES
+from ...dashboard.log import PAGE_SIZES
 
 Category = EmailBounce.Category
 Status = BouncedAddress.Status

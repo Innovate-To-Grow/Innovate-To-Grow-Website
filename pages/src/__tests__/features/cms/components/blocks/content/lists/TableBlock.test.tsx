@@ -1,7 +1,7 @@
 import {cleanup, render} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {TableBlock} from '@/features/cms/components/blocks/content/TableBlock';
+import {TableBlock} from '@/features/cms/components/blocks/content/lists/TableBlock';
 
 describe('TableBlock', () => {
   afterEach(() => {

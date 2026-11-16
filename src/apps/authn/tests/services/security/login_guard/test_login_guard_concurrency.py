@@ -14,8 +14,8 @@ from django.db import close_old_connections, connection, connections
 from django.test import TransactionTestCase
 
 from apps.authn.models import LoginFailureWindow
-from apps.authn.services import login_guard
-from apps.authn.tests.clock import SECONDS_LEFT_IN_SHORT_WINDOW, FrozenClock
+from apps.authn.services.security import login_guard
+from apps.authn.tests.helpers.clock import SECONDS_LEFT_IN_SHORT_WINDOW, FrozenClock
 
 EMAIL = "victim@example.com"
 GLOBAL = LoginFailureWindow.GLOBAL_DIGEST

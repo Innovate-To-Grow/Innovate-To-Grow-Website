@@ -16,7 +16,7 @@ from django.template.response import TemplateResponse
 from django.views.generic import RedirectView
 
 from apps.mail.services.campaign.dashboard import get_delivery_dashboard_data
-from apps.mail.services.email_monitoring import ses
+from apps.mail.services.email_monitoring.dashboard import ses
 
 from .views import TEMPLATES, _context, require_mail_access
 
@@ -26,7 +26,7 @@ def ses_view(request):
     days = ses.window_days(request.GET)
     context = _context(request, "Amazon SES Delivery", None, "ses")
     context.update(ses.tab(get_delivery_dashboard_data(days=days), days))
-    return TemplateResponse(request, f"{TEMPLATES}/ses.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/pages/ses.html", context)
 
 
 def ses_data_view(request):

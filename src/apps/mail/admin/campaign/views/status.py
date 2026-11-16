@@ -44,7 +44,7 @@ class CampaignStatusMixin:
             "status_json_url": reverse("admin:mail_emailcampaign_send_status_json", args=[object_id]),
             "back_url": reverse("admin:mail_emailcampaign_change", args=[object_id]),
         }
-        return TemplateResponse(request, "admin/mail/send_status.html", context)
+        return TemplateResponse(request, "admin/mail/emailcampaign_send/send_status.html", context)
 
     def send_campaign_status_json(self, request, object_id):
         """JSON endpoint for polling send progress."""

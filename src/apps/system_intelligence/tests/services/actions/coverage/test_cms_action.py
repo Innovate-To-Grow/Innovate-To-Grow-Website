@@ -4,12 +4,12 @@ from apps.cms.models import CMSPage
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.actions.cms import actions as cms_actions
-from apps.system_intelligence.services.actions.context import (
+from apps.system_intelligence.services.actions.engine.context import (
     current_conversation,
     current_user,
     current_user_id,
 )
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
 
 from ..support.base import SystemIntelligenceActionBase
 

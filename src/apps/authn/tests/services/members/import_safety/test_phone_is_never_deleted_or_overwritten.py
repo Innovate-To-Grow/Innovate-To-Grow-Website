@@ -1,5 +1,5 @@
 from apps.authn.models import ContactPhone
-from apps.authn.services.members.import_.parsing import PHONE_VERIFIED_IGNORED
+from apps.authn.services.members.import_.workbook.parsing import PHONE_VERIFIED_IGNORED
 from apps.authn.tests.services.members.import_safety.test_import_members_safety import _ImportCase
 
 from ..import_sheets import PHONE_VERIFIED_HEADERS, full_row

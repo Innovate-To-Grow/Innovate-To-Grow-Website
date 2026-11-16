@@ -1,7 +1,7 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {ImageTextBlock} from '@/features/cms/components/blocks/content/ImageTextBlock';
+import {ImageTextBlock} from '@/features/cms/components/blocks/content/text/ImageTextBlock';
 
 describe('ImageTextBlock', () => {
   afterEach(() => {

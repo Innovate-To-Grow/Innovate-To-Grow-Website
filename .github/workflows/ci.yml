@@ -1,7 +1,7 @@
 name: CI
 
 on:
-  # The paths a push to main validates. scripts/ci/plan_changed_areas.py mirrors
+  # The paths a push to main validates. scripts/ci/workflow/plan_changed_areas.py mirrors
   # this list: a pull request or merge group touching any of them runs the FULL
   # suite, exactly like the push that follows it (PR/push parity).
   push:
@@ -35,7 +35,7 @@ on:
     types: [checks_requested]
 
 # Runners: every job runs on a GitHub-hosted runner; RunnerTests in
-# scripts/ci/tests/test_ci_workflow_invariants.py keeps self-hosted labels out.
+# scripts/ci/tests/workflow/test_ci_workflow_invariants.py keeps self-hosted labels out.
 permissions:
   contents: read
 
@@ -116,18 +116,18 @@ jobs:
           pre-commit run check-json --all-files --show-diff-on-failure
 
       - name: Validate tool version pins
-        run: python scripts/ci/validate_tool_versions.py
+        run: python -m scripts.ci.tool_versions
 
       - name: Validate CI planner scripts
-        run: python -m unittest discover -s scripts/ci/tests
+        run: python -m unittest discover -s scripts/ci/tests -t .
 
       - name: Validate Legacy viewer infrastructure
-        run: python scripts/ci/validate_legacy_infrastructure.py
+        run: python -m scripts.ci.legacy_infrastructure
 
       - name: Validate Dependabot labels
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python scripts/ci/validate_dependabot_labels.py
+        run: python scripts/ci/dependencies/validate_dependabot_labels.py
 
   changes:
     name: Detect changed areas
@@ -157,7 +157,7 @@ jobs:
           # below: every area is validated on the branch that ships to
           # production. A pull request or merge group runs the SAME areas the
           # eventual push to main runs, so a green check cannot become a red
-          # main run for the same tree (see scripts/ci/plan_changed_areas.py).
+          # main run for the same tree (see scripts/ci/workflow/plan_changed_areas.py).
           # Any run without a usable base also runs the full suite.
           if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ] \
             || ! git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null; then
@@ -174,7 +174,7 @@ jobs:
           git diff --name-only "$BASE_SHA...$HEAD_SHA" | tee "$RUNNER_TEMP/changed-files.txt"
           # All-or-nothing: any path a push to main would validate runs the full
           # suite; a diff touching none of them (docs, README) runs none.
-          python scripts/ci/plan_changed_areas.py \
+          python scripts/ci/workflow/plan_changed_areas.py \
             --event-name "$EVENT_NAME" \
             --changed-files "$RUNNER_TEMP/changed-files.txt" >> "$GITHUB_OUTPUT"
 
@@ -353,8 +353,8 @@ jobs:
       fail-fast: false
       matrix:
         # Every app on every event (PR/push parity). MatrixParityTests in
-        # scripts/ci/tests/test_ci_workflow_invariants.py keeps this list equal
-        # to src/apps/* and scripts/ci/backend_coverage_floors.json.
+        # scripts/ci/tests/workflow/test_ci_workflow_invariants.py keeps this list equal
+        # to src/apps/* and scripts/ci/coverage/backend_coverage_floors.json.
         app: [authn, core, system_intelligence, cms, event, projects, mail, helpdesk, cli_admin]
     services:
       postgres:
@@ -398,9 +398,9 @@ jobs:
             --omit="*/migrations/*,*/tests/*" \
             manage.py test "apps.${{ matrix.app }}"
           .venv/bin/coverage json --pretty-print -o "coverage-${{ matrix.app }}.json"
-          .venv/bin/python ../scripts/ci/check_backend_coverage.py \
+          .venv/bin/python ../scripts/ci/coverage/check_backend_coverage.py \
             "coverage-${{ matrix.app }}.json" \
-            ../scripts/ci/backend_coverage_floors.json \
+            ../scripts/ci/coverage/backend_coverage_floors.json \
             --app "${{ matrix.app }}"
           .venv/bin/python - <<'PY'
           import json
@@ -526,7 +526,7 @@ jobs:
             --cov-branch \
             --cov-report=term-missing \
             --cov-report=json:coverage-cli.json
-          uv run python ../scripts/ci/check_coverage_totals.py coverage-cli.json \
+          uv run python ../scripts/ci/coverage/check_coverage_totals.py coverage-cli.json \
             --line-floor "${CLI_COVERAGE_LINES}" \
             --branch-floor "${CLI_COVERAGE_BRANCHES}"
 
@@ -555,7 +555,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py
+          python scripts/ci/workflow/check_required_results.py
           --passed-message "CLI checks passed or were not required for this run."
 
   frontend-static:
@@ -630,7 +630,7 @@ jobs:
 
       - name: Check npm licenses
         if: ${{ !cancelled() && steps.frontend-setup.outcome == 'success' }}
-        run: python3 ../scripts/ci/check_npm_licenses.py --package-lock package-lock.json --output ../npm-license-report.json
+        run: python3 ../scripts/ci/dependencies/check_npm_licenses.py --package-lock package-lock.json --output ../npm-license-report.json
 
       - name: Upload frontend supply chain artifacts
         if: ${{ always() }}
@@ -814,7 +814,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py --ignore changes --skipped-is-failure
+          python scripts/ci/workflow/check_required_results.py --ignore changes --skipped-is-failure
           --passed-message "All frontend required checks passed."
 
   python-dependency-audit:
@@ -1063,7 +1063,7 @@ jobs:
 
           # A socket pg_isready can pass against the image's init-only server
           # and then fail while it restarts; the script waits on TCP instead.
-          bash scripts/ci/wait_for_postgres.sh "$postgres" itg_ci_user itg_ci 60
+          bash scripts/ci/workflow/wait_for_postgres.sh "$postgres" itg_ci_user itg_ci 60
 
           # The probes are answered before the request limiter runs; it stays off here (as in the test
           # settings), stated explicitly so the smoke never depends on that default.
@@ -1244,7 +1244,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py --ignore changes
+          python scripts/ci/workflow/check_required_results.py --ignore changes
           --passed-message "All backend required checks passed."
 
   backend-image-publish:
@@ -1317,7 +1317,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py
+          python scripts/ci/workflow/check_required_results.py
           --passed-message "All security checks passed."
 
   deploy-artifact-result:
@@ -1337,7 +1337,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py
+          python scripts/ci/workflow/check_required_results.py
           --passed-message "Deploy artifacts passed or were not required for this run."
 
   e2e:
@@ -1524,7 +1524,7 @@ jobs:
       - name: Download and validate blob reports
         env:
           GH_TOKEN: ${{ github.token }}
-        run: bash scripts/ci/download_playwright_blobs.sh
+        run: bash scripts/ci/workflow/download_playwright_blobs.sh
 
       - name: Merge blob reports into HTML + JUnit + GitHub annotations
         working-directory: pages
@@ -1618,7 +1618,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py --ignore changes --skipped-is-failure
+          python scripts/ci/workflow/check_required_results.py --ignore changes --skipped-is-failure
           --passed-message "All E2E legs passed."
 
   archive-tests:
@@ -1710,8 +1710,12 @@ jobs:
           fi
 
           page="$(curl --fail --silent --show-error http://127.0.0.1:5001/2025-fall-event.html)"
-          if ! grep -q '/static/js/i2g-embed.js' <<<"$page"; then
+          if ! grep -q '/static/js/site/i2g-embed.js' <<<"$page"; then
             echo "::error::The event page is missing the embed helper."
+            exit 1
+          fi
+          if ! curl --fail --silent --show-error --output /dev/null http://127.0.0.1:5001/static/js/site/i2g-embed.js; then
+            echo "::error::The archive container does not serve the embed helper /static/js/site/i2g-embed.js."
             exit 1
           fi
           if grep -q 'AIzaSy' <<<"$page"; then
@@ -1736,7 +1740,7 @@ jobs:
 
       # As in Backend Docker Build and Scan: the pinned release from GitHub
       # releases, checksum verified, instead of trivy-action's get.trivy.dev
-      # installer. scripts/ci/validate_tool_versions.py keeps every
+      # installer. scripts/ci/tool_versions/ keeps every
       # TRIVY_VERSION equal.
       - name: Install Trivy from GitHub releases
         env:
@@ -1794,7 +1798,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py
+          python scripts/ci/workflow/check_required_results.py
           --passed-message "Archive checks passed or were not required for this run."
 
   ci-result:
@@ -1823,7 +1827,7 @@ jobs:
         env:
           NEEDS_CONTEXT: ${{ toJson(needs) }}
         run: >-
-          python scripts/ci/check_required_results.py
+          python scripts/ci/workflow/check_required_results.py
           --passed-message "All required CI jobs passed."
 
   ci-timing-report:
@@ -1846,4 +1850,4 @@ jobs:
         run: gh api "repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs?per_page=100" > workflow-jobs.json
 
       - name: Write CI timing summary
-        run: python scripts/ci/summarize_workflow_jobs.py < workflow-jobs.json >> "$GITHUB_STEP_SUMMARY"
+        run: python scripts/ci/workflow/summarize_workflow_jobs.py < workflow-jobs.json >> "$GITHUB_STEP_SUMMARY"

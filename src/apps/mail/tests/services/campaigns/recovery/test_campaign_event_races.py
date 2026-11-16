@@ -13,8 +13,8 @@ from apps.core.services.email import DeliveryResult, UncertainEmailDeliveryError
 from apps.event.tests.helpers import make_superuser
 from apps.mail.models import EmailCampaign
 from apps.mail.services.campaign.dispatch import queue_email_campaign
-from apps.mail.services.send_campaign import send_campaign
-from apps.mail.services.ses_events import process_sns_envelope
+from apps.mail.services.campaign.send import send_campaign
+from apps.mail.services.email_monitoring.ses_events import process_sns_envelope
 
 
 def event_envelope(*, event_type, message_id, address, recipient_id=None, attempt=1):
@@ -50,7 +50,7 @@ class _CampaignEventRaceCase(TestCase):
             ses_configuration_set_name="campaign-events",
         )
         self.load_config = patch(
-            "apps.mail.services.send_campaign.runner.EmailServiceConfig.load", return_value=self.config
+            "apps.mail.services.campaign.send.runner.EmailServiceConfig.load", return_value=self.config
         )
         self.load_config.start()
         self.addCleanup(self.load_config.stop)
@@ -94,7 +94,7 @@ class _CampaignEventRaceCase(TestCase):
                         raise UncertainEmailDeliveryError("Response was lost after acceptance.")
                     return DeliveryResult(provider="ses", message_id=message_id)
 
-                with patch("apps.mail.services.send_campaign.transport.deliver_email", side_effect=provider) as send:
+                with patch("apps.mail.services.campaign.send.transport.deliver_email", side_effect=provider) as send:
                     if queued:
                         queue_email_campaign(campaign, sent_by=self.sender)
                         job = claim_jobs(batch_size=1)[0]
@@ -140,7 +140,7 @@ class CampaignEventRaceTests(_CampaignEventRaceCase):
                         )
                     return DeliveryResult(provider="ses", message_id=f"ses-{len(calls)}")
 
-                with patch("apps.mail.services.send_campaign.transport.deliver_email", side_effect=provider):
+                with patch("apps.mail.services.campaign.send.transport.deliver_email", side_effect=provider):
                     result = send_campaign(campaign, self.sender)
 
                 campaign.refresh_from_db()

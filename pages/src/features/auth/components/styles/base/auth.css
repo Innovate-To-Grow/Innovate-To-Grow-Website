@@ -1,0 +1,13 @@
+/* Styles for the sign-in and account pages, moved verbatim from the CMS "auth" stylesheet.
+   The sections are imported in their original cascade order (later files
+   override earlier ones at equal specificity), so do not reorder this list;
+   add new rules to the file that owns them. */
+@import './layout.css';
+@import './forms.css';
+@import './buttons.css';
+@import './feedback.css';
+@import '../account/account.css';
+@import '../account/tickets.css';
+@import '../account/profileImage.css';
+@import '../account/contacts.css';
+@import './responsive.css';

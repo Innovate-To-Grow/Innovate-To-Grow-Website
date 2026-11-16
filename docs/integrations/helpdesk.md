@@ -76,7 +76,7 @@ its thread lands on the person's ticket.
    half-done). A throttle from Microsoft ends the run and the message waits as long as asked.
    While a campaign is sending, the job waits (`pause_while_campaign_sending`): reads and sends share Outlook's
    per-mailbox limits. While the intake is paused, the import waits too.
-3. **Classification** (`apps/core/services/email/inbound/classify.py`, pure): the site's own message (from its
+3. **Classification** (`apps/core/services/email/inbound/classification/classify.py`, pure): the site's own message (from its
    address *and* proven by DKIM or Exchange's internal marker), bounce or delay report, read or delivery receipt,
    automatic reply (vacation, left the organisation, other), other system mail (calendar replies, quarantine
    notices, auto-generated notices), list or bulk mail, spam (Exchange SCL ≥ 5 or its spam verdict), else human.
@@ -205,7 +205,7 @@ intake's own controls ([Intake controls](#intake-controls)).
 | `automated_retention_days`, `spam_retention_days`, `closed_body_retention_days`, `attachment_retention_days`, `ticket_retention_days` | 90, 30, 730, 365, 1095 | Retention (above). |
 
 The intake's cadence and bounds are settings (`EMAIL_MONITORING` in
-`src/config/settings/base/integrations/email_monitoring/__init__.py`), like bounce processing's: they bound the
+`src/config/settings/base/integrations/email/email_monitoring/__init__.py`), like bounce processing's: they bound the
 controls on the card, so they are not edited beside them.
 
 | Setting | Default | Meaning |

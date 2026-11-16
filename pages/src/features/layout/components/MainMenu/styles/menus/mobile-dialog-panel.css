@@ -1,0 +1,171 @@
+@layer itg.components {
+/* Moved verbatim from the CMS "layout-menu" stylesheet. */
+
+/* ---------- Phone menu (#mobile-menu) ----------
+   Opens right under the fixed blue bar (which keeps the menu button, drawn as
+   a cross) and reaches the bottom of the screen; the page shows dimmed
+   wherever the menu's sections end. */
+.header-mobile-menu {
+  position: fixed;
+  top: var(--itg-header-bar-height, 61px);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: color-mix(in srgb, var(--itg-color-primary) 45%, transparent);
+  font-family: var(--itg-font-family-body);
+}
+
+/* Browsers without color-mix() (below the bundle's CSS target) drop the whole
+   declaration above: the same dimming from the default primary (#0f2d52). */
+@supports not (background: color-mix(in srgb, red 50%, transparent)) {
+  .header-mobile-menu {
+    background: rgba(15, 45, 82, 0.45);
+  }
+}
+
+.header-mobile-menu[hidden] {
+  display: none;
+}
+
+/* The menu clips at its edges and starts right under the bar: rings go
+   inside each target so all four sides show. */
+.header-mobile-menu :focus-visible {
+  outline-offset: -2px;
+}
+
+.header-mobile-nav {
+  flex: none;
+  background: var(--itg-color-white);
+}
+
+.header-mobile-nav-skeleton {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.header-mobile-nav-skeleton-row {
+  display: flex;
+  align-items: center;
+  min-height: 51px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--itg-color-border-table);
+  pointer-events: none;
+}
+
+.header-mobile-nav-skeleton .menu-bar-skeleton {
+  height: 18px;
+}
+
+.header-mobile-nav-message {
+  margin: 0;
+  padding: 18px 20px;
+  color: var(--itg-color-error);
+  font-weight: 600;
+}
+
+.header-mobile-list,
+.header-mobile-sublist {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Rows: 16px bold navy, 51px: the 44px link target, 3px above and below it,
+   and the 1px #ccc separator */
+.header-mobile-item {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--itg-color-border-table);
+}
+
+.header-mobile-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.header-mobile-link {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 6px 20px 4px;
+  box-sizing: border-box;
+  color: var(--itg-color-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 22px;
+  text-decoration: none;
+}
+
+.header-mobile-link:hover {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+}
+
+.header-mobile-expand {
+  flex: none;
+  width: 52px;
+  min-height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--itg-color-primary);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.header-mobile-expand-icon {
+  transition: transform var(--itg-transition-fast) ease;
+}
+
+.header-mobile-item.is-expanded .header-mobile-expand-icon {
+  transform: rotate(180deg);
+}
+
+/* Children: 13px italic navy, indented, no separators */
+.header-mobile-children {
+  padding: 0 0 5px 14px;
+}
+
+.header-mobile-sublink {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 8px 10px 8px 20px;
+  color: var(--itg-color-primary);
+  font-size: 13px;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 18px;
+  text-decoration: none;
+}
+
+.header-mobile-sublink:hover {
+  color: var(--itg-color-primary);
+  text-decoration: underline;
+}
+
+.header-mobile-sublink[aria-current='page'],
+.header-mobile-link[aria-current='page'] {
+  text-decoration: underline;
+}
+
+.header-mobile-sublist .header-mobile-sublist {
+  padding-left: 14px;
+}
+
+.header-mobile-sublist .header-mobile-sublist .header-mobile-sublink {
+  font-style: normal;
+}
+}

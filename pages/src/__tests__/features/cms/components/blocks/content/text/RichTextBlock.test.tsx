@@ -1,7 +1,7 @@
 import {cleanup, render, screen} from '@testing-library/react';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {RichTextBlock} from '@/features/cms/components/blocks/content/RichTextBlock';
+import {RichTextBlock} from '@/features/cms/components/blocks/content/text/RichTextBlock';
 
 describe('RichTextBlock', () => {
   afterEach(() => {

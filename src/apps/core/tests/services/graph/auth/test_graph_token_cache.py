@@ -1,7 +1,7 @@
 import json
 from unittest.mock import patch
 
-from apps.core.services.email.graph import auth
+from apps.core.services.email.graph.identity import auth
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.graph_helpers import private_key_lines
 from apps.core.tests.services.graph.auth.test_email_graph_auth import FakeClock, TokenTestCase

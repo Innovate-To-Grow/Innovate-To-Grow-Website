@@ -9,7 +9,7 @@ from apps.authn.tests.admin.members.security.phone.test_phone_verification_admin
     _change_url,
     _verify_url,
 )
-from apps.authn.tests.sms_provider import SMS_CODE, WRONG_CODE, patch_sms_provider
+from apps.authn.tests.helpers.sms_provider import SMS_CODE, WRONG_CODE, patch_sms_provider
 
 
 class StaffVerifyByCodeTests(AdminPhoneTestCase):

@@ -4,11 +4,11 @@ import {LoadingIndicator} from '@/components/LoadingIndicator';
 import {Layout} from '@/features/layout';
 import {CMSPageComponent} from '@/features/cms';
 import {HomepageResolver} from './HomepageResolver';
-import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
+import {BlockPreviewPage} from '@/features/cms/components/preview/BlockPreviewPage';
 import {FooterPreviewPage} from '@/features/layout/components/FooterPreview/FooterPreviewPage';
 import {LegacyLoginLinkRedirect} from './LegacyLoginLinkRedirect';
 import {RouteDocumentTitle, type RouteHandle} from './RouteDocumentTitle';
-import {EmbedBlockPage} from '@/features/cms/components/EmbedBlockPage';
+import {EmbedBlockPage} from '@/features/cms/components/embed/EmbedBlockPage';
 import {EMBED_APP_ROUTES} from './embedAppRoutes';
 import {NavigationPending, type LatestLocationSource} from '../NavigationPending/NavigationPending';
 import {RouteErrorPage} from './RouteErrorPage';
@@ -44,31 +44,31 @@ const ALL_PROJECTS_DESCRIPTION =
     "Search every Innovate to Grow student project at UC Merced, this semester's teams and the archive, and collect them into lists to save, share or export.";
 
 // Auth pages (lazy)
-const LoginPage = React.lazy(() => import('@/features/auth/components/pages/LoginPage').then(m => ({default: m.LoginPage})));
-const RegisterPage = React.lazy(() => import('@/features/auth/components/pages/RegisterPage').then(m => ({default: m.RegisterPage})));
-const AccountPage = React.lazy(() => import('@/features/auth/components/pages/AccountPage').then(m => ({default: m.AccountPage})));
-const PastProjectCurationSharedLinksPage = React.lazy(() => import('@/features/auth/components/pages/PastProjectCurationSharedLinksPage').then(m => ({default: m.PastProjectCurationSharedLinksPage})));
-const CompleteProfilePage = React.lazy(() => import('@/features/auth/components/pages/CompleteProfilePage').then(m => ({default: m.CompleteProfilePage})));
-const ForgotPasswordPage = React.lazy(() => import('@/features/auth/components/pages/ForgotPasswordPage').then(m => ({default: m.ForgotPasswordPage})));
-const VerifyEmailPage = React.lazy(() => import('@/features/auth/components/pages/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
-const VerifyPhonePage = React.lazy(() => import('@/features/auth/components/pages/VerifyPhonePage').then(m => ({default: m.VerifyPhonePage})));
+const LoginPage = React.lazy(() => import('@/features/auth/components/pages/signin/LoginPage').then(m => ({default: m.LoginPage})));
+const RegisterPage = React.lazy(() => import('@/features/auth/components/pages/signin/RegisterPage').then(m => ({default: m.RegisterPage})));
+const AccountPage = React.lazy(() => import('@/features/auth/components/pages/account/dashboard/AccountPage').then(m => ({default: m.AccountPage})));
+const PastProjectCurationSharedLinksPage = React.lazy(() => import('@/features/auth/components/pages/account/sharedLinks/PastProjectCurationSharedLinksPage').then(m => ({default: m.PastProjectCurationSharedLinksPage})));
+const CompleteProfilePage = React.lazy(() => import('@/features/auth/components/pages/completeProfile/CompleteProfilePage').then(m => ({default: m.CompleteProfilePage})));
+const ForgotPasswordPage = React.lazy(() => import('@/features/auth/components/pages/signin/ForgotPasswordPage').then(m => ({default: m.ForgotPasswordPage})));
+const VerifyEmailPage = React.lazy(() => import('@/features/auth/components/pages/verify/VerifyEmailPage').then(m => ({default: m.VerifyEmailPage})));
+const VerifyPhonePage = React.lazy(() => import('@/features/auth/components/pages/verify/VerifyPhonePage').then(m => ({default: m.VerifyPhonePage})));
 
 // Content pages (lazy) — only non-CMS pages
-const NewsPage = React.lazy(() => import('@/routes/NewsPage').then(m => ({default: m.NewsPage})));
-const NewsDetailPage = React.lazy(() => import('@/routes/NewsDetailPage').then(m => ({default: m.NewsDetailPage})));
-const ProjectsPage = React.lazy(() => import('@/routes/ProjectsPage').then(m => ({default: m.ProjectsPage})));
-const PastProjectsPage = React.lazy(() => import('@/routes/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
-const AllProjectsPage = React.lazy(() => import('@/routes/AllProjectsPage').then(m => ({default: m.AllProjectsPage})));
-const PresentingTeamsPage = React.lazy(() => import('@/routes/PresentingTeamsPage').then(m => ({default: m.PresentingTeamsPage})));
-const ProjectDetailPage = React.lazy(() => import('@/routes/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
-const SchedulePage = React.lazy(() => import('@/routes/SchedulePage').then(m => ({default: m.SchedulePage})));
-const EventArchivePage = React.lazy(() => import('@/routes/EventArchivePage').then(m => ({default: m.EventArchivePage})));
-const EventRegistrationPage = React.lazy(() => import('@/routes/EventRegistrationPage').then(m => ({default: m.EventRegistrationPage})));
-const SubscribePage = React.lazy(() => import('@/routes/SubscribePage').then(m => ({default: m.SubscribePage})));
-const LoginLinkPage = React.lazy(() => import('@/routes/LoginLinkPage').then(m => ({default: m.LoginLinkPage})));
-const SmsLinkPage = React.lazy(() => import('@/routes/SmsLinkPage').then(m => ({default: m.SmsLinkPage})));
-const EmailAuthLinkPage = React.lazy(() => import('@/routes/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
-const ImpersonateLoginPage = React.lazy(() => import('@/routes/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
+const NewsPage = React.lazy(() => import('@/routes/news/NewsPage').then(m => ({default: m.NewsPage})));
+const NewsDetailPage = React.lazy(() => import('@/routes/news/NewsDetailPage').then(m => ({default: m.NewsDetailPage})));
+const ProjectsPage = React.lazy(() => import('@/routes/projects/ProjectsPage').then(m => ({default: m.ProjectsPage})));
+const PastProjectsPage = React.lazy(() => import('@/routes/projects/PastProjectsPage').then(m => ({default: m.PastProjectsPage})));
+const AllProjectsPage = React.lazy(() => import('@/routes/projects/AllProjectsPage').then(m => ({default: m.AllProjectsPage})));
+const PresentingTeamsPage = React.lazy(() => import('@/routes/projects/PresentingTeamsPage').then(m => ({default: m.PresentingTeamsPage})));
+const ProjectDetailPage = React.lazy(() => import('@/routes/projects/ProjectDetailPage').then(m => ({default: m.ProjectDetailPage})));
+const SchedulePage = React.lazy(() => import('@/routes/events/SchedulePage/page').then(m => ({default: m.SchedulePage})));
+const EventArchivePage = React.lazy(() => import('@/routes/events/EventArchivePage').then(m => ({default: m.EventArchivePage})));
+const EventRegistrationPage = React.lazy(() => import('@/routes/events/EventRegistrationPage/page').then(m => ({default: m.EventRegistrationPage})));
+const SubscribePage = React.lazy(() => import('@/routes/subscription/SubscribePage/page').then(m => ({default: m.SubscribePage})));
+const LoginLinkPage = React.lazy(() => import('@/routes/auth/LoginLinkPage').then(m => ({default: m.LoginLinkPage})));
+const SmsLinkPage = React.lazy(() => import('@/routes/auth/SmsLinkPage').then(m => ({default: m.SmsLinkPage})));
+const EmailAuthLinkPage = React.lazy(() => import('@/routes/auth/EmailAuthLinkPage').then(m => ({default: m.EmailAuthLinkPage})));
+const ImpersonateLoginPage = React.lazy(() => import('@/routes/auth/ImpersonateLoginPage').then(m => ({default: m.ImpersonateLoginPage})));
 
 // Every page inside the site layout (menu, footer, content column).
 const pageRoutes = (): RouteObject[] => [

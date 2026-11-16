@@ -12,7 +12,7 @@ from apps.mail.models import SmsCampaign, SmsConfig, SmsLinkToken
 from apps.mail.services.sms import links
 from apps.mail.services.sms.links.register_link import CACHE_KEY
 
-from ..services.sms.policy_helpers import add_phone, sms_settings
+from ..services.sms.policy.policy_helpers import add_phone, sms_settings
 
 LINK_URL = "/mail/sms-link/"
 REGISTER_URL = "/mail/register-link/"

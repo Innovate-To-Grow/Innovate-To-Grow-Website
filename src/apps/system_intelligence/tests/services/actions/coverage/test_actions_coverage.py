@@ -12,7 +12,7 @@ from django.test import TestCase
 from apps.cms.models import NewsFeedSource
 from apps.cms.models.content.news.sync_log import NewsSyncLog
 from apps.system_intelligence.services import actions
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
 
 
 # ---------------------------------------------------------------------------
@@ -34,7 +34,7 @@ class RecordsReadToolTests(TestCase):
         # truncated and ordering can be asserted exactly.
         models_in = [NewsSyncLog, NewsFeedSource]
         with patch(
-            "apps.system_intelligence.services.actions.records.apps.get_models",
+            "apps.system_intelligence.services.actions.db.records.apps.get_models",
             return_value=models_in,
         ):
             result = actions.list_database_models()

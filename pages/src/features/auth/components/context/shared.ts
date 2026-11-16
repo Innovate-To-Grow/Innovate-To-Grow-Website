@@ -13,7 +13,7 @@ import type {
   User,
   VerificationTokenResponse,
 } from '@/features/auth/api';
-import {VerificationFlowError} from '@/features/auth/verification/errors';
+import {VerificationFlowError} from '@/features/auth/verification/types';
 import {collectFieldMessages} from '@/lib/api/errorMessages';
 
 export const AUTH_STATE_CHANGE_EVENT = 'i2g-auth-state-change';

@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 
 from apps.authn.models import EmailAuthChallenge
-from apps.authn.services.members.registration_audit import find_register_reactivations, reactivation_reasons
+from apps.authn.services.members.accounts.registration_audit import find_register_reactivations, reactivation_reasons
 
 
 class Command(BaseCommand):

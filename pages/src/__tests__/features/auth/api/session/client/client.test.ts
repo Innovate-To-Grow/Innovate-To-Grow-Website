@@ -1,126 +1,39 @@
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 
-interface TestSession {
-  version: 1;
-  generation: string;
-  access: string;
-  refresh: string;
-  user: {member_uuid: string; email: string};
-  requires_profile_completion: boolean;
-}
+import {
+  accountA,
+  axiosMocks,
+  mockAxiosModule,
+  storageMocks,
+  type RequestFulfilledHandler,
+  type ResponseRejectedHandler,
+  type TestRequest,
+  type TestSession,
+} from './clientFixtures';
 
-interface TestRequest {
-  headers: Record<string, string>;
-  data?: unknown;
-  [key: string]: unknown;
-}
-
-let requestFulfilledHandler:
-  | ((config: TestRequest) => TestRequest)
-  | null = null;
-let responseFulfilledHandler: ((response: unknown) => unknown) | null = null;
-let responseRejectedHandler:
-  | ((error: {
-      config: TestRequest;
-      response?: {status?: number};
-    }) => Promise<unknown>)
-  | null = null;
-
-const retryRequest = vi.fn(async (request) => ({
-  data: {ok: true},
-  config: request,
-}));
-const axiosPost = vi.fn();
-
-vi.mock('axios', () => {
-  const create = vi.fn(() => {
-    const instance = retryRequest as typeof retryRequest & {
-      interceptors: {
-        request: {use: (handler: typeof requestFulfilledHandler) => void};
-        response: {
-          use: (
-            fulfilled: unknown,
-            rejected: typeof responseRejectedHandler,
-          ) => void;
-        };
-      };
-    };
-
-    instance.interceptors = {
-      request: {
-        use: vi.fn((handler) => {
-          requestFulfilledHandler = handler;
-        }),
-      },
-      response: {
-        use: vi.fn((fulfilled, rejected) => {
-          responseFulfilledHandler = fulfilled;
-          responseRejectedHandler = rejected;
-        }),
-      },
-    };
-
-    return instance;
-  });
-
-  return {
-    default: {
-      create,
-      post: axiosPost,
-    },
-  };
-});
-
+// The auth client's refresh-session guards: refresh de-duplication and account switches.
+// The fake axios and storage live in clientFixtures.ts; this file keeps what the client registered on its
+// axios instance and the stored session.
+let requestFulfilledHandler: RequestFulfilledHandler | null = null;
+let responseRejectedHandler: ResponseRejectedHandler | null = null;
 let storedSession: TestSession | null;
-const clearTokens = vi.fn((guard?: {generation: string; refresh?: string}) => {
-  if (
-    guard &&
-    (!storedSession ||
-      storedSession.generation !== guard.generation ||
-      (guard.refresh !== undefined &&
-        storedSession.refresh !== guard.refresh))
-  ) {
-    return false;
-  }
-  storedSession = null;
-  return true;
+
+const {retryRequest, axiosPost} = axiosMocks();
+const {clearTokens, getStoredSession, updateSessionTokens} = storageMocks(() => storedSession, (session) => {
+  storedSession = session;
 });
-const getStoredSession = vi.fn(() => storedSession);
-const updateSessionTokens = vi.fn(
-  (
-    guard: {generation: string; refresh?: string},
-    tokens: {access: string; refresh: string},
-  ) => {
-    if (
-      !storedSession ||
-      storedSession.generation !== guard.generation ||
-      (guard.refresh !== undefined &&
-        storedSession.refresh !== guard.refresh)
-    ) {
-      return null;
-    }
-    storedSession = {...storedSession, ...tokens};
-    return storedSession;
-  },
+
+vi.mock('axios', () =>
+  mockAxiosModule({retryRequest, axiosPost}, {
+    request: (handler) => {
+      requestFulfilledHandler = handler;
+    },
+    response: (_fulfilled, rejected) => {
+      responseRejectedHandler = rejected;
+    },
+  }),
 );
-
-vi.mock('@/features/auth/api/session/storage', () => ({
-  clearTokens,
-  getStoredSession,
-  updateSessionTokens,
-}));
-
-const accountA = (): TestSession => ({
-  version: 1,
-  generation: 'generation-a',
-  access: 'old-access',
-  refresh: 'refresh-a',
-  user: {member_uuid: 'a', email: 'a@example.com'},
-  requires_profile_completion: false,
-});
-
-const accessWithExpiry = (exp: number) =>
-  `header.${btoa(JSON.stringify({exp}))}.signature`;
+vi.mock('@/features/auth/api/session/storage', () => ({clearTokens, getStoredSession, updateSessionTokens}));
 
 const prepareRequest = (request: TestRequest) => {
   if (!requestFulfilledHandler) {
@@ -133,7 +46,6 @@ describe('auth refresh session guards', () => {
   beforeEach(async () => {
     vi.resetModules();
     requestFulfilledHandler = null;
-    responseFulfilledHandler = null;
     responseRejectedHandler = null;
     retryRequest.mockClear();
     axiosPost.mockReset();
@@ -261,132 +173,6 @@ describe('auth refresh session guards', () => {
     expect(axiosPost).toHaveBeenCalledTimes(1);
   });
 
-  it('retains the guarded generation when refresh returns a malformed success', async () => {
-    axiosPost.mockResolvedValue({data: {}});
-    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
-
-    await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
-
-    expect(clearTokens).not.toHaveBeenCalled();
-    expect(storedSession).toEqual(accountA());
-  });
-
-  it('retains the guarded generation when refresh fails transiently', async () => {
-    axiosPost.mockRejectedValue({response: {status: 503}});
-    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
-
-    await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
-
-    expect(clearTokens).not.toHaveBeenCalled();
-    expect(storedSession).toEqual(accountA());
-  });
-
-  it('does not mark the original 401 definitive after a refresh 5xx', async () => {
-    axiosPost.mockRejectedValue({response: {status: 503}});
-    const {isDefinitiveAuthFailure} = await import('@/features/auth/api/session/client');
-    const request = prepareRequest({headers: {}});
-    if (!responseRejectedHandler) {
-      throw new Error('Response interceptor was not registered');
-    }
-    const error = {config: request, response: {status: 401}};
-
-    await expect(responseRejectedHandler(error)).rejects.toBe(error);
-
-    expect(isDefinitiveAuthFailure(error)).toBe(false);
-    expect(clearTokens).not.toHaveBeenCalled();
-    expect(storedSession).toEqual(accountA());
-  });
-
-  it('marks only a definitive refresh rejection for anonymous fallback', async () => {
-    axiosPost.mockRejectedValue({response: {status: 401}});
-    const {isDefinitiveAuthFailure} = await import('@/features/auth/api/session/client');
-    const request = prepareRequest({headers: {}});
-    if (!responseRejectedHandler) {
-      throw new Error('Response interceptor was not registered');
-    }
-    const error = {config: request, response: {status: 401}};
-
-    await expect(responseRejectedHandler(error)).rejects.toBe(error);
-
-    expect(isDefinitiveAuthFailure(error)).toBe(true);
-    expect(storedSession).toBeNull();
-  });
-
-  it('reuses a token rotated by another tab while refresh is in flight', async () => {
-    let resolveRefresh!: (value: {
-      data: {access: string; refresh: string};
-    }) => void;
-    axiosPost.mockReturnValue(
-      new Promise((resolve) => {
-        resolveRefresh = resolve;
-      }),
-    );
-    const request = prepareRequest({headers: {}});
-    if (!responseRejectedHandler) {
-      throw new Error('Response interceptor was not registered');
-    }
-    const retry = responseRejectedHandler({
-      config: request,
-      response: {status: 401},
-    });
-
-    storedSession = {
-      ...accountA(),
-      access: 'other-tab-access',
-      refresh: 'other-tab-refresh',
-    };
-    resolveRefresh({
-      data: {access: 'stale-access', refresh: 'stale-refresh'},
-    });
-
-    await expect(retry).resolves.toEqual(
-      expect.objectContaining({data: {ok: true}}),
-    );
-    expect(request.headers.Authorization).toBe('Bearer other-tab-access');
-    expect(clearTokens).not.toHaveBeenCalled();
-  });
-
-  it('passes fulfilled responses through the response interceptor untouched', async () => {
-    if (!responseFulfilledHandler) {
-      throw new Error('Response interceptor was not registered');
-    }
-    const response = {data: {ok: true}};
-    expect(responseFulfilledHandler(response)).toBe(response);
-  });
-
-  it('returns null when refreshing without a stored session', async () => {
-    storedSession = null;
-    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
-
-    await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
-    expect(axiosPost).not.toHaveBeenCalled();
-  });
-
-  it('returns null when refreshing a different generation', async () => {
-    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
-
-    await expect(refreshAccessToken('generation-other')).resolves.toBeNull();
-    expect(axiosPost).not.toHaveBeenCalled();
-  });
-
-  it('treats a non-object refresh failure as transient', async () => {
-    axiosPost.mockRejectedValue(null);
-    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
-
-    await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
-    expect(clearTokens).not.toHaveBeenCalled();
-    expect(storedSession).toEqual(accountA());
-  });
-
-  it('treats a refresh failure without a response as transient', async () => {
-    axiosPost.mockRejectedValue({});
-    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
-
-    await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
-    expect(clearTokens).not.toHaveBeenCalled();
-    expect(storedSession).toEqual(accountA());
-  });
-
   it('reports a changed session when a definitive refresh fails after a guard mismatch', async () => {
     axiosPost.mockRejectedValue({response: {status: 401}});
     const {refreshAccessToken} = await import('@/features/auth/api/session/client');
@@ -396,285 +182,5 @@ describe('auth refresh session guards', () => {
 
     await expect(pending).resolves.toBeNull();
     expect(clearTokens).toHaveBeenCalled();
-  });
-
-  it('removes an inherited Authorization header when no session is stored', async () => {
-    storedSession = null;
-    const request = prepareRequest({headers: {Authorization: 'Bearer stale'}});
-    expect(request.headers.Authorization).toBeUndefined();
-  });
-
-  it('clears the Content-Type header for FormData requests', async () => {
-    const request = prepareRequest({
-      headers: {'Content-Type': 'application/json'},
-      data: new FormData(),
-    });
-    expect(request.headers['Content-Type']).toBeUndefined();
-  });
-
-  it('reuses a token refreshed by a parallel request before the retry', async () => {
-    const request = prepareRequest({headers: {}});
-    if (!responseRejectedHandler) {
-      throw new Error('Response interceptor was not registered');
-    }
-    storedSession = {...accountA(), access: 'parallel-access'};
-    const error = {config: request, response: {status: 401}};
-
-    await expect(responseRejectedHandler(error)).resolves.toEqual(
-      expect.objectContaining({data: {ok: true}}),
-    );
-    expect(request.headers.Authorization).toBe('Bearer parallel-access');
-    expect(axiosPost).not.toHaveBeenCalled();
-  });
-
-  it('treats a non-numeric refresh failure status as transient', async () => {
-    axiosPost.mockRejectedValue({response: {status: 'oops'}});
-    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
-
-    await expect(refreshAccessToken('generation-a')).resolves.toBeNull();
-    expect(clearTokens).not.toHaveBeenCalled();
-    expect(storedSession).toEqual(accountA());
-  });
-
-  it('reuses the previous refresh token when the refresh response omits it', async () => {
-    axiosPost.mockResolvedValue({data: {access: 'new-access'}});
-    const {refreshAccessToken} = await import('@/features/auth/api/session/client');
-
-    await expect(refreshAccessToken('generation-a')).resolves.toMatchObject({
-      access: 'new-access',
-    });
-    expect(updateSessionTokens).toHaveBeenCalledWith(
-      {generation: 'generation-a', refresh: 'refresh-a'},
-      {access: 'new-access', refresh: 'refresh-a'},
-    );
-  });
-
-  it('does not touch headers when there is no session and no headers object', async () => {
-    storedSession = null;
-    const request = prepareRequest({} as TestRequest);
-    expect(request).toEqual({});
-  });
-
-  describe('member-aware public requests', () => {
-    it('refreshes an expired token before the request can read as anonymous', async () => {
-      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
-      axiosPost.mockResolvedValue({data: {access: 'fresh-access', refresh: 'fresh-refresh'}});
-
-      const request = await prepareRequest({headers: {}, requireFreshIdentity: true});
-
-      expect(axiosPost).toHaveBeenCalledTimes(1);
-      expect(request.headers.Authorization).toBe('Bearer fresh-access');
-    });
-
-    it('uses a still-valid token without a refresh request', async () => {
-      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 + 3600)};
-
-      const request = await prepareRequest({headers: {}, requireFreshIdentity: true});
-
-      expect(axiosPost).not.toHaveBeenCalled();
-      expect(request.headers.Authorization).toBe(`Bearer ${storedSession?.access}`);
-    });
-
-    it('refreshes before an almost-expired token can reach the server', async () => {
-      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 + 10)};
-      axiosPost.mockResolvedValue({data: {access: 'fresh-access'}});
-
-      const request = await prepareRequest({headers: {}, requireFreshIdentity: true});
-
-      expect(axiosPost).toHaveBeenCalledTimes(1);
-      expect(request.headers.Authorization).toBe('Bearer fresh-access');
-    });
-
-    it('does not silently return anonymous data after a transient refresh failure', async () => {
-      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
-      axiosPost.mockRejectedValue({response: {status: 503}});
-
-      await expect(prepareRequest({headers: {}, requireFreshIdentity: true})).rejects.toThrow(
-        'could not be refreshed',
-      );
-      expect(storedSession?.generation).toBe('generation-a');
-    });
-
-    it('can continue anonymously after the refresh credential is rejected', async () => {
-      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
-      axiosPost.mockRejectedValue({response: {status: 401}});
-
-      const request = await prepareRequest({headers: {}, requireFreshIdentity: true});
-
-      expect(request.headers.Authorization).toBeUndefined();
-      expect(storedSession).toBeNull();
-    });
-
-    it('does not send an account-A request under account B after a switch', async () => {
-      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
-      let resolveRefresh!: (value: {data: {access: string}}) => void;
-      axiosPost.mockReturnValue(new Promise((resolve) => { resolveRefresh = resolve; }));
-
-      const pending = prepareRequest({headers: {}, requireFreshIdentity: true});
-      storedSession = {...accountA(), generation: 'generation-b', access: 'access-b'};
-      resolveRefresh({data: {access: 'new-access'}});
-
-      await expect(pending).rejects.toThrow('session changed');
-      expect(storedSession?.generation).toBe('generation-b');
-    });
-
-    it('keeps one-time credential requests anonymous even with the flag', async () => {
-      storedSession = {...accountA(), access: accessWithExpiry(Date.now() / 1000 - 60)};
-
-      const request = await prepareRequest({headers: {}, requireFreshIdentity: true, skipAuth: true});
-
-      expect(request.headers.Authorization).toBeUndefined();
-      expect(axiosPost).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('skipAuth requests', () => {
-    it('sends no Authorization header even when a session is stored', () => {
-      const request = prepareRequest({headers: {}, skipAuth: true});
-
-      expect(request.headers.Authorization).toBeUndefined();
-    });
-
-    it('does not record a session for the request, so nothing can be refreshed or cleared on its behalf', async () => {
-      const request = prepareRequest({headers: {}, skipAuth: true});
-      if (!responseRejectedHandler) {
-        throw new Error('Response interceptor was not registered');
-      }
-      const error = {config: request, response: {status: 401}};
-
-      await expect(responseRejectedHandler(error)).rejects.toBe(error);
-
-      expect(axiosPost).not.toHaveBeenCalled();
-      expect(clearTokens).not.toHaveBeenCalled();
-    });
-
-    it('strips an Authorization header supplied by the caller', () => {
-      const request = prepareRequest({
-        headers: {Authorization: 'Bearer caller-supplied'},
-        skipAuth: true,
-      });
-
-      expect(request.headers.Authorization).toBeUndefined();
-    });
-
-    it('strips the header whatever its casing on a plain headers object', () => {
-      const request = prepareRequest({
-        headers: {
-          authorization: 'Bearer lower',
-          AUTHORIZATION: 'Bearer upper',
-          Accept: 'application/json',
-        },
-        skipAuth: true,
-      });
-
-      expect(request.headers).toEqual({Accept: 'application/json'});
-    });
-
-    it.each([
-      ['a lowercase key', {authorization: 'Bearer lower', Accept: 'application/json'}],
-      ['the canonical key', {Authorization: 'Bearer canonical', Accept: 'application/json'}],
-      ['an upper-case key', {AUTHORIZATION: 'Bearer upper', Accept: 'application/json'}],
-    ])('strips the header from an AxiosHeaders instance (%s)', async (_label, initial) => {
-      const {AxiosHeaders} = await vi.importActual<typeof import('axios')>('axios');
-      const headers = new AxiosHeaders(initial);
-
-      const request = prepareRequest({
-        headers: headers as unknown as Record<string, string>,
-        skipAuth: true,
-      });
-
-      const result = request.headers as unknown as InstanceType<typeof AxiosHeaders>;
-      expect(result.has('Authorization')).toBe(false);
-      expect(result.get('authorization')).toBeUndefined();
-      expect(result.get('Accept')).toBe('application/json');
-    });
-
-    it('still attaches the stored session to requests that do not opt out', () => {
-      const request = prepareRequest({headers: {}});
-
-      expect(request.headers.Authorization).toBe('Bearer old-access');
-    });
-
-    it('still clears the Content-Type header for FormData requests', () => {
-      const request = prepareRequest({
-        headers: {'Content-Type': 'application/json'},
-        data: new FormData(),
-        skipAuth: true,
-      });
-
-      expect(request.headers['Content-Type']).toBeUndefined();
-    });
-
-    it('rejects a 401 without refreshing, retrying, or touching the stored session', async () => {
-      const request = prepareRequest({headers: {}, skipAuth: true});
-      if (!responseRejectedHandler) {
-        throw new Error('Response interceptor was not registered');
-      }
-      const {isDefinitiveAuthFailure} = await import('@/features/auth/api/session/client');
-      const error = {config: request, response: {status: 401}};
-
-      await expect(responseRejectedHandler(error)).rejects.toBe(error);
-
-      expect(axiosPost).not.toHaveBeenCalled();
-      expect(retryRequest).not.toHaveBeenCalled();
-      expect(clearTokens).not.toHaveBeenCalled();
-      expect(isDefinitiveAuthFailure(error)).toBe(false);
-      expect(storedSession).toEqual(accountA());
-    });
-
-    it('never clears the stored session, even for a request that was already tagged and retried', async () => {
-      // Defense in depth: the opt-out wins over any per-request session record.
-      const request = prepareRequest({headers: {}});
-      request.skipAuth = true;
-      request._i2gAuthRetried = true;
-      if (!responseRejectedHandler) {
-        throw new Error('Response interceptor was not registered');
-      }
-      const {isDefinitiveAuthFailure} = await import('@/features/auth/api/session/client');
-      const error = {config: request, response: {status: 401}};
-
-      await expect(responseRejectedHandler(error)).rejects.toBe(error);
-
-      expect(clearTokens).not.toHaveBeenCalled();
-      expect(isDefinitiveAuthFailure(error)).toBe(false);
-      expect(storedSession).toEqual(accountA());
-    });
-
-    it('does not refresh for a tagged request that opted out after the fact', async () => {
-      const request = prepareRequest({headers: {}});
-      request.skipAuth = true;
-      if (!responseRejectedHandler) {
-        throw new Error('Response interceptor was not registered');
-      }
-      const error = {config: request, response: {status: 401}};
-
-      await expect(responseRejectedHandler(error)).rejects.toBe(error);
-
-      expect(axiosPost).not.toHaveBeenCalled();
-      expect(retryRequest).not.toHaveBeenCalled();
-    });
-
-    it('passes non-401 failures through untouched', async () => {
-      const request = prepareRequest({headers: {}, skipAuth: true});
-      if (!responseRejectedHandler) {
-        throw new Error('Response interceptor was not registered');
-      }
-      const error = {config: request, response: {status: 400}};
-
-      await expect(responseRejectedHandler(error)).rejects.toBe(error);
-      expect(storedSession).toEqual(accountA());
-    });
-  });
-
-  it('rejects a non-401 response error without retrying', async () => {
-    const request = prepareRequest({headers: {}});
-    if (!responseRejectedHandler) {
-      throw new Error('Response interceptor was not registered');
-    }
-    const error = {config: request, response: {status: 500}};
-
-    await expect(responseRejectedHandler(error)).rejects.toBe(error);
-    expect(axiosPost).not.toHaveBeenCalled();
-    expect(retryRequest).not.toHaveBeenCalled();
   });
 });

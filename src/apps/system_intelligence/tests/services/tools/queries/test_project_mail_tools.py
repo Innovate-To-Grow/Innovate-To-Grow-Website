@@ -2,8 +2,14 @@ from django.test import TestCase
 
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.projects.models import Project, Semester
-from apps.system_intelligence.services.query_tools.tool_modules.mail import get_campaign_stats, search_email_campaigns
-from apps.system_intelligence.services.query_tools.tool_modules.projects import search_projects, search_semesters
+from apps.system_intelligence.services.query_tools.tool_modules.domains.mail import (
+    get_campaign_stats,
+    search_email_campaigns,
+)
+from apps.system_intelligence.services.query_tools.tool_modules.domains.projects import (
+    search_projects,
+    search_semesters,
+)
 
 
 class SearchProjectsToolTests(TestCase):

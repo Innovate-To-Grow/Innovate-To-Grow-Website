@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.serializers import LoginSerializer
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 
 from ...shared.responses import build_auth_success_payload
 

@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from apps.authn.admin.members.contact.phone import ContactPhoneAdmin
-from apps.authn.admin.security import RSAKeypairAdmin
+from apps.authn.admin.security.rsa_keypair import RSAKeypairAdmin
 from apps.authn.models import (
     ContactPhone,
     RSAKeypair,
@@ -66,7 +66,7 @@ class ContactPhoneAdminTests(_AdminTestBase):
     def test_normalize_apply_view_handles_exception(self):
         request = _request(self.rf, self.admin_user, method="post")
         with patch(
-            "apps.authn.admin.members.contact.phone.apply_phone_changes",
+            "apps.authn.admin.members.contact.normalization_views.apply_phone_changes",
             side_effect=RuntimeError("boom"),
         ):
             response = self.model_admin._normalize_apply_view(request)

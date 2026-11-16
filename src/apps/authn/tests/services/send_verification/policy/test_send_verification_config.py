@@ -3,15 +3,10 @@
 import importlib
 from unittest.mock import patch
 
-from django.contrib.admin import AdminSite
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from apps.authn.admin.send_verification import (
-    SendVerificationConfigAdmin,
-    SendVerificationConfigForm,
-)
 from apps.authn.services.send_verification.rules.config import load_settings, require_ready
 from apps.authn.services.send_verification.rules.exceptions import SendPaused, SendVerificationUnavailable
 from apps.core.models import SendVerificationConfig
@@ -22,8 +17,7 @@ INHERIT_SETTINGS = {name: None for name in vars(api) if name.startswith("SEND_VE
 }
 
 
-@override_settings(**INHERIT_SETTINGS)
-class SendVerificationConfigTests(TestCase):
+class _SendVerificationConfigCase(TestCase):
     def setUp(self):
         cache.clear()
         self.config = SendVerificationConfig.objects.create(
@@ -39,6 +33,25 @@ class SendVerificationConfigTests(TestCase):
             sms_daily_limit=40,
         )
 
+    def production_settings(self, **overrides):
+        environment = {
+            "DJANGO_SECRET_KEY": "test-only-secret",
+            "DJANGO_ALLOWED_HOSTS": "example.invalid",
+            "BACKEND_URL": "https://example.invalid",
+            "DB_NAME": "unused",
+            "DB_USER": "unused",
+            "DB_PASSWORD": "unused",
+            "DB_HOST": "localhost",
+            "AWS_STORAGE_BUCKET_NAME": "unused-test-bucket",
+        } | overrides
+        with patch.dict("os.environ", environment, clear=True):
+            verification = importlib.import_module("config.settings.production.verification")
+            values = vars(importlib.reload(verification))
+        return {name: value for name, value in values.items() if name.startswith("SEND_VERIFICATION_")}
+
+
+@override_settings(**INHERIT_SETTINGS)
+class SendVerificationConfigTests(_SendVerificationConfigCase):
     def test_active_admin_policy_is_effective_without_explicit_overrides(self):
         effective = require_ready(for_sms=True)
         self.assertEqual(effective.mode, "enforce")
@@ -148,22 +161,6 @@ class SendVerificationConfigTests(TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertEqual(response.data["code"], "verification_unavailable")
 
-    def production_settings(self, **overrides):
-        environment = {
-            "DJANGO_SECRET_KEY": "test-only-secret",
-            "DJANGO_ALLOWED_HOSTS": "example.invalid",
-            "BACKEND_URL": "https://example.invalid",
-            "DB_NAME": "unused",
-            "DB_USER": "unused",
-            "DB_PASSWORD": "unused",
-            "DB_HOST": "localhost",
-            "AWS_STORAGE_BUCKET_NAME": "unused-test-bucket",
-        } | overrides
-        with patch.dict("os.environ", environment, clear=True):
-            verification = importlib.import_module("config.settings.production.verification")
-            values = vars(importlib.reload(verification))
-        return {name: value for name, value in values.items() if name.startswith("SEND_VERIFICATION_")}
-
     def test_production_without_env_inherits_admin_policy(self):
         with override_settings(**self.production_settings()):
             self.assertEqual(require_ready().mode, "enforce")
@@ -183,35 +180,3 @@ class SendVerificationConfigTests(TestCase):
             with self.subTest(overrides=overrides), override_settings(**self.production_settings(**overrides)):
                 with self.assertRaises(SendVerificationUnavailable):
                     require_ready()
-
-    def test_admin_shows_effective_policy_and_sources_without_exposing_secrets(self):
-        model_admin = SendVerificationConfigAdmin(SendVerificationConfig, AdminSite())
-        with override_settings(SEND_VERIFICATION_COST=950):
-            display = str(model_admin.effective_configuration(self.config))
-        self.assertIn("enforce", display)
-        self.assertIn("950", display)
-        self.assertIn("Django settings: SEND_VERIFICATION_COST", display)
-        self.assertIn("Active database configuration: mode", display)
-        self.assertIn("Configured", display)
-        self.assertNotIn(self.config.hmac_secret, display)
-        self.assertNotIn(self.config.hmac_key_secret, display)
-
-    @override_settings(SEND_VERIFICATION_COST="bad")
-    def test_admin_explains_invalid_effective_policy(self):
-        model_admin = SendVerificationConfigAdmin(SendVerificationConfig, AdminSite())
-        display = str(model_admin.effective_configuration(self.config))
-        self.assertIn("protected sends are blocked", display)
-        self.assertNotIn(self.config.hmac_secret, display)
-
-    def test_admin_rejects_unsupported_algorithm_and_unsafe_numeric_policy(self):
-        data = {name: getattr(self.config, name) for name in SendVerificationConfigForm.Meta.fields}
-        for field, value in (
-            ("algorithm", "invalid"),
-            ("cost", 0),
-            ("challenge_ttl_seconds", 29),
-            ("destination_hourly_limit", 0),
-        ):
-            with self.subTest(field=field):
-                form = SendVerificationConfigForm(data={**data, field: value}, instance=self.config)
-                self.assertFalse(form.is_valid())
-                self.assertIn(field, form.errors)

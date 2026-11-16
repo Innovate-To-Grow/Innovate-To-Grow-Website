@@ -41,7 +41,7 @@ Related models are grouped into tabs in the admin interface. Tab configuration i
 
 `AdminLoginView` (`src/apps/authn/views/admin/login/view.py`) replaces the default Django admin login at `/admin/login/`. It integrates with the platform's auth system.
 
-Password guessing is bounded per account by the same lockout as member sign-in (`apps.authn.services.login_guard`: 10 failures per 15 minutes or 30 per UTC day, counted in PostgreSQL), never per client IP, so one admin's typos cannot lock out other staff on the campus network. The two password forms count separately:
+Password guessing is bounded per account by the same lockout as member sign-in (`apps.authn.services.security.login_guard`: 10 failures per 15 minutes or 30 per UTC day, counted in PostgreSQL), never per client IP, so one admin's typos cannot lock out other staff on the campus network. The two password forms count separately:
 
 - The email + password form counts on the submitted email, the same counter as the member login for that address. Anyone who knows a staff address can lock this form for it by failing on purpose (by design: an anonymous request can only be counted by the address it names).
 - The remembered-admin form (it shows your name instead of an email field, and is offered to a browser holding the signed `i2g_last_admin_member` cookie from an earlier admin sign-in) counts on the member in that cookie, in a counter that no typed email or phone number can reach. Failed attempts against a staff address elsewhere do not lock it; only wrong passwords entered on that form do.
@@ -51,7 +51,7 @@ A locked form shows "Too many login attempts. Please try again later." even with
 ### Member and contact admin search
 
 `MemberAdmin`, `ContactEmailAdmin` and `ContactPhoneAdmin` share `RankedSearchMixin`
-(`src/apps/authn/admin/members/search.py`). It runs Django's stock search first: every word of the term must match
+(`src/apps/authn/admin/members/shared/search.py`). It runs Django's stock search first: every word of the term must match
 one of the `search_fields` (`icontains`). Members search every contact email, first/middle/last name, `id`,
 organization and title. On top of that:
 
@@ -92,16 +92,16 @@ Member UUID, so a short term made only of the letters a–f and digits can also 
 Also in `src/apps/authn/admin/members/` (details in
 [Member & Mail Tools](member-and-mail-tools.md#account-active-verified-and-subscribed)):
 
-- `filters.py`: `SimpleListFilter`s built on `EXISTS` subqueries over the member's own rows, so a filter never
+- `shared/filters.py`: `SimpleListFilter`s built on `EXISTS` subqueries over the member's own rows, so a filter never
   duplicates a member. Members: Account active, Primary email, Unverified emails, Newsletter, Phone. Contact Emails:
   Verified (sign-in), Subscribed (newsletters), Member account; Contact Phones: Member account.
-- `help_texts.py`: the "Account active" label and the help text of every flag, applied through the admin forms'
+- `shared/help_texts.py`: the "Account active" label and the help text of every flag, applied through the admin forms'
   `Meta.labels` / `Meta.help_texts` (Django uses them for read-only fields too), so no model field or migration
   changes.
-- `sign_in_warning.py`: warns, never blocks, when a save, a bulk "mark unverified" or a delete leaves a member with no
+- `shared/sign_in_warning.py`: warns, never blocks, when a save, a bulk "mark unverified" or a delete leaves a member with no
   verified email or phone. `get_confirmation_diff` adds the warning as a row of the type-to-confirm page; `save_related`
   / `save_model` / the actions add a message after the write.
-- `primary_switch.py` (+ `primary_switch_notes.py`, template `admin/authn/member/switch_primary.html`): the **Switch
+- `primary_switch/switch.py` (+ `primary_switch/notes.py`, template `admin/authn/member/switch_primary.html`): the **Switch
   primary email** detail action and its page. `get_actions_detail` hides the button unless
   `user_can_manage_member` allows it, and the view re-checks, because Unfold wraps a detail-action URL only in
   `admin_view`. The write goes through `apps.authn.services.contacts.primary_switch` (member lock, fingerprint,
@@ -109,7 +109,7 @@ Also in `src/apps/authn/admin/members/` (details in
 
 ### Email campaign admin
 
-`EmailCampaignAdmin` (`src/apps/mail/admin/campaign/admin.py`) provides:
+`EmailCampaignAdmin` (`src/apps/mail/admin/campaign/admin/`) provides:
 - Inline recipient logs
 - Campaign status display
 - Gmail template import action

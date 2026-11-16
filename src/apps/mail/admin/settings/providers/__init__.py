@@ -28,7 +28,7 @@ from apps.core.models import (
 from apps.core.utils.security import is_plain_address
 from apps.mail.admin.settings.providers.details import Provider, _configure_url, _details
 
-from ..access import _require_mail_access
+from ..admin.access import _require_mail_access
 
 NO_SENDER_CONFIG = "Save the Notification Delivery settings (sender name and From email) first."
 
@@ -135,7 +135,7 @@ def mail_sending_method_view(request):
         "provider_cards": provider_cards(request, config, AWSCredentialConfig.load(), SMTPProviderConfig.load()),
         "notification_delivery_url": reverse("admin:mail_settings"),
     }
-    return TemplateResponse(request, "admin/mail/sending_method.html", context)
+    return TemplateResponse(request, "admin/mail/settings/notification_delivery/sending_method.html", context)
 
 
 def in_use_label(config: EmailServiceConfig) -> str:

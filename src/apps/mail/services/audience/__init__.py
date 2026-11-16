@@ -1,6 +1,6 @@
 """Resolve campaign audience to a list of recipient dicts."""
 
-from apps.mail.services.suppression import split_suppressed
+from apps.mail.services.audience.suppression import split_suppressed
 
 from .resolvers import recipients_for_audience
 

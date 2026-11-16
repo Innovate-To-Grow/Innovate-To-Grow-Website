@@ -3,7 +3,7 @@ from django.urls import reverse
 from apps.event.tests.helpers import make_superuser
 from apps.system_intelligence.models import SystemIntelligenceExport
 from apps.system_intelligence.services import actions
-from apps.system_intelligence.services.exports import create_export
+from apps.system_intelligence.services.tools.exports.workbook import create_export
 from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
 
 

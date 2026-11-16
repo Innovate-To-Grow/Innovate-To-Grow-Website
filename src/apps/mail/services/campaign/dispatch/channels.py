@@ -14,7 +14,7 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 from apps.mail.models import EmailCampaign, RecipientLog, SmsCampaign, SmsRecipientLog
 from apps.mail.services.audience import get_recipients
-from apps.mail.services.campaign.state import campaign_state
+from apps.mail.services.campaign.delivery.state import campaign_state
 from apps.mail.services.sms.audience import get_sms_recipients
 from apps.mail.services.sms.policy.quiet_hours import next_send_time
 

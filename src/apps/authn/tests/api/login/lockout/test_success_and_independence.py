@@ -1,6 +1,6 @@
 from apps.authn.models import ContactEmail
 from apps.authn.tests.api.login.lockout.test_login_lockout import EMAIL, PASSWORD, PHONE, LoginLockoutTestCase, Member
-from apps.authn.tests.clock import SECONDS_LEFT_IN_SHORT_WINDOW
+from apps.authn.tests.helpers.clock import SECONDS_LEFT_IN_SHORT_WINDOW
 
 
 class SuccessAndIndependenceTests(LoginLockoutTestCase):

@@ -9,11 +9,8 @@ from apps.core.services.background_jobs import (
     process_claimed_job,
 )
 from apps.mail.models import RecipientLog
-from apps.mail.services.send_campaign import SesSendResult
-from apps.mail.services.send_campaign.transport import (
-    SES_OUTCOME_PERMANENT,
-    SES_OUTCOME_TRANSIENT,
-)
+from apps.mail.services.campaign.send import SesSendResult
+from apps.mail.services.campaign.send.transport import SES_OUTCOME_PERMANENT, SES_OUTCOME_TRANSIENT
 
 from ..durable_queue_helpers import DurableCampaignQueueTestCase
 

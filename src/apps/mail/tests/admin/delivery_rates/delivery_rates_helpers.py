@@ -11,7 +11,7 @@ from apps.core.models import AWSCredentialConfig, DeliveryRatePolicy, DeliveryRa
 from apps.core.services.delivery_rates import cooldown_group, ses_identity
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
 from apps.event.tests.helpers import make_admin
-from apps.mail.admin.settings.rates_forms import DeliveryRatePolicyForm
+from apps.mail.admin.settings.rates.forms import DeliveryRatePolicyForm
 
 Channel = DeliveryRatePolicy.Channel
 NOW = datetime(2026, 11, 2, 13, 10, tzinfo=UTC)

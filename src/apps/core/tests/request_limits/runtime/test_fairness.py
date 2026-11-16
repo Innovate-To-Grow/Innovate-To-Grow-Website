@@ -12,7 +12,8 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.models import RequestRateLimitState
-from apps.core.services.request_limits import priority, register_priority_check
+from apps.core.services.request_limits import register_priority_check
+from apps.core.services.request_limits.classification import priority
 from apps.core.services.request_limits.runtime import registry, signals
 
 from ..helpers import TEST_SCOPES, isolate, limits_with, make_scope

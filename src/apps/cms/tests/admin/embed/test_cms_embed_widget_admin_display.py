@@ -2,7 +2,7 @@ from django.contrib.admin.sites import AdminSite
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.cms.admin.cms.cms_embed_widget import CMSEmbedWidgetAdmin, CMSEmbedWidgetAdminForm
+from apps.cms.admin.cms.embed.widget import CMSEmbedWidgetAdmin, CMSEmbedWidgetAdminForm
 from apps.cms.models import CMSBlock, CMSEmbedWidget, CMSPage
 from apps.event.models import CurrentProjectSchedule
 

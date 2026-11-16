@@ -6,7 +6,7 @@ from django.utils.html import escape
 
 from apps.core.models.base.delivery_rates import MANUAL_RATE_HELP, SMART_RATE_HELP
 from apps.event.tests.helpers import make_admin
-from apps.mail.admin.settings.rates_forms import MANUAL_RATE_NOTE
+from apps.mail.admin.settings.rates.forms import MANUAL_RATE_NOTE
 
 from .delivery_rates_helpers import READ_AT, Channel, DeliveryRatesTestCase
 

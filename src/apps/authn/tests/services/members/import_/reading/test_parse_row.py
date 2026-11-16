@@ -2,7 +2,7 @@ from datetime import date, datetime
 
 from django.utils import timezone
 
-from apps.authn.services.members.import_.parsing import cell_text, parse_flag, parse_row
+from apps.authn.services.members.import_.workbook.parsing import cell_text, parse_flag, parse_row
 from apps.authn.tests.services.members.import_.helpers import (
     ImportTestCase,
     read,

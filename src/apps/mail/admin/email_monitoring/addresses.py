@@ -12,28 +12,24 @@ from urllib.parse import urlencode
 
 from django.conf import settings
 from django.db import DatabaseError
-from django.db.models import Q
 from django.http import HttpResponse
-from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.models import EmailBounce
 from apps.core.utils.access import user_can_access_app
-from apps.event.models import EventRegistration
-from apps.mail.models import BouncedAddress, BouncedAddressCampaign, EmailCampaign, RecipientLog
+from apps.mail.models import BouncedAddress, BouncedAddressCampaign, EmailCampaign
 from apps.mail.services.email_monitoring.addresses import aggregate, listing
 from apps.mail.services.email_monitoring.addresses.actions.guards import availability
 from apps.mail.services.email_monitoring.addresses.actions.specs import QUICK_ACTIONS, SPECS
-from apps.mail.services.email_monitoring.addresses.actions.targets import Target, load_target
+from apps.mail.services.email_monitoring.addresses.actions.targets import Target
 from apps.mail.services.email_monitoring.addresses.listing.export import export_rows
 from apps.mail.services.email_monitoring.addresses.listing.matching import (
     AddressMatch,
     match_addresses,
     refresh_cached_links,
 )
-from apps.mail.services.suppression import normalize_address
 
 from .views import TEMPLATES, _context, require_mail_access
 
@@ -141,7 +137,7 @@ def address_list_view(request):
         evidence_choices=[(key, label) for key, (label, _q) in listing.EVIDENCE.items()],
         can_rebuild=bool(request.user.is_superuser),
     )
-    return TemplateResponse(request, f"{TEMPLATES}/addresses.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/addresses/addresses.html", context)
 
 
 def addresses_export_view(request):
@@ -152,81 +148,3 @@ def addresses_export_view(request):
     stamp = timezone.localtime().strftime("%Y%m%d_%H%M")
     response["Content-Disposition"] = f'attachment; filename="bounced_addresses_{stamp}.xlsx"'
     return response
-
-
-def _member_card(request, member) -> dict:
-    """The member's card. Their other addresses (and which are verified) and their phones are shown only to staff
-    with the Members (``authn``) app, as the Member admin would: they are sign-in factors."""
-    card = {
-        "member": member,
-        "link": _member_link(request, member),
-        "registrations": EventRegistration.objects.filter(member=member).count(),
-        "contacts": None,
-    }
-    if not user_can_access_app(request.user, "authn"):
-        return card
-    contacts = list(member.contact_emails.order_by("created_at", "pk"))
-    suppressed = set(
-        BouncedAddress.objects.filter(
-            address__in=[normalize_address(contact.email_address) for contact in contacts], suppressed_at__isnull=False
-        ).values_list("address", flat=True)
-    )
-    card.update(
-        contacts=[
-            {"contact": contact, "suppressed": normalize_address(contact.email_address) in suppressed}
-            for contact in contacts
-        ],
-        verified_phones=member.contact_phones.filter(verified=True).count(),
-        phones=member.contact_phones.count(),
-    )
-    return card
-
-
-def _notice_link(request, row) -> str:
-    """The helpdesk ticket holding the latest left-the-organisation notice, for staff with the Helpdesk app (the
-    queue hides automated mail by default, so the link shows every ticket)."""
-    if not row.left_org_ticket or not user_can_access_app(request.user, "helpdesk"):
-        return ""
-    query = urlencode({"q": row.left_org_ticket, "mail": "all", "status": "any"})
-    return f"{reverse('admin:helpdesk_ticket_changelist')}?{query}"
-
-
-def _detail_campaigns(row) -> list:
-    links = list(row.campaign_links.order_by("-last_at"))
-    names = dict(EmailCampaign.objects.filter(pk__in={link.campaign_id for link in links}).values_list("pk", "name"))
-    return [{"link": link, "name": names.get(link.campaign_id), "exists": link.campaign_id in names} for link in links]
-
-
-def address_detail_view(request, pk):
-    require_mail_access(request)
-    row = get_object_or_404(BouncedAddress.objects.select_related("reviewed_by", "suppressed_by"), pk=pk)
-    target = load_target(row)
-    refresh_cached_links([row], {row.address: target.match})
-    actions = []
-    for action, spec in SPECS.items():
-        verdict = availability(action, request, target)
-        actions.append({"action": action, "spec": spec, "allowed": verdict.allowed, "reason": verdict.reason})
-    reports = EmailBounce.objects.filter(recipient__iexact=row.address).order_by("-received_at")
-    ses_events = (
-        RecipientLog.objects.filter(email_address__iexact=row.address)
-        .filter(Q(bounced_at__isnull=False) | Q(complained_at__isnull=False))
-        .select_related("campaign")
-        .order_by("-updated_at")
-    )
-    context = _context(request, f"Bounced Address - {row.address}", None, "addresses")
-    context.update(
-        row=row,
-        target=target,
-        actions=actions,
-        cards=[_member_card(request, owner) for owner in target.owners],
-        reports=list(reports[:REPORTS_SHOWN]),
-        report_count=reports.count(),
-        ses_events=list(ses_events[:REPORTS_SHOWN]),
-        campaign_links=_detail_campaigns(row),
-        history=list(row.actions.select_related("actor").order_by("-created_at")[:REPORTS_SHOWN]),
-        contact_admin=user_can_access_app(request.user, "authn"),
-        notice_link=_notice_link(request, row),
-        shown=REPORTS_SHOWN,
-        category_legend=EmailBounce.category_legend(),
-    )
-    return TemplateResponse(request, f"{TEMPLATES}/address_detail.html", context)

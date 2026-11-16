@@ -1,4 +1,4 @@
-import type {PastProjectsStatusTone} from '../../builder/search/PastProjectsAIStatus';
+import type {PastProjectsStatusTone} from '../../curation/builder/search/PastProjectsAIStatus';
 import type {ProjectGridRow} from '../../grid/contracts/projectGrid';
 
 /** Outcome of saving a table's checked rows, shown inside the table that saved them. */

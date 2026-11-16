@@ -5,7 +5,7 @@ from django.test import RequestFactory, TestCase
 
 from apps.core.admin.common.base import BaseModelAdmin
 from apps.core.admin.confirmation.post_data import is_sensitive_field
-from apps.core.admin.service_credentials.microsoft_graph import (
+from apps.core.admin.service_credentials.microsoft_graph.config import (
     APPLICATION_FIELDS,
     NO_CERTIFICATE,
     MicrosoftGraphProviderConfigAdmin,

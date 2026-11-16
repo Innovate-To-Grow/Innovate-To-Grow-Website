@@ -5,7 +5,7 @@ here too (``_legacy_urls``)."""
 from django.contrib import admin
 from django.urls import path
 
-from . import address_actions, addresses, bounce_processing, ses, views
+from . import address_actions, address_detail, addresses, bounce_processing, ses, views
 
 
 def get_email_monitoring_urls():
@@ -64,7 +64,7 @@ def _address_urls(view):
         ),
         path(
             "mail/email-monitoring/addresses/<uuid:pk>/",
-            view(addresses.address_detail_view),
+            view(address_detail.address_detail_view),
             name="mail_email_monitoring_address",
         ),
         path(

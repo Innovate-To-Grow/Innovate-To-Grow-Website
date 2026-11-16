@@ -140,7 +140,7 @@ class PageViewAdminChangelistTests(TestCase):
         response = self.client.get(reverse("admin:cms_pageview_changelist"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "cms/css/pageview-dashboard.css?v=20260608-theme")
+        self.assertContains(response, "cms/css/analytics/pageview-dashboard.css?v=20260608-theme")
         self.assertContains(response, "cms-pageview-dashboard")
         self.assertContains(response, "window.i2gPageViewTheme")
         self.assertContains(response, "theme.register(chart, applyTheme)")

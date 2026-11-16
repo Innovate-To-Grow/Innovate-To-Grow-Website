@@ -17,10 +17,11 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from django.conf import settings
 from django.views.decorators.debug import sensitive_variables
 
-from ...exceptions import TransientEmailDeliveryError
-from .. import auth, transport
-from ..certificate import build_client_assertion
-from ..errors import identity_error_code
+from ...sending.exceptions import TransientEmailDeliveryError
+from .. import transport
+from ..identity import auth
+from ..identity.certificate import build_client_assertion
+from ..transport.errors import identity_error_code
 
 OK = "ok"
 NOT_TRUSTED = "not_trusted"

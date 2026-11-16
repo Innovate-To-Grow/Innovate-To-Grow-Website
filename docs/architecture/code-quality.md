@@ -9,8 +9,8 @@ pre-push hooks run the same commands.
 
 | Check | Command | Fails on |
 |---|---|---|
-| Python size / complexity / nesting / directory size | `python scripts/ci/check_python_quality.py` (`--quiet` for the summary only, `--json out.json` for every finding) | an unexcepted hard finding, or a stale exception |
-| Python app dependency directions + import cycles | `python scripts/ci/check_python_dependencies.py` (`--graph` prints app-to-app import counts) | a boundary violation or cycle not listed in `python_dependencies.toml`, or a stale entry |
+| Python size / complexity / nesting / directory size | `python -m scripts.ci.python_quality` (`--quiet` for the summary only, `--json out.json` for every finding) | an unexcepted hard finding, or a stale exception |
+| Python app dependency directions + import cycles | `python -m scripts.ci.python_dependencies` (`--graph` prints app-to-app import counts) | a boundary violation or cycle not listed in `python_dependencies.toml`, or a stale entry |
 | TypeScript size / complexity / nesting (hard limits) | `cd pages && npm run lint` | any ESLint error (the hard limits are ESLint errors) |
 | TypeScript advisory report | `cd pages && npm run quality:report` (`-- --json out.json`) | never (always exits 0) |
 | Frontend layer boundaries, cycles, directory size | `cd pages && npm run check:structure` | a boundary violation, a new cycle, or a directory over the hard limit |
@@ -23,7 +23,7 @@ Run both Python checks from the repository root with the dev virtualenv active: 
 
 - **CI:** `lint.yml` (Python Linting job) runs both Python checks after Ruff. `ci.yml` (Frontend Lint,
   Build and Static Checks job) runs `npm run lint` and then `npm run check:structure`. The checkers' own unit tests
-  (`scripts/ci/tests/test_check_python_*.py`) run in the Preflight job with the other CI script tests.
+  (`scripts/ci/tests/python_quality/test_check_python_quality.py` and `scripts/ci/tests/python_dependencies/test_check_python_dependencies.py`) run in the Preflight job with the other CI script tests.
   `ci.yml`'s `Repository Structure and Migration Guard` job runs the structure checker's tests, the migration guard
   and the structure report on every run (see [Repository structure](#repository-structure)).
 - **Pre-push hooks** (`.pre-commit-config.yaml`): `frontend-eslint`, `frontend-structure`, `python-quality`,
@@ -111,7 +111,7 @@ and always exits 0. `pages/eslint.config.js` also sets `reportUnusedDisableDirec
 
 ### Backend apps
 
-Configured in `scripts/ci/python_dependencies.toml` and checked over every module of `src/apps/`
+Configured in `scripts/ci/python_dependencies/python_dependencies.toml` and checked over every module of `src/apps/`
 (tests and migrations excluded). Only imports that run at module import time are checked. Imports
 inside functions and under `if TYPE_CHECKING:` are not import-time dependencies, so they are excluded
 from the cycle check. They still count for boundaries.
@@ -218,9 +218,9 @@ change the owners explicitly approved; it is empty.
    Do not shuffle lines to get under a number.
 2. If a hard finding is genuinely better left as it is, add **one entry for exactly that finding**, with
    a reason saying why splitting would not make the code easier to maintain:
-   - Python size, complexity, and nesting: `[[exceptions]]` in `scripts/ci/python_quality.toml`, keyed by
+   - Python size, complexity, and nesting: `[[exceptions]]` in `scripts/ci/python_quality/python_quality.toml`, keyed by
      the key the checker prints (`metric:path::symbol`).
-   - Python dependencies: `[[exceptions]]` or `[[cycles]]` in `scripts/ci/python_dependencies.toml`.
+   - Python dependencies: `[[exceptions]]` or `[[cycles]]` in `scripts/ci/python_dependencies/python_dependencies.toml`.
    - Frontend directory size: `DIRECTORY_EXCEPTIONS` in `check-structure.mjs`. Frontend cycles:
      `KNOWN_CYCLES`. ESLint hard limits: an `eslint-disable-next-line <rule> -- <reason>` comment on
      that one function.
@@ -264,7 +264,7 @@ working tree when these checks landed (`scripts/ci/validate_status_infrastructur
 
 Advisory findings are the planned-cleanup backlog; on the Python side it holds only those advisory
 `directory-files` counts. Print
-the current list with `python scripts/ci/check_python_quality.py` and `npm run quality:report`.
+the current list with `python -m scripts.ci.python_quality` and `npm run quality:report`.
 
 ### Splitting a long test file
 

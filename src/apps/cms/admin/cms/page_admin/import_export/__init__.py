@@ -1,0 +1,145 @@
+import json
+
+from django.contrib import messages
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
+from django.db import transaction
+from django.shortcuts import render
+
+# The page admin imports export_pages_response from here.
+from apps.cms.admin.cms.page_admin.import_export.export import export_pages_response as export_pages_response
+from apps.cms.admin.cms.page_admin.import_export.persistence import _page_payload, replace_page_blocks, upsert_page
+from apps.cms.models import BLOCK_TYPE_CHOICES, CMSBlock, CMSPage, validate_block_data
+
+
+def render_json_import(
+    admin_obj, request, *, title, template_name, pages_data=None, require_upload=False, validate_required=False
+):
+    context = {**admin_obj.admin_site.each_context(request), "title": title, "opts": admin_obj.model._meta}
+    if pages_data is None:
+        if request.method != "POST":
+            return render(request, template_name, context)
+        pages_data = load_uploaded_pages(request, context, template_name)
+        if pages_data is None:
+            return render(request, template_name, context)
+
+    action = request.POST.get("action") if request.method == "POST" else None
+    results = process_page_data(
+        pages_data,
+        action=action or "dry_run",
+        default_status="published" if not require_upload else "draft",
+        validate_required=validate_required,
+    )
+
+    if action == "execute":
+        success_count = sum(1 for result in results if result.get("success"))
+        error_count = sum(1 for result in results if result.get("errors"))
+        if success_count:
+            messages.success(request, f"Successfully imported {success_count} page(s).")
+            transaction.on_commit(lambda: cache.delete("layout:data"))
+        if error_count:
+            messages.warning(request, f"{error_count} page(s) had errors.")
+
+    context.update(
+        {
+            "results": results,
+            "total_pages": len(pages_data) if not require_upload else None,
+            "is_dry_run": action != "execute",
+            "has_results": action is not None if not require_upload else True,
+        }
+    )
+    return render(request, template_name, context)
+
+
+def load_uploaded_pages(request, context, template_name):
+    json_file = request.FILES.get("json_file")
+    if not json_file:
+        messages.error(request, "Please select a JSON file to import.")
+        return None
+    try:
+        bundle = json.loads(json_file.read().decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        messages.error(request, f"Invalid JSON file: {exc}")
+        return None
+    if not isinstance(bundle, dict) or not isinstance(bundle.get("pages"), list):
+        messages.error(request, "Invalid format: expected a JSON object with a 'pages' list.")
+        return None
+    return bundle["pages"]
+
+
+def _import_page(page_data, existing, blocks_data, default_status) -> None:
+    """Write one page and replace its blocks atomically, locking an existing page and its blocks first."""
+    with transaction.atomic():
+        if existing is not None:
+            existing = CMSPage.objects.select_for_update().get(pk=existing.pk)
+            list(CMSBlock.objects.select_for_update().filter(page=existing))
+        page = upsert_page(page_data, existing, default_status)
+        replace_page_blocks(page, blocks_data)
+
+
+def process_page_data(pages_data, *, action, default_status, validate_required):
+    block_type_keys = {choice[0] for choice in BLOCK_TYPE_CHOICES}
+    results = []
+    for page_data in pages_data:
+        result, blocks_data, existing = validate_page_data(
+            page_data,
+            block_type_keys,
+            validate_required,
+            default_status=default_status,
+        )
+        if not result["errors"] and action == "execute":
+            try:
+                _import_page(page_data, existing, blocks_data, default_status)
+                result["success"] = True
+            except Exception as exc:  # noqa: BLE001
+                result["errors"].append(str(exc))
+        results.append(result)
+    return results
+
+
+def _block_errors(blocks, block_type_keys) -> list[str]:
+    errors = []
+    for index, block_data in enumerate(blocks):
+        block_type = block_data.get("block_type", "")
+        if block_type not in block_type_keys:
+            errors.append(f"Block #{index + 1}: unknown type '{block_type}'.")
+            continue
+        try:
+            validate_block_data(block_type, block_data.get("data", {}))
+        except Exception as exc:  # noqa: BLE001
+            errors.append(f"Block #{index + 1} ({block_type}): {exc}")
+    return errors
+
+
+def _model_errors(candidate) -> list[str]:
+    try:
+        candidate.full_clean()
+    except ValidationError as exc:
+        if hasattr(exc, "message_dict"):
+            return [
+                f"{field}: {message}"
+                for field, field_messages in exc.message_dict.items()
+                for message in field_messages
+            ]
+        return list(exc.messages)
+    return []
+
+
+def validate_page_data(page_data, block_type_keys, validate_required, default_status="draft"):
+    slug = page_data.get("slug", "")
+    title = page_data.get("title", "")
+    route = page_data.get("route", "")
+    result = {"slug": slug, "title": title, "errors": [], "action": "", "block_count": len(page_data.get("blocks", []))}
+    if validate_required:
+        result["errors"].extend(
+            f"Missing '{name}'." for name, value in (("slug", slug), ("route", route), ("title", title)) if not value
+        )
+    result["errors"].extend(_block_errors(page_data.get("blocks", []), block_type_keys))
+    existing = CMSPage.objects.filter(slug=slug).first() if slug else None
+    result["action"] = "update" if existing else "create"
+    if slug and route and title:
+        candidate = CMSPage.objects.get(pk=existing.pk) if existing else CMSPage()
+        for field, value in _page_payload(page_data, default_status).items():
+            setattr(candidate, field, value)
+        result["errors"].extend(_model_errors(candidate))
+    return result, page_data.get("blocks", []), existing

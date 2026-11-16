@@ -1,6 +1,7 @@
 from django.core.exceptions import PermissionDenied
 
-from apps.authn.admin.members.contact.email import ContactEmailAdmin, ContactEmailAdminForm
+from apps.authn.admin.members.contact.email import ContactEmailAdmin
+from apps.authn.admin.members.contact.email_form import ContactEmailAdminForm
 from apps.authn.models import (
     ContactEmail,
 )

@@ -13,9 +13,9 @@ from django.test import override_settings
 
 from apps.core.models import EmailServiceConfig, MicrosoftGraphMailboxScope
 from apps.core.services.email.graph import GraphProvider
-from apps.core.services.email.registry import resolve_provider
+from apps.core.services.email.sending.registry import resolve_provider
 from apps.core.tests.graph_helpers import create_graph_config, grant
-from apps.core.tests.models.graph.test_graph_go_live_gate import DENY, evidence
+from apps.core.tests.project.models.graph.test_graph_go_live_gate import DENY, evidence
 
 from ...mail_settings.test_mail_settings_providers import GRAPH_NOT_READY, SEND_TEST, EmailSendingMethodTestCase
 

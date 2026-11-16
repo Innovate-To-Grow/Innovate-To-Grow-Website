@@ -5,7 +5,7 @@ Policy: sign-in, email-link, verification-code and ALTCHA-challenge flows are NO
 legitimate users (the campus network) share one public address, so a per-IP bucket throttles everyone at once
 while barely slowing an attacker. Those flows are bounded by secrets (login-link and impersonation tokens),
 per-destination cooldown and hourly caps, per-challenge attempt limits, the SMS daily budget and, for password
-login, the identifier-keyed failure lockout in ``apps.authn.services.login_guard``. Do not add an anonymous
+login, the identifier-keyed failure lockout in ``apps.authn.services.security.login_guard``. Do not add an anonymous
 per-IP throttle to those views. (The mail app's one-click unsubscribe and resubscribe pages are likewise gated
 only by their signed tokens and unthrottled.)
 

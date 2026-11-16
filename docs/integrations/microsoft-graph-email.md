@@ -641,21 +641,21 @@ Email** prove the credentials.
 | Concern | Location |
 |---------|----------|
 | Sending, token cache, HTTPS and its request allowlist, error mapping | `src/apps/core/services/email/graph/` (`provider.py`, `auth.py`, `transport.py`, `errors.py`) |
-| JSON `sendMail` body for credential mail | `src/apps/core/services/email/graph/json_message.py` |
-| Certificate facts and client assertions | `src/apps/core/services/email/graph/certificate.py` |
+| JSON `sendMail` body for credential mail | `src/apps/core/services/email/graph/provider/json_message.py` |
+| Certificate facts and client assertions | `src/apps/core/services/email/graph/identity/certificate.py` |
 | Certificate input, stored key, Entra test, install / rollback / remove, expiry | `src/apps/core/services/email/graph/credential/` |
 | Credential store (Secrets Manager, local file, memory) and its system checks | `src/apps/core/services/credential_store/`, `src/apps/core/checks/` |
-| Mailbox scope enforcement | `src/apps/core/services/email/graph/access.py` |
-| Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox.py`, `src/apps/mail/services/inbox/graph_backend.py` |
+| Mailbox scope enforcement | `src/apps/core/services/email/graph/identity/access.py` |
+| Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox/__init__.py`, `src/apps/mail/services/inbox/graph_backend.py` |
 | Sent mail access in the admin inbox | `src/apps/mail/admin/inbox/helpers.py` (`sent_mail_restricted`, `sent_mail_denied`) |
 | Access validation (probes, roles, verdict, evidence) | `src/apps/core/services/email/graph/access_check/`, `manage.py verify_graph_access` |
 | Recorded access checks and the go-live gate | `src/apps/core/models/base/service_credentials/microsoft_graph/access_check.py`, `EmailServiceConfig.validate_activation` |
-| Provider selection | `src/apps/core/services/email/registry.py` |
+| Provider selection | `src/apps/core/services/email/sending/registry.py` |
 | Settings and scope models | `src/apps/core/models/base/service_credentials/microsoft_graph/` |
 | Installed certificates (public data + key pointer) | `src/apps/core/models/base/service_credentials/microsoft_graph/certificate.py` |
 | Certificate pages, certificate panel, Run access check, recorded checks, mailbox scope inline and its guard | `src/apps/core/admin/service_credentials/microsoft_graph*.py` |
 | Notification Delivery (selects the provider; Graph read-only) | `src/apps/mail/admin/settings/` |
-| Settings (`GRAPH_*`, `CREDENTIAL_STORE_*`) | `src/config/settings/base/integrations/microsoft_graph/`, `src/config/settings/base/integrations/credential_store/` |
+| Settings (`GRAPH_*`, `CREDENTIAL_STORE_*`) | `src/config/settings/base/integrations/email/microsoft_graph/`, `src/config/settings/base/integrations/email/credential_store/` |
 | The secret and its IAM and resource policies | `aws/cicd/identity-stack.json` |
 
 ## Sent Items and credential mail

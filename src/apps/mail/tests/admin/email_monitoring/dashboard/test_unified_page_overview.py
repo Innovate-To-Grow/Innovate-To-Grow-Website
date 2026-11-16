@@ -65,7 +65,9 @@ class OverviewTests(TestCase):
         self.assertNotContains(response, ">Delivered<")
 
     def test_the_send_rate_is_shown_once_with_a_link_to_delivery_rates(self):
-        with patch("apps.mail.services.email_monitoring.overview.email_send_rate_line", return_value="Now: 5/sec"):
+        with patch(
+            "apps.mail.services.email_monitoring.dashboard.overview.email_send_rate_line", return_value="Now: 5/sec"
+        ):
             response = self.client.get(self.url)
 
         self.assertContains(response, "Send rate: Now: 5/sec", count=1)
@@ -73,8 +75,11 @@ class OverviewTests(TestCase):
 
     def test_a_send_rate_that_cannot_be_read_never_breaks_the_page(self):
         with (
-            patch("apps.mail.services.email_monitoring.overview.email_send_rate_line", side_effect=RuntimeError("x")),
-            self.assertLogs("apps.mail.services.email_monitoring.overview", "WARNING"),
+            patch(
+                "apps.mail.services.email_monitoring.dashboard.overview.email_send_rate_line",
+                side_effect=RuntimeError("x"),
+            ),
+            self.assertLogs("apps.mail.services.email_monitoring.dashboard.overview", "WARNING"),
         ):
             response = self.client.get(self.url)
 

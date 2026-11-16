@@ -1,7 +1,7 @@
 import {act, cleanup, render, screen} from '@testing-library/react';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
+import {BlockPreviewPage} from '@/features/cms/components/preview/BlockPreviewPage';
 
 /**
  * Unit tests for the admin block-preview iframe page.
@@ -19,7 +19,7 @@ import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
 // Mock the concrete block components via BlockRenderer so we can assert on
 // rendered output without pulling in styling/API deps. We spy on
 // BlockRenderer's input.
-vi.mock('@/features/cms/components/BlockRenderer', () => ({
+vi.mock('@/features/cms/components/rendering/BlockRenderer', () => ({
   BlockRenderer: ({
     blocks,
     previewMode,

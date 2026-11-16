@@ -4,9 +4,9 @@ from botocore.exceptions import ClientError
 
 from apps.system_intelligence.services.query_tools import execute_tool
 
+from ..clients.exceptions import BedrockError
 from ..clients.prepare import prepare
-from ..constants import MAX_TOOL_ROUNDS
-from ..exceptions import BedrockError
+from .constants import MAX_TOOL_ROUNDS
 
 logger = logging.getLogger(__name__)
 

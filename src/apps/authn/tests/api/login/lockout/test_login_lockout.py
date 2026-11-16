@@ -3,7 +3,7 @@
 Ten credential failures in 15 minutes, or thirty in a day, lock the submitted identifier. The lock is checked before
 the password is decrypted or hashed, looks identical for existing, unknown and inactive accounts, and is cleared by a
 successful sign-in. A site-wide spike of failures (a password spray) is logged once and never refused. Time is frozen
-(``apps.authn.tests.clock``) so the windows are exact.
+(``apps.authn.tests.helpers.clock``) so the windows are exact.
 """
 
 from django.contrib.auth import get_user_model
@@ -12,7 +12,7 @@ from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from apps.authn.models import ContactEmail, ContactPhone
-from apps.authn.tests.clock import SECONDS_LEFT_IN_DAY, SECONDS_LEFT_IN_SHORT_WINDOW, freeze_time
+from apps.authn.tests.helpers.clock import SECONDS_LEFT_IN_DAY, SECONDS_LEFT_IN_SHORT_WINDOW, freeze_time
 
 Member = get_user_model()
 

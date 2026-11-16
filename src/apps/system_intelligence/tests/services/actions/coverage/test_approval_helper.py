@@ -7,12 +7,13 @@ from django.test import TestCase
 from apps.cms.models import NewsFeedSource
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
-from apps.system_intelligence.services.actions import approval, utils
 from apps.system_intelligence.services.actions.comparison.text import (
     extract_block_text,
     limit_comparison_text,
 )
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine import utils
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.requests import approval
 
 from ..support.base import SystemIntelligenceActionBase
 
@@ -62,7 +63,7 @@ class ApprovalHelperTests(SystemIntelligenceActionBase):
         response = actions.propose_db_update("cms", "NewsFeedSource", str(source.pk), {"name": "Renamed"})
         action_id = response["action_request"]["id"]
         with patch(
-            "apps.system_intelligence.services.actions.approval.apply_action",
+            "apps.system_intelligence.services.actions.requests.approval.apply_action",
             side_effect=RuntimeError("low level detail"),
         ):
             with self.assertRaises(RuntimeError):

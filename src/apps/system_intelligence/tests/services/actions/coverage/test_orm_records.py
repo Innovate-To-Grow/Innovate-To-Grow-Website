@@ -7,7 +7,7 @@ from apps.event.tests.helpers import make_admin
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.actions.comparison import builders
-from apps.system_intelligence.services.actions.exceptions import ActionRequestError
+from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
 from apps.system_intelligence.services.actions.orm import records as orm_records
 
 from ..support.base import SystemIntelligenceActionBase

@@ -45,7 +45,7 @@ class CMSEmbedWidgetAdminViewTests(TestCase):
         self.assertContains(response, "Sections to hide")
         self.assertContains(response, "schedule_projects")
         self.assertContains(response, 'id="id_schedule"')
-        self.assertContains(response, "cms/js/cms-embed-widget/previews.js")
+        self.assertContains(response, "cms/js/embed-widget/previews.js")
 
     def test_add_form_replaces_legacy_hide_toggle_with_hidden_section_presets(self):
         response = self.client.get(reverse("admin:cms_cmsembedwidget_add"))

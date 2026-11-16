@@ -5,11 +5,11 @@ from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from apps.authn.admin.members import help_texts
-from apps.authn.admin.members.contact.email import ContactEmailAdminForm
+from apps.authn.admin.members.contact.email_form import ContactEmailAdminForm
 from apps.authn.admin.members.contact.phone_verification import ContactPhoneAdminForm
-from apps.authn.admin.members.forms import MemberChangeForm, MemberCreationForm
-from apps.authn.admin.members.inlines import ContactEmailInlineForm
+from apps.authn.admin.members.inlines.contacts import ContactEmailInlineForm
+from apps.authn.admin.members.member.forms import MemberChangeForm, MemberCreationForm
+from apps.authn.admin.members.shared import help_texts
 from apps.authn.models import ContactEmail, ContactPhone
 
 Member = get_user_model()

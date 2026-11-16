@@ -1,0 +1,136 @@
+"""Email campaign model admin."""
+
+from django.contrib import admin, messages
+
+from apps.core.admin import BaseModelAdmin
+from apps.core.services.background_jobs import jobs_enabled
+from apps.mail.models import EmailCampaign, LoginLinkToken
+
+from ..forms import EmailCampaignForm
+from ..views import (
+    CampaignDuplicateMixin,
+    CampaignGmailMixin,
+    CampaignPreviewMixin,
+    CampaignSendMixin,
+    CampaignStatusMixin,
+    CampaignUrlsMixin,
+)
+from .display import CampaignDisplayMixin
+from .inlines import AudienceTypeFilter
+
+
+@admin.register(EmailCampaign)
+class EmailCampaignAdmin(
+    CampaignUrlsMixin,
+    CampaignPreviewMixin,
+    CampaignDuplicateMixin,
+    CampaignGmailMixin,
+    CampaignSendMixin,
+    CampaignStatusMixin,
+    CampaignDisplayMixin,
+    BaseModelAdmin,
+):
+    form = EmailCampaignForm
+    change_form_template = "admin/mail/emailcampaign/change_form.html"
+
+    class Media:
+        js = ("mail/js/body_format_toggle.js", "mail/js/body_html_editor.js")
+
+    list_display = (
+        "subject_preview",
+        "audience_badge",
+        "status_badge",
+        "sent_count",
+        "failed_count",
+        "sent_at",
+    )
+    list_filter = ("status", AudienceTypeFilter)
+    search_fields = ("subject",)
+    ordering = ("-created_at",)
+    actions = ["duplicate_campaigns_action", "revoke_login_links_action", "resume_paused_recipients_action"]
+    # Import and Send are draft-only; CampaignDuplicateMixin.get_actions_detail leaves them off a locked campaign.
+    actions_detail = [
+        "preview_email_action",
+        "preview_recipients_action",
+        "duplicate_campaign_action",
+        "import_gmail_html_action",
+        "send_campaign_action",
+        "delivery_monitoring_action",
+    ]
+
+    @admin.action(description="Revoke login links (invalidate emailed sign-in links)")
+    def revoke_login_links_action(self, request, queryset):
+        from apps.mail.services.tokens.login_links import revoke_login_links
+
+        revoked = revoke_login_links(LoginLinkToken.objects.filter(campaign__in=queryset))
+        self.message_user(request, f"Revoked {revoked} login link(s).", messages.SUCCESS)
+
+    @admin.action(description="Resume paused recipients (held back by delivery limits)", permissions=["change"])
+    def resume_paused_recipients_action(self, request, queryset):
+        from apps.mail.services.campaign.dispatch import resume_paused_email_recipients
+
+        resumed = sum(resume_paused_email_recipients(campaign) for campaign in queryset)
+        if not resumed:
+            self.message_user(request, "No paused recipients to resume (or the campaign is still sending).")
+            return
+        how = "queued for the background worker" if jobs_enabled() else "being sent by the web server"
+        self.message_user(request, f"Resumed {resumed} paused recipient(s): {how}.", messages.SUCCESS)
+
+    fieldsets = (
+        (
+            "Audience",
+            {
+                "fields": (
+                    "audience_type",
+                    "event",
+                    "ticket",
+                    "selected_members",
+                    "member_email_scope",
+                    "manual_emails",
+                    "exclude_audience_type",
+                    "exclude_member_email_scope",
+                    "exclude_event",
+                    "exclude_ticket",
+                    "exclude_members",
+                ),
+            },
+        ),
+        (
+            "Campaign",
+            {
+                "fields": (
+                    "subject",
+                    "login_redirect_path",
+                    "login_link_validity_days",
+                    "login_link_reusable",
+                    "include_unsubscribe_header",
+                    "body_format",
+                    "body",
+                )
+            },
+        ),
+    )
+    filter_horizontal = ("selected_members", "exclude_members")
+    conditional_fields = {
+        "event": (
+            "audience_type === 'event_registrants' || audience_type === 'ticket_type'"
+            " || audience_type === 'checked_in' || audience_type === 'not_checked_in'"
+        ),
+        "ticket": "audience_type === 'ticket_type'",
+        "selected_members": "audience_type === 'selected_members'",
+        "member_email_scope": (
+            "audience_type === 'subscribers' || audience_type === 'all_members'"
+            " || audience_type === 'staff' || audience_type === 'selected_members'"
+        ),
+        "manual_emails": "audience_type === 'manual'",
+        "exclude_event": (
+            "exclude_audience_type === 'event_registrants' || exclude_audience_type === 'ticket_type'"
+            " || exclude_audience_type === 'checked_in' || exclude_audience_type === 'not_checked_in'"
+        ),
+        "exclude_ticket": "exclude_audience_type === 'ticket_type'",
+        "exclude_members": "exclude_audience_type === 'selected_members'",
+        "exclude_member_email_scope": (
+            "exclude_audience_type === 'subscribers' || exclude_audience_type === 'all_members'"
+            " || exclude_audience_type === 'staff' || exclude_audience_type === 'selected_members'"
+        ),
+    }

@@ -5,8 +5,8 @@ from django.test import TestCase
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.send_campaign.runner import send_campaign
-from apps.mail.services.send_campaign.transport import SesSendResult
+from apps.mail.services.campaign.send.runner import send_campaign
+from apps.mail.services.campaign.send.transport import SesSendResult
 
 
 def _make_active_aws():
@@ -40,16 +40,16 @@ class SendCampaignFlowTests(TestCase):
             status="draft",
         )
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_full_send_creates_recipient_logs(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
         send_campaign(self.campaign, self.sender)
         self.assertEqual(RecipientLog.objects.filter(campaign=self.campaign).count(), 3)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_only_messages_that_carry_the_login_link_skip_the_sent_items_copy(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
@@ -64,8 +64,8 @@ class SendCampaignFlowTests(TestCase):
             send_campaign(campaign, self.sender)
         self.assertEqual({call.kwargs["keep_sent_copy"] for call in mock_send.call_args_list}, {False})
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_campaign_status_transitions_to_sent(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
@@ -73,8 +73,8 @@ class SendCampaignFlowTests(TestCase):
         self.campaign.refresh_from_db()
         self.assertEqual(self.campaign.status, "sent")
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_fallback_campaign_with_mixed_results_is_partial(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.side_effect = [
@@ -89,8 +89,8 @@ class SendCampaignFlowTests(TestCase):
         self.assertEqual(result, {"total": 3, "sent": 2, "failed": 1})
         self.assertEqual(self.campaign.status, "partial")
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_total_recipients_set_on_campaign(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
@@ -98,8 +98,8 @@ class SendCampaignFlowTests(TestCase):
         self.campaign.refresh_from_db()
         self.assertEqual(self.campaign.total_recipients, 3)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_sent_count_matches_successful_sends(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
@@ -108,8 +108,8 @@ class SendCampaignFlowTests(TestCase):
         self.assertEqual(self.campaign.sent_count, 3)
         self.assertEqual(self.campaign.failed_count, 0)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_sent_at_is_set_after_completion(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-001")
@@ -117,8 +117,8 @@ class SendCampaignFlowTests(TestCase):
         self.campaign.refresh_from_db()
         self.assertIsNotNone(self.campaign.sent_at)
 
-    @patch("apps.mail.services.send_campaign.runner._send_via_ses")
-    @patch("apps.mail.services.send_campaign.runner._get_ses_client")
+    @patch("apps.mail.services.campaign.send.runner._send_via_ses")
+    @patch("apps.mail.services.campaign.send.runner._get_ses_client")
     def test_recipient_log_records_provider_message_id(self, mock_client, mock_send):
         mock_client.return_value = MagicMock()
         mock_send.return_value = SesSendResult(message_id="SES-ABC-123")

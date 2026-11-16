@@ -94,7 +94,7 @@ Two cases do not get the fallback straight away. An already-used link in a brows
 
 ### AuthProvider
 
-`src/features/auth/components/AuthContext.tsx`
+`src/features/auth/components/AuthContext/index.tsx`
 
 - Manages user state, authentication status, and profile completion requirement
 - Gates its children during the asynchronous authoritative session bootstrap
@@ -138,25 +138,26 @@ Campus users share one public IP, so the backend tells browsers apart by two val
 
 ## Shared modules
 
-Layer rules (what may import what, and how features expose a public interface) are in [Code Quality Rules](code-quality.md#frontend-layers). Page-only hooks and sections live beside their route (for example `routes/EventRegistrationPage/registration/` and `routes/SubscribePage/subscription/`). Pure formatting helpers shared across features live in `lib/format/` (`eventDates.ts`, `phoneInput.ts`), and form error collection lives in `lib/api/errorMessages.ts`.
+Layer rules (what may import what, and how features expose a public interface) are in [Code Quality Rules](code-quality.md#frontend-layers). Page-only hooks and sections live beside their route (for example `routes/events/EventRegistrationPage/registration/` and `routes/subscription/SubscribePage/subscription/`). Pure formatting helpers shared across features live in `lib/format/` (`eventDates.ts`, `phoneInput.ts`), and form error collection lives in `lib/api/errorMessages.ts`.
 
 Large components keep rendering in the component and move state into a hook beside it, one hook per
 concern. For example:
 
 - **Projects builder** (`features/projects/components/`). `PastProjectsBuilder` composes
-  `builder/draft/useCurationDraft` (the localStorage draft), `search/state/useSearchTables` (the table stack and AI
-  search) and `builder/selection/useSaveSelectedRows`. Each `SearchTableCard` composes `search/state/useSearchTableRows`,
+  `curation/builder/draft/useCurationDraft` (the localStorage draft), `search/state/useSearchTables` (the table stack and AI
+  search) and `curation/builder/selection/useSaveSelectedRows`. Each `SearchTableCard` composes `search/state/useSearchTableRows`,
   `search/state/useSearchTableSelection` and `search/state/useSearchTableSave`. `useProjectGridTable` builds on
   `grid/state/useRowKeySet` and `grid/state/useGridPagination`. The rich-text editor's DOM work is in
   `richText/dom/richTextEditorDom.ts` and `richText/dom/editorSelection.ts`. Which list the builder searches (its
   rows, server search, AI search scope and wording) comes from `ProjectCatalogContext`
   (`features/projects/catalog/`): Past Projects by default, All Projects under `ALL_PROJECTS_CATALOG`'s provider.
   Both pages render `components/views/pages/CatalogBuilderView`.
-- **Event registration** (`routes/EventRegistrationPage/registration/`). `useRegistrationEvents` (which
-  event and step) loads options through `useEventOptionsLoader`. The phone and secondary-email hooks
-  share `contactChallenge.ts`: a challenge's state, and `runLatestRequest`, which lets only the newest
+- **Event registration** (`routes/events/EventRegistrationPage/registration/`). `events/useRegistrationEvents` (which
+  event and step) loads options through `useEventOptionsLoader`, boots through `useRegistrationBoot` and switches
+  events through `useEventChoice`. The phone and secondary-email hooks
+  share `verification/contactChallenge.ts`: a challenge's state, and `runLatestRequest`, which lets only the newest
   send or verify apply its result.
-- **Shared list edits** (`routes/PastProjectsPage/useSharedListMutations.ts`). Edits are queued and
+- **Shared list edits** (`routes/projects/PastProjectsPage/useSharedListMutations.ts`). Edits are queued and
   rebased onto the latest version, and a stale-snapshot conflict reloads the list. The pure parts
   (`editPatch`, `runnableBaseline`) sit above the hook, and the queue's bookkeeping is
   `useMutationQueueState`.
@@ -216,7 +217,7 @@ server's wait has passed, doubling the wait for each refusal in a row (capped), 
 
 The frontend uses plain CSS with a design token system.
 
-### Token system (`src/styles/tokens.css`)
+### Token system (`src/styles/base/tokens.css`)
 
 CSS custom properties define the design vocabulary:
 - **Colors**: `--itg-color-primary` (#0f2d52), accent-gold, error, success, etc.
@@ -230,11 +231,11 @@ CSS custom properties define the design vocabulary:
 - `src/styles/` — every global stylesheet: `tokens.css` (fallback design tokens), `shared.css` (auth legal notice and phone-consent rules), `layers.css` and the `contract/` tree (both below)
 - `src/index.css` — Imports shared styles, sets up body and app-layout
 - `src/styles/contract/` — the content contract: the design system (`global/`), CMS block styles (`cms-blocks/`), the page classes editors store in content HTML (`cms-pages.css`, `page-home.css`, `legacy-content.css`) and `contract-classes.json`. `index.css` imports `contract/index.css` first, so these rules come before every other stylesheet; `css-contract.test.ts` keeps a rule for every listed class ([CSS contract](../cms-admin/css-contract.md))
-- Component-scoped `.css` files alongside each component. The shell (`features/layout/components/{Container,MainMenu,Footer}`, `app/MaintenanceMode`, `app/ErrorBoundary`) lands in the entry bundle; route CSS (`routes/*`, `features/auth/components/auth.css`) loads with its lazy route chunk. A file that every renderer of a class imports is the rule: a lazy route's CSS is not there when a visitor lands on another route first.
+- Component-scoped `.css` files alongside each component. The shell (`features/layout/components/{Container,MainMenu,Footer}`, `app/MaintenanceMode`, `app/ErrorBoundary`) lands in the entry bundle; route CSS (`routes/*`, `features/auth/components/styles/base/auth.css`) loads with its lazy route chunk. A file that every renderer of a class imports is the rule: a lazy route's CSS is not there when a visitor lands on another route first.
 - One stylesheet owns each selector (`src/__tests__/core/css/css-ownership.test.ts`): chunk CSS loads in navigation order, so a selector defined in two files would get whichever loaded last. Files that one stylesheet `@import`s count as that stylesheet.
-- Cascade layers (`src/styles/layers.css`, imported first by `main.tsx`): `itg.defaults` < `itg.tokens` < `itg.base` < `itg.components` < `itg.overrides` < `itg.page`. Every bundled stylesheet wraps its rules in `@layer itg.components` (fallback tokens and last-resort defaults in `itg.defaults`); `src/__tests__/core/css/layers.test.ts` fails on an unlayered rule, which would beat the Site Settings custom CSS. Styles injected at runtime go through `inComponentsLayer()` from `@/lib/css`. The block-preview rules inline in `index.html` stay unlayered on purpose.
+- Cascade layers (`src/styles/base/layers.css`, imported first by `main.tsx`): `itg.defaults` < `itg.tokens` < `itg.base` < `itg.components` < `itg.overrides` < `itg.page`. Every bundled stylesheet wraps its rules in `@layer itg.components` (fallback tokens and last-resort defaults in `itg.defaults`); `src/__tests__/core/css/layers.test.ts` fails on an unlayered rule, which would beat the Site Settings custom CSS. Styles injected at runtime go through `inComponentsLayer()` from `@/lib/css`. The block-preview rules inline in `index.html` stay unlayered on purpose.
 - The backend serves the Site Settings design tokens (`itg.tokens`) and custom CSS (`itg.overrides`) from `/api/layout/theme.css`, linked before the bundle; it opens with the same layer statement, so the order holds whichever sheet loads first ([Theme](../cms-admin/theme-and-custom-css.md)).
-- `features/projects/components/styles/cascade/projects.css` is an ordered list of `@import`s of the projects pages' feature-owned sheets (`grid/styles/`, `search/styles/`, `merged/styles/`, `richText/editor/`, `builder/dialog/`, ...). The order is the cascade order and `projectsResponsive.css` must stay last, so add rules to the file that owns them rather than reordering the list.
+- `features/projects/components/styles/cascade/projects.css` is an ordered list of `@import`s of the projects pages' feature-owned sheets (`grid/styles/`, `search/styles/`, `curation/merged/styles/`, `richText/editor/`, `curation/builder/dialog/`, ...). The order is the cascade order and `projectsResponsive.css` must stay last, so add rules to the file that owns them rather than reordering the list.
 
 ## Testing
 

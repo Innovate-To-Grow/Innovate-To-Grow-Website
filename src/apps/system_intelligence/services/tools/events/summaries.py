@@ -2,10 +2,10 @@ from typing import Any
 
 from django.db.models import Count
 
-from apps.system_intelligence.services.actions.utils import json_safe
+from apps.system_intelligence.services.actions.engine.utils import json_safe
 
-from ..query_helpers import object_payload, queryset_payload
-from ..runtime import run_action_service_async
+from ..framework.query_helpers import object_payload, queryset_payload
+from ..framework.runtime import run_action_service_async
 from .lookup import _find_event
 
 

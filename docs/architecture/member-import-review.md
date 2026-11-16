@@ -14,16 +14,16 @@ analyse     saved per    "import"      all or nothing
 
 | Step | URL (`admin:` name) | Code |
 |---|---|---|
-| Upload | `authn/member/import-excel/` (`authn_member_import_excel`) | `admin/members/import_views.upload_view` → `reader.read_upload` → `review.batches.create_batch` |
+| Upload | `authn/member/import-excel/` (`authn_member_import_excel`) | `admin/members/import_/views.upload_view` → `reader.read_upload` → `review.batches.create_batch` |
 | Review | `…/<batch>/review/` (`authn_member_import_review`) | `review_view` (GET), `_save` → `batches.save_choices` (POST) |
-| Confirm | `…/<batch>/confirm/` (`authn_member_import_confirm`, request limit `staff-bulk`) | `confirm_view` → `review.apply.apply_batch` |
-| Result | `…/<batch>/` (`authn_member_import_result`) | `result_view` |
+| Confirm | `…/<batch>/confirm/` (`authn_member_import_confirm`, request limit `staff-bulk`) | `confirm_views.confirm_view` → `review.apply.apply_batch` |
+| Result | `…/<batch>/` (`authn_member_import_result`) | `confirm_views.result_view` |
 | Discard | `…/<batch>/discard/` (POST) | `batches.discard_batch` |
-| History | `authn/memberimportbatch/` | `admin/members/import_batch.py` (read-only, no export) |
+| History | `authn/memberimportbatch/` | `admin/members/import_/batch.py` (read-only, no export) |
 
 Every view re-checks authn-app access (`admin_view` only checks `is_staff`). Only the uploader or an I2G Master may
 save choices, apply or discard; other authn admins get the review read-only. Rights are always the **uploader's and
-the actor's together** (`import_views.analysis_context`): an I2G Master applying another admin's import never lends it
+the actor's together** (`import_/rights.analysis_context`): an I2G Master applying another admin's import never lends it
 master rights, so the uploader can't use the master's apply to reach staff accounts or master-only ticks. An import
 whose uploader was deleted is never applied.
 

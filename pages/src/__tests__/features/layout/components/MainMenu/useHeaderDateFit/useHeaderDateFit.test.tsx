@@ -1,7 +1,7 @@
 import {cleanup} from '@testing-library/react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 
-import {measureDateHidden} from '@/features/layout/components/MainMenu/useHeaderDateFit';
+import {measureDateHidden} from '@/features/layout/components/MainMenu/header/useHeaderDateFit';
 import {
   computedStyles,
   expectFitsFrom,

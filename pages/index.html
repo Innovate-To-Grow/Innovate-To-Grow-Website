@@ -25,7 +25,7 @@
          over: the page shell's 16px top padding, then centred in the
          fallback's 50vh box (Container.css .app-layout and .page-loader). -->
     <style>
-      /* Cascade layer order (src/styles/layers.css); this statement comes first so it fixes the order. */
+      /* Cascade layer order (src/styles/base/layers.css); this statement comes first so it fixes the order. */
       @layer itg.defaults, itg.tokens, itg.base, itg.components, itg.overrides, itg.page;
 
       /* First-paint defaults: in the lowest layer, so the bundle's own html/body rules win. */

@@ -17,7 +17,7 @@ from apps.authn.models import AdminInvitation, ContactEmail
 from apps.authn.services.contacts.contact_emails import delete_contact_email, make_contact_email_primary
 from apps.authn.services.email.challenges import AuthChallengeError
 from apps.mail.models import BouncedAddress, BouncedAddressAction
-from apps.mail.services.suppression import normalize_address
+from apps.mail.services.audience.suppression import normalize_address
 
 from ..listing.matching import match_address
 from . import audit, effects

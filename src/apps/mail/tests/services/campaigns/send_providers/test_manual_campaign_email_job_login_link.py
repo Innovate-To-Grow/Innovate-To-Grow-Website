@@ -8,7 +8,7 @@ from apps.event.tests.helpers import make_member, make_superuser
 from apps.mail.models import LoginLinkToken, RecipientLog
 from apps.mail.services.campaign.dispatch import queue_email_campaign
 from apps.mail.services.campaign.dispatch.email_job import _render_recipient_email
-from apps.mail.services.send_campaign.transport import SesSendResult
+from apps.mail.services.campaign.send.transport import SesSendResult
 from apps.mail.tests.services.campaigns.send.test_manual_login_link import (
     FRONTEND,
     HTML_BODY,

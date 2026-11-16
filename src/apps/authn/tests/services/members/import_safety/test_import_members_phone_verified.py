@@ -8,7 +8,7 @@ it is accepted, ignored, and reported once for the file.
 
 from django.test import SimpleTestCase
 
-from apps.authn.services.members.import_.parsing import (
+from apps.authn.services.members.import_.workbook.parsing import (
     FLAG_COLUMNS,
     IGNORED_COLUMNS,
     PHONE_VERIFIED_IGNORED,
@@ -16,7 +16,7 @@ from apps.authn.services.members.import_.parsing import (
     normalize_header,
     parse_row,
 )
-from apps.authn.services.members.import_.types import ImportResult
+from apps.authn.services.members.import_.workbook.types import ImportResult
 
 from ..import_sheets import PHONE_VERIFIED_HEADERS, build_sheet, full_row
 

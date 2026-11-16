@@ -8,7 +8,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.authn.models import ContactEmail, EmailAuthChallenge
-from apps.authn.services.members.registration_audit import find_register_reactivations, reactivation_reasons
+from apps.authn.services.members.accounts.registration_audit import find_register_reactivations, reactivation_reasons
 
 Member = get_user_model()
 REGISTER = EmailAuthChallenge.Purpose.REGISTER

@@ -1,82 +1,29 @@
-from django import forms
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 
-from apps.authn.services.contacts.primary_switch import SwitchRefused, switch_primary_email
 from apps.core.admin import BaseModelAdmin
 
 from ....models import ContactEmail, Member
-from ..filters import EmailSubscribedFilter, EmailVerifiedFilter, MemberAccountFilter
-from ..help_texts import EMAIL_HELP_TEXTS, EMAIL_LABELS
-from ..primary_switch import VIA_CONTACT_EMAILS
-from ..primary_switch_notes import outcome_messages
-from ..search import RankedSearchMixin, contact_email_search_rank
-from ..sign_in_warning import SignInWarningAdminMixin, lost_sign_in
+from ..shared.filters import EmailSubscribedFilter, EmailVerifiedFilter, MemberAccountFilter
+from ..shared.search import RankedSearchMixin, contact_email_search_rank
+from ..shared.sign_in_warning import SignInWarningAdminMixin
+from .email_actions import ContactEmailActionsMixin
+from .email_form import (
+    PRIMARY_EMAIL_DELETE_ERROR,
+    PRIMARY_EMAIL_EDIT_ERROR,
+    PRIMARY_EMAIL_PROMOTION_ERROR,
+    ContactEmailAdminForm,
+    _primary_identity_changed,
+)
 from .guards import PrivilegedOwnerAdminMixin
-
-PRIMARY_EMAIL_EDIT_ERROR = _(
-    "The current primary email's owner, address, and type cannot be edited directly. "
-    "Make another verified email primary first: “Switch primary email” on the member page, or the action "
-    "“Make selected email primary” here."
-)
-PRIMARY_EMAIL_DELETE_ERROR = _(
-    "The current primary email cannot be deleted directly. Make another email primary first."
-)
-PRIMARY_EMAIL_PROMOTION_ERROR = _(
-    "A primary email cannot be assigned directly. Use the 'Make selected email primary' action, or “Switch primary "
-    "email” on the member page."
-)
-
-
-def _primary_identity_changed(current, candidate) -> bool:
-    """Return whether an update would rewrite the identity/type of a primary row."""
-    return (
-        current.member_id != candidate.member_id
-        or current.email_address != candidate.email_address
-        or current.email_type != candidate.email_type
-    )
-
-
-class ContactEmailAdminForm(forms.ModelForm):
-    """Reject forged form submissions that bypass primary-email admin controls."""
-
-    class Meta:
-        model = ContactEmail
-        fields = "__all__"
-        labels = EMAIL_LABELS
-        help_texts = EMAIL_HELP_TEXTS
-
-    def clean(self):
-        cleaned_data = super().clean()
-        if not self.instance.pk:
-            return cleaned_data
-
-        current = ContactEmail.objects.filter(pk=self.instance.pk).first()
-        if current is None or current.member_id is None:
-            # An unowned row has no sign-in address to protect; let an admin adopt or fix it.
-            return cleaned_data
-
-        requested_member = cleaned_data.get("member", current.member)
-        requested_email = cleaned_data.get("email_address", current.email_address)
-        requested_type = cleaned_data.get("email_type", current.email_type)
-
-        if current.email_type == "primary" and (
-            requested_member != current.member
-            or requested_email != current.email_address
-            or requested_type != current.email_type
-        ):
-            raise forms.ValidationError(PRIMARY_EMAIL_EDIT_ERROR)
-
-        if current.email_type != "primary" and requested_type == "primary":
-            raise forms.ValidationError(PRIMARY_EMAIL_PROMOTION_ERROR)
-
-        return cleaned_data
 
 
 @admin.register(ContactEmail)
-class ContactEmailAdmin(RankedSearchMixin, SignInWarningAdminMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin):
+class ContactEmailAdmin(
+    ContactEmailActionsMixin, RankedSearchMixin, SignInWarningAdminMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin
+):
     """Admin for ContactEmail model.
 
     Verified and Subscribed belong to the address; **Account active** is its member's account flag, shown next to them
@@ -200,77 +147,3 @@ class ContactEmailAdmin(RankedSearchMixin, SignInWarningAdminMixin, PrivilegedOw
             if locked.filter(email_type="primary", member__isnull=False).exists():
                 raise PermissionDenied(PRIMARY_EMAIL_DELETE_ERROR)
             super().delete_queryset(request, locked)
-
-    @admin.action(description="Make selected email primary")
-    def make_primary(self, request, queryset):
-        # Apply the owner guard like the sibling actions: the primary address is where a member's
-        # admin login codes are sent, so swapping it is a write on the owner, not just the row.
-        allowed, skipped = self.manageable(request, queryset)
-        self._report_skipped(request, skipped)
-        if allowed.count() != 1:
-            self.message_user(
-                request,
-                "Select exactly one email to make primary.",
-                level=messages.ERROR,
-            )
-            return
-
-        contact_email = allowed.select_related("member").first()
-        if contact_email is None or contact_email.member is None:
-            self.message_user(
-                request,
-                "The selected email must belong to a member.",
-                level=messages.ERROR,
-            )
-            return
-
-        try:
-            # Same service and history as the member page's "Switch primary email" (written in its transaction).
-            result = switch_primary_email(
-                member=contact_email.member,
-                contact_email_id=contact_email.pk,
-                actor=request.user,
-                via=VIA_CONTACT_EMAILS,
-            )
-        except SwitchRefused as exc:
-            self.message_user(request, str(exc), level=messages.ERROR)
-            return
-
-        for level, text in outcome_messages(result):
-            self.message_user(request, text, level=level)
-
-    def _report_skipped(self, request, skipped):
-        if skipped:
-            self.message_user(
-                request,
-                f"{skipped} email(s) on staff or superuser accounts skipped — only an I2G Master may change those.",
-                level=messages.WARNING,
-            )
-
-    @admin.action(description="Mark selected emails as verified")
-    def mark_verified(self, request, queryset):
-        # ``queryset.update`` bypasses save_model, so the owner guard has to be applied here too:
-        # marking an email on a staff account verified turns it into an admin-login factor.
-        allowed, skipped = self.manageable(request, queryset)
-        updated = allowed.update(verified=True)
-        self.message_user(request, f"{updated} email(s) marked as verified.")
-        self._report_skipped(request, skipped)
-
-    @admin.action(description="Mark selected emails as unverified (stops sign-in with them, not mail)")
-    def mark_unverified(self, request, queryset):
-        allowed, skipped = self.manageable(request, queryset)
-        with lost_sign_in(request, set(allowed.values_list("member_id", flat=True))):
-            updated = allowed.update(verified=False)
-        self.message_user(request, f"{updated} email(s) marked as unverified.")
-        self._report_skipped(request, skipped)
-
-    @admin.action(description="Toggle subscription status")
-    def toggle_subscribe(self, request, queryset):
-        allowed, skipped = self.manageable(request, queryset)
-        count = 0
-        for email in allowed:
-            email.subscribe = not email.subscribe
-            email.save()
-            count += 1
-        self.message_user(request, f"Toggled subscription for {count} email(s).")
-        self._report_skipped(request, skipped)

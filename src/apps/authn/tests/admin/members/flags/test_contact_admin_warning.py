@@ -1,7 +1,7 @@
 from django.test import override_settings
 from django.urls import reverse
 
-from apps.authn.admin.members.sign_in_warning import MAX_NAMED, member_page_row, warning_text
+from apps.authn.admin.members.shared.sign_in_warning import MAX_NAMED, member_page_row, warning_text
 from apps.authn.models import ContactEmail, ContactPhone
 from apps.authn.tests.admin.members.flags.test_sign_in_warning import (
     EMAILS,

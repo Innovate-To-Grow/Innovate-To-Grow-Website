@@ -49,7 +49,7 @@ class SecondaryEmailVerificationTests(_SecondaryEmailVerificationCase):
         send.assert_called_once()
 
     @patch(
-        "apps.event.views.registration.secondary_email.issue_email_challenge",
+        "apps.event.views.registration.contacts.secondary_email.issue_email_challenge",
         side_effect=AuthChallengeDeliveryError("provider details", outcome="permanent"),
     )
     def test_delivery_failure_is_generic_and_recorded(self, issue):

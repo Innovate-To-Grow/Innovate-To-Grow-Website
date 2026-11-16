@@ -14,7 +14,7 @@ Member = get_user_model()
 # ---------------------------------------------------------------------------
 class Base64ImageWidgetTests(SimpleTestCase):
     def _widget(self):
-        from apps.authn.admin.members.forms import Base64ImageWidget
+        from apps.authn.admin.members.member.profile_image import Base64ImageWidget
 
         return Base64ImageWidget()
 
@@ -77,7 +77,7 @@ class MemberCreationFormPasswordIncompleteTests(TestCase):
         """forms.py:101-108 — one field filled, the other blank -> password_incomplete error."""
         from django.forms.utils import ErrorDict
 
-        from apps.authn.admin.members.forms import MemberCreationForm
+        from apps.authn.admin.members.member.forms import MemberCreationForm
 
         form = MemberCreationForm(
             {
@@ -99,7 +99,7 @@ class MemberCreationFormPasswordIncompleteTests(TestCase):
 class MemberChangeFormClearImageTests(TestCase):
     def test_clear_checkbox_clears_image(self):
         """forms.py:129 — clear checkbox in submitted data clears the stored image."""
-        from apps.authn.admin.members.forms import MemberChangeForm
+        from apps.authn.admin.members.member.forms import MemberChangeForm
 
         member = Member.objects.create_user(
             first_name="Avatar",
@@ -134,7 +134,7 @@ class MemberChangeFormClearImageTests(TestCase):
 class MemberImportFormValidationTests(SimpleTestCase):
     def test_wrong_extension_rejected(self):
         """import_forms.py — anything but .xlsx (openpyxl reads only that format) raises a validation error."""
-        from apps.authn.admin.members.import_forms import MemberImportForm
+        from apps.authn.admin.members.import_.forms import MemberImportForm
 
         upload = SimpleUploadedFile("members.txt", b"data", content_type="text/plain")
         form = MemberImportForm(data={}, files={"excel_file": upload})
@@ -144,7 +144,7 @@ class MemberImportFormValidationTests(SimpleTestCase):
 
     def test_oversized_file_rejected(self):
         """import_forms.py — a file larger than 5MB raises a validation error."""
-        from apps.authn.admin.members.import_forms import MemberImportForm
+        from apps.authn.admin.members.import_.forms import MemberImportForm
 
         big = SimpleUploadedFile(
             "members.xlsx",

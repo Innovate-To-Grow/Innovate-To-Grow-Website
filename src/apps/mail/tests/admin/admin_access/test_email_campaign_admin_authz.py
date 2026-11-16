@@ -59,8 +59,8 @@ class EmailCampaignAdminAuthzTest(MailAdminAuthzTestBase):
         response = self.assert_allowed_for_superuser(url, method="post", data={"body": "hi", "body_format": "plain"})
         self.assertEqual(response.status_code, 200)
 
-    @patch("apps.mail.admin.campaign.services.list_recent_sent_messages")
-    @patch("apps.mail.admin.campaign.services.resolve_gmail_mailbox")
+    @patch("apps.mail.admin.campaign.views.services.list_recent_sent_messages")
+    @patch("apps.mail.admin.campaign.views.services.resolve_gmail_mailbox")
     def test_import_gmail_html_denied_for_grantless_allowed_for_superuser(self, mock_mailbox, mock_list):
         mock_mailbox.return_value = "inbox@example.com"
         mock_list.return_value = []

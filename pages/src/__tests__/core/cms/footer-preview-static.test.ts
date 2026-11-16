@@ -15,14 +15,14 @@ declare global {
 }
 
 /**
- * The admin footer editor's preview script (src/apps/cms/static/layout/js/footer/editor/preview.js):
+ * The admin footer editor's preview script (src/apps/cms/static/layout/js/footer/preview.js):
  * it frames the SPA's /_footer-preview at the template's data-preview-base and posts the footer content.
  */
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(testDir, '../../../../..');
 const previewScript = readFileSync(
-  resolve(repoRoot, 'src/apps/cms/static/layout/js/footer/editor/preview.js'),
+  resolve(repoRoot, 'src/apps/cms/static/layout/js/footer/preview.js'),
   'utf8',
 );
 

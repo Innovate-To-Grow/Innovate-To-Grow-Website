@@ -1,0 +1,85 @@
+        <script nonce="{{ request.csp_nonce }}">
+            (function () {
+                if (window.i2gPageViewTheme) return;
+
+                function cssVar(name, fallback) {
+                    var value = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+                    return value || fallback;
+                }
+
+                function toRgb(color) {
+                    var normalized = String(color || "").trim();
+                    var hex = normalized.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+
+                    if (hex) {
+                        var value = hex[1];
+                        if (value.length === 3) {
+                            value = value.split("").map(function (part) { return part + part; }).join("");
+                        }
+                        return {
+                            r: parseInt(value.slice(0, 2), 16),
+                            g: parseInt(value.slice(2, 4), 16),
+                            b: parseInt(value.slice(4, 6), 16),
+                        };
+                    }
+
+                    var rgb = normalized.match(/rgba?\(([^)]+)\)/i);
+                    if (rgb) {
+                        var parts = rgb[1].split(",").map(function (part) { return Number(part.trim()); });
+                        return { r: parts[0], g: parts[1], b: parts[2] };
+                    }
+
+                    return null;
+                }
+
+                function withAlpha(color, alpha) {
+                    var rgb = toRgb(color);
+                    if (!rgb) return color;
+                    return "rgba(" + rgb.r + "," + rgb.g + "," + rgb.b + "," + alpha + ")";
+                }
+
+                function palette() {
+                    var isDark = document.documentElement.classList.contains("dark");
+                    var onSurface = cssVar("--md-sys-color-on-surface", isDark ? "#e8eaed" : "#202124");
+                    var onSurfaceVariant = cssVar("--md-sys-color-on-surface-variant", isDark ? "#c4c7c5" : "#5f6368");
+                    var outlineVariant = cssVar("--md-sys-color-outline-variant", isDark ? "#444746" : "#c4c7ca");
+                    var surfaceContainer = cssVar("--md-sys-color-surface-container", isDark ? "#202124" : "#f6f3f3");
+                    var primary = cssVar("--md-sys-color-primary", isDark ? "#a8c7fa" : "#305f9d");
+
+                    return {
+                        isDark: isDark,
+                        textColor: onSurfaceVariant,
+                        titleColor: onSurface,
+                        gridColor: withAlpha(outlineVariant, isDark ? 0.72 : 0.5),
+                        tooltipBg: surfaceContainer,
+                        primaryBar: withAlpha(primary, isDark ? 0.72 : 0.78),
+                        tealBar: withAlpha(isDark ? "#2dd4bf" : "#0f766e", isDark ? 0.66 : 0.76),
+                        orangeLine: withAlpha(isDark ? "#fb923c" : "#c2410c", isDark ? 0.92 : 0.84),
+                    };
+                }
+
+                var subscribers = [];
+
+                function refresh() {
+                    var colors = palette();
+                    subscribers.forEach(function (subscriber) {
+                        subscriber.apply(subscriber.chart, colors);
+                        subscriber.chart.update("none");
+                    });
+                }
+
+                window.i2gPageViewTheme = {
+                    palette: palette,
+                    register: function (chart, apply) {
+                        subscribers.push({ chart: chart, apply: apply });
+                        apply(chart, palette());
+                        chart.update("none");
+                    },
+                };
+
+                new MutationObserver(refresh).observe(document.documentElement, {
+                    attributes: true,
+                    attributeFilter: ["class"],
+                });
+            })();
+        </script>

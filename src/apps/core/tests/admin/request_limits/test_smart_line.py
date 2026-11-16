@@ -1,5 +1,5 @@
 from apps.core.admin.request_limits.cards import smart_line
-from apps.core.services.request_limits import overview as overview_module
+from apps.core.services.request_limits.reporting import overview as overview_module
 from apps.core.tests.admin.request_limits.test_status import CUT_AT
 
 from .helpers import RequestLimitsAdminTestCase

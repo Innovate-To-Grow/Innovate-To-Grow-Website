@@ -1,6 +1,6 @@
 import {act, render} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
-import {EmbedWidgetBlock} from '@/features/cms/components/blocks/content/EmbedWidgetBlock';
+import {EmbedWidgetBlock} from '@/features/cms/components/blocks/content/embed/EmbedWidgetBlock';
 
 describe('EmbedWidgetBlock', () => {
   it('ignores postMessage events from a foreign origin', () => {

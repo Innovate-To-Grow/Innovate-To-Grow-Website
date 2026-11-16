@@ -7,8 +7,8 @@ from django.conf import settings
 from django.test import SimpleTestCase
 from django.urls import URLPattern, URLResolver, get_resolver
 
-from apps.core.services.request_limits import scopes as scope_module
-from apps.core.services.request_limits.scopes import classify_route, fallback, view_path
+from apps.core.services.request_limits.classification import scopes as scope_module
+from apps.core.services.request_limits.classification.scopes import classify_route, fallback, view_path
 
 # Only routed with DEBUG on, which the test runner turns off.
 DEBUG_ONLY = frozenset({"django.views.static.serve", "django.contrib.staticfiles.views.serve"})

@@ -34,7 +34,7 @@ def members_with_sign_in_contact(member_ids) -> set:
     """Of ``member_ids``, the members who have at least one verified email or phone (a way to sign in).
 
     The admin compares this before and after a change to warn when a member is left with none (see
-    ``apps.authn.admin.members.sign_in_warning``).
+    ``apps.authn.admin.members.shared.sign_in_warning``).
     """
     ids = {pk for pk in member_ids if pk is not None}
     if not ids:

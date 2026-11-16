@@ -1,0 +1,94 @@
+.dark .i2g-checkin-summary {
+    --checkin-summary-bg: var(--md-sys-color-surface-container-low);
+    --checkin-summary-panel: var(--md-sys-color-surface-container);
+    --checkin-summary-border: var(--md-sys-color-outline-variant);
+    --checkin-summary-muted: var(--md-sys-color-on-surface-variant);
+    --checkin-summary-primary: var(--md-sys-color-primary);
+    --checkin-summary-primary-strong: var(--md-sys-color-primary);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .i2g-checkin-summary__lookup-search input,
+.dark .i2g-checkin-summary__ticket-filter select {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--checkin-summary-border);
+    color: var(--md-sys-color-on-surface);
+}
+
+.dark .i2g-checkin-summary__sync,
+.dark .i2g-checkin-summary__export-link {
+    background: var(--md-sys-color-surface-container-lowest);
+    border-color: var(--checkin-summary-border);
+    color: var(--md-sys-color-primary);
+}
+
+.dark .i2g-checkin-summary__export-link:hover {
+    background: color-mix(in srgb, var(--md-sys-color-primary) 16%, transparent);
+    color: var(--md-sys-color-primary);
+}
+
+.dark .i2g-checkin-summary__badge.is-checked {
+    background: color-mix(in srgb, var(--checkin-summary-success) 18%, transparent);
+}
+
+.dark .i2g-checkin-summary__badge.is-missing {
+    background: color-mix(in srgb, var(--checkin-summary-warning) 18%, transparent);
+}
+
+@media (max-width: 900px) {
+    .i2g-checkin-summary__header,
+    .i2g-checkin-summary__actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .i2g-checkin-summary__actions {
+        grid-template-areas:
+            "sync"
+            "console"
+            "export";
+        grid-template-columns: 1fr;
+        justify-content: stretch;
+    }
+
+    .i2g-checkin-summary__console-link,
+    .i2g-checkin-summary__export-link,
+    .i2g-checkin-summary__sync {
+        width: 100%;
+    }
+
+    .i2g-checkin-summary__sync {
+        justify-content: center;
+        justify-self: stretch;
+    }
+
+    .i2g-checkin-summary__stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .i2g-checkin-summary__lookup-controls {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .i2g-checkin-summary {
+        padding: 0.875rem;
+    }
+
+    .i2g-checkin-summary__stats {
+        grid-template-columns: 1fr;
+    }
+
+    .i2g-checkin-summary__recent-row,
+    .i2g-checkin-summary__lookup-row {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.375rem;
+    }
+
+    .i2g-checkin-summary__lookup-status {
+        align-items: flex-start;
+        text-align: left;
+    }
+}

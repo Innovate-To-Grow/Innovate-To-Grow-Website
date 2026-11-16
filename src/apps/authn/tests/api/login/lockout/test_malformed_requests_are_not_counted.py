@@ -17,7 +17,7 @@ from apps.authn.tests.api.login.lockout.test_login_lockout import (
     Member,
     rotating_forwarded_for,
 )
-from apps.authn.tests.clock import SECONDS_LEFT_IN_SHORT_WINDOW
+from apps.authn.tests.helpers.clock import SECONDS_LEFT_IN_SHORT_WINDOW
 
 
 class MalformedRequestsAreNotCountedTests(LoginLockoutTestCase):

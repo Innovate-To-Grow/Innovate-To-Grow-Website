@@ -8,7 +8,6 @@ from django.test import TestCase
 from openpyxl import Workbook
 
 from apps.authn.models import ContactEmail, ContactPhone, Member
-from apps.authn.services.members.import_.reader import read_upload
 from apps.authn.services.members.import_.review import (
     analyse_rows,
     create_batch,
@@ -17,6 +16,7 @@ from apps.authn.services.members.import_.review import (
     run_import,
 )
 from apps.authn.services.members.import_.review.analysis import UPDATE_EXISTING, Context
+from apps.authn.services.members.import_.workbook.reader import read_upload
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 HEADERS = [

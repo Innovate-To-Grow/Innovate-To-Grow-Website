@@ -13,7 +13,7 @@ from django.test import override_settings
 from django.urls import reverse
 
 from apps.authn.models import ContactEmail, ContactPhone, Member, MemberImportBatch
-from apps.authn.services.members.export_excel import export_members_to_excel
+from apps.authn.services.members.export.excel import export_members_to_excel
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row, upload
 
 

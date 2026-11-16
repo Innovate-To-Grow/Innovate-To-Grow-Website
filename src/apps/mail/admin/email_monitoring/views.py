@@ -22,7 +22,8 @@ from apps.core.models import EmailBounce, EmailCategory, OutboundEmail
 from apps.core.services.email.telemetry import KIND_LABELS
 from apps.core.utils.access import user_can_access_app
 from apps.mail.models import EmailCampaign
-from apps.mail.services.email_monitoring import campaigns, charts, detail, health, log, overview, scope
+from apps.mail.services.email_monitoring import charts
+from apps.mail.services.email_monitoring.dashboard import campaigns, detail, health, log, overview, scope
 
 TEMPLATES = "admin/mail/email_monitoring"
 
@@ -62,7 +63,7 @@ def overview_view(request):
         ).count(),
         send_rate=overview.send_rate(),
     )
-    return TemplateResponse(request, f"{TEMPLATES}/overview.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/pages/overview.html", context)
 
 
 def overview_data_view(request):
@@ -110,7 +111,7 @@ def email_log_view(request):
         page_sizes=log.PAGE_SIZES,
         sorts=log.EMAIL_SORTS,
     )
-    return TemplateResponse(request, f"{TEMPLATES}/emails.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/pages/emails.html", context)
 
 
 def email_detail_view(request, pk):
@@ -118,7 +119,7 @@ def email_detail_view(request, pk):
     email = get_object_or_404(OutboundEmail, pk=pk)
     context = _context(request, "Outgoing Email", None, "emails")
     context.update(detail.email_detail(email))
-    return TemplateResponse(request, f"{TEMPLATES}/email_detail.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/pages/email_detail.html", context)
 
 
 def bounce_list_view(request):
@@ -138,7 +139,7 @@ def bounce_list_view(request):
         page_sizes=log.PAGE_SIZES,
         sorts=log.BOUNCE_SORTS,
     )
-    return TemplateResponse(request, f"{TEMPLATES}/bounces.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/pages/bounces.html", context)
 
 
 def campaign_view(request, pk):
@@ -158,4 +159,4 @@ def campaign_view(request, pk):
             {"range": "custom", "start": first_day.isoformat(), "end": today.isoformat(), "campaign": campaign.pk}
         ),
     )
-    return TemplateResponse(request, f"{TEMPLATES}/campaign.html", context)
+    return TemplateResponse(request, f"{TEMPLATES}/pages/campaign.html", context)

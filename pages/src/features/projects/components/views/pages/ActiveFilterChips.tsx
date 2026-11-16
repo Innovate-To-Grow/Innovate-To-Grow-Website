@@ -1,5 +1,5 @@
 import {useRef} from 'react';
-import type {ProjectGridFilterChip, useProjectGridFilters} from '../../../hooks/useProjectGridFilters';
+import type {ProjectGridFilterChip, useProjectGridFilters} from '../../../hooks/list/useProjectGridFilters';
 
 type FilterKey = ProjectGridFilterChip['key'];
 

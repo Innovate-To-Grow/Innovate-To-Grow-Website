@@ -1,5 +1,5 @@
 import React, {type LazyExoticComponent, type ComponentType} from 'react';
-import type {EmbedAppRouteProps, EmbedAppRoutes} from '@/features/cms/components/EmbedBlockPage';
+import type {EmbedAppRouteProps, EmbedAppRoutes} from '@/features/cms/components/embed/EmbedBlockPage';
 
 /**
  * Registry of app routes that can be rendered inside a CMS Embed Widget iframe.
@@ -10,15 +10,15 @@ import type {EmbedAppRouteProps, EmbedAppRoutes} from '@/features/cms/components
  * therefore not depend on the main site Layout (menu / footer / etc.).
  */
 export const EMBED_APP_ROUTE_COMPONENTS: Record<string, LazyExoticComponent<ComponentType<EmbedAppRouteProps>>> = {
-  '/schedule': React.lazy(() => import('@/routes/SchedulePage').then((m) => ({default: m.SchedulePage}))),
-  '/current-projects': React.lazy(() => import('@/routes/ProjectsPage').then((m) => ({default: m.ProjectsPage}))),
-  '/presenting-teams': React.lazy(() => import('@/routes/PresentingTeamsPage').then((m) => ({default: m.PresentingTeamsPage}))),
-  '/past-projects': React.lazy(() => import('@/routes/PastProjectsPage').then((m) => ({default: m.PastProjectsPage}))),
-  '/all-projects': React.lazy(() => import('@/routes/AllProjectsPage').then((m) => ({default: m.AllProjectsPage}))),
-  '/acknowledgement': React.lazy(() => import('@/routes/AcknowledgementPage').then((m) => ({default: m.AcknowledgementPage}))),
-  '/news': React.lazy(() => import('@/routes/NewsPage').then((m) => ({default: m.NewsPage}))),
-  '/event-registration': React.lazy(() => import('@/routes/EventRegistrationPage').then((m) => ({default: m.EventRegistrationPage}))),
-  '/subscribe': React.lazy(() => import('@/routes/SubscribePage').then((m) => ({default: m.SubscribePage}))),
+  '/schedule': React.lazy(() => import('@/routes/events/SchedulePage/page').then((m) => ({default: m.SchedulePage}))),
+  '/current-projects': React.lazy(() => import('@/routes/projects/ProjectsPage').then((m) => ({default: m.ProjectsPage}))),
+  '/presenting-teams': React.lazy(() => import('@/routes/projects/PresentingTeamsPage').then((m) => ({default: m.PresentingTeamsPage}))),
+  '/past-projects': React.lazy(() => import('@/routes/projects/PastProjectsPage').then((m) => ({default: m.PastProjectsPage}))),
+  '/all-projects': React.lazy(() => import('@/routes/projects/AllProjectsPage').then((m) => ({default: m.AllProjectsPage}))),
+  '/acknowledgement': React.lazy(() => import('@/routes/events/AcknowledgementPage').then((m) => ({default: m.AcknowledgementPage}))),
+  '/news': React.lazy(() => import('@/routes/news/NewsPage').then((m) => ({default: m.NewsPage}))),
+  '/event-registration': React.lazy(() => import('@/routes/events/EventRegistrationPage/page').then((m) => ({default: m.EventRegistrationPage}))),
+  '/subscribe': React.lazy(() => import('@/routes/subscription/SubscribePage/page').then((m) => ({default: m.SubscribePage}))),
 };
 
 /**

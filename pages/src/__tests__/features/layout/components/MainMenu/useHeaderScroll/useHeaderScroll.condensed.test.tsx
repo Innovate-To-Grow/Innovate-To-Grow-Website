@@ -3,7 +3,7 @@ import {afterEach, describe, expect, it, vi} from 'vitest';
 
 import {
   useHeaderCondensed,
-} from '@/features/layout/components/MainMenu/useHeaderScroll';
+} from '@/features/layout/components/MainMenu/header/useHeaderScroll';
 
 const setScrollY = (value: number) => {
   Object.defineProperty(window, 'scrollY', {configurable: true, value});

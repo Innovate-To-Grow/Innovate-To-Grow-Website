@@ -1,0 +1,167 @@
+import '@/features/auth/components/styles/base/auth.css';
+import {useEffect, useRef, useState, type FormEvent} from 'react';
+import {useAuth} from '@/features/auth';
+import {clearAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
+import {isSafeMessage} from '@/features/auth/components/context/shared';
+import {VerifyEmailPageContent} from '@/features/auth/components/pages/verify/VerifyEmailPage';
+import {identifyLoginInput} from '@/features/auth/components/sections/internal/identifyLoginInput';
+import {PrivacyLegalNotice} from '@/features/auth/components/shared/PrivacyLegalNotice';
+import {FallbackAlerts, FallbackEmailField, type LoginLinkFallbackKind} from './LoginLinkFallbackParts';
+
+export type {LoginLinkFallbackKind} from './LoginLinkFallbackParts';
+
+// Shown under the code field: the acknowledgement above it is deliberately the
+// same for every address, so this is the only nudge a mistyped one gets.
+const CODE_STEP_HINT = "Didn't get a code? Check the address above or go back to correct it.";
+
+/**
+ * The server's acknowledgement of a code request, if it sent a usable one. It is
+ * shown as it came (for the login flow it is the same generic sentence for every
+ * address), never replaced by wording of ours that could say more.
+ */
+function readAcknowledgement(response: unknown): string | null {
+  const message = (response as {message?: unknown} | null | undefined)?.message;
+  return typeof message === 'string' && message.trim() && isSafeMessage(message) ? message : null;
+}
+
+interface LoginLinkFallbackProps {
+  kind: LoginLinkFallbackKind;
+  /** Safe internal path the link was meant to open; where a code sign-in lands. */
+  returnTo: string | null;
+  /** Re-run the link exchange. Only given when trying the same link again can help. */
+  onRetry?: () => void;
+}
+
+/**
+ * What a visitor sees when an emailed sign-in link cannot be used: a plain
+ * notice (not an error) and an email-code sign-in inline on the same route.
+ *
+ * It must stay inline. `/login` and `/verify-email` send an already
+ * authenticated browser on to `/account`, which would strand exactly the
+ * browser this page exists for (one holding another member's session). Signing
+ * in with the code replaces that stored session.
+ *
+ * It uses the `login` code flow, which only ever issues a code to an existing,
+ * active member and answers every other address with the same generic message.
+ * A sign-in link exists only for an existing member, so a mistyped address must
+ * not go through the unified email-auth flow, which would create a pending
+ * account for it and sign the visitor in as that stranger. The step therefore
+ * always advances once the request is accepted, whatever the address: it must
+ * not reveal whether an account exists. The code step opens with the server's
+ * own acknowledgement (the same generic sentence for every address) and a hint
+ * for a mistyped address.
+ */
+export function LoginLinkFallback({kind, returnTo, onRetry}: LoginLinkFallbackProps) {
+  const {requestLoginCode, error, isLoading, clearError} = useAuth();
+  const emailInputRef = useRef<HTMLInputElement>(null);
+
+  const [step, setStep] = useState<'email' | 'code'>('email');
+  const [email, setEmail] = useState('');
+  const [codeEmail, setCodeEmail] = useState('');
+  const [codeMessage, setCodeMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
+
+  // An error left over from an earlier attempt belongs to that attempt.
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  useEffect(() => {
+    if (step === 'email') emailInputRef.current?.focus();
+  }, [step]);
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (isLoading) return;
+    clearError();
+
+    const parsed = identifyLoginInput(email);
+    // This sign-in is email-only, so a phone number is as invalid as text.
+    if (parsed.type !== 'email') {
+      setValidationError(
+        email.trim()
+          ? 'Please enter a valid email address.'
+          : 'Please enter your email address.',
+      );
+      return;
+    }
+    setValidationError(null);
+
+    // The code step verifies against the lowercased address, so the request
+    // uses the same one.
+    const normalized = parsed.value.toLowerCase();
+    try {
+      const response = await requestLoginCode(normalized);
+      // The visitor is past the link now (Retry and Back use the token held in
+      // memory). Keeping the sessionStorage copy would let a later bare
+      // /login-link in this tab re-submit it and swap the session they are
+      // about to sign in with.
+      clearAuthCallbackParams('login-link');
+      setCodeEmail(normalized);
+      setCodeMessage(readAcknowledgement(response));
+      setStep('code');
+    } catch {
+      // The auth context already exposes the failure as `error`.
+    }
+  };
+
+  const handleBack = () => {
+    clearError();
+    setValidationError(null);
+    setStep('email');
+  };
+
+  if (step === 'code') {
+    return (
+      <VerifyEmailPageContent
+        flow="login"
+        email={codeEmail}
+        returnTo={returnTo}
+        onBack={handleBack}
+        onSignedIn={() => clearAuthCallbackParams('login-link')}
+        autoFocus
+        initialMessage={codeMessage}
+        hint={CODE_STEP_HINT}
+      />
+    );
+  }
+
+  const message = validationError ?? error;
+
+  return (
+    <div className="auth-page">
+      <header className="auth-page-header">
+        <h1 className="itg-page-title auth-page-title">Sign in to I2G</h1>
+      </header>
+      <div className="itg-panel auth-page-card">
+        <FallbackAlerts kind={kind} onRetry={onRetry} isLoading={isLoading} message={message} />
+
+        <form className="auth-form" onSubmit={handleSubmit} noValidate>
+          <FallbackEmailField
+            inputRef={emailInputRef}
+            email={email}
+            invalid={Boolean(validationError)}
+            onChange={(value) => {
+              setEmail(value);
+              setValidationError(null);
+              clearError();
+            }}
+          />
+
+          <PrivacyLegalNotice />
+
+          <button type="submit" className="itg-btn itg-btn-primary auth-form-submit" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <span className="auth-spinner" />
+                Sending code...
+              </>
+            ) : (
+              'Send sign-in code'
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

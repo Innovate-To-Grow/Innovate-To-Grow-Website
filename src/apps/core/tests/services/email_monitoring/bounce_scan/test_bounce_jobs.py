@@ -11,7 +11,7 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 from apps.core.services.background_jobs import claim_jobs, run_claimed_job
 from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND, ScanOutcome, ensure_scheduled, run_now
-from apps.core.services.email.bounces.jobs import (
+from apps.core.services.email.bounces.scanning.jobs import (
     catch_up_seconds,
     interval_seconds,
     next_delay,
@@ -21,7 +21,7 @@ from apps.core.services.email.bounces.jobs import (
 
 from ..helpers import monitoring_settings
 
-SCAN = "apps.core.services.email.bounces.scanner.scan_mailbox"
+SCAN = "apps.core.services.email.bounces.scanning.scanner.scan_mailbox"
 
 
 def scan_jobs():

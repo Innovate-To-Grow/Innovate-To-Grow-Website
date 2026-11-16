@@ -1,7 +1,7 @@
 """The /layout/theme.css body: the cascade layer order, the design tokens and the custom CSS.
 
 All of the site's CSS ships with the frontend bundle, in cascade layers
-(pages/src/styles/layers.css). This sheet carries what admins edit in Site Settings: the
+(pages/src/styles/base/layers.css). This sheet carries what admins edit in Site Settings: the
 design tokens in ``itg.tokens``, above the bundle's fallback tokens, and the custom CSS in
 ``itg.overrides``, above every bundled rule. It is linked before the bundle, so it opens with
 the full layer order statement: the first statement that names the layers fixes their order.

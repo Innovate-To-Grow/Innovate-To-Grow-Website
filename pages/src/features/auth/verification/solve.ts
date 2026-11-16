@@ -1,4 +1,4 @@
-import {VerificationFlowError} from './errors';
+import {VerificationFlowError} from './types';
 
 import type {AltchaWidgetElement} from 'altcha';
 import type {Challenge} from 'altcha/types';

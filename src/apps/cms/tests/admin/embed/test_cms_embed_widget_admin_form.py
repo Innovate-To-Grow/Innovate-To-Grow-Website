@@ -1,6 +1,6 @@
 from django.test import TestCase
 
-from apps.cms.admin.cms.cms_embed_widget import CMSEmbedWidgetAdminForm
+from apps.cms.admin.cms.embed.widget import CMSEmbedWidgetAdminForm
 from apps.cms.models import CMSBlock, CMSPage
 from apps.event.models import CurrentProjectSchedule
 

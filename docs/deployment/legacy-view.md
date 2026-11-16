@@ -12,7 +12,7 @@ authorization tests have all passed.
 
 ## Managed and manual boundaries
 
-[`aws/legacy/template.yaml`](../../aws/legacy/template.yaml) manages only:
+[`aws/legacy/cloudformation/template.yaml`](../../aws/legacy/cloudformation/template.yaml) manages only:
 
 - the same-region VPC peering connection;
 - the two routes required by the production ECS and legacy EC2 subnets;
@@ -22,7 +22,7 @@ authorization tests have all passed.
 - the AWS-assigned CloudFront distribution, no-cache/origin-request/security
   policies.
 
-[`aws/legacy/monitoring-us-east-1.yaml`](../../aws/legacy/monitoring-us-east-1.yaml)
+[`aws/legacy/cloudformation/monitoring-us-east-1.yaml`](../../aws/legacy/cloudformation/monitoring-us-east-1.yaml)
 is a separate `us-east-1` stack containing the actionless CloudFront 5xx alarm.
 CloudFront publishes `AWS/CloudFront` metrics only in that region; an alarm in
 the `us-west-2` gateway stack would never receive the metric.
@@ -313,21 +313,21 @@ never weaken this allowlist merely to run a host-local probe.
 Local and CI validation is credential-free:
 
 ```sh
-cfn-lint aws/legacy/template.yaml aws/legacy/monitoring-us-east-1.yaml
-python scripts/ci/validate_legacy_infrastructure.py
-python scripts/deploy/validate_backend_task_definition.py aws/ecs/backend-task-definition.json
+cfn-lint aws/legacy/cloudformation/template.yaml aws/legacy/cloudformation/monitoring-us-east-1.yaml
+python -m scripts.ci.legacy_infrastructure
+python -m scripts.deploy.validate_backend_task_definition aws/ecs/backend-task-definition.json
 ```
 
 Then ask AWS to validate the template and deploy it in `us-west-2`:
 
 ```sh
 aws cloudformation validate-template --region us-west-2 \
-  --template-body file://aws/legacy/template.yaml
+  --template-body file://aws/legacy/cloudformation/template.yaml
 aws cloudformation validate-template --region us-east-1 \
-  --template-body file://aws/legacy/monitoring-us-east-1.yaml
+  --template-body file://aws/legacy/cloudformation/monitoring-us-east-1.yaml
 aws cloudformation deploy --region us-west-2 \
   --stack-name i2g-legacy-view \
-  --template-file aws/legacy/template.yaml \
+  --template-file aws/legacy/cloudformation/template.yaml \
   --parameter-overrides \
     ApplicationVpcId=vpc-0bdf6f90f9593cafa \
     ApplicationVpcCidr=10.2.0.0/16 \
@@ -358,7 +358,7 @@ from the preceding output:
 ```sh
 aws cloudformation deploy --region us-east-1 \
   --stack-name i2g-legacy-view-monitoring \
-  --template-file aws/legacy/monitoring-us-east-1.yaml \
+  --template-file aws/legacy/cloudformation/monitoring-us-east-1.yaml \
   --parameter-overrides DistributionId=<LegacyDistributionId-output> \
   --no-fail-on-empty-changeset
 aws cloudformation describe-stacks --region us-east-1 \

@@ -44,13 +44,13 @@ selection. There is no per-message routing or automatic failover.
 | Concern | Implementation |
 |---------|---------------|
 | Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email/service.py`) — active sender identity and selected provider |
-| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates/`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates.py`, staff with the Mail app); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read ([Delivery rates](../integrations/delivery-rates.md)) |
+| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates/`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates/`, staff with the Mail app); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read ([Delivery rates](../integrations/delivery-rates.md)) |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
 | Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph/`) — Entra tenant ID, client ID and optional sender mailbox; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
 | Gmail API credentials | Active `GmailApiProviderConfig` (`src/apps/core/models/base/service_credentials/gmail_api/`) — the pinned version of the service-account key in the credential store (AWS Secrets Manager in production), its public facts, and the account allow-list (`GmailApiSubject`). Domain-wide delegation for gmail.send only; Core app |
 | Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`, the Gmail API in `gmail/`, the bounded HTTPS client both use in `transport.py`) |
-| Campaign sending | `src/apps/mail/services/send_campaign/` |
+| Campaign sending | `src/apps/mail/services/campaign/send/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
 | Ticket confirmation | `src/apps/event/services/ticket/mail.py` |
 
@@ -135,7 +135,7 @@ Broadcast SMS and ticket texts.
 | Origination resolution | `src/apps/core/services/aws/sms.py` (`describe_phone_numbers`, cached) |
 | Sending | `src/apps/core/services/aws/sms_send.py` (`send_text_message`, the only `SendTextMessage` call, paced by the delivery-rate limiter) |
 | Send verification | `src/apps/authn/services/sms/` (`sns_verify.py` is the public entry point; `checks.py` holds the code checks, `errors.py` the error types) |
-| Event phone verify | `src/apps/event/views/registration/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
+| Event phone verify | `src/apps/event/views/registration/contacts/sms.py` (`SendPhoneCodeView`, `VerifyPhoneCodeView`) |
 
 OTP codes are generated locally, stored only as hashes in
 `PhoneVerificationChallenge`, and delivered via AWS End User Messaging
@@ -164,7 +164,7 @@ cooldown and pauses the rest on a long hold ("Resume paused recipients" on the S
 ### Gmail IMAP (admin inbox, Import from Gmail)
 
 Each uncached Gmail read is one IMAP login session on the `gmail_imap` delivery channel for
-`<imap host>:<username>` (`src/apps/mail/services/gmail_import/session.py`), connected with
+`<imap host>:<username>` (`src/apps/mail/services/campaign/gmail_import/session.py`), connected with
 `channels.gmail_imap.timeout_seconds`. Google publishes no IMAP rate, so the channel only reacts to Gmail's
 answers (`DELIVERY_RATES["signals"]["imap"]`): "Too many simultaneous connections" pauses reads, a bandwidth
 suspension (`[OVERQUOTA]`) stops them for `bandwidth_breaker_seconds` with no connection attempted, `[UNAVAILABLE]`

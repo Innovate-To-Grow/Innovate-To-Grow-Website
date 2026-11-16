@@ -1,0 +1,160 @@
+html,
+body,
+button,
+input,
+select,
+textarea {
+    font-family: var(--font-family-primary);
+}
+
+body,
+#page,
+#main {
+    background: var(--md-sys-color-surface) !important;
+    color: var(--md-sys-color-on-surface);
+}
+
+a {
+    color: var(--si-agent-link-color);
+}
+
+a:hover {
+    color: var(--md-sys-color-primary);
+}
+
+button,
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea,
+.button,
+a.button,
+input[type="submit"],
+input[type="button"] {
+    border-radius: var(--md-sys-shape-corner-small) !important;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="url"],
+input[type="search"],
+select,
+textarea {
+    background: var(--md-sys-color-surface-container-lowest) !important;
+    border-color: var(--md-sys-color-outline-variant) !important;
+    color: var(--md-sys-color-on-surface) !important;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+    border-color: var(--md-sys-color-primary) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--md-sys-color-primary) 22%, transparent) !important;
+    outline: none !important;
+}
+
+.module,
+.card,
+.fieldset,
+[class*="rounded-default"],
+#content-main > form,
+.submit-row {
+    border-radius: var(--md-sys-shape-corner-large) !important;
+}
+
+/* Panels and cards. Unfold's radio and checkbox inputs carry the same bg-white / dark:bg-base-900 classes
+   and paint their checked state with checked:bg-primary-600, so they are left out: with the !important
+   surface colour on them a selected radio looked exactly like an unselected one. */
+#tabs-items,
+.module,
+.card,
+[class*="bg-white"]:not([type="radio"]):not([type="checkbox"]),
+.dark [class*="dark:bg-base-900"]:not([type="radio"]):not([type="checkbox"]) {
+    background-color: var(--md-sys-color-surface-container-lowest) !important;
+    border-color: var(--md-sys-color-outline-variant) !important;
+}
+
+.dark #tabs-items,
+.dark .module,
+.dark .card,
+.dark [class*="bg-white"]:not([type="radio"]):not([type="checkbox"]),
+.dark [class*="dark:bg-base-900"]:not([type="radio"]):not([type="checkbox"]) {
+    background-color: var(--md-sys-color-surface-container) !important;
+    border-color: var(--md-sys-color-outline-variant) !important;
+}
+
+.dark #content,
+.dark #content-main,
+.dark #changelist,
+.dark .results,
+.dark table,
+.dark th,
+.dark td,
+.dark .readonly,
+.dark .form-row,
+.dark .fieldBox,
+.dark .paginator {
+    color: var(--md-sys-color-on-surface) !important;
+}
+
+.dark .text-font-default-light,
+.dark .text-font-important-light,
+.dark .text-base-900,
+.dark .text-important {
+    color: var(--md-sys-color-on-surface) !important;
+}
+
+.dark .text-font-subtle-light,
+.dark .text-base-400,
+.dark .text-base-500,
+.dark .help,
+.dark .quiet {
+    color: var(--md-sys-color-on-surface-variant) !important;
+}
+
+/* Unfold renders app-list titles as table captions; use padding for reliable spacing. */
+.module > .bg-base-50.mb-6 > table > caption {
+    line-height: 1.4 !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0.75rem !important;
+}
+
+.module > .bg-base-50.mb-6 > table th,
+.module > .bg-base-50.mb-6 > table td {
+    line-height: 1.4 !important;
+    vertical-align: middle !important;
+}
+
+.module > .bg-base-50.mb-6 > table th a {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.text-primary-600,
+.text-primary-700,
+.dark .dark\:text-primary-300 {
+    color: var(--md-sys-color-primary) !important;
+}
+
+.bg-primary-600,
+.bg-primary-500,
+button[type="submit"]:not(#searchbar-submit),
+input[type="submit"],
+.submit-row input,
+.submit-row button {
+    background-color: var(--md-sys-color-primary) !important;
+    color: var(--md-sys-color-on-primary) !important;
+}
+
+.bg-primary-600:hover,
+.bg-primary-500:hover,
+button[type="submit"]:not(#searchbar-submit):hover,
+input[type="submit"]:hover,
+.submit-row input:hover,
+.submit-row button:hover {
+    background-color: color-mix(in srgb, var(--md-sys-color-primary) 88%, #000) !important;
+}

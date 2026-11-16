@@ -159,7 +159,7 @@ class SmsCampaign(ProjectControlModel):
     def _clean_links(self):
         """Link placeholders only while links in SMS are allowed; ``{{event_link}}`` needs an event."""
         from apps.mail.redirects import is_strict_internal_path
-        from apps.mail.services.campaign.personalize import uses_placeholder
+        from apps.mail.services.campaign.content.personalize import uses_placeholder
 
         from .config import SmsConfig
 

@@ -10,7 +10,7 @@ from unfold.decorators import action
 from apps.core.models import GmailAccessAccount
 from apps.mail.models import EmailCampaign
 
-from .. import services as campaign_api
+from . import services as campaign_api
 
 
 class CampaignGmailMixin:
@@ -55,7 +55,7 @@ class CampaignGmailMixin:
             "refresh_url": request.path + "?refresh=1",
             "cancel_url": change_url,
         }
-        return TemplateResponse(request, "admin/mail/import_gmail_html.html", context)
+        return TemplateResponse(request, "admin/mail/emailcampaign/import_gmail_html.html", context)
 
     def import_gmail_html_confirm_view(self, request, object_id):
         # State-changing flow (writes the imported HTML into the campaign body) —

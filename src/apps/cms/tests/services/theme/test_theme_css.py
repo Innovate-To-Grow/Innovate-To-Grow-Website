@@ -5,7 +5,7 @@ from django.test import SimpleTestCase
 
 from apps.cms.services.styles.theme import LAYER_ORDER_STATEMENT, build_theme_css, theme_etag
 
-LAYERS_CSS = Path(__file__).resolve().parents[6] / "pages" / "src" / "styles" / "layers.css"
+LAYERS_CSS = Path(__file__).resolve().parents[6] / "pages" / "src" / "styles" / "base" / "layers.css"
 
 
 class Settings:

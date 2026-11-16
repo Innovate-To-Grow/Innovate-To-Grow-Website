@@ -3,7 +3,7 @@ import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {
   clearCMSRouteRedirectChain,
   performCMSRouteRedirect,
-} from '@/features/cms/components/cmsRouteRedirect';
+} from '@/features/cms/components/page/cmsRouteRedirect';
 
 function makeLocation(pathname: string, search = '', hash = '') {
   return {

@@ -9,7 +9,8 @@ from django.utils import timezone
 from apps.core.models import EmailCategory
 from apps.core.tests.services.email_monitoring.helpers import make_attempt, make_bounce, make_email
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.email_monitoring import campaigns, charts, overview, scope
+from apps.mail.services.email_monitoring import charts
+from apps.mail.services.email_monitoring.dashboard import campaigns, overview, scope
 
 
 class ScopeTests(SimpleTestCase):

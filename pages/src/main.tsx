@@ -1,4 +1,4 @@
-import './styles/layers.css';
+import './styles/base/layers.css';
 import './index.css';
 import {captureAuthCallbackParams} from '@/features/auth/api/navigation/callbackParams';
 import {mountApp} from '@/app/providers';

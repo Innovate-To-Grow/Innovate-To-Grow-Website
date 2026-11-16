@@ -186,7 +186,7 @@ class CustomCssRevisionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         content = response.content.decode()
         self.assertIn("vendor/codemirror/5.65.16/mode/css/css.min.js", content)
-        self.assertIn("cms/js/custom-css-editor.js", content)
+        self.assertIn("cms/js/field-editors/custom-css-editor.js", content)
         textarea = re.search(r'<textarea name="custom_css"[^>]*>', content).group(0)
         self.assertIn("code-editor-field", textarea)
         self.assertIn(reverse("admin:cms_customcssrevision_changelist"), content)

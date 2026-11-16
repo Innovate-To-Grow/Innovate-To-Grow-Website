@@ -123,7 +123,7 @@ class DataExportMixinTest(_DataExportMixinCase):
         request.user = User.objects.create_user(email="tmpl@example.com", password="StrongPass123!", is_staff=True)
         response = self.admin.export_data(request, qs)
 
-        self.assertEqual(response.template_name, "admin/core/export_columns.html")
+        self.assertEqual(response.template_name, "admin/core/data_export/export_columns.html")
         self.assertIn(str(article.pk), response.context_data["pks"])
         self.assertGreater(len(response.context_data["available_fields"]), 0)
         self.assertEqual(response.context_data["default_filename"], "newsarticle")

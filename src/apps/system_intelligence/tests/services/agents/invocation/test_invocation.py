@@ -50,9 +50,11 @@ class SystemIntelligenceAgentInvocationTests(_SystemIntelligenceAgentInvocationC
 
         async def collect():
             with (
-                patch("apps.system_intelligence.services.agents.runner.runner_class", return_value=FakeRunner),
                 patch(
-                    "apps.system_intelligence.services.agents.runner.build_run_config",
+                    "apps.system_intelligence.services.agents.invocation.runner.runner_class", return_value=FakeRunner
+                ),
+                patch(
+                    "apps.system_intelligence.services.agents.invocation.runner.build_run_config",
                     return_value=SimpleNamespace(trace_include_sensitive_data=False),
                 ),
                 patch("apps.system_intelligence.services.agents._build_agent", return_value=object()),
@@ -93,7 +95,7 @@ class SystemIntelligenceAgentInvocationTests(_SystemIntelligenceAgentInvocationC
 
         async def collect():
             with patch(
-                "apps.system_intelligence.services.agents.stream.run_agent_invocation",
+                "apps.system_intelligence.services.agents.invocation.stream.run_agent_invocation",
                 side_effect=fake_run_agent_invocation,
             ):
                 return [
@@ -126,7 +128,7 @@ class SystemIntelligenceAgentInvocationTests(_SystemIntelligenceAgentInvocationC
 
         async def collect():
             with patch(
-                "apps.system_intelligence.services.agents.stream.run_agent_invocation",
+                "apps.system_intelligence.services.agents.invocation.stream.run_agent_invocation",
                 side_effect=fake_run_agent_invocation,
             ):
                 return [

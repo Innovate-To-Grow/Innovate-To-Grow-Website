@@ -7,7 +7,7 @@ from apps.system_intelligence.services.agents import (
     _to_litellm_bedrock_model,
     invoke_system_intelligence_stream,
 )
-from apps.system_intelligence.services.agents.errors import SystemIntelligenceAgentError
+from apps.system_intelligence.services.agents.invocation.errors import SystemIntelligenceAgentError
 from apps.system_intelligence.tests.services.agents.invocation.test_invocation import (
     _SystemIntelligenceAgentInvocationCase,
 )

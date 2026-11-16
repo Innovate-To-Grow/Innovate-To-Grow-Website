@@ -5,7 +5,7 @@ from contextlib import aclosing
 from asgiref.sync import sync_to_async
 
 from apps.system_intelligence.services.agents.context_manager import prepare_conversation_context
-from apps.system_intelligence.services.agents.stream import (
+from apps.system_intelligence.services.agents.invocation.stream import (
     invoke_system_intelligence_stream_async as _default_async_stream,
 )
 

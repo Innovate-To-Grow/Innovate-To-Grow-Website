@@ -11,10 +11,7 @@ from apps.authn.models import SendDestinationState, SendVerificationChallenge, S
 from apps.authn.services.email.challenges import AuthChallengeDeliveryError
 from apps.authn.services.send_verification.guard.outcomes import record_otp_challenge
 from apps.authn.services.send_verification.rules.constants import OP_REGISTER_RESEND_CODE
-from apps.authn.tests.services.send_verification.policy.test_send_verification_concurrency import (
-    send,
-    verified_request,
-)
+from apps.authn.tests.services.send_verification.policy.verified_requests import send, verified_request
 
 
 @override_settings(

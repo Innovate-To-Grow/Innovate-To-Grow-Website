@@ -14,7 +14,7 @@ from apps.authn.services.email.auth_email import (
     get_unclaimed_contact_email,
     resolve_auth_email,
 )
-from apps.authn.services.members.create import CreateMemberService
+from apps.authn.services.members.accounts.create import CreateMemberService
 
 Member = get_user_model()
 
@@ -34,7 +34,7 @@ def _member(email="primary@example.com", **kwargs):
 class CreateMemberErrorPathTests(TestCase):
     def test_integrity_error_path(self):
         with patch(
-            "apps.authn.services.members.create.Member.objects.create_user",
+            "apps.authn.services.members.accounts.create.Member.objects.create_user",
             side_effect=IntegrityError("dup key"),
         ):
             result = CreateMemberService.create_member(password="StrongPass123!", first_name="A", last_name="B")
@@ -43,7 +43,7 @@ class CreateMemberErrorPathTests(TestCase):
 
     def test_validation_error_path(self):
         with patch(
-            "apps.authn.services.members.create.Member.objects.create_user",
+            "apps.authn.services.members.accounts.create.Member.objects.create_user",
             side_effect=ValidationError("bad"),
         ):
             result = CreateMemberService.create_member(password="StrongPass123!", first_name="A", last_name="B")
@@ -52,7 +52,7 @@ class CreateMemberErrorPathTests(TestCase):
 
     def test_unexpected_error_path(self):
         with patch(
-            "apps.authn.services.members.create.Member.objects.create_user",
+            "apps.authn.services.members.accounts.create.Member.objects.create_user",
             side_effect=RuntimeError("boom"),
         ):
             result = CreateMemberService.create_member(password="StrongPass123!", first_name="A", last_name="B")

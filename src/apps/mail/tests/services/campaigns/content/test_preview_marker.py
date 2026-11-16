@@ -2,7 +2,7 @@
 
 from django.test import SimpleTestCase
 
-from apps.mail.services.campaign.preview import HTML_MARKER, build_email_render_context, split_html_marker
+from apps.mail.services.campaign.content.preview import HTML_MARKER, build_email_render_context, split_html_marker
 
 MARKER = HTML_MARKER.strip()
 BODY = '<div dir="ltr"><p>Dear {{first_name}},</p></div>'

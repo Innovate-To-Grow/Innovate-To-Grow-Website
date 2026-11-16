@@ -16,7 +16,7 @@ The auth system is built on `rest_framework_simplejwt` with custom extensions fo
 | Models | `src/apps/authn/models/` |
 | URLs | `src/apps/authn/urls.py` |
 | Throttles | `src/apps/authn/security/throttles.py` |
-| Password-login lockout | `src/apps/authn/services/login_guard/` |
+| Password-login lockout | `src/apps/authn/services/security/login_guard/` |
 | Mail views | `src/apps/mail/views/` |
 
 ## Rate-limit policy (no client-IP limits on sign-in)
@@ -184,7 +184,7 @@ Password-based login with an **email or phone** identifier and an RSA-encrypted 
 The `email` field accepts an email address or a phone number and is kept for backward
 compatibility; an explicit `identifier` field is also accepted and takes precedence when
 both are sent. The identifier is resolved via `resolve_login_identifier`
-(`services/email/auth_email.py`): an `@`-containing value matches a **verified** `ContactEmail`
+(`services/email/auth_email/`): an `@`-containing value matches a **verified** `ContactEmail`
 (email-first), otherwise the digits are normalized and matched against a **verified**
 `ContactPhone`. Unverified contacts never authenticate.
 
@@ -735,7 +735,7 @@ The mail app (`src/apps/mail/`) handles email campaigns and exposes login-link e
 
 ### One-click unsubscribe and resubscribe
 
-Standalone backend HTML pages (`src/apps/mail/views/subscriptions.py`, logic in `src/apps/mail/services/subscriptions.py`), authenticated only by the signed token in the URL. They read no JWT, CSRF token or request body, have no throttle (the token is the control), are never cached (`never_cache`), are `noindex`, and never list the member's addresses. They always answer with their HTML page, so an unusual `Accept` header or a `?format=` parameter cannot turn a request into a `406` or `404`. When `FRONTEND_URL` is set, each page links to `FRONTEND_URL/account` ("Manage email preferences"), where every address has its own flag.
+Standalone backend HTML pages (`src/apps/mail/views/subscriptions.py`, logic in `src/apps/mail/services/audience/subscriptions.py`), authenticated only by the signed token in the URL. They read no JWT, CSRF token or request body, have no throttle (the token is the control), are never cached (`never_cache`), are `noindex`, and never list the member's addresses. They always answer with their HTML page, so an unusual `Accept` header or a `?format=` parameter cannot turn a request into a `406` or `404`. When `FRONTEND_URL` is set, each page links to `FRONTEND_URL/account` ("Manage email preferences"), where every address has its own flag.
 
 #### `GET|HEAD|POST /mail/unsubscribe/{token}/`
 

@@ -6,7 +6,7 @@ from django.http import Http404
 from apps.core.models import EmailServiceConfig, GoogleCredentialConfig
 
 from ...models import Event, Question, Ticket
-from ...services.template import EventCopyTemplate, build_event_copy_template
+from ...services.registration.event_copy import EventCopyTemplate, build_event_copy_template
 from ...services.ticket.date_ranges import format_event_date_range
 from .inlines import COPY_INLINE_INITIAL_ATTR
 

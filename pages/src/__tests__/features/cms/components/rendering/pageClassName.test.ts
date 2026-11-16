@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest';
 
-import {cmsPageClassName} from '@/features/cms/components/pageClassName';
+import {cmsPageClassName} from '@/features/cms/components/rendering/pageClassName';
 
 describe('cmsPageClassName', () => {
   it('always includes cms-page', () => {

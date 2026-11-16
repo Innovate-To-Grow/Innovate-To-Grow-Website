@@ -1,8 +1,8 @@
 from django.test import SimpleTestCase
 
 from apps.core.services.email.inbound import NO_AUTO_RESPONSE, REPLY_HINT, classify
-from apps.core.services.email.inbound.autoreply import named_contact, own_text, response_allowed
-from apps.core.services.email.inbound.rules import ESP_HEADERS
+from apps.core.services.email.inbound.classification.autoreply import named_contact, own_text, response_allowed
+from apps.core.services.email.inbound.classification.rules import ESP_HEADERS
 from apps.core.tests.services.email.inbound.auto_replies.test_auto_replies import verdict_of
 
 from .. import samples

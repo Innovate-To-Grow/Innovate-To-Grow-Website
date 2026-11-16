@@ -1,4 +1,4 @@
-import {PastProjectsAIStatus} from '../../builder/search/PastProjectsAIStatus';
+import {PastProjectsAIStatus} from '../../curation/builder/search/PastProjectsAIStatus';
 import {pluralize} from '../../shared/utils/saveResults';
 import type {SaveProgress, SearchTableSaveResult} from '../state/types';
 

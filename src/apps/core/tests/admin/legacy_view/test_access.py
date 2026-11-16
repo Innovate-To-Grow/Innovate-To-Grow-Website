@@ -7,13 +7,13 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.core.admin.legacy_view import get_legacy_view_admin_urls
-from apps.core.legacy_view.gateway.views import legacy_access_exchange_gateway, legacy_proxy_view
-from apps.core.models import LegacyAccessGrant
-from apps.core.services.legacy_access import (
+from apps.core.legacy_view.access import (
     LEGACY_ACCESS_CODE_TTL_SECONDS,
     LEGACY_VIEWER_COOKIE_NAME,
     LEGACY_VIEWER_TTL_SECONDS,
 )
+from apps.core.legacy_view.gateway.views import legacy_access_exchange_gateway, legacy_proxy_view
+from apps.core.models import LegacyAccessGrant
 from apps.core.views.legacy_access import legacy_access_exchange_view
 from apps.event.tests.helpers import make_admin, make_superuser
 

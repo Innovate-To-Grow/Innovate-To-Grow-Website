@@ -1,0 +1,17 @@
+/* ===== JSON Section (rows sub-editor) ===== */
+.cms-json-subeditor textarea {
+    width: 100%;
+    min-height: 120px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+.cms-json-subeditor .json-error {
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 4px;
+}

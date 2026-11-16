@@ -25,7 +25,7 @@ from apps.core.services.email import (
     TransientEmailDeliveryError,
     UncertainEmailDeliveryError,
 )
-from apps.core.services.email.exceptions import EmailRateDeferred
+from apps.core.services.email.sending.exceptions import EmailRateDeferred
 
 
 class DeliveryErrorRetryAfterTest(SimpleTestCase):

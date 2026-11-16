@@ -17,7 +17,7 @@ from apps.core.services.background_jobs import (
     UncertainJobError,
 )
 from apps.core.services.background_jobs.delivery import provider_job_error
-from apps.mail.services.send_campaign.transport import SES_OUTCOME_PERMANENT, SES_OUTCOME_TRANSIENT
+from apps.mail.services.campaign.send.transport import SES_OUTCOME_PERMANENT, SES_OUTCOME_TRANSIENT
 
 DEFERRED_LOG_MESSAGE = "Waiting for the delivery rate; scheduled to send later."
 

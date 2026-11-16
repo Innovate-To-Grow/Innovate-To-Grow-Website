@@ -9,7 +9,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 
 from apps.core.models import DeliveryRatePolicy, DeliveryRateState
-from apps.mail.services.campaign.pacing import email_send_rate_line
+from apps.mail.services.campaign.delivery.pacing import email_send_rate_line
 
 from .delivery_rates_helpers import NOW, SMS_IDENTITY, Channel, DeliveryRatesTestCase
 

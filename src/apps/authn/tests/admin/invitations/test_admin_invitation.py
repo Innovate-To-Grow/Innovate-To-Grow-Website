@@ -8,7 +8,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.authn.admin.members.invitation import AdminInvitationAdmin
+from apps.authn.admin.security.invitation import AdminInvitationAdmin
 from apps.authn.models import AdminInvitation
 from apps.authn.models.members.member import Member
 

@@ -2,7 +2,7 @@ import {act, cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
-import {BlockPreviewPage} from '@/features/cms/components/BlockPreviewPage';
+import {BlockPreviewPage} from '@/features/cms/components/preview/BlockPreviewPage';
 
 /**
  * The admin block editor previews each block by posting it to /_block-preview,

@@ -58,7 +58,7 @@ from .email.challenges import (
     verify_email_code_and_mint_token,
     verify_email_code_for_purposes,
 )
-from .members.create import CreateMemberService
+from .members.accounts.create import CreateMemberService
 from .members.import_ import (
     ImportResult,
     generate_template_excel,

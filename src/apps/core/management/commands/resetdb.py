@@ -22,14 +22,8 @@ from django.core.management import call_command
 from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS, connections
 
-from .resetdb_helpers import (
-    create_default_admin,
-    delete_migration_files,
-    reset_mysql,
-    reset_postgresql,
-    reset_sqlite,
-    seed_archive_data,
-)
+from ..operations.archive_seed import seed_archive_data
+from .resetdb_helpers import create_default_admin, delete_migration_files, reset_mysql, reset_postgresql, reset_sqlite
 
 
 class Command(BaseCommand):

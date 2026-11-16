@@ -131,7 +131,7 @@ log: those are business decisions for staff, made on the **Bounced addresses** p
 
 ### Bounce categories
 
-`apps/core/services/email/bounces/classify.py`, with its tables in `bounces/rules/codes.py` (status codes) and
+`apps/core/services/email/bounces/classify/__init__.py`, with its tables in `bounces/rules/codes.py` (status codes) and
 `bounces/rules/phrases.py` (diagnostic phrases). Only **Address does not exist** and **Mailbox disabled** are evidence
 against an address; everything else is temporary, about our own sending, about the recipient's policy, or unclear.
 
@@ -343,7 +343,7 @@ deactivate, delete account) are never offered in bulk.
 ### What suppression stops
 
 Suppression (`BouncedAddress.suppressed_at`, set by Suppress address or Mark undeliverable) is the site's one
-bulk-mail suppression list (`apps.mail.services.suppression`). Addresses compare in their bare lower-case form.
+bulk-mail suppression list (`apps.mail.services.audience.suppression`). Addresses compare in their bare lower-case form.
 
 - **Every campaign audience** skips a suppressed address when it is resolved (subscribers, all members, staff,
   selected members, event registrants, ticket type, checked-in, no-shows, manual lists; registrant audiences
@@ -408,7 +408,7 @@ Notification Delivery and Delivery Rates; the sidebar's **Delivery Operations** 
 
 ## Configuration
 
-`EMAIL_MONITORING` in `src/config/settings/base/integrations/email_monitoring/__init__.py`:
+`EMAIL_MONITORING` in `src/config/settings/base/integrations/email/email_monitoring/__init__.py`:
 
 | Key (environment variable) | Default | What it does |
 |---|---|---|

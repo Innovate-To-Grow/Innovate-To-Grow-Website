@@ -2,28 +2,28 @@ import {describe, it, expect} from 'vitest';
 
 describe('Lazy route modules resolve', () => {
   const authPages = [
-    ['LoginPage', () => import('@/features/auth/components/pages/LoginPage')],
-    ['RegisterPage', () => import('@/features/auth/components/pages/RegisterPage')],
-    ['AccountPage', () => import('@/features/auth/components/pages/AccountPage')],
-    ['CompleteProfilePage', () => import('@/features/auth/components/pages/CompleteProfilePage')],
-    ['ForgotPasswordPage', () => import('@/features/auth/components/pages/ForgotPasswordPage')],
-    ['VerifyEmailPage', () => import('@/features/auth/components/pages/VerifyEmailPage')],
+    ['LoginPage', () => import('@/features/auth/components/pages/signin/LoginPage')],
+    ['RegisterPage', () => import('@/features/auth/components/pages/signin/RegisterPage')],
+    ['AccountPage', () => import('@/features/auth/components/pages/account/dashboard/AccountPage')],
+    ['CompleteProfilePage', () => import('@/features/auth/components/pages/completeProfile/CompleteProfilePage')],
+    ['ForgotPasswordPage', () => import('@/features/auth/components/pages/signin/ForgotPasswordPage')],
+    ['VerifyEmailPage', () => import('@/features/auth/components/pages/verify/VerifyEmailPage')],
   ] as const;
 
   const contentPages = [
-    ['NewsPage', () => import('@/routes/NewsPage')],
-    ['NewsDetailPage', () => import('@/routes/NewsDetailPage')],
-    ['ProjectsPage', () => import('@/routes/ProjectsPage')],
-    ['PastProjectsPage', () => import('@/routes/PastProjectsPage')],
-    ['AllProjectsPage', () => import('@/routes/AllProjectsPage')],
-    ['PresentingTeamsPage', () => import('@/routes/PresentingTeamsPage')],
-    ['ProjectDetailPage', () => import('@/routes/ProjectDetailPage')],
-    ['SchedulePage', () => import('@/routes/SchedulePage')],
-    ['AcknowledgementPage', () => import('@/routes/AcknowledgementPage')],
-    ['EventArchivePage', () => import('@/routes/EventArchivePage')],
-    ['EventRegistrationPage', () => import('@/routes/EventRegistrationPage')],
-    ['LoginLinkPage', () => import('@/routes/LoginLinkPage')],
-    ['SubscribePage', () => import('@/routes/SubscribePage')],
+    ['NewsPage', () => import('@/routes/news/NewsPage')],
+    ['NewsDetailPage', () => import('@/routes/news/NewsDetailPage')],
+    ['ProjectsPage', () => import('@/routes/projects/ProjectsPage')],
+    ['PastProjectsPage', () => import('@/routes/projects/PastProjectsPage')],
+    ['AllProjectsPage', () => import('@/routes/projects/AllProjectsPage')],
+    ['PresentingTeamsPage', () => import('@/routes/projects/PresentingTeamsPage')],
+    ['ProjectDetailPage', () => import('@/routes/projects/ProjectDetailPage')],
+    ['SchedulePage', () => import('@/routes/events/SchedulePage/page')],
+    ['AcknowledgementPage', () => import('@/routes/events/AcknowledgementPage')],
+    ['EventArchivePage', () => import('@/routes/events/EventArchivePage')],
+    ['EventRegistrationPage', () => import('@/routes/events/EventRegistrationPage/page')],
+    ['LoginLinkPage', () => import('@/routes/auth/LoginLinkPage')],
+    ['SubscribePage', () => import('@/routes/subscription/SubscribePage/page')],
   ] as const;
 
   it.each([...authPages, ...contentPages])(

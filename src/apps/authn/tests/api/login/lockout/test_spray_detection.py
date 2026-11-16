@@ -1,4 +1,4 @@
-from apps.authn.services import login_guard
+from apps.authn.services.security import login_guard
 from apps.authn.tests.api.login.lockout.test_login_lockout import EMAIL, PASSWORD, PHONE, LoginLockoutTestCase
 
 

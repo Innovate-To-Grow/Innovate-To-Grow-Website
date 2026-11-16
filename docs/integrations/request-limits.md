@@ -33,7 +33,7 @@ queued behind a campaign ([Delivery rates: lanes](delivery-rates.md#budgets-the-
 
 ## Scopes and routes
 
-A request's scope is decided in `process_view`, after URL resolution (`apps/core/services/request_limits/scopes.py`):
+A request's scope is decided in `process_view`, after URL resolution (`apps/core/services/request_limits/classification/scopes.py`):
 
 1. **Exempt**: a CORS preflight (`OPTIONS` with `Access-Control-Request-Method`; a bare `OPTIONS` runs the view and
    is limited as a read), a view with `rate_limit_exempt = "reason"`, an app's `register_exemption(...)` or
@@ -57,7 +57,7 @@ follows).
 
 ## Who a request counts against
 
-Each scope's `identity` picks the bucket key (`apps/core/services/request_limits/identity.py`):
+Each scope's `identity` picks the bucket key (`apps/core/services/request_limits/classification/identity.py`):
 
 | Identity | Key |
 |----------|-----|
@@ -246,7 +246,7 @@ The limiter never takes the site down with it: an error inside it is logged (`re
 | Pure rules | `apps/core/services/request_limits/rules/` (`limits.py` precedence and slot shares, `controller.py`) |
 | Runtime | `apps/core/services/request_limits/` (`limiter.py`, `scopes.py`, `identity.py`, `priority.py`, `view_limits.py`), `runtime/` (`store.py`, `heartbeat.py`, `registry.py`, `signals.py`, `smart.py`, `abuse.py`, `refusals.py`) |
 | App hooks | `register_scope`, `register_exemption`, `register_identity_resolver`, `register_priority_check` from `AppConfig.ready()` (authn registers the code-send proof check) |
-| Admin | `apps/core/admin/request_limits/` (`views.py`, `forms.py`, `cards.py`); templates `admin/core/request_limits.html`, `request_limit_card.html`; `admin/js/poll-backoff.js` |
+| Admin | `apps/core/admin/request_limits/` (`views.py`, `forms.py`, `cards.py`); templates `admin/core/request_limits/request_limits.html`, `request_limit_card.html`; `admin/js/poll-backoff.js` |
 | Clients | `pages/src/lib/api/rateLimit.ts` (SPA), `cli/src/i2g_admin/client/rate_limit.py` (CLI) |
 
 The policy, state and heartbeat rows are on the safe-ORM denylist, so the `i2g-admin` CLI cannot read or change them.

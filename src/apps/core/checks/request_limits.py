@@ -51,8 +51,8 @@ def _middleware_problems(enabled: bool) -> list:
 
 
 def _registration_problems() -> list:
-    from ..services.request_limits.priority import registered_checks
-    from ..services.request_limits.scopes import registered
+    from ..services.request_limits.classification.priority import registered_checks
+    from ..services.request_limits.classification.scopes import registered
 
     known = {name for name, spec in settings.REQUEST_RATE_LIMITS["scopes"].items() if spec.get("identity") != "view"}
     scopes, _exemptions = registered()

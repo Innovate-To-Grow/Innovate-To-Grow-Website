@@ -4,7 +4,7 @@ from django.contrib.admin import ModelAdmin
 from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
-from apps.authn.admin.members.search import (
+from apps.authn.admin.members.shared.search import (
     MIN_PHONE_DIGITS,
     RankedSearchMixin,
     contact_email_search_rank,

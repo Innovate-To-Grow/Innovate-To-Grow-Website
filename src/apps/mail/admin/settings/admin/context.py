@@ -1,15 +1,15 @@
 from django.contrib import admin
 from django.urls import reverse
 
-from apps.core.admin.service_credentials.gmail_api_panel import key_panel
-from apps.core.admin.service_credentials.microsoft_graph_panel import certificate_panel
+from apps.core.admin.service_credentials.gmail_api.panel import key_panel
+from apps.core.admin.service_credentials.microsoft_graph.panel import certificate_panel
 from apps.core.models import (
     GmailApiProviderConfig,
 )
 from apps.core.utils.access import user_can_access_app
-from apps.mail.services.campaign.pacing import email_send_rate_line, sms_send_rate_line
+from apps.mail.services.campaign.delivery.pacing import email_send_rate_line, sms_send_rate_line
 
-from ..rate_cards import EMAIL_CHANNELS
+from ..rates.cards import EMAIL_CHANNELS
 
 
 def _graph_context(request, graph_config) -> dict:

@@ -20,7 +20,7 @@ from django.utils import timezone
 
 from apps.core.services.email import inbound
 from apps.core.services.email.bounces import active_reader
-from apps.core.services.email.bounces.source import is_candidate, received_at
+from apps.core.services.email.bounces.scanning.source import is_candidate, received_at
 from apps.core.services.email.graph.mailbox import GraphReadBusy, GraphReadError
 
 from ...models import HelpdeskSettings

@@ -4,8 +4,8 @@ from typing import Any
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import ChatConversation, ChatMessage, SystemIntelligenceConfig
 
-from ..constants import APPROVAL_INSTRUCTION
-from ..context_window import estimate_context_window
+from ..definition.constants import APPROVAL_INSTRUCTION
+from .context_window import estimate_context_window
 from .limits import enforce_hard_limit
 from .messages import pending_action_context_message, serialize_message, summary_context_message
 from .summary import ensure_context_summary

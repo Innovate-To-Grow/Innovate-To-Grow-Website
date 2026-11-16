@@ -4,7 +4,7 @@ The event pages render tables from Google Sheets. The Sheets API key lives
 ONLY here on the server (read from .env, gitignored): the browser calls the
 same-origin `/api/sheets/...` proxy and never sees the key.
 
-Pages live under templates/events/ and extend templates/base.html (shared
+Pages live under templates/events/<year>/ and extend templates/layout/base.html (shared
 head, CSS/JS includes, page scaffold, and the iframe embed helper).
 
 Run:
@@ -34,17 +34,17 @@ cache = Cache(app)
 
 
 EVENT_TEMPLATES = {
-    "2020-fall-post-event": "events/2020-fall-post-event.html",
-    "2021-fall-event": "events/2021-fall-event.html",
-    "2021-spring-event": "events/2021-spring-event.html",
-    "2022-fall-event": "events/2022-fall-event.html",
-    "2022-spring-event": "events/2022-spring-event.html",
-    "2023-fall-event": "events/2023-fall-event.html",
-    "2023-spring-event": "events/2023-spring-event.html",
-    "2024-fall-event": "events/2024-fall-event.html",
-    "2024-spring-event": "events/2024-spring-event.html",
-    "2025-fall-event": "events/2025-fall-event.html",
-    "2025-spring-event": "events/2025-spring-event.html",
+    "2020-fall-post-event": "events/2020/2020-fall-post-event.html",
+    "2021-fall-event": "events/2021/2021-fall-event.html",
+    "2021-spring-event": "events/2021/2021-spring-event.html",
+    "2022-fall-event": "events/2022/2022-fall-event.html",
+    "2022-spring-event": "events/2022/2022-spring-event.html",
+    "2023-fall-event": "events/2023/2023-fall-event.html",
+    "2023-spring-event": "events/2023/2023-spring-event.html",
+    "2024-fall-event": "events/2024/2024-fall-event.html",
+    "2024-spring-event": "events/2024/2024-spring-event.html",
+    "2025-fall-event": "events/2025/2025-fall-event.html",
+    "2025-spring-event": "events/2025/2025-spring-event.html",
 }
 
 

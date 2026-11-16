@@ -4,7 +4,7 @@ from django.test import SimpleTestCase, TestCase
 
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
-from apps.system_intelligence.services.agents.constants import WRITE_TOOL_NAMES
+from apps.system_intelligence.services.agents.definition.constants import WRITE_TOOL_NAMES
 from apps.system_intelligence.services.tools import get_agent_tool_callables
 
 
@@ -35,7 +35,7 @@ class SystemIntelligenceAgentPlanModeTests(TestCase):
             from apps.system_intelligence.services.agents import _invoke_system_intelligence_stream_async
 
             with patch(
-                "apps.system_intelligence.services.agents.stream.run_agent_invocation",
+                "apps.system_intelligence.services.agents.invocation.stream.run_agent_invocation",
                 side_effect=fake_run_agent_invocation,
             ):
                 return [

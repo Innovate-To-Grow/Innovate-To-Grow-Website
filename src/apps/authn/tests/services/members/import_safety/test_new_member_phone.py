@@ -3,9 +3,7 @@ from django.test import TestCase
 
 from apps.authn.models import ContactEmail, ContactPhone
 from apps.authn.services.members.import_ import import_members_from_excel
-from apps.authn.services.members.import_.parsing import (
-    PHONE_VERIFIED_IGNORED,
-)
+from apps.authn.services.members.import_.workbook.parsing import PHONE_VERIFIED_IGNORED
 from apps.authn.tests.services.members.import_safety.test_import_members_phone_verified import (
     CELLS,
     _number,

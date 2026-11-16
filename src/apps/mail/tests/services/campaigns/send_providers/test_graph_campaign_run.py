@@ -10,7 +10,7 @@ from apps.core.services.email.graph import clear_access_token_cache
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.event.tests.helpers import make_member
 from apps.mail.models import EmailCampaign, RecipientLog
-from apps.mail.services.send_campaign.runner import _configured_provider, send_campaign
+from apps.mail.services.campaign.send.runner import _configured_provider, send_campaign
 from apps.mail.tests.services.campaigns.send_providers.test_send_campaign_provider_neutral import (
     DENIED_BODY,
     GRAPH_LOGGER,

@@ -15,7 +15,7 @@ const shell = new DOMParser().parseFromString(indexHtml, 'text/html');
 const inline = Array.from(shell.head.querySelectorAll('style'), (node) => node.textContent).join('\n');
 const indicatorCss = readSource('components/LoadingIndicator/LoadingIndicator.css');
 const containerCss = readSource('features/layout/components/Container/Container.css');
-const tokensCss = readSource('styles/tokens.css');
+const tokensCss = readSource('styles/base/tokens.css');
 
 /** The declarations of the first rule written exactly `selector {`. */
 const declarations = (css: string, selector: string): Record<string, string> => {

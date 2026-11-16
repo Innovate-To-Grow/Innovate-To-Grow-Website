@@ -22,7 +22,7 @@ from apps.mail.services.sms.links import open_link
 from apps.mail.services.sms.policy.opt_outs import SKIPPED_MESSAGE
 from apps.mail.services.sms.policy.quiet_hours import HELD_LOG_MESSAGE
 
-from ....sms.policy_helpers import QUIET_ENDS, QUIET_MOMENT, add_phone, at, opt_out, sms_settings
+from ....sms.policy.policy_helpers import QUIET_ENDS, QUIET_MOMENT, add_phone, at, opt_out, sms_settings
 from ..durable_queue_helpers import DurableCampaignQueueTestCase, _provider_failure
 
 SEND = "apps.mail.services.campaign.dispatch.sms_job._send_via_sms"
@@ -41,7 +41,7 @@ class QueuedSmsPolicyTests(DurableCampaignQueueTestCase):
         campaign = SmsCampaign.objects.create(
             name="Night", message="Hi", audience_type="manual", manual_phones="+12095550101"
         )
-        with at(QUIET_MOMENT), patch("apps.mail.services.campaign.dispatch.launch.timezone", clock(QUIET_MOMENT)):
+        with at(QUIET_MOMENT), patch("apps.mail.services.campaign.dispatch.queueing.timezone", clock(QUIET_MOMENT)):
             queue_sms_campaign(campaign, sent_by=self.sender)
 
         log = SmsRecipientLog.objects.get(campaign=campaign)

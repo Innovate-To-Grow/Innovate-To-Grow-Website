@@ -500,17 +500,17 @@ the current UI.
 
 ## Regression gate
 
-Run `apps.authn.tests`, `apps.core.tests.commands.test_seed_service_configs`,
-`apps.core.tests.commands.test_initialize_send_verification`,
-`apps.core.tests.commands.test_verify_service_configs`,
-`apps.core.tests.commands.test_run_background_worker`,
+Run `apps.authn.tests`, `apps.core.tests.project.commands.verify.test_seed_service_configs`,
+`apps.core.tests.project.commands.verify.test_initialize_send_verification`,
+`apps.core.tests.project.commands.verify.test_verify_service_configs`,
+`apps.core.tests.project.commands.worker.test_run_background_worker`,
 `apps.event.tests.views.test_sms_views`, and
 `apps.event.tests.views.test_phone_verification` with mocked delivery. Dedicated
 verification tests disable automatic proof attachment. The API coverage matrix
 checks all 12 sending routes before account/contact mutations.
 
 Run `apps.authn.tests.services.send_verification.test_send_verification_concurrency` and
-`apps.authn.tests.services.security.test_login_guard_concurrency` against an isolated
+`apps.authn.tests.services.security.login_guard.test_login_guard_concurrency` against an isolated
 PostgreSQL 16 database with `config.settings.environments.test` and the `DB_*` variables (CI
 does). SQLite skips are not evidence of locking correctness. Contention and
 fault tests must check provider calls, reservations, challenge consumption,

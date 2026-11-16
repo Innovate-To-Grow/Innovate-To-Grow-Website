@@ -2,7 +2,7 @@ import {cleanup, render, screen} from '@testing-library/react';
 import {MemoryRouter} from 'react-router';
 import {afterEach, describe, expect, it} from 'vitest';
 
-import {CtaGroupBlock, type CtaItem} from '@/features/cms/components/blocks/content/CtaGroupBlock';
+import {CtaGroupBlock, type CtaItem} from '@/features/cms/components/blocks/content/lists/CtaGroupBlock';
 
 function renderItems(items: CtaItem[]) {
   return render(
