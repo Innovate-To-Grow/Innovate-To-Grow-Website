@@ -206,10 +206,11 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha || github.sha }}
         run: python -m scripts.structure.checker migrations --base "$BASE_SHA" --head "$HEAD_SHA"
 
-      # Report-only until the architecture refactor lands: findings go to the
-      # job summary and never fail this job (switch to --mode enforce then).
-      - name: Report repository structure
-        run: python -m scripts.structure.checker report --markdown "$GITHUB_STEP_SUMMARY"
+      # Enforced: a finding that is neither fixed nor a justified exception in
+      # scripts/structure/checker/structure.toml fails this job, and so does a
+      # stale exception (one that no longer matches anything).
+      - name: Enforce repository structure
+        run: python -m scripts.structure.checker report --mode enforce --markdown "$GITHUB_STEP_SUMMARY"
 
   lint:
     name: Python Code Style Check
