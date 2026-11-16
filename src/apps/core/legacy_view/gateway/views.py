@@ -50,19 +50,29 @@ def _log_response(
     started: float,
     outcome: str,
     *,
-    canonical_path: str = "-",
     user=None,
 ) -> HttpResponse:
+    method = _log_method(request)
     logger.info(
-        "legacy_view_request status=%s method=%s outcome=%s path=%s user_id=%s duration_ms=%s",
+        "legacy_view_request status=%s method=%s outcome=%s user_id=%s duration_ms=%s",
         response.status_code,
-        request.method,
+        method,
         outcome,
-        canonical_path,
         getattr(user, "pk", None),
         round((time.monotonic() - started) * 1000),
     )
     return response
+
+
+def _log_method(request: HttpRequest) -> str:
+    """Keep untrusted HTTP method bytes out of the log entry."""
+    if request.method == "GET":
+        return "GET"
+    if request.method == "HEAD":
+        return "HEAD"
+    if request.method == "POST":
+        return "POST"
+    return "OTHER"
 
 
 def legacy_proxy_view(request: HttpRequest, legacy_path: str = "") -> HttpResponse:
@@ -75,8 +85,7 @@ def legacy_proxy_view(request: HttpRequest, legacy_path: str = "") -> HttpRespon
     canonical_path, refusal = _allowed_path(request, legacy_path)
     if refusal is not None:
         response, outcome = refusal
-        extra = {"canonical_path": canonical_path} if outcome == "method_denied" else {}
-        return _log_response(request, response, started, outcome, **extra)
+        return _log_response(request, response, started, outcome)
 
     try:
         user = legacy_auth.require_legacy_viewer(request)
@@ -85,19 +94,18 @@ def legacy_proxy_view(request: HttpRequest, legacy_path: str = "") -> HttpRespon
             raise
         response = _apply_gateway_headers(HttpResponseForbidden("Legacy viewer authorization is required."))
         response = legacy_auth.clear_legacy_viewer_cookie(response)
-        return _log_response(request, response, started, "viewer_denied", canonical_path=canonical_path)
+        return _log_response(request, response, started, "viewer_denied")
 
     try:
         response = _proxy_origin(request, canonical_path)
     except (ImproperlyConfigured, InvalidLegacyURL, LegacyOriginUnavailable):
-        logger.exception("legacy_view_origin_failed outcome=origin_failure path=%s", canonical_path)
+        logger.exception("legacy_view_origin_failed outcome=origin_failure")
         response = _plain_error("Legacy content is temporarily unavailable.", HTTPStatus.BAD_GATEWAY)
         return _log_response(
             request,
             response,
             started,
             "origin_failure",
-            canonical_path=canonical_path,
             user=user,
         )
     return _log_response(
@@ -105,7 +113,6 @@ def legacy_proxy_view(request: HttpRequest, legacy_path: str = "") -> HttpRespon
         response,
         started,
         "success",
-        canonical_path=canonical_path,
         user=user,
     )
 
@@ -156,7 +163,7 @@ def legacy_access_exchange_gateway(request: HttpRequest) -> HttpResponse:
         logger.info(
             "legacy_view_exchange status=%s method=%s outcome=origin_header_denied duration_ms=%s",
             response.status_code,
-            request.method,
+            _log_method(request),
             round((time.monotonic() - started) * 1000),
         )
         return response
@@ -166,7 +173,7 @@ def legacy_access_exchange_gateway(request: HttpRequest) -> HttpResponse:
         logger.info(
             "legacy_view_exchange status=%s method=%s outcome=method_denied duration_ms=%s",
             response.status_code,
-            request.method,
+            _log_method(request),
             round((time.monotonic() - started) * 1000),
         )
         return response

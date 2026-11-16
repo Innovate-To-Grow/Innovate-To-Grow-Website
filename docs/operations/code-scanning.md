@@ -32,6 +32,24 @@ has no floors: it runs `apt-get upgrade` when it is built, so a Debian fix reach
 (`Archive Docker Build and Scan` in CI, and again in `deploy-archive.yml`) fails the job instead of uploading to
 the Security tab.
 
+## Triage of 2026-11-15 (28 open alerts)
+
+The architecture refactor moved files that had already been triaged on 2026-11-05. CodeQL and Semgrep reported
+new alert numbers for those locations. Each dismissal below was recorded in the Security tab with a specific
+explanation; the previous triage table has the fuller reasoning for the equivalent findings.
+
+| Alerts | Outcome | Reason |
+|---|---|---|
+| 785–781 | Fixed in code | Gateway logs now use a fixed allowlist for HTTP methods and omit request-derived paths, preventing forged log lines. Tests cover hostile method and path values. |
+| 737 | Fixed in code | An unexpected SMS send error now stores a fixed message. Its exception class and details remain in server logs, never the status JSON. |
+| 791 | Won't fix (deliberate) | The cross-origin, one-time legacy viewer exchange cannot use an admin-origin CSRF token; the trusted origin check and single-use code protect it. Same design as dismissed 691. |
+| 779, 778, 739 | False positive | The response paths expose only authored, bounded user-facing messages. They do not expose exception traces. |
+| 800, 793, 741, 738 | False positive | Each flagged admin form already contains `{% csrf_token %}`; the long form body defeats the generic Semgrep pattern. |
+| 799, 798 | False positive | The redirect target is `request.path`, the server-side internal path of the current admin view, not a user-selected URL. |
+| 797, 796, 795, 792, 790, 789 | False positive | Repeats of the reviewed TLS context, public SHA-1 certificate identifier, configured Django session-engine imports, digest-only log, and authenticated legacy HTML proxy findings. |
+| 794 | False positive | The block editor rejects prototype property names before descending through own properties. Same as dismissed 689. |
+| 787, 786, 780, 777, 776 | Used in tests | The regexes and script helper operate on checked-in test assets; the permissive directory mode is an intentional fixture for checking permission tightening. |
+
 ## Triage of 2026-11-05 (62 open alerts)
 
 Two alerts were real improvements and are fixed in the same pull request as this page; the other sixty were

@@ -6,6 +6,7 @@ from unittest.mock import Mock, patch
 from django.test import RequestFactory, SimpleTestCase, override_settings
 
 from apps.core.legacy_view.gateway.views import legacy_proxy_view
+from apps.core.legacy_view.origin.transport import LegacyOriginUnavailable
 from apps.core.tests.web.legacy_view.proxy.test_transport_and_views import (
     GATEWAY_SETTINGS,
     HEADER_NAME,
@@ -29,6 +30,27 @@ class _LegacyProxyViewCase(SimpleTestCase):
 
 @override_settings(**GATEWAY_SETTINGS)
 class LegacyProxyViewTest(_LegacyProxyViewCase):
+    def test_untrusted_method_and_path_are_not_written_to_proxy_logs(self):
+        request = self.request()
+        request.method = "GET\nforged=1"
+
+        with self.assertLogs("apps.core.legacy_view.views", level="INFO") as captured:
+            response = legacy_proxy_view(request, "static/file.css")
+
+        self.assertEqual(response.status_code, 405)
+        self.assertIn("method=OTHER", captured.output[0])
+        self.assertNotIn("forged=1", " ".join(captured.output))
+
+        with (
+            patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer", return_value=self.user),
+            patch("apps.core.legacy_view.gateway.views._proxy_origin", side_effect=LegacyOriginUnavailable("failed")),
+            self.assertLogs("apps.core.legacy_view.views", level="INFO") as captured,
+        ):
+            response = legacy_proxy_view(self.request(), "static/secret\u2028forged=1.css")
+
+        self.assertEqual(response.status_code, 502)
+        self.assertNotIn("forged=1", " ".join(captured.output))
+
     @patch("apps.core.legacy_view.gateway.views.open_legacy_origin")
     @patch("apps.core.legacy_view.gateway.views.legacy_auth.require_legacy_viewer")
     def test_html_is_rewritten_and_sensitive_origin_headers_are_dropped(self, require_viewer, open_origin):
