@@ -72,7 +72,7 @@ the first request of its feature.
 These are fairness limits. The assistant throttle's history is in the bounded
 in-process `throttle` cache alias (visitor tokens are free to mint, so it is
 kept out of the file cache; see
-[Production cache today](../deployment/environments.md#production-cache-today)),
+[Production cache today](../../deployment/environments.md#production-cache-today)),
 so its effective rate is the nominal rate times the number of Uvicorn worker
 processes (`WEB_CONCURRENCY` x ECS tasks). The AI search throttle is per member
 in the default per-container cache. Money does not depend on either.
@@ -210,7 +210,7 @@ Assistant global token budget exhausted for AI search (limit 2000000 per 86400s)
 ```
 
 Create a CloudWatch Logs metric filter and alarm on it, the same way as the
-sign-in alarms in [Send verification: Monitoring](../deployment/send-verification.md#monitoring):
+sign-in alarms in [Send verification: Monitoring](../../operations/send-verification.md#monitoring):
 
 ```bash
 aws logs put-metric-filter \

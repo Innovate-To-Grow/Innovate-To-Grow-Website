@@ -80,7 +80,7 @@ See [CMS & News](cms-and-news.md) for details.
 - `/assistant/config/` — Display configuration, plus a signed `visitor_token` while the assistant is enabled
 - `/assistant/chat/` — Chat; limits are keyed on the visitor token or member, never on the client IP
 
-See [Assistant and AI search limits](../integrations/assistant-limits.md).
+See [Assistant and AI search limits](../integrations/limits/assistant-limits.md).
 
 ### Mail (`/mail/`)
 
@@ -91,7 +91,7 @@ See [Assistant and AI search limits](../integrations/assistant-limits.md).
 
 ### Admin API (`/admin-api/`)
 
-Generic, denylist-gated CRUD for the `i2g-admin` terminal CLI, authenticated by a short-lived bearer token minted from the staff admin login via OAuth2 + PKCE. Staff status is the gate (no per-model permissions); a SimpleJWT is rejected here. See [CMS & Admin: i2g-admin CLI](../cms-admin/cli-admin.md) for the full guide.
+Generic, denylist-gated CRUD for the `i2g-admin` terminal CLI, authenticated by a short-lived bearer token minted from the staff admin login via OAuth2 + PKCE. Staff status is the gate (no per-model permissions); a SimpleJWT is rejected here. See [CMS & Admin: i2g-admin CLI](../operations/cli-admin.md) for the full guide.
 
 - `/admin-api/oauth/authorize/`, `/admin-api/oauth/token/` — PKCE authorization-code flow
 - `/admin-api/whoami/`, `/admin-api/models/`, `/admin-api/models/{app}/{model}/schema/`

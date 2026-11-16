@@ -20,7 +20,7 @@ at once. So:
   The few per-IP keys elsewhere in the application (the request limiter's
   ceilings for anonymous public traffic, sized far above a whole campus's
   honest requests, and three per-view limiters) are listed in
-  [Environments](environments.md#what-still-keys-on-the-client-ip).
+  [Environments](../deployment/environments.md#what-still-keys-on-the-client-ip).
 - At the edge, per-IP rules apply **only to addresses outside the campus IP
   set**. Campus traffic is counted and alarmed, **never blocked per IP**.
 - Every rule starts in **COUNT** and moves to **BLOCK** only after calibration.
@@ -138,7 +138,7 @@ identified only by a value it mints itself):
 Neither of the two can be limited per client IP in the application (campus
 visitors share one address), and their in-app throttles are fairness limiters
 kept per process (see
-[Environments](environments.md#the-throttle-cache-alias)). A flood from one
+[Environments](../deployment/environments.md#the-throttle-cache-alias)). A flood from one
 off-campus address is bounded here; a flood from campus only by the in-app
 total page-view cap and the token budgets (section 7).
 
@@ -291,7 +291,7 @@ For set C the application also logs, at most once a minute per worker process:
   edge, or came from campus.
 - `Assistant global token budget exhausted` (WARNING): model calls are refused
   until the window ends or the limit is raised (see
-  [Assistant and AI search limits](../integrations/assistant-limits.md)).
+  [Assistant and AI search limits](../integrations/limits/assistant-limits.md)).
 
 ## 7. Not covered
 
@@ -309,5 +309,5 @@ For set C the application also logs, at most once a minute per worker process:
   while audit logging is on. Watch the RDS free-storage alarm.
 - **Client-IP handling inside the application** (`NUM_PROXIES`,
   `X-Forwarded-For`; see
-  [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)) is separate
+  [Client IP and proxy trust](../deployment/backend.md#client-ip-and-proxy-trust)) is separate
   work and does not change these rules.

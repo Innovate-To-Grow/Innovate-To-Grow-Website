@@ -60,7 +60,7 @@ Web process with an unconsumed queue. SIGTERM receives the Fargate maximum
 120-second stop window. Besides jobs, the worker runs the hourly database
 maintenance (retired RSA keys, public-assistant budgets, send-verification rows,
 expired sessions, login failure windows) listed in
-[Send verification: scheduled cleanup](send-verification.md#scheduled-cleanup).
+[Send verification: scheduled cleanup](../operations/send-verification.md#scheduled-cleanup).
 
 The task was increased from 0.5 vCPU/1 GiB to 1 vCPU/2 GiB so the second Django
 runtime cannot starve Web requests or trigger avoidable out-of-memory restarts.

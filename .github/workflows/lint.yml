@@ -37,7 +37,7 @@ jobs:
 
       # Size / complexity / nesting limits and app dependency boundaries. Hard
       # limits fail; advisory findings are printed only. Rules and exceptions:
-      # docs/architecture/code-quality.md.
+      # docs/standards/code-quality.md.
       - name: Check Python quality limits
         working-directory: .
         run: python -m scripts.ci.python_quality

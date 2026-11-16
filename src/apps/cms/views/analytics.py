@@ -36,7 +36,7 @@ class PageViewVisitorThrottle(PolicyRateThrottle):
     cannot produce 120 real page views a minute, so this only stops a runaway client. The id is client-chosen, so a
     deliberate flood can mint fresh ones; that is no weaker than the old per-IP key (forgeable through
     ``X-Forwarded-For``) and spends no money. What bounds such a flood is ``PageViewTotalThrottle`` here and a
-    rate rule at the edge (docs/deployment/waf-rate-limits.md), never the client IP.
+    rate rule at the edge (docs/operations/waf-rate-limits.md), never the client IP.
     """
 
     scope = "pageview_visitor"

@@ -123,4 +123,4 @@ Collected from the chapters as questions come in.
 - Re-read each chapter at the start of every term and fix what has changed. Screenshots, when added, are taken with
   test accounts only.
 - Operational values (accounts, contacts, credentials, expiry dates of keys) do not belong here: see the
-  [operations runbook skeleton](../deployment/ops-runbook.md) and the private ops doc.
+  [operations runbook skeleton](../operations/ops-runbook.md) and the private ops doc.

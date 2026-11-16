@@ -1,5 +1,5 @@
 # Thresholds for scripts/ci/python_quality/.
-# Policy and counting rules: docs/architecture/code-quality.md.
+# Policy and counting rules: docs/standards/code-quality.md.
 #
 # Every pair is [advisory, hard]: a value above `advisory` is reported, a value
 # above `hard` fails the check unless it has an [[exceptions]] entry below.

@@ -60,7 +60,7 @@ BACKGROUND_JOB_METRICS_NAMESPACE = os.environ.get(
 ).strip()
 
 # ---------------------------------------------------------------------------
-# Private read-only Legacy viewer (docs/deployment/legacy-view.md)
+# Private read-only Legacy viewer (docs/operations/legacy-view.md)
 # ---------------------------------------------------------------------------
 # Fail closed: every legacy route 404s unless the flag is true AND CloudFront
 # presents the shared origin header. LEGACY_ORIGIN_HEADER_VALUE is injected

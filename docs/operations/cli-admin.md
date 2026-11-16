@@ -234,7 +234,7 @@ Deletes expired authorization codes and expired/revoked access tokens. Run it on
 
 ## Related pages
 
-- [Django Admin](django-admin.md) — Admin theme and navigation (the CLI Admin sidebar group lives here)
-- [Operations](operations.md) — Other management commands and operational tasks
+- [Django Admin](../cms-admin/django-admin.md) — Admin theme and navigation (the CLI Admin sidebar group lives here)
+- [Operations](../cms-admin/operations.md) — Other management commands and operational tasks
 - [API: Routing Overview](../api/routing-overview.md) — Where `/admin-api/` sits among the route groups
 - [Architecture: Backend](../architecture/backend.md) — App structure and the shared safe-ORM layer

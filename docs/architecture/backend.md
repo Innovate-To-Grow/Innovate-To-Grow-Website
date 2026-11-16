@@ -16,7 +16,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 | `system_intelligence` | Admin AI assistant (agents, actions, exports), the public assistant and AI search, and the AI platform other apps use (Bedrock client, token budgets, usage log) | `SystemIntelligenceConfig`, `AssistantConversationLog`, `AssistantMessageLog`, `PublicAssistantTokenBudget` |
 | `cli_admin` | OAuth2 + PKCE CRUD API for the `i2g-admin` CLI, built on `core`'s read-only `safe_orm` | `CliAuthorizationCode`, `CliAccessToken`, `CliAuditLog` |
 
-Allowed imports between these apps, and the registration hooks that keep `core` free of business-app imports, are in [Code Quality Rules](code-quality.md#dependency-directions).
+Allowed imports between these apps, and the registration hooks that keep `core` free of business-app imports, are in [Code Quality Rules](../standards/code-quality.md#dependency-directions).
 
 ## Base model: ProjectControlModel
 
@@ -95,7 +95,7 @@ config/settings/
 |---------|-----|-----|------|
 | Database | SQLite | PostgreSQL (GH Actions service) | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis when `REDIS_URL` is set, else a per-container file cache (production today; see [Environments](../deployment/environments.md#production-cache-today)). Send quotas and the login lockout are in PostgreSQL either way; the assistant / AI-search token budgets use Redis when set, else PostgreSQL rows. Every environment also has the in-process `throttle` alias for throttles keyed on a caller-chosen value |
-| Email | Console backend | Console backend | Application services use the provider selected under Notification Delivery: AWS SES, SMTP, Microsoft Graph or the Gmail API (see [Integrations](integrations.md#email-delivery-aws-ses-smtp-microsoft-graph-or-the-gmail-api)), paced by the delivery-rate limiter ([Delivery rates](../integrations/delivery-rates.md)) |
+| Email | Console backend | Console backend | Application services use the provider selected under Notification Delivery: AWS SES, SMTP, Microsoft Graph or the Gmail API (see [Integrations](integrations.md#email-delivery-aws-ses-smtp-microsoft-graph-or-the-gmail-api)), paced by the delivery-rate limiter ([Delivery rates](../integrations/limits/delivery-rates.md)) |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
 | Password transport | Plain text accepted | Plain text accepted | RSA encryption required |
 | Debug | True | False | False |
@@ -117,7 +117,7 @@ Detailed in [API: Auth & Mail](../api/auth-and-mail.md). Summary:
 
 ## Request limits
 
-Two layers, both described in [Request limits](../integrations/request-limits.md):
+Two layers, both described in [Request limits](../integrations/limits/request-limits.md):
 
 - **The request limiter** (`apps.core.middleware.RequestRateLimitMiddleware`, placed after `CorsMiddleware`, `HealthCheckMiddleware` and `SessionMiddleware` and before `CsrfViewMiddleware`, so CSRF failures are counted too; the `core` system checks refuse another order) limits every request the site answers — DRF and plain views, the Django admin, `/admin-api/` and webhooks — by **scope**. A view names its scope with a `rate_limit_scope` attribute or opts out with `rate_limit_exempt = "reason"`; Django-admin and third-party routes are in the `REQUEST_RATE_LIMITS["routes"]` table, and anything else falls back by path, method and sign-in, so no route is unlimited by accident (`apps.core.tests.request_limits.test_coverage` walks the URLconf). Every scope has a priority tier (P0 user-initiated sign-in and verification codes … P3 bulk); Smart limit (on by default, priority over the manual limit) sheds P3, then P2, then P1 under overload and never P0, and slots of the uvicorn concurrency are reserved for P0. Apps plug in from `AppConfig.ready()` (`register_scope`, `register_exemption`, `register_identity_resolver`, `register_priority_check`), so `core` imports no business app. Off when `REQUEST_RATE_LIMITS_ENABLED` is false (the `test` / `unit` settings and local test runs; dedicated tests switch it on with `override_settings`).
 - **Per-view throttles** stay underneath as finer limits (`throttle_classes` on the view, keyed on the member, destination, visitor token or challenge). Their rates are request-limit policies (`view-…` scopes) read live, not `DEFAULT_THROTTLE_RATES` (now empty).
@@ -127,7 +127,7 @@ Two layers, both described in [Request limits](../integrations/request-limits.md
 ## Assistant, AI search and page-view limits
 
 - **Actors** (`system_intelligence/services/public_assistant/chat/actors.py`): the public assistant and the past-project AI search key every limit on a member, on an anonymous visitor (a server-signed, stateless `visitor_token` issued by `GET /assistant/config/` and returned in the chat body), or on one shared `legacy` bucket for requests without a valid token. A bad token is never rejected.
-- **Token budgets** (`services/public_assistant/budget/`: limits, usage accounting, reservations, counters, retention, and the database and cache stores): each model call reserves estimated input plus maximum output against the actor's budget and that feature's global budget (the public assistant and AI search each have their own global row) in a single transaction, then reconciles to actual usage. Rows of `PublicAssistantTokenBudget` in PostgreSQL (Redis when `REDIS_URL` is set). The global limit, `SystemIntelligenceConfig.public_assistant_global_token_limit`, is the per-feature ceiling per window (so the worst case is twice that value across both features) and is set in Django admin, which also shows each feature's usage in the current window. See [Assistant and AI search limits](../integrations/assistant-limits.md).
+- **Token budgets** (`services/public_assistant/budget/`: limits, usage accounting, reservations, counters, retention, and the database and cache stores): each model call reserves estimated input plus maximum output against the actor's budget and that feature's global budget (the public assistant and AI search each have their own global row) in a single transaction, then reconciles to actual usage. Rows of `PublicAssistantTokenBudget` in PostgreSQL (Redis when `REDIS_URL` is set). The global limit, `SystemIntelligenceConfig.public_assistant_global_token_limit`, is the per-feature ceiling per window (so the worst case is twice that value across both features) and is set in Django admin, which also shows each feature's usage in the current window. See [Assistant and AI search limits](../integrations/limits/assistant-limits.md).
 - **Page views** (`cms/views/analytics.py`): `POST /analytics/pageview/` is throttled per browser `visitor_id` (a random id the frontend keeps in `localStorage`), with one shared bucket for requests without one. `PageView.visitor_id` is stored, and the admin dashboard counts unique visitors by it, falling back to `ip_address` for rows without an id.
 
 ## Middleware stack
@@ -200,6 +200,6 @@ The following configuration selectors enforce their single-active invariant in b
 
 - [Frontend](frontend.md) — How the React app consumes this backend
 - [Request Flow](request-flow.md) — End-to-end request lifecycle
-- [Request limits](../integrations/request-limits.md) — Scopes, priority tiers, Smart limit, counters and the operator runbook
+- [Request limits](../integrations/limits/request-limits.md) — Scopes, priority tiers, Smart limit, counters and the operator runbook
 - [API Reference](../api/index.md) — Endpoint documentation
 - [Deployment: Backend](../deployment/backend.md) — Container and ECS configuration

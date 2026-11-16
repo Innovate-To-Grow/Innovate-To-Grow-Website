@@ -181,7 +181,7 @@ Allowed imports between these layers are listed in
 
 ## Related pages
 
-- [Backend](backend.md) — Django app responsibilities and base models
-- [Frontend](frontend.md) — React architecture and module boundaries
+- [Backend](../architecture/backend.md) — Django app responsibilities and base models
+- [Frontend](../architecture/frontend.md) — React architecture and module boundaries
 - [Code Quality Rules](code-quality.md) — size / complexity limits and dependency directions
 - [Deployment: Environments](../deployment/environments.md) — How config maps to each environment

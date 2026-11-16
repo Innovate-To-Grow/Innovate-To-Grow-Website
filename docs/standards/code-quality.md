@@ -278,4 +278,4 @@ Fixtures that do not depend on mocks can move to such a module too.
 ## Related pages
 
 - [Repository Structure](repository-structure.md) — where each responsibility lives
-- [Backend](backend.md) · [Frontend](frontend.md)
+- [Backend](../architecture/backend.md) · [Frontend](../architecture/frontend.md)

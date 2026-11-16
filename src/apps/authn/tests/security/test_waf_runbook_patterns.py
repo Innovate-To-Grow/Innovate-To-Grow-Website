@@ -1,4 +1,4 @@
-"""The regex patterns in the WAF runbook (``docs/deployment/waf-rate-limits.md``) against the real URL configuration.
+"""The regex patterns in the WAF runbook (``docs/operations/waf-rate-limits.md``) against the real URL configuration.
 
 AWS WAF refuses a regex pattern longer than 200 characters and a pattern set with more than 10 patterns, and a pattern
 that drifts from the routes either leaves an endpoint unprotected or rate-limits one every signed-in tab calls
@@ -14,7 +14,7 @@ from django.test import SimpleTestCase
 from django.urls import URLResolver, get_resolver, resolve
 from django.urls.resolvers import RoutePattern
 
-RUNBOOK = Path(settings.BASE_DIR).parent / "docs" / "deployment" / "waf-rate-limits.md"
+RUNBOOK = Path(settings.BASE_DIR).parent / "docs" / "operations" / "waf-rate-limits.md"
 
 # AWS WAF fixed quotas (https://docs.aws.amazon.com/waf/latest/developerguide/limits.html).
 MAX_PATTERN_LENGTH = 200

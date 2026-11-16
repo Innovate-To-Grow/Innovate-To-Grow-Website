@@ -44,7 +44,7 @@ class SendViaSesTests(TestCase):
         self.assertEqual(result.error, "")
         self.assertEqual(deliver.call_args.kwargs["configuration_set"], "cfg")
         # A campaign message without a login link keeps List-Unsubscribe, the MIME path and its Sent Items copy
-        # (see docs/integrations/microsoft-graph-email.md, "Sent Items").
+        # (see docs/integrations/messaging/microsoft-graph-email.md, "Sent Items").
         self.assertIs(deliver.call_args.args[0].keep_sent_copy, True)
 
     def test_a_login_link_message_through_ses_keeps_list_unsubscribe(self):

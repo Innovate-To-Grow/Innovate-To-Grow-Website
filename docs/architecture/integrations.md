@@ -32,7 +32,7 @@ A single IAM credential pair in AWS Secrets Manager powers SES, SMS (End User Me
 | `default_region` | Shared AWS region for SES, SMS, and Bedrock |
 | `sms_from_number` | SMS origination number for OTP SMS (optional override; auto-detected from End User Messaging when blank) |
 
-**Required infra change for Smart rate (delivery-rate discovery).** Smart rate reads the account's sending limits with this same credential. It needs `ses:GetAccount`, which gives the SES rate and 24-hour quota and whether sending is paused. It also needs `sms-voice:DescribePhoneNumbers` (already required, below), `sms-voice:DescribeSenderIds` and `sms-voice:DescribeSpendLimits`, which give the number's message parts per second and the monthly spend limit. The credential's IAM policy lives outside this repository: `aws/cicd/identity-stack.json` grants the ECS task role only the Secrets Manager and Amplify actions, so grant these four read-only actions to the IAM user behind `credentials_secret_arn` (`ses:GetSendQuota` is an optional fallback for the SES read). Until `ses:GetAccount` is granted, Smart rate bounds SES by the provider limit that migration `core.0036` seeded from the active email config's campaign send rate, or by the 1 recipient/sec sandbox fallback when that rate was 0. That seeded value is stored as the **Provider rate limit**, flagged as carried over, so the first limit AWS reports for the account replaces it (an operator limit staff enter later applies as usual). Whether the IAM user already has any of these actions is not visible from the repository [CONFIRM LIVE]. See [Delivery rates](../integrations/delivery-rates.md#provider-limit-reads-discovery-and-the-iam-they-need).
+**Required infra change for Smart rate (delivery-rate discovery).** Smart rate reads the account's sending limits with this same credential. It needs `ses:GetAccount`, which gives the SES rate and 24-hour quota and whether sending is paused. It also needs `sms-voice:DescribePhoneNumbers` (already required, below), `sms-voice:DescribeSenderIds` and `sms-voice:DescribeSpendLimits`, which give the number's message parts per second and the monthly spend limit. The credential's IAM policy lives outside this repository: `aws/cicd/identity-stack.json` grants the ECS task role only the Secrets Manager and Amplify actions, so grant these four read-only actions to the IAM user behind `credentials_secret_arn` (`ses:GetSendQuota` is an optional fallback for the SES read). Until `ses:GetAccount` is granted, Smart rate bounds SES by the provider limit that migration `core.0036` seeded from the active email config's campaign send rate, or by the 1 recipient/sec sandbox fallback when that rate was 0. That seeded value is stored as the **Provider rate limit**, flagged as carried over, so the first limit AWS reports for the account replaces it (an operator limit staff enter later applies as usual). Whether the IAM user already has any of these actions is not visible from the repository [CONFIRM LIVE]. See [Delivery rates](../integrations/limits/delivery-rates.md#provider-limit-reads-discovery-and-the-iam-they-need).
 
 ## Email delivery (AWS SES, SMTP, Microsoft Graph, or the Gmail API)
 
@@ -44,7 +44,7 @@ selection. There is no per-message routing or automatic failover.
 | Concern | Implementation |
 |---------|---------------|
 | Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email/service.py`) — active sender identity and selected provider |
-| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates/`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates/`, staff with the Mail app); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read ([Delivery rates](../integrations/delivery-rates.md)) |
+| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates/`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates/`, staff with the Mail app); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read ([Delivery rates](../integrations/limits/delivery-rates.md)) |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
 | Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph/`) — Entra tenant ID, client ID and optional sender mailbox; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
@@ -77,7 +77,7 @@ app may do, compares it with the approved roles and mailbox scope, and records a
 `MicrosoftGraphAccessCheck` row. In production (`GRAPH_REQUIRE_ACCESS_EVIDENCE`)
 email can switch to Graph only with a recent passing check for the current
 certificate, and email already on Graph can move to another Graph configuration or
-Entra app only on the same terms (`takeover_problem`). See [Microsoft Graph email](../integrations/microsoft-graph-email.md) for
+Entra app only on the same terms (`takeover_problem`). See [Microsoft Graph email](../integrations/messaging/microsoft-graph-email.md) for
 the Microsoft-side setup, key storage, validation, limits, and error reference.
 
 The Gmail API provider signs an RS256 service-account assertion for the From
@@ -93,7 +93,7 @@ everything, so mail with a credential carries a protected `X-I2G-Mail-Class:
 credential` header that the admin inbox's Sent view and the Gmail import filter
 out (only in Sent: the header is not authenticated, so received mail is listed as
 before), and the inbox's Sent folder is shown to staff with the Mail app only while
-the copies are kept. See [Gmail API email](../integrations/gmail-api-email.md).
+the copies are kept. See [Gmail API email](../integrations/messaging/gmail-api-email.md).
 
 Delivery fails closed unless the selected provider and sender are structurally
 configured. A failed or uncertain request is never retried through the other
@@ -113,7 +113,7 @@ SMTP, Microsoft Graph and the Gmail API record successful submission acceptance 
 (for Graph, an HTTP 202; for the Gmail API, a 200) in the campaign's recipient log; they never claim delivered or
 complained status there. Graph's later non-delivery reports arrive in the
 sender mailbox, where bounce processing reads and records them and marks the matched email's delivery as failed
-([Email monitoring](../integrations/email-monitoring.md)); the recipient log is not changed and nothing acts on them
+([Email monitoring](../integrations/messaging/email-monitoring.md)); the recipient log is not changed and nothing acts on them
 automatically. The SES
 account-level suppression list applies only to SES sends. The site's own bulk-mail
 suppression list is the one staff keep on Email Monitoring → Bounced addresses
@@ -121,7 +121,7 @@ suppression list is the one staff keep on Email Monitoring → Bounced addresses
 whatever the provider, and transactional mail is never suppressed. Nothing is added to
 it automatically, so under SMTP, Microsoft Graph or the Gmail API an address that bounced
 or complained is mailed again until staff suppress it
-([Email monitoring](../integrations/email-monitoring.md#bounced-addresses)).
+([Email monitoring](../integrations/messaging/email-monitoring.md#bounced-addresses)).
 
 ## AWS End User Messaging (SMS)
 
@@ -146,7 +146,7 @@ account's End User Messaging phone numbers (`DescribePhoneNumbers`), or set
 manually via `AWSCredentialConfig.sms_from_number`. Requires IAM permissions
 `sms-voice:SendTextMessage` and `sms-voice:DescribePhoneNumbers`, plus `sms-voice:DescribeOptedOutNumbers` for the
 hourly opt-out sync (without it each sync is recorded as failed; sending is unaffected). The opt-out list, footer,
-quiet hours, links in texts and ticket texts are in [AWS SMS](../integrations/aws-sms.md).
+quiet hours, links in texts and ticket texts are in [AWS SMS](../integrations/messaging/aws-sms.md).
 
 Every SMS (codes, the admin test SMS, campaigns) is sent by `send_text_message` on the `sms_send` delivery
 channel, for the identity `<region>:<origination>`; the SendTextMessage quota is per account and Region, so a
@@ -177,7 +177,7 @@ try again. A cached list or message never takes a slot.
 | Concern | Implementation |
 |---------|---------------|
 | AI behavior | `SystemIntelligenceConfig` (`src/apps/system_intelligence/models/config.py`) |
-| Public spend limits | Per-visitor/member and global token budgets in PostgreSQL, set on the same config; see [Assistant and AI search limits](../integrations/assistant-limits.md) |
+| Public spend limits | Per-visitor/member and global token budgets in PostgreSQL, set on the same config; see [Assistant and AI search limits](../integrations/limits/assistant-limits.md) |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | Runtime | `src/apps/system_intelligence/services/bedrock/` |
 | Record writes (admin assistant) | Single-record writes through `core`'s `safe_orm`, proposed by the assistant and applied only when the conversation's owner approves (`src/apps/system_intelligence/services/actions/`). Readable but never written (`DENIED_WRITE_MODEL_LABELS`): contact emails and phones, the email and phone verification challenges, admin invitations, the RSA sign-in key, the CLI audit log and background jobs; Django's auto-created many-to-many tables are never written either. Neither read nor written (`DENIED_MODEL_LABELS`): the CLI's authorization codes and access tokens, and the assistant's exports. Member writes are stricter than `MemberAdmin`: through the assistant, only the I2G Master changes or deletes another staff or superuser account, or writes `MemberAdmin.superuser_only_fields` (`db/member_guard.py`). A refused approval fails the request and shows the reason in the chat panel. |
@@ -231,8 +231,8 @@ Loaded via `<script>` tags in `pages/index.html`:
 ## Related pages
 
 - [Google Sheets Integration](../integrations/google-sheets/index.md) — Detailed sync documentation
-- [Microsoft Graph email](../integrations/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
-- [Gmail API email](../integrations/gmail-api-email.md) — service account, domain-wide delegation, key install and rotation, the access check, Sent copies, and errors for the Gmail API provider
-- [Delivery rates](../integrations/delivery-rates.md) — Smart rate and manual rate for every delivery channel: precedence, seeds and sources, budgets, stops, provider limit reads and the IAM they need
+- [Microsoft Graph email](../integrations/messaging/microsoft-graph-email.md) — Entra app setup, mailbox scoping, limits, and errors for the Graph email provider
+- [Gmail API email](../integrations/messaging/gmail-api-email.md) — service account, domain-wide delegation, key install and rotation, the access check, Sent copies, and errors for the Gmail API provider
+- [Delivery rates](../integrations/limits/delivery-rates.md) — Smart rate and manual rate for every delivery channel: precedence, seeds and sources, budgets, stops, provider limit reads and the IAM they need
 - [Deployment: Environments](../deployment/environments.md) — Environment variable reference
 - [CMS & Admin: Member & Mail Tools](../cms-admin/member-and-mail-tools.md) — Email campaign operations

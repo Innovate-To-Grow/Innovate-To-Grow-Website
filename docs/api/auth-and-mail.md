@@ -29,16 +29,16 @@ are therefore not limited per client IP.** What bounds them instead:
 |------|-------|
 | Login link, impersonation, newsletter unsubscribe and resubscribe | The token itself: about 384 bits and single use (login link, impersonation), or HMAC-signed with an expiry (unsubscribe 365 days, resubscribe 1 hour; both idempotent, see [One-click unsubscribe and resubscribe](#one-click-unsubscribe-and-resubscribe)) |
 | Email code request, registration, resend, password reset by email | ALTCHA proof bound to operation, destination and browser session (`enforce` mode only; `observe` mode accepts a request without a proof); per-destination 60-second cooldown and hourly cap; per-member/purpose caps |
-| Code verification (email and SMS) | Per-challenge attempt cap (email 5, SMS `MAX_VERIFY_ATTEMPTS` = 5), cut to 1 for codes issued to a destination with 10+ failed guesses in 24 hours ([code-guess degradation](../deployment/send-verification.md#code-guess-degradation)). The wrong guess that spends such a code is answered like any first wrong guess (`400`, the uniform invalid-code body) on every verify endpoint, email and SMS |
-| SMS code request (phone auth, password reset by phone, and the authenticated SMS flows) | Per-number 60-second cooldown and 10 sends/hour; ALTCHA proof in `enforce` mode; the global SMS daily budget (`sms_daily_limit`), which counts SMS handed to the provider and nothing else ([SMS daily budget](../deployment/send-verification.md#sms-daily-budget)) |
+| Code verification (email and SMS) | Per-challenge attempt cap (email 5, SMS `MAX_VERIFY_ATTEMPTS` = 5), cut to 1 for codes issued to a destination with 10+ failed guesses in 24 hours ([code-guess degradation](../operations/send-verification.md#code-guess-degradation)). The wrong guess that spends such a code is answered like any first wrong guess (`400`, the uniform invalid-code body) on every verify endpoint, email and SMS |
+| SMS code request (phone auth, password reset by phone, and the authenticated SMS flows) | Per-number 60-second cooldown and 10 sends/hour; ALTCHA proof in `enforce` mode; the global SMS daily budget (`sms_daily_limit`), which counts SMS handed to the provider and nothing else ([SMS daily budget](../operations/send-verification.md#sms-daily-budget)) |
 | ALTCHA challenge issuance and status lookup | None per IP: a challenge sends nothing, and the send it authorises is capped per destination |
 | Password login | Identifier-keyed failure lockout (below), plus site-wide spray *detection* (alarm only) |
 
 Still limited per IP, and **only as a fallback while no SMS daily budget (`sms_daily_limit`) is configured**: the anonymous
 SMS request endpoints (`POST /authn/phone-auth/request-code/` and `POST /authn/password-reset/request-code/` with a phone
 identifier, 5/minute). Once the budget is set, SMS spend is bounded by it plus each number's cooldown and hourly cap, and
-the per-IP throttle is no longer attached. Authenticated endpoints keep their per-user throttles. See [Send verification](../deployment/send-verification.md#client-ip-policy-and-residual-risks)
-for the residual risks and [WAF rate limits](../deployment/waf-rate-limits.md) for the campus-aware edge rules.
+the per-IP throttle is no longer attached. Authenticated endpoints keep their per-user throttles. See [Send verification](../operations/send-verification.md#client-ip-policy-and-residual-risks)
+for the residual risks and [WAF rate limits](../operations/waf-rate-limits.md) for the campus-aware edge rules.
 
 **When the SMS daily budget is spent.** The budget is reserved only when an SMS is handed to the provider, so requests
 that send nothing (a password reset for a number without an account, a number over its own hourly cap) do not use it.
@@ -124,7 +124,7 @@ status is `submitted`, not a delivery-success claim; actual delivery outcomes
 remain internal. Proof/authentication failures and site-wide sending limits
 still reject the request before the protected business action.
 
-See [Send verification](../deployment/send-verification.md) for operations,
+See [Send verification](../operations/send-verification.md) for operations,
 error codes, quotas, and cutover.
 
 ## Registration
@@ -252,7 +252,7 @@ leaves ended ones to that purge, so a sign-in and the purge do not delete the sa
 
 **Spray detection.** Every counted failure also increments one site-wide row per 5-minute window. The failure that brings it to
 `SPRAY_ALERT_THRESHOLD` (200) logs one WARNING, `login_guard.failure_spike failures=200 window=5m threshold=200`, for a
-CloudWatch Logs metric filter and alarm ([Monitoring](../deployment/send-verification.md#monitoring)). Nothing is refused: a
+CloudWatch Logs metric filter and alarm ([Monitoring](../operations/send-verification.md#monitoring)). Nothing is refused: a
 global block would lock the whole campus out at once. A successful sign-in clears only that identifier's rows, not the
 site-wide count.
 

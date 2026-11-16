@@ -6,7 +6,7 @@ group of endpoints), and every scope has a **priority tier**, so under load the 
 before anything a person is waiting for, and never the verification code a person just asked for. The policies are
 edited on **Site Settings → Request Limits** (`/admin/core/request-limits/`). The finer per-view limits (DRF
 throttles, the sign-in lockout, code cooldowns, the SMS daily budget) still apply underneath; their rates are
-request-limit policies too ([API: Throttling](../api/index.md#throttling)).
+request-limit policies too ([API: Throttling](../../api/index.md#throttling)).
 
 It mirrors the [delivery-rate limiter](delivery-rates.md) for outgoing messages: Smart limit is on by default for every
 scope and takes priority over the manual limit, the controller is priority-ordered AIMD, and every change is in the
@@ -73,7 +73,7 @@ Each scope's `identity` picks the bucket key (`apps/core/services/request_limits
 only for anonymous callers of scopes where a single source flooding is the risk: public reads (3,000/min per IP, a
 ceiling far above any honest browser, with 12,000/min site-wide), public writes, tokenized links, the legacy viewer,
 public background requests, telemetry, full-list catalog reads, AI, 404s and the SES webhook. See
-[Environments](../deployment/environments.md#what-still-keys-on-the-client-ip).
+[Environments](../../deployment/environments.md#what-still-keys-on-the-client-ip).
 
 **Per-source flood ceiling.** A caller without a verified identity (anonymous, or an unverified CLI token) in a scope
 not keyed on the IP has no key of its own, or one it picks (a destination). Such a scope's `source_cap` therefore
@@ -165,7 +165,7 @@ cache key. Recent 429s are counted per scope and minute in the same store (kept 
 
 `{"detail": "Too many requests. Please try again in N seconds.", "code": "rate_limited", "retry_after": N}` with
 `Retry-After: N` and `Cache-Control: no-store`, exposed to the cross-origin SPA (`CORS_EXPOSE_HEADERS`). The SPA, the
-admin pollers and the CLI wait it out ([API: Throttling](../api/index.md#throttling)).
+admin pollers and the CLI wait it out ([API: Throttling](../../api/index.md#throttling)).
 
 ## Settings
 
@@ -183,7 +183,7 @@ What an override changes on a running site: a scope's `requests` (the Smart base
 `global_cap`), routes, exemptions and every runtime section apply at once. The other scope keys (tier, manual limit,
 Smart switch, floor, fixed, enabled) only **seed** a policy row that does not exist yet; an existing row is changed
 in the admin. `REQUEST_RATE_LIMITS_ENABLED` turns the whole limiter off. See
-[Environments](../deployment/environments.md#request-limits).
+[Environments](../../deployment/environments.md#request-limits).
 
 ## Runbook
 
@@ -220,7 +220,7 @@ its status every 15 seconds.
 - Lower the scope's manual limit with Smart off, or lower its **aggregate cap** under *Advanced* (allowed: caps are
   lowered, never raised). Moving a scope to P3 makes Smart shed it first and limits its slots to half.
 - A repeat offender is already blocked by abuse escalation (up to 15 minutes per scope). Per-IP floods from
-  off campus belong at the edge ([WAF rate limits](../deployment/waf-rate-limits.md)).
+  off campus belong at the edge ([WAF rate limits](../../operations/waf-rate-limits.md)).
 
 ### Switching a scope off
 

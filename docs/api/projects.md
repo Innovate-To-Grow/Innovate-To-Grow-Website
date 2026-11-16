@@ -161,7 +161,7 @@ assistant traffic cannot pause AI search), never to the client IP. Estimated inp
 `429` with `code: "budget_exceeded"` ("AI search has reached its usage limit for now. Please try again later.") means
 the member's budget or the global one is spent; `503` with `code: "budget_unavailable"` means the budget store could
 not be reached; `502` with `code: "ai_search_error"` means the model call failed (nothing is charged). See
-[Assistant and AI search limits](../integrations/assistant-limits.md).
+[Assistant and AI search limits](../integrations/limits/assistant-limits.md).
 
 ### `GET /projects/past-shares/mine/`
 

@@ -202,7 +202,7 @@ nothing the visitor can see.
   task has its own counters, and a restart forgets them. These are fairness limits over analytics rows; nothing
   about security or money depends on them.
 - A flood from one off-campus address belongs at the edge:
-  [WAF rate limits](../deployment/waf-rate-limits.md), pattern set C.
+  [WAF rate limits](../operations/waf-rate-limits.md), pattern set C.
 
 **Stored fields:** every field is bounded before it is buffered, because a batch is written with one
 `bulk_create` and a value PostgreSQL refuses would lose the whole batch.

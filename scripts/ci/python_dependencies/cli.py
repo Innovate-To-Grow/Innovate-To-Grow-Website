@@ -2,7 +2,7 @@
 """Enforce Django-app dependency directions and forbid import-time module cycles.
 
 Rules live in ``scripts/ci/python_dependencies/python_dependencies.toml``; the policy is explained in
-docs/architecture/code-quality.md.
+docs/standards/code-quality.md.
 
 * **Boundaries.** Each module under ``src/apps/<app>/`` may import another app
   only when ``<app>`` lists it in ``[allowed]``. Modules matching a

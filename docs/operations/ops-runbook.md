@@ -41,9 +41,9 @@ Put each date in a shared calendar with a reminder well before it. Keep the cale
 
 | Item | Expires / renews | Warning | Procedure |
 |---|---|---|---|
-| Microsoft Graph app certificate | **2027-10-29** | The site logs a warning from 60 days before and shows an amber badge; red from 14 days before, when `verify_service_configs --strict` also fails while Graph is the selected provider | [Rotate the certificate](../integrations/microsoft-graph-email.md#rotate-the-certificate) |
-| Gmail API service-account key | Does not expire by default; rotation date → private ops doc | None | [Gmail API rotation](../integrations/gmail-api-email.md#rotation) |
-| Shared AWS IAM key (SES, SMS, Bedrock) | Rotation date → private ops doc | None | [Application AWS credentials](production.md#application-aws-credentials-and-background-jobs) |
+| Microsoft Graph app certificate | **2027-10-29** | The site logs a warning from 60 days before and shows an amber badge; red from 14 days before, when `verify_service_configs --strict` also fails while Graph is the selected provider | [Rotate the certificate](../integrations/messaging/microsoft-graph-email.md#rotate-the-certificate) |
+| Gmail API service-account key | Does not expire by default; rotation date → private ops doc | None | [Gmail API rotation](../integrations/messaging/gmail-api-email.md#rotation) |
+| Shared AWS IAM key (SES, SMS, Bedrock) | Rotation date → private ops doc | None | [Application AWS credentials](../deployment/production.md#application-aws-credentials-and-background-jobs) |
 | Google Sheets service-account key | Rotation date → private ops doc | None | **TODO** |
 | SMS origination number and its registration | Renewal dates and fees → private ops doc | None | **TODO** |
 | TLS certificates (AWS managed) | Renew automatically | AWS notices | Check renewal status after DNS changes |
@@ -55,7 +55,7 @@ Put each date in a shared calendar with a reminder well before it. Keep the cale
 
 1. A pull request is reviewed and merged to `main`; CI runs the full suite.
 2. After CI succeeds, the deploy workflows wait at the production approval gate
-   ([Production deployment approval](production.md), [CI/CD](ci-cd.md)).
+   ([Production deployment approval](../deployment/production.md), [CI/CD](../deployment/ci-cd.md)).
 3. Before approving, check that the waiting run deploys the commit you expect (the current `main`). Approvers →
    private ops doc.
 4. After the deploy, check: the public site loads; the admin loads; **Email Monitoring → Bounce processing** shows
@@ -84,12 +84,12 @@ ops doc.
 
 | Incident | First checks | Public reference |
 |---|---|---|
-| Email is not sending | **Delivery Rates** status line (paused or stopped?), **Email Monitoring** last error, the provider's access check | [Delivery rates](../integrations/delivery-rates.md), [Graph error reference](../integrations/microsoft-graph-email.md#error-reference) |
+| Email is not sending | **Delivery Rates** status line (paused or stopped?), **Email Monitoring** last error, the provider's access check | [Delivery rates](../integrations/limits/delivery-rates.md), [Graph error reference](../integrations/messaging/microsoft-graph-email.md#error-reference) |
 | A blast went to the wrong people or with the wrong content | Stop further sends (**TODO:** the procedure), **Revoke login links** on the campaign, tell the program lead | [Login link tokens](../cms-admin/member-and-mail-tools.md#login-link-tokens) |
-| Many bounces or rejections after a blast | **Email Monitoring → Bounce reports** filtered by category: many *Spam or reputation rejection* or *Relay denied* reports point at our sending (SPF/DKIM/DMARC, block lists, connectors, content), not at the contacts | [Bounce categories](../integrations/email-monitoring.md#bounce-categories) |
-| A credential may have leaked (Graph key, AWS key, Gmail key, admin account) | Revoke first, then investigate; CloudTrail; Admin Log | [Emergency revocation](../integrations/microsoft-graph-email.md#emergency-revocation) |
-| The site is down or slow | Health checks, recent deploys, request limits | [Request limits](../integrations/request-limits.md) |
-| SMS stopped (spend limit, throttling) | **Delivery Rates → SMS · AWS End User Messaging** card | [Delivery rates](../integrations/delivery-rates.md) |
+| Many bounces or rejections after a blast | **Email Monitoring → Bounce reports** filtered by category: many *Spam or reputation rejection* or *Relay denied* reports point at our sending (SPF/DKIM/DMARC, block lists, connectors, content), not at the contacts | [Bounce categories](../integrations/messaging/email-monitoring.md#bounce-categories) |
+| A credential may have leaked (Graph key, AWS key, Gmail key, admin account) | Revoke first, then investigate; CloudTrail; Admin Log | [Emergency revocation](../integrations/messaging/microsoft-graph-email.md#emergency-revocation) |
+| The site is down or slow | Health checks, recent deploys, request limits | [Request limits](../integrations/limits/request-limits.md) |
+| SMS stopped (spend limit, throttling) | **Delivery Rates → SMS · AWS End User Messaging** card | [Delivery rates](../integrations/limits/delivery-rates.md) |
 | Personal data exposed (an export shared, wrong recipients) | What, who, when; contain it | UC Merced privacy and InfoSec contacts → private ops doc |
 
 **TODO:** write each playbook out.

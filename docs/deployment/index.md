@@ -9,15 +9,24 @@ How to run, build, and deploy the Innovate To Grow platform across local, CI, an
 - [Backend Deployment](backend.md) — Docker, ECS Fargate, and Uvicorn
 - [Frontend Deployment](frontend.md) — Vite build and AWS Amplify
 - [CI/CD](ci-cd.md) — GitHub Actions pipelines
-- [Code scanning](code-scanning.md) — How CodeQL, Semgrep and Trivy alerts are fixed or dismissed, and the triage of the backlog
 - [Production Deployment Approval](production.md) — One protected approval gate for all production targets
-- [Send verification](send-verification.md) — Self-hosted ALTCHA + destination quotas for email/SMS codes
-- [Legacy read-only viewer](legacy-view.md) — Private CloudFront gateway to the retired Flask site, launched from Admin
-- [WAF rate limits](waf-rate-limits.md) — Campus-aware AWS WAF rules for the unauthenticated auth endpoints
-- [Operations runbook (skeleton)](ops-runbook.md) — Owners, expiry calendar, deploy and rollback, incident playbooks; values live in the private ops doc
-- [Assistant and AI search limits](../integrations/assistant-limits.md) — Per-visitor/member and global token budgets, sizing and alarm
-- [Email monitoring](../integrations/email-monitoring.md) — Email telemetry, Graph bounce processing in the background worker, the dashboard and its settings
-- [AWS SMS](../integrations/aws-sms.md) — SMS opt-out sync in the background worker (IAM `sms-voice:DescribeOptedOutNumbers`), quiet hours, links in SMS (off until the number's registration allows them), ticket texts
+
+## Operations ([`docs/operations/`](../operations/))
+
+Runbooks, security controls and operator tools:
+
+- [Code scanning](../operations/code-scanning.md) — How CodeQL, Semgrep and Trivy alerts are fixed or dismissed, and the triage of the backlog
+- [Send verification](../operations/send-verification.md) — Self-hosted ALTCHA + destination quotas for email/SMS codes
+- [Legacy read-only viewer](../operations/legacy-view.md) — Private CloudFront gateway to the retired Flask site, launched from Admin
+- [WAF rate limits](../operations/waf-rate-limits.md) — Campus-aware AWS WAF rules for the unauthenticated auth endpoints
+- [Operations runbook (skeleton)](../operations/ops-runbook.md) — Owners, expiry calendar, deploy and rollback, incident playbooks; values live in the private ops doc
+- [i2g-admin CLI](../operations/cli-admin.md) — Terminal CRUD over `/admin-api/` via OAuth2 + PKCE, riding the admin login
+
+## Related integrations
+
+- [Assistant and AI search limits](../integrations/limits/assistant-limits.md) — Per-visitor/member and global token budgets, sizing and alarm
+- [Email monitoring](../integrations/messaging/email-monitoring.md) — Email telemetry, Graph bounce processing in the background worker, the dashboard and its settings
+- [AWS SMS](../integrations/messaging/aws-sms.md) — SMS opt-out sync in the background worker (IAM `sms-voice:DescribeOptedOutNumbers`), quiet hours, links in SMS (off until the number's registration allows them), ticket texts
 
 ## Who this is for
 
@@ -32,7 +41,7 @@ Engineers setting up a local development environment, deploying changes, or debu
 | Database | SQLite | PostgreSQL 16 (GH Actions service) | PostgreSQL + SSL |
 | Cache | LocMemCache | LocMemCache | Redis if `REDIS_URL` is set, else per-container file cache (production today); plus the in-process `throttle` alias everywhere |
 | File storage | Local filesystem | Local filesystem | S3 via django-storages |
-| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP / [Microsoft Graph](../integrations/microsoft-graph-email.md) / [Gmail API](../integrations/gmail-api-email.md), paced per channel ([Delivery rates](../integrations/delivery-rates.md)) |
+| Email | Console (stdout) | Console (stdout) | AWS SES / SMTP / [Microsoft Graph](../integrations/messaging/microsoft-graph-email.md) / [Gmail API](../integrations/messaging/gmail-api-email.md), paced per channel ([Delivery rates](../integrations/limits/delivery-rates.md)) |
 | Load balancer | None | None | ALB with health probes |
 
 ## Quick start

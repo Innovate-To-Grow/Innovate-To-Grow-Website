@@ -9,7 +9,7 @@ widespread test failures.  Site-wide limiting is the request limiter
 request by scope and priority tier, and is off in the test settings unless a test
 switches it on.  The finer per-view throttles are set via throttle_classes; their
 rates are request-limit policies (``apps.core.services.request_limits.view_limits``).
-See docs/integrations/request-limits.md.
+See docs/integrations/limits/request-limits.md.
 """
 
 from datetime import timedelta

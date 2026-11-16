@@ -284,9 +284,9 @@ Each provider's answers are matched against `DELIVERY_RATES["signals"]` by an ad
 | Gmail API | `rateLimitExceeded`, `408`, other `429`s | "Too many concurrent requests" (1 s); token endpoint busy | "(Mail sending)" `429`; bandwidth `429`; `dailyLimitExceeded`; token and permission refusals | `badRequest`, `invalidArgument` |
 | AWS SMS | `ThrottlingException` | – | spend limit; `ACCOUNT_DISABLED`, `INSUFFICIENT_ACCOUNT_REPUTATION`; `NO_ORIGINATION_IDENTITIES_FOUND` | `ValidationException`, opted out |
 
-Per-provider detail: [Microsoft Graph email](microsoft-graph-email.md#campaign-pacing),
-[Gmail API email](gmail-api-email.md#errors-and-rate-signals), and
-[Integrations](../architecture/integrations.md#aws-end-user-messaging-sms) for SMS and Gmail IMAP.
+Per-provider detail: [Microsoft Graph email](../messaging/microsoft-graph-email.md#campaign-pacing),
+[Gmail API email](../messaging/gmail-api-email.md#errors-and-rate-signals), and
+[Integrations](../../architecture/integrations.md#aws-end-user-messaging-sms) for SMS and Gmail IMAP.
 
 **[CONFIRM LIVE]** Provider behaviour the adapters assume but that was not observed:
 
@@ -318,7 +318,7 @@ Microsoft Graph's `GRAPH_REQUEST_TIMEOUT_SECONDS` (30), the Gmail API's `request
 sign-in code without a cached token needs two) and the 30 s Gmail IMAP timeout are failure bounds that may exceed the
 budget: they only end a stuck call, which the ALB idle timeout bounds in any case. Graph also caps `Retry-After` at
 `GRAPH_MAX_RETRY_AFTER_SECONDS`; the smaller of that and `controller.retry_after_max_seconds` applies. See
-[Environments](../deployment/environments.md#delivery-rates).
+[Environments](../../deployment/environments.md#delivery-rates).
 
 ## Release notes
 

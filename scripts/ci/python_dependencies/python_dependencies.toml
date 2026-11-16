@@ -1,5 +1,5 @@
 # Dependency rules for scripts/ci/python_dependencies/.
-# Policy: docs/architecture/code-quality.md#dependency-directions.
+# Policy: docs/standards/code-quality.md#dependency-directions.
 
 # Composition roots: project-wide entry points that wire apps together.
 # - core management commands are the project's operational CLI (the background

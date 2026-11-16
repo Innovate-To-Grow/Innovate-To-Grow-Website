@@ -146,7 +146,7 @@ attempt counts and the password-login lockout (`authn_loginfailurewindow`, see
 [Auth & Mail](../api/auth-and-mail.md#login)). They are shared by every ECS task
 and Uvicorn worker and do not need Redis. Production has no Redis today and uses
 a per-container file cache; see
-[Environments: production cache](environments.md#production-cache-today) for
+[Environments: production cache](../deployment/environments.md#production-cache-today) for
 what still depends on that cache.
 
 ### SMS daily budget
@@ -262,7 +262,7 @@ per-IP limit (the campus network is one IP). Also intentional:
   drops off by itself with no deploy. While it applies it is keyed on the client
   address DRF resolves from `X-Forwarded-For`: in production the entry the ALB
   appended (`REST_FRAMEWORK["NUM_PROXIES"]`, see
-  [Client IP and proxy trust](backend.md#client-ip-and-proxy-trust)), which a
+  [Client IP and proxy trust](../deployment/backend.md#client-ip-and-proxy-trust)), which a
   caller cannot forge. It is still a speed bump, not a budget: the history is
   per Uvicorn process and a caller with many addresses gets a bucket per address.
 - **The SMS daily budget is one global counter.** It is spent only by SMS
