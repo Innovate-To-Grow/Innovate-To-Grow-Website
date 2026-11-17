@@ -1,17 +1,7 @@
-"""Telling automated mail from mail a person wrote, from headers and the first few KB of text only.
-
-Pure functions: no database, no network. ``classify`` tries the classes in order and the first match wins: the
-site's own message, bounce report, receipt, automatic reply (``autoreply``: vacation, left the organisation, other),
-other system mail, list or bulk mail (``bulk``), spam, and otherwise human. Only strong signals (headers that mail
-systems set, and the automatic-reply subject prefixes they write) put a message in an automated class. When unsure
-the verdict is human, because a person's message hidden as automated costs more than an automated one shown:
-content-only signs become hints on a human verdict (``possible_auto_reply``, ``possible_left_org``, …), never a class.
-
-The caller says whether the message replies to the site's own mail (``Evidence.replies_to_site_mail``, from its
-In-Reply-To and References: an email the site sent, or a message of a conversation with a person the caller already
-holds). Such a reply is not list or bulk mail on weak bulk signals alone (a person answering a campaign from a CRM
-tool), but an automatic reply stays one whatever it answers: the flag never makes automated mail a person's. Every
-verdict on such a reply carries the hint ``replies_to_site_mail``.
+"""Classify inbound mail using headers and the first few KB of text, with no database or network access.
+The first strong signal wins: own mail, bounce, receipt, automatic reply, system mail, bulk mail or spam.
+Otherwise the message is human; weaker content signals become hints. A reply to site mail stays human on weak
+bulk signals, but an automatic reply stays automated. Every reply verdict carries ``replies_to_site_mail``.
 """
 
 from dataclasses import dataclass, replace

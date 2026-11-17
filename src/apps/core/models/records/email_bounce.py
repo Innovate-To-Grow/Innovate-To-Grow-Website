@@ -1,12 +1,10 @@
 """Bounce notifications read from the sending mailbox, and the bounce processor's durable state.
 
-``EmailBounce`` holds one row per failed (or delayed) recipient of one non-delivery report, matched to the outgoing
-email it reports on when a reliable identifier allows it (``apps.core.services.email.bounces``). Only the fields
-below are kept: never the report's text or the original message's body.
+``EmailBounce`` holds one row per failed or delayed recipient, matched to its outgoing email when possible. It
+keeps only diagnostic fields, never the report's text or the original message body.
 
-Each row has a fine **category** (what went wrong, from the SMTP reply code, the enhanced status code and, for generic
-codes only, the diagnostic text) and the coarse **classification** derived from it (hard, soft, rejected, delayed,
-unknown), which the dashboard's charts and an email's worst bounce use.
+Each row has a fine **category** from the SMTP status and diagnostic, plus a coarse **classification** (hard, soft,
+rejected, delayed or unknown) used by dashboard charts and an email's worst bounce.
 """
 
 from django.db import models
