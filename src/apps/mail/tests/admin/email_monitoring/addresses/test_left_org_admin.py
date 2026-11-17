@@ -35,6 +35,8 @@ def notice_row(**values) -> BouncedAddress:
         "left_org_last_at": now,
         "left_org_contact": RILEY,
         "left_org_contact_kind": "contact",
+        "left_org_contact_name": "Riley Chen",
+        "left_org_contact_phone": "(209) 555-0123",
         "left_org_ticket": 1042,
         "first_bounce_at": now,
         "last_bounce_at": now,
@@ -59,6 +61,9 @@ class NoticePagesTests(TestCase):
         self.assertEqual(self.row.suggestion, BouncedAddress.Suggestion.LEFT_ORG)
         self.assertContains(response, "Left-the-organisation notices")
         self.assertContains(response, f"It names <strong>{RILEY}</strong>: who to contact instead, the notice says.")
+        self.assertContains(response, "Contact details need manual review.")
+        self.assertContains(response, "Name mentioned: <strong>Riley Chen</strong>.")
+        self.assertContains(response, "Phone mentioned: <strong>(209) 555-0123</strong>.")
         self.assertContains(response, "Out-of-office replies are never counted here.")
         self.assertContains(response, self.ticket_link.replace("&", "&amp;"))
         self.assertContains(response, "May have left: an automatic reply says so.")
@@ -95,6 +100,10 @@ class NoticePagesTests(TestCase):
             response, '<option value="left_org" selected>Has a left-the-organisation notice</option>', html=True
         )
         self.assertContains(response, "out-of-office replies never count")
+
+        with_contact = self.client.get(reverse(LIST), {"type": "left_org_contact"})
+        self.assertEqual([entry["row"].address for entry in with_contact.context["entries"]], [JORDAN])
+        self.assertContains(with_contact, "Notice contact: review")
 
     def test_the_replace_page_hints_at_the_named_address_and_fills_in_nothing(self):
         self.client.force_login(make_superuser())

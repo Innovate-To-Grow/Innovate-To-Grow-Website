@@ -61,6 +61,8 @@ COUNTED_FIELDS = [
     "left_org_last_at",
     "left_org_contact",
     "left_org_contact_kind",
+    "left_org_contact_name",
+    "left_org_contact_phone",
     "left_org_ticket",
     "first_bounce_at",
     "last_bounce_at",

@@ -2,8 +2,8 @@
 
 The helpdesk classifies every Inbox message (``core.InboundMessage``): an automatic reply saying that the person left,
 retired or changed address, or that the mailbox is closed, is ``left_org``. When it answers an email the site sent, the
-helpdesk keeps the address that email went to (``result["site_recipient"]``) and any address the notice names instead
-(``result["named_contact"]``, a hint from its text). Only such matched notices count, and against the address the site
+helpdesk keeps the address that email went to (``result["site_recipient"]``) and any name, email or phone the notice
+names (hints from its text). Only such matched notices count, and against the address the site
 mailed (the notice may come from another address of the same organisation): anyone can mail the mailbox a
 notice-shaped message, and one that answers nothing the site sent says nothing about an address it mails. An
 out-of-office reply is never counted: the helpdesk classifies a notice that mentions an absence as one.
@@ -49,6 +49,14 @@ def _contact(row: BouncedAddress, result: dict) -> tuple[str, str]:
     return contact, kind if kind in CONTACT_KINDS else ""
 
 
+def _hint(result: dict, key: str, limit: int) -> str:
+    value = result.get(key)
+    if not isinstance(value, str):
+        return ""
+    value = value.strip()
+    return value if len(value) <= limit and all(char.isprintable() for char in value) else ""
+
+
 def _result(notice: dict) -> dict:
     result = notice["result"]
     return result if isinstance(result, dict) else {}
@@ -62,6 +70,8 @@ def _add_notice(row: BouncedAddress, notice: dict) -> None:
     if row.left_org_last_at is None or at >= row.left_org_last_at:
         row.left_org_last_at = at
         row.left_org_contact, row.left_org_contact_kind = _contact(row, result)
+        row.left_org_contact_name = _hint(result, "named_contact_name", 100)
+        row.left_org_contact_phone = _hint(result, "named_contact_phone", 40)
         ticket = result.get("ticket")
         row.left_org_ticket = ticket if type(ticket) is int and ticket > 0 else None
 

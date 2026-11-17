@@ -30,6 +30,7 @@
 
     <form method="post" id="duplicate-campaign-form">
         {% csrf_token %}
+        {% if retry_address %}<input type="hidden" name="retry_address" value="{{ retry_address }}">{% endif %}
         <div class="mb-4">
             <label for="duplicate-name" class="block text-sm font-medium text-base-700 dark:text-base-300 mb-2">
                 Name of the new draft
@@ -40,14 +41,21 @@
         <fieldset class="mb-6">
             <legend class="block text-sm font-medium text-base-700 dark:text-base-300 mb-2">Audience of the new draft</legend>
             <label class="flex items-start gap-2 text-sm mb-2">
-                <input type="radio" name="audience" value="same" checked class="mt-1">
+                <input type="radio" name="audience" value="same" {% if not retry_address %}checked{% endif %} class="mt-1">
                 <span><strong>Same audience</strong> as the original: to send the email again, or after changing it.</span>
             </label>
             <label class="flex items-start gap-2 text-sm">
                 <input type="radio" name="audience" value="manual" class="mt-1">
                 <span><strong>New, empty Manual Emails list</strong>: to send the same email to more people. Enter their addresses in the draft; addresses that already received the original are not excluded automatically.</span>
             </label>
+            {% if retry_address %}
+            <label class="flex items-start gap-2 text-sm mb-2">
+                <input type="radio" name="audience" value="retry" checked class="mt-1">
+                <span><strong>Retry only {{ retry_address }}</strong>. This creates a one-address draft. Review the original message and recipient before sending it.</span>
+            </label>
+            {% endif %}
         </fieldset>
+        {% if retry_address %}<p class="mb-6 text-sm">If the receiving server rejected our sender or relay, check the cause and choose a different configured <a href="{% url 'admin:mail_sending_method' %}">Email Sending Method</a> before sending. That setting controls all site email.</p>{% endif %}
         <div class="flex gap-3">
             <button type="submit" id="duplicate-campaign-btn"
                     class="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 inline-flex items-center gap-2">

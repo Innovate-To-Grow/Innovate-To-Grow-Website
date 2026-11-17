@@ -105,7 +105,7 @@ def _decide(status: str, smtp: str, text: str) -> tuple[str, str]:
             return _refined(text, phrases.TEMPORARY_REFINEMENTS, Category.TRANSIENT)
         return _refined(text, phrases.ALL, Category.UNKNOWN)
     if status in codes.SIZE_CODES and phrases.ZERO_LIMIT_RE.search(text):
-        return Category.MAILBOX_DISABLED, phrases.ZERO_LIMIT.reason
+        return Category.TRANSIENT, phrases.ZERO_LIMIT.reason
     found = codes.specific(*parts)
     if status in codes.AMBIGUOUS:
         return _refined(text, phrases.AMBIGUOUS_REFINEMENTS, found)

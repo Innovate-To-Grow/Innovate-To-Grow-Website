@@ -1,7 +1,13 @@
 from django.test import SimpleTestCase
 
 from apps.core.services.email.inbound import NO_AUTO_RESPONSE, REPLY_HINT, classify
-from apps.core.services.email.inbound.classification.autoreply import named_contact, own_text, response_allowed
+from apps.core.services.email.inbound.classification.autoreply import (
+    named_contact,
+    named_person,
+    named_phone,
+    own_text,
+    response_allowed,
+)
 from apps.core.services.email.inbound.classification.rules import ESP_HEADERS
 from apps.core.tests.services.email.inbound.auto_replies.test_auto_replies import verdict_of
 
@@ -10,6 +16,18 @@ from ..classify.test_classify import OWN, evidence
 
 
 class NamedContactTests(SimpleTestCase):
+    def test_names_only_a_person_introduced_as_a_contact(self):
+        text = "Jordan Park left the company. Please contact Riley Chen at riley@contoso.example."
+        self.assertEqual(named_person(text), "Riley Chen")
+        self.assertEqual(named_person("Jordan Park left the company. Contact our team."), "")
+
+    def test_phone_is_bounded_and_does_not_come_from_an_email_or_quoted_original(self):
+        text = "Jordan Park has left. Call (209) 555-0123 or email 2095550199@contoso.example."
+        self.assertEqual(named_phone(text), "(209) 555-0123")
+        self.assertEqual(named_phone("Write to 2095550199@contoso.example."), "")
+        quoted = own_text("Jordan has left.\n\nOn Monday, Alex wrote:\nCall (209) 555-0123.")
+        self.assertEqual(named_phone(quoted), "")
+
     def test_the_sender_the_site_and_report_or_no_reply_addresses_are_never_named(self):
         text = (
             "Write to jordan.park@contoso.example, i2g@ucmerced.edu, postmaster@contoso.example or noreply@x.example."

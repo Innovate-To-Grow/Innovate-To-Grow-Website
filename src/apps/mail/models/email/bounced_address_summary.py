@@ -96,6 +96,10 @@ class BouncedAddressSummaryMixin:
         return self.CONTACT_KINDS.get(self.left_org_contact_kind, "an address the notice names")
 
     @property
+    def left_org_has_contact_hint(self) -> bool:
+        return bool(self.left_org_contact or self.left_org_contact_name or self.left_org_contact_phone)
+
+    @property
     def graph_is_latest(self) -> bool:
         """Whether the latest event is a Microsoft Graph report (else an SES event, or nothing)."""
         if self.graph_last_at is None or not self.last_classification:

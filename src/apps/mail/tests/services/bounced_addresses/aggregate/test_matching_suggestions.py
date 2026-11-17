@@ -126,6 +126,9 @@ class SuggestionTests(TestCase):
                 self.assertFalse(self._row(suggestion=suggestion).suggests_address_action)
         self.assertIn("route and authorisation", Suggestion.RELAY.label)
         self.assertIn("reputation, authentication and content", Suggestion.REPUTATION.label)
+        self.assertIn("retry from another configured sender", Suggestion.RELAY.label)
+        self.assertIn("retry from another configured sender", Suggestion.REPUTATION.label)
+        self.assertIn("retry this address", Suggestion.CONSIDER.label)
         self.assertTrue(self._row(suggestion=Suggestion.REPLACE).suggests_address_action)
 
     def test_the_repeated_failure_thresholds_are_settings(self):

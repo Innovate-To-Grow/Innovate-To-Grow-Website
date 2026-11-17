@@ -138,9 +138,9 @@ against an address; everything else is temporary, about our own sending, about t
 | Category | Coarse classification | Decided by (examples) | What it means |
 |---|---|---|---|
 | **Address does not exist** (`hard`) | Hard bounce | `5.1.1`, `5.1.2`, `5.1.3`, `5.1.6`, `5.1.10`; `5.4.1` (Exchange: no such recipient in the tenant), `5.4.4`, `5.4.310`; text such as "user unknown", "no such user", "does not exist", "doesn't have a … account" on a generic code | Strong evidence: mark it undeliverable or replace it. |
-| **Mailbox disabled** (`mailbox_disabled`) | Hard bounce | `5.2.1` (unless its text makes it temporary, see Rules); text such as "account is disabled", "inactive mailbox", Yahoo's `554.30`; a **0 KB size limit**; a rejection saying the person **left the organisation** ("is no longer with Contoso", "has left the company", "address is no longer valid", "mailbox has been retired") | Strong evidence: replace the address, or mark it undeliverable. |
+| **Mailbox disabled** (`mailbox_disabled`) | Hard bounce | `5.2.1` (unless its text makes it temporary, see Rules); text such as "account is disabled", "inactive mailbox", Yahoo's `554.30`; a rejection saying the person **left the organisation** ("is no longer with Contoso", "has left the company", "address is no longer valid", "mailbox has been retired") | Strong evidence: replace the address, or mark it undeliverable. |
 | **Mailbox full** (`mailbox_full`) | Soft bounce | `5.2.2`, `4.2.2`; "over quota", "mailbox full" | Temporary: counts toward the repeated-failure threshold only. |
-| **Temporary failure** (`transient`) | Soft bounce | every other `4.x.x`; `5.4.x` expiry, DNS and connection codes (`5.4.300`, `5.4.312`, `5.4.316`, `5.4.7`, `5.4.14` …); `5.3.x`, `5.6.x`, `5.2.3`/`5.3.4` (message too large); text such as "connection timed out", "connection refused", "DNS query failed", "try again later" on a generic code, or Gmail's "receiving mail at a rate" on a `5.2.1` | The address is probably fine; Exchange already retried. Counts toward the threshold only; the next campaign tries again. |
+| **Temporary failure** (`transient`) | Soft bounce | every other `4.x.x`; `5.4.x` expiry, DNS and connection codes (`5.4.300`, `5.4.312`, `5.4.316`, `5.4.7`, `5.4.14` …); `5.3.x`, `5.6.x`, `5.2.3`/`5.3.4` (message too large, including a 0 KB receive limit); text such as "connection timed out", "connection refused", "DNS query failed", "try again later" on a generic code, or Gmail's "receiving mail at a rate" on a `5.2.1` | The address may recover; review the diagnostic and prepare a one-address retry draft if appropriate. |
 | **Spam or reputation rejection** (`spam_rejected`) | Rejected | `5.7.9` (Yahoo "policy reasons"), `5.7.20`–`5.7.29` (SPF, DKIM, DMARC, reverse DNS), `5.7.350`, `5.7.501`–`5.7.503`, `5.7.506`–`5.7.509`, `5.7.511`, `5.7.513`, `5.7.606`–`5.7.649`, `5.7.700`–`5.7.749`, `5.7.750`, `5.1.7`/`5.1.8` (our sender address); text such as "spam", "block list", "reputation", "Spamhaus", Yahoo `TSS04` | **Our sending side:** reputation, sender authentication or content. Not the contact. |
 | **Relay denied** (`relay_denied`) | Rejected | `5.7.54`, `5.7.57`, `5.7.60`, `5.7.64`; text such as "relay access denied", "unable to relay" | **Our sending side:** the sending route or authorisation (connector, sending mailbox, SPF). Not the contact. |
 | **Recipient policy rejection** (`policy_rejected`) | Rejected | any other `5.7.x` (restricted groups `5.7.12`, `5.7.124`, `5.7.133`–`5.7.136`, a generic `5.7.1`); text such as "not authorized", "access denied" | The recipient's server rules; no action on the contact. |
@@ -164,9 +164,9 @@ against an address; everything else is temporary, about our own sending, about t
   decides, and "no longer valid" about our own sending (a certificate, say) stays a policy refusal. An *automatic
   reply* saying so is not a bounce report: the helpdesk classifies it, and Bounced addresses counts it as a
   [left-the-organisation notice](#counting).
-- **A 0 KB size limit is a disabled mailbox.** A "message too large" report (`5.2.3`, `5.3.4`, or a generic code with
-  size wording) whose diagnostic gives a maximum size of 0 (servers disable a mailbox that way) is **Mailbox disabled**;
-  any other size limit is a temporary message problem.
+- **A 0 KB size limit is treated as temporary.** A "message too large" report (`5.2.3`, `5.3.4`, or a generic code with
+  size wording) whose diagnostic gives a maximum size of 0 is **Temporary failure**. Staff can review and retry it;
+  the diagnostic alone does not prove the address is permanently invalid.
 - **Yahoo.** "This user doesn't have a yahoo.com account" is a missing address, "This mailbox is disabled (554.30)" a
   disabled mailbox, and "Message not accepted for policy reasons" (`5.7.9`, `PH01`) a spam or reputation rejection;
   a bare `554 delivery error` with no reason (or Exchange's `5.0.350` wrapping one) is **unknown**.
@@ -231,7 +231,8 @@ subscription, and every change is a staff action with a confirmation page and an
   [Helpdesk](helpdesk.md#how-a-message-becomes-a-ticket)) that answer an email the site sent, counted against **the
   address that email went to** (the notice may come from another address of the same organisation, such as an alias
   or the mailbox answering for a departed person; one from another organisation, where the email was redirected, is
-  attributed to nobody), with the first and latest notice, the address the latest one names instead (a hint from its text, never verified) and its helpdesk
+  attributed to nobody), with the first and latest notice, any contact name, address and phone the latest one names
+  (unverified hints from its text) and its helpdesk
   ticket. Only such matched notices count, as decided: one that answers nothing the site sent says nothing about an
   address it mails, and anyone can write one. **Out-of-office replies never count**: a notice that mentions an absence
   (a closure, travel or a return included: holidays, a break, weekends, "until the 20th") is classified as one, even
@@ -278,7 +279,8 @@ subscription, and every change is a staff action with a confirmation page and an
   (linked for staff who also hold the Members app) with Active / Inactive / Staff badges, the address's **role**
   (primary, secondary, other, unlinked contact, not a contact, or **ambiguous** when one address is saved in several
   letter cases), verified / subscribed / suppression flags, campaigns, review status and a text-only suggestion.
-- **Filters:** status tabs (Open by default), type (including "Has a left-the-organisation notice"), **category** (has a report of that category; for a missing address,
+- **Filters:** status tabs (Open by default), type (including "Has a left-the-organisation notice" and
+  "Left-the-organisation contact for manual review"), **category** (has a report of that category; for a missing address,
   a temporary failure and an unknown failure, also the SES permanent, transient and undetermined bounces), role,
   member (has a member, none, active, inactive, staff),
   suppressed, evidence (matched to the site's mail, which every counted notice is, or unmatched reports only),
@@ -308,6 +310,13 @@ subscription, and every change is a staff action with a confirmation page and an
   A temporary failure (a connection timeout, a DNS failure, an expired delivery, a full mailbox) never suggests
   marking an address undeliverable on its own. "Unmatched reports only: check them first" is shown only beside a
   suggestion about the address itself.
+
+For a temporary or sender-side failure attributed to a campaign, the address detail page links to **Prepare
+one-address draft**. The campaign duplicate page validates that the campaign actually mailed that address and that
+the address has no permanent bounce, complaint or suppression. It creates an unsent Manual Emails draft containing
+only that recipient. Staff review its content and choose when to send. For a relay or spam rejection, they first
+check the cause and may change the configured Email Sending Method; that method is global to all site mail. Creating
+the draft never resends by itself.
 
 ### Actions
 
@@ -478,6 +487,10 @@ form saves every column and would overwrite a running scan's lease.
    on, so notices are counted from the first import after the deploy (the page and the worker's hourly maintenance
    count them). A left-the-organisation **rejection** (a bounce report) is a disabled mailbox from this release on;
    **Rebuild counts…** applies that to the reports already stored.
+8. The contact-hint update adds `mail.0028_bounced_address_notice_contact_hints` for unverified names and phones in
+   future left-the-organisation notices. `mail.0029_alter_bouncedaddress_suggestion` changes the review text and
+   reclassifies stored 0 KB reports as transient. When it changes reports, it parks the Graph counting cursor so
+   the next page load or hourly maintenance recalculates counts without clearing review or suppression decisions.
 
    **Image rollback** (an ECS rollback never reverses DDL): an image from before categories finds every column it
    reads (the new ones have database defaults), but it never unparks the Graph cursor. If it takes over before the new

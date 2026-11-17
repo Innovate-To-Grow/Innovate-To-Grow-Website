@@ -11,8 +11,8 @@ text leaves the site): a high score makes it spam, a medium one keeps it a norma
 message that claims the site's own address without proof.
 
 What the inbound queue row keeps of the verdict (``Classified.result``): the email the site sent that the message
-answers, how it was found and the address it went to, and, for a left-the-organisation notice, the address the notice
-names instead (a hint, never verified). Bounced addresses counts those notices from it.
+answers, how it was found and the address it went to, and, for a left-the-organisation notice, any contact name,
+address and phone it names (hints, never verified). Bounced addresses counts those notices from it.
 """
 
 import uuid
@@ -69,6 +69,10 @@ class Classified:
                 data["site_recipient"] = self.site_reply.recipient
         if self.verdict.contact:
             data.update(named_contact=self.verdict.contact, named_contact_kind=self.verdict.contact_kind)
+        if self.verdict.contact_name:
+            data["named_contact_name"] = self.verdict.contact_name
+        if self.verdict.contact_phone:
+            data["named_contact_phone"] = self.verdict.contact_phone
         return data
 
 

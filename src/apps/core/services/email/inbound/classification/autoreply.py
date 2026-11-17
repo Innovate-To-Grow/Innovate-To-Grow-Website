@@ -1,12 +1,13 @@
 """Automatic replies: the headers that mark one, what its own text says (an absence, or that the person left), the
-address a left-the-organisation notice names instead, and whether a message may ever be answered automatically.
+contact name, address and phone a left-the-organisation notice names, and whether a message may ever be answered
+automatically.
 
 A reply's quoted original (Outlook's header block, also as an HTML-only message's text gives it, "On … wrote:", ">"
 lines, an original- or forwarded-message banner) is cut off before any phrase is read, and a reply's or automatic
 reply's subject ("RE: …", "Automatic reply: …") adds no words, so the site's own campaign text and subject, sent
 back, never decide anything. A notice that mentions an absence is an out-of-office reply even when it also says
 someone left, and "nobody reads this mailbox" alone is no notice that someone left: an out-of-office reply is never
-evidence against an address. The address a notice names is a hint only: never verified, never applied.
+evidence against an address. Contact details a notice names are hints only: never verified, never applied.
 Pure functions: no database, no network.
 """
 
@@ -38,6 +39,17 @@ MAX_ADDRESSES = 20
 CUE_CHARS = 120
 VACATION, OTHER = "vacation", "other"
 NEW_ADDRESS, CONTACT, MENTIONED = "new_address", "contact", "mentioned"
+
+# A name must follow an instruction to contact a person. A departing employee's name in "Jordan Park has left"
+# is not an alternate contact. These are deliberately narrow hints for staff, not identity verification.
+CONTACT_NAME_RE = re.compile(
+    r"\b(?:please\s+)?(?:contact|call|email|e-mail|reach out to|reach)\s+"
+    r"(?P<name>[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ'’.-]+(?:\s+[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ'’.-]+){1,3})\b"
+)
+PHONE_RE = re.compile(
+    r"(?<![\w@])(?:\+?\d{1,3}[ .-]?)?(?:\(\d{3}\)|\d{3})[ .-]?\d{3}[ .-]?\d{4}"
+    r"(?:\s*(?:ext\.?|x)\s*\d{1,6})?(?![\w@])"
+)
 
 QUOTE_START_RE = re.compile(
     r"^(?:_{10,}|-{2,} ?(?:original message|forwarded message|mensaje original|message d[’']origine|"
@@ -82,6 +94,8 @@ class Notice(NamedTuple):
     signals: tuple[str, ...]
     contact: str = ""
     contact_kind: str = ""
+    contact_name: str = ""
+    contact_phone: str = ""
 
 
 def own_text(text: str) -> str:
@@ -138,6 +152,23 @@ def named_contact(text: str, exclude) -> tuple[str, str]:
     return "", ""
 
 
+def named_person(text: str) -> str:
+    """A full name explicitly introduced as someone to contact; never infer one from the notice sender."""
+    match = CONTACT_NAME_RE.search(text)
+    return match.group("name")[:100].strip(" .-") if match else ""
+
+
+def named_phone(text: str) -> str:
+    """The first plausible phone in the notice's own text, ignoring digit strings in email addresses."""
+    without_emails = EMAIL_RE.sub(" ", text)
+    for match in PHONE_RE.finditer(without_emails):
+        value = match.group(0).strip()
+        digits = re.sub(r"\D", "", value.split("ext")[0].split(" x")[0])
+        if 10 <= len(digits) <= 15:
+            return value[:40]
+    return ""
+
+
 def _signals(evidence) -> tuple[list[str], list[str], bool]:
     """The automatic-reply signals, Exchange's rule markers, and whether the signals say "reply" (rather than only
     "auto-generated")."""
@@ -167,7 +198,7 @@ def detect(evidence, own_addresses) -> Notice | None:
     found = tuple(signals + exchange)
     if kind == LEFT_ORG:
         contact, how = named_contact(text, {*own_addresses, evidence.from_address})
-        return Notice(LEFT_ORG, LEFT_ORG, found, contact, how)
+        return Notice(LEFT_ORG, LEFT_ORG, found, contact, how, named_person(text), named_phone(text))
     if kind == OTHER and not replied:
         return Notice(SYSTEM, "auto_generated", found)
     return Notice(AUTO_REPLY, kind, found)

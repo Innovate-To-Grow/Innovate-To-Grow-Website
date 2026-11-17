@@ -22,6 +22,10 @@ TYPES = {
     "unknown": ("Has an unknown status", Q(unknown_count__gt=0) | Q(ses_undetermined_count__gt=0)),
     "complaint": ("Has a spam complaint", Q(complaint_count__gt=0)),
     "left_org": ("Has a left-the-organisation notice", Q(left_org_count__gt=0)),
+    "left_org_contact": (
+        "Left-the-organisation contact for manual review",
+        Q(left_org_contact__gt="") | Q(left_org_contact_name__gt="") | Q(left_org_contact_phone__gt=""),
+    ),
 }
 # "Has a report of this category": Graph reports, and the SES bounce type that means the same where there is one.
 SES_CATEGORY = {

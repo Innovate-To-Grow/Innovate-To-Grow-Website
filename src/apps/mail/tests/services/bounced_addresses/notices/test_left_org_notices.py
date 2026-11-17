@@ -52,7 +52,12 @@ class CountingTests(TestCase):
 
     def test_a_matched_notice_counts_against_the_address_the_site_mailed(self):
         member = make_person(JORDAN)
-        notice = make_notice(named_contact="Riley.Chen@contoso.example", named_contact_kind="contact")
+        notice = make_notice(
+            named_contact="Riley.Chen@contoso.example",
+            named_contact_kind="contact",
+            named_contact_name="Riley Chen",
+            named_contact_phone="(209) 555-0123",
+        )
         before = ContactEmail.objects.get(email_address=JORDAN)
 
         result = count_now()
@@ -64,6 +69,8 @@ class CountingTests(TestCase):
             (1, notice.received_at, notice.received_at),
         )
         self.assertEqual((row.left_org_contact, row.left_org_contact_kind), ("riley.chen@contoso.example", "contact"))
+        self.assertEqual((row.left_org_contact_name, row.left_org_contact_phone), ("Riley Chen", "(209) 555-0123"))
+        self.assertTrue(row.left_org_has_contact_hint)
         self.assertEqual(row.left_org_ticket, notice.result["ticket"])
         self.assertEqual((row.first_bounce_at, row.last_bounce_at), (notice.received_at, notice.received_at))
         self.assertEqual((row.suggestion, row.status, row.suppressed_at), (Suggestion.LEFT_ORG, "open", None))

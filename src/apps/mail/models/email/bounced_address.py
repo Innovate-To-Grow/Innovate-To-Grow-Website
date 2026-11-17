@@ -45,13 +45,17 @@ class BouncedAddress(BouncedAddressSummaryMixin, ProjectControlModel):
         UNSUBSCRIBE = "unsubscribe", "Unsubscribe: they reported us as spam"
         UNDELIVERABLE = "undeliverable", "Mark undeliverable or replace the address"
         REPLACE = "replace", "Replace the address (the mailbox is disabled), or mark it undeliverable"
-        CONSIDER = "consider", "Consider marking undeliverable (repeated temporary failures)"
-        RELAY = "relay", "Our sending side: relay denied. Check our sending route and authorisation, not the address"
+        CONSIDER = "consider", "Repeated temporary failures: check the receiving service, then retry this address"
+        RELAY = (
+            "relay",
+            "Our sending side: relay denied. Check our sending route and authorisation, then retry from another "
+            "configured sender; the problem is not the address",
+        )
         REPUTATION = (
             "reputation",
             (
-                "Our sending side: spam or reputation rejection. Check reputation, authentication and content, not the "
-                "address"
+                "Our sending side: spam or reputation rejection. Check reputation, authentication and content, then "
+                "retry from another configured sender; the problem is not the address"
             ),
         )
         POLICY = "policy", "Their server's policy refused the message, not the address: no action"
@@ -61,7 +65,7 @@ class BouncedAddress(BouncedAddressSummaryMixin, ProjectControlModel):
             "undeliverable",
         )
 
-    # The suggestions about the address itself (the others point at our sending or at the recipient's policy).
+    # Suggestions involving the address itself (including a manual retry after a receiving-side failure).
     ADDRESS_SUGGESTIONS = frozenset(
         {Suggestion.UNSUBSCRIBE, Suggestion.UNDELIVERABLE, Suggestion.REPLACE, Suggestion.LEFT_ORG, Suggestion.CONSIDER}
     )
@@ -126,6 +130,12 @@ class BouncedAddress(BouncedAddressSummaryMixin, ProjectControlModel):
         help_text="The address the latest notice names instead (a hint from its text: never verified).",
     )
     left_org_contact_kind = models.CharField(max_length=16, blank=True, default="", db_default="")
+    left_org_contact_name = models.CharField(
+        max_length=100, blank=True, default="", db_default="", help_text="Unverified name in the latest notice."
+    )
+    left_org_contact_phone = models.CharField(
+        max_length=40, blank=True, default="", db_default="", help_text="Unverified phone in the latest notice."
+    )
     left_org_ticket = models.PositiveIntegerField(
         null=True, blank=True, help_text="The helpdesk ticket that holds the latest notice."
     )

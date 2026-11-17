@@ -176,9 +176,9 @@ them all.
 | Category | Usual cause | What to do |
 |---|---|---|
 | **Address does not exist** | The address, or its domain, does not exist. | Correct the member's address, or mark it undeliverable (3.7). |
-| **Mailbox disabled** | The account was closed or switched off, including a mailbox set to accept nothing (a "0 KB" size limit). | Look for another address for the person, or mark it undeliverable (3.7). |
-| **Mailbox full** | The person's mailbox is full. | Wait. Act only if it keeps happening. |
-| **Temporary failure** | A connection timeout or refusal, a DNS problem, a server that said "try again later", a delivery that expired after Microsoft's retries, a message too large, a mailbox getting too much mail at once (Gmail). | Nothing: **the address is probably fine**, and the next blast tries again. Act only if the same address keeps failing. |
+| **Mailbox disabled** | The recipient's account or mailbox was explicitly closed or switched off. | Look for another address for the person, or mark it undeliverable (3.7). |
+| **Mailbox full** | The person's mailbox is full. | Leave the address eligible and try again after the person frees space. Act only if it keeps happening. |
+| **Temporary failure** | A connection timeout or refusal, a DNS problem, a server that said "try again later", a delivery that expired after Microsoft's retries, a message too large, a mailbox set to a "0 KB" size limit, or a mailbox getting too much mail at once (Gmail). | Keep the address eligible: the next blast can try again after the receiving service is fixed. Act only if the same address keeps failing. |
 | **Spam or reputation rejection** | A spam filter, a block list, our sending reputation, or a check on our sender (SPF, DKIM, DMARC). | **About our sending, not the contact.** Do not change the member. Tell the web team, with the code and reason. |
 | **Relay denied** | The receiving server would not accept our message by this route. | **About our sending (the route or authorisation), not the contact.** Do not change the member. Tell the web team. |
 | **Recipient policy rejection** | The receiving server's own rules (for example a group that only takes mail from inside the organisation). | Do not change the member. If it matters, ask the person by another channel to allow mail from i2g@ucmerced.edu. |
@@ -192,6 +192,18 @@ Outlook, mail sent before monitoring began, or a case the site will not guess. A
 so treat an unmatched report with care.
 
 A bounce report never changes a member, a subscription or a campaign by itself. Acting on it is a staff decision.
+
+For the first review, use the category to choose the next step:
+
+| Group | Categories | Staff action |
+|---|---|---|
+| **Permanent address problem** | Address or domain does not exist; mailbox explicitly disabled | Confirm the report and any replacement address, then **Mark undeliverable** or **Replace email** in Bounced addresses. That stops future campaigns to the bad address. |
+| **Our sending problem** | Relay denied; spam or reputation rejection | Keep the contact address. Give the web team the code and reason so they can correct the route, sender checks or content. Once corrected, prepare a one-address draft to resend. |
+| **Receiving service problem** | Timeout, other temporary failure, 0 KB mailbox limit, mailbox full | Keep the address eligible. After the receiving side is fixed, prepare a one-address draft to retry; review repeated failures over time. |
+| **Human reply** | Left-the-organisation or vacation automatic reply | A vacation reply needs no bounce action. Open a left-the-organisation notice for manual review before changing any address. |
+
+The Email Monitoring page identifies the problem and suggests an action; it does not resend a failed message or
+change the sender automatically.
 
 **In Outlook, leave "Undeliverable" messages in the i2g@ Inbox** until they have been read (bounce scans run every
 10 minutes and read only the Inbox). Do not create Outlook rules that move them.
@@ -218,28 +230,24 @@ has got), the next scan, the interval (every 10 minutes), and what the last scan
   next scan. It is greyed out while processing is paused or not active.
 - **Pause** stops bounce scans; **Resume** starts them again from the checkpoint, so reports that arrived meanwhile
   (and are still in the Inbox) are read then. Pausing does not affect sending, and it stops nothing else that reads
-  the i2g@ Inbox: Outlook, the admin's inbox page (3.8) and, once it ships, the helpdesk carry on.
+  the i2g@ Inbox: Outlook, the admin's inbox page (3.8) and the helpdesk carry on.
 
-> **Coming soon** (pull request #728, not live yet; details may change).
->
-> The helpdesk (chapter 4) reads the same Inbox with its own scan, every 2 minutes (every 30 seconds while it
-> catches up), and has its own controls on the **Intake: reading the Inbox** card at the top of **Helpdesk →
-> Settings** (needs the Helpdesk section):
->
-> - **Scan now**, and **Pause intake** / **Resume intake**. While paused, the helpdesk neither reads the Inbox nor
->   imports mail; resuming continues from its checkpoint, so mail that arrived meanwhile (and is still in the
->   Inbox) becomes tickets then.
-> - Under **Read older mail again**: **Rescan since** and **First-scan lookback (hours)**, which work like the ones
->   for bounce reports (3.6). Messages the helpdesk already has are skipped, so no ticket is made twice.
->
-> The two never change each other: **Pause**, **Rescan since** and the lookback on the Bounce processing card act on
-> bounce processing only, and the intake card's controls act on the helpdesk only. To stop both from reading the
-> Inbox, pause both. The Bounce processing card then also lists the helpdesk's intake, for example "Helpdesk
-> intake, every 2 min (paused)", with a link to its card.
+The helpdesk reads the same Inbox with its own scan, every 2 minutes (every 30 seconds while it catches up), and
+has its own controls on the **Intake: reading the Inbox** card at the top of **Helpdesk → Settings** (needs the
+Helpdesk section):
 
-## 3.6 Coming soon: read older mail again
+- **Scan now**, and **Pause intake** / **Resume intake**. While paused, the helpdesk neither reads the Inbox nor
+  imports mail; resuming continues from its checkpoint, so mail that arrived meanwhile (and is still in the Inbox)
+  becomes tickets then.
+- Under **Read older mail again**: **Rescan since** and **First-scan lookback (hours)**, which work like the ones
+  for bounce reports (3.6). Messages the helpdesk already has are skipped, so no ticket is made twice.
 
-> **Coming soon** (pull request #725, not live yet; details may change).
+The two never change each other: **Pause**, **Rescan since** and the lookback on the Bounce processing card act on
+bounce processing only, and the intake card's controls act on the helpdesk only. To stop both from reading the Inbox,
+pause both. The Bounce processing card then also lists the helpdesk's intake, for example "Helpdesk intake, every 2
+min (paused)", with a link to its card.
+
+## 3.6 Read older mail again
 
 The first scan looks back only 72 hours, so bounce reports that arrived earlier (for example after a blast sent
 before Email Monitoring was deployed) were never read. On the **Bounce processing** card, open **Read older mail
@@ -256,11 +264,9 @@ again**:
 Both change bounce processing only; the helpdesk has its own (3.5). Both changes are recorded in the admin log
 (**Site Settings → Admin Log**, for staff who have that section).
 
-## 3.7 Coming soon: Bounced addresses
+## 3.7 Bounced addresses
 
-> **Coming soon** (pull request #727, not live yet; details may change).
-
-A new **Bounced addresses** page in Email Monitoring lists every address that has bounced, one row per address,
+The **Bounced addresses** page in Email Monitoring lists every address that has bounced, one row per address,
 with what you may do about it. It also lists addresses whose automatic reply to our mail said the person **left the
 organisation** (or retired, or changed address): those are evidence to check, not proof. **Nothing on it happens by
 itself:** the counts never change a member, an address or a subscription. Every change is a staff action with a
@@ -284,9 +290,9 @@ never do.)
 | **Unsubscribe: they reported us as spam** | A spam complaint. |
 | **Mark undeliverable or replace the address** | A report that the address does not exist. |
 | **Replace the address (the mailbox is disabled), or mark it undeliverable** | A report that the mailbox is disabled. |
-| **Consider marking undeliverable (repeated temporary failures)** | Three or more temporary failures (temporary, mailbox full or unknown), with at least seven days between the address's first and last report. |
-| **Our sending side: relay denied…** | Relay refusals and none of the above: our sending route or authorisation, not the address. |
-| **Our sending side: spam or reputation rejection…** | Spam or reputation rejections and none of the above: our reputation, sender checks or content, not the address. |
+| **Repeated temporary failures: check the receiving service, then retry this address** | Three or more temporary failures (temporary, mailbox full or unknown), with at least seven days between the address's first and last report. |
+| **Our sending side: relay denied…** | Relay refusals and none of the above: check our sending route or authorisation, then use an alternate configured sender to retry. |
+| **Our sending side: spam or reputation rejection…** | Spam or reputation rejections and none of the above: check our reputation, sender checks or content, then use an alternate configured sender to retry. |
 | **Their server's policy refused the message, not the address: no action** | Policy rejections and none of the above. |
 | **May have left: an automatic reply says so. Check the notice, then replace the address or mark it undeliverable** | An automatic reply to our mail said the person left the organisation, retired or changed address (and none of the first three rows applies). |
 
@@ -294,14 +300,22 @@ A single temporary failure, such as a connection timeout, never suggests marking
 whose reports are all unmatched says "unmatched reports only: check them first" beside a suggestion about the
 address itself.
 
+**Retry one address after fixing a temporary or sender-side failure.** Open the address, then use **Prepare
+one-address draft** beside the campaign that sent it. The new campaign draft copies the message with only that
+address in **Manual Emails**. Review the content and recipient before sending it. For relay or spam rejection, have
+the web team check the cause and, if appropriate, choose a different configured **Email Sending Method** first;
+that setting affects all site email. The retry link is unavailable for an address already suppressed, a spam
+complaint, or a permanent missing-address report. No retry is sent by opening the link or creating the draft.
+
 **Left-the-organisation notices.** When someone's automatic reply to one of our emails says they no longer work
 there, the address shows **left the organisation 1** in its counts. Open the address to see when it came, the
-address the notice names instead (their new address, or who to contact), and, if you hold the Helpdesk app, a link
-to the notice itself. Only replies to our own mail count, and **out-of-office replies never do** (a notice that
+name, email address or phone number the notice suggests as a contact, flagged for **manual review**, and, if you
+hold the Helpdesk app, a link to the notice itself. These details come from the notice's text and are not verified.
+Only replies to our own mail count, and **out-of-office replies never do** (a notice that
 mentions an absence, a holiday closure or travel is treated as one, and "this mailbox is not monitored" alone does
 not say that anyone left). Nothing changes on its own: read the notice, then use **Replace email** or
-**Mark undeliverable** yourself. The Replace email page shows the named address as a reminder, but you type the new
-address: confirm it with the member or their organisation first, since anyone can write such a notice.
+**Mark undeliverable** yourself if needed. The Replace email page shows the named address as a reminder, but you
+type the new address: confirm it with the member or their organisation first, since anyone can write such a notice.
 
 ### Actions
 
@@ -344,10 +358,12 @@ person fixes their mailbox.
    for a bad address, and do not untick **Verified** to stop mail: it stops sign-in, not mail (chapter 2, "A
    bounced address: what to do").
 4. Complaints: **Unsubscribe this address**.
-5. **Temporary failures** (timeouts, full mailboxes, unknown): leave them; act only on **Consider marking
-   undeliverable**, after they repeat.
-6. **Relay denied** and **spam or reputation rejections**: leave the addresses alone; they are about our sending.
-   Tell the web team if there are several. **Policy rejections**: leave them.
+5. **Temporary failures** (timeouts, 0 KB limits, full mailboxes, unknown): keep the address eligible. After the
+   receiving service is fixed, use **Prepare one-address draft** to retry; after repeated failures, check the cause
+   with the recipient before trying again.
+6. **Relay denied** and **spam or reputation rejections**: keep the contact address. Give the code and reason to the
+   web team, then use **Prepare one-address draft** after the sending problem is fixed. **Policy rejections**: leave
+   them.
 7. **Dismiss** what needs nothing, with a short reason.
 
 ## 3.8 Replies to a blast

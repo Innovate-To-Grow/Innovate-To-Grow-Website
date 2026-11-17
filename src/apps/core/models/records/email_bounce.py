@@ -19,18 +19,23 @@ from .email_telemetry import OutboundEmail
 CATEGORY_GUIDANCE = {
     "hard": "The address does not exist. Strong evidence: mark it undeliverable or replace it.",
     "mailbox_disabled": "The mailbox is disabled. Strong evidence: replace the address, or mark it undeliverable.",
-    "mailbox_full": "The mailbox is full: temporary. It only counts toward the repeated-failure threshold.",
+    "mailbox_full": (
+        "The mailbox is full: temporary. Retry the address after the recipient frees space; repeated failures "
+        "count toward review."
+    ),
     "transient": (
         "Temporary problem (connection, DNS, timeout, expired after retries, message size): the address is probably "
-        "fine. It only counts toward the repeated-failure threshold; the next campaign tries it again."
+        "fine. Retry the address after the receiving service recovers; repeated failures count toward review."
     ),
     "spam_rejected": (
         "Our sending side: spam filtering, a block list, our sending reputation or sender authentication (SPF, DKIM, "
-        "DMARC), or the content. Check those, not the contact."
+        "DMARC), or the content. Check those, then retry from another configured sender; the problem is not the "
+        "contact."
     ),
     "relay_denied": (
         "Our sending side: the receiving server refused to relay our message. Check our sending route and "
-        "authorisation (connector, sending mailbox, SPF), not the contact."
+        "authorisation (connector, sending mailbox, SPF), then retry from another configured sender; the problem "
+        "is not the contact."
     ),
     "policy_rejected": (
         "The recipient's server policy refused the message (for example a group that only takes internal senders). "

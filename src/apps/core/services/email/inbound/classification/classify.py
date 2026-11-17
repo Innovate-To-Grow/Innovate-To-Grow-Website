@@ -80,6 +80,8 @@ class Verdict:
     # for staff, never verified and never applied.
     contact: str = ""
     contact_kind: str = ""
+    contact_name: str = ""
+    contact_phone: str = ""
 
     @property
     def automated(self) -> bool:
@@ -156,7 +158,16 @@ def _auto_reply(evidence: Evidence, own_addresses) -> Verdict | None:
     notice = autoreply.detect(evidence, own_addresses)
     if notice is None:
         return None
-    return Verdict(notice.classification, notice.subtype, notice.signals, (), notice.contact, notice.contact_kind)
+    return Verdict(
+        notice.classification,
+        notice.subtype,
+        notice.signals,
+        (),
+        notice.contact,
+        notice.contact_kind,
+        notice.contact_name,
+        notice.contact_phone,
+    )
 
 
 def _system(evidence: Evidence, _own_addresses) -> Verdict | None:

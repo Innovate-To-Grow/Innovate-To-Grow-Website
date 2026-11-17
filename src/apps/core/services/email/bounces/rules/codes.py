@@ -17,11 +17,11 @@ EXACT = {
     "5.2.1": DISABLED,  # unless its text says the limit is temporary (AMBIGUOUS)
     "5.2.2": FULL,
     "4.2.2": FULL,
-    "5.2.3": TRANSIENT,  # message too large for the recipient (a 0 KB limit: see phrases.ZERO_LIMIT_RE)
+    "5.2.3": TRANSIENT,  # message too large for the recipient (including a 0 KB limit)
     "5.2.4": TRANSIENT,
     "5.2.121": TRANSIENT,  # Exchange: the recipient's hourly receive limits
     "5.2.122": TRANSIENT,
-    "5.3.4": TRANSIENT,  # message too large (a 0 KB limit: see phrases.ZERO_LIMIT_RE)
+    "5.3.4": TRANSIENT,  # message too large (including a 0 KB limit)
     "5.4.1": HARD,  # Exchange: "Recipient address rejected: Access denied" (no such recipient in the tenant)
     "5.4.4": HARD,  # unable to route: the domain takes no mail
     "5.4.310": HARD,  # Exchange: the DNS domain does not exist

@@ -3,19 +3,24 @@
 from django.contrib import admin, messages
 from django.contrib.admin.utils import unquote
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.http import Http404, HttpResponseRedirect
+from django.http import Http404, HttpResponseBadRequest, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from unfold.decorators import action
 
 from apps.mail.models import EmailCampaign
-from apps.mail.services.campaign.content.duplicate import NAME_MAX_LENGTH, copy_name, duplicate_campaign
+from apps.mail.services.campaign.content.duplicate import (
+    NAME_MAX_LENGTH,
+    copy_name,
+    duplicate_campaign,
+    retry_address_for,
+)
 
 # Detail actions that only make sense while a campaign is still a draft; a locked campaign does not show them.
 DRAFT_ONLY_DETAIL_ACTIONS = ("_send_campaign_action", "_import_gmail_html_action")
 # ...and those that only make sense once it has been sent: a draft does not show them.
 SENT_ONLY_DETAIL_ACTIONS = ("_delivery_monitoring_action",)
-AUDIENCE_CHOICES = ("same", "manual")
+AUDIENCE_CHOICES = ("same", "manual", "retry")
 
 
 def _is_draft(object_id) -> bool:
@@ -48,12 +53,26 @@ class CampaignDuplicateMixin:
 
         if request.method == "POST":
             audience = request.POST.get("audience", "same")
+            retry_address = (
+                retry_address_for(campaign, request.POST.get("retry_address", "")) if audience == "retry" else ""
+            )
+            if audience == "retry" and not retry_address:
+                return HttpResponseBadRequest("That address is not eligible for a retry draft.")
             copy = duplicate_campaign(
                 campaign,
                 name=request.POST.get("name", ""),
-                new_manual_audience=audience == "manual" and audience in AUDIENCE_CHOICES,
+                new_manual_audience=audience in ("manual", "retry"),
             )
-            what = "an empty Manual Emails list" if audience == "manual" else "the same audience"
+            if retry_address:
+                copy.manual_emails = retry_address
+                copy.save(update_fields=["manual_emails"])
+            what = (
+                f"only {retry_address} as its Manual Emails audience"
+                if retry_address
+                else "an empty Manual Emails list"
+                if audience == "manual"
+                else "the same audience"
+            )
             messages.success(
                 request,
                 f"Created the draft “{copy.name}” from “{campaign.name}” with {what}. "
@@ -68,6 +87,7 @@ class CampaignDuplicateMixin:
             "suggested_name": copy_name(campaign.name),
             "name_max_length": NAME_MAX_LENGTH,
             "cancel_url": reverse("admin:mail_emailcampaign_change", args=[campaign.pk]),
+            "retry_address": retry_address_for(campaign, request.GET.get("retry_address", "")),
         }
         return TemplateResponse(request, "admin/mail/emailcampaign/duplicate_campaign.html", context)
 

@@ -147,11 +147,11 @@ CASES = (
         "https://ipcheck.proofpoint.example/?ip=198.51.100.7",
         remote_mta="mx0b-00000000.pphosted.example",
     ),
-    # A mailbox with a 0 KB size limit (how servers disable one), reported as "message too large": disabled wins.
+    # A 0 KB receiving limit may be a temporary service setting: keep the address eligible for later retry.
     _case(
         "zero_kb_size_limit",
         "size0.case@example.org",
-        Expected("mailbox_disabled", "hard", True, "550"),
+        Expected("transient", "soft", False, "550"),
         status="5.2.3",
         diagnostic="550 5.2.3 RESOLVER.RST.RecipSizeLimit; message too large for this recipient; Message size: "
         "61 KB, Max size allowed: 0 KB",

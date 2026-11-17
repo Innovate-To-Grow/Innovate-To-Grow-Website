@@ -24,6 +24,7 @@ class OutOfOfficeTests(SimpleTestCase):
         self.assertEqual((verdict.classification, verdict.subtype), ("auto_reply", "vacation"))
         self.assertEqual(verdict.signals, ("auto_submitted", "auto_reply_subject"))
         self.assertEqual((verdict.contact, verdict.contact_kind), ("", ""))
+        self.assertEqual((verdict.contact_name, verdict.contact_phone), ("", ""))
         self.assertEqual(verdict.hints, (REPLY_HINT,))
 
     def test_spanish_out_of_office_replies_with_and_without_the_subject_prefix(self):
@@ -70,11 +71,27 @@ class OutOfOfficeTests(SimpleTestCase):
 
 
 class LeftOrganisationTests(SimpleTestCase):
+    def test_a_departure_notice_names_a_phone_without_an_email(self):
+        verdict = classify(
+            evidence(
+                {"Auto-Submitted": "auto-replied"},
+                subject="Automatic reply: Hello",
+                text_head="Jordan Park no longer works here. Please call Riley Chen at (209) 555-0123.",
+            ),
+            own_addresses=OWN,
+        )
+
+        self.assertEqual(
+            (verdict.classification, verdict.contact_name, verdict.contact_phone),
+            ("left_org", "Riley Chen", "(209) 555-0123"),
+        )
+
     def test_no_longer_with_the_company_naming_who_to_contact_instead(self):
         verdict = verdict_of(samples.left_with_contact())
 
         self.assertEqual((verdict.classification, verdict.subtype), ("left_org", "left_org"))
         self.assertEqual((verdict.contact, verdict.contact_kind), ("riley.chen@contoso.example", "contact"))
+        self.assertEqual((verdict.contact_name, verdict.contact_phone), ("Riley Chen", ""))
         self.assertTrue(verdict.automated)
 
     def test_a_notice_giving_the_persons_new_address(self):

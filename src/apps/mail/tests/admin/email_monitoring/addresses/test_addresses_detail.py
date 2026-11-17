@@ -1,8 +1,10 @@
 from io import BytesIO
+from urllib.parse import urlencode
 
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 from openpyxl import load_workbook
 
 from apps.authn.models import ContactEmail
@@ -49,6 +51,25 @@ class DetailTests(TestCase):
         self.assertTrue(allowed["mark_undeliverable"])
         self.assertTrue(allowed["make_primary"])
         self.assertFalse(allowed["suppress"])
+
+    def test_retry_link_only_appears_for_an_eligible_campaign_recipient(self):
+        from apps.mail.models import BouncedAddressCampaign, RecipientLog
+
+        campaign = make_campaign("Retry campaign")
+        recipient = "retry@example.org"
+        RecipientLog.objects.create(
+            campaign=campaign, email_address=recipient, status="bounced", sent_at=timezone.now()
+        )
+        row = make_row(recipient, hard_count=0, soft_count=1, last_category="transient")
+        BouncedAddressCampaign.objects.create(bounced_address=row, campaign_id=campaign.pk, source="graph")
+
+        response = self.client.get(reverse(DETAIL, args=[row.pk]))
+        url = reverse("admin:mail_emailcampaign_duplicate_campaign_action", args=[campaign.pk])
+        self.assertContains(response, url + "?" + urlencode({"retry_address": recipient}))
+
+        row.suppressed_at = row.last_bounce_at
+        row.save(update_fields=["suppressed_at"])
+        self.assertNotContains(self.client.get(reverse(DETAIL, args=[row.pk])), "Prepare one-address draft")
 
     def test_a_members_other_addresses_are_shown_only_with_the_members_app(self):
         member = make_person("card@example.org", first="Cara")

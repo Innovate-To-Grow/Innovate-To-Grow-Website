@@ -2,7 +2,8 @@
 
 import re
 
-from apps.mail.models import EmailCampaign
+from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
+from apps.mail.services.audience.suppression import normalize_address
 
 # What a copy keeps. Status, the counters, sent_at, sent_by and error_message start over; recipient logs and
 # login links belong to the send that created them and are never copied.
@@ -41,6 +42,30 @@ _COPY_PREFIX_RE = re.compile(r"^(?:copy\s+of\b\s*)+", re.IGNORECASE)
 _NUMBER_SUFFIX_RE = re.compile(r"\s*\(\d+\)$")
 # Room kept for the suffix when the base is cut to the name field: " (9999)".
 _SUFFIX_RESERVE = 7
+
+
+def retry_address_for(campaign, raw):
+    """One eligible address this campaign actually mailed, or empty when a retry draft must not be offered."""
+    address = normalize_address(raw)
+    if (
+        not address
+        or len(address) > 254
+        or not RecipientLog.objects.filter(
+            campaign=campaign, email_address__iexact=address, sent_at__isnull=False
+        ).exists()
+    ):
+        return ""
+    row = BouncedAddress.objects.filter(address=address).first()
+    if (
+        row is None
+        or row.is_suppressed
+        or row.complaint_count
+        or row.ses_permanent_count
+        or row.category_count("hard")
+        or row.category_count("mailbox_disabled")
+    ):
+        return ""
+    return address
 
 
 def base_name(name: str) -> str:

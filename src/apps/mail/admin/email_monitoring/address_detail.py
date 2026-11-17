@@ -13,6 +13,7 @@ from apps.event.models import EventRegistration
 from apps.mail.admin.email_monitoring.addresses import REPORTS_SHOWN, _member_link
 from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
 from apps.mail.services.audience.suppression import normalize_address
+from apps.mail.services.campaign.content.duplicate import retry_address_for
 from apps.mail.services.email_monitoring.addresses.actions.guards import availability
 from apps.mail.services.email_monitoring.addresses.actions.specs import SPECS
 from apps.mail.services.email_monitoring.addresses.actions.targets import load_target
@@ -62,8 +63,23 @@ def _notice_link(request, row) -> str:
 
 def _detail_campaigns(row) -> list:
     links = list(row.campaign_links.order_by("-last_at"))
-    names = dict(EmailCampaign.objects.filter(pk__in={link.campaign_id for link in links}).values_list("pk", "name"))
-    return [{"link": link, "name": names.get(link.campaign_id), "exists": link.campaign_id in names} for link in links]
+    campaigns = EmailCampaign.objects.in_bulk({link.campaign_id for link in links})
+    result = []
+    for link in links:
+        campaign = campaigns.get(link.campaign_id)
+        retry_url = ""
+        if campaign and retry_address_for(campaign, row.address):
+            retry_url = reverse("admin:mail_emailcampaign_duplicate_campaign_action", args=[campaign.pk])
+            retry_url += "?" + urlencode({"retry_address": row.address})
+        result.append(
+            {
+                "link": link,
+                "name": campaign.name if campaign else None,
+                "exists": campaign is not None,
+                "retry_url": retry_url,
+            }
+        )
+    return result
 
 
 def address_detail_view(request, pk):

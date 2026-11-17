@@ -30,6 +30,12 @@ class FrozenClassifierTests(SimpleTestCase):
                     row.action, row.status, row.diagnostic
                 )
                 expected = case.expected
+                # core.0047 is deliberately frozen at its original rule; mail.0029 upgrades stored 0 KB reports.
+                if case.name == "zero_kb_size_limit":
+                    self.assertEqual(
+                        (category, classification, permanent, smtp), ("mailbox_disabled", "hard", True, "550")
+                    )
+                    continue
                 self.assertEqual(
                     (category, classification, permanent, smtp),
                     (expected.category, expected.classification, expected.is_permanent, expected.smtp_code),

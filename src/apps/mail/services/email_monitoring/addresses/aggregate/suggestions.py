@@ -7,15 +7,17 @@
 - an automatic reply to the site's mail says the person left or the address changed → check the notice, then replace
   the address or mark it undeliverable (an out-of-office reply is never counted);
 - repeated temporary failures over several days (Graph reports of a temporary, full-mailbox or unknown category, SES
-  transient and undetermined bounces) → consider marking it undeliverable;
-- relay denied → our sending route or authorisation, not the address;
-- spam or reputation rejections → our reputation, sender authentication or content, not the address;
+  transient and undetermined bounces) → check the receiving service, then retry this address;
+- relay denied → check our sending route or authorisation, then retry from another configured sender;
+- spam or reputation rejections → check our reputation, sender authentication or content, then retry from another
+  configured sender;
 - rejections by the recipient's policy → no action;
 - delays → nothing.
 
 Only a missing address and a disabled mailbox are evidence against the address on their own (a left-the-organisation
 notice is evidence to check: anyone can write one). A temporary failure (a connection timeout, a DNS failure, an
-expired delivery, a full mailbox) never suggests marking an address undeliverable unless it repeats. An address already suppressed gets no suggestion. The thresholds for "repeated" are
+expired delivery, a full mailbox) never suggests marking an address undeliverable. An address already suppressed gets
+no suggestion. The thresholds for "repeated" are
 ``EMAIL_MONITORING["address_soft_bounce_repeats"]`` and ``["address_soft_bounce_days"]``.
 """
 

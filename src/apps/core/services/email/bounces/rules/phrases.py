@@ -31,13 +31,13 @@ SIZE = _phrase(
     "Message too large",
     r"\btoo (?:large|big)\b|\bsize ?limit|\bmessage (?:size|length)\b|\bmax(?:imum)? (?:message |receive )?size\b",
 )
-# A size limit of 0: the mailbox takes nothing at all, which is how servers disable one ("max size allowed: 0 KB").
-# The disabled mailbox wins over "message too large" then: the message's size is not the problem.
+# A 0 KB size limit can be a temporary receiving-side configuration error. A single report does not establish that
+# the address is gone; keep it in the retry/review group even when the report also says "mailbox disabled".
 ZERO_LIMIT_RE = re.compile(
     r"\b(?:max(?:imum)?|limit|allowed)\b[^0-9.;]{0,40}?(?<![\d.])0(?:\.0+)? ?(?:[kmg]i?b|bytes?|k)\b"
 )
 ZERO_LIMIT = Phrase(
-    DISABLED, "Recipient mailbox accepts no messages (0 KB size limit): treated as disabled", ZERO_LIMIT_RE
+    TRANSIENT, "Recipient mailbox reports a 0 KB limit; retry after the receiving service is fixed", ZERO_LIMIT_RE
 )
 PHRASES = (
     _phrase(
@@ -143,11 +143,10 @@ AMBIGUOUS_REFINEMENTS = frozenset({TRANSIENT})
 
 
 def refine(text: str, allowed) -> Phrase | None:
-    """The first phrase in ``text`` (lower case) whose category is ``allowed``; a size limit of 0 is a disabled
-    mailbox."""
+    """The first phrase in ``text`` (lower case) whose category is ``allowed``; a 0 KB limit is temporary."""
+    if TRANSIENT in allowed and ZERO_LIMIT_RE.search(text):
+        return ZERO_LIMIT
     for phrase in PHRASES:
         if phrase.category in allowed and phrase.pattern.search(text):
-            if phrase is SIZE and DISABLED in allowed and ZERO_LIMIT_RE.search(text):
-                return ZERO_LIMIT
             return phrase
     return None
