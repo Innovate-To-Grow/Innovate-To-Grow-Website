@@ -57,11 +57,19 @@ class DetailTests(TestCase):
 
         campaign = make_campaign("Retry campaign")
         recipient = "retry@example.org"
+        member = make_person(recipient)
         RecipientLog.objects.create(
-            campaign=campaign, email_address=recipient, status="bounced", sent_at=timezone.now()
+            campaign=campaign, member=member, email_address=recipient, status="bounced", sent_at=timezone.now()
         )
         row = make_row(recipient, hard_count=0, soft_count=1, last_category="transient")
-        BouncedAddressCampaign.objects.create(bounced_address=row, campaign_id=campaign.pk, source="graph")
+        BouncedAddressCampaign.objects.create(
+            bounced_address=row,
+            campaign_id=campaign.pk,
+            source="graph",
+            match="exact",
+            bounce_count=1,
+            graph_category_counts={"transient": 1},
+        )
 
         response = self.client.get(reverse(DETAIL, args=[row.pk]))
         url = reverse("admin:mail_emailcampaign_duplicate_campaign_action", args=[campaign.pk])

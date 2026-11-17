@@ -13,7 +13,7 @@ from apps.event.models import EventRegistration
 from apps.mail.admin.email_monitoring.addresses import REPORTS_SHOWN, _member_link
 from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
 from apps.mail.services.audience.suppression import normalize_address
-from apps.mail.services.campaign.content.duplicate import retry_address_for
+from apps.mail.services.campaign.content.retry import retry_address_for
 from apps.mail.services.email_monitoring.addresses.actions.guards import availability
 from apps.mail.services.email_monitoring.addresses.actions.specs import SPECS
 from apps.mail.services.email_monitoring.addresses.actions.targets import load_target

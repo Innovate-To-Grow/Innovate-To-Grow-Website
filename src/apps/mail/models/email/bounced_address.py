@@ -127,14 +127,34 @@ class BouncedAddress(BouncedAddressSummaryMixin, ProjectControlModel):
         blank=True,
         default="",
         db_default="",
-        help_text="The address the latest notice names instead (a hint from its text: never verified).",
+        help_text="The address the latest notice names instead (unverified and retained only for the review period).",
     )
     left_org_contact_kind = models.CharField(max_length=16, blank=True, default="", db_default="")
     left_org_contact_name = models.CharField(
         max_length=100, blank=True, default="", db_default="", help_text="Unverified name in the latest notice."
     )
     left_org_contact_phone = models.CharField(
-        max_length=40, blank=True, default="", db_default="", help_text="Unverified phone in the latest notice."
+        max_length=40,
+        blank=True,
+        default="",
+        db_default="",
+        help_text="Unverified US phone in the latest notice, retained only for the bounded hint-review period.",
+    )
+    # Address, name and phone are third-party PII copied from the latest source message. The source and expiry make
+    # that copy temporary; deleting the source clears all hints while the aggregate notice evidence remains.
+    left_org_hint_source = models.ForeignKey(
+        "core.InboundMessage",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="+",
+        help_text="Inbound message that supplied the retained unverified contact hints.",
+    )
+    left_org_hint_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        db_index=True,
+        help_text="When the unverified contact hints must be cleared.",
     )
     left_org_ticket = models.PositiveIntegerField(
         null=True, blank=True, help_text="The helpdesk ticket that holds the latest notice."

@@ -23,10 +23,24 @@ class NamedContactTests(SimpleTestCase):
 
     def test_phone_is_bounded_and_does_not_come_from_an_email_or_quoted_original(self):
         text = "Jordan Park has left. Call (209) 555-0123 or email 2095550199@contoso.example."
-        self.assertEqual(named_phone(text), "(209) 555-0123")
+        self.assertEqual(named_phone(text), "+12095550123")
         self.assertEqual(named_phone("Write to 2095550199@contoso.example."), "")
         quoted = own_text("Jordan has left.\n\nOn Monday, Alex wrote:\nCall (209) 555-0123.")
         self.assertEqual(named_phone(quoted), "")
+
+    def test_phone_accepts_only_us_ten_digit_or_plus_one_formats(self):
+        for value in ("209-555-0123", "(209) 555-0123", "+1 209 555 0123", "+1 (209) 555-0123 ext. 42"):
+            with self.subTest(value=value):
+                self.assertEqual(named_phone(f"Call {value}."), "+12095550123")
+        for value in (
+            "+44 207 946 0958",
+            "0044 207 946 0958",
+            "+33 1 42 68 53 00",
+            "020 7946 0958",
+            "+1 020 555 0123",
+        ):
+            with self.subTest(value=value):
+                self.assertEqual(named_phone(f"Call {value}."), "")
 
     def test_the_sender_the_site_and_report_or_no_reply_addresses_are_never_named(self):
         text = (

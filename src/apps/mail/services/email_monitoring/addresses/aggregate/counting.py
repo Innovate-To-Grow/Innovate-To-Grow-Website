@@ -133,6 +133,9 @@ def run(*, max_rows: int | None = None, wait: bool = True, should_stop=None) -> 
 
     Returns how many rows each source counted and whether a source was busy (held by another run).
     """
+    # Contact hints are copied third-party PII, not durable evidence. Clear them before every page/worker count;
+    # source-row deletion also clears them immediately through the registered pre-delete receiver.
+    notices.purge_expired_hints()
     result = {GRAPH: 0, SES: 0, INBOUND: 0, "busy": False}
     for source in (GRAPH, SES, INBOUND):
         _drain(source, result, max_rows=max_rows, wait=wait, should_stop=should_stop)

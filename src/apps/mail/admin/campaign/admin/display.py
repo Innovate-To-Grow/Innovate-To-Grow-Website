@@ -84,6 +84,20 @@ class CampaignDisplayMixin:
         readonly = list(super().get_readonly_fields(request, obj))
         if obj and obj.error_message:
             readonly.append("error_message")
+        if obj and obj.retry_source_campaign_id:
+            readonly.extend(
+                [
+                    "audience_type",
+                    "event",
+                    "member_email_scope",
+                    "manual_emails",
+                    "selected_members",
+                    "exclude_audience_type",
+                    "exclude_member_email_scope",
+                    "exclude_event",
+                    "exclude_members",
+                ]
+            )
         if obj and obj.status != "draft":
             readonly.extend(
                 [
@@ -106,7 +120,7 @@ class CampaignDisplayMixin:
                     "exclude_members",
                 ]
             )
-        return readonly
+        return list(dict.fromkeys(readonly))
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}

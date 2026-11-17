@@ -70,6 +70,7 @@
         <p><span class="text-base-400">Subject:</span> {{ campaign.subject }}</p>
         <p><span class="text-base-400">Audience:</span> {{ campaign.get_audience_type_display }}{% if campaign.event %} &mdash; {{ campaign.event.name }}{% endif %}</p>
         <p><span class="text-base-400">Recipients:</span> {{ recipient_count }}</p>
+        {% if retry_sending_method %}<p><span class="text-base-400">Pinned retry method:</span> <strong>{{ retry_sending_method }}</strong>{% if retry_from_email %} from {{ retry_from_email }}{% endif %}. Global method changes do not alter this retry.</p>{% endif %}
     </div>
 
     {% if recipient_count > 0 %}

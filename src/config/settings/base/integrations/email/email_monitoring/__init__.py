@@ -68,6 +68,9 @@ EMAIL_MONITORING = {
     # never was (not received: a rescan records old mail, which must still wait to be imported). What a consumer made
     # of it (a helpdesk ticket) has its own retention.
     "inbound_retention_days": 90,
+    # Unverified third-party email, name and US-phone hints copied from a left-organisation notice are retained only
+    # this long after that message was processed. They are also cleared when the source inbound row is deleted.
+    "left_org_hint_retention_days": 90,
     # Ask Microsoft Graph for immutable message ids (Prefer: IdType="ImmutableId"), which survive a move to another
     # Outlook folder. Off by default: switching changes the ids the bounce scan, the helpdesk's intake and the Admin
     # Inbox see once (bounce records and helpdesk tickets still de-duplicate through the internet Message-ID).

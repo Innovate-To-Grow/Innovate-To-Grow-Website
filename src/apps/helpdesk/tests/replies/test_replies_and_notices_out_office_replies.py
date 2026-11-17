@@ -64,7 +64,7 @@ class AutomaticReplyTests(SiteMailMixin, TestCase):
 
         self.assertEqual(
             (row.classification, row.result["named_contact_name"], row.result["named_contact_phone"]),
-            ("left_org", "Riley Chen", "(209) 555-0123"),
+            ("left_org", "Riley Chen", "+12095550123"),
         )
 
     def test_a_notice_from_another_address_is_matched_to_the_address_mailed(self):

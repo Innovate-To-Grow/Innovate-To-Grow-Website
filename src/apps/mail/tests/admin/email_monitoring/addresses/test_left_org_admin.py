@@ -2,6 +2,7 @@
 suggestion; the address page's notice (the address it names, and the link to its helpdesk ticket only for staff with
 the Helpdesk app); and the Replace email page's hint, which fills in nothing."""
 
+from datetime import timedelta
 from urllib.parse import urlencode
 
 from django.core.cache import cache
@@ -9,6 +10,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.core.models import InboundMessage
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import BouncedAddress
 from apps.mail.tests.services.bounced_addresses.helpers import make_person, make_row
@@ -22,6 +24,13 @@ RILEY = "riley.chen@contoso.example"
 
 def notice_row(**values) -> BouncedAddress:
     now = timezone.now()
+    source = InboundMessage.objects.create(
+        mailbox="i2g@ucmerced.edu",
+        graph_id="AAMk-admin-notice",
+        received_at=now,
+        status=InboundMessage.Status.DONE,
+        processed_at=now,
+    )
     defaults = {
         "hard_count": 0,
         "graph_first_at": None,
@@ -36,7 +45,9 @@ def notice_row(**values) -> BouncedAddress:
         "left_org_contact": RILEY,
         "left_org_contact_kind": "contact",
         "left_org_contact_name": "Riley Chen",
-        "left_org_contact_phone": "(209) 555-0123",
+        "left_org_contact_phone": "+12095550123",
+        "left_org_hint_source": source,
+        "left_org_hint_expires_at": now + timedelta(days=90),
         "left_org_ticket": 1042,
         "first_bounce_at": now,
         "last_bounce_at": now,
@@ -63,7 +74,7 @@ class NoticePagesTests(TestCase):
         self.assertContains(response, f"It names <strong>{RILEY}</strong>: who to contact instead, the notice says.")
         self.assertContains(response, "Contact details need manual review.")
         self.assertContains(response, "Name mentioned: <strong>Riley Chen</strong>.")
-        self.assertContains(response, "Phone mentioned: <strong>(209) 555-0123</strong>.")
+        self.assertContains(response, "Phone mentioned: <strong>+12095550123</strong>.")
         self.assertContains(response, "Out-of-office replies are never counted here.")
         self.assertContains(response, self.ticket_link.replace("&", "&amp;"))
         self.assertContains(response, "May have left: an automatic reply says so.")

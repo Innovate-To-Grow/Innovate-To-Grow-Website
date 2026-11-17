@@ -116,9 +116,10 @@ its thread lands on the person's ticket.
      20th", "upon my return", …) is a vacation reply too, and wording that says only that **nobody reads the
      mailbox** ("this inbox is not monitored") is no notice at all: holiday, weekend and shared mailboxes say so too.
      An out-of-office reply is therefore never evidence against an address (the price: a real notice that also
-     mentions a holiday is not counted). A notice's **named address** (a new address or someone to
-     contact instead, by the words before it) is kept as a hint, never verified; the sender's, the site's, no-reply
-     and report addresses and the address the site mailed are never one.
+     mentions a holiday is not counted). A notice's **named contact hints**—an address (a new address or someone to
+     contact instead, by the words before it), a narrowly introduced name, and a US ten-digit / `+1` phone normalized
+     to E.164 `+1`—are kept for manual review, never verified. International phone numbers are ignored; the sender's,
+     the site's, no-reply and report addresses and the address the site mailed are never used as the named address.
    - **Loop protection.** Replying to the site's mail never turns an automatic reply into a person's message, so an
      automatic reply to an automatic reply stays automated (it joins its thread and changes nothing). A person's
      message that must not be answered automatically carries the hint `no_auto_response`: RFC 3834's markers (it
@@ -155,6 +156,7 @@ takes the highest number plus one. Display: `I2G-#1234`.
 | Data | Where | Kept (Settings) |
 |---|---|---|
 | Listed-message metadata | `core.InboundMessage` | `inbound_retention_days` (90) after processing, or after recording while it waits (`EMAIL_MONITORING`) |
+| Unverified contact hints copied from a left-the-organisation notice (name, email and US-only `+1` phone) | `mail.BouncedAddress` | At most `left_org_hint_retention_days` (90) after processing; cleared immediately when the source inbound row is deleted |
 | Message text (personal sign-in links and token-shaped runs scrubbed) and sanitized HTML, capped at 256 KB / 1 MB | `helpdesk.TicketMessage` | 730 days after the ticket closed |
 | Attachments (10 MB per file, 25 MB per message; blocked types never) | `helpdesk.TicketAttachment.content` (PostgreSQL, not S3: the production media bucket serves public URLs) | 365 days after the ticket closed |
 | Bodies of automated mail / of spam | | 90 / 30 days after arrival |
@@ -163,8 +165,10 @@ takes the highest number plus one. Display: `I2G-#1234`.
 The inbound queue row also keeps what the import made of a message (`result`): its ticket and, for a reply to the
 site's mail, the email it answers (`site_mail`), how that was found (`site_match`: `message_id` or
 `recipient_subject`) and the address that email went to (`site_recipient`); for a left-the-organisation notice, the
-address it names instead (`named_contact`, `named_contact_kind`). Email Monitoring → Bounced addresses counts the
-notices from these ([Email monitoring](email-monitoring.md#counting)). The raw MIME is never kept: the mailbox holds
+address it names instead (`named_contact`, `named_contact_kind`), a narrowly extracted name and a US ten-digit / `+1`
+phone normalized to E.164 `+1` (international numbers are ignored). Email Monitoring → Bounced addresses counts the
+notices from these and copies the unverified contact hints only for its bounded review period
+([Email monitoring](email-monitoring.md#counting)). The raw MIME is never kept: the mailbox holds
 the original. The worker's hourly maintenance runs the purge
 ("Helpdesk retention") and restarts the ingest chain if mail waits ("Helpdesk ingest scheduling"). Every helpdesk
 model and `core.inboundmessage` are in `safe_orm`'s `DENIED_MODEL_LABELS`: the AI assistant and `/admin-api/` can
@@ -283,8 +287,9 @@ saves every column and would overwrite a running scan's lease.
   as bulk mail: check **Automated & Spam**. A reply through a **mailing list** stays list mail (flagged; decision to
   confirm).
 - **Notice wording is read in seven languages** (English, Spanish, French, German, Portuguese, Italian, Dutch); in
-  others an automatic reply is still recognised by its headers and subject prefix, as "other". The named address of a
-  notice is whatever its text gives: a hint for staff to check, never used on its own.
+  others an automatic reply is still recognised by its headers and subject prefix, as "other". A notice's named
+  address, narrowly introduced name, and US-only `+1` phone are unverified hints for staff to check, never used on
+  their own; international phone numbers are ignored.
 - **Graph `conversationId`** can change when an outsider replies, and every reply to one blast may share it; it is
   only a fallback, and only for participants.
 - No full-text search over bodies, no link of a ticket to an event or registration, no blocked-sender list (plan

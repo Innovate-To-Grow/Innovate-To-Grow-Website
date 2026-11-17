@@ -83,7 +83,7 @@ class LeftOrganisationTests(SimpleTestCase):
 
         self.assertEqual(
             (verdict.classification, verdict.contact_name, verdict.contact_phone),
-            ("left_org", "Riley Chen", "(209) 555-0123"),
+            ("left_org", "Riley Chen", "+12095550123"),
         )
 
     def test_no_longer_with_the_company_naming_who_to_contact_instead(self):
@@ -165,6 +165,11 @@ class LeftOrganisationTests(SimpleTestCase):
 
         self.assertEqual((verdict.classification, verdict.contact), ("human", ""))
         self.assertIn("possible_left_org", verdict.hints)
+
+    def test_temporary_support_does_not_turn_a_departure_notice_into_vacation(self):
+        text = "Jordan has left. For temporary support, please contact Riley Chen."
+
+        self.assertEqual(kind_of(text), "left_org")
 
 
 OUT_OF_OFFICE = (

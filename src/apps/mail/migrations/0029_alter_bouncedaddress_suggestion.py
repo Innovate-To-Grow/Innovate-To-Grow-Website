@@ -2,6 +2,10 @@
 
 The Graph counter is parked only when a report changed. Its next run rebuilds Graph counts from stored reports;
 staff review state, suppression, SES counts and left-organisation notices are retained.
+
+The reverse restores the classification used by the preceding release. This matters during a rollback: leaving the
+stored rows as temporary while the old runtime classifies equivalent new reports as disabled would make aggregation
+depend on which release happened to process a report.
 """
 
 import re
@@ -15,9 +19,21 @@ ZERO_LIMIT_RE = re.compile(
     r"\b(?:max(?:imum)?|limit|allowed)\b[^0-9.;]{0,40}?(?<![\d.])0(?:\.0+)? ?(?:[kmg]i?b|bytes?|k)\b"
 )
 ZERO_LIMIT_REASON = "Recipient mailbox reports a 0 KB limit; retry after the receiving service is fixed"
+OLD_ZERO_LIMIT_REASON = "Recipient mailbox accepts no messages (0 KB size limit): treated as disabled"
 PARKED = datetime(9999, 12, 31, tzinfo=UTC)
 PARKED_ID = uuid.UUID(int=2**128 - 1)
 SEVERITY = {"hard": 4, "rejected": 3, "soft": 2, "unknown": 1, "delayed": 0}
+
+
+def _update_outbound_worst(Bounce, Outbound, db, email_ids):
+    for email_id in email_ids:
+        kinds = Bounce.objects.using(db).filter(email_id=email_id).exclude(classification="delayed")
+        worst = max(kinds.values_list("classification", flat=True), key=lambda kind: SEVERITY.get(kind, 0), default="")
+        Outbound.objects.using(db).filter(pk=email_id).update(bounce_classification=worst)
+
+
+def _park_graph_counting(State, db):
+    State.objects.using(db).update_or_create(source="graph", defaults={"cursor_at": PARKED, "cursor_id": PARKED_ID})
 
 
 def reclassify_zero_limits(apps, schema_editor):
@@ -48,13 +64,49 @@ def reclassify_zero_limits(apps, schema_editor):
         Bounce.objects.using(db).bulk_update(
             changed, ["category", "classification", "is_permanent", "reason", "updated_at"]
         )
-    for email_id in email_ids:
-        kinds = Bounce.objects.using(db).filter(email_id=email_id).exclude(classification="delayed")
-        worst = max(kinds.values_list("classification", flat=True), key=lambda kind: SEVERITY.get(kind, 0), default="")
-        if worst:
-            Outbound.objects.using(db).filter(pk=email_id).update(bounce_classification=worst)
+    _update_outbound_worst(Bounce, Outbound, db, email_ids)
     if changed_count:
-        State.objects.using(db).update_or_create(source="graph", defaults={"cursor_at": PARKED, "cursor_id": PARKED_ID})
+        _park_graph_counting(State, db)
+
+
+def restore_zero_limits(apps, schema_editor):
+    """Restore the preceding release's classification for a safe rollback."""
+    db = schema_editor.connection.alias
+    Bounce = apps.get_model("core", "EmailBounce")
+    Outbound = apps.get_model("core", "OutboundEmail")
+    State = apps.get_model("mail", "BounceAggregationState")
+    changed, changed_count, email_ids = [], 0, set()
+    # ``reason`` is the marker written by the forward migration. A report could
+    # already have been a legitimate transient 0 KB failure before this
+    # migration; rolling back must not turn that unrelated row into a hard
+    # mailbox-disabled bounce.
+    reports = Bounce.objects.using(db).filter(
+        category="transient", reason=ZERO_LIMIT_REASON, diagnostic_code__contains="0"
+    )
+    for report in reports.iterator(chunk_size=500):
+        if not ZERO_LIMIT_RE.search((report.diagnostic_code or "").lower()):
+            continue
+        report.category = "mailbox_disabled"
+        report.classification = "hard"
+        report.is_permanent = True
+        report.reason = OLD_ZERO_LIMIT_REASON
+        report.updated_at = timezone.now()
+        changed.append(report)
+        changed_count += 1
+        if report.email_id is not None:
+            email_ids.add(report.email_id)
+        if len(changed) >= 500:
+            Bounce.objects.using(db).bulk_update(
+                changed, ["category", "classification", "is_permanent", "reason", "updated_at"]
+            )
+            changed.clear()
+    if changed:
+        Bounce.objects.using(db).bulk_update(
+            changed, ["category", "classification", "is_permanent", "reason", "updated_at"]
+        )
+    _update_outbound_worst(Bounce, Outbound, db, email_ids)
+    if changed_count:
+        _park_graph_counting(State, db)
 
 
 class Migration(migrations.Migration):
@@ -101,5 +153,5 @@ class Migration(migrations.Migration):
                 max_length=16,
             ),
         ),
-        migrations.RunPython(reclassify_zero_limits, migrations.RunPython.noop),
+        migrations.RunPython(reclassify_zero_limits, restore_zero_limits),
     ]

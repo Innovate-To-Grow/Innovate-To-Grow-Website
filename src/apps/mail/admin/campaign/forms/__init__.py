@@ -15,6 +15,29 @@ from apps.mail.services.campaign.content.preview import HTML_MARKER, split_html_
 
 from .widgets import BODY_FORMAT_CHOICES, ManualEmailsWidget, PersonalizationTextInput, TicketSelectWidget
 
+RETRY_AUDIENCE_FIELDS = (
+    "audience_type",
+    "event",
+    "ticket",
+    "selected_members",
+    "member_email_scope",
+    "manual_emails",
+    "exclude_audience_type",
+    "exclude_event",
+    "exclude_ticket",
+    "exclude_members",
+    "exclude_member_email_scope",
+)
+SENT_CAMPAIGN_FIELDS = (
+    "subject",
+    "login_redirect_path",
+    # Reusable links are read at login time, so that field remains an emergency kill switch after sending.
+    "login_link_validity_days",
+    "include_unsubscribe_header",
+    "body_format",
+    "body",
+) + RETRY_AUDIENCE_FIELDS
+
 
 class EmailCampaignForm(forms.ModelForm):
     ticket = forms.ModelChoiceField(
@@ -74,6 +97,8 @@ class EmailCampaignForm(forms.ModelForm):
 
         if self.instance and self.instance.pk and self.instance.status != "draft":
             self._disable_sent_campaign_fields()
+        if self.instance and self.instance.pk and self.instance.retry_source_campaign_id:
+            self._disable_retry_audience_fields()
 
         if self.instance and self.instance.pk and self.instance.audience_type == "ticket_type":
             self._restore_ticket_initial()
@@ -124,29 +149,16 @@ class EmailCampaignForm(forms.ModelForm):
         return instance
 
     def _disable_sent_campaign_fields(self):
-        for field_name in (
-            "subject",
-            "login_redirect_path",
-            # `login_link_reusable` is intentionally NOT disabled — it is read at
-            # login time, so unticking it acts as a kill switch for sent links.
-            "login_link_validity_days",
-            "include_unsubscribe_header",
-            "body_format",
-            "body",
-            "audience_type",
-            "event",
-            "ticket",
-            "selected_members",
-            "member_email_scope",
-            "manual_emails",
-            "exclude_audience_type",
-            "exclude_event",
-            "exclude_ticket",
-            "exclude_members",
-            "exclude_member_email_scope",
-        ):
-            if field_name in self.fields:
-                self.fields[field_name].disabled = True
+        self._disable_fields(SENT_CAMPAIGN_FIELDS)
+
+    def _disable_retry_audience_fields(self):
+        """The message stays editable, but retry provenance makes every audience control immutable."""
+        self._disable_fields(RETRY_AUDIENCE_FIELDS)
+
+    def _disable_fields(self, names):
+        for name in names:
+            if name in self.fields:
+                self.fields[name].disabled = True
 
     def _restore_ticket_initial(self):
         ticket_id = self.instance.manual_emails.strip()

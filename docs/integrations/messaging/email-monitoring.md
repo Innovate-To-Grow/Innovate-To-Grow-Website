@@ -231,13 +231,15 @@ subscription, and every change is a staff action with a confirmation page and an
   [Helpdesk](helpdesk.md#how-a-message-becomes-a-ticket)) that answer an email the site sent, counted against **the
   address that email went to** (the notice may come from another address of the same organisation, such as an alias
   or the mailbox answering for a departed person; one from another organisation, where the email was redirected, is
-  attributed to nobody), with the first and latest notice, any contact name, address and phone the latest one names
-  (unverified hints from its text) and its helpdesk
-  ticket. Only such matched notices count, as decided: one that answers nothing the site sent says nothing about an
+  attributed to nobody), with the first and latest notice, any contact name, address and US phone the latest one names
+  (unverified hints from its text; US ten-digit / `+1` phones are normalized to E.164 `+1`) and its helpdesk ticket.
+  Only such matched notices count, as decided: one that answers nothing the site sent says nothing about an
   address it mails, and anyone can write one. **Out-of-office replies never count**: a notice that mentions an absence
   (a closure, travel or a return included: holidays, a break, weekends, "until the 20th") is classified as one, even
   when it also says someone left, and "this mailbox is not monitored" alone is no notice that someone left. Notices are read from `core.InboundMessage` in
-  processing order from their own cursor (they stay counted after the inbound queue's 90-day retention), and counting
+  processing order from their own cursor. The aggregate count and first/latest timestamps stay after the inbound
+  queue's 90-day retention. Copied contact hints and the ticket/source pointer do not: they are kept for at most
+  `left_org_hint_retention_days` (90), and are cleared sooner whenever the source inbound row is deleted. Counting
   starts with the notices imported after this release (earlier ones did not record the email they answer).
 - **Reports without a category** (saved by the previous release while a deploy rolled out) are classified before each
   Graph batch is counted. A **parked** Graph cursor (far in the future: no report is past it, so a release that
@@ -290,8 +292,9 @@ subscription, and every change is a staff action with a confirmation page and an
   `address_export_max_rows` rows). Roles and members are read live on every page; the filters use the values last
   refreshed (on each page, after each count and hourly).
 - **One address** shows the Graph reports still stored, the SES events, its left-the-organisation notices (how many,
-  the latest, the address the latest one names and what it says that address is, and a link to the notice's helpdesk
-  ticket for staff who hold the Helpdesk app), the campaigns, the member card (name,
+  the latest, the unverified name, address and US-only `+1` phone the latest one names, what it says that address is,
+  and a link to the notice's helpdesk ticket for staff who hold the Helpdesk app, while those bounded hints remain),
+  the campaigns, the member card (name,
   status, registrations; their other addresses with their flags, and their phones, only for staff who also hold the
   Members app, as on the Member admin), every action with why it is unavailable, and the history.
 - **Suggestions** (never applied; the first that applies wins):
@@ -302,7 +305,7 @@ subscription, and every change is a staff action with a confirmation page and an
   | Mark undeliverable or replace the address | A report that the address does not exist, or an SES permanent bounce. |
   | Replace the address (the mailbox is disabled), or mark it undeliverable | A disabled-mailbox report. |
   | May have left: an automatic reply says so. Check the notice, then replace the address or mark it undeliverable | A left-the-organisation notice (none of the above). The Replace email page shows the address the notice names as a hint; nothing is filled in. |
-  | Consider marking undeliverable (repeated temporary failures) | At least `address_soft_bounce_repeats` temporary failures (temporary, full-mailbox and unknown reports, SES transient and undetermined bounces) over at least `address_soft_bounce_days` days. |
+  | Repeated temporary failures: check the receiving service, then retry this address | At least `address_soft_bounce_repeats` review-counted failures (temporary, full-mailbox and unknown reports, SES transient and undetermined bounces) over at least `address_soft_bounce_days` days. This row-level review suggestion does not itself confer retry eligibility: the chosen campaign must separately have allowlisted exact evidence. |
   | Our sending side: relay denied … | A relay refusal and none of the above. |
   | Our sending side: spam or reputation rejection … | A spam or reputation rejection and none of the above. |
   | Their server's policy refused the message, not the address: no action | A policy rejection and none of the above. |
@@ -311,12 +314,19 @@ subscription, and every change is a staff action with a confirmation page and an
   marking an address undeliverable on its own. "Unmatched reports only: check them first" is shown only beside a
   suggestion about the address itself.
 
-For a temporary or sender-side failure attributed to a campaign, the address detail page links to **Prepare
-one-address draft**. The campaign duplicate page validates that the campaign actually mailed that address and that
-the address has no permanent bounce, complaint or suppression. It creates an unsent Manual Emails draft containing
-only that recipient. Staff review its content and choose when to send. For a relay or spam rejection, they first
-check the cause and may change the configured Email Sending Method; that method is global to all site mail. Creating
-the draft never resends by itself.
+For a retryable failure attributed exactly to a campaign, the address detail page links to **Prepare one-address
+draft** only when the normalized address belongs to exactly one active contact that is both subscribed and verified.
+Unlinked, ambiguously linked, inactive, unsubscribed and unverified addresses are refused. The campaign itself must
+have exact evidence for that address in the allowlist: temporary, mailbox-full, spam/reputation-rejected or
+relay-denied. Delayed, unknown, policy, permanent and complaint evidence is not retryable.
+
+The POST creates one idempotent draft per source campaign/address in a transaction. Its provenance, normalized
+recipient, current Email Sending Method and From identity are snapshotted; its Manual Emails audience is locked to
+that one address and cannot be edited into a bulk send or duplicated into an ordinary campaign. Eligibility and
+one-address cardinality are checked on the page, at draft creation and again immediately before the provider call. A
+later global Email Sending Method change
+continues to affect every ordinary campaign and transactional email, but not that retry: the worker uses its reviewed
+snapshot. Creating the draft never resends by itself; staff still review its content and choose when to send.
 
 ### Actions
 
@@ -431,6 +441,7 @@ Notification Delivery and Delivery Rates; the sidebar's **Delivery Operations** 
 | `inbox_initial_lookback_hours` | `72` | How far the intake's first scan looks back unless its first-scan lookback is set on its card. |
 | `inbox_max_lookback_days` | `90` | The furthest back the intake's **Rescan since** and first-scan lookback reach. It bounds those admin controls, so it is set here. |
 | `inbound_retention_days` | `90` | Inbound queue rows are deleted this long after they were processed (or recorded, never processed: old mail a rescan records still waits to be imported). |
+| `left_org_hint_retention_days` | `90` | Maximum time after processing that unverified contact name, email and US-phone hints copied from a left-the-organisation notice remain. Deleting the source inbound row clears them immediately. Counts/timestamps remain. |
 | `graph_immutable_ids` (`EMAIL_GRAPH_IMMUTABLE_IDS`) | `false` | Send `Prefer: IdType="ImmutableId"` on every mailbox read, so a message moved to another folder keeps its id. Switching it on changes the ids the scans and the admin inbox see once (bounce records and helpdesk tickets still de-duplicate by internet Message-ID). |
 | `bounce_scan_page_size`, `bounce_scan_max_pages`, `bounce_scan_max_messages` | `50`, `10`, `200` | Messages per list request, list requests per scan, reports opened per scan. |
 | `bounce_scan_max_seconds` | `60` | A scan stops (keeping its progress) after this long; the next one continues. |
@@ -444,7 +455,7 @@ Notification Delivery and Delivery Rates; the sidebar's **Delivery Operations** 
 | `ndr_subject_prefixes`, `ndr_sender_local_parts` | see the file | How a listed message is recognised as a report candidate. |
 | `address_batch_size`, `address_page_rows` | `500`, `1000` | Bounced addresses: rows counted per transaction, and at most this many when the list loads. |
 | `address_settle_seconds` | `120` | A report is counted only once it is this old (a late-committing transaction is never skipped). |
-| `address_soft_bounce_repeats`, `address_soft_bounce_days` | `3`, `7` | When "consider marking undeliverable" is suggested: this many temporary failures (temporary, full-mailbox and unknown reports, SES transient and undetermined bounces) over at least this many days. A temporary failure never suggests more on its own. |
+| `address_soft_bounce_repeats`, `address_soft_bounce_days` | `3`, `7` | When the repeated-temporary-failure review suggestion appears: this many review-counted failures (temporary, full-mailbox and unknown reports, SES transient and undetermined bounces) over at least this many days. Unknown or undetermined evidence contributes to review but is not in the retry allowlist; one failure never produces this suggestion. |
 | `address_export_max_rows`, `address_bulk_max_rows` | `10000`, `500` | Rows in one Bounced addresses export; addresses one bulk action may change. |
 | `address_refresh_rows_per_run` | `5000` | Addresses whose member links the hourly maintenance re-checks per run. |
 
@@ -491,6 +502,16 @@ form saves every column and would overwrite a running scan's lease.
    future left-the-organisation notices. `mail.0029_alter_bouncedaddress_suggestion` changes the review text and
    reclassifies stored 0 KB reports as transient. When it changes reports, it parks the Graph counting cursor so
    the next page load or hourly maintenance recalculates counts without clearing review or suppression decisions.
+   `mail.0030_bouncedaddress_hint_retention` adds the source/expiry for bounded contact-hint retention and clears
+   legacy hints that cannot be tied to a retained source; aggregate notice counts and timestamps stay. Its reverse
+   clears the hints again before dropping the retention metadata, rather than leaving untracked third-party PII.
+9. `mail.0031_email_retry_safety` adds exact per-campaign Graph category counts, immutable retry provenance and the
+   snapshotted sending method, plus the conditional source-campaign/address uniqueness constraint. Its data step
+   backfills categories only from retained reports whose message-ID or unique recipient/subject/time match identifies
+   a specific campaign. Unmatched reports and aggregate likely links do not become retry evidence. A database
+   constraint keeps every retry row locked to its one-address Manual Emails shape even during an image rollback. The
+   migration refuses to reverse while any retry campaign row exists, because removing its provenance would silently
+   unlock it under the older schema.
 
    **Image rollback** (an ECS rollback never reverses DDL): an image from before categories finds every column it
    reads (the new ones have database defaults), but it never unparks the Graph cursor. If it takes over before the new
@@ -498,6 +519,16 @@ form saves every column and would overwrite a running scan's lease.
    (Bounce Reports still lists them). Press **Rebuild counts…** once on that release. Deploying the new release again
    needs no step: the Graph counts start again at its first count when the cursor is still parked, or after the hourly
    refresh finds counts made without categories (they do not add up).
+
+   An image from before `mail.0031` does not understand retry provenance even though an ECS-style rollback leaves the
+   columns in place. Do not send, edit, or duplicate a pending retry draft on that image. The database still blocks
+   changing the original row into a different/bulk audience, but older duplication and send flows lack the live
+   eligibility checks. Resume the `0031`-aware image, or resolve those rows through an explicitly approved rollback
+   procedure before reversing the migration.
+
+   An image from before `mail.0030` can still copy a contact hint without filling the newer source/expiry columns.
+   Do not treat that image as enforcing the 90-day hint policy. Returning to the current image clears those untracked
+   hints on the next address-counting maintenance run; reversing `mail.0030` clears them before removing its columns.
 
 Access: every page, the Amazon SES tab and its JSON included, requires the **Mail** app (`Member.admin_apps`, or
 superuser); the controls are POST with CSRF. Bounced-address actions that change a contact email or a member also need

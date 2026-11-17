@@ -2,8 +2,12 @@
 
 import re
 
-from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
-from apps.mail.services.audience.suppression import normalize_address
+from django.db import transaction
+
+from apps.mail.models import EmailCampaign
+
+from .retry import RetryRefused, assert_retry_campaign_eligible, retry_eligibility_for
+from .retry_delivery import retry_delivery_snapshot
 
 # What a copy keeps. Status, the counters, sent_at, sent_by and error_message start over; recipient logs and
 # login links belong to the send that created them and are never copied.
@@ -44,30 +48,6 @@ _NUMBER_SUFFIX_RE = re.compile(r"\s*\(\d+\)$")
 _SUFFIX_RESERVE = 7
 
 
-def retry_address_for(campaign, raw):
-    """One eligible address this campaign actually mailed, or empty when a retry draft must not be offered."""
-    address = normalize_address(raw)
-    if (
-        not address
-        or len(address) > 254
-        or not RecipientLog.objects.filter(
-            campaign=campaign, email_address__iexact=address, sent_at__isnull=False
-        ).exists()
-    ):
-        return ""
-    row = BouncedAddress.objects.filter(address=address).first()
-    if (
-        row is None
-        or row.is_suppressed
-        or row.complaint_count
-        or row.ses_permanent_count
-        or row.category_count("hard")
-        or row.category_count("mailbox_disabled")
-    ):
-        return ""
-    return address
-
-
 def base_name(name: str) -> str:
     """*name* without leading ``Copy of`` prefixes and a trailing ``(N)``, or ``Untitled`` when nothing is left."""
     stripped = _NUMBER_SUFFIX_RE.sub("", _COPY_PREFIX_RE.sub("", (name or "").strip())).strip()
@@ -97,6 +77,8 @@ def duplicate_campaign(campaign, *, name: str = "", new_manual_audience: bool = 
     With ``new_manual_audience`` the draft starts with an empty Manual Emails list instead (and no exclusions):
     the way to send the same email to more people, since a campaign that has been sent is locked.
     """
+    if campaign.retry_source_campaign_id:
+        raise RetryRefused("A one-address retry draft cannot be duplicated into an ordinary campaign.")
     values = {field: getattr(campaign, field) for field in COPIED_FIELDS}
     if new_manual_audience:
         values.update(NEW_MANUAL_AUDIENCE)
@@ -105,3 +87,37 @@ def duplicate_campaign(campaign, *, name: str = "", new_manual_audience: bool = 
         copy.selected_members.set(campaign.selected_members.all())
         copy.exclude_members.set(campaign.exclude_members.all())
     return copy
+
+
+def create_retry_campaign(
+    campaign, raw_address, *, name: str = "", expected_delivery_snapshot: str = ""
+) -> tuple[EmailCampaign, bool]:
+    """Create the one idempotent retry for ``campaign``/``raw_address``.
+
+    Locking the source/contact/evidence/config rows makes the decision and insert one transaction.  The conditional
+    database uniqueness constraint is the final guard for concurrent requests on databases where row locks are
+    weaker.  A repeated POST returns the already-created retry instead of creating another sendable draft.
+    """
+    with transaction.atomic():
+        source = EmailCampaign.objects.select_for_update().get(pk=campaign.pk)
+        eligibility = retry_eligibility_for(source, raw_address, lock=True)
+        if eligibility is None:
+            raise RetryRefused("That address is not eligible for a retry draft.")
+        existing = EmailCampaign.objects.filter(retry_source_campaign=source, retry_address=eligibility.address).first()
+        if existing is not None:
+            # Idempotent resubmission opens the original snapshot even if the site's global method has since moved.
+            assert_retry_campaign_eligible(existing)
+            return existing, False
+        values = {field: getattr(source, field) for field in COPIED_FIELDS}
+        values.update(NEW_MANUAL_AUDIENCE)
+        values.update(
+            name=(name.strip() or copy_name(source.name))[:NAME_MAX_LENGTH],
+            manual_emails=eligibility.address,
+            **retry_delivery_snapshot(lock=True, expected_token=expected_delivery_snapshot),
+        )
+        retry, created = EmailCampaign.objects.get_or_create(
+            retry_source_campaign=source,
+            retry_address=eligibility.address,
+            defaults=values,
+        )
+    return retry, created

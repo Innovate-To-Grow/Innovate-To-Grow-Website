@@ -12,7 +12,8 @@ message that claims the site's own address without proof.
 
 What the inbound queue row keeps of the verdict (``Classified.result``): the email the site sent that the message
 answers, how it was found and the address it went to, and, for a left-the-organisation notice, any contact name,
-address and phone it names (hints, never verified). Bounced addresses counts those notices from it.
+address and US phone it names (hints, never verified; phones are normalized to E.164 ``+1``). Bounced addresses
+counts those notices from it.
 """
 
 import uuid

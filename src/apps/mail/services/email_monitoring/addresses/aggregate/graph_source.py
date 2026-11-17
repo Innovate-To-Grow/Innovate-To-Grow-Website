@@ -90,21 +90,34 @@ def _add_graph_bounce(row: BouncedAddress, bounce: dict) -> None:
         _reopen(row, f"New bounce report: {Category(category).label.lower()} ({code}).", at)
 
 
-def _link_graph(row: BouncedAddress, campaign_id, match: str, at) -> None:
+def _link_graph(row: BouncedAddress, campaign_id, match: str, at, category: str) -> None:
+    category = category if category in Category.values else Category.UNKNOWN
     link, created = BouncedAddressCampaign.objects.get_or_create(
         bounced_address=row,
         campaign_id=campaign_id,
         source=Source.GRAPH,
-        defaults={"match": match, "bounce_count": 1, "first_at": at, "last_at": at},
+        defaults={
+            "match": match,
+            "bounce_count": 1,
+            # A likely event must never become retry evidence merely because a later event upgrades this aggregate
+            # row's match label to exact.  Only each event that names the campaign exactly contributes here.
+            "graph_category_counts": {category: 1} if match == Match.EXACT else {},
+            "first_at": at,
+            "last_at": at,
+        },
     )
     if created:
         return
     link.bounce_count += 1
+    if match == Match.EXACT:
+        counts = dict(link.graph_category_counts or {})
+        counts[category] = int(counts.get(category) or 0) + 1
+        link.graph_category_counts = counts
     link.first_at = min(link.first_at or at, at)
     link.last_at = max(link.last_at or at, at)
     if match == Match.EXACT:
         link.match = Match.EXACT
-    link.save(update_fields=["bounce_count", "first_at", "last_at", "match", "updated_at"])
+    link.save(update_fields=["bounce_count", "graph_category_counts", "first_at", "last_at", "match", "updated_at"])
 
 
 def count_graph(batch) -> list[BouncedAddress]:
@@ -123,8 +136,8 @@ def count_graph(batch) -> list[BouncedAddress]:
         for bounce in bounces:
             _add_graph_bounce(row, bounce)
             if bounce["campaign_id"]:
-                _link_graph(row, bounce["campaign_id"], Match.EXACT, bounce["received_at"])
+                _link_graph(row, bounce["campaign_id"], Match.EXACT, bounce["received_at"], bounce["category"])
             elif bounce["pk"] in likely:
-                _link_graph(row, likely[bounce["pk"]], Match.LIKELY, bounce["received_at"])
+                _link_graph(row, likely[bounce["pk"]], Match.LIKELY, bounce["received_at"], bounce["category"])
         touched.append(row)
     return touched

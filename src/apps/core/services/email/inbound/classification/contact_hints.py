@@ -15,10 +15,15 @@ CONTACT_NAME_RE = re.compile(
     r"\b(?:please\s+)?(?:contact|call|email|e-mail|reach out to|reach)\s+"
     r"(?P<name>[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ'’.-]+(?:\s+[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ'’.-]+){1,3})\b"
 )
+# Phone hints are intentionally limited to US/NANP-shaped numbers. Match the whole uninterrupted phone-like run as
+# one candidate: otherwise an international access prefix such as ``+44`` or ``0044`` could be skipped and its
+# trailing ten digits silently relabelled as a US number.
 PHONE_RE = re.compile(
-    r"(?<![\w@])(?:\+?\d{1,3}[ .-]?)?(?:\(\d{3}\)|\d{3})[ .-]?\d{3}[ .-]?\d{4}"
-    r"(?:\s*(?:ext\.?|x)\s*\d{1,6})?(?![\w@])"
+    r"(?<![\w@])\+?[\d(][\d() .-]{7,}\d"
+    r"(?:\s*(?:ext\.?|x)\s*\d{1,6})?(?![\w@])",
+    re.IGNORECASE,
 )
+PHONE_EXTENSION_RE = re.compile(r"\s*(?:ext\.?|x)\s*\d{1,6}\s*$", re.IGNORECASE)
 
 EMAIL_RE = re.compile(
     r"(?<![\w.+-])[\w.+-]{1,64}@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?){1,8}",
@@ -77,11 +82,25 @@ def named_person(text: str) -> str:
 
 
 def named_phone(text: str) -> str:
-    """The first plausible phone in the notice's own text, ignoring digit strings in email addresses."""
+    """The first US ten-digit or ``+1`` phone in the notice's own text, normalized to E.164.
+
+    International numbers and digit strings in email addresses are ignored. Extensions are intentionally omitted:
+    the stored value is a phone hint, not a verified dialling instruction.
+    """
     without_emails = EMAIL_RE.sub(" ", text)
     for match in PHONE_RE.finditer(without_emails):
         value = match.group(0).strip()
-        digits = re.sub(r"\D", "", value.split("ext")[0].split(" x")[0])
-        if 10 <= len(digits) <= 15:
-            return value[:40]
+        base = PHONE_EXTENSION_RE.sub("", value).strip()
+        digits = re.sub(r"\D", "", base)
+        if len(digits) == 10 and not base.startswith("+"):
+            national = digits
+        elif len(digits) == 11 and digits.startswith("1") and base.startswith("+1"):
+            national = digits[1:]
+        else:
+            continue
+        # NANP area and exchange codes cannot begin with 0 or 1. This also rejects common non-US local formats such
+        # as ``020 ...`` instead of silently relabelling them as US numbers.
+        if national[0] in "01" or national[3] in "01":
+            continue
+        return f"+1{national}"
     return ""
