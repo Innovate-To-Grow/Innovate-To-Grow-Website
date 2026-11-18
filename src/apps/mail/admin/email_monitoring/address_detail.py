@@ -12,7 +12,7 @@ from apps.core.utils.access import user_can_access_app
 from apps.event.models import EventRegistration
 from apps.mail.admin.email_monitoring.addresses import REPORTS_SHOWN, _member_link
 from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
-from apps.mail.services.audience.suppression import normalize_address
+from apps.mail.services.audience.suppression import is_suppressed, normalize_address
 from apps.mail.services.campaign.content.retry import retry_address_for
 from apps.mail.services.email_monitoring.addresses.actions.guards import availability
 from apps.mail.services.email_monitoring.addresses.actions.specs import SPECS
@@ -55,7 +55,7 @@ def _member_card(request, member) -> dict:
 def _notice_link(request, row) -> str:
     """The helpdesk ticket holding the latest left-the-organisation notice, for staff with the Helpdesk app (the
     queue hides automated mail by default, so the link shows every ticket)."""
-    if not row.left_org_ticket or not user_can_access_app(request.user, "helpdesk"):
+    if not row.left_org_hint_is_current or not row.left_org_ticket or not user_can_access_app(request.user, "helpdesk"):
         return ""
     query = urlencode({"q": row.left_org_ticket, "mail": "all", "status": "any"})
     return f"{reverse('admin:helpdesk_ticket_changelist')}?{query}"
@@ -101,6 +101,7 @@ def address_detail_view(request, pk):
     context = _context(request, f"Bounced Address - {row.address}", None, "addresses")
     context.update(
         row=row,
+        campaign_held=is_suppressed(row.address),
         target=target,
         actions=actions,
         cards=[_member_card(request, owner) for owner in target.owners],

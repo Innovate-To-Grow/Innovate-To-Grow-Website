@@ -12,7 +12,7 @@ from apps.core.models import EmailServiceConfig
 from apps.core.services.delivery_rates import WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
 from apps.mail.models import RecipientLog
-from apps.mail.services.audience.suppression import is_suppressed
+from apps.mail.services.audience.suppression import CampaignAddressHeld, check_before_delivery, is_suppressed
 from apps.mail.services.campaign.content.retry import assert_retry_campaign_eligible, assert_retry_recipients
 
 from ...audience import get_recipients
@@ -66,12 +66,7 @@ def send_campaign(campaign, sent_by):
 
 
 def send_to_recipients(campaign, pending, delivery=None) -> None:
-    """Send each ``(recipient, log)`` on the bulk lane in turn; pause the rest when the delivery limits hold them back.
-
-    For ordinary campaigns the email configuration is re-read every ``jobs.runner_refresh_recipients`` recipients,
-    so a provider change made while a long campaign runs applies to the remaining recipients.  A retry always reloads
-    its own immutable snapshot instead.
-    """
+    """Send bulk recipients until paused; refresh ordinary routes regularly and preserve a retry's pinned route."""
     refresh_every = section("jobs")["runner_refresh_recipients"]
     delivery = delivery or load_delivery(campaign, EmailServiceConfig, _get_ses_client)
     # Every admission in this thread may wait up to the dedicated cap for its slot instead of being deferred.
@@ -112,6 +107,7 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
             # invocation (including a retry after provider throttling).
             eligibility = assert_retry_campaign_eligible(campaign, recipient_log=log)
             assert_retry_recipients(campaign, [recipient], eligibility=eligibility)
+            check_before_delivery(recipient["email"])
 
         def send_after_live_retry_check():
             return _send_with_configured_provider(
@@ -133,6 +129,9 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
         if result is None:
             return False
         _record_send_result(campaign, log, result)
+    except CampaignAddressHeld:
+        if skip_suppressed_log(log):
+            campaign.failed_count += 1
     except Exception as exc:
         logger.exception("Failed to process recipient %s", recipient["email"])
         RecipientLog.objects.filter(

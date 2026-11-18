@@ -8,6 +8,7 @@ from apps.authn.services.contacts.contact_emails import delete_contact_email, ma
 from apps.authn.services.email.challenges import AuthChallengeError
 from apps.mail.models import BouncedAddress, BouncedAddressAction
 
+from ..policies.graph import row_has_graph_hold
 from . import audit, effects
 from .effects import ActionRefused
 from .targets import Target, member_admin
@@ -58,13 +59,22 @@ def _suppressor(kind: str, action: str, verb: str):
 def _clear(request, target: Target, values: dict) -> str:
     note = effects.note_of(values)
     row = target.row
-    previous = row.get_suppression_display() or "suppressed"
+    graph_held = row_has_graph_hold(row) or row.legacy_graph_permanent_review
+    if graph_held and not note:
+        raise ActionRefused("Record how the address and the permanent bounce were verified before clearing the hold.")
+    previous = row.get_suppression_display() or "Graph bounce review hold"
+    if row_has_graph_hold(row):
+        row.graph_hold_cleared_at = row.trusted_graph_last_permanent_at
+    row.legacy_graph_permanent_review = False
     row.suppression, row.suppressed_at, row.suppressed_by, row.suppressed_reason = "", None, None, ""
     effects.review(request, row, Status.OPEN, "", note)
-    effects.save(row, [*effects.SUPPRESSION_FIELDS, *effects.REVIEW_FIELDS])
+    effects.save(
+        row,
+        [*effects.SUPPRESSION_FIELDS, *effects.REVIEW_FIELDS, "graph_hold_cleared_at", "legacy_graph_permanent_review"],
+    )
     audit.record(request, target, Action.CLEAR_SUPPRESSION, note=note, role_after=target.role)
     audit.history(request, effects.history_targets(target), f"cleared “{previous}” on {row.address}")
-    return f"{row.address} is no longer suppressed: campaigns may mail it again."
+    return f"The reviewed hold on {row.address} was cleared. Other current delivery restrictions still apply."
 
 
 def _unsubscribe(request, target: Target, values: dict) -> str:

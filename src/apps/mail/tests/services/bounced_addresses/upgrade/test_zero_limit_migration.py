@@ -7,7 +7,7 @@ from django.db.migrations.executor import MigrationExecutor
 from django.test import TransactionTestCase
 from django.utils import timezone
 
-from apps.mail.services.email_monitoring.addresses import aggregate
+from apps.core.services.email.bounces.classify import classify
 
 
 class ZeroLimitMigrationRoundTripTests(TransactionTestCase):
@@ -74,7 +74,8 @@ class ZeroLimitMigrationRoundTripTests(TransactionTestCase):
             left_org_contact_name="Casey Example",
             left_org_contact_phone="+12025550123",
         )
-        State.objects.create(source="graph", cursor_at=timezone.now(), processed_total=7)
+        cursor = (timezone.now(), uuid.uuid4())
+        State.objects.create(source="graph", cursor_at=cursor[0], cursor_id=cursor[1], processed_total=7)
 
         executor = MigrationExecutor(connection)
         executor.loader.build_graph()
@@ -98,11 +99,24 @@ class ZeroLimitMigrationRoundTripTests(TransactionTestCase):
         )
         self.assertEqual(migrated_outbound.bounce_classification, "soft")
         state = after_apps.get_model("mail", "BounceAggregationState").objects.get(source="graph")
-        self.assertEqual((state.cursor_at, state.cursor_id), (aggregate.PARKED, aggregate.PARKED_ID))
+        self.assertEqual((state.cursor_at, state.cursor_id), cursor)
 
-        # Prove the reverse parks counting itself, rather than merely observing the forward migration's parked state.
-        after_apps.get_model("mail", "BounceAggregationState").objects.filter(source="graph").update(
-            cursor_at=timezone.now(), cursor_id=uuid.uuid4()
+        # A genuine temporary failure written by the new runtime uses the same reason as upgraded rows.
+        diagnostic = "450 4.3.0 Maximum message size is 0 KB while maintenance runs"
+        verdict = classify("failed", "4.3.0", diagnostic)
+        late = after_apps.get_model("core", "EmailBounce").objects.create(
+            dedupe_key=uuid.uuid4().hex,
+            mailbox="test@example.org",
+            ndr_graph_id="during-new-release",
+            received_at=timezone.now(),
+            recipient="valid@example.org",
+            action="failed",
+            status_code="4.3.0",
+            diagnostic_code=diagnostic,
+            classification=verdict.classification,
+            category=verdict.category,
+            is_permanent=verdict.is_permanent,
+            reason=verdict.reason,
         )
 
         executor = MigrationExecutor(connection)
@@ -137,9 +151,9 @@ class ZeroLimitMigrationRoundTripTests(TransactionTestCase):
             ("transient", "soft", False, "Temporary receiving-service maintenance"),
         )
         rolled_back_state = rolled_back_apps.get_model("mail", "BounceAggregationState").objects.get(source="graph")
-        self.assertEqual(
-            (rolled_back_state.cursor_at, rolled_back_state.cursor_id), (aggregate.PARKED, aggregate.PARKED_ID)
-        )
+        self.assertEqual((rolled_back_state.cursor_at, rolled_back_state.cursor_id), cursor)
+        late = rolled_back_apps.get_model("core", "EmailBounce").objects.get(pk=late.pk)
+        self.assertEqual((late.category, late.classification, late.is_permanent), ("transient", "soft", False))
         rolled_back_address = rolled_back_apps.get_model("mail", "BouncedAddress").objects.get(pk=address.pk)
         self.assertEqual(
             (

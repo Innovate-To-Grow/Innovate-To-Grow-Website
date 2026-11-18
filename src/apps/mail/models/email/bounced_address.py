@@ -1,18 +1,7 @@
-"""Bounced addresses: one row per email address that ever bounced, its review state, the bulk-mail suppression staff
-set on it, and the append-only log of what staff did (Mail → Delivery Operations → Email Monitoring → Bounced
-addresses).
+"""Bounce evidence, staff review and bulk-mail holds for one normalized address.
 
-The counts come from the bounce records (``core.EmailBounce`` for Microsoft Graph reports, ``RecipientLog`` for
-Amazon SES events) and from the helpdesk's "left the organisation" automatic replies that answer an email the site
-sent (``core.InboundMessage``), through ``apps.mail.services.email_monitoring.addresses.aggregate``. They are stored
-here, so they outlive the records' retention. Graph reports are counted by coarse classification and by category (what
-went wrong); only a missing address or a disabled mailbox is evidence against the address on its own, and a
-left-the-organisation notice is evidence to check (an out-of-office reply is never counted). Counting never changes a
-member, a contact email or a subscription: every change is an explicit staff action, recorded in
-``BouncedAddressAction``.
-
-``suppressed_at`` is the site's one bulk-mail suppression list: every campaign audience skips a suppressed address
-(``apps.mail.services.audience.suppression``). Transactional mail (sign-in codes, tickets, notifications) is never suppressed.
+Graph, SES and departure counts survive source retention. Staff actions are audited separately;
+campaign holds never modify a contact, subscription or transactional email.
 """
 
 from django.conf import settings
@@ -59,6 +48,9 @@ class BouncedAddress(BouncedAddressSummaryMixin, ProjectControlModel):
             ),
         )
         POLICY = "policy", "Their server's policy refused the message, not the address: no action"
+        VERIFY_EVIDENCE = "verify_evidence", "Review the evidence before taking action on this address"
+        SES_HOLD = "ses_hold", "SES has stopped delivery. Check its suppression, subscription or bounce details"
+        FIX_CONTENT = "fix_content", "Review the rejected message size, content or attachment before sending"
         LEFT_ORG = (
             "left_org",
             "May have left: an automatic reply says so. Check the notice, then replace the address or mark it "
@@ -67,27 +59,29 @@ class BouncedAddress(BouncedAddressSummaryMixin, ProjectControlModel):
 
     # Suggestions involving the address itself (including a manual retry after a receiving-side failure).
     ADDRESS_SUGGESTIONS = frozenset(
-        {Suggestion.UNSUBSCRIBE, Suggestion.UNDELIVERABLE, Suggestion.REPLACE, Suggestion.LEFT_ORG, Suggestion.CONSIDER}
+        {
+            Suggestion.UNSUBSCRIBE,
+            Suggestion.UNDELIVERABLE,
+            Suggestion.REPLACE,
+            Suggestion.LEFT_ORG,
+            Suggestion.CONSIDER,
+            Suggestion.VERIFY_EVIDENCE,
+        }
     )
-    CONTACT_KINDS = {
-        "new_address": "their new address, the notice says",
-        "contact": "who to contact instead, the notice says",
-        "mentioned": "an address the notice names",
-    }
+    trusted_graph_hard_count = models.PositiveIntegerField(default=0, db_default=0)
+    trusted_graph_disabled_count = models.PositiveIntegerField(default=0, db_default=0)
+    trusted_graph_last_permanent_at = models.DateTimeField(null=True, blank=True)
+    graph_hold_cleared_at = models.DateTimeField(null=True, blank=True)
+    legacy_graph_permanent_review = models.BooleanField(default=False, db_default=False)
 
     address = models.CharField(max_length=254, unique=True, help_text="Lower-case address.")
 
-    # Microsoft Graph bounce reports, each counted once (they are kept here after the reports are purged).
     hard_count = models.PositiveIntegerField(default=0)
     soft_count = models.PositiveIntegerField(default=0)
     rejected_count = models.PositiveIntegerField(default=0)
     delayed_count = models.PositiveIntegerField(default=0)
     unknown_count = models.PositiveIntegerField(default=0)
-    # Of those, the reports matched to an email the site sent (exactly, or inferred from recipient and subject). Anyone
-    # can mail the mailbox a report-shaped message, so an address with only unmatched reports is shown as such.
     matched_count = models.PositiveIntegerField(default=0)
-    # The same reports by category ({category: count}; a category with no report is left out). Database defaults
-    # too: the release before categories may still be counting while a deploy rolls out.
     category_counts = models.JSONField(
         default=dict,
         db_default={},

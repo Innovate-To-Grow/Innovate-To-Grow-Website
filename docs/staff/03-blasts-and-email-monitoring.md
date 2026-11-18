@@ -191,14 +191,16 @@ five days before the report), or **Not matched**. Unmatched reports are usually 
 Outlook, mail sent before monitoring began, or a case the site will not guess. Anyone can send a fake bounce report,
 so treat an unmatched report with care.
 
-A bounce report never changes a member, a subscription or a campaign by itself. Acting on it is a staff decision.
+Campaigns stop sending to an address when a permanent Graph report matches the original message and its failed final
+recipient, or when SES records a permanent bounce or complaint. A forwarded failure or inferred match is evidence
+to review. Staff control contact and subscription changes.
 
 For the first review, use the category to choose the next step:
 
 | Group | Categories | Staff action |
 |---|---|---|
-| **Permanent address problem** | Address or domain does not exist; mailbox explicitly disabled | Confirm the report and any replacement address, then **Mark undeliverable** or **Replace email** in Bounced addresses. That stops future campaigns to the bad address. |
-| **Our sending problem** | Relay denied; spam or reputation rejection | Keep the contact address. Give the web team the code and reason so they can correct the route, sender checks or content. Once corrected, prepare a one-address draft to resend. |
+| **Permanent address problem** | Address or domain does not exist; mailbox explicitly disabled | Confirmed permanent evidence already holds campaigns. Verify the address and review any replacement before changing a member. |
+| **Our sending problem** | Relay denied; spam or reputation rejection | Keep the contact address. Give the web team the code and reason so they can correct the route, sender checks or content. Once corrected, review a different configured sending provider for a one-address draft. |
 | **Receiving service problem** | Timeout, other temporary failure, 0 KB mailbox limit, mailbox full | Keep the address eligible. After the receiving side is fixed, prepare a one-address draft to retry; review repeated failures over time. |
 | **Automatic reply** | Left-the-organisation or vacation automatic reply | A vacation reply needs no bounce action. Open a left-the-organisation notice for manual review before changing any address. |
 
@@ -268,12 +270,10 @@ Both change bounce processing only; the helpdesk has its own (3.5). Both changes
 
 The **Bounced addresses** page in Email Monitoring lists every address that has bounced, one row per address,
 with what you may do about it. It also lists addresses whose automatic reply to our mail said the person **left the
-organisation** (or retired, or changed address): those are evidence to check, not proof. **Nothing on it happens by
-itself:** the counts never change a member, an address or a subscription. Every change is a staff action with a
-confirmation page, and it is recorded. (Only the list's
-own review state moves on its own: a new matched report that the address does not exist or that its mailbox is
-disabled, or a spam complaint, puts a dismissed address back on the **Open** tab. Temporary failures and rejections
-never do.)
+organisation** (or retired or changed address). Verify any new contact details with the member or organisation.
+Staff actions that change an address, account or subscription have a confirmation and an audit record. A trusted
+permanent report or signed SES complaint or permanent bounce can reopen a dismissed address and stop campaign
+delivery while staff review it.
 
 ### The list
 
@@ -288,11 +288,14 @@ never do.)
 | Suggestion | Why |
 |---|---|
 | **Unsubscribe: they reported us as spam** | A spam complaint. |
-| **Mark undeliverable or replace the address** | A report that the address does not exist. |
-| **Replace the address (the mailbox is disabled), or mark it undeliverable** | A report that the mailbox is disabled. |
-| **Repeated temporary failures: check the receiving service, then retry this address** | Three or more review-counted failures (temporary, mailbox full or unknown), with at least seven days between the address's first and last report. Unknown-only evidence can trigger this review suggestion but does not make a campaign eligible for a retry draft. |
+| **Mark undeliverable or replace the address** | Recipient-bound Graph evidence or a signed SES permanent event identifying an invalid address. |
+| **Replace the address (the mailbox is disabled), or mark it undeliverable** | A recipient-bound Graph report that the mailbox is disabled. |
+| **SES has stopped delivery** | Check the SES suppression, subscription and diagnostic. A provider hold alone does not establish that a person has left. |
+| **Review the evidence** | The Graph cause is unknown, older permanent history lacks recipient proof, or SES has no classified receiving cause. Verify before changing the address. |
+| **Review the rejected message size, content or attachment** | SES rejected what was sent. Correct the message before considering another campaign. |
 | **Our sending side: relay denied…** | Relay refusals and none of the above: check our sending route or authorisation, then use an alternate configured sender to retry. |
 | **Our sending side: spam or reputation rejection…** | Spam or reputation rejections and none of the above: check our reputation, sender checks or content, then use an alternate configured sender to retry. |
+| **Repeated temporary failures: check the receiving service, then retry this address** | Three or more Graph temporary or full-mailbox failures or confirmed SES temporary receiving failures, with at least seven days between the address's first and last report. A relay or reputation rejection takes priority so staff can check the sending service first. |
 | **Their server's policy refused the message, not the address: no action** | Policy rejections and none of the above. |
 | **May have left: an automatic reply says so. Check the notice, then replace the address or mark it undeliverable** | An automatic reply to our mail said the person left the organisation, retired or changed address (and none of the first three rows applies). |
 
@@ -300,30 +303,30 @@ A single temporary failure, such as a connection timeout, never suggests marking
 whose reports are all unmatched says "unmatched reports only: check them first" beside a suggestion about the
 address itself.
 
-**Retry one address after fixing a retryable temporary or sender-side failure.** Open the address, then use **Prepare
-one-address draft** beside the exact campaign evidence. The link is available only for temporary, mailbox-full,
-spam/reputation or relay-denied evidence, and only when the address belongs to one active contact who is subscribed
-and verified. It is refused for delayed, unknown, policy, permanent or complaint evidence, and for inactive,
-unsubscribed, unverified, unlinked or ambiguous contacts.
+**Retry one address.** Open the address and choose **Prepare one-address draft** beside the original completed
+campaign. The address must belong to the same active member who received the original send, with exactly one
+verified and subscribed contact. The original recipient log must support a retry. A delivered or uncertain send,
+an ambiguous match, an unresolved permanent hold or a complaint blocks the workflow.
 
-The new draft is locked to that one normalized address; it cannot be changed into a bulk audience or duplicated into
-an ordinary campaign, and repeating the request returns the same draft. It snapshots the currently selected
-**Email Sending Method** and From identity. A
-later global method change still affects every non-retry site email, but this retry uses its reviewed snapshot. The
-site rechecks the contact and evidence immediately before sending. Review the content before choosing to send; no
-retry is sent merely by opening the link or creating the draft.
+- **Receiving problems.** After a receiving limit, full mailbox or temporary service fault is fixed, use matching
+  Graph evidence or a signed SES event identifying a temporary receiving problem. A delay means the provider is
+  still trying. SES message-size, attachment and content rejections require a content review.
+- **Sender problems.** For a Graph spam or relay rejection, have the web team correct the route or reputation
+  problem, then review a **different configured sending provider**. Changing the display name or From address on
+  the same service is insufficient. If the original provider cannot be established, the draft cannot be created.
+- **Repeat requests.** Preparing a draft sends nothing. It locks the recipient, provider and From identity to the
+  reviewed values; staff still review the content and confirm the send. Reopening the workflow uses the existing
+  retry. Its submitted record and recipient history are protected from deletion.
 
 **Left-the-organisation notices.** When someone's automatic reply to one of our emails says they no longer work
 there, the address shows **left the organisation 1** in its counts. Open the address to see when it came, the
 name, email address or phone number the notice suggests as a contact, flagged for **manual review**, and, if you
 hold the Helpdesk app, a link to the notice itself. Phone hints support US ten-digit / `+1` formats only and are
 shown normalized as `+1`; international numbers are ignored. These details come from the notice's text and are not
-verified. The copied contact hints and source link are kept for at most 90 days and are cleared sooner if the source
-inbound message is deleted; the aggregate notice count and dates remain.
-Only replies to our own mail count, and **out-of-office replies never do** (a notice that
-mentions an absence, a holiday closure or travel is treated as one, and "this mailbox is not monitored" alone does
-not say that anyone left). Nothing changes on its own: read the notice, then use **Replace email** or
-**Mark undeliverable** yourself if needed. The Replace email page shows the named address as a reminder, but you
+verified. The hints disappear from details, the replacement form, the filter and exports 90 days after processing,
+or sooner if the source is deleted. The notice count and dates remain. Ordinary vacations and lunch breaks are
+ignored. A retirement notice with a routine weekend-hours footer still goes to review. Read the notice, then use
+**Replace email** or **Mark undeliverable** yourself if needed. The Replace email page shows the named address as a reminder, but you
 type the new address: confirm it with the member or their organisation first, since anyone can write such a notice.
 
 ### Actions
@@ -351,7 +354,11 @@ reason it is skipped. Changes to addresses and accounts are made one at a time.
 
 ### Effect on blasts
 
-Every campaign audience skips an address that is suppressed or marked undeliverable. The previews and the
+Every campaign audience skips a staff-suppressed address, a confirmed permanent Graph failure, and an SES
+permanent bounce or complaint. An older ambiguous Graph hard count permits ordinary campaigns and requires
+review before a one-address retry. After checking a recovered address, use **Clear suppression** with a note
+explaining the verification. A later confirmed permanent report holds the address again. This action cannot lift
+an SES restriction or resubscribe a contact. The previews and the
 confirmation page say "N recipients skipped: undeliverable". An email already queued for that address is not sent:
 the campaign's **Email Log** shows it as **Failed** ("Not sent: this address is suppressed for bulk mail"), and it
 counts towards **Partially sent**. Sign-in codes, tickets and notifications still reach the address, in case the

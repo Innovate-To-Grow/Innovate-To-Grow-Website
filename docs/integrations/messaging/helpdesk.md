@@ -115,8 +115,8 @@ its thread lands on the person's ticket.
      that says someone left but also mentions a closure, travel or a return (holidays, a break, weekends, "until the
      20th", "upon my return", …) is a vacation reply too, and wording that says only that **nobody reads the
      mailbox** ("this inbox is not monitored") is no notice at all: holiday, weekend and shared mailboxes say so too.
-     An out-of-office reply is therefore never evidence against an address (the price: a real notice that also
-     mentions a holiday is not counted). A notice's **named contact hints**—an address (a new address or someone to
+     A lunch break is a temporary absence. A routine office-hours footer (“our office is closed on weekends”)
+     or a weekend greeting can accompany a departure notice without hiding its contact details. A notice's **named contact hints**—an address (a new address or someone to
      contact instead, by the words before it), a narrowly introduced name, and a US ten-digit / `+1` phone normalized
      to E.164 `+1`—are kept for manual review, never verified. International phone numbers are ignored; the sender's,
      the site's, no-reply and report addresses and the address the site mailed are never used as the named address.
@@ -156,7 +156,7 @@ takes the highest number plus one. Display: `I2G-#1234`.
 | Data | Where | Kept (Settings) |
 |---|---|---|
 | Listed-message metadata | `core.InboundMessage` | `inbound_retention_days` (90) after processing, or after recording while it waits (`EMAIL_MONITORING`) |
-| Unverified contact hints copied from a left-the-organisation notice (name, email and US-only `+1` phone) | `mail.BouncedAddress` | At most `left_org_hint_retention_days` (90) after processing; cleared immediately when the source inbound row is deleted |
+| Unverified contact hints copied from a left-the-organisation notice (name, email and US-only `+1` phone) | `mail.BouncedAddress` | Available for review for `left_org_hint_retention_days` (90) after processing. Expired details are hidden immediately and cleared by the next address-counting run. Deleting the source row clears the copy immediately. |
 | Message text (personal sign-in links and token-shaped runs scrubbed) and sanitized HTML, capped at 256 KB / 1 MB | `helpdesk.TicketMessage` | 730 days after the ticket closed |
 | Attachments (10 MB per file, 25 MB per message; blocked types never) | `helpdesk.TicketAttachment.content` (PostgreSQL, not S3: the production media bucket serves public URLs) | 365 days after the ticket closed |
 | Bodies of automated mail / of spam | | 90 / 30 days after arrival |

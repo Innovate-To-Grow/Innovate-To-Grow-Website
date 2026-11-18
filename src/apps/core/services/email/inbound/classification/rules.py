@@ -57,7 +57,8 @@ LEFT_ORG_RE = re.compile(
     r"\bno longer (?:with|at|employed|affiliated|part of|works?|working|in use|active|valid|available|checked|"
     r"monitored|being monitored)\b|\b(?:has|have) (?:left|retired|departed)\b(?! (?:a|an|you|me|it|this|that|word|"
     r"messages?|voice ?mails?|feedback|comments?|details|early|already|the (?:office|building))\b)|"
-    r"\bretired (?:from|as of|in|on)\b|"
+    r"\bretired (?:from|as of|in|on)\b|\bi(?: have|[’']ve)? resigned(?=\s*[.!?]|$|"
+    r" from (?:the |this |our )?(?:company|organi[sz]ation|university)\b)|"
     r"\bleft the (?:company|organi[sz]ation|university|college|firm|agency|district|school|department|city|county)\b|"
     r"\b(?:my|his|her|their) last day (?:at|with) |\blast day of (?:employment|work)\b|"
     r"\bnew e-?mail address\b|\bchanged (?:my|his|her|their) e-?mail\b|\bplease (?:update|use) (?:my|the) new\b|"
@@ -88,6 +89,7 @@ UNMONITORED_RE = re.compile(
 )
 # Wording of an absence with a return: out of office, vacation, leave, travel ("will return your call" is not one).
 VACATION_RE = re.compile(
+    r"\b(?:i|we) (?:have )?left for (?:lunch|dinner|a break)\b|"
     r"\bout[- ]of[- ](?:the[- ])?office\b|\booo\b|\bon (?:vacation|holidays?|leave|annual leave|parental leave|maternity leave|"
     r"paternity leave|medical leave|sick leave|sabbatical|pto|business travel|a business trip)\b|"
     r"\baway from (?:the |my )?(?:office|desk|e-?mail)\b|\b(?:currently|presently) (?:away|traveling|travelling|out)\b|"

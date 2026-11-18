@@ -156,8 +156,7 @@ CASES = (
         diagnostic="550 5.2.3 RESOLVER.RST.RecipSizeLimit; message too large for this recipient; Message size: "
         "61 KB, Max size allowed: 0 KB",
     ),
-    # Yahoo through Exchange Online's generic "remote server returned an error", with no reason: unknown (threshold
-    # only), not hard.
+    # Yahoo through Exchange Online gives no specific cause here; staff should inspect the report.
     _case(
         "yahoo_generic_554",
         "yahoo.case@example.net",

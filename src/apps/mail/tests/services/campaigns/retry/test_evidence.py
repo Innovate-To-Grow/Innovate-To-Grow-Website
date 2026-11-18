@@ -9,7 +9,8 @@ from django.test import TestCase
 from django.utils import timezone
 
 from apps.core.tests.services.email_monitoring.helpers import make_bounce
-from apps.mail.models import BouncedAddress, BouncedAddressCampaign, EmailCampaign
+from apps.mail.migrations._graph_review_v1 import preserve_graph_history
+from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressCampaign, EmailCampaign
 from apps.mail.services.email_monitoring.addresses.aggregate.graph_source import _link_graph
 from apps.mail.tests.services.campaigns.retry.helpers import make_retry_campaign
 
@@ -48,6 +49,7 @@ class RetryEvidenceTests(TestCase):
             classification="soft",
             campaign_id=exact_campaign.pk,
             match_method="message_id",
+            trusted_recipient=True,
         )
         make_bounce(
             recipient="likely@example.org",
@@ -57,7 +59,24 @@ class RetryEvidenceTests(TestCase):
             match_method="unmatched",
         )
 
-        migration.backfill_exact_graph_categories(apps, SimpleNamespace(connection=connection))
+        make_bounce(
+            recipient="exact@example.org",
+            category="mailbox_full",
+            classification="soft",
+            campaign_id=exact_campaign.pk,
+            match_method="recipient",
+            trusted_recipient=False,
+        )
+        make_bounce(
+            recipient="exact@example.org",
+            category="relay_denied",
+            classification="rejected",
+            campaign_id=exact_campaign.pk,
+            match_method="message_id",
+            trusted_recipient=False,
+        )
+        BounceAggregationState.objects.update_or_create(source="graph", defaults={"cursor_at": timezone.now()})
+        preserve_graph_history(apps, SimpleNamespace(connection=connection))
 
         exact = BouncedAddressCampaign.objects.get(bounced_address=exact_row)
         likely = BouncedAddressCampaign.objects.get(bounced_address=likely_row)

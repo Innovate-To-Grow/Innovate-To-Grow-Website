@@ -4,6 +4,7 @@ import uuid
 from dataclasses import dataclass
 
 from django.db.models import Q
+from django.db.models.functions import Now
 from django.utils.dateparse import parse_date
 
 from apps.core.models import EmailBounce
@@ -24,7 +25,8 @@ TYPES = {
     "left_org": ("Has a left-the-organisation notice", Q(left_org_count__gt=0)),
     "left_org_contact": (
         "Left-the-organisation contact for manual review",
-        Q(left_org_contact__gt="") | Q(left_org_contact_name__gt="") | Q(left_org_contact_phone__gt=""),
+        Q(left_org_hint_source__isnull=False, left_org_hint_expires_at__gt=Now())
+        & (Q(left_org_contact__gt="") | Q(left_org_contact_name__gt="") | Q(left_org_contact_phone__gt="")),
     ),
 }
 # "Has a report of this category": Graph reports, and the SES bounce type that means the same where there is one.

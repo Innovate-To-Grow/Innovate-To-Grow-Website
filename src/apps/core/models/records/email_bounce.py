@@ -1,10 +1,7 @@
-"""Bounce notifications read from the sending mailbox, and the bounce processor's durable state.
+"""Bounce diagnostics for each failed or delayed recipient, and the mailbox scanner's durable state.
 
-``EmailBounce`` holds one row per failed or delayed recipient, matched to its outgoing email when possible. It
-keeps only diagnostic fields, never the report's text or the original message body.
-
-Each row has a fine **category** from the SMTP status and diagnostic, plus a coarse **classification** (hard, soft,
-rejected, delayed or unknown) used by dashboard charts and an email's worst bounce.
+Categories describe the failure; classifications summarize it for charts. A trusted report binds its SMTP
+final recipient to the outbound envelope and Message-ID. Original mail bodies are never stored.
 """
 
 from django.db import models
@@ -40,10 +37,7 @@ CATEGORY_GUIDANCE = {
         "Not a bad address: no action on the contact."
     ),
     "delayed": "Still retrying: not a failure yet.",
-    "unknown": (
-        "Unclear: the report gives no specific code or reason. It only counts toward the repeated-failure threshold; "
-        "read the diagnostic."
-    ),
+    "unknown": "The cause is unclear. Review the report before deciding whether to act.",
 }
 # The same in a few words, for table rows.
 CATEGORY_HINTS = {
@@ -55,7 +49,7 @@ CATEGORY_HINTS = {
     "relay_denied": "Our sending side: sending route or authorisation",
     "policy_rejected": "The recipient's policy: no action on the contact",
     "delayed": "Still retrying",
-    "unknown": "Unclear: counts toward the threshold only",
+    "unknown": "Unclear: review the evidence",
 }
 
 
@@ -126,6 +120,9 @@ class EmailBounce(ProjectControlModel):
     reason = models.CharField(max_length=255, blank=True, default="")
     email = models.ForeignKey(OutboundEmail, null=True, blank=True, on_delete=models.SET_NULL, related_name="bounces")
     campaign_id = models.UUIDField(null=True, blank=True, db_index=True)
+    trusted_recipient = models.BooleanField(
+        default=False, db_default=False, help_text="The DSN final recipient and original Message-ID match the envelope."
+    )
     match_method = models.CharField(
         max_length=16, choices=MatchMethod.choices, default=MatchMethod.UNMATCHED, db_index=True
     )

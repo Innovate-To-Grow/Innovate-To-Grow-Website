@@ -13,8 +13,14 @@ from django.db.models.functions import Lower
 from apps.authn.models import ContactEmail, Member
 from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
 from apps.mail.services.audience.suppression import normalize_address
+from apps.mail.services.email_monitoring.addresses.policies.graph import row_has_graph_hold
 
-from .retry_evidence import has_unaggregated_permanent_or_complaint, retryable_campaign_evidence
+from .retry_evidence import (
+    graph_campaign_categories,
+    has_unaggregated_permanent_or_complaint,
+    retryable_campaign_evidence,
+)
+from .retry_route import assert_alternate_retry_route, rejected_sender_provider
 
 
 class RetryRefused(ValueError):
@@ -27,6 +33,7 @@ class RetryEligibility:
     contact_email_id: object
     member_id: object
     evidence_source: str
+    rejected_sender_provider: str | None
 
 
 def _locked(queryset, lock: bool):
@@ -62,32 +69,40 @@ def retry_eligibility_for(campaign, raw_address, *, lock: bool = False) -> Retry
     address = normalize_address(raw_address)
     if not address or len(address) > 254:
         return None
-    contact = _unique_live_contact(address, lock=lock)
-    if contact is None:
-        return None
-    sent = _locked(
-        RecipientLog.objects.annotate(normalized_address=Lower("email_address")).filter(
-            campaign=campaign,
-            normalized_address=address,
-            sent_at__isnull=False,
-        ),
-        lock,
-    ).exists()
-    if not sent:
-        return None
-    if has_unaggregated_permanent_or_complaint(address, lock=lock):
-        return None
     row = _locked(BouncedAddress.objects.filter(address=address), lock).first()
     if (
         row is None
         or row.is_suppressed
         or row.complaint_count
         or row.ses_permanent_count
-        or row.category_count("hard")
-        or row.category_count("mailbox_disabled")
+        or row.legacy_graph_permanent_review
+        or row_has_graph_hold(row)
     ):
         return None
-    evidence_source = retryable_campaign_evidence(row, campaign, address, lock=lock)
+    contact = _unique_live_contact(address, lock=lock)
+    if contact is None:
+        return None
+    # The source may have changed while a worker was waiting for provider admission.
+    logs = RecipientLog.objects.annotate(normalized_address=Lower("email_address")).filter(
+        campaign=campaign,
+        campaign__retry_source_campaign__isnull=True,
+        campaign__status__in=("sent", "partial", "failed"),
+        normalized_address=address,
+    )
+    originals = list(_locked(logs, lock)[:2])
+    if len(originals) != 1:
+        return None
+    original = originals[0]
+    if not original.sent_at or original.member_id != contact.member_id:
+        return None
+    if original.status not in ("sent", "bounced", "rejected"):
+        return None
+    if has_unaggregated_permanent_or_complaint(address, lock=lock):
+        return None
+    categories = graph_campaign_categories(row, campaign, address, lock=lock)
+    evidence_source = retryable_campaign_evidence(
+        row, campaign, address, graph_categories=categories, source_log=original, lock=lock
+    )
     if not evidence_source:
         return None
     return RetryEligibility(
@@ -95,6 +110,9 @@ def retry_eligibility_for(campaign, raw_address, *, lock: bool = False) -> Retry
         contact_email_id=contact.pk,
         member_id=contact.member_id,
         evidence_source=evidence_source,
+        rejected_sender_provider=rejected_sender_provider(
+            campaign, address, original, graph_categories=categories, lock=lock
+        ),
     )
 
 
@@ -117,6 +135,9 @@ def assert_retry_campaign_eligible(campaign, *, recipient_log=None) -> RetryElig
     eligibility = retry_eligibility_for(campaign.retry_source_campaign, campaign.retry_address)
     if eligibility is None:
         raise RetryRefused("The retry address is no longer eligible.")
+    assert_alternate_retry_route(eligibility.rejected_sender_provider, campaign.retry_sending_provider)
+    if campaign.status == "draft" and campaign.recipient_logs.exists():
+        raise RetryRefused("A retry with prior delivery records cannot be queued again.")
     if recipient_log is not None:
         if campaign.recipient_logs.count() != 1:
             raise RetryRefused("A retry must have exactly one recipient log.")

@@ -173,6 +173,7 @@ class LeftOrganisationTests(SimpleTestCase):
 
 
 OUT_OF_OFFICE = (
+    "I have left for lunch. For assistance contact Riley Chen at riley@contoso.example.",
     "Our office is closed for the Thanksgiving holiday. This inbox is not being monitored; for urgent matters, write "
     "to help@contoso.example.",
     "I'm away for the holidays and this mailbox is not checked.",

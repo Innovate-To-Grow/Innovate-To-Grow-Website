@@ -43,6 +43,12 @@ QUOTE_START_RE = re.compile(
     r"[^\n]{0,120}:|>)",
     re.IGNORECASE | re.MULTILINE,
 )
+# A recurring office-hours footer or a sign-off does not name a current absence.
+_ROUTINE_FOOTER_RE = re.compile(
+    r"\b(?:(?:our|the) offices? (?:is|are) (?:normally |usually )?closed (?:on|at) (?:the )?(?:weekends?|holidays?)|"
+    r"have a (?:nice|good|great) (?:weekend|holiday)|happy holidays)\b",
+    re.IGNORECASE,
+)
 # Runs of spaces, tabs and no-break spaces (HTML text is full of them): one space, so the phrases match.
 _SPACES_RE = re.compile(r"[^\S\n]+")
 # X-Auto-Response-Suppress values that ask for no automatic reply (Exchange's own list).
@@ -82,7 +88,8 @@ def kind_of(text: str, *, notice: bool = False) -> str:
     if VACATION_RE.search(text):
         return VACATION
     left = bool(LEFT_ORG_RE.search(text))
-    if (left or notice) and ABSENCE_RE.search(text):
+    absence_text = _ROUTINE_FOOTER_RE.sub("", text) if left else text
+    if (left or notice) and ABSENCE_RE.search(absence_text):
         return VACATION
     return LEFT_ORG if left else OTHER
 

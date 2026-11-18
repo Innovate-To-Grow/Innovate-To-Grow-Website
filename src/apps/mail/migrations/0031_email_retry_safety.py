@@ -1,56 +1,14 @@
 """Persist one-address retry provenance, method snapshots and exact per-campaign bounce evidence.
 
 The conditional source/address constraint is the database-level idempotency guard for concurrent retry POSTs.
-Existing Graph campaign links are backfilled only from retained reports that name the campaign exactly; likely
-matches never become retry evidence, including links whose aggregate match label was later upgraded to exact.
+Graph campaign counts start empty. Recipient-bound proof becomes available with mail.0032.
 
 Reversing is refused while retry rows exist: dropping their provenance would turn them into ordinary editable
 Manual Emails campaigns under the preceding schema.
 """
 
-from collections import defaultdict
-from email.utils import parseaddr
-
 import django.db.models.deletion
 from django.db import migrations, models
-
-
-def backfill_exact_graph_categories(apps, schema_editor):
-    db = schema_editor.connection.alias
-    Address = apps.get_model("mail", "BouncedAddress")
-    Link = apps.get_model("mail", "BouncedAddressCampaign")
-    Bounce = apps.get_model("core", "EmailBounce")
-
-    address_ids = {
-        address.lower(): pk for pk, address in Address.objects.using(db).values_list("pk", "address").iterator()
-    }
-    counts = defaultdict(lambda: defaultdict(int))
-    reports = (
-        Bounce.objects.using(db)
-        .filter(campaign_id__isnull=False)
-        .exclude(match_method="unmatched")
-        .values_list("campaign_id", "recipient", "category")
-    )
-    for campaign_id, raw_address, category in reports.iterator(chunk_size=1000):
-        _name, parsed = parseaddr(raw_address or "")
-        address_id = address_ids.get(parsed.strip().lower())
-        if address_id is not None and category:
-            counts[(address_id, campaign_id)][category] += 1
-
-    changed = []
-    links = Link.objects.using(db).filter(source="graph")
-    for link in links.iterator(chunk_size=1000):
-        exact_counts = counts.get((link.bounced_address_id, link.campaign_id))
-        if not exact_counts:
-            continue
-        link.graph_category_counts = dict(exact_counts)
-        link.match = "exact"
-        changed.append(link)
-        if len(changed) >= 1000:
-            Link.objects.using(db).bulk_update(changed, ["graph_category_counts", "match"])
-            changed.clear()
-    if changed:
-        Link.objects.using(db).bulk_update(changed, ["graph_category_counts", "match"])
 
 
 def prevent_unsafe_reverse(apps, schema_editor):
@@ -155,5 +113,5 @@ class Migration(migrations.Migration):
                 name="email_retry_locked_shape",
             ),
         ),
-        migrations.RunPython(backfill_exact_graph_categories, prevent_unsafe_reverse),
+        migrations.RunPython(migrations.RunPython.noop, prevent_unsafe_reverse),
     ]

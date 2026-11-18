@@ -6,6 +6,7 @@ from apps.core.services.email.telemetry import text
 from apps.mail.models import BouncedAddress, BouncedAddressCampaign
 from apps.mail.services.audience.suppression import normalize_address
 
+from ..policies.ses import review_counts
 from .sources import Match, Source, _reopen, locked_row
 
 SES_FIELDS = (
@@ -68,6 +69,7 @@ def recount_ses(row: BouncedAddress) -> None:
         last.ses_bounced_at is None or last.ses_complained_at >= last.ses_bounced_at
     )
     row.ses_last = {
+        "review_counts": review_counts(bounced),
         "event": "complaint" if complaint_last else "bounce",
         "type": last.ses_bounce_type,
         "subtype": last.ses_bounce_subtype,

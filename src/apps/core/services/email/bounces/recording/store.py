@@ -78,6 +78,7 @@ def save_report(*, mailbox: str, graph_id: str, received_at: datetime, report: B
             continue
         found = match(
             recipient=row.recipient,
+            final_recipient=row.final_recipient,
             original_message_id=report.original_message_id,
             original_subject=report.original_subject,
             received_at=received_at,
@@ -104,6 +105,7 @@ def save_report(*, mailbox: str, graph_id: str, received_at: datetime, report: B
             "email": found.email,
             "campaign_id": found.email.campaign_id if found.email is not None else None,
             "match_method": found.method,
+            "trusted_recipient": bool(row.final_recipient and found.method == EmailBounce.MatchMethod.MESSAGE_ID),
             "match_note": text.clean(found.note, 255),
         }
         try:

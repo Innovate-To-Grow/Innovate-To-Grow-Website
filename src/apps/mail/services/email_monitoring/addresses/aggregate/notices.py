@@ -33,6 +33,15 @@ from . import sources
 
 FIELDS = ("pk", "processed_at", "received_at", "result")
 CONTACT_KINDS = frozenset(BouncedAddress.CONTACT_KINDS)
+CLEARED_HINTS = {
+    "left_org_contact": "",
+    "left_org_contact_kind": "",
+    "left_org_contact_name": "",
+    "left_org_contact_phone": "",
+    "left_org_ticket": None,
+    "left_org_hint_source_id": None,
+    "left_org_hint_expires_at": None,
+}
 
 
 def rows(state, until=None):
@@ -83,28 +92,12 @@ def purge_expired_hints(*, now=None) -> int:
         | Q(left_org_hint_expires_at__isnull=True)
         | Q(left_org_hint_source__isnull=True)
     )
-    return BouncedAddress.objects.filter(retained_detail, expired).update(
-        left_org_contact="",
-        left_org_contact_kind="",
-        left_org_contact_name="",
-        left_org_contact_phone="",
-        left_org_ticket=None,
-        left_org_hint_source=None,
-        left_org_hint_expires_at=None,
-    )
+    return BouncedAddress.objects.filter(retained_detail, expired).update(**CLEARED_HINTS)
 
 
 def clear_hints_for_deleted_source(sender, instance, **kwargs) -> None:
-    """A ``pre_delete`` receiver: a source message may be deleted outside the normal retention purge too."""
-    BouncedAddress.objects.filter(left_org_hint_source_id=instance.pk).update(
-        left_org_contact="",
-        left_org_contact_kind="",
-        left_org_contact_name="",
-        left_org_contact_phone="",
-        left_org_ticket=None,
-        left_org_hint_source=None,
-        left_org_hint_expires_at=None,
-    )
+    """Drop copied details even when a source is deleted outside the scheduled purge."""
+    BouncedAddress.objects.filter(left_org_hint_source_id=instance.pk).update(**CLEARED_HINTS)
 
 
 def _result(notice: dict) -> dict:
@@ -119,13 +112,18 @@ def _add_notice(row: BouncedAddress, notice: dict) -> None:
         row.left_org_first_at = at
     if row.left_org_last_at is None or at >= row.left_org_last_at:
         row.left_org_last_at = at
+        expires_at = notice["processed_at"] + timedelta(days=_hint_retention_days())
+        if expires_at <= timezone.now():
+            for field, value in CLEARED_HINTS.items():
+                setattr(row, field, value)
+            return
         row.left_org_contact, row.left_org_contact_kind = _contact(row, result)
         row.left_org_contact_name = _hint(result, "named_contact_name", 100)
         row.left_org_contact_phone = named_phone(_hint(result, "named_contact_phone", 40))
         ticket = result.get("ticket")
         row.left_org_ticket = ticket if type(ticket) is int and ticket > 0 else None
         row.left_org_hint_source_id = notice["pk"]
-        row.left_org_hint_expires_at = notice["processed_at"] + timedelta(days=_hint_retention_days())
+        row.left_org_hint_expires_at = expires_at
 
 
 def count(batch) -> list[BouncedAddress]:

@@ -5,6 +5,7 @@ from django.core import signing
 from apps.core.models import EmailServiceConfig
 
 from .retry import RetryRefused
+from .retry_route import assert_alternate_retry_route
 
 RETRY_SNAPSHOT_SALT = "mail.email-retry-delivery-snapshot.v1"
 
@@ -30,7 +31,9 @@ def retry_delivery_snapshot_token(config=None) -> str:
     return signing.dumps(_delivery_snapshot_payload(config), salt=RETRY_SNAPSHOT_SALT, compress=True)
 
 
-def retry_delivery_snapshot(*, lock: bool = False, expected_token: str = "") -> dict:
+def retry_delivery_snapshot(
+    *, rejected_sender_provider: str | None, lock: bool = False, expected_token: str = ""
+) -> dict:
     """Values that pin a new retry to the active sending method and From identity reviewed by staff."""
     configs = EmailServiceConfig.objects.filter(is_active=True)
     config = configs.select_for_update().first() if lock else configs.first()
@@ -45,6 +48,7 @@ def retry_delivery_snapshot(*, lock: bool = False, expected_token: str = "") -> 
     current = _delivery_snapshot_payload(config)
     if expected != current:
         raise RetryRefused("The email sending method changed; reload the retry page and review it again.")
+    assert_alternate_retry_route(rejected_sender_provider, config.provider)
     return {
         "retry_email_config": config,
         "retry_sending_provider": config.provider,

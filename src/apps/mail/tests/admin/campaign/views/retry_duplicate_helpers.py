@@ -33,6 +33,7 @@ class RetryDuplicateViewTestCase(TestCase):
             member=member,
             email_address=address,
             status="bounced",
+            provider="graph",
             sent_at=timezone.now(),
         )
         graph_counts = {category: 1}

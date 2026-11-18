@@ -32,11 +32,22 @@ class MatchTests(TestCase):
         return match(**{**defaults, **values})
 
     def test_the_original_message_id_matches_exactly(self):
-        email = make_email(internet_message_id=ORIGINAL_ID, recipient="someone@else.org", subject="Other")
+        email = make_email(
+            internet_message_id=ORIGINAL_ID,
+            recipient="someone@else.org",
+            recipients=["someone@else.org", "Nobody@Example.COM"],
+            subject="Other",
+        )
 
         found = self.match(original_message_id=ORIGINAL_ID)
 
         self.assertEqual((found.email, found.method), (email, MatchMethod.MESSAGE_ID))
+
+    def test_a_known_message_id_for_another_recipient_is_never_matched_or_inferred(self):
+        make_email(internet_message_id=ORIGINAL_ID, recipient="someone@else.org")
+        make_email(recipient="nobody@example.com", subject=SUBJECT)
+        found = self.match(original_message_id=ORIGINAL_ID)
+        self.assertEqual((found.email, found.method), (None, MatchMethod.UNMATCHED))
 
     def test_one_json_send_to_the_recipient_with_the_subject_is_an_inferred_match(self):
         email = make_email(recipient="nobody@example.com", subject=SUBJECT, send_format="json")
@@ -103,9 +114,22 @@ class SaveReportTests(TestCase):
         self.assertEqual(email.delivery_status, OutboundEmail.DeliveryStatus.FAILURE_CONFIRMED)
         self.assertEqual(email.bounce_classification, "hard")
         self.assertIsNotNone(email.bounced_at)
+        self.assertTrue(bounce.trusted_recipient)
+
+    def test_forwarded_dsn_is_retained_for_review_without_marking_the_original_failed(self):
+        email = make_email(internet_message_id=ORIGINAL_ID, recipient="nobody@example.com")
+        forwarded = exchange_ndr().replace(
+            b"Final-Recipient: rfc822;nobody@example.com", b"Final-Recipient: rfc822;forwarded@example.org"
+        )
+        (bounce,) = self.save(forwarded).created
+        self.assertEqual((bounce.recipient, bounce.match_method), ("nobody@example.com", MatchMethod.UNMATCHED))
+        self.assertIn("forwarded@example.org", bounce.match_note)
+        self.assertFalse(bounce.trusted_recipient)
+        email.refresh_from_db()
+        self.assertEqual(email.delivery_status, OutboundEmail.DeliveryStatus.UNKNOWN)
 
     def test_the_same_report_scanned_again_adds_nothing(self):
-        make_email(internet_message_id=ORIGINAL_ID)
+        make_email(internet_message_id=ORIGINAL_ID, recipient="nobody@example.com")
         self.save(exchange_ndr())
 
         again = self.save(exchange_ndr())
@@ -116,14 +140,18 @@ class SaveReportTests(TestCase):
         self.assertEqual(EmailBounce.objects.count(), 1)
 
     def test_a_campaign_bounce_carries_the_campaign(self):
-        email = make_email(internet_message_id=ORIGINAL_ID, campaign_id="0f5e6d7c-1111-4222-8333-444455556666")
+        email = make_email(
+            internet_message_id=ORIGINAL_ID,
+            recipient="nobody@example.com",
+            campaign_id="0f5e6d7c-1111-4222-8333-444455556666",
+        )
 
         (bounce,) = self.save(exchange_ndr()).created
 
         self.assertEqual(str(bounce.campaign_id), str(email.campaign_id))
 
     def test_a_delay_then_a_failure_ends_as_a_confirmed_failure_and_never_softens(self):
-        email = make_email(internet_message_id=ORIGINAL_ID)
+        email = make_email(internet_message_id=ORIGINAL_ID, recipient="nobody@example.com")
 
         self.save(exchange_ndr(status="4.4.7", action="delayed", report_id="<delay@x>"))
         email.refresh_from_db()
@@ -143,6 +171,7 @@ class SaveReportTests(TestCase):
         (bounce,) = self.save(exchange_ndr(original_id="<exchange-assigned@prod.outlook.com>")).created
 
         self.assertEqual((bounce.match_method, bounce.original_subject), (MatchMethod.RECIPIENT, ""))
+        self.assertFalse(bounce.trusted_recipient)
 
     def test_token_shaped_text_in_an_unmatched_reports_subject_is_scrubbed(self):
         token = "Zz9" * 22

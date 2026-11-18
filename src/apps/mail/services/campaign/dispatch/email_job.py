@@ -12,7 +12,7 @@ from apps.core.services.background_jobs import (
     UncertainJobError,
 )
 from apps.mail.models import RecipientLog
-from apps.mail.services.audience.suppression import is_suppressed
+from apps.mail.services.audience.suppression import CampaignAddressHeld, check_before_delivery, is_suppressed
 from apps.mail.services.campaign.content.personalize import personalize
 from apps.mail.services.campaign.content.preview import render_email_html
 from apps.mail.services.campaign.content.retry import assert_retry_campaign_eligible
@@ -98,6 +98,7 @@ def send_email_recipient_job(job) -> None:
             # The transport invokes this only after delivery-rate admission, as the final operation before touching
             # the provider.  A contact may change while a claimed job waits for that admission.
             assert_retry_campaign_eligible(log.campaign, recipient_log=log)
+            check_before_delivery(log.email_address)
             if not job.begin_provider_call():
                 raise JobClaimLost("Background job claim was lost before email provider invocation.")
 
@@ -120,6 +121,8 @@ def send_email_recipient_job(job) -> None:
             campaign_id=log.campaign_id,
         )
         _record_email_job_result(log, job, result)
+    except CampaignAddressHeld:
+        skip_suppressed_log(log, claim_token=job.claim_token)
     except JobClaimLost:
         raise
     except Exception as exc:

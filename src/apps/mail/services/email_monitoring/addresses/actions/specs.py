@@ -44,7 +44,11 @@ SPECS = {
         quick=True,
     ),
     Action.CLEAR_SUPPRESSION: Spec(
-        "Clear suppression", "Campaigns may mail the address again.", "Yes: suppress it again.", quick=True
+        "Clear suppression",
+        "Release the staff hold or reviewed Graph evidence. For a Graph hold, describe how the address was verified. "
+        "New permanent evidence or an SES hold can still block delivery.",
+        "Yes: suppress it again.",
+        quick=True,
     ),
     Action.UNSUBSCRIBE: Spec(
         "Unsubscribe this address",

@@ -3,12 +3,15 @@ suggestion; the address page's notice (the address it names, and the link to its
 the Helpdesk app); and the Replace email page's hint, which fills in nothing."""
 
 from datetime import timedelta
+from io import BytesIO
+from unittest.mock import patch
 from urllib.parse import urlencode
 
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
+from openpyxl import load_workbook
 
 from apps.core.models import InboundMessage
 from apps.event.tests.helpers import make_admin, make_superuser
@@ -115,6 +118,35 @@ class NoticePagesTests(TestCase):
         with_contact = self.client.get(reverse(LIST), {"type": "left_org_contact"})
         self.assertEqual([entry["row"].address for entry in with_contact.context["entries"]], [JORDAN])
         self.assertContains(with_contact, "Notice contact: review")
+
+    def test_direct_pages_and_exports_hide_hints_at_expiry_before_the_next_count(self):
+        self.client.force_login(make_superuser())
+        expiry = timezone.now()
+        BouncedAddress.objects.filter(pk=self.row.pk).update(left_org_hint_expires_at=expiry)
+        export_url = reverse("admin:mail_email_monitoring_addresses_export")
+        with patch("django.utils.timezone.now", return_value=expiry):
+            detail = self.client.get(reverse(DETAIL, args=[self.row.pk]))
+            confirmation = self.client.post(reverse(ACTION, args=[self.row.pk, "replace"]), {"step": "confirm"})
+            export = self.client.get(export_url)
+            filtered = self.client.get(export_url, {"type": "left_org_contact"})
+        self.assertContains(detail, "Left-the-organisation notices")
+        for value in (
+            RILEY,
+            "Riley Chen",
+            "+12095550123",
+            "Contact details need manual review.",
+            "open it in the helpdesk",
+        ):
+            self.assertNotContains(detail, value)
+        self.assertNotContains(confirmation, RILEY)
+        book = load_workbook(BytesIO(export.content), read_only=True)
+        header, data = book.active.values
+        record = dict(zip(header, data, strict=True))
+        for column in ("Address the notice names", "Name in latest notice", "Phone in latest notice"):
+            self.assertIsNone(record.get(column))
+        self.assertEqual((record["Left-org notices"], record["Notice contact needs review"]), (1, "No"))
+        filtered_book = load_workbook(BytesIO(filtered.content), read_only=True)
+        self.assertEqual(len(list(filtered_book.active.values)), 1)
 
     def test_the_replace_page_hints_at_the_named_address_and_fills_in_nothing(self):
         self.client.force_login(make_superuser())

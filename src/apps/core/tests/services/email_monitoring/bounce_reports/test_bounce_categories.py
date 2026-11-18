@@ -87,6 +87,16 @@ class ReviewCaseTests(SimpleTestCase):
         )
         self.assertEqual(category_of("5.0.0", "552 message size exceeds the limit of 0.5 MB"), Category.TRANSIENT)
 
+    def test_zero_size_does_not_hide_a_missing_user_or_sender_failure(self):
+        for reason, expected in (
+            ("no such user", Category.HARD),
+            ("relay access denied", Category.RELAY_DENIED),
+            ("SPF validation failed", Category.SPAM_REJECTED),
+        ):
+            with self.subTest(reason=reason):
+                self.assertEqual(category_of("5.0.0", f"550 {reason}; maximum message size 0 KB"), expected)
+        self.assertEqual(category_of("5.2.1", "550 5.2.1 Mailbox disabled"), Category.MAILBOX_DISABLED)
+
     def test_yahoo_without_a_reason_is_unknown_and_yahoo_policy_reasons_a_spam_rejection(self):
         generic, policy = verdict_of("yahoo_generic_554"), verdict_of("yahoo_policy_reasons")
 

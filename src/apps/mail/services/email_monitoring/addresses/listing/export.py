@@ -91,6 +91,7 @@ def _campaign_names(rows) -> dict:
 
 def _values(row, match: AddressMatch, campaigns: str) -> list:
     contact, member = match.contact, match.member
+    show_hint = row.left_org_has_contact_hint
     return [
         row.address,
         row.get_status_display(),
@@ -112,10 +113,10 @@ def _values(row, match: AddressMatch, campaigns: str) -> list:
         row.complaint_count,
         row.left_org_count,
         _when(row.left_org_last_at),
-        row.left_org_contact,
-        row.left_org_contact_name,
-        row.left_org_contact_phone,
-        _yes(row.left_org_has_contact_hint),
+        row.left_org_contact if show_hint else "",
+        row.left_org_contact_name if show_hint else "",
+        row.left_org_contact_phone if show_hint else "",
+        _yes(show_hint),
         "; ".join(f"{item['title']} {item['count']}" for item in row.category_items),
         _when(row.first_bounce_at),
         _when(row.last_bounce_at),

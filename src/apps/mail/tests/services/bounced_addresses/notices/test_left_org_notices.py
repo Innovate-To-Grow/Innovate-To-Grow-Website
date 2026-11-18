@@ -172,8 +172,14 @@ class EvidenceOnlyTests(TestCase):
     def test_the_suggestion_order(self):
         cases = (
             ({"complaint_count": 1}, Suggestion.UNSUBSCRIBE),
-            ({}, Suggestion.UNDELIVERABLE),
-            ({"hard_count": 0, "category_counts": {"mailbox_disabled": 1}}, Suggestion.REPLACE),
+            (
+                {"trusted_graph_hard_count": 1, "trusted_graph_last_permanent_at": timezone.now()},
+                Suggestion.UNDELIVERABLE,
+            ),
+            (
+                {"trusted_graph_disabled_count": 1, "trusted_graph_last_permanent_at": timezone.now()},
+                Suggestion.REPLACE,
+            ),
             ({"hard_count": 0, "soft_count": 5}, Suggestion.LEFT_ORG),
             ({"hard_count": 0, "rejected_count": 1, "category_counts": {"relay_denied": 1}}, Suggestion.LEFT_ORG),
         )

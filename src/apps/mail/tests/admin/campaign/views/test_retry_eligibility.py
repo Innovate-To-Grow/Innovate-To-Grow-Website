@@ -83,6 +83,7 @@ class RetryEligibilityViewTests(RetryDuplicateViewTestCase):
             category="hard",
             campaign_id=campaign.pk,
             match_method="message_id",
+            trusted_recipient=True,
         )
         self.assertEqual(self.post_retry(campaign, address).status_code, 400)
 
@@ -114,6 +115,7 @@ class RetryEligibilityViewTests(RetryDuplicateViewTestCase):
                     first_at=timezone.now(),
                     last_at=timezone.now(),
                     ses_bounce_type=bounce_type,
+                    ses_bounce_subtype="MailboxFull" if bounce_type == "Transient" else "General",
                     ses_bounced_at=timezone.now(),
                 )
                 expected = 302 if bounce_type == "Transient" else 400
@@ -131,7 +133,7 @@ class RetryEligibilityViewTests(RetryDuplicateViewTestCase):
                     setattr(contact, field, False)
                     contact.save(update_fields=[field])
                 page = self.client.get(self.duplicate_url(campaign) + f"?retry_address={address}")
-                self.assertNotContains(page, f"Retry only {address}")
+                self.assertNotContains(page, f"Retry only {address}", status_code=400)
                 self.assertEqual(self.post_retry(campaign, address).status_code, 400)
 
     def test_unlinked_or_ambiguous_contact_is_rejected_on_get_and_post(self):
@@ -139,6 +141,7 @@ class RetryEligibilityViewTests(RetryDuplicateViewTestCase):
         self.assertNotContains(
             self.client.get(self.duplicate_url(unlinked) + "?retry_address=unlinked%40example.com"),
             "Retry only unlinked@example.com",
+            status_code=400,
         )
         self.assertEqual(self.post_retry(unlinked, "unlinked@example.com").status_code, 400)
 
@@ -148,6 +151,7 @@ class RetryEligibilityViewTests(RetryDuplicateViewTestCase):
         self.assertNotContains(
             self.client.get(self.duplicate_url(ambiguous) + "?retry_address=ambiguous%40example.com"),
             "Retry only ambiguous@example.com",
+            status_code=400,
         )
         self.assertEqual(self.post_retry(ambiguous, "ambiguous@example.com").status_code, 400)
 

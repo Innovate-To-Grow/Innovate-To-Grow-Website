@@ -38,12 +38,12 @@ class _SesJobReconciliationCase(TestCase):
         load_config.start()
         self.addCleanup(load_config.stop)
 
-    def queued_campaign(self):
+    def queued_campaign(self, address="person@example.com"):
         campaign = EmailCampaign.objects.create(
             subject="Confirmed delivery",
             body="<p>Hello</p>",
             audience_type="manual",
-            manual_emails="person@example.com",
+            manual_emails=address,
         )
         dispatch.queue_email_campaign(campaign, sent_by=self.sender)
         return campaign, campaign.recipient_logs.get()
@@ -53,8 +53,8 @@ class _SesJobReconciliationCase(TestCase):
         before_provider_call()
         raise UncertainEmailDeliveryError("Response was lost after provider acceptance.")
 
-    def uncertain_delivery(self):
-        campaign, log = self.queued_campaign()
+    def uncertain_delivery(self, address="person@example.com"):
+        campaign, log = self.queued_campaign(address)
         job = claim_jobs(batch_size=1)[0]
         with patch(
             "apps.mail.services.campaign.send.transport.deliver_email",

@@ -12,7 +12,7 @@ NEW_ADDRESS, CONTACT, MENTIONED = "new_address", "contact", "mentioned"
 # A name must follow an instruction to contact a person. A departing employee's name in "Jordan Park has left"
 # is not an alternate contact. These are deliberately narrow hints for staff, not identity verification.
 CONTACT_NAME_RE = re.compile(
-    r"\b(?:please\s+)?(?:contact|call|email|e-mail|reach out to|reach)\s+"
+    r"\b(?i:(?:please\s+)?(?:contact|call|email|e-mail|reach out to|reach))\s+"
     r"(?P<name>[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ'’.-]+(?:\s+[A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ'’.-]+){1,3})\b"
 )
 # Phone hints are intentionally limited to US/NANP-shaped numbers. Match the whole uninterrupted phone-like run as

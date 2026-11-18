@@ -50,6 +50,8 @@ class GraphCountingTests(TestCase):
             received_at=now,
             status_code="5.1.1",
             reason="Recipient mailbox does not exist",
+            match_method="message_id",
+            trusted_recipient=True,
             diagnostic_code="smtp; 550 5.1.1 Bearer abcdefghijklmnop " + "x" * 70,
             remote_mta="mx.example.org",
         )
@@ -121,7 +123,13 @@ class GraphCountingTests(TestCase):
         blast = make_campaign("Blast")
         other = make_campaign("Other")
         email = make_email(recipient="m@example.org", campaign_id=blast.pk)
-        make_bounce(recipient="m@example.org", email=email, campaign_id=blast.pk)
+        make_bounce(
+            recipient="m@example.org",
+            email=email,
+            campaign_id=blast.pk,
+            match_method="message_id",
+            trusted_recipient=True,
+        )
         # An unmatched report: one campaign mailed the address in the window before it.
         make_ses_log(blast, "u@example.org", bounced=False, status="sent")
         make_bounce(recipient="u@example.org")

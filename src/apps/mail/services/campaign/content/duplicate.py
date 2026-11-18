@@ -113,7 +113,11 @@ def create_retry_campaign(
         values.update(
             name=(name.strip() or copy_name(source.name))[:NAME_MAX_LENGTH],
             manual_emails=eligibility.address,
-            **retry_delivery_snapshot(lock=True, expected_token=expected_delivery_snapshot),
+            **retry_delivery_snapshot(
+                lock=True,
+                expected_token=expected_delivery_snapshot,
+                rejected_sender_provider=eligibility.rejected_sender_provider,
+            ),
         )
         retry, created = EmailCampaign.objects.get_or_create(
             retry_source_campaign=source,

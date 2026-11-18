@@ -1,6 +1,9 @@
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models.deletion import ProtectedError
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 from apps.core.models import ProjectControlModel
 
@@ -163,6 +166,10 @@ class EmailCampaign(EmailCampaignSafetyMixin, ProjectControlModel):
         verbose_name_plural = "Amazon SES Mails"
         constraints = retry_constraints()
 
+    @property
+    def retains_retry_history(self):
+        return bool(self.retry_source_campaign_id and (self.status != "draft" or self.recipient_logs.exists()))
+
     def get_audience_type_display(self):
         return _ALL_AUDIENCE_LABELS.get(self.audience_type, self.audience_type)
 
@@ -172,3 +179,17 @@ class EmailCampaign(EmailCampaignSafetyMixin, ProjectControlModel):
 
 
 connect_retry_audience_guards(EmailCampaign)
+
+
+@receiver(pre_delete, sender=EmailCampaign)
+def protect_submitted_retry(sender, instance, using, **kwargs):
+    """Keep the unique source/address claim once dispatch starts, including during bulk deletion."""
+    # The collector's snapshot can predate a concurrent queue or in-process submission.
+    current = (
+        sender.objects.using(using)
+        .select_for_update()
+        .filter(pk=instance.pk, retry_source_campaign__isnull=False)
+        .first()
+    )
+    if current and current.retains_retry_history:
+        raise ProtectedError("A submitted retry must keep its delivery history.", [current])

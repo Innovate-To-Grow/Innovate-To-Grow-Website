@@ -1,24 +1,6 @@
-"""What the counts suggest about an address: text only, never applied. The first that applies wins.
-
-- a spam complaint → unsubscribe them (they reported us as spam);
-- the address does not exist (a Graph report of that category, or an SES permanent bounce) → mark it undeliverable or
-  replace it;
-- the mailbox is disabled → replace the address, or mark it undeliverable;
-- an automatic reply to the site's mail says the person left or the address changed → check the notice, then replace
-  the address or mark it undeliverable (an out-of-office reply is never counted);
-- repeated temporary failures over several days (Graph reports of a temporary, full-mailbox or unknown category, SES
-  transient and undetermined bounces) → check the receiving service, then retry this address;
-- relay denied → check our sending route or authorisation, then retry from another configured sender;
-- spam or reputation rejections → check our reputation, sender authentication or content, then retry from another
-  configured sender;
-- rejections by the recipient's policy → no action;
-- delays → nothing.
-
-Only a missing address and a disabled mailbox are evidence against the address on their own (a left-the-organisation
-notice is evidence to check: anyone can write one). A temporary failure (a connection timeout, a DNS failure, an
-expired delivery, a full mailbox) never suggests marking an address undeliverable. An address already suppressed gets
-no suggestion. The thresholds for "repeated" are
-``EMAIL_MONITORING["address_soft_bounce_repeats"]`` and ``["address_soft_bounce_days"]``.
+"""Address-level guidance prioritizes complaints and holds, staff-reviewed contacts, message and sending faults,
+then repeated receiving failures. Unexplained Graph or SES failures need evidence review. A suggestion never grants
+campaign retry eligibility. The repeated-failure count and minimum report span come from EMAIL_MONITORING.
 """
 
 from datetime import timedelta
@@ -27,6 +9,7 @@ from django.conf import settings
 
 from apps.core.models import EmailBounce
 from apps.mail.models import BouncedAddress
+from apps.mail.services.email_monitoring.addresses.policies.graph import row_has_graph_hold
 
 Suggestion = BouncedAddress.Suggestion
 Category = EmailBounce.Category
@@ -40,24 +23,53 @@ def _repeated(row: BouncedAddress) -> bool:
     return row.temporary_total >= repeats and first is not None and last is not None and last - first >= span
 
 
+def _permanent_suggestion(row, ses):
+    if ses.get("provider_hold"):
+        return Suggestion.SES_HOLD
+    if ses.get("invalid"):
+        return Suggestion.UNDELIVERABLE
+    if row_has_graph_hold(row):
+        if row.trusted_graph_hard_count:
+            return Suggestion.UNDELIVERABLE
+        if row.trusted_graph_disabled_count:
+            return Suggestion.REPLACE
+        return Suggestion.VERIFY_EVIDENCE
+    if row.legacy_graph_permanent_review:
+        return Suggestion.VERIFY_EVIDENCE
+    return ""
+
+
 def suggest(row: BouncedAddress) -> str:
     if row.is_suppressed:
         return ""
     if row.complaint_count:
         return Suggestion.UNSUBSCRIBE
-    if row.category_count(Category.HARD) or row.ses_permanent_count:
-        return Suggestion.UNDELIVERABLE
-    if row.category_count(Category.MAILBOX_DISABLED):
-        return Suggestion.REPLACE
+    ses = (row.ses_last or {}).get("review_counts") or {}
+    permanent = _permanent_suggestion(row, ses)
+    if permanent:
+        return permanent
     if row.left_org_count:
         return Suggestion.LEFT_ORG
-    if _repeated(row):
-        return Suggestion.CONSIDER
+    if ses.get("content"):
+        return Suggestion.FIX_CONTENT
+    if row.ses_permanent_count and not ses:
+        return Suggestion.SES_HOLD
     for category, suggestion in (
         (Category.RELAY_DENIED, Suggestion.RELAY),
         (Category.SPAM_REJECTED, Suggestion.REPUTATION),
-        (Category.POLICY_REJECTED, Suggestion.POLICY),
     ):
         if row.category_count(category):
             return suggestion
+    if ses.get("review") or (not ses and (row.ses_transient_count or row.ses_undetermined_count)):
+        return Suggestion.VERIFY_EVIDENCE
+    if _repeated(row):
+        return Suggestion.CONSIDER
+    if row.category_count(Category.POLICY_REJECTED):
+        return Suggestion.POLICY
+    if row.category_count(Category.UNKNOWN):
+        return Suggestion.VERIFY_EVIDENCE
+    if not row.graph_hold_cleared_at and (
+        row.category_count(Category.HARD) or row.category_count(Category.MAILBOX_DISABLED)
+    ):
+        return Suggestion.VERIFY_EVIDENCE
     return ""

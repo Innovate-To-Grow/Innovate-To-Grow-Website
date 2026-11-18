@@ -29,6 +29,13 @@
         <p><span class="text-base-400">Audience:</span> {{ campaign.get_audience_type_display }}{% if campaign.event %} &mdash; {{ campaign.event.name }}{% endif %}</p>
     </div>
 
+    {% if sender_rejection %}
+    <p>Rejected sending provider: <strong>{{ original_provider }}</strong>.
+        Reviewed retry provider: <strong>{{ retry_sending_method|default:"Not configured" }}</strong>{% if retry_from_email %} ({{ retry_from_email }}){% endif %}.</p>
+    {% endif %}
+    {% if route_problem %}
+    <p>{{ route_problem }} Review the source delivery and the <a href="{% url 'admin:mail_sending_method' %}">Email Sending Method</a> before continuing.</p>
+    {% else %}
     <form method="post" id="duplicate-campaign-form">
         {% csrf_token %}
         {% if retry_address %}<input type="hidden" name="retry_address" value="{{ retry_address }}">{% endif %}
@@ -79,7 +86,7 @@
             </p>
             {% else %}
             <p>
-                If the receiving server rejected our sender or relay, correct the cause and choose the intended
+                For spam or relay rejections, correct the cause and select a different sending provider under
                 <a href="{% url 'admin:mail_sending_method' %}">Email Sending Method</a> before creating this draft.
                 The global setting still controls all other site email.
             </p>
@@ -99,5 +106,6 @@
             </a>
         </div>
     </form>
+    {% endif %}
 </div>
 {% endblock %}

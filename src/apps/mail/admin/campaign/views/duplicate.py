@@ -10,6 +10,7 @@ from unfold.decorators import action
 
 from apps.core.models import EmailServiceConfig
 from apps.mail.models import EmailCampaign
+from apps.mail.services.audience.suppression import normalize_address
 from apps.mail.services.campaign.content.duplicate import (
     NAME_MAX_LENGTH,
     copy_name,
@@ -18,9 +19,10 @@ from apps.mail.services.campaign.content.duplicate import (
 )
 from apps.mail.services.campaign.content.retry import (
     RetryRefused,
-    retry_address_for,
+    retry_eligibility_for,
 )
 from apps.mail.services.campaign.content.retry_delivery import retry_delivery_snapshot_token
+from apps.mail.services.campaign.content.retry_route import assert_alternate_retry_route
 
 # Detail actions that only make sense while a campaign is still a draft; a locked campaign does not show them.
 DRAFT_ONLY_DETAIL_ACTIONS = ("_send_campaign_action", "_import_gmail_html_action")
@@ -41,6 +43,42 @@ def _is_retry(object_id) -> bool:
         return EmailCampaign.objects.filter(pk=unquote(str(object_id)), retry_source_campaign__isnull=False).exists()
     except (ValueError, ValidationError):
         return False
+
+
+def _retry_sending_context(eligibility, existing_retry) -> dict:
+    """Describe the reviewed transport and refuse to offer an unchanged rejected route."""
+    retry_config = EmailServiceConfig.load() if eligibility and existing_retry is None else None
+    if existing_retry is not None:
+        retry_sending_method = dict(EmailServiceConfig.Provider.choices).get(
+            existing_retry.retry_sending_provider, existing_retry.retry_sending_provider
+        )
+        retry_from_email = existing_retry.retry_from_email
+    else:
+        retry_sending_method = (
+            retry_config.get_provider_display() if retry_config is not None and retry_config.pk else ""
+        )
+        retry_from_email = retry_config.from_email if retry_config is not None and retry_config.pk else ""
+    route_problem = ""
+    if eligibility:
+        provider = (
+            existing_retry.retry_sending_provider
+            if existing_retry is not None
+            else getattr(retry_config, "provider", "")
+        )
+        try:
+            assert_alternate_retry_route(eligibility.rejected_sender_provider, provider)
+        except RetryRefused as exc:
+            route_problem = str(exc)
+    return {
+        "route_problem": route_problem,
+        "sender_rejection": eligibility and eligibility.rejected_sender_provider is not None,
+        "original_provider": dict(EmailServiceConfig.Provider.choices).get(
+            eligibility.rejected_sender_provider if eligibility else None, "Unverified"
+        ),
+        "retry_sending_method": retry_sending_method,
+        "retry_from_email": retry_from_email,
+        "retry_delivery_snapshot": retry_delivery_snapshot_token(retry_config) if retry_config is not None else "",
+    }
 
 
 class CampaignDuplicateMixin:
@@ -70,6 +108,14 @@ class CampaignDuplicateMixin:
 
         if request.method == "POST":
             audience = request.POST.get("audience", "same")
+            retry_fields = ("retry_address", "retry_delivery_snapshot")
+            if "retry_address" in request.GET or any(field in request.POST for field in retry_fields):
+                if audience != "retry":
+                    return HttpResponseBadRequest("This review can only prepare a one-address retry.")
+                if "retry_address" in request.GET and normalize_address(
+                    request.GET["retry_address"]
+                ) != normalize_address(request.POST.get("retry_address")):
+                    return HttpResponseBadRequest("The submitted retry address differs from the review link.")
             retry_address = ""
             created = True
             if audience == "retry":
@@ -103,23 +149,17 @@ class CampaignDuplicateMixin:
             )
             return HttpResponseRedirect(reverse("admin:mail_emailcampaign_change", args=[copy.pk]))
 
-        retry_address = retry_address_for(campaign, request.GET.get("retry_address", ""))
+        eligibility = retry_eligibility_for(campaign, request.GET.get("retry_address", ""))
+        retry_address = eligibility.address if eligibility else ""
+        if "retry_address" in request.GET and not retry_address:
+            return HttpResponseBadRequest(
+                "This address is no longer eligible for a retry. Return to Bounced addresses."
+            )
         existing_retry = (
             EmailCampaign.objects.filter(retry_source_campaign=campaign, retry_address=retry_address).first()
             if retry_address
             else None
         )
-        retry_config = EmailServiceConfig.load() if retry_address and existing_retry is None else None
-        if existing_retry is not None:
-            retry_sending_method = dict(EmailServiceConfig.Provider.choices).get(
-                existing_retry.retry_sending_provider, existing_retry.retry_sending_provider
-            )
-            retry_from_email = existing_retry.retry_from_email
-        else:
-            retry_sending_method = (
-                retry_config.get_provider_display() if retry_config is not None and retry_config.pk else ""
-            )
-            retry_from_email = retry_config.from_email if retry_config is not None and retry_config.pk else ""
         context = {
             **self.admin_site.each_context(request),
             "title": f"Duplicate - {campaign.name}",
@@ -129,9 +169,7 @@ class CampaignDuplicateMixin:
             "cancel_url": reverse("admin:mail_emailcampaign_change", args=[campaign.pk]),
             "retry_address": retry_address,
             "existing_retry": existing_retry,
-            "retry_sending_method": retry_sending_method,
-            "retry_from_email": retry_from_email,
-            "retry_delivery_snapshot": retry_delivery_snapshot_token(retry_config) if retry_config is not None else "",
+            **_retry_sending_context(eligibility, existing_retry),
         }
         return TemplateResponse(request, "admin/mail/emailcampaign/duplicate_campaign.html", context)
 

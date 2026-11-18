@@ -58,6 +58,9 @@ class EmailCampaignAdmin(
         "delivery_monitoring_action",
     ]
 
+    def has_delete_permission(self, request, obj=None):
+        return super().has_delete_permission(request, obj) and (obj is None or not obj.retains_retry_history)
+
     @admin.action(description="Revoke login links (invalidate emailed sign-in links)")
     def revoke_login_links_action(self, request, queryset):
         from apps.mail.services.tokens.login_links import revoke_login_links

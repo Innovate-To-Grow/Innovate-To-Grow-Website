@@ -33,7 +33,7 @@ class KeptCountsTests(TestCase):
         self.assertEqual(BounceAggregationState.objects.get(source="inbound").processed_total, 1)
         count_now()
         row.refresh_from_db()
-        self.assertEqual((row.left_org_count, row.hard_count, row.suggestion), (1, 1, Suggestion.UNDELIVERABLE))
+        self.assertEqual((row.left_org_count, row.hard_count, row.suggestion), (1, 1, Suggestion.LEFT_ORG))
         self.assertEqual((row.first_bounce_at, row.last_bounce_at), (row.graph_first_at, notice.received_at))
 
     def test_a_restarted_graph_count_keeps_the_notice_and_ses_dates(self):

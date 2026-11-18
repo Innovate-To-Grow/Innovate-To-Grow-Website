@@ -101,7 +101,7 @@ PHRASES = (
     _phrase(
         TRANSIENT,
         "Could not connect to the recipient's mail server",
-        r"\bconnection (?:refused|reset|dropped|closed|lost|failed|attempt failed)\b|\bno route to host\b",
+        r"\bconnection (?:refused|reset|dropped|closed|lost|failed|attempt failed)\b|\bno (?:route to|answer from) host\b",
         r"\b(?:could not|couldn't|unable to|failed to|cannot|can't) (?:establish (?:a )?)?connect(?:ion)?\b",
         r"\b(?:network|host) (?:is )?unreachable\b|\b(?:winsock|socket) error\b",
     ),
@@ -136,15 +136,20 @@ PHRASES = (
 )
 ALL = frozenset(Category.values)
 # What a phrase may make of a code: a temporary failure only a sender-side rejection or a full mailbox; 5.7.0 and
-# 5.7.1 (security or policy) never a temporary failure; an ambiguous code (codes.AMBIGUOUS) only a temporary one.
+# 5.7.1 (security or policy) never a temporary failure; an ambiguous code may be temporary or sender-side.
 TEMPORARY_REFINEMENTS = frozenset({RELAY, SPAM, FULL})
 POLICY_REFINEMENTS = frozenset({RELAY, SPAM, DISABLED, HARD, POLICY})
-AMBIGUOUS_REFINEMENTS = frozenset({TRANSIENT})
+AMBIGUOUS_REFINEMENTS = frozenset({RELAY, SPAM, TRANSIENT})
 
 
 def refine(text: str, allowed) -> Phrase | None:
     """The first phrase in ``text`` (lower case) whose category is ``allowed``; a 0 KB limit is temporary."""
     if TRANSIENT in allowed and ZERO_LIMIT_RE.search(text):
+        # A zero limit qualifies a receiving-size/disabled diagnostic. It must not hide a separately
+        # identified missing user, bad domain or sender refusal on a generic status.
+        for phrase in PHRASES:
+            if phrase.category in allowed & {RELAY, SPAM, HARD} and phrase.pattern.search(text):
+                return phrase
         return ZERO_LIMIT
     for phrase in PHRASES:
         if phrase.category in allowed and phrase.pattern.search(text):

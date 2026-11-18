@@ -43,6 +43,8 @@ class CategoryCountingTests(TestCase):
         make_bounce(recipient="c@example.org", category="relay_denied", classification="rejected", received_at=now)
         make_bounce(
             recipient="C@example.org",
+            match_method="message_id",
+            trusted_recipient=True,
             category="mailbox_disabled",
             status_code="5.2.1",
             received_at=now + timezone.timedelta(minutes=1),
@@ -133,7 +135,13 @@ class ZeroLimitUpgradeTests(TestCase):
             diagnostic_code="550 5.2.3 Mailbox disabled; Max size allowed: 0 KB",
             is_permanent=True,
         )
-        count_now()
+        # Simulate an earlier worker which already counted this old-rule DSN.
+        # The new image would correct even an uncounted report before its first count.
+        from unittest.mock import patch
+
+        with patch("apps.mail.services.email_monitoring.addresses.aggregate.counting.reconcile"):
+            count_now()
+        cursor = BounceAggregationState.objects.get(source="graph").cursor_at
         row = BouncedAddress.objects.get(address="limited@example.org")
         row.status = BouncedAddress.Status.DISMISSED
         row.suppression = BouncedAddress.Suppression.UNDELIVERABLE
@@ -144,7 +152,7 @@ class ZeroLimitUpgradeTests(TestCase):
 
         bounce.refresh_from_db()
         self.assertEqual((bounce.category, bounce.classification, bounce.is_permanent), ("transient", "soft", False))
-        self.assertEqual(BounceAggregationState.objects.get(source="graph").cursor_at, aggregate.PARKED)
+        self.assertEqual(BounceAggregationState.objects.get(source="graph").cursor_at, cursor)
         count_now()
         row.refresh_from_db()
         self.assertEqual((row.hard_count, row.soft_count, row.category_counts), (0, 1, {"transient": 1}))
@@ -164,3 +172,22 @@ class ZeroLimitUpgradeTests(TestCase):
         bounce.refresh_from_db()
         self.assertEqual((bounce.category, bounce.classification), ("mailbox_disabled", "hard"))
         self.assertFalse(BounceAggregationState.objects.filter(source="graph").exists())
+
+    def test_late_old_worker_reports_corrected_without_erasing_unrelated_purged_history(self):
+        hard = make_bounce(recipient="prior@example.org", category="hard", classification="hard")
+        count_now()
+        hard.delete()
+        # No global rebuild: A lost its raw DSN to retention, B has a late write from the old image.
+        late = make_bounce(
+            recipient="late@example.org",
+            category="mailbox_disabled",
+            classification="hard",
+            status_code="5.2.3",
+            diagnostic_code="550 5.2.3 Message too large; Max size allowed: 0 KB",
+        )
+        count_now()
+        count_now()
+        late.refresh_from_db()
+        self.assertEqual((late.category, late.classification, late.is_permanent), ("transient", "soft", False))
+        self.assertEqual(row_for("late@example.org").category_counts, {"transient": 1})
+        self.assertEqual(row_for("prior@example.org").category_counts, {"hard": 1})

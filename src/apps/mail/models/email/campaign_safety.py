@@ -2,7 +2,7 @@
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.db import models
+from django.db import models, router, transaction
 from django.db.models.signals import m2m_changed
 
 from apps.mail.redirects import is_safe_internal_redirect_path
@@ -87,8 +87,14 @@ class EmailCampaignSafetyMixin(models.Model):
     def save(self, *args, **kwargs):
         if not self.name:
             self.name = self.subject[:200] if self.subject else "Untitled"
+        if self.retry_source_campaign_id and not self._state.adding and self.status == "draft":
+            # An editor holding an old draft must not overwrite a concurrent submission back to draft.
+            db = kwargs.get("using") or router.db_for_write(type(self), instance=self)
+            with transaction.atomic(using=db):
+                self._enforce_retry_shape(lock_using=db)
+                return super().save(*args, **kwargs)
         self._enforce_retry_shape()
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def clean(self):
         super().clean()
@@ -112,18 +118,27 @@ class EmailCampaignSafetyMixin(models.Model):
         if exclusion in event_exclusions and not self.exclude_event_id:
             raise ValidationError({"exclude_event": "Select an event for this exclusion audience."})
 
-    def _enforce_retry_shape(self):
+    def _check_stored_retry(self, lock_using):
+        if self._state.adding:
+            return
+        rows = type(self).objects.filter(pk=self.pk)
+        if lock_using:
+            rows = rows.using(lock_using).select_for_update()
+        stored = rows.values(*RETRY_IMMUTABLE_FIELDS, "status").first()
+        if not stored:
+            return
+        if bool(stored["retry_source_campaign_id"]) != bool(self.retry_source_campaign_id):
+            raise ValidationError("An existing campaign cannot gain or lose retry provenance.")
+        if not self.retry_source_campaign_id:
+            return
+        if self.status == "draft" and stored["status"] != "draft":
+            raise ValidationError("A submitted retry cannot return to draft.")
+        if any(getattr(self, field) != stored[field] for field in RETRY_IMMUTABLE_FIELDS):
+            raise ValidationError("A retry campaign's address, audience and sending snapshot are immutable.")
+
+    def _enforce_retry_shape(self, *, lock_using=None):
         """Keep a retry permanently bound to one normalized address and an empty exclusion."""
-        stored = None
-        if not self._state.adding:
-            stored = type(self).objects.filter(pk=self.pk).values(*RETRY_IMMUTABLE_FIELDS).first()
-        if stored:
-            was_retry = bool(stored["retry_source_campaign_id"])
-            is_retry = bool(self.retry_source_campaign_id)
-            if was_retry != is_retry:
-                raise ValidationError("An existing campaign cannot gain or lose retry provenance.")
-            if was_retry and any(getattr(self, field) != value for field, value in stored.items()):
-                raise ValidationError("A retry campaign's address, audience and sending snapshot are immutable.")
+        self._check_stored_retry(lock_using)
         if not self.retry_source_campaign_id:
             return
         if self.retry_source_campaign_id == self.pk:

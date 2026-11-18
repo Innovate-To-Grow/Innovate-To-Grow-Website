@@ -44,6 +44,7 @@ class RecipientReport:
     diagnostic: str = ""
     remote_mta: str = ""
     last_attempt_at: datetime | None = None
+    final_recipient: str = ""
 
 
 @dataclass(frozen=True)
@@ -100,10 +101,12 @@ def _status_blocks(part, max_recipients: int) -> tuple[str, datetime | None, tup
 
 def _recipient_report(block) -> RecipientReport:
     original = text.address(_strip_type(_raw(block, "Original-Recipient")))
+    final = text.address(_strip_type(_raw(block, "Final-Recipient")))
     diagnostic = text.clean(_strip_type(_raw(block, "Diagnostic-Code")), 1000)
     status = _status_code(_raw(block, "Status")) or _status_code(diagnostic)
     return RecipientReport(
-        recipient=original or text.address(_strip_type(_raw(block, "Final-Recipient"))),
+        recipient=original or final,
+        final_recipient=final,
         action=text.clean(_raw(block, "Action"), 16).lower(),
         status=status,
         diagnostic=diagnostic,

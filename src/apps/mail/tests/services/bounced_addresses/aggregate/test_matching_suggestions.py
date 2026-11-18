@@ -86,9 +86,11 @@ class SuggestionTests(TestCase):
         old = timezone.now() - timedelta(days=8)
         cases = [
             ({"complaint_count": 1, "category_counts": {"hard": 2}}, Suggestion.UNSUBSCRIBE),
-            ({"category_counts": {"hard": 1, "transient": 5}}, Suggestion.UNDELIVERABLE),
-            ({"ses_permanent_count": 1}, Suggestion.UNDELIVERABLE),
-            ({"category_counts": {"mailbox_disabled": 1, "spam_rejected": 1}}, Suggestion.REPLACE),
+            ({"trusted_graph_last_permanent_at": old, "trusted_graph_hard_count": 1}, Suggestion.UNDELIVERABLE),
+            ({"category_counts": {"hard": 1}}, Suggestion.VERIFY_EVIDENCE),
+            ({"ses_permanent_count": 1}, Suggestion.SES_HOLD),
+            ({"ses_permanent_count": 1, "ses_last": {"review_counts": {"invalid": 1}}}, Suggestion.UNDELIVERABLE),
+            ({"trusted_graph_last_permanent_at": old, "trusted_graph_disabled_count": 1}, Suggestion.REPLACE),
             ({"category_counts": {"transient": 3}, "first_bounce_at": old}, Suggestion.CONSIDER),
             (
                 {
@@ -96,13 +98,23 @@ class SuggestionTests(TestCase):
                     "ses_transient_count": 1,
                     "first_bounce_at": old,
                 },
+                Suggestion.VERIFY_EVIDENCE,
+            ),
+            ({"ses_undetermined_count": 3, "first_bounce_at": old}, Suggestion.VERIFY_EVIDENCE),
+            ({"ses_transient_count": 3, "first_bounce_at": old}, Suggestion.VERIFY_EVIDENCE),
+            ({"category_counts": {"unknown": 3}, "first_bounce_at": old}, Suggestion.VERIFY_EVIDENCE),
+            (
+                {
+                    "category_counts": {"mailbox_full": 1},
+                    "ses_last": {"review_counts": {"temporary": 2}},
+                    "first_bounce_at": old,
+                },
                 Suggestion.CONSIDER,
             ),
-            ({"ses_undetermined_count": 3, "first_bounce_at": old}, Suggestion.CONSIDER),
             ({"category_counts": {"transient": 3}}, ""),  # repeated, but not over a week
             ({"category_counts": {"transient": 2}, "first_bounce_at": old}, ""),  # over a week, not repeated enough
-            ({"category_counts": {"relay_denied": 3, "transient": 1}, "first_bounce_at": old}, Suggestion.RELAY),
-            ({"category_counts": {"spam_rejected": 2, "policy_rejected": 1}}, Suggestion.REPUTATION),
+            ({"category_counts": {"relay_denied": 1, "transient": 3}, "first_bounce_at": old}, Suggestion.RELAY),
+            ({"category_counts": {"spam_rejected": 2, "policy_rejected": 1, "unknown": 3}}, Suggestion.REPUTATION),
             ({"category_counts": {"policy_rejected": 2}}, Suggestion.POLICY),
             ({"category_counts": {"delayed": 4}}, ""),
             ({"category_counts": {"hard": 1}, "suppressed_at": timezone.now()}, ""),

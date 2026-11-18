@@ -19,6 +19,8 @@ class NamedContactTests(SimpleTestCase):
     def test_names_only_a_person_introduced_as_a_contact(self):
         text = "Jordan Park left the company. Please contact Riley Chen at riley@contoso.example."
         self.assertEqual(named_person(text), "Riley Chen")
+        self.assertEqual(named_person("Call Riley Chen."), "Riley Chen")
+        self.assertEqual(named_person("Contact Riley Chen."), "Riley Chen")
         self.assertEqual(named_person("Jordan Park left the company. Contact our team."), "")
 
     def test_phone_is_bounded_and_does_not_come_from_an_email_or_quoted_original(self):

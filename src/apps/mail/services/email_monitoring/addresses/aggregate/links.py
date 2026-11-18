@@ -12,6 +12,7 @@ from apps.mail.models import (
 )
 
 from ..listing.matching import refresh_cached_links
+from .ses_source import recount_ses
 from .state import (
     GRAPH,
     GRAPH_COUNT_FIELDS,
@@ -47,6 +48,9 @@ def _refresh_rows(rows) -> int:
         park_graph()
     changed = refresh_cached_links(rows)
     for row in rows:
+        if row.ses_last_at and "review_counts" not in row.ses_last:
+            recount_ses(row)
+            row.save(update_fields=["ses_last"])
         suggestion = suggest(row)
         if suggestion != row.suggestion:
             BouncedAddress.objects.filter(pk=row.pk).update(suggestion=suggestion)

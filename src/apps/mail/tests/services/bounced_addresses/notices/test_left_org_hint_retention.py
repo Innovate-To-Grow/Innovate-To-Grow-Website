@@ -10,6 +10,7 @@ from django.conf import settings
 from django.core.cache import cache
 from django.db import connection
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from apps.mail.models import BouncedAddress
 from apps.mail.services.email_monitoring.addresses import aggregate
@@ -58,6 +59,30 @@ class HintRetentionTests(TestCase):
                 row.left_org_hint_expires_at,
             ),
             ("", "", "", "", None, None, None),
+        )
+
+    def test_first_count_of_an_expired_backlog_never_persists_the_copied_hints(self):
+        old = timezone.now() - timedelta(days=91)
+        make_notice(
+            processed=old,
+            received=old,
+            named_contact="riley@example.org",
+            named_contact_name="Riley Chen",
+            named_contact_phone="+12095550123",
+        )
+        self.assertEqual(aggregate.run()["inbound"], 1)
+        row = BouncedAddress.objects.get(address=JORDAN)
+        self.assertEqual((row.left_org_count, row.left_org_first_at, row.left_org_last_at), (1, old, old))
+        self.assertEqual(
+            (
+                row.left_org_contact,
+                row.left_org_contact_name,
+                row.left_org_contact_phone,
+                row.left_org_ticket,
+                row.left_org_hint_source_id,
+                row.left_org_hint_expires_at,
+            ),
+            ("", "", "", None, None, None),
         )
 
     def test_deleting_the_source_message_immediately_drops_contact_hints(self):
