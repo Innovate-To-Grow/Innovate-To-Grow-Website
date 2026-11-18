@@ -38,6 +38,16 @@
         <p class="mt-1 text-base-500 dark:text-base-400">No mailboxes yet: Microsoft Graph refuses every mailbox until the scope lists one.</p>
     {% endif %}
 </div>
+{% if graph_delivery_status %}{% with ds=graph_delivery_status pc=graph_delivery_status.permission_check %}
+    <div class="mt-4 text-sm" data-graph-delivery-status>
+        <p class="font-medium text-font-important-light dark:text-font-important-dark">Message trace delivery status</p>
+        <p class="mt-1">{% if ds.enabled %}On{% else %}Off{% endif %}{% if ds.enabled %} &middot; last sync {% if ds.last_sync %}{{ ds.last_sync|date:"M j, H:i" }}{% if ds.last_success != ds.last_sync %} (last successful {% if ds.last_success %}{{ ds.last_success|date:"M j, H:i" }}{% else %}never{% endif %}){% endif %}{% else %}never{% endif %}{% endif %}</p>
+        <p class="mt-1 text-base-500 dark:text-base-400">
+            Permission check: {% if pc %}Message Trace {{ pc.trace }} (checked {{ pc.check.created_at|date:"M j, H:i" }}){% if pc.roles %}; the token carries {{ pc.roles|join:", " }}{% elif pc.roles_unreadable %}; the token's roles could not be read{% endif %}{% if not pc.check.token_ok %}; no token was issued{% endif %}{% else %}not run yet{% endif %}.
+            The capability table and Check permissions are on the Microsoft Graph configuration's page; Check permissions is also on <a href="{% url 'admin:mail_email_monitoring' %}#monitor-delivery-trace" class="text-primary-600 hover:underline dark:text-primary-400">Email Monitoring</a>.
+        </p>
+    </div>
+{% endwith %}{% endif %}
 {% if graph_saved %}
     <div class="mt-4">{% include "admin/core/microsoftgraphproviderconfig/certificate_panel.html" %}</div>
 {% endif %}

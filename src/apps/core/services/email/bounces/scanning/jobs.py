@@ -6,22 +6,28 @@ has one attempt and never raises for Microsoft's answers: the next scheduled sca
 or Microsoft's longer Retry-After. Overlapping jobs are harmless: the mailbox lease lets only one scan run.
 ``interval_seconds`` and ``catch_up_seconds`` are the cadence the dashboard shows: it reads them from here, so the
 page always says how often scans really run. Other apps that list the same Inbox (the helpdesk's intake) do so on
-their own schedule, with their own checkpoint.
+their own schedule, with their own checkpoint. After a scan that read the mailbox (ok or partial), the emails it showed
+bounce-free are marked "No bounce received" (``recording.quiet``); a disabled, paused, failed, busy or locked scan
+never marks any.
 """
 
+import logging
 from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.utils import timezone
 
-from apps.core.models import BackgroundJob
+from apps.core.models import BackgroundJob, EmailMonitorState
 
+logger = logging.getLogger("apps.core.services.email.bounces.jobs")
 BOUNCE_SCAN_JOB_KIND = "core.email_bounce_scan"
 # A scan that stopped at its message budget continues sooner than the regular interval.
 _CATCH_UP_SECONDS = 120
 _WAITING = (BackgroundJob.Status.PENDING, BackgroundJob.Status.RETRY)
 _FINISHED = (BackgroundJob.Status.SUCCEEDED, BackgroundJob.Status.FAILED, BackgroundJob.Status.CANCELLED)
 FINISHED_JOB_RETENTION = timedelta(days=7)
+# Scans that read the mailbox up to their checkpoint: only these let the no-bounce inference run.
+_READ_THROUGH = ("ok", "partial")
 
 
 def register_bounce_jobs() -> None:
@@ -93,9 +99,24 @@ def run_scan_job(job) -> None:
     outcome = None
     try:
         outcome = scan_mailbox()
+        if outcome.status in _READ_THROUGH:
+            mark_quiet(outcome.mailbox)
     finally:
         if enabled() and not BackgroundJob.objects.filter(kind=BOUNCE_SCAN_JOB_KIND, status__in=_WAITING).exists():
             _enqueue(timezone.now() + timedelta(seconds=next_delay(outcome)), "scheduled")
+
+
+def mark_quiet(mailbox: str) -> int:
+    """After a scan that read the mailbox, mark the emails it showed bounce-free (``recording.quiet``); a failure is
+    logged and never stops the chain of scans."""
+    from ..recording.quiet import mark_quiet_emails
+
+    try:
+        current = EmailMonitorState.objects.filter(mailbox=mailbox).first()
+        return mark_quiet_emails(current) if current is not None else 0
+    except Exception as exc:  # noqa: BLE001 - the inference is optional; the scan already saved its work.
+        logger.error("No-bounce inference failed with an unexpected %s", type(exc).__name__)
+        return 0
 
 
 def purge_finished_jobs(*, now: datetime | None = None) -> int:

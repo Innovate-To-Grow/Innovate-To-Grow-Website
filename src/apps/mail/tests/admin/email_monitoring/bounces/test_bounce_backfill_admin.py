@@ -143,7 +143,8 @@ class AccessTests(BackfillTestCase):
         pattern = r'<form method="post" action="' + re.escape(self.url) + r'".*?</form>'
         forms = re.findall(pattern, page, re.S)
         actions = [re.search(r'name="action" value="(\w+)"', form).group(1) for form in forms]
-        self.assertEqual(actions, ["scan", "pause", "rescan", "lookback"])
+        # The delivery status card below it posts to the same view (Check permissions; Sync now while trace is on).
+        self.assertEqual(actions, ["scan", "pause", "rescan", "lookback", "permissions"])
         for form in forms:
             self.assertIn('name="csrfmiddlewaretoken"', form)
 

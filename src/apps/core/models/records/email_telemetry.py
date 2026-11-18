@@ -5,8 +5,11 @@ check's probe sends; staff read them on Mail → Delivery Operations → Email M
 background job running again, a campaign recipient sent again after a throttle) share one ``OutboundEmail`` and add
 one ``OutboundEmailAttempt`` each. No body, attachment, access token, certificate or credential is ever stored.
 
-``status`` is what the provider's API said. It is never "delivered": Microsoft Graph's ``202 Accepted`` only means
-the message was queued, so ``delivery_status`` stays unknown until a bounce notification proves a failure.
+``status`` is what the provider's API said, never a delivery: Microsoft Graph's ``202 Accepted`` only means the
+message was queued. ``delivery_status`` starts unknown and moves on evidence only, the strongest kept: failure
+confirmed (a bounce, or Message Trace "failed") > quarantined / filtered as spam > delivered (Message Trace) > delayed
+> no bounce received (the bounce scan read the mailbox well past the send without a report: likely, not proof) >
+unknown. A bounce's failure always wins, even over a trace's "delivered".
 """
 
 import uuid
@@ -32,6 +35,19 @@ class EmailCategory(models.TextChoices):
     OTHER = "other", "Other"
 
 
+# How strong the evidence behind each delivery status is (``DeliveryStatus.stronger_than``).
+DELIVERY_STATUS_RANK = {
+    "not_applicable": 0,
+    "unknown": 0,
+    "no_bounce": 1,
+    "delayed": 2,
+    "delivered": 3,
+    "filtered_as_spam": 4,
+    "quarantined": 4,
+    "failure_confirmed": 5,
+}
+
+
 class OutboundEmail(ProjectControlModel):
     """One logical outgoing email: everything sent for one message, however many attempts it took."""
 
@@ -47,6 +63,15 @@ class OutboundEmail(ProjectControlModel):
         UNKNOWN = "unknown", "Delivery status unknown"
         DELAYED = "delayed", "Delivery delayed"
         FAILURE_CONFIRMED = "failure_confirmed", "Delivery failure confirmed"
+        NO_BOUNCE = "no_bounce", "No bounce received"
+        DELIVERED = "delivered", "Delivered (message trace)"
+        FILTERED_AS_SPAM = "filtered_as_spam", "Filtered as spam"
+        QUARANTINED = "quarantined", "Quarantined"
+
+        @classmethod
+        def stronger_than(cls, status: str) -> list[str]:
+            """The statuses a write of ``status`` must not replace (a bounce's confirmed failure replaces any)."""
+            return [value for value, rank in DELIVERY_STATUS_RANK.items() if rank > DELIVERY_STATUS_RANK[status]]
 
     correlation_id = models.UUIDField(
         unique=True,
@@ -78,6 +103,9 @@ class OutboundEmail(ProjectControlModel):
         max_length=20, choices=DeliveryStatus.choices, default=DeliveryStatus.NOT_APPLICABLE, db_index=True
     )
     bounce_classification = models.CharField(max_length=16, blank=True, default="")
+    # Database defaults too: the previous release still saves emails while a deploy rolls out.
+    trace_status = models.CharField(max_length=16, blank=True, default="", db_default="", help_text="Raw trace status.")
+    trace_checked_at = models.DateTimeField(null=True, blank=True)
     attempt_count = models.PositiveSmallIntegerField(default=0)
     deferral_count = models.PositiveIntegerField(default=0)
     first_attempt_at = models.DateTimeField(null=True, blank=True)
@@ -99,6 +127,7 @@ class OutboundEmail(ProjectControlModel):
             models.Index(fields=["status", "created_at"], name="core_outemail_status_idx"),
             models.Index(fields=["campaign_id", "created_at"], name="core_outemail_campaign_idx"),
             models.Index(fields=["recipient", "last_attempt_at"], name="core_outemail_recipient_idx"),
+            models.Index(fields=["provider", "delivery_status", "accepted_at"], name="core_outemail_delivery_idx"),
         ]
 
     def __str__(self):

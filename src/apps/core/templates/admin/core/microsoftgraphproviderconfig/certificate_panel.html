@@ -1,6 +1,7 @@
 {# The Microsoft Graph certificate panel (microsoft_graph_panel.certificate_panel): on the config's change page, before #}
 {# its form, and on Mail → Notification Delivery. Every link is present only when the viewer may use it; "Run access #}
-{# check" is in the access check card, next to the go-live evidence it produces. #}
+{# check" is in the access check card, next to the go-live evidence it produces; "Check permissions" (config page #}
+{# only) is in the permissions card after it. #}
 {% if graph_certificate_panel %}
 {% with panel=graph_certificate_panel %}
 <section id="graph-certificate-panel" class="mb-6 rounded-default border border-base-200 bg-white p-4 dark:border-base-700 dark:bg-base-800">
@@ -46,6 +47,9 @@
     {% endif %}
     {% if panel.access_check %}
         {% include "admin/core/microsoftgraphproviderconfig/access_check_card.html" with card=panel.access_check %}
+    {% endif %}
+    {% if panel.permissions %}
+        {% include "admin/core/microsoftgraphproviderconfig/permissions_card.html" with card=panel.permissions %}
     {% endif %}
 </section>
 {% endwith %}

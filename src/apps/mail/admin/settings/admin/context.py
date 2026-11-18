@@ -4,19 +4,23 @@ from django.urls import reverse
 from apps.core.admin.service_credentials.gmail_api.panel import key_panel
 from apps.core.admin.service_credentials.microsoft_graph.panel import certificate_panel
 from apps.core.models import (
+    EmailDeliveryTraceState,
     GmailApiProviderConfig,
 )
+from apps.core.services.email.telemetry import text
 from apps.core.utils.access import user_can_access_app
 from apps.mail.services.campaign.delivery.pacing import email_send_rate_line, sms_send_rate_line
+from apps.mail.services.email_monitoring.dashboard.trace import latest_permission_check
 
 from ..rates.cards import EMAIL_CHANNELS
 
 
-def _graph_context(request, graph_config) -> dict:
+def _graph_context(request, graph_config, from_email: str) -> dict:
     """The active Graph config, read-only: it is managed on its own admin page, which needs the Core app."""
     saved = not graph_config._state.adding
     context = {
         "graph_saved": saved,
+        "graph_delivery_status": _graph_delivery_status(graph_config, from_email) if saved else None,
         "graph_scopes": list(graph_config.mailbox_scopes.all()) if saved else [],
         "graph_certificate_panel": certificate_panel(request, graph_config, actions=False),
         "graph_admin_url": "",
@@ -28,6 +32,18 @@ def _graph_context(request, graph_config) -> dict:
             else reverse("admin:core_microsoftgraphproviderconfig_add")
         )
     return context
+
+
+def _graph_delivery_status(graph_config, from_email: str) -> dict:
+    """Message Trace delivery status (on or off, its last sync) and the latest permission check's summary."""
+    sender = text.address(from_email)
+    state = EmailDeliveryTraceState.objects.filter(sender=sender).first() if sender else None
+    return {
+        "enabled": bool(graph_config.message_trace_enabled),
+        "last_sync": state.last_run_finished_at if state else None,
+        "last_success": state.last_success_at if state else None,
+        "permission_check": latest_permission_check(graph_config),
+    }
 
 
 def _gmail_context(request) -> dict:
@@ -60,7 +76,7 @@ def _notification_delivery_context(request, email_config, aws_config, smtp_confi
         "aws_config": aws_config,
         "smtp_config": smtp_config,
         "graph_config": graph_config,
-        **_graph_context(request, graph_config),
+        **_graph_context(request, graph_config, email_config.from_email),
         **_gmail_context(request),
         "email_status": "Active" if email_config.is_active else "Inactive",
         "email_send_rate": email_send_rate_line(),

@@ -55,7 +55,7 @@ class OverviewTests(TestCase):
 
         self.assertEqual(html.count('class="i2g-monitor-tiles"'), 1)
         strip = html.split("data-monitor-kpis>", 1)[1].split("</div>\n  <p", 1)[0]
-        self.assertEqual(strip.count('class="i2g-monitor-tile"'), 6)
+        self.assertEqual(strip.count('class="i2g-monitor-tile"'), 9)
         labels = FIGURE_LABEL.findall(html)
         for label in OVERVIEW_FIGURES:
             self.assertEqual(labels.count(label), 1, label)

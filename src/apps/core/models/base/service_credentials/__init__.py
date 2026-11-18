@@ -4,6 +4,7 @@ from .microsoft_graph import (
     MicrosoftGraphAccessCheck,
     MicrosoftGraphCertificate,
     MicrosoftGraphMailboxScope,
+    MicrosoftGraphPermissionCheck,
     MicrosoftGraphProviderConfig,
 )
 from .shared.aws import AWSCredentialConfig
@@ -21,6 +22,7 @@ __all__ = [
     "MicrosoftGraphAccessCheck",
     "MicrosoftGraphCertificate",
     "MicrosoftGraphMailboxScope",
+    "MicrosoftGraphPermissionCheck",
     "MicrosoftGraphProviderConfig",
     "SendVerificationConfig",
     "validate_google_credentials_json",

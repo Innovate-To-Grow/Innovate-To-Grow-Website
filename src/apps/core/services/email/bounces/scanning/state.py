@@ -16,7 +16,8 @@ from datetime import datetime, timedelta
 from django.conf import settings
 from django.contrib.admin.models import CHANGE, LogEntry
 from django.db import IntegrityError, transaction
-from django.db.models import F, Q
+from django.db.models import DateTimeField, F, Q, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.core.models import EmailMonitorState
@@ -48,9 +49,12 @@ def _held(mailbox: str, token: uuid.UUID):
     return EmailMonitorState.objects.filter(mailbox=mailbox, lease_token=token)
 
 
-def finish(mailbox: str, token: uuid.UUID, *, checkpoint, stats: dict, error: str = "", retry_after=None) -> None:
+def finish(
+    mailbox: str, token: uuid.UUID, *, checkpoint, stats: dict, error: str = "", retry_after=None, since=None
+) -> None:
     """Save the run's progress and outcome and give the lease back. ``error`` marks a failed run (shown on the
-    dashboard); ``retry_after`` (seconds) is when Microsoft asked to be contacted again."""
+    dashboard); ``retry_after`` (seconds) is when Microsoft asked to be contacted again. ``since`` (where the run
+    started listing) becomes ``scanned_since`` when none is known yet, once a checkpoint is saved with it."""
     now = timezone.now()
     values = {
         "lease_token": None,
@@ -62,6 +66,8 @@ def finish(mailbox: str, token: uuid.UUID, *, checkpoint, stats: dict, error: st
     }
     if checkpoint is not None:
         values["checkpoint_at"] = checkpoint
+        if since is not None:
+            values["scanned_since"] = Coalesce("scanned_since", Value(since, output_field=DateTimeField()))
     if error:
         values.update(
             last_error=text.scrub(error), last_error_at=now, consecutive_failures=F("consecutive_failures") + 1
@@ -164,8 +170,10 @@ def rescan_since(mailbox: str, since: datetime, *, actor=None, now: datetime | N
             return Rescan("running", since, earliest, lease_until=row.lease_until, **found)
         if row.checkpoint_at is not None and row.checkpoint_at <= since:
             return Rescan("not_earlier", since, earliest, **found)
+        # What the scans read from here up to the checkpoint is read again, so the covered range starts at ``since``.
+        covered = since if row.scanned_since is None else min(row.scanned_since, since)
         EmailMonitorState.objects.filter(pk=pk).update(
-            checkpoint_at=since, lease_token=None, lease_until=None, updated_at=now
+            checkpoint_at=since, scanned_since=covered, lease_token=None, lease_until=None, updated_at=now
         )
         message = f"Rescan since {_when(since)}: checkpoint moved back from {_when(row.checkpoint_at)}."
         _record(actor, row, "rescan", message)

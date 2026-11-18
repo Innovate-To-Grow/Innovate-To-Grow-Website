@@ -70,3 +70,57 @@
   {% endwith %}
   {% endif %}
 </section>
+{# Delivery status beyond bounce reports: the optional Message Trace sync, its permission check and the no-bounce inference. #}
+{% with tr=health.trace pc=health.trace.permission_check %}
+<section class="i2g-monitor-card i2g-monitor-health i2g-monitor-health--{{ tr.level }}" aria-labelledby="monitor-delivery-trace">
+  <div class="i2g-monitor-health-head">
+    <h2 id="monitor-delivery-trace" class="i2g-monitor-heading">Delivery status</h2>
+    <p class="i2g-monitor-level">
+      <span class="material-symbols-outlined" aria-hidden="true">{% if tr.status == "ok" %}check_circle{% elif tr.status == "throttled" %}warning{% elif tr.status == "error" %}error{% elif tr.status == "permission" %}lock_clock{% elif tr.status == "waiting" %}schedule{% else %}block{% endif %}</span>
+      <strong>Message Trace: {% if tr.status == "ok" %}Running{% elif tr.status == "throttled" %}Throttled by Microsoft{% elif tr.status == "error" %}Last sync failed{% elif tr.status == "permission" %}Waiting for permission{% elif tr.status == "waiting" %}Waiting for the first sync{% else %}Off{% endif %}</strong>
+    </p>
+  </div>
+  {% if tr.enabled %}
+  <dl class="i2g-monitor-facts">
+    <div><dt>Sender traced</dt><dd>{{ tr.sender|default:"–" }}</dd></div>
+    <div><dt>Last sync</dt><dd>{% if tr.running %}running now (started {{ tr.state.last_run_started_at|date:"H:i" }}){% elif tr.state.last_run_finished_at %}{{ tr.state.last_run_finished_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
+    <div><dt>Last successful sync</dt><dd>{% if tr.state.last_success_at %}{{ tr.state.last_success_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
+    <div><dt>Next sync</dt><dd>{% if tr.next_sync_at %}{{ tr.next_sync_at|date:"M j, H:i" }}{% else %}not queued{% endif %}{% if tr.waiting_until %} (waits until {{ tr.waiting_until|date:"M j, H:i" }}){% endif %}</dd></div>
+    <div><dt>Interval</dt><dd>every {{ tr.every }}</dd></div>
+  </dl>
+  {% if tr.problem %}
+    <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ tr.problem }}</p>
+  {% elif tr.status == "permission" %}
+    <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">lock_clock</span>Microsoft has not granted the Message Trace permission yet, so the sync makes no request and checks again later{% if tr.state.last_error %}: {{ tr.state.last_error }}{% endif %}</p>
+  {% elif tr.status == "throttled" %}
+    <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">warning</span>Microsoft throttled the last sync; the next one waits as it asked. Sending is not affected.</p>
+  {% elif tr.status == "error" %}
+    <p class="i2g-monitor-error" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>{% if tr.state.consecutive_failures %}{{ tr.state.consecutive_failures }} sync{{ tr.state.consecutive_failures|pluralize }} in a row failed. {% endif %}Last error {{ tr.state.last_error_at|date:"M j, H:i" }}: {{ tr.state.last_error }}</p>
+  {% endif %}
+  {% if tr.stats.requests %}
+    <p class="i2g-monitor-muted">Last sync: {{ tr.stats.requests }} request{{ tr.stats.requests|pluralize }}, {{ tr.stats.rows|default:0 }} trace rows read, {{ tr.stats.checked|default:0 }} emails checked, {{ tr.stats.updated|default:0 }} updated ({{ tr.stats.delivered|default:0 }} delivered, {{ tr.stats.failed|default:0 }} failed, {{ tr.stats.junk|default:0 }} quarantined or spam), {{ tr.stats.pending|default:0 }} still pending at Microsoft.</p>
+  {% endif %}
+  {% else %}
+  <p class="i2g-monitor-muted">Message Trace delivery status is off (the default). Switched on, Microsoft's message trace tells for each email whether Exchange delivered it, quarantined it, filtered it as spam or failed. It needs the tenant-wide <code>ExchangeMessageTrace.Read.All</code> application permission, which cannot be limited to one mailbox and is beyond the current InfoSec approval. Sending works the same either way.</p>
+  {% endif %}
+  {% if tr.status == "off" or tr.status == "permission" %}
+    <ol class="i2g-monitor-steps">{% for step in tr.setup_steps %}<li>{{ step }}</li>{% endfor %}</ol>
+  {% endif %}
+  <p class="i2g-monitor-muted" data-monitor-permission-check>Permission check: {% if pc %}Message Trace <strong>{{ pc.trace }}</strong> (checked {{ pc.check.created_at|date:"M j, H:i" }}){% if pc.roles %}; the token carries {{ pc.roles|join:", " }}{% elif pc.roles_unreadable %}; the token's roles could not be read{% endif %}{% if not pc.check.token_ok %}; no token was issued: {{ pc.check.token_error }}{% endif %}{% else %}not run yet{% endif %}. Check permissions requests a fresh token and reads its roles; it sends no mail and never changes the go-live evidence.</p>
+  <p class="i2g-monitor-muted" data-monitor-inference>No-bounce inference: {% with inf=tr.inference %}{% if inf.status == "active" %}active. Accepted Graph emails from {{ inf.since|date:"M j, H:i" }} to {{ inf.until|date:"M j, H:i" }} without a bounce report show “No bounce received” (likely delivered, not proof){% elif inf.status == "waiting" %}waiting for scan coverage: the bounce scans have not yet read {{ inf.hours }} hours past a send they cover{% elif inf.status == "paused" %}paused with bounce processing{% elif inf.status == "other_mailbox" %}not available: the From address is not the mailbox the bounce scan reads, so its reports arrive elsewhere{% else %}off: it needs bounce processing running on the sending mailbox{% endif %}{% endwith %}.</p>
+  <div class="i2g-monitor-actions">
+    {% if tr.enabled %}
+    <form method="post" action="{% url 'admin:mail_email_monitoring_bounce_processing' %}">
+      {% csrf_token %}<input type="hidden" name="action" value="trace">
+      <button type="submit" class="i2g-monitor-button" {% if tr.running %}disabled{% endif %}><span class="material-symbols-outlined" aria-hidden="true">sync</span>Sync delivery status now</button>
+    </form>
+    {% endif %}
+    {% if tr.can_check_permissions %}
+    <form method="post" action="{% url 'admin:mail_email_monitoring_bounce_processing' %}">
+      {% csrf_token %}<input type="hidden" name="action" value="permissions">
+      <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">verified_user</span>Check permissions</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% endwith %}

@@ -9,6 +9,7 @@
   <dl class="i2g-monitor-facts">
     <div><dt>API status</dt><dd>{% include "admin/mail/email_monitoring/shared/_status.html" with value=email.status label=email.get_status_display %}</dd></div>
     <div><dt>Delivery status</dt><dd>{% include "admin/mail/email_monitoring/shared/_status.html" with value=email.delivery_status label=email.get_delivery_status_display %}{% if email.bounce_classification %} · {{ email.bounce_label }}{% endif %}</dd></div>
+    <div><dt>Message trace</dt><dd>{% if trace %}{% if trace.status %}<code>{{ trace.status }}</code>{% else %}no row found yet{% endif %} · checked {{ trace.checked_at|date:"M j, Y H:i" }}{% else %}not checked{% endif %}</dd></div>
     <div><dt>Recipient{{ email.recipient_count|pluralize }}</dt><dd>{{ email.recipients|join:", "|default:"–" }}</dd></div>
     <div><dt>Subject</dt><dd>{{ email.subject|default:"(not stored)" }}</dd></div>
     <div><dt>Provider</dt><dd>{{ email.provider|default:"–" }}{% if email.mailbox %} · {{ email.mailbox }}{% endif %}{% if email.send_format %} · {{ email.send_format|upper }} sendMail{% endif %}</dd></div>

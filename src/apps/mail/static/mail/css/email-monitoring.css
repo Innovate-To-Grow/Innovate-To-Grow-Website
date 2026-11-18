@@ -2,8 +2,8 @@
    (later files override earlier ones at equal specificity), so do not reorder this list;
    add new rules to the file that owns them; bump a part's ?v= (and the page link's) when you change it. */
 @import './email-monitoring-filters.css?v=1';
-@import './email-monitoring-cards.css?v=1';
-@import './email-monitoring-tables.css?v=1';
+@import './email-monitoring-cards.css?v=2';
+@import './email-monitoring-tables.css?v=2';
 @import './email-monitoring-charts.css?v=1';
 @import './email-monitoring-bounced.css?v=1';
 @import './email-monitoring-fields.css?v=1';

@@ -358,10 +358,14 @@ evidence before using the explicit admin retry action.
 Switching providers is global and does not configure failover. SES campaign
 delivery, bounce, and complaint events remain available only for messages sent
 through SES. SMTP and Microsoft Graph campaigns record submission acceptance as
-`sent` (for Graph, an HTTP 202 from `sendMail`); no later delivery status is
-inferred without a feedback integration. Graph's non-delivery reports arrive in
-the sender mailbox, where bounce processing reads them for
-[Email monitoring](../integrations/messaging/email-monitoring.md) without changing the recipient log, and its
+`sent` (for Graph, an HTTP 202 from `sendMail`); no delivery evidence changes
+that status later. Graph's non-delivery reports arrive in the sender mailbox,
+where bounce processing reads them for
+[Email monitoring](../integrations/messaging/email-monitoring.md) without changing the recipient log. Email
+Monitoring alone shows each email's later delivery status: "No bounce received"
+once the scans have read well past the send (likely delivered, not proof) and,
+only with the optional Message Trace, "Delivered (message trace)",
+"Quarantined" or "Filtered as spam". Graph's
 uncertain outcomes are explained in the
 [error reference](../integrations/messaging/microsoft-graph-email.md#error-reference).
 Email Monitoring's **Amazon SES** tab under **Delivery Operations** (the former

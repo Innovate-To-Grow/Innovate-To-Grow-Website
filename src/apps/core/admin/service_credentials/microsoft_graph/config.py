@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.admin.utils import unquote
 from django.utils.translation import gettext_lazy as _
 from unfold.decorators import display
@@ -11,6 +11,7 @@ from ...common.base import BaseModelAdmin
 from .access_check import GraphAccessCheckViewMixin
 from .certificate_views import GraphCertificateViewsMixin
 from .panel import certificate_panel
+from .permissions import GraphPermissionCheckViewMixin, permissions_card, trace_toggle_warning
 from .scope import MicrosoftGraphMailboxScopeInline
 
 # The config holds no secret: the certificate's private key is kept in the credential store, and certificates are
@@ -24,11 +25,12 @@ GRAPH_FORM_FIELDS = (
     *SENDING_LIMIT_FIELDS,
     "access_check_deny_mailbox",
     "permission_exception_reference",
+    "message_trace_enabled",
 )
 # A certificate is tested for one tenant and app, so these are read-only while one is installed.
 APPLICATION_FIELDS = ("tenant_id", "client_id")
 # What the go-live gate accepts as evidence: set by whoever runs the access check (the Core app).
-EVIDENCE_FIELDS = ("access_check_deny_mailbox", "permission_exception_reference")
+EVIDENCE_FIELDS = ("access_check_deny_mailbox", "permission_exception_reference", "message_trace_enabled")
 NO_CERTIFICATE = "None installed"
 
 
@@ -39,7 +41,9 @@ class MicrosoftGraphProviderConfigForm(forms.ModelForm):
 
 
 @admin.register(MicrosoftGraphProviderConfig)
-class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertificateViewsMixin, BaseModelAdmin):
+class MicrosoftGraphProviderConfigAdmin(
+    GraphAccessCheckViewMixin, GraphPermissionCheckViewMixin, GraphCertificateViewsMixin, BaseModelAdmin
+):
     form = MicrosoftGraphProviderConfigForm
     inlines = (MicrosoftGraphMailboxScopeInline,)
     change_form_outer_before_template = "admin/core/microsoftgraphproviderconfig/certificate_panel.html"
@@ -99,7 +103,8 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
                     "manage.py verify_graph_access from a shell) "
                     "proves against Microsoft that the deny mailbox is refused and that the token's roles are within "
                     "the approval; where the go-live gate is on, email can switch to Microsoft Graph only with a "
-                    "recent passing check for the current certificate."
+                    "recent passing check for the current certificate. Message Trace delivery status needs a tenant-wide "
+                    "permission beyond the approval: InfoSec review first, then record its reference here."
                 ),
             },
         ),
@@ -136,8 +141,16 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
         obj = self.get_object(request, unquote(object_id))
         extra_context = dict(extra_context or {})
         if obj is not None:
-            extra_context["graph_certificate_panel"] = certificate_panel(request, obj)
+            panel = certificate_panel(request, obj)
+            panel["permissions"] = permissions_card(request, obj)
+            extra_context["graph_certificate_panel"] = panel
         return super().change_view(request, object_id, form_url, extra_context)
+
+    def save_model(self, request, obj, form, change):
+        super().save_model(request, obj, form, change)
+        warning = trace_toggle_warning(obj) if obj.message_trace_enabled else ""
+        if warning:
+            messages.warning(request, warning)
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:
@@ -150,4 +163,9 @@ class MicrosoftGraphProviderConfigAdmin(GraphAccessCheckViewMixin, GraphCertific
         return actions
 
     def get_urls(self):
-        return self.get_access_check_urls() + self.get_certificate_urls() + super().get_urls()
+        return (
+            self.get_access_check_urls()
+            + self.get_permission_check_urls()
+            + self.get_certificate_urls()
+            + super().get_urls()
+        )

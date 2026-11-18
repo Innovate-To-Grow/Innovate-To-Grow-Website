@@ -174,3 +174,15 @@
     gap: 8px;
     margin-top: 12px;
 }
+
+/* Delivery status card: Message Trace's setup steps while it is off or not yet permitted. */
+.i2g-monitor-steps {
+    font-size: 0.875rem;
+    margin: 8px 0 0;
+    max-width: 80ch;
+    padding-left: 20px;
+}
+
+.i2g-monitor-health + .i2g-monitor-health {
+    margin-top: 16px;
+}

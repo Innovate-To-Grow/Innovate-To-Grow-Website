@@ -1,4 +1,5 @@
-"""The Graph transport's request allowlist: only the token request, ``sendMail`` and three read-only GETs.
+"""The Graph transport's request allowlist: only the token request, ``sendMail``, three read-only mailbox GETs and the
+Message Trace list of one sender.
 
 OIT reportedly granted ``Mail.ReadWrite`` (beyond the approved ``Mail.Read``), so the token itself would let a
 request create, change or delete mail. The allowlist makes "the site never modifies mail" a property of the code:
@@ -23,6 +24,12 @@ AUTHORITY = transport.AUTHORITY_HOST
 MAILBOX = "i2g@ucmerced.edu"
 USER = f"/v1.0/users/{MAILBOX}"
 MESSAGE_ID = "AAMkAGI2THVSAAA="
+TRACES = "/v1.0/admin/exchange/tracing/messageTraces"
+SENDER_FILTER = "$filter=senderAddress%20eq%20%27i2g%40ucmerced.edu%27"
+WINDOW = (
+    "%20and%20receivedDateTime%20ge%202026-11-17T00%3A00%3A00Z%20and%20receivedDateTime%20le%202026-11-18T00%3A00%3A00Z"
+)
+TRACE = f"{TRACES}?{SENDER_FILTER}{WINDOW}&$top=1000"
 ALLOWED = [
     ("POST", AUTHORITY, f"/{TENANT_ID}/oauth2/v2.0/token"),
     ("POST", AUTHORITY, "/contoso.onmicrosoft.com/oauth2/v2.0/token"),
@@ -34,6 +41,8 @@ ALLOWED = [
     ("GET", GRAPH, f"{USER}/mailFolders/inbox?$select=id"),
     ("GET", GRAPH, f"{USER}/mailFolders/inbox"),
     ("GET", GRAPH, f"{USER}/messages/{MESSAGE_ID}/$value"),
+    ("GET", GRAPH, TRACE),
+    ("GET", GRAPH, f"{TRACE}&$skiptoken=X%2B1%7E2.ab_c-d"),
 ]
 REFUSED = {
     "update a message (mark read)": ("PATCH", GRAPH, f"{USER}/messages/{MESSAGE_ID}"),
@@ -69,6 +78,26 @@ REFUSED = {
     "another host": ("POST", "graph.microsoft.com.evil.example", f"{USER}/sendMail"),
     "lower-case method": ("post", GRAPH, f"{USER}/sendMail"),
     "space in the path": ("GET", GRAPH, f"{USER}/mailFolders/inbox/messages?$top=1 HTTP/1.1"),
+    "the whole tenant's trace": ("GET", GRAPH, f"{TRACES}?$top=1000"),
+    "trace without the sender filter": (
+        "GET",
+        GRAPH,
+        f"{TRACES}?$filter=receivedDateTime%20ge%202026-11-17T00%3A00%3A00Z",
+    ),
+    "trace without a window": ("GET", GRAPH, f"{TRACES}?{SENDER_FILTER}&$top=1000"),
+    "trace without a page size": ("GET", GRAPH, f"{TRACES}?{SENDER_FILTER}{WINDOW}"),
+    "trace sender closing the string": (
+        "GET",
+        GRAPH,
+        f"{TRACES}?$filter=senderAddress%20eq%20%27x%27%20or%20%27a%27%20eq%20%27a%27{WINDOW}&$top=1",
+    ),
+    "trace with another filter": ("GET", GRAPH, f"{TRACE}&$filter=status%20eq%20%27failed%27"),
+    "trace with a raw skip token": ("GET", GRAPH, f"{TRACE}&$skiptoken=a~b"),
+    "trace with a lower-case escape in the token": ("GET", GRAPH, f"{TRACE}&$skiptoken=a%2bb"),
+    "trace with another option": ("GET", GRAPH, f"{TRACE}&$select=recipientAddress"),
+    "a trace by id": ("GET", GRAPH, f"{TRACES}/abc"),
+    "trace on beta": ("GET", GRAPH, f"/beta/admin/exchange/tracing/messageTraces?{SENDER_FILTER}{WINDOW}&$top=1"),
+    "POST to trace": ("POST", GRAPH, TRACE),
 }
 
 

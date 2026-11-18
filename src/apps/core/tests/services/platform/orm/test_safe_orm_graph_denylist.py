@@ -1,5 +1,5 @@
 """The shared safe-ORM denylist keeps the Microsoft Graph config, its mailbox scope, its installed certificates and
-its recorded access checks away from the assistant and the CLI."""
+its recorded access and permission checks away from the assistant and the CLI."""
 
 from unittest.mock import patch
 
@@ -9,6 +9,7 @@ from apps.core.models import (
     MicrosoftGraphAccessCheck,
     MicrosoftGraphCertificate,
     MicrosoftGraphMailboxScope,
+    MicrosoftGraphPermissionCheck,
     MicrosoftGraphProviderConfig,
 )
 from apps.core.services.db_tools.safe_orm import DENIED_MODEL_LABELS, ActionRequestError, is_model_denied, resolve_model
@@ -18,6 +19,7 @@ GRAPH_MODELS = (
     MicrosoftGraphMailboxScope,
     MicrosoftGraphCertificate,
     MicrosoftGraphAccessCheck,
+    MicrosoftGraphPermissionCheck,
 )
 SAFETY = "apps.core.services.db_tools.safe_orm.safety"
 
@@ -52,6 +54,13 @@ class GraphModelDenylistTest(SimpleTestCase):
             with self.subTest(model=model.__name__), patch(f"{SAFETY}.DENIED_MODEL_LABELS", frozenset()):
                 self.assertFalse(is_model_denied(model, write=False))
                 self.assertFalse(is_model_denied(model, write=True))
+
+    def test_the_permission_check_label_blocks_it_without_the_name_rule(self):
+        # "permission" in its name is already denied; the explicit label must refuse it on its own too.
+        with patch(f"{SAFETY}.DENIED_MODEL_NAME_PARTS", ()):
+            for write in (False, True):
+                with self.subTest(write=write):
+                    self.assertTrue(is_model_denied(MicrosoftGraphPermissionCheck, write=write))
 
     def test_the_config_label_blocks_it_without_the_name_rule(self):
         # The name rule ("config" in the model name) already catches this model; the label is the second line

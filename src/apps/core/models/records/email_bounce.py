@@ -1,4 +1,4 @@
-"""Bounce diagnostics for each failed or delayed recipient, and the mailbox scanner's durable state.
+"""Bounce diagnostics for each failed or delayed recipient (the scanner's own state: ``email_monitor_state``).
 
 Categories describe the failure; classifications summarize it for charts. A trusted report binds its SMTP
 final recipient to the outbound envelope and Message-ID. Original mail bodies are never stored.
@@ -158,40 +158,3 @@ class EmailBounce(ProjectControlModel):
     def guidance_for(category: str) -> str:
         """What a category means for the address and what to look at ("" for an unknown value)."""
         return CATEGORY_GUIDANCE.get(category, "")
-
-
-class EmailMonitorState(ProjectControlModel):
-    """The bounce processor's checkpoint, lease and health for one mailbox, and the controls staff set for it on the
-    monitoring dashboard (pause, first-scan lookback)."""
-
-    mailbox = models.CharField(max_length=254, unique=True)
-    paused = models.BooleanField(default=False, help_text="Paused from the dashboard: scans skip this mailbox.")
-    checkpoint_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="Received time of the newest message every scan before it fully processed, or the earlier time "
-        "staff chose with Rescan since.",
-    )
-    initial_lookback_hours = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="How many hours back the first scan reads while there is no checkpoint (set on the Email Monitoring "
-        "dashboard). Empty: the EMAIL_MONITORING default.",
-    )
-    lease_token = models.UUIDField(null=True, blank=True, editable=False)
-    lease_until = models.DateTimeField(null=True, blank=True, editable=False)
-    last_run_started_at = models.DateTimeField(null=True, blank=True)
-    last_run_finished_at = models.DateTimeField(null=True, blank=True)
-    last_success_at = models.DateTimeField(null=True, blank=True)
-    last_error_at = models.DateTimeField(null=True, blank=True)
-    last_error = models.CharField(max_length=500, blank=True, default="")
-    consecutive_failures = models.PositiveIntegerField(default=0)
-    next_run_after = models.DateTimeField(null=True, blank=True)
-    last_run_stats = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        verbose_name = "Email Monitor State"
-        verbose_name_plural = "Email Monitor States"
-
-    def __str__(self):
-        return f"Bounce processing for {self.mailbox}"

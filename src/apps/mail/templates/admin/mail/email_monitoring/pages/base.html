@@ -6,7 +6,7 @@
 
 {% block extrahead %}
 {{ block.super }}
-<link rel="stylesheet" href="{% static 'mail/css/email-monitoring.css' %}?v=20261112-bounce-categories">
+<link rel="stylesheet" href="{% static 'mail/css/email-monitoring.css' %}?v=20261118-delivery-status">
 {% block monitoring_head %}{% endblock %}
 {% endblock %}
 
@@ -41,7 +41,8 @@
       {% else %}
         Monitoring has not recorded any email yet: it starts with the first email sent after this feature was deployed.
       {% endif %}
-      “API accepted” means Microsoft Graph queued the message (HTTP 202); it is never shown as delivered. Delivery failures are known only from bounce reports.
+      “API accepted” means Microsoft Graph queued the message (HTTP 202), not that it was delivered.
+      {% if health.trace.enabled %}Delivery is shown only from Microsoft's message trace (“Delivered (message trace)”: handed to the recipient's mail server); failures come from bounce reports and the trace. “No bounce received” is likely delivered, not proof.{% else %}Message Trace is off, so the site confirms no delivery: failures are known from bounce reports, and “No bounce received” (no report after the scan read well past the send) is likely delivered, not proof.{% endif %}
       {% if not health.telemetry_enabled %}<strong>Telemetry is switched off (EMAIL_TELEMETRY_ENABLED): new emails are not recorded.</strong>{% endif %}
     </p>
   </div>

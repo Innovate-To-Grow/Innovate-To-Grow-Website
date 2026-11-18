@@ -120,9 +120,10 @@ A campaign cannot be "test sent" from its page. Instead:
 
 ## 3.3 "API accepted" is not "delivered"
 
-> When Microsoft answers **API accepted**, it has queued the email for delivery. That is all the site is ever told
-> when things go well. The site never shows "delivered" for this mailbox, because no confirmation of delivery comes
-> back. It learns about a failure only when a bounce report arrives in the i2g@ Inbox.
+> When Microsoft answers **API accepted**, it has queued the email for delivery. That is all Microsoft says when it
+> sends. The site learns about a failure when a bounce report arrives in the i2g@ Inbox. Once the site has read the
+> Inbox well past a send without a report, the email shows **No bounce received**: likely delivered, not proof. It
+> shows "Delivered" only with **Message Trace**, an optional feature that is off until IT grants it a permission.
 
 | Shown | Meaning |
 |---|---|
@@ -130,14 +131,18 @@ A campaign cannot be "test sent" from its page. Instead:
 | **API failed** | Microsoft refused it, or could not be reached. Nothing was sent. |
 | **API outcome unknown** | The answer was lost. The email may have been sent, so it is not retried automatically. |
 | **Not sent** | The site stopped it before contacting Microsoft (settings, mailbox scope or delivery limits). |
-| **Delivery status unknown** | Accepted, and no bounce report has been matched to it. This is the normal state of most emails: they most likely arrived, but the site cannot prove it. |
-| **Delivery failure confirmed** | A bounce report says delivery failed. |
+| **Delivery status unknown** | Accepted, and nothing more is known yet: no bounce report, and the site has not read the Inbox far enough past the send. Normal for the first two days after a send. |
+| **No bounce received** | The site read the i2g@ Inbox for two days past the send and found no bounce report for it. It most likely arrived, but this is not proof. |
+| **Delivered (message trace)** | Only with Message Trace on: Microsoft says it handed the email to the recipient's mail server. That server can still file it as spam. |
+| **Quarantined** / **Filtered as spam** | Only with Message Trace on: Microsoft kept the email from the inbox. Tell the web team if many emails show it. |
+| **Delivery failure confirmed** | A bounce report (or, with Message Trace, Microsoft's trace) says delivery failed. |
 | **Delivery delayed** | A report says the receiving server is still trying. Not a failure yet. |
 
 Right after a blast every email shows **API accepted** and **Delivery status unknown**. Bounce reports arrive over
 the next minutes, and some take a day or two; matched ones change the email to **Delivery failure confirmed** or
-**Delivery delayed**. Some receiving servers drop mail or file it as spam without sending any report, so a missing
-report is not proof of delivery either.
+**Delivery delayed**. About two days later the others change to **No bounce received**. Some receiving servers drop
+mail or file it as spam without sending any report, so a missing report is not proof of delivery either, and a late
+report still changes the email to **Delivery failure confirmed**.
 
 The campaign's own recipient list shows **Sent** for an email Microsoft accepted.
 
@@ -147,11 +152,12 @@ Open **Broadcast Delivery → Delivery Operations**: it opens **Email Monitoring
 delivery. Pick a **Range** and **Apply**. (**Delivery monitoring** on a sent campaign opens the same figures for that
 one campaign.) Its tabs:
 
-- **Overview:** the **Bounce processing** card (3.5); one row of key figures (emails sent, API accepted, API failed,
-  the API success rate, confirmed bounced emails, emails retried) with the current send rate under it; the
-  recipient and API-attempt counts; charts; the most common failure and bounce reasons; and **Broadcast
+- **Overview:** the **Bounce processing** card (3.5) and the **Delivery status** card below it (3.5); one row of
+  key figures (emails sent, API accepted, API failed, the API success rate, confirmed failed emails, emails
+  retried, no bounce received, delivered (message trace), quarantined or spam) with the current send rate under it;
+  the recipient and API-attempt counts; charts; the most common failure and bounce reasons; and **Broadcast
   campaigns**, one row per campaign with its emails, API accepted, failed / not sent, outcome unknown, confirmed
-  bounces, bounce rate and retries.
+  failures, failure rate, delivered (trace), quarantined or spam, and retries.
 - **Email log:** every email the site sent, with search (an address, for example) and filters. Click one to see its
   full history. It starts on the last 7 days: widen the **Range** for older emails.
 - **Bounce reports:** one row per failed recipient in each report, with its category (what went wrong) and match.
@@ -248,6 +254,22 @@ The two never change each other: **Pause**, **Rescan since** and the lookback on
 bounce processing only, and the intake card's controls act on the helpdesk only. To stop both from reading the Inbox,
 pause both. The Bounce processing card then also lists the helpdesk's intake, for example "Helpdesk intake, every 2
 min (paused)", with a link to its card.
+
+### The Delivery status card
+
+Below the Bounce processing card, the **Delivery status** card shows:
+
+- **Message Trace**: **Off** (the normal state today, with the steps IT and InfoSec must take first), **Waiting
+  for permission**, **Waiting for the first sync**, **Running**, **Throttled by Microsoft** or **Last sync failed**.
+  While it is on, **Sync delivery status now** asks for a sync at once (the background worker runs it within a
+  minute, unless Microsoft asked to wait).
+- **Permission check**: the latest result of **Check permissions**, for example "Message Trace not granted (checked
+  Nov 18, 14:05)". **Check permissions** asks Microsoft which permissions the site's key has. It sends no email and
+  changes nothing; you can run it again after 30 seconds.
+- **No-bounce inference**: **active** (with the send times it covers) or **waiting for scan coverage** (normal for two
+  days after the bounce processing starts).
+
+Nothing on this card changes how emails are sent.
 
 ## 3.6 Read older mail again
 
@@ -402,7 +424,8 @@ automated mail, marked **reply to our mail**, so check those too.
 | "No recipients found for this audience" (a grey **No Recipients Found** button on the preview) | The audience is empty: check the event, ticket or member selection and **Send to**. |
 | The confirmation word is not accepted | On the send confirmation, type the campaign's name exactly as shown (**Confirm & Send** stays grey until it matches). Everywhere else, type the word the page shows. |
 | Some recipients are **Paused by delivery limits** | A delivery limit (the hourly or daily allowance, or a pause from Microsoft) held them back while the web server itself was sending. Run **Resume paused recipients** later and tell the web team. |
-| A person says they never got the blast | Open the campaign's **Email Log** tab. Not listed: they were not in the audience (unsubscribed, inactive, or a different address). **Retry scheduled** or **Paused**: it has not gone yet. **Sent**: search their address in **Email Monitoring → Email log**, with a **Range** that covers the send date. **API accepted** with no bounce means Microsoft accepted it: ask them to check spam and other folders. |
+| A person says they never got the blast | Open the campaign's **Email Log** tab. Not listed: they were not in the audience (unsubscribed, inactive, or a different address). **Retry scheduled** or **Paused**: it has not gone yet. **Sent**: search their address in **Email Monitoring → Email log**, with a **Range** that covers the send date. **API accepted** with **Delivery status unknown** or **No bounce received** means Microsoft accepted it and no bounce came back: ask them to check spam and other folders. **Quarantined** or **Filtered as spam**: tell the web team. |
 | A sign-in link "does not work" | It expired, was already used, or was revoked, or the account is inactive. The person can sign in with a code instead. |
 | Many **Rejected** reports | Tell the web team: it is usually about our sending, not the addresses. |
 | The **Bounce processing** card is not **Running** | **Paused** (someone paused it) and **Waiting for the first scan** (just switched on) can be normal. Anything else: tell the web team. |
+| The **Delivery status** card says Message Trace is **Off** or **Waiting for permission** | Normal until IT grants the Message Trace permission. Emails still show **No bounce received** after two days. |

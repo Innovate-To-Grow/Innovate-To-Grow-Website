@@ -50,7 +50,7 @@ It is the third choice of the **Provider** setting:
    each with a permission level (*Send only*, *Read only*, or *Send and read*). The site refuses, before
    contacting Microsoft, any send as or read of a mailbox that is not listed with that permission. Nothing
    is hard-coded: the scope is data in Django admin and must match the Exchange restriction. The transport
-   also refuses every Graph request except the five kinds the site needs
+   also refuses every Graph request except the six kinds the site needs
    ([How it behaves](#how-it-behaves)), whatever permissions the app holds.
 
 ## UC Merced status (RITM0450512)
@@ -201,6 +201,41 @@ Test-ServicePrincipalAuthorization -Identity <client-id> -Resource <designated-t
 - Microsoft's RBAC for Applications article (see [Sources](#sources)) describes moving from Application
   Access Policies to RBAC for Applications. Whether to move is Cloud Systems' decision; the site works with
   either.
+
+### Optional: Message Trace delivery status
+
+Graph has no delivery callback: `202 Accepted` only means queued. The opt-in **Message Trace Delivery Status**
+toggle on the Graph configuration (off by default) lets the worker read Exchange's message trace
+(`GET /v1.0/admin/exchange/tracing/messageTraces`) for the From address and show "Delivered (message trace)",
+"Quarantined", "Filtered as spam" or a confirmed failure on [Email Monitoring](email-monitoring.md#message-trace-delivery-status).
+Sending works the same with it on or off; without it Email Monitoring still infers "No bounce received" from the
+bounce scans, with no new permission.
+
+It needs the application permission **`ExchangeMessageTrace.Read.All`**, which is **tenant-wide**: it reads the
+message trace of every mailbox in the tenant and **cannot be scoped to one mailbox** (neither an Application Access
+Policy nor RBAC for Applications limits it). It is beyond the current InfoSec approval (`Mail.Send`,
+`Mail.ReadWrite`, `Mail.Read`), so the order is fixed:
+
+1. **InfoSec** reviews the tenant-wide permission and approves it in writing.
+2. A Core admin records that review in **InfoSec Exception Reference** on the Graph configuration *before* OIT
+   grants anything: once the token carries the role, the [access check](#validate-the-access-restriction) FAILs
+   the extra role and the go-live evidence is withdrawn until the reference is recorded (it then WARNs and names
+   it). Sending keeps working either way. The role is **not** added to `GRAPH_APPROVED_APPLICATION_ROLES` in code;
+   that is a later reviewed change after InfoSec's written approval.
+3. **OIT** grants `ExchangeMessageTrace.Read.All` (Microsoft Graph → Application permissions) with admin consent,
+   and creates the service principal for Microsoft's Message Trace app (app ID
+   `8bd644d1-64a1-4d4b-ae52-2e0cbf64e373`, `New-MgServicePrincipal -AppId 8bd644d1-64a1-4d4b-ae52-2e0cbf64e373`).
+   Provisioning can take several hours; until then the trace answers `401` ("The service principal for App ID
+   8bd644d1-… was not found").
+4. Run [Check permissions](#check-permissions) until Message Trace shows **Available**, then switch the toggle on.
+
+Where `GRAPH_REQUIRE_ACCESS_EVIDENCE` is on (production), saving the toggle on is refused unless the exception
+reference is recorded or the role is approved. Switching it on while the latest permission check found no role
+only warns: the sync reads the token's roles first (a cached token lacking the role is replaced by a newly
+issued one) and makes no trace request while a just-issued token lacks the role. The request is
+in the transport's allow-list only with the sender filter (`senderAddress eq '…'`), both time bounds and `$top`,
+so the site can never list the whole tenant's trace. Microsoft limits the trace to 100 requests per 5 minutes per
+tenant; the site makes at most `trace_max_requests_per_run` (5) per 30-minute sync.
 
 ### 3. Create the key pair and certificate
 
@@ -540,6 +575,48 @@ Editing a configuration that already sends through Graph is not blocked otherwis
 or rolling back a certificate on it, because the check needs the new certificate installed first; the panel
 then shows the evidence as missing until the check is run again.
 
+## Check permissions
+
+A light, read-only check of what the current certificate's token may do, separate from the go-live evidence.
+**Check permissions** is on the Graph configuration's page (Core app; its card lists the result) and on Email
+Monitoring's delivery status card (Mail app); from a shell:
+
+```bash
+cd src && python manage.py verify_graph_access --permissions-only
+```
+
+Each run requests a fresh token, reads its `roles` claim (decoded without verification, as for the access check),
+and records one **Microsoft Graph Permission Check** (the latest 20 per configuration are kept): the certificate,
+whether a token was issued, the roles, those beyond the approval, the Message Trace result and who ran it. It
+sends no mail, needs no deny mailbox and **never writes a Microsoft Graph Access Check**, so it can neither give
+nor withdraw go-live evidence. The buttons share a 30-second cooldown per configuration; the command exits non-zero
+only when no token is issued (or no configuration is active).
+
+| Feature | Needs (any one) | |
+|---|---|---|
+| Send mail | `Mail.Send` | ✓ / ✗ from the token |
+| Bounce scan, admin inbox and helpdesk reading | `Mail.Read` or `Mail.ReadWrite` | ✓ / ✗ |
+| Message Trace delivery status | `ExchangeMessageTrace.Read.All` | ✓ / ✗ |
+
+A role in `GRAPH_APPROVED_APPLICATION_ROLES` shows as approved; any other is "beyond the approval", a warning when
+the InfoSec exception reference is recorded and an error otherwise ("Record the InfoSec exception reference before
+the next full access check").
+
+When the token carries the Message Trace role, or the toggle is on, the check also makes **one** trace request
+(`$top=1`, the last hour, the From address as sender):
+
+| Answer | Shown | What to do |
+|---|---|---|
+| `200` | Available | Switch the toggle on (after the InfoSec steps above). An "available" result also ends a sync's six-hour "not permitted" wait. |
+| `401` | Service principal missing or still provisioning | OIT creates the service principal for `8bd644d1-64a1-4d4b-ae52-2e0cbf64e373`; provisioning can take hours, so check again later. |
+| `403` | Permission not consented | OIT grants admin consent for `ExchangeMessageTrace.Read.All`. |
+| `429` / `503` | Throttled | Try again later. |
+| anything else | Error, with the reason | See the [error reference](#error-reference). |
+
+What it does **not** prove: Exchange RBAC for Applications and Application Access Policy mailbox scoping never
+appear in the token, so this check cannot show which mailboxes the app may use. Only the full
+[access check](#validate-the-access-restriction) proves the mailbox restriction.
+
 ## Rotate the certificate
 
 Entra accepts several certificates on one app, and the Install page refuses, on the active configuration,
@@ -597,10 +674,12 @@ Email** prove the credentials.
   variables, with a `GRAPH_REQUEST_TIMEOUT_SECONDS` (default 30) timeout per request and at most
   `GRAPH_MAX_RESPONSE_BYTES` (64 KiB) of each answer read. The backend and worker containers need outbound
   HTTPS to both.
-- **Only five kinds of request.** The transport (`transport.py`, `ALLOWED_REQUESTS`) refuses, before
+- **Only six kinds of request.** The transport (`transport.py`, `ALLOWED_REQUESTS`) refuses, before
   opening a connection, every request except the token request, `POST …/users/{mailbox}/sendMail`,
-  `GET …/mailFolders/{inbox|sentitems}/messages`, `GET …/mailFolders/inbox` (the access-check probe) and
-  `GET …/messages/{id}/$value`. No code path can create a draft, reply, move, flag, mark read or delete
+  `GET …/mailFolders/{inbox|sentitems}/messages`, `GET …/mailFolders/inbox` (the access-check probe),
+  `GET …/messages/{id}/$value` and the optional Message Trace read
+  (`GET /v1.0/admin/exchange/tracing/messageTraces`, only with the sender filter, both `receivedDateTime` bounds and
+  `$top`, and at most a skip token; see [Optional: Message Trace](#optional-message-trace-delivery-status)). No code path can create a draft, reply, move, flag, mark read or delete
   mail, whatever permissions the Entra app holds. This keeps the site itself to sending and reading
   although `Mail.ReadWrite` is granted, but it does not limit someone who obtains the key or a token. A refused request
   is the permanent error `The site does not make this Microsoft Graph request.`
@@ -615,7 +694,8 @@ Email** prove the credentials.
   Inbox. The app shows that Inbox to admins (see [Admin inbox](#admin-inbox)), and bounce processing reads the
   reports and records them on Email Monitoring ([Email monitoring](email-monitoring.md)), where staff decide what
   to do about an address. Graph sends no delivery events, so Email Log rows stay `sent`; they never become
-  `delivered`, `bounced`, or `complained`, as with SMTP. Email Monitoring's **Amazon SES** tab (the former Delivery
+  `delivered`, `bounced`, or `complained`, as with SMTP. Email Monitoring shows "No bounce received" once the
+  bounce scans have read well past a send, and, only with the optional Message Trace, "Delivered (message trace)". Email Monitoring's **Amazon SES** tab (the former Delivery
   Dashboard) charts SES CloudWatch metrics only and says so in a notice while another provider is active.
 - **Sent Items.** A MIME `sendMail` is always saved in the sender mailbox's Sent Items folder; credential
   mail is sent as JSON and leaves no copy. See [Sent Items and credential mail](#sent-items-and-credential-mail).
@@ -737,7 +817,7 @@ configured.
   because the To address is copied from the original sender's From header. This applies with every inbox
   backend and provider. The pages escape addresses, and the confirmation is shown as text, never as HTML.
 - The site only reads: opening a message does not mark it read in Outlook, and nothing is moved or deleted
-  (see [Only five kinds of request](#how-it-behaves)). Replies are sent through the email provider (Graph
+  (see [Only six kinds of request](#how-it-behaves)). Replies are sent through the email provider (Graph
   `sendMail`, MIME, with a Sent Items copy).
 - **Caching.** Lists are served from the site cache for 5 minutes and opened messages for 30 minutes, as with
   IMAP; **Refresh** reloads the list. The cache keys name the folder and message but not the mailbox, so
@@ -767,6 +847,8 @@ configured.
 | Certificate expiry | The panel's expiry badge (amber at the warning, red at `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS`, default 14); `verify_service_configs --strict` fails from the critical threshold while Graph is selected | Rotate before the critical threshold. |
 | Certificate changes | Admin history (`LogEntry`) of the Graph configuration: install, rollback and removal, with the actor, thumbprint, key version and reason | Review after any change. |
 | Access check | **Microsoft Graph Access Checks** in the admin (Core app); the panel's **Go-live evidence** line | Re-run after any Entra / Exchange change or certificate rotation. |
+| Permission check | The **Permissions** card on the Graph configuration's page (the latest run; earlier ones are kept but not listed); the summary on Mail → Notification Delivery and on Email Monitoring's delivery status card; log line `graph_permission_check token_ok=… roles=… trace=…` | Re-run after OIT changes a grant ([Check permissions](#check-permissions)). |
+| Message Trace sync | Email Monitoring → **Delivery status** card (state, last sync, backoff, last error) | "Waiting for permission": see [Check permissions](#check-permissions). |
 | Use of the key secret | CloudTrail for `itg/backend/microsoft-graph/certificate-key`: `GetSecretValue`, `PutSecretValue`, `UpdateSecretVersionStage`, resource-policy changes | Only `ecsTaskRole` sessions are expected: reads about hourly per process, writes only when a Core admin installs a certificate. |
 | Sign-ins of the app | Entra → Enterprise applications → the app → **Sign-in logs** (service principal sign-ins) | Unexpected IPs or failures. |
 | Mailbox activity | Microsoft Purview audit log for `i2g@ucmerced.edu` (`Send`, `MailItemsAccessed`), run by the M365 admins | Investigations. |
@@ -1091,6 +1173,9 @@ After a new setup or a credential change:
 - [Microsoft Graph permissions reference](https://learn.microsoft.com/en-us/graph/permissions-reference): `Mail.Send`, `Mail.Read`, and `Mail.ReadWrite` ("create, read, update, and delete mail … Does not include permission to send mail").
 - [Limit application permissions to specific Exchange Online mailboxes](https://learn.microsoft.com/en-us/graph/auth-limit-mailbox-access): Application Access Policies, `Test-ApplicationAccessPolicy`, the `Access to OData is disabled` error, that application permissions reach all mailboxes by default, and that policy changes can take more than an hour to apply.
 - [RBAC for Applications in Exchange Online](https://learn.microsoft.com/en-us/exchange/permissions-exo/application-rbac): scoping an app to specific mailboxes, the `Application Mail.Send` / `Application Mail.Read` roles, why tenant-wide Entra grants must be removed, and the move from Application Access Policies.
+- [List messageTraces](https://learn.microsoft.com/en-us/graph/api/messagetracingroot-list-messagetraces?view=graph-rest-1.0): `GET /admin/exchange/tracing/messageTraces`, the `ExchangeMessageTrace.Read.All` permission (delegated or application, no lower one), `$filter` / `$top` (1 to 5,000) / `$skiptoken` paging through `@odata.nextLink`, a `receivedDateTime` window of at most 10 days starting at most 90 days back, and the tenant limit of 100 requests per 5 minutes.
+- [Message trace with the Graph API](https://learn.microsoft.com/en-us/exchange/monitoring/trace-an-email-message/graph-api-message-trace): granting the permission with admin consent, the service principal for app `8bd644d1-64a1-4d4b-ae52-2e0cbf64e373` (`New-MgServicePrincipal`), that provisioning can take several hours with `401 (Unauthorized)` meanwhile, and the 90-day retention.
+- [exchangeMessageTrace resource type](https://learn.microsoft.com/en-us/graph/api/resources/exchangemessagetrace?view=graph-rest-1.0): the properties (`messageId`, `recipientAddress`, `senderAddress`, `receivedDateTime`, `subject`, `status`, …) and the statuses (`gettingStatus`, `pending`, `failed`, `delivered`, `expanded`, `quarantined`, `filteredAsSpam`, `recalled`).
 - [Access tokens in the Microsoft identity platform](https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens): the `roles` claim, and that apps decode tokens for validation and debugging only.
 - [Microsoft identity platform certificate credentials](https://learn.microsoft.com/en-us/entra/identity-platform/certificate-credentials): the client assertion format (`PS256`, `x5t#S256`, claims).
 - [OAuth 2.0 client credentials flow](https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-client-creds-grant-flow)

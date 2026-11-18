@@ -17,6 +17,7 @@ class CoreConfig(AppConfig):
         from .services.delivery_rates import Family, register_family
         from .services.delivery_rates.lifecycle import receivers as delivery_rate_receivers
         from .services.email.bounces import register_bounce_jobs
+        from .services.email.graph.tracing import register_trace_jobs
         from .services.request_limits.enforcement import receivers as request_limit_receivers
 
         delivery_rate_receivers.connect()
@@ -26,6 +27,8 @@ class CoreConfig(AppConfig):
         register_family(Family.SMS, "apps.core.services.aws.sms_send.active_rate_target")
         # The bounce processor's scans of the Graph sending mailbox run as background jobs.
         register_bounce_jobs()
+        # The opt-in Message Trace sync of the Graph sender's delivery status runs as background jobs too.
+        register_trace_jobs()
 
         if getattr(admin.AdminSite, "_core_legacy_view_urls_patched", False):
             return

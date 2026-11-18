@@ -139,6 +139,17 @@ class MicrosoftGraphProviderConfig(GraphProviderValidationMixin, GraphProviderSt
             "number). Set by an admin with the Core app; the site never fills it in."
         ),
     )
+    message_trace_enabled = models.BooleanField(
+        default=False,
+        db_default=False,
+        verbose_name="Message Trace Delivery Status",
+        help_text=(
+            "Read each email's real delivery status from Microsoft Graph Message Trace. It needs the "
+            "ExchangeMessageTrace.Read.All application permission, which is tenant-wide (it cannot be scoped to one "
+            "mailbox), so an InfoSec review comes first. Once OIT grants it, the access check FAILs and go-live "
+            "evidence is withdrawn until the InfoSec exception reference is recorded; sending itself keeps working."
+        ),
+    )
 
     class Meta:
         verbose_name = "Microsoft Graph Provider Config"

@@ -31,13 +31,22 @@ own, from AWS) are its [Amazon SES tab](#amazon-ses-tab).
 
 | Shown | Means | Does not mean |
 |---|---|---|
-| **API accepted** | The provider accepted the message for delivery (Graph: HTTP 202). | That it reached the mailbox. Nothing on the site ever says "delivered". |
+| **API accepted** | The provider accepted the message for delivery (Graph: HTTP 202). | That it reached the mailbox. Only the delivery statuses below say anything about delivery, and only "Delivered (message trace)" says "delivered". |
 | **API failed** | The provider refused it (4xx, a throttle, an authentication failure) or could not be reached; nothing was queued. | — |
 | **API outcome unknown** | The response was lost after the request began, Graph answered 5xx, or Exchange pushed back: it may have been sent, so it is never retried automatically. | Failure. |
 | **Not sent** | The site stopped it before calling the provider: configuration or mailbox scope, the delivery-rate limits, a message that could not be composed, a lost job claim. | — |
-| **Delivery status unknown** | Accepted, and no bounce report has been matched. | Delivery. A report may come later, or may not be matchable. |
-| **Delivery failure confirmed** | A matched bounce report says delivery failed (hard, soft, rejected or unknown). | — |
+| **Delivery status unknown** | Accepted, and no other evidence is known yet: no bounce report matched, no Message Trace verdict, and the bounce scans have not read far enough past the send. | Delivery. A report may come later, or may not be matchable. |
+| **No bounce received** | The [no-bounce inference](#no-bounce-inference): the bounce scans have read the sending mailbox at least `no_bounce_after_hours` (48) past the send and found no report for it. | Proof of delivery. It is *likely* delivered; some servers accept and silently drop mail. |
+| **Delivered (message trace)** | Microsoft's [Message Trace](#message-trace-delivery-status) (opt-in) says Exchange handed the message to the recipient's mail server (trace status `delivered` or `expanded`). | That it reached an external recipient's inbox: the receiving server may still filter it. |
+| **Quarantined** / **Filtered as spam** | The Message Trace says Exchange quarantined the message or filtered it as spam. | — |
+| **Delivery failure confirmed** | A matched bounce report says delivery failed (hard, soft, rejected or unknown), or the Message Trace says `failed` (then no bounce report is shown; the Overview counts both as "failed (bounce or trace)"). | — |
 | **Delivery delayed** | A matched delay notice: the receiving side is still retrying. | Failure (yet). |
+
+The strongest evidence wins and a weaker one never replaces it: delivery failure confirmed, then quarantined or
+filtered as spam, then delivered (message trace), then delayed, then no bounce received, then unknown. A late bounce
+report still confirms a failure over "Delivered" or "No bounce received" (a late NDR is real evidence); a delay
+notice never downgrades a trace verdict; a trace write never replaces a confirmed failure. The campaign recipient log
+is not changed by any of this: Graph recipients stay `sent`, and retries and success counts are unaffected.
 
 Figures are kept apart by level: **messages** (one per logical email, however many attempts), **recipients**
 (To, Cc and Bcc of those messages; bounced recipients from matched reports) and **API attempts** (every
@@ -76,7 +85,8 @@ provider call, retries included; 429 incidents and response times are attempt fi
 1. **Schedule.** Job kind `core.email_bounce_scan` runs in the background worker. Each scan queues the next
    (every `bounce_scan_interval_seconds`, default 10 minutes, never under a minute; after 2 minutes when it
    stopped at its message budget; later when Microsoft sent a longer `Retry-After`). The worker's hourly
-   maintenance ("Email bounce scan scheduling") restarts the chain at start-up or if it broke. **Scan now** on the
+   maintenance ("Email bounce scan scheduling", followed by "Email delivery trace scheduling" for the
+   [Message Trace](#message-trace-delivery-status) chain) restarts the chain at start-up or if it broke. **Scan now** on the
    dashboard queues one at once; while processing is paused, switched off or cannot read the mailbox it queues
    nothing and says why (the card greys the button out or hides it then). Finished scan jobs older than a week are
    deleted. The card shows the interval and
@@ -127,6 +137,66 @@ provider call, retries included; 429 incidents and response times are attempt fi
 A matched bounce updates delivery telemetry. A recipient-bound permanent Graph failure also stops campaign delivery
 to that address, including jobs already waiting to send. Staff review contact edits and subscriptions separately.
 A bounce does not send another message.
+
+## Delivery status beyond bounce reports
+
+The Overview's **Delivery status** card, below the bounce processing card, shows the two other sources of delivery
+evidence. Neither sends mail, and neither changes the campaign recipient log.
+
+### No-bounce inference
+
+Works now, with no new permission. After every `ok` or `partial` bounce scan (never a disabled, paused, failed, busy
+or locked one), one bulk update moves accepted Graph emails from "Delivery status unknown" to **No bounce
+received** when:
+
+- the email was sent from the mailbox the scan reads, and that mailbox is the From address (Exchange sends the
+  non-delivery report to the From address);
+- it was accepted between `scanned_since` (the earliest time the scans have read continuously; set by the first scan,
+  moved back by **Rescan since**; empty on rows from before this release, so nothing is claimed retroactively) and the
+  checkpoint less the scan overlap, a 10-minute clock skew and `no_bounce_after_hours` (48, never above
+  `bounce_match_window_hours`);
+- no unmatched report received after the send (less the 10-minute clock skew) names its recipient or names none
+  (with several recipients: no unmatched report in the mailbox after the send); access check probes are never marked.
+
+The card says **active** (with the accepted times covered), **waiting for scan coverage**, **paused**, **off** (no
+bounce processing) or **not available** (the From address is another mailbox). "No bounce received" means likely
+delivered, never proof; a later report still confirms a failure.
+
+### Message Trace delivery status
+
+Opt-in and **off by default**: the Graph configuration's **Message Trace Delivery Status** toggle (Core app). It needs
+the tenant-wide `ExchangeMessageTrace.Read.All` application permission, beyond the current InfoSec approval; see
+[Microsoft Graph email → Optional: Message Trace](microsoft-graph-email.md#optional-message-trace-delivery-status)
+for the setup order. While it is off the card shows the setup steps.
+
+- Job kind `core.email_delivery_trace` (one attempt, never raises; each sync queues the next after
+  `trace_interval_seconds`, 30 minutes, or the longer backoff Microsoft asked for). The hourly maintenance ("Email
+  delivery trace scheduling") restarts the chain; switching the toggle off ends it after the job in flight.
+- Each sync reads the sender's trace (GET `admin/exchange/tracing/messageTraces`, always filtered to the From
+  address) in windows of at most a day, within `trace_max_requests_per_run` requests. It considers accepted Graph
+  emails still unknown, without bounce or delayed, at least `trace_min_age_minutes` (15; ten minutes at least) and at
+  most `trace_give_up_hours` (48) old, oldest-checked first. A window with more pages than the budget left is read
+  only in part (no one-to-one matching from it), so the next window is half as long, an hour at least; once windows
+  fit with room to spare, the length doubles back to a day (the run's stats show it as `window_minutes`).
+- Matching: the exact Message-ID first. A JSON send (no Message-ID) is matched only one-to-one: same recipient, the
+  subject digest, received within −2 to +10 minutes of acceptance, and a trace Message-ID the site does not know. An
+  email with several recipients takes the worst recipient's status; any recipient still `pending` or `gettingStatus`
+  leaves it unchanged. Every checked email records the raw trace status and when it was checked (shown on the email's
+  page as **Message trace**).
+- Before any trace request the sync reads the token's roles; a cached token without `ExchangeMessageTrace.Read.All`
+  is replaced by a newly issued one first (it may predate the grant). Only when a just-issued token lacks the role
+  does it make no request and wait six hours (the card shows **Waiting for permission**); a token carrying the role
+  ends that state even when there is nothing to trace. Microsoft's 401/403 also waits six
+  hours; a throttle (429/503) waits Retry-After, at least five minutes, doubling while it repeats, at most an hour
+  (**Throttled**). The trace never touches the sending delivery-rate lanes, so a tenant-wide throttle or refusal
+  cannot pause sending.
+- **Sync delivery status now** (`action=trace`) pulls the waiting sync forward; it never starts a second one, and
+  the backoff still holds. **Check permissions** (`action=permissions`) runs the
+  [permission check](microsoft-graph-email.md#check-permissions) of the active Graph configuration: one fresh
+  token, its roles, and at most one read-only trace request; it sends no mail, never records go-live evidence,
+  shares the Core page's 30-second cooldown and needs only the Mail app. An "available" result ends a
+  "not permitted" wait. The card shows its latest result ("Message Trace: available / not granted / service
+  principal missing…", with the time).
 
 ### Bounce categories
 
@@ -429,7 +499,7 @@ rate it showed is on the Overview. The JSON (`ses/data/`) is the old payload, un
 | One email | `/admin/mail/email-monitoring/emails/<uuid>/` |
 | Bounce reports | `/admin/mail/email-monitoring/bounces/` (`category`, classification, match method, search on recipient, codes, reason, diagnostic and subject) |
 | One campaign | `/admin/mail/email-monitoring/campaigns/<campaign uuid>/`, or **Delivery monitoring** on a sent campaign |
-| Bounce processing controls | POST `/admin/mail/email-monitoring/bounce-processing/` (`action=scan|pause|resume`; `action=rescan&since=YYYY-MM-DDTHH:MM`; `action=lookback&lookback_hours=N`, empty for the default) |
+| Bounce processing and delivery status controls | POST `/admin/mail/email-monitoring/bounce-processing/` (`action=scan|pause|resume`; `action=rescan&since=YYYY-MM-DDTHH:MM`; `action=lookback&lookback_hours=N`, empty for the default; `action=trace` syncs the Message Trace now; `action=permissions` checks the Graph permissions, read-only) |
 | Bounced addresses | `/admin/mail/email-monitoring/addresses/` (status, type, `category`, role, member, suppressed, suggestion, campaign, `start`/`end`, `q`, sort, page size) |
 | Bounced addresses export | `/admin/mail/email-monitoring/addresses/export/` (the same filters) |
 | One bounced address | `/admin/mail/email-monitoring/addresses/<uuid>/` |
@@ -468,6 +538,11 @@ Notification Delivery and Delivery Rates; the sidebar's **Delivery Operations** 
 | `bounce_message_max_bytes` | `256 KiB` | Most of one report read (the status part comes first). |
 | `bounce_lease_seconds` | `900` | Longest a scan holds the mailbox. |
 | `bounce_match_window_hours` | `120` | Window of the inferred match. |
+| `no_bounce_after_hours` | `48` | Hours past a send the bounce scans must have read before the email shows "No bounce received" (1 to `bounce_match_window_hours`). |
+| `trace_interval_seconds` | `1800` | Time between two Message Trace syncs (never under 300). |
+| `trace_max_requests_per_run`, `trace_page_size` | `5`, `1000` | Graph requests per sync (1–50); rows per request (`$top`, 1–5000). |
+| `trace_max_bytes` | `4 MiB` | Most bytes read of one trace response (64 KiB–32 MiB); a longer one fails the request. |
+| `trace_min_age_minutes`, `trace_give_up_hours` | `15`, `48` | An email is first traced this long after acceptance, and no longer after this many hours (at most 90 days, Graph's trace retention). |
 | `attempt_stale_seconds` | `900` | An attempt still "in progress" after this is shown as interrupted (outcome unknown). |
 | `ndr_subject_prefixes`, `ndr_sender_local_parts` | see the file | How a listed message is recognised as a report candidate. |
 | `address_batch_size`, `address_page_rows` | `500`, `1000` | Bounced addresses: rows counted per transaction, and at most this many when the list loads. |
@@ -534,6 +609,11 @@ form saves every column and would overwrite a running scan's lease.
    counts for review, clears unverified per-campaign retry evidence, and rebuilds trusted links from eligible
    records. Existing signed SES history is refreshed from retained campaign links. The targeted zero-limit
    reconciliation also handles old-worker writes without resetting all Graph counts.
+11. `core.0049_graph_delivery_status` adds the new delivery statuses, `OutboundEmail.trace_status` /
+   `trace_checked_at` and an index, `EmailMonitorState.scanned_since`, the Message Trace state table, the
+   permission-check table and the Graph config's `message_trace_enabled` (off). The new columns have database
+   defaults, so the previous release keeps inserting rows during the rollout. No backfill: `scanned_since` starts
+   empty, so "No bounce received" starts after the next scans, and Message Trace stays off until switched on.
 
    **Image rollback** (an ECS rollback never reverses DDL): an image from before categories finds every column it
    reads (the new ones have database defaults), but it never unparks the Graph cursor. If it takes over before the new
@@ -560,9 +640,11 @@ writes. Staff suppressions and reviewed clears use the guarded Bounced addresses
 
 ## Limitations
 
-- **202 is not delivery.** The site has no positive delivery confirmation for Graph mail: it requests no
-  delivery or read receipts, and only failures come back as reports. "Delivery status unknown" is the honest
-  state of every accepted email without a matched report.
+- **202 is not delivery.** Graph's answer only says the message was queued. The site requests no delivery or
+  read receipts, and only failures come back as reports. Without Message Trace, nothing confirms delivery: "No
+  bounce received" is an inference (likely, not proof) and "Delivery status unknown" is the honest state of every
+  other accepted email. With Message Trace, "Delivered" means Exchange handed the message to the recipient's server,
+  not that an external recipient saw it.
 - **JSON sends have no Message-ID.** Credential mail (codes, sign-in links, invitations, tickets, campaign
   messages with a login link) is sent as Graph JSON, which returns no `Message-ID`; their reports can only be
   matched by inference (unique recipient + subject + time) and stay unmatched when that is ambiguous, such as
@@ -614,6 +696,8 @@ writes. Staff suppressions and reviewed clears use the guarded Bounced addresses
 | "… does not grant read permission" | Give the mailbox scope **Send and read** for the sending mailbox. |
 | "No recent successful scan" | The worker is not running, or every scan is held back (see the last error and the next scan time). |
 | "Last scan failed" with `403` | The Exchange restriction changed; run the access check. |
+| Delivery status "Waiting for permission" | The token lacks `ExchangeMessageTrace.Read.All`, or Microsoft answered 401/403. Run **Check permissions**; see [Check permissions](microsoft-graph-email.md#check-permissions) for 401 (service principal) and 403 (consent). |
+| No-bounce inference "waiting for scan coverage" | Normal for the first `no_bounce_after_hours` after the first scan (or after the deploy); otherwise check that bounce scans succeed. |
 | Many unmatched bounce reports | Reports about mail staff sent from Outlook, mail sent before monitoring began, or ambiguous JSON sends. |
 | A report's category looks wrong (for example a timeout shown as anything but *Temporary failure*) | Read its status code and diagnostic on Bounce Reports. A specific code decides on its own; for a generic code, add or adjust the wording in `bounces/rules/phrases.py` (with a test), deploy, then **Rebuild counts…**. |
 | Many *Spam or reputation rejection* or *Relay denied* reports | Our sending, not the contacts: check the sending domain's SPF, DKIM and DMARC, block lists, the Microsoft 365 connectors and sending mailbox, and the campaign's content. |

@@ -2,7 +2,7 @@ from contextlib import ExitStack, contextmanager
 from unittest.mock import patch
 
 from apps.core.management.commands import run_background_worker
-from apps.core.management.operations import worker_maintenance
+from apps.core.management.operations import email_maintenance, worker_maintenance
 from apps.core.services.delivery_rates.lifecycle.maintenance import MaintenanceResult
 
 NOTHING_CLEANED = {"expired_challenges": 0, "deleted_challenges": 0, "deleted_requests": 0}
@@ -34,12 +34,14 @@ MAINTENANCE_SERVICES = {
     "run_delivery_rate_maintenance": NOTHING_MAINTAINED,
     "active_certificate_expiry": None,
     "ensure_bounce_scan_scheduled": False,
+    "ensure_delivery_trace_scheduled": False,
     "count_bounced_addresses": NOTHING_COUNTED,
     "refresh_bounced_address_links": 0,
     "sync_sms_opt_outs": None,
     "purge_expired_email_telemetry": {"emails": 0, "bounces": 0},
     "purge_expired_inbound_queue": 0,
     "purge_finished_bounce_scans": 0,
+    "purge_finished_delivery_traces": 0,
     "ensure_helpdesk_intake_scheduled": False,
     "ensure_helpdesk_ingest_scheduled": False,
     "purge_expired_helpdesk": HELPDESK_NOTHING_PURGED,
@@ -48,21 +50,28 @@ MAINTENANCE_SERVICES = {
 }
 
 
+def service_module(name):
+    """Where the maintenance tasks look a service up: ``email_maintenance`` for the email tasks, else
+    ``worker_maintenance``."""
+    return email_maintenance if hasattr(email_maintenance, name) else worker_maintenance
+
+
 def patch_maintenance(**side_effects):
     """Patch the maintenance services; ``side_effects`` maps a service name to a side effect."""
     patchers = []
     for name, return_value in MAINTENANCE_SERVICES.items():
         if name in side_effects:
-            patchers.append(patch.object(worker_maintenance, name, side_effect=side_effects[name]))
+            patchers.append(patch.object(service_module(name), name, side_effect=side_effects[name]))
         else:
-            patchers.append(patch.object(worker_maintenance, name, return_value=return_value))
+            patchers.append(patch.object(service_module(name), name, return_value=return_value))
     return patchers
 
 
 @contextmanager
 def patch_worker(returns):
     """Patch each name in ``returns`` to return its value (a maintenance service where the tasks look it up, in
-    ``worker_maintenance``; anything else in ``run_background_worker``); yield the mocks by name.
+    ``worker_maintenance`` or ``email_maintenance``; anything else in ``run_background_worker``); yield the mocks by
+    name.
 
     One ExitStack holds every patch, so the worker can gain any number of services: a single ``with`` statement of
     more than 20 context managers does not compile on Python 3.11 ("too many statically nested blocks")."""
@@ -70,7 +79,7 @@ def patch_worker(returns):
         yield {
             name: stack.enter_context(
                 patch.object(
-                    worker_maintenance if name in MAINTENANCE_SERVICES else run_background_worker,
+                    service_module(name) if name in MAINTENANCE_SERVICES else run_background_worker,
                     name,
                     return_value=value,
                 )

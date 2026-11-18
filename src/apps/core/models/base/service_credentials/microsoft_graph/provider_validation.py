@@ -1,5 +1,6 @@
 """Validating a Graph configuration: its deny mailbox, sending limits, and changes that email sending forbids."""
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 
 from apps.core.utils.security import is_entra_tenant, is_exchange_mailbox, is_guid
@@ -11,6 +12,12 @@ from .mailboxes import is_deny_mailbox, normalize_mailbox
 TAKEOVER_REFUSED = (
     "Mail → Notification Delivery sends email through Microsoft Graph, so this configuration can become the active "
     "one only when email could switch to it: {problem}"
+)
+# The Graph application permission Message Trace needs: tenant-wide, beyond the InfoSec approval for mail access.
+MESSAGE_TRACE_ROLE = "ExchangeMessageTrace.Read.All"
+MESSAGE_TRACE_NEEDS_REVIEW = (
+    f"Message Trace needs the tenant-wide {MESSAGE_TRACE_ROLE} permission, which is beyond the InfoSec approval: "
+    "record the InfoSec exception reference first."
 )
 SENDING_APP_CHANGE = (
     "Mail → Notification Delivery sends email through Microsoft Graph with this configuration, so its Entra "
@@ -54,8 +61,17 @@ class GraphProviderValidationMixin:
             errors.setdefault(field, message)
         for field, message in self._sending_limit_errors().items():
             errors.setdefault(field, message)
+        if self._message_trace_needs_review():
+            errors.setdefault("message_trace_enabled", MESSAGE_TRACE_NEEDS_REVIEW)
         if errors:
             raise ValidationError(errors)
+
+    def _message_trace_needs_review(self) -> bool:
+        """Where go-live evidence is required, Message Trace stays off until InfoSec approved its permission."""
+        if not self.message_trace_enabled or not settings.GRAPH_REQUIRE_ACCESS_EVIDENCE:
+            return False
+        approved = MESSAGE_TRACE_ROLE in settings.GRAPH_APPROVED_APPLICATION_ROLES
+        return not (approved or self.permission_exception_reference)
 
     def _sending_limit_errors(self) -> dict:
         """The limits must fit together: no message, and no hour, may hold more recipients than the day allows."""
