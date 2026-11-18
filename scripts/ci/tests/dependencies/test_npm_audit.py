@@ -5,12 +5,12 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from scripts.ci.dependencies.audit_npm import (
+from scripts.ci.dependencies.npm_audit_core import (
     AuditDataError,
-    exception_failures,
     root_advisories,
     validate_audit_returncode,
 )
+from scripts.ci.dependencies.npm_audit_policy import exception_failures
 
 ROOT = Path(__file__).resolve().parents[4]
 
@@ -153,11 +153,12 @@ class NpmAuditExceptionTests(unittest.TestCase):
 
 class NpmAuditWorkflowTests(unittest.TestCase):
     def test_ci_and_scheduled_audits_share_the_narrow_validator(self) -> None:
-        command = "run: python ../scripts/ci/dependencies/audit_npm.py"
+        command = "run: python -m scripts.ci.dependencies.audit_npm"
         for relative in (".github/workflows/ci.yml", ".github/workflows/dependency-audit.yml"):
             with self.subTest(workflow=relative):
                 workflow = (ROOT / relative).read_text(encoding="utf-8")
                 self.assertEqual(workflow.count(command), 1)
+                self.assertEqual(workflow.count("working-directory: ."), 1)
                 self.assertNotIn("run: npm audit --audit-level", workflow)
 
 

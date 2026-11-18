@@ -56,7 +56,8 @@ jobs:
         run: npm ci
 
       - name: npm audit (moderate and above)
-        run: python ../scripts/ci/dependencies/audit_npm.py
+        working-directory: .
+        run: python -m scripts.ci.dependencies.audit_npm
 
   backend-audit:
     name: Python Security Audit (scheduled)

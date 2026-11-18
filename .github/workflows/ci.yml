@@ -797,7 +797,8 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
 
       - name: npm audit (moderate and above)
-        run: python ../scripts/ci/dependencies/audit_npm.py
+        working-directory: .
+        run: python -m scripts.ci.dependencies.audit_npm
 
   frontend-required:
     name: Frontend Required Result
