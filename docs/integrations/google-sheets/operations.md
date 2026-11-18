@@ -168,7 +168,8 @@ Google service-account credentials are stored in the database via [`GoogleCreden
 | `InvalidCredentials` | JSON key is malformed or expired | Re-generate the service account key |
 | No `GoogleCredentialConfig` found | No active config in database | Create one in Django admin |
 | Missing `Registration ID` | Legacy worksheet requires a reviewed identity mapping | Open Manage sync, preview the legacy row matches, then adopt or create a fresh worksheet |
-| Duplicate field binding or registration ID | Conflicting column metadata or copied identities | Resolve the specific columns or rows listed in the preview and preview again |
+| Duplicate field binding or registration ID | A field bound to several columns, none or more than one of which is still headed by the field, or copied identities | Resolve the specific columns or rows listed in the preview and preview again |
+| `Google Sheets refused the sync: this worksheet has reached Google's limit of 30,000 characters of developer metadata per sheet` | Metadata from other tools on the worksheet leaves no room for the sync's entries (the sync already deletes its own copies) | Open Manage sync and use **Review new worksheet**, or remove the other tools' metadata, then **Sync now** |
 | Missing managed header row | A previously bound header row was deleted | Restore the original header row and mapping, or create a fresh managed worksheet after previewing recovery |
 
 ### Data drift

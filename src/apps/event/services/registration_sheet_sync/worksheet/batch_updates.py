@@ -2,8 +2,15 @@
 
 import json
 
-from .sheets import RegistrationSyncConflict
-from .snapshot import METADATA_PREFIX, read_snapshot, spreadsheet_for
+from gspread.exceptions import APIError
+
+from .sheets import RegistrationSyncConflict, RegistrationSyncError
+from .snapshot import HEADER_MARKER, LABEL_METADATA_PREFIX, METADATA_PREFIX, read_snapshot, spreadsheet_for
+
+METADATA_STORAGE_FULL = (
+    "Google Sheets refused the sync: this worksheet has reached Google's limit of 30,000 characters of developer "
+    "metadata per sheet. Open Manage sync and use Review new worksheet to move the export to a new worksheet."
+)
 
 
 def _metadata_request(snapshot, key, value, dimension, start):
@@ -43,7 +50,7 @@ def _grid_growth_requests(plan, snapshot):
 def _label_requests(plan, snapshot, event_id):
     requests = []
     for label in plan.label_changes:
-        value = json.dumps({"key": label["key"], "label": label["label"]})
+        value = json.dumps({"key": label["key"], "label": label["label"]}, separators=(",", ":"))
         if label["metadata_id"] is not None:
             requests.append(
                 {
@@ -56,9 +63,7 @@ def _label_requests(plan, snapshot, event_id):
             )
         else:
             requests.append(
-                _metadata_request(
-                    snapshot, f"i2g.registration-label.v1:{event_id}", value, "COLUMNS", label["column"] - 1
-                )
+                _metadata_request(snapshot, f"{LABEL_METADATA_PREFIX}{event_id}", value, "COLUMNS", label["column"] - 1)
             )
     return requests
 
@@ -127,18 +132,27 @@ def _id_protection_requests(snapshot, id_column, event_id, editor_email):
 
 
 def build_requests(plan, snapshot, *, event_id, header_row=1, editor_email=""):
-    """The batchUpdate that applies ``plan``: grid growth, ownership metadata, cell values, ID protection."""
+    """The batchUpdate that applies ``plan``: redundant metadata out, grid growth, ownership metadata, cell values,
+    ID protection."""
     own_key = f"{METADATA_PREFIX}{event_id}"
-    requests = _grid_growth_requests(plan, snapshot)
+    removed = set(plan.removed_metadata)
+    # Deletions come first: Google checks its per-sheet metadata storage limit request by request.
+    requests = [
+        {"deleteDeveloperMetadata": {"dataFilter": {"developerMetadataLookup": {"metadataId": identity}}}}
+        for identity in plan.removed_metadata
+    ]
+    requests.extend(_grid_growth_requests(plan, snapshot))
     requests.extend(
         _metadata_request(snapshot, own_key, key, "COLUMNS", column - 1) for key, column in plan.new_bindings.items()
     )
     requests.extend(_label_requests(plan, snapshot, event_id))
     if not any(
-        entry.get("metadataKey") == own_key and entry.get("metadataValue") == "__header__"
+        entry.get("metadataKey") == own_key
+        and entry.get("metadataValue") == HEADER_MARKER
+        and entry.get("metadataId") not in removed
         for entry in snapshot.metadata
     ):
-        requests.append(_metadata_request(snapshot, own_key, "__header__", "ROWS", header_row - 1))
+        requests.append(_metadata_request(snapshot, own_key, HEADER_MARKER, "ROWS", header_row - 1))
     requests.extend(_cell_update_requests(plan, snapshot))
     id_column = plan.bindings["registration_id"]
     requests.extend(_id_protection_requests(snapshot, id_column, event_id, editor_email))
@@ -164,4 +178,10 @@ def apply_plan(worksheet, snapshot, plan, *, event_id, header_row=1, editor_emai
         raise RegistrationSyncConflict("The worksheet changed while preparing the sync. Preview again before retrying.")
     requests = build_requests(plan, snapshot, event_id=event_id, header_row=header_row, editor_email=editor_email)
     # Metadata, all value updates, sizing and ID protection commit together at Google.
-    spreadsheet_for(worksheet).batch_update({"requests": requests})
+    try:
+        spreadsheet_for(worksheet).batch_update({"requests": requests})
+    except APIError as exc:
+        message = str(exc).lower()
+        if "developer metadata" in message and "storage limit" in message:
+            raise RegistrationSyncError(METADATA_STORAGE_FULL) from exc
+        raise

@@ -1,5 +1,7 @@
 """Managed registration exports with non-mutating inspection and safe adoption."""
 
+import logging
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -15,6 +17,8 @@ from ..worksheet.sheets import RegistrationSyncError, service_account_email
 from ..worksheet.snapshot import backup_worksheet
 from .prepare import _config_for, _prepare, _verify_plan
 from .run_failures import _record_failed_run, _rows_written, _RunState
+
+logger = logging.getLogger(__name__)
 
 
 def _record_success(event, plan, snapshot, *, generation, sync_type, cursor_from, started_at):
@@ -58,6 +62,7 @@ def _record_success(event, plan, snapshot, *, generation, sync_type, cursor_from
             "worksheet_gid": snapshot.sheet_id,
             **plan.counts,
             "conflicts": 0,
+            "metadata_removed": len(plan.removed_metadata),
         },
     )
     return written
@@ -86,6 +91,13 @@ def _sync_locked(run: _RunState, *, adopt_legacy, expected_fingerprint, generati
             run.backup = backup_worksheet(worksheet)
         _write_plan(worksheet, run.snapshot, run.plan, event=event, config=config, credentials=credentials)
         run.provider_write_completed = True
+        if run.plan.removed_metadata:
+            logger.info(
+                "Removed %d redundant developer metadata entries from worksheet %s for event %s.",
+                len(run.plan.removed_metadata),
+                run.snapshot.sheet_id,
+                event.pk,
+            )
         return _record_success(
             event,
             run.plan,

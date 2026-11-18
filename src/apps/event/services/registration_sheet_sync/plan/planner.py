@@ -6,7 +6,9 @@ import uuid
 from collections import Counter
 from dataclasses import dataclass, field
 
-from ..worksheet.columns import _bind_columns, _cell, normalized_label
+from ..worksheet.columns import _bind_columns
+from ..worksheet.metadata_cleanup import redundant_metadata
+from ..worksheet.snapshot import _cell, normalized_label
 
 
 @dataclass
@@ -21,6 +23,7 @@ class SyncPlan:
     active_ids: list = field(default_factory=list)
     deleted_ids: list = field(default_factory=list)
     label_changes: list = field(default_factory=list)
+    removed_metadata: list = field(default_factory=list)
     requires_adoption: bool = False
     managed: bool = False
     counts: dict = field(
@@ -156,6 +159,9 @@ def _plan_fingerprint(snapshot, fields, config, current_values, deleted_ids):
 
 def plan_sync(snapshot, *, fields, current_values, deleted_ids, known_ids, event_id, config):
     plan = SyncPlan()
+    plan.removed_metadata = redundant_metadata(
+        snapshot, fields, event_id=event_id, header_row=config.header_row, column_mappings=config.column_mappings
+    )
     _bind_columns(plan, snapshot, fields, event_id, config)
     enabled = [definition.key for definition in fields if definition.enabled]
     id_column = plan.bindings["registration_id"]
