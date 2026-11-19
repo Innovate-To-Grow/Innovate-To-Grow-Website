@@ -1,9 +1,11 @@
 """Bounded HTTPS transport for the fixed Microsoft endpoints used by the Graph provider and mailbox reader.
 
 Only the requests in ``ALLOWED_REQUESTS`` are ever made: the token request, ``sendMail``, the Inbox / Sent Items
-message lists, the Inbox folder probe and a message's raw MIME. Anything else (any PATCH, PUT or DELETE, drafts,
-replies, moves, other folders or resources) is refused before a connection opens, so the site cannot create,
-change or delete mail even while the Entra app holds a broader grant than it needs (such as ``Mail.ReadWrite``).
+message lists, the Inbox folder probe, a message's raw MIME and (only while the opt-in Message Trace sync is on) the
+Message Trace list of one sender. Anything else (any PATCH, PUT or DELETE, drafts, replies, moves, other folders or
+resources) is refused before a connection opens, so the site cannot create, change or delete mail even while the
+Entra app holds a broader grant than it needs (such as ``Mail.ReadWrite``). The Message Trace pattern requires the
+sender filter and a bounded received-time window, so the tenant's whole trace can never be listed.
 """
 
 import re
@@ -21,12 +23,22 @@ GRAPH_HOST = "graph.microsoft.com"
 _SEGMENT = r"(?=[^/?]*[A-Za-z0-9])(?:[A-Za-z0-9._~@-]|%(?!2[EeFf]|5[Cc])[0-9A-Fa-f]{2}){1,320}"
 _QUERY = r"(?:\?[A-Za-z0-9$=&%,._-]{1,2048})?"
 _USER = rf"/v1\.0/users/{_SEGMENT}"
+# Message Trace (``tracing.reader``): exactly one sender (percent-encoded, never an encoded quote, so the OData string
+# cannot be closed early), a received-time window, a page size and optionally the re-quoted skip token of the next page.
+_SENDER = r"(?:[A-Za-z0-9._~-]|%(?!27)[0-9A-Fa-f]{2}){3,320}"
+_STAMP = r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}%3A[0-9]{2}%3A[0-9]{2}Z"
+_TRACE = (
+    rf"/v1\.0/admin/exchange/tracing/messageTraces\?\$filter=senderAddress%20eq%20%27{_SENDER}%27"
+    rf"%20and%20receivedDateTime%20ge%20{_STAMP}%20and%20receivedDateTime%20le%20{_STAMP}"
+    r"&\$top=[1-9][0-9]{0,3}(?:&\$skiptoken=(?:[A-Za-z0-9._-]|%[0-9A-F]{2}){1,2048})?"
+)
 ALLOWED_REQUESTS = (
     ("POST", AUTHORITY_HOST, re.compile(rf"/{_SEGMENT}/oauth2/v2\.0/token")),
     ("POST", GRAPH_HOST, re.compile(rf"{_USER}/sendMail")),
     ("GET", GRAPH_HOST, re.compile(rf"{_USER}/mailFolders/(?:inbox|sentitems)/messages{_QUERY}")),
     ("GET", GRAPH_HOST, re.compile(rf"{_USER}/mailFolders/inbox{_QUERY}")),
     ("GET", GRAPH_HOST, re.compile(rf"{_USER}/messages/[A-Za-z0-9_=-]{{1,512}}/\$value")),
+    ("GET", GRAPH_HOST, re.compile(_TRACE)),
 )
 
 

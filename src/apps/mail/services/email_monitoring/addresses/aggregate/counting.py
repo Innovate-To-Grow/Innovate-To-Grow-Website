@@ -1,11 +1,13 @@
 """Counting each source's new reports into the bounced-address rows, one batch at a time from its cursor."""
 
+from django.apps import apps
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.models import EmailBounce
 from apps.core.services.email.bounces.recording.store import classify_unclassified
+from apps.mail.migrations._zero_limits import reconcile
 from apps.mail.models import (
     BounceAggregationState,
     BouncedAddress,
@@ -23,6 +25,7 @@ from .state import (
     INBOUND,
     PARKED,
     SES,
+    TRUSTED_GRAPH_FIELDS,
     RunResult,
     _batch_size,
     _earliest,
@@ -56,7 +59,7 @@ def _reset_graph_counts() -> None:
     """Zero every address's Graph counts and drop its Graph campaign rows (its SES counts stay)."""
     BouncedAddressCampaign.objects.filter(source=BouncedAddressCampaign.Source.GRAPH).delete()
     BouncedAddress.objects.filter(graph_last_at__isnull=False).update(
-        **dict.fromkeys(GRAPH_COUNT_FIELDS, 0),
+        **dict.fromkeys((*GRAPH_COUNT_FIELDS, *TRUSTED_GRAPH_FIELDS), 0),
         matched_count=0,
         category_counts={},
         graph_first_at=None,
@@ -68,6 +71,29 @@ def _reset_graph_counts() -> None:
         last_bounce_at=_latest("ses_last_at", "left_org_last_at"),
         suggestion="",
     )
+
+
+def _reconcile_old_writers(state, until):
+    # Old processes can store a nonblank old category and can even count it before this worker.
+    # Track corrections separately from the count cursor, which must keep its archived evidence.
+    watermark = (
+        EmailBounce.objects.filter(created_at__lte=until)
+        .order_by("-created_at", "-pk")
+        .values_list("created_at", "pk")
+        .first()
+    )
+    if watermark is None:
+        return
+    cursor, _ = BounceAggregationState.objects.get_or_create(source="graph_rules_v1")
+    if cursor.cursor_at is not None and (cursor.cursor_at, cursor.cursor_id) >= watermark:
+        return
+    at, pk = watermark
+    scope = Q(created_at__lt=at) | Q(created_at=at, pk__lte=pk)
+    if cursor.cursor_at is not None:
+        scope &= Q(created_at__gt=cursor.cursor_at) | Q(created_at=cursor.cursor_at, pk__gt=cursor.cursor_id)
+    reconcile(apps, state._state.db, state=state, modern=True, scope=scope)
+    cursor.cursor_at, cursor.cursor_id = watermark
+    cursor.save(update_fields=["cursor_at", "cursor_id", "updated_at"])
 
 
 def _prepare_graph(state) -> None:
@@ -87,7 +113,9 @@ def _prepare_graph(state) -> None:
     )
 
 
-def count_batch(source: str, *, wait: bool = True, now=None, size: int | None = None) -> RunResult:
+def count_batch(
+    source: str, *, wait: bool = True, now=None, size: int | None = None, reconcile_legacy: bool = True
+) -> RunResult:
     """Count one batch of ``source`` past its cursor; ``busy`` when another run holds it (``wait=False`` only)."""
     rows_for, fields, count, cursor_field = SOURCES[source]
     now = now or timezone.now()
@@ -97,6 +125,8 @@ def count_batch(source: str, *, wait: bool = True, now=None, size: int | None = 
         if state is None:
             return RunResult(busy=True)
         if source == GRAPH:
+            if reconcile_legacy:
+                _reconcile_old_writers(state, _settled(now))
             _prepare_graph(state)
         batch = list(rows_for(state, _settled(now)).values(*fields)[:size])
         if not batch:
@@ -115,13 +145,15 @@ def count_batch(source: str, *, wait: bool = True, now=None, size: int | None = 
 
 def _drain(source: str, result: dict, *, max_rows, wait: bool, should_stop) -> None:
     """Count ``source`` batch by batch into ``result`` until it is done, the row budget is spent, or a stop."""
+    first_batch = True
     while not (should_stop is not None and should_stop()):
         size = _batch_size()
         if max_rows is not None:
             size = min(size, max_rows - sum(result[name] for name in SOURCES))
         if size <= 0:
             return
-        batch = count_batch(source, wait=wait, size=size)
+        batch = count_batch(source, wait=wait, size=size, reconcile_legacy=first_batch)
+        first_batch = False
         result[source] += batch.counted
         result["busy"] = result["busy"] or batch.busy
         if not batch.counted:
@@ -133,6 +165,9 @@ def run(*, max_rows: int | None = None, wait: bool = True, should_stop=None) -> 
 
     Returns how many rows each source counted and whether a source was busy (held by another run).
     """
+    # Contact hints are copied third-party PII, not durable evidence. Clear them before every page/worker count;
+    # source-row deletion also clears them immediately through the registered pre-delete receiver.
+    notices.purge_expired_hints()
     result = {GRAPH: 0, SES: 0, INBOUND: 0, "busy": False}
     for source in (GRAPH, SES, INBOUND):
         _drain(source, result, max_rows=max_rows, wait=wait, should_stop=should_stop)

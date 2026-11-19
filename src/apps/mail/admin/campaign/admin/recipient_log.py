@@ -56,7 +56,7 @@ class RecipientLogAdmin(ReadOnlyModelAdmin):
     )
 
     def has_delete_permission(self, request, obj=None):
-        return user_can_access_app(request.user, "mail")
+        return user_can_access_app(request.user, "mail") and (obj is None or not obj.campaign.retry_source_campaign_id)
 
     @display(description="Status", label=True)
     def status_badge(self, obj):

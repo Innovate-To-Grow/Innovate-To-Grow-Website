@@ -7,6 +7,7 @@ from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.authn.models import ContactEmail
 from apps.authn.services.email.challenges import AuthChallengeInvalid
@@ -34,7 +35,13 @@ class CountingEdgeTests(TestCase):
         make_bounce(recipient="rep@example.org")  # unmatched: likely
         count_now()
         email = make_email(recipient="rep@example.org", campaign_id=blast.pk)
-        make_bounce(recipient="rep@example.org", email=email, campaign_id=blast.pk)  # matched: exact
+        make_bounce(
+            recipient="rep@example.org",
+            email=email,
+            campaign_id=blast.pk,
+            match_method="message_id",
+            trusted_recipient=True,
+        )
 
         count_now()
 
@@ -51,7 +58,12 @@ class CountingEdgeTests(TestCase):
         self.assertFalse(BouncedAddress.objects.exists())
 
     def test_refresh_all_corrects_a_stale_suggestion(self):
-        row = make_row("stale@example.org", suggestion="policy")
+        row = make_row(
+            "stale@example.org",
+            suggestion="policy",
+            trusted_graph_hard_count=1,
+            trusted_graph_last_permanent_at=timezone.now(),
+        )
 
         self.assertEqual(aggregate.refresh_all(), 1)
 

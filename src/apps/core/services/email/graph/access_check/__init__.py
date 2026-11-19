@@ -19,6 +19,10 @@ One run, from ``manage.py verify_graph_access`` or the admin's "Run access check
 
 A refusal counts only when the same kind of request succeeded for a scoped mailbox in the same run (otherwise it is
 INCONCLUSIVE), and a skipped probe is SKIP: either makes the run NOT A COMPLETE VALIDATION.
+
+``permissions`` is the lighter, read-only permission check ("Check permissions"): the token's roles, what they allow
+and a Message Trace probe, recorded as a ``MicrosoftGraphPermissionCheck``; it is never go-live evidence. It is
+imported as a module (not re-exported here), because it reads Message Trace, whose sync imports ``roles``.
 """
 
 from .evidence import record, run_and_record

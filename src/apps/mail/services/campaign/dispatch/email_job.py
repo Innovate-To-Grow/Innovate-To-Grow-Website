@@ -12,9 +12,11 @@ from apps.core.services.background_jobs import (
     UncertainJobError,
 )
 from apps.mail.models import RecipientLog
-from apps.mail.services.audience.suppression import is_suppressed
+from apps.mail.services.audience.suppression import CampaignAddressHeld, check_before_delivery, is_suppressed
 from apps.mail.services.campaign.content.personalize import personalize
 from apps.mail.services.campaign.content.preview import render_email_html
+from apps.mail.services.campaign.content.retry import assert_retry_campaign_eligible
+from apps.mail.services.campaign.content.retry_delivery import delivery_config_for_campaign
 from apps.mail.services.campaign.send.recipient_logs import skip_suppressed_log
 from apps.mail.services.campaign.send.recipients import _recipient_context, _unsubscribe_url_for, carries_login_link
 from apps.mail.services.campaign.send.transport import _get_configuration_set_name, _get_ses_client, _send_via_ses
@@ -71,7 +73,9 @@ def _claim_unless_suppressed(log, job) -> bool:
 
 
 def send_email_recipient_job(job) -> None:
-    log = RecipientLog.objects.select_related("campaign", "member").get(pk=job.payload["recipient_log_id"])
+    log = RecipientLog.objects.select_related("campaign", "campaign__retry_source_campaign", "member").get(
+        pk=job.payload["recipient_log_id"]
+    )
     if log.status in EMAIL_PROVIDER_TERMINAL_STATUSES:
         aggregate_email_campaign(log.campaign_id)
         if log.status not in EMAIL_SUCCESS_STATUSES:
@@ -80,13 +84,21 @@ def send_email_recipient_job(job) -> None:
     if not _claim_unless_suppressed(log, job):
         return
     try:
-        config = EmailServiceConfig.load()
+        config = (
+            delivery_config_for_campaign(log.campaign)
+            if log.campaign.retry_source_campaign_id
+            else EmailServiceConfig.load()
+        )
         provider_config = _get_ses_client(config)
         if provider_config is None:
             raise RuntimeError("Email delivery is not configured.")
         subject, wrapped_html, unsubscribe_url, keep_sent_copy = _render_recipient_email(log)
 
         def begin_provider_call():
+            # The transport invokes this only after delivery-rate admission, as the final operation before touching
+            # the provider.  A contact may change while a claimed job waits for that admission.
+            assert_retry_campaign_eligible(log.campaign, recipient_log=log)
+            check_before_delivery(log.email_address)
             if not job.begin_provider_call():
                 raise JobClaimLost("Background job claim was lost before email provider invocation.")
 
@@ -97,7 +109,11 @@ def send_email_recipient_job(job) -> None:
             subject=subject,
             html_body=wrapped_html,
             unsubscribe_url=unsubscribe_url,
-            configuration_set=_get_configuration_set_name(config),
+            configuration_set=(
+                log.campaign.retry_configuration_set
+                if log.campaign.retry_source_campaign_id
+                else _get_configuration_set_name(config)
+            ),
             before_provider_call=begin_provider_call,
             recipient_log_id=log.pk,
             delivery_attempt=job.attempts,
@@ -105,6 +121,8 @@ def send_email_recipient_job(job) -> None:
             campaign_id=log.campaign_id,
         )
         _record_email_job_result(log, job, result)
+    except CampaignAddressHeld:
+        skip_suppressed_log(log, claim_token=job.claim_token)
     except JobClaimLost:
         raise
     except Exception as exc:

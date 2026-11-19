@@ -1,10 +1,11 @@
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models.deletion import ProtectedError
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 from apps.core.models import ProjectControlModel
-from apps.mail.redirects import is_safe_internal_redirect_path
 
 # The two member-wide audiences differ only in the subscribe flag (services/audience/resolvers.py), so their labels
 # say so; which of a member's addresses are used is the "Send to" field's business, explained in the help texts.
@@ -16,9 +17,10 @@ from .campaign_options import (
     MEMBER_EMAIL_CHOICES,
     STATUS_CHOICES,
 )
+from .campaign_safety import EmailCampaignSafetyMixin, connect_retry_audience_guards, retry_constraints
 
 
-class EmailCampaign(ProjectControlModel):
+class EmailCampaign(EmailCampaignSafetyMixin, ProjectControlModel):
     name = models.CharField(max_length=200, blank=True, default="")
     subject = models.CharField(max_length=998)
     body = models.TextField(verbose_name="Email Content", blank=True, default="")
@@ -162,6 +164,11 @@ class EmailCampaign(ProjectControlModel):
         ordering = ["-created_at"]
         verbose_name = "Amazon SES Mail"
         verbose_name_plural = "Amazon SES Mails"
+        constraints = retry_constraints()
+
+    @property
+    def retains_retry_history(self):
+        return bool(self.retry_source_campaign_id and (self.status != "draft" or self.recipient_logs.exists()))
 
     def get_audience_type_display(self):
         return _ALL_AUDIENCE_LABELS.get(self.audience_type, self.audience_type)
@@ -170,27 +177,19 @@ class EmailCampaign(ProjectControlModel):
         label = self.name or self.subject[:60] or "Untitled"
         return f"{label} ({self.get_status_display()})"
 
-    def save(self, *args, **kwargs):
-        if not self.name:
-            self.name = self.subject[:200] if self.subject else "Untitled"
-        super().save(*args, **kwargs)
 
-    def clean(self):
-        super().clean()
-        if not is_safe_internal_redirect_path(self.login_redirect_path):
-            raise ValidationError({"login_redirect_path": "Please select a valid internal destination."})
-        event_required_types = ("event_registrants", "ticket_type", "checked_in", "not_checked_in")
-        if self.audience_type in event_required_types and not self.event_id:
-            raise ValidationError(
-                {"event": f"An event must be selected for the '{self.get_audience_type_display()}' audience."}
-            )
-        if self.audience_type == "ticket_type" and not self.manual_emails.strip():
-            raise ValidationError({"manual_emails": "A ticket type must be selected."})
-        if self.audience_type == "manual" and not self.manual_emails.strip():
-            raise ValidationError({"manual_emails": "Please enter at least one email address."})
+connect_retry_audience_guards(EmailCampaign)
 
-        ex = (self.exclude_audience_type or "").strip()
-        if ex:
-            event_ex_types = ("event_registrants", "ticket_type", "checked_in", "not_checked_in")
-            if ex in event_ex_types and not self.exclude_event_id:
-                raise ValidationError({"exclude_event": "Select an event for this exclusion audience."})
+
+@receiver(pre_delete, sender=EmailCampaign)
+def protect_submitted_retry(sender, instance, using, **kwargs):
+    """Keep the unique source/address claim once dispatch starts, including during bulk deletion."""
+    # The collector's snapshot can predate a concurrent queue or in-process submission.
+    current = (
+        sender.objects.using(using)
+        .select_for_update()
+        .filter(pk=instance.pk, retry_source_campaign__isnull=False)
+        .first()
+    )
+    if current and current.retains_retry_history:
+        raise ProtectedError("A submitted retry must keep its delivery history.", [current])

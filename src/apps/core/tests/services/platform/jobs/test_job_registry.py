@@ -20,6 +20,8 @@ EXPECTED_KINDS = {
     "cms.amplify_redirects",
     # The email bounce processor's mailbox scans (apps.core.services.email.bounces.scanning.jobs).
     "core.email_bounce_scan",
+    # The opt-in Message Trace sync of Graph delivery status (apps.core.services.email.graph.tracing.jobs).
+    "core.email_delivery_trace",
     "event.registration_sheet_sync",
     "event.ticket_email",
     # The helpdesk's import of inbound mail (apps.helpdesk.services.ingest.pipeline.jobs) and its own Inbox scan

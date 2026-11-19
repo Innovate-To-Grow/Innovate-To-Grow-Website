@@ -67,8 +67,8 @@ class CodePrecedenceTests(SimpleTestCase):
     def test_exchange_online_codes(self):
         for status, expected in (
             ("5.1.10", Category.HARD),
-            ("5.4.1", Category.HARD),
-            ("5.4.4", Category.HARD),
+            ("5.4.1", Category.UNKNOWN),
+            ("5.4.4", Category.UNKNOWN),
             ("5.4.310", Category.HARD),
             ("5.2.1", Category.MAILBOX_DISABLED),
             ("5.4.312", Category.TRANSIENT),
@@ -102,12 +102,17 @@ class CodePrecedenceTests(SimpleTestCase):
             with self.subTest(status=status):
                 self.assertEqual(category_of(status), expected)
 
-    def test_the_ambiguous_codes_only_become_temporary(self):
+    def test_ambiguous_route_codes_can_be_recipient_temporary_or_sender_failures(self):
         self.assertEqual(category_of("5.4.1", "550 5.4.1 Recipient address rejected: Access denied"), Category.HARD)
         self.assertEqual(category_of("5.4.1", "550 5.4.1 No answer from host: connection timed out"), "transient")
         host_retry = "Host or domain name not found. Name service error for name=x type=MX: Host not found, try again"
         self.assertEqual(category_of("5.4.4", host_retry), Category.TRANSIENT)
-        self.assertEqual(category_of("5.4.4", "550 5.4.4 relay access denied (spam)"), Category.HARD)
+        self.assertEqual(category_of("5.4.4", "550 5.4.4 relay access denied (spam)"), Category.RELAY_DENIED)
+
+        self.assertEqual(category_of("5.4.1", "550 5.4.1 SPF validation failed"), Category.SPAM_REJECTED)
+        self.assertEqual(category_of("5.4.1", "550 5.4.1 No answer from host"), Category.TRANSIENT)
+        self.assertEqual(category_of("5.4.4", "550 5.4.4 Unable to route"), Category.UNKNOWN)
+        self.assertEqual(category_of("5.4.4", "550 5.4.4 recipient domain does not exist"), Category.HARD)
 
     def test_gmail_receiving_rate_limit_is_temporary_not_a_disabled_mailbox(self):
         # Gmail returns 5.2.1 both for a disabled account and for a recipient receiving mail too fast (a limit that
@@ -124,13 +129,16 @@ class CodePrecedenceTests(SimpleTestCase):
         self.assertEqual(category_of("5.2.1", "550 5.2.1 Mailbox temporarily disabled"), Category.TRANSIENT)
         for diagnostic in (
             "550-5.2.1 The email account that you tried to reach is disabled.",
-            "550 5.2.1 user unknown, relay access denied (spam)",
             "",
         ):
             with self.subTest(diagnostic=diagnostic):
                 verdict = classify("failed", "5.2.1", diagnostic)
                 self.assertEqual((verdict.category, verdict.is_permanent), (Category.MAILBOX_DISABLED, True))
                 self.assertEqual(verdict.reason, "Recipient mailbox is disabled")
+
+    def test_contradictory_address_and_sender_reasons_on_an_ambiguous_code_need_review(self):
+        verdict = classify("failed", "5.2.1", "550 5.2.1 user unknown, relay access denied (spam)")
+        self.assertEqual((verdict.category, verdict.is_permanent), (Category.UNKNOWN, None))
 
     def test_reports_without_a_code(self):
         for diagnostic, expected in (

@@ -80,10 +80,11 @@ def scan_mailbox(*, now: datetime | None = None) -> ScanOutcome:
     # Read the checkpoint only now that the lease is held: a "Rescan since" saved before is seen, none lands meanwhile.
     current.refresh_from_db(fields=["checkpoint_at", "initial_lookback_hours"])
     progress = _Progress(current.checkpoint_at, deadline=time.monotonic() + monitoring()["bounce_scan_max_seconds"])
+    start = _start(current, now)
     try:
-        status = _scan(reader, mailbox, _start(current, now), now, progress)
+        status = _scan(reader, mailbox, start, now, progress)
     except GraphReadBusy as exc:
-        state.finish(mailbox, token, checkpoint=progress.checkpoint, stats=progress.stats, retry_after=exc.retry_after)
+        state.finish(mailbox, token, **_saved(progress, start), retry_after=exc.retry_after)
         return ScanOutcome("busy", mailbox, progress.stats, retry_after=exc.retry_after)
     except GraphReadError as exc:
         error = str(exc)
@@ -91,10 +92,15 @@ def scan_mailbox(*, now: datetime | None = None) -> ScanOutcome:
         logger.error("Email bounce scan failed with an unexpected %s", type(exc).__name__)
         error = f"Unexpected {type(exc).__name__}"
     else:
-        state.finish(mailbox, token, checkpoint=progress.checkpoint, stats=progress.stats)
+        state.finish(mailbox, token, **_saved(progress, start))
         return ScanOutcome(status, mailbox, progress.stats)
-    state.finish(mailbox, token, checkpoint=progress.checkpoint, stats=progress.stats, error=error)
+    state.finish(mailbox, token, **_saved(progress, start), error=error)
     return ScanOutcome("failed", mailbox, progress.stats, error=error)
+
+
+def _saved(progress: _Progress, start: datetime) -> dict:
+    """What every finished run saves: its checkpoint and stats, and where it started listing (``scanned_since``)."""
+    return {"checkpoint": progress.checkpoint, "stats": progress.stats, "since": start}
 
 
 def _start(current, now: datetime) -> datetime:

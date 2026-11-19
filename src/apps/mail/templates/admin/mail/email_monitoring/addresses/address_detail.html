@@ -7,15 +7,15 @@
   <h2 id="address-summary" class="i2g-monitor-heading">{{ row.address }} <span>{{ target.role.label }}</span></h2>
   <dl class="i2g-monitor-facts">
     <div><dt>Status</dt><dd>{% include "admin/mail/email_monitoring/address_parts/_address_status.html" %}{% if row.reviewed_at %}<br><span class="i2g-monitor-muted">{{ row.reviewed_at|date:"M j, Y H:i" }}{% if row.reviewed_by %} by {{ row.reviewed_by }}{% endif %}{% if row.review_note %}: {{ row.review_note }}{% endif %}</span>{% endif %}</dd></div>
-    <div><dt>Campaign mail</dt><dd>{% if row.suppressed_at %}<strong>{{ row.get_suppression_display }}</strong> {{ row.suppressed_at|date:"M j, Y H:i" }}{% if row.suppressed_by %} by {{ row.suppressed_by }}{% endif %}{% if row.suppressed_reason %}<br><span class="i2g-monitor-muted">{{ row.suppressed_reason }}</span>{% endif %}<br><span class="i2g-monitor-muted">Every campaign skips this address; sign-in codes, tickets and notifications still go.</span>{% else %}Not suppressed{% endif %}</dd></div>
-    <div><dt>Suggestion</dt><dd>{{ row.get_suggestion_display|default:"None" }}<br><span class="i2g-monitor-muted">Text only: nothing is applied automatically.{% if row.suggests_address_action and not row.has_matched_evidence %} No report matched an email the site sent (anyone can mail a report-shaped message): check the reports first.{% endif %}</span></dd></div>
+    <div><dt>Campaign mail</dt><dd>{% if row.suppressed_at %}<strong>{{ row.get_suppression_display }}</strong> {{ row.suppressed_at|date:"M j, Y H:i" }}{% if row.suppressed_by %} by {{ row.suppressed_by }}{% endif %}{% if row.suppressed_reason %}<br><span class="i2g-monitor-muted">{{ row.suppressed_reason }}</span>{% endif %}<br><span class="i2g-monitor-muted">Every campaign skips this address; sign-in codes, tickets and notifications still go.</span>{% elif campaign_held %}<strong>Campaign delivery on hold</strong> — review confirmed bounce or SES evidence below.{% else %}Not suppressed{% endif %}</dd></div>
+    <div><dt>Suggestion</dt><dd>{{ row.get_suggestion_display|default:"None" }}<br><span class="i2g-monitor-muted">Suggestions require staff review. Current campaign holds are shown above.{% if row.suggests_address_action and not row.has_matched_evidence %} No report matched an email the site sent (anyone can mail a report-shaped message): check the reports first.{% endif %}</span></dd></div>
     <div><dt>First / last report</dt><dd>{{ row.first_bounce_at|date:"M j, Y H:i"|default:"–" }} / {{ row.last_bounce_at|date:"M j, Y H:i"|default:"–" }}</dd></div>
     <div><dt>Last category</dt><dd>{% if row.graph_is_latest and row.last_category %}<strong>{{ row.last_category_label }}</strong><br><span class="i2g-monitor-muted">{{ row.last_category_guidance }}</span>{% else %}{% include "admin/mail/email_monitoring/address_parts/_address_category.html" %}{% endif %}</dd></div>
     <div><dt>Last reason</dt><dd>{% include "admin/mail/email_monitoring/address_parts/_address_reason.html" %}{% if row.graph_is_latest and row.last_diagnostic %}<br><span class="i2g-monitor-muted">{{ row.last_diagnostic|truncatechars:300 }}</span>{% endif %}</dd></div>
     <div><dt>Microsoft Graph reports</dt><dd>{% for item in row.category_items %}{% if not forloop.first %} · {% endif %}{{ item.title|lower }} {{ item.count }}{% empty %}hard {{ row.hard_count }} · soft {{ row.soft_count }} · rejected {{ row.rejected_count }} · delayed {{ row.delayed_count }} · unknown {{ row.unknown_count }}{% endfor %}<br><span class="i2g-monitor-muted">{{ row.matched_count }} matched to an email the site sent</span></dd></div>
     <div><dt>Amazon SES events</dt><dd>permanent {{ row.ses_permanent_count }} · transient {{ row.ses_transient_count }} · undetermined {{ row.ses_undetermined_count }} · complaints {{ row.complaint_count }}</dd></div>
     {% if row.left_org_count %}
-    <div><dt>Left-the-organisation notices</dt><dd>{{ row.left_org_count }} automatic repl{{ row.left_org_count|pluralize:"y,ies" }} to the site's mail saying the person left or the address changed; the latest {{ row.left_org_last_at|date:"M j, Y H:i" }}{% if notice_link %} (<a href="{{ notice_link }}">open it in the helpdesk</a>){% endif %}{% if row.left_org_contact %}<br>It names <strong>{{ row.left_org_contact }}</strong>: {{ row.left_org_contact_label }}.{% endif %}<br><span class="i2g-monitor-muted">Evidence to check, from the notice's text: anyone can write one, and an address it names is not verified. Out-of-office replies are never counted here.</span></dd></div>
+    <div><dt>Left-the-organisation notices</dt><dd>{{ row.left_org_count }} automatic repl{{ row.left_org_count|pluralize:"y,ies" }} to the site's mail saying the person left or the address changed; the latest {{ row.left_org_last_at|date:"M j, Y H:i" }}{% if notice_link %} (<a href="{{ notice_link }}">open it in the helpdesk</a>){% endif %}{% if row.left_org_has_contact_hint %}<br><strong>Contact details need manual review.</strong>{% if row.left_org_contact_name %}<br>Name mentioned: <strong>{{ row.left_org_contact_name }}</strong>.{% endif %}{% if row.left_org_contact %}<br>It names <strong>{{ row.left_org_contact }}</strong>: {{ row.left_org_contact_label }}.{% endif %}{% if row.left_org_contact_phone %}<br>Phone mentioned: <strong>{{ row.left_org_contact_phone }}</strong>.{% endif %}{% endif %}<br><span class="i2g-monitor-muted">Evidence to check, from the notice's text: anyone can write one, and its contact details are not verified. Out-of-office replies are never counted here.</span></dd></div>
     {% endif %}
   </dl>
 </section>
@@ -107,7 +107,7 @@
   <div class="i2g-monitor-card">
     {% if campaign_links %}
     <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
-      <thead><tr><th scope="col">Campaign</th><th scope="col">Source</th><th scope="col">Match</th><th scope="col" class="num">Reports</th><th scope="col">Last</th></tr></thead>
+      <thead><tr><th scope="col">Campaign</th><th scope="col">Source</th><th scope="col">Match</th><th scope="col" class="num">Reports</th><th scope="col">Last</th><th scope="col">Retry</th></tr></thead>
       <tbody>{% for item in campaign_links %}
         <tr>
           <td>{% if item.exists %}<a href="{% url 'admin:mail_email_monitoring_campaign' item.link.campaign_id %}">{{ item.name|default:item.link.campaign_id }}</a>{% else %}<span class="i2g-monitor-muted">(deleted campaign)</span>{% endif %}</td>
@@ -115,6 +115,7 @@
           <td>{{ item.link.get_match_display }}</td>
           <td class="num">{{ item.link.bounce_count }}</td>
           <td>{{ item.link.last_at|date:"M j, Y H:i"|default:"–" }}</td>
+          <td>{% if item.retry_url %}<a href="{{ item.retry_url }}">Prepare one-address draft</a>{% else %}–{% endif %}</td>
         </tr>
       {% endfor %}</tbody>
     </table></div>

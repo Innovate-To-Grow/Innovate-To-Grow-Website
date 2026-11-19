@@ -34,10 +34,12 @@ DENIED_MODEL_LABELS = {
     "core.deliveryratestate",
     "core.deliveryusagebucket",
     "core.emailserviceconfig",
-    # Email telemetry and bounce processing: written only by the delivery facade and the bounce processor. A write
-    # would falsify the delivery record or move the bounce scan's checkpoint; staff read them on the Email
-    # Monitoring dashboard. None of their names matches DENIED_MODEL_NAME_PARTS.
+    # Email telemetry, bounce processing and the Message Trace sync: written only by the delivery facade, the bounce
+    # processor and the trace sync. A write would falsify the delivery record or move the bounce scan's checkpoint or
+    # the trace sync's backoff; staff read them on the Email Monitoring dashboard. None of their names matches
+    # DENIED_MODEL_NAME_PARTS.
     "core.emailbounce",
+    "core.emaildeliverytracestate",
     "core.emailmonitorstate",
     "core.outboundemail",
     "core.outboundemailattempt",
@@ -66,6 +68,7 @@ DENIED_MODEL_LABELS = {
     "core.microsoftgraphaccesscheck",
     "core.microsoftgraphcertificate",
     "core.microsoftgraphmailboxscope",
+    "core.microsoftgraphpermissioncheck",
     "core.microsoftgraphproviderconfig",
     # Bounced addresses: staff review decisions, the bulk-mail suppression list and their audit log, written only by
     # Mail → Email Monitoring → Bounced addresses (a write would lift or set a suppression outside its guards).

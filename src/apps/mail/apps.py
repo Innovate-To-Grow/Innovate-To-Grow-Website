@@ -12,6 +12,7 @@ class MailConfig(AppConfig):
 
         register_background_jobs()
         register_sms_policy()
+        register_inbound_hint_cleanup()
 
         from .admin.email_monitoring import get_email_monitoring_urls
         from .admin.inbox import get_inbox_urls
@@ -78,4 +79,18 @@ def register_sms_policy():
     initial_ticket_issued.connect(ticket.queue_ticket_sms, dispatch_uid="mail_queue_ticket_sms")
     post_save.connect(
         register_link.forget_register_destination, sender=SmsConfig, dispatch_uid="mail_forget_register_link"
+    )
+
+
+def register_inbound_hint_cleanup():
+    """Drop copied third-party contact hints whenever their source inbound message is deleted."""
+    from django.db.models.signals import pre_delete
+
+    from apps.core.models import InboundMessage
+    from apps.mail.services.email_monitoring.addresses.aggregate.notices import clear_hints_for_deleted_source
+
+    pre_delete.connect(
+        clear_hints_for_deleted_source,
+        sender=InboundMessage,
+        dispatch_uid="mail_clear_bounced_address_hints_for_deleted_source",
     )

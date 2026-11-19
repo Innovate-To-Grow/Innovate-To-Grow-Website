@@ -46,7 +46,25 @@ class AutomaticReplyTests(SiteMailMixin, TestCase):
                 "site_recipient": "jordan.park@contoso.example",
                 "named_contact": "riley.chen@contoso.example",
                 "named_contact_kind": "contact",
+                "named_contact_name": "Riley Chen",
             },
+        )
+
+    def test_a_phone_in_a_left_org_notice_is_saved_for_review(self):
+        self.sent("jordan.park@contoso.example")
+        raw = samples.message(
+            sender="Jordan Park <jordan.park@contoso.example>",
+            subject=f"Automatic reply: {samples.CAMPAIGN_SUBJECT}",
+            text="Jordan Park no longer works here. Please contact Riley Chen at (209) 555-0123.",
+            message_id="<left-jordan-phone@contoso.example>",
+            headers={"Auto-Submitted": "auto-replied"},
+        )
+
+        _ticket, row = self.receive(raw)
+
+        self.assertEqual(
+            (row.classification, row.result["named_contact_name"], row.result["named_contact_phone"]),
+            ("left_org", "Riley Chen", "+12095550123"),
         )
 
     def test_a_notice_from_another_address_is_matched_to_the_address_mailed(self):

@@ -70,20 +70,32 @@ class ReviewCaseTests(SimpleTestCase):
         for guidance in (relay_guidance, spam_guidance):
             self.assertIn("not the contact", guidance)
 
-    def test_a_zero_kb_size_limit_is_a_disabled_mailbox_and_a_real_limit_a_message_problem(self):
+    def test_a_zero_kb_size_limit_is_a_receiving_side_failure_to_retry(self):
         verdict = verdict_of("zero_kb_size_limit")
 
-        self.assertEqual((verdict.category, verdict.is_permanent), (Category.MAILBOX_DISABLED, True))
+        self.assertEqual((verdict.category, verdict.is_permanent), (Category.TRANSIENT, False))
         self.assertIn("0 KB", verdict.reason)
+        self.assertIn("Retry the address", EmailBounce.guidance_for(verdict.category))
         too_large = "550 5.2.3 RESOLVER.RST.RecipSizeLimit; message too large; Max size allowed: 10240 KB"
         self.assertEqual(category_of("5.2.3", too_large), Category.TRANSIENT)
         self.assertEqual(
-            category_of("5.3.4", "552 5.3.4 Message size exceeds maximum size limit of 0 KB"), "mailbox_disabled"
+            category_of("5.3.4", "552 5.3.4 Message size exceeds maximum size limit of 0 KB"), Category.TRANSIENT
         )
+        self.assertEqual(category_of("5.0.0", "552 message size exceeds the limit of 0 bytes"), Category.TRANSIENT)
         self.assertEqual(
-            category_of("5.0.0", "552 message size exceeds the limit of 0 bytes"), Category.MAILBOX_DISABLED
+            category_of("5.2.1", "550 5.2.1 This mailbox is disabled; Max size allowed: 0 KB"), Category.TRANSIENT
         )
         self.assertEqual(category_of("5.0.0", "552 message size exceeds the limit of 0.5 MB"), Category.TRANSIENT)
+
+    def test_zero_size_does_not_hide_a_missing_user_or_sender_failure(self):
+        for reason, expected in (
+            ("no such user", Category.HARD),
+            ("relay access denied", Category.RELAY_DENIED),
+            ("SPF validation failed", Category.SPAM_REJECTED),
+        ):
+            with self.subTest(reason=reason):
+                self.assertEqual(category_of("5.0.0", f"550 {reason}; maximum message size 0 KB"), expected)
+        self.assertEqual(category_of("5.2.1", "550 5.2.1 Mailbox disabled"), Category.MAILBOX_DISABLED)
 
     def test_yahoo_without_a_reason_is_unknown_and_yahoo_policy_reasons_a_spam_rejection(self):
         generic, policy = verdict_of("yahoo_generic_554"), verdict_of("yahoo_policy_reasons")

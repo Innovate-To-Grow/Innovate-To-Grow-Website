@@ -1,6 +1,6 @@
 """Matching a bounced recipient to the outgoing email it reports on, without guessing.
 
-1. Exact: the report quotes the original Message-ID, and an email the site sent carries it (the MIME form of
+1. Exact: the report quotes the original Message-ID, and the failed recipient was on that email (the MIME form of
    Microsoft Graph's sendMail, used for every email that may keep a Sent Items copy).
 2. Inferred: no Message-ID can match (the JSON form, used for emails that carry a credential, gives the site no
    Message-ID), and exactly one email the site sent to the same recipient, with the same subject, in the window
@@ -31,11 +31,20 @@ class Match:
     note: str = ""
 
 
-def match(*, recipient: str, original_message_id: str, original_subject: str, received_at: datetime) -> Match:
+def match(
+    *, recipient: str, original_message_id: str, original_subject: str, received_at: datetime, final_recipient: str = ""
+) -> Match:
+    if final_recipient and recipient != final_recipient:
+        return Match(None, MatchMethod.UNMATCHED, f"Forwarded to {final_recipient}; the original address needs review.")
     if original_message_id:
-        email = OutboundEmail.objects.filter(internet_message_id=original_message_id).order_by("-created_at").first()
-        if email is not None:
-            return Match(email, MatchMethod.MESSAGE_ID, "The report quotes this email's Message-ID.")
+        emails = list(OutboundEmail.objects.filter(internet_message_id=original_message_id).order_by("pk")[:2])
+        if emails:
+            email = emails[0]
+            envelope = text.addresses([email.recipient, *(email.recipients or [])])
+            sent = email.status in (OutboundEmail.Status.ACCEPTED, OutboundEmail.Status.UNCERTAIN)
+            if len(emails) == 1 and sent and recipient and recipient in envelope:
+                return Match(email, MatchMethod.MESSAGE_ID, "The original Message-ID and envelope recipient match.")
+            return Match(None, MatchMethod.UNMATCHED, "The quoted Message-ID does not identify this recipient's email.")
     if not recipient:
         return Match(None, MatchMethod.UNMATCHED, "The report names no recipient.")
     digest = text.subject_digest(original_subject)

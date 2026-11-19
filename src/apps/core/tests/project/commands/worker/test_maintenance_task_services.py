@@ -119,6 +119,7 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
             run_delivery_rate_maintenance=RuntimeError("g"),
             active_certificate_expiry=RuntimeError("f"),
             ensure_bounce_scan_scheduled=RuntimeError("h"),
+            ensure_delivery_trace_scheduled=RuntimeError("t"),
             count_bounced_addresses=RuntimeError("j"),
             sync_sms_opt_outs=RuntimeError("k"),
             purge_expired_email_telemetry=RuntimeError("i"),

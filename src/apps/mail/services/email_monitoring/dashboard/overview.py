@@ -5,7 +5,10 @@
 - attempt level: every provider call, retries included (429 throttles, response times).
 
 "API accepted" means the provider queued the message (Microsoft Graph ``202 Accepted``), never that it was
-delivered: only a bounce report proves anything about delivery, and then only a failure.
+delivered. What happened next is counted from the delivery evidence alone, each by its own name: a bounce report or
+the Message Trace proves a failure ("confirmed failed"); the optional Message Trace says "Delivered (message trace)"
+(Exchange handed it to the recipient's server), "Quarantined" or "Filtered as spam"; and "No bounce received" is only
+the no-bounce inference (likely delivered, not proof). Without that evidence an accepted email stays unknown.
 
 Beside the figures, the Overview shows the email channel's delivery rate now (``send_rate``), the line the Delivery
 Dashboard used to show.
@@ -28,6 +31,8 @@ Status = OutboundEmail.Status
 DeliveryStatus = OutboundEmail.DeliveryStatus
 Outcome = OutboundEmailAttempt.Outcome
 FAILED_OUTCOMES = (Outcome.TRANSIENT, Outcome.PERMANENT, Outcome.UNCERTAIN)
+# Message Trace verdicts of an email Exchange kept from the inbox (counted together as "quarantined or spam").
+JUNK_STATUSES = (DeliveryStatus.QUARANTINED, DeliveryStatus.FILTERED_AS_SPAM)
 
 
 def rate(part, whole) -> float | None:
@@ -45,6 +50,9 @@ def message_figures(emails) -> dict:
         pending=Count("pk", filter=Q(status=Status.PENDING)),
         bounced=Count("pk", filter=Q(delivery_status=DeliveryStatus.FAILURE_CONFIRMED)),
         delayed=Count("pk", filter=Q(delivery_status=DeliveryStatus.DELAYED)),
+        no_bounce=Count("pk", filter=Q(delivery_status=DeliveryStatus.NO_BOUNCE)),
+        delivered=Count("pk", filter=Q(delivery_status=DeliveryStatus.DELIVERED)),
+        junk=Count("pk", filter=Q(delivery_status__in=JUNK_STATUSES)),
         retried=Count("pk", filter=Q(attempt_count__gt=1)),
         recipients=Coalesce(Sum("recipient_count"), 0),
         accepted_recipients=Coalesce(Sum("recipient_count", filter=Q(status=Status.ACCEPTED)), 0),

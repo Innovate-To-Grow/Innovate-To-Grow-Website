@@ -17,13 +17,13 @@ EXACT = {
     "5.2.1": DISABLED,  # unless its text says the limit is temporary (AMBIGUOUS)
     "5.2.2": FULL,
     "4.2.2": FULL,
-    "5.2.3": TRANSIENT,  # message too large for the recipient (a 0 KB limit: see phrases.ZERO_LIMIT_RE)
+    "5.2.3": TRANSIENT,  # message too large for the recipient (including a 0 KB limit)
     "5.2.4": TRANSIENT,
     "5.2.121": TRANSIENT,  # Exchange: the recipient's hourly receive limits
     "5.2.122": TRANSIENT,
-    "5.3.4": TRANSIENT,  # message too large (a 0 KB limit: see phrases.ZERO_LIMIT_RE)
-    "5.4.1": HARD,  # Exchange: "Recipient address rejected: Access denied" (no such recipient in the tenant)
-    "5.4.4": HARD,  # unable to route: the domain takes no mail
+    "5.3.4": TRANSIENT,  # message too large (including a 0 KB limit)
+    "5.4.1": UNKNOWN,  # no response from the host, or Exchange refusing a nonexistent recipient
+    "5.4.4": UNKNOWN,  # unable to route; the diagnostic may name a missing domain or a sending fault
     "5.4.310": HARD,  # Exchange: the DNS domain does not exist
     "5.7.9": SPAM,  # Yahoo: "Message not accepted for policy reasons" (content or sending reputation)
     "5.7.350": SPAM,  # Exchange: the remote server found spam
@@ -48,7 +48,8 @@ RANGES = (
 # defined for one (RFC 3463, and X.1.10: null MX, Exchange's RecipientNotFound); any other bare code is unknown.
 SUBJECT_DEFAULTS = {0: UNKNOWN, 2: UNKNOWN, 3: TRANSIENT, 4: TRANSIENT, 5: UNKNOWN, 6: TRANSIENT, 7: POLICY}
 ADDRESS_DETAILS = frozenset({0, 1, 2, 3, 4, 6, 10})
-# Codes servers use for more than one thing: a phrase may only make them temporary. Gmail also returns 5.2.1 when the
+# Codes servers use for more than one thing: the diagnostic may identify a temporary or sender-side fault.
+# Gmail also returns 5.2.1 when the
 # recipient is "receiving mail at a rate that prevents additional messages from being delivered", a receiving limit
 # that typically lifts within a day: the address is fine.
 AMBIGUOUS = frozenset({"5.2.1", "5.4.1", "5.4.4"})
@@ -69,8 +70,8 @@ REASONS = {
     "4.2.2": "Recipient mailbox is full",
     "5.2.3": "Message too large for the recipient",
     "5.3.4": "Message too large",
-    "5.4.1": "Recipient address rejected (access denied)",
-    "5.4.4": "Recipient domain has no mail server",
+    "5.4.1": "The report does not establish why the destination host was unavailable",
+    "5.4.4": "The report does not establish why routing failed",
     "5.4.6": "Mail routing loop",
     "5.4.7": "Delivery expired",
     "5.4.14": "Mail routing loop (hop count exceeded)",

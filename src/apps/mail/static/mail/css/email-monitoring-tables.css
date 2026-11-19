@@ -48,6 +48,17 @@
 .i2g-monitor-chip--failure_confirmed .material-symbols-outlined { color: var(--i2g-status-critical); }
 .i2g-monitor-chip--pending .material-symbols-outlined,
 .i2g-monitor-chip--delayed .material-symbols-outlined { color: var(--i2g-status-warning); }
+/* Delivery evidence: delivered (message trace) is good; "no bounce received" is likely, not proof (muted good);
+   quarantined and filtered as spam were kept from the inbox (warning). */
+.i2g-monitor-chip--delivered .material-symbols-outlined { color: var(--i2g-status-good); }
+.i2g-monitor-chip--delivered { border-color: color-mix(in srgb, var(--i2g-status-good) 55%, transparent); }
+.i2g-monitor-chip--no_bounce .material-symbols-outlined {
+    color: color-mix(in srgb, var(--i2g-status-good) 60%, var(--i2g-status-neutral));
+}
+.i2g-monitor-chip--quarantined .material-symbols-outlined,
+.i2g-monitor-chip--filtered_as_spam .material-symbols-outlined { color: var(--i2g-status-warning); }
+.i2g-monitor-chip--quarantined,
+.i2g-monitor-chip--filtered_as_spam { border-color: color-mix(in srgb, var(--i2g-status-warning) 70%, transparent); }
 
 /* Tables --------------------------------------------------------------------------------------------------- */
 

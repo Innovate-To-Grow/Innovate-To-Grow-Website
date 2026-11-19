@@ -5,7 +5,7 @@
 - ``phrases``: the diagnostic phrases that refine a generic code (or a report without one).
 
 **Specific codes always win**: no phrase turns a ``5.1.1`` into a spam rejection, or an expired delivery into a
-missing address; a code servers use for more than one thing (``codes.AMBIGUOUS``) may only be made temporary. A
+missing address; ambiguous codes can identify a temporary or sending-side failure from their diagnostic. A
 temporary ``4.x.x`` failure is never a missing address or a disabled mailbox. Tune the phrases against the real
 diagnostics on Email Monitoring → Bounce Reports.
 """

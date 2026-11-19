@@ -36,7 +36,7 @@ class SesJobReconciliationTests(_SesJobReconciliationCase):
     def test_late_definitive_failures_replace_uncertainty(self):
         for event_type, status in (("Bounce", "bounced"), ("Complaint", "complained"), ("Reject", "rejected")):
             with self.subTest(event_type=event_type):
-                campaign, log, job = self.uncertain_delivery()
+                campaign, log, job = self.uncertain_delivery(address=f"{event_type.lower()}@example.com")
                 process_sns_envelope(self.callback(log, event_type=event_type))
                 self.assert_confirmed(campaign, log, job, log_status=status, success=False)
 

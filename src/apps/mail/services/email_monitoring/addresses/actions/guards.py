@@ -17,6 +17,7 @@ When the address is a member's primary or only address (plan §3.4):
 
 from apps.core.utils.access import user_can_access_app, user_can_manage_member
 
+from ..policies.graph import row_has_graph_hold
 from .targets import (
     ALLOWED,
     MASTER_DELETES,
@@ -62,8 +63,9 @@ def _mark_undeliverable(request, target):
 
 
 def _clear(request, target):
-    if not target.row.is_suppressed:
-        return refused("The address is not suppressed.")
+    row = target.row
+    if not (row.is_suppressed or row_has_graph_hold(row) or row.legacy_graph_permanent_review):
+        return refused("The address has no staff or reviewed Graph hold to clear.")
     return _member_change(request, target.owners) if target.owners else ALLOWED
 
 

@@ -54,6 +54,13 @@ Backend jobs run Python 3.14, the minor of the production image
 (`BACKEND_PYTHON_VERSION`); lint, audit, and CLI jobs run Python 3.11
 (`PYTHON_VERSION`). Every job that sets up Node uses 22.22.2 (`NODE_VERSION`).
 
+The frontend audit runs through `scripts/ci/dependencies/audit_npm.py`. A
+temporary exception there must name one advisory, cover only transitive
+dev-only packages, pin the reviewed lockfile version and newest published
+stable release, and expire. Any other moderate-or-higher finding still fails
+immediately; a new package release or changed dependency path also fails so
+the exception cannot silently outlive its justification.
+
 Semgrep fails the job on error-severity findings and on a Semgrep failure.
 Warnings and notes do not block; push runs upload every finding to the
 repository's Security tab, as does the backend image's Trivy scan (the archive

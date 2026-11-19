@@ -1,5 +1,6 @@
 """The background worker's periodic maintenance tasks, in their order (``MAINTENANCE_TASKS``).
-``commands/run_background_worker.py`` runs them with ``run_maintenance`` every ``--maintenance-seconds``."""
+``commands/run_background_worker.py`` runs them with ``run_maintenance`` every ``--maintenance-seconds``. The email
+tasks live in ``email_maintenance``."""
 
 import logging
 
@@ -8,28 +9,18 @@ from apps.authn.services.security.login_guard import purge_expired_failure_windo
 from apps.authn.services.security.rsa.rsa_manager import purge_retired_auth_keypairs
 from apps.authn.services.send_verification import cleanup_expired_records, clear_expired_sessions
 from apps.core.services.delivery_rates import run_maintenance as run_delivery_rate_maintenance
-from apps.core.services.email.bounces import ensure_scheduled as ensure_bounce_scan_scheduled
-from apps.core.services.email.bounces import purge_finished_jobs as purge_finished_bounce_scans
-from apps.core.services.email.graph.credential import expiry
-from apps.core.services.email.graph.credential.expiry import active_certificate_expiry
-from apps.core.services.email.inbound import purge_expired as purge_expired_inbound_queue
-from apps.core.services.email.telemetry.retention import purge_expired as purge_expired_email_telemetry
 from apps.helpdesk.services.ingest.pipeline.jobs import ensure_scheduled as ensure_helpdesk_ingest_scheduled
 from apps.helpdesk.services.ingest.pipeline.jobs import purge_finished_jobs as purge_finished_helpdesk_ingests
 from apps.helpdesk.services.intake.jobs import ensure_scheduled as ensure_helpdesk_intake_scheduled
 from apps.helpdesk.services.intake.jobs import purge_finished_jobs as purge_finished_helpdesk_intake_scans
 from apps.helpdesk.services.tickets.retention import purge_expired as purge_expired_helpdesk
-from apps.mail.services.email_monitoring.addresses.aggregate import refresh_all as refresh_bounced_address_links
-from apps.mail.services.email_monitoring.addresses.aggregate import run as count_bounced_addresses
 from apps.mail.services.sms.policy.opt_out_sync import run_scheduled as sync_sms_opt_outs
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
+from . import email_maintenance
+
 # The worker command's logger: maintenance logs under the same name as the rest of the worker.
 logger = logging.getLogger("apps.core.management.commands.run_background_worker")
-
-# One fixed line (a log metric filter can match its prefix); only the day count varies.
-GRAPH_EXPIRY_WARNING = "Microsoft Graph certificate expiry warning: %d days left; install the renewed certificate"
-GRAPH_EXPIRED_WARNING = "Microsoft Graph certificate expiry warning: expired; install the renewed certificate"
 
 
 def _purge_retired_keys(should_stop=None) -> None:
@@ -88,61 +79,10 @@ def _delivery_rate_maintenance(should_stop=None) -> None:
         )
 
 
-def _check_graph_certificate_expiry(should_stop=None) -> None:
-    # The active Graph config's current certificate, from GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS before expiry on.
-    status = active_certificate_expiry()
-    if status is None or status.level in (expiry.OK, expiry.NOT_YET_VALID):
-        return
-    if status.level == expiry.EXPIRED:
-        logger.warning(GRAPH_EXPIRED_WARNING)
-    else:
-        logger.warning(GRAPH_EXPIRY_WARNING, status.days_left)
-
-
-def _schedule_bounce_scans(should_stop=None) -> None:
-    # The bounce scans chain themselves (each queues the next); this restarts the chain at start-up or if it broke.
-    if ensure_bounce_scan_scheduled():
-        logger.debug("Queued an email bounce scan")
-
-
-def _count_bounced_addresses(should_stop=None) -> None:
-    # Count new bounce reports, SES events and left-the-organisation notices per address (Email Monitoring → Bounced
-    # addresses) before the retention purges delete old records, then re-check every address's member links. Never
-    # changes a member or a contact.
-    result = count_bounced_addresses(should_stop=should_stop)
-    refreshed = refresh_bounced_address_links(should_stop=should_stop)
-    notices = result.get("inbound", 0)
-    if result["graph"] or result["ses"] or notices or refreshed:
-        logger.info(
-            "Bounced addresses: counted %d bounce reports, %d SES events and %d left-the-organisation notices; "
-            "refreshed %d addresses",
-            result["graph"],
-            result["ses"],
-            notices,
-            refreshed,
-        )
-
-
 def _sync_sms_opt_outs(should_stop=None) -> None:
     # Read the sending number's opted-out list from AWS (read only) into Mail → SMS Opt-outs, when it is on in SMS
     # Settings; the sync records its own outcome and log line.
     sync_sms_opt_outs(should_stop=should_stop)
-
-
-def _purge_email_telemetry(should_stop=None) -> None:
-    # Outgoing-email telemetry, bounce records and inbound queue rows past EMAIL_MONITORING's retention, and finished
-    # scan jobs.
-    result = {
-        **purge_expired_email_telemetry(should_stop=should_stop),
-        "inbound": purge_expired_inbound_queue(should_stop=should_stop),
-        "scan_jobs": purge_finished_bounce_scans(),
-    }
-    if any(result.values()):
-        logger.info(
-            "Email telemetry retention: deleted %(emails)d emails, %(bounces)d bounce records, %(inbound)d inbound "
-            "queue rows and %(scan_jobs)d finished bounce scan jobs",
-            result,
-        )
 
 
 def _schedule_helpdesk_intake(should_stop=None) -> None:
@@ -178,7 +118,7 @@ def _purge_helpdesk(should_stop=None) -> None:
 # Every callable takes the stop check: the batched tasks (the three cleanups, the member import purge, the
 # bounced-address counting, the email telemetry retention and the helpdesk retention) hand it to their batch loops, so
 # a stop request ends them after the batch in flight; the two single-statement purges, the delivery-rate upkeep, the
-# certificate expiry check, the scan and ingest scheduling and the SMS opt-out sync ignore it.
+# certificate expiry check, the scan, trace and ingest scheduling and the SMS opt-out sync ignore it.
 MAINTENANCE_TASKS = (
     ("Retired RSA key purge", _purge_retired_keys),
     ("Public assistant budget purge", _purge_public_assistant_budgets),
@@ -187,11 +127,12 @@ MAINTENANCE_TASKS = (
     ("Login failure window purge", _purge_login_failure_windows),
     ("Member import purge", _purge_member_imports),
     ("Delivery-rate maintenance", _delivery_rate_maintenance),
-    ("Microsoft Graph certificate expiry check", _check_graph_certificate_expiry),
-    ("Email bounce scan scheduling", _schedule_bounce_scans),
-    ("Bounced address counting", _count_bounced_addresses),
+    ("Microsoft Graph certificate expiry check", email_maintenance.check_graph_certificate_expiry),
+    ("Email bounce scan scheduling", email_maintenance.schedule_bounce_scans),
+    ("Email delivery trace scheduling", email_maintenance.schedule_delivery_traces),
+    ("Bounced address counting", email_maintenance.count_bounced),
     ("SMS opt-out sync", _sync_sms_opt_outs),
-    ("Email telemetry retention", _purge_email_telemetry),
+    ("Email telemetry retention", email_maintenance.purge_email_telemetry),
     ("Helpdesk intake scheduling", _schedule_helpdesk_intake),
     ("Helpdesk ingest scheduling", _schedule_helpdesk_ingest),
     ("Helpdesk retention", _purge_helpdesk),

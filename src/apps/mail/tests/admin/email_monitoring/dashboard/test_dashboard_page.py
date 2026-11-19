@@ -25,7 +25,7 @@ class _PageCase(TestCase):
 
 
 class PageTests(_PageCase):
-    def test_the_overview_separates_levels_and_never_says_delivered(self):
+    def test_the_overview_separates_levels_and_never_says_delivered_without_trace_data(self):
         failed = make_email(status=OutboundEmail.Status.FAILED, last_error="Microsoft Graph rejected the request.")
         make_attempt(
             failed, outcome="permanent", http_status=400, error_kind="bad_request", error_code="ErrorInvalidRecipients"
@@ -43,6 +43,19 @@ class PageTests(_PageCase):
         self.assertContains(response, "Monitoring began")
         self.assertNotContains(response, ">Delivered<")
         self.assertEqual(response.context["figures"]["messages"]["failed"], 1)
+        self.assertEqual(response.context["figures"]["messages"]["delivered"], 0)
+        log = self.client.get(reverse("admin:mail_email_monitoring_emails"))
+        self.assertNotContains(log, "i2g-monitor-chip--delivered")
+
+    def test_an_email_shows_delivered_only_with_its_trace_data(self):
+        email = make_email(delivery_status="delivered", trace_status="delivered", trace_checked_at=timezone.now())
+
+        log = self.client.get(reverse("admin:mail_email_monitoring_emails"))
+        page = self.client.get(reverse("admin:mail_email_monitoring_email", args=[email.pk]))
+
+        self.assertContains(log, "i2g-monitor-chip--delivered")
+        self.assertContains(page, "<code>delivered</code> · checked")
+        self.assertContains(page, "handed the email to the recipient")
 
     def test_the_data_endpoint_returns_figures_and_charts(self):
         make_email()

@@ -55,12 +55,12 @@ class _CampaignEventRaceCase(TestCase):
         self.load_config.start()
         self.addCleanup(self.load_config.stop)
 
-    def campaign(self, count=1):
+    def campaign(self, count=1, *, recipient_prefix="person"):
         return EmailCampaign.objects.create(
             subject="Campaign",
             body="<p>Hello</p>",
             audience_type="manual",
-            manual_emails="\n".join(f"person{index}@example.com" for index in range(count)),
+            manual_emails="\n".join(f"{recipient_prefix}{index}@example.com" for index in range(count)),
         )
 
     def _early_event(self, *, queued, response_times_out):
@@ -74,7 +74,8 @@ class _CampaignEventRaceCase(TestCase):
         }
         for event_type, expected_status in cases.items():
             with self.subTest(event=event_type, queued=queued, timeout=response_times_out):
-                campaign = self.campaign()
+                # Permanent bounces and complaints hold this address for subsequent campaigns.
+                campaign = self.campaign(recipient_prefix=event_type.lower())
                 message_id = f"ses-{campaign.pk}"
 
                 def provider(message, *, before_provider_call, event_type=event_type, message_id=message_id, **_kwargs):

@@ -6,7 +6,14 @@ from datetime import timedelta
 from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
-from apps.core.models import EmailBounce, EmailCategory, EmailMonitorState, OutboundEmail, OutboundEmailAttempt
+from apps.core.models import (
+    EmailBounce,
+    EmailCategory,
+    EmailDeliveryTraceState,
+    EmailMonitorState,
+    OutboundEmail,
+    OutboundEmailAttempt,
+)
 from apps.core.services.db_tools.safe_orm import DENIED_MODEL_LABELS, is_model_denied
 from apps.core.services.email import PermanentEmailDeliveryError, TransientEmailDeliveryError
 from apps.core.services.email.graph.access_check.probes import OUTCOME_UNKNOWN, RATE_HELD, UNREACHABLE
@@ -177,7 +184,7 @@ class RetentionTests(TestCase):
 
 class SafeOrmDenylistTests(SimpleTestCase):
     def test_the_assistant_and_the_cli_can_neither_read_nor_write_the_telemetry(self):
-        for model in (OutboundEmail, OutboundEmailAttempt, EmailBounce, EmailMonitorState):
+        for model in (OutboundEmail, OutboundEmailAttempt, EmailBounce, EmailMonitorState, EmailDeliveryTraceState):
             with self.subTest(model=model.__name__):
                 self.assertIn(model._meta.label_lower, DENIED_MODEL_LABELS)
                 self.assertTrue(is_model_denied(model, write=False))

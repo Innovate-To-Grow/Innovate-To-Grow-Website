@@ -1,5 +1,6 @@
 """Microsoft Graph (Outlook / Exchange Online): the provider configuration (``provider``, with its checks in
-``provider_validation`` and its readiness in ``provider_status``), the mailboxes it may use (``mailboxes``), its certificates (``certificate``) and access checks (``access_check``).
+``provider_validation`` and its readiness in ``provider_status``), the mailboxes it may use (``mailboxes``), its
+certificates (``certificate``), access checks (``access_check``) and permission checks (``permission_check``).
 
 Migration 0043 imports the sending-limit defaults from this package, so it re-exports them from ``limits``.
 """
@@ -15,16 +16,20 @@ from .limits import (
     default_recipients_per_day_limit,
 )
 from .mailboxes import MicrosoftGraphMailboxScope, is_deny_mailbox, normalize_mailbox
+from .permission_check import MicrosoftGraphPermissionCheck
 from .provider import MicrosoftGraphProviderConfig
-from .provider_validation import SENDING_APP_CHANGE, TAKEOVER_REFUSED
+from .provider_validation import MESSAGE_TRACE_NEEDS_REVIEW, MESSAGE_TRACE_ROLE, SENDING_APP_CHANGE, TAKEOVER_REFUSED
 
 __all__ = [
+    "MESSAGE_TRACE_NEEDS_REVIEW",
+    "MESSAGE_TRACE_ROLE",
     "SENDING_APP_CHANGE",
     "SENDING_LIMIT_FIELDS",
     "TAKEOVER_REFUSED",
     "MicrosoftGraphAccessCheck",
     "MicrosoftGraphCertificate",
     "MicrosoftGraphMailboxScope",
+    "MicrosoftGraphPermissionCheck",
     "MicrosoftGraphProviderConfig",
     "default_external_recipients_per_hour_limit",
     "default_internal_recipients_per_hour_limit",

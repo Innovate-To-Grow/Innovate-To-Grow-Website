@@ -16,8 +16,11 @@
     <div class="i2g-monitor-tile"><p>API accepted</p><strong>{{ m.accepted }}</strong><small>queued by the provider, not proof of delivery</small></div>
     <div class="i2g-monitor-tile"><p>API failed</p><strong>{{ m.failed }}</strong><small>{{ m.uncertain }} with outcome unknown</small></div>
     <div class="i2g-monitor-tile"><p>API success rate</p><strong>{% if m.api_success_rate is None %}–{% else %}{{ m.api_success_rate }}%{% endif %}</strong><small>accepted ÷ submitted ({{ m.submitted }})</small></div>
-    <div class="i2g-monitor-tile"><p>Confirmed bounced emails</p><strong>{{ m.bounced }}</strong><small>{% if m.bounce_rate is None %}no accepted emails{% else %}{{ m.bounce_rate }}% of API-accepted emails{% endif %}</small></div>
+    <div class="i2g-monitor-tile"><p>Confirmed failed emails</p><strong>{{ m.bounced }}</strong><small>failed (bounce or trace) · {% if m.bounce_rate is None %}no accepted emails{% else %}{{ m.bounce_rate }}% of API-accepted emails{% endif %}</small></div>
     <div class="i2g-monitor-tile"><p>Emails retried</p><strong>{{ m.retried }}</strong><small>needed more than one attempt</small></div>
+    <div class="i2g-monitor-tile"><p>No bounce received</p><strong>{{ m.no_bounce }}</strong><small>likely delivered, not proof</small></div>
+    <div class="i2g-monitor-tile"><p>Delivered (message trace)</p><strong>{{ m.delivered }}</strong><small>{% if health.trace.enabled %}handed to the recipient's mail server{% else %}Message Trace is off{% endif %}</small></div>
+    <div class="i2g-monitor-tile"><p>Quarantined or spam</p><strong>{{ m.junk }}</strong><small>{% if health.trace.enabled %}kept from the inbox (message trace){% else %}Message Trace is off{% endif %}</small></div>
   </div>
   <p class="i2g-monitor-muted">The site's own record of the emails it sent{% if scope.provider %} through the chosen provider{% else %}, every provider{% endif %}. Amazon SES's own counts for the whole AWS account (CloudWatch) are on the <a href="{% url 'admin:mail_email_monitoring_ses' %}">Amazon SES</a> tab.</p>
   {% if send_rate %}<p class="i2g-monitor-muted" data-monitor-send-rate>Send rate: {{ send_rate }} · <a href="{% url 'admin:mail_delivery_rates' %}">Delivery Rates</a></p>{% endif %}
@@ -113,14 +116,16 @@
       <thead><tr>
         <th scope="col">Campaign</th><th scope="col" class="num">Emails</th><th scope="col" class="num">API accepted</th>
         <th scope="col" class="num">Failed / not sent</th><th scope="col" class="num">Outcome unknown</th>
-        <th scope="col" class="num">Confirmed bounces</th><th scope="col" class="num">Bounce rate</th><th scope="col" class="num">Retries</th>
+        <th scope="col" class="num">Confirmed failures</th><th scope="col" class="num">Failure rate</th>
+        <th scope="col" class="num">Delivered (trace)</th><th scope="col" class="num">Quarantined or spam</th><th scope="col" class="num">Retries</th>
       </tr></thead>
       <tbody>{% for row in comparisons %}
         <tr>
           <td><a href="{% url 'admin:mail_email_monitoring_campaign' row.campaign_id %}">{{ row.name }}</a><br><span class="i2g-monitor-muted">{{ row.first_sent|date:"M j, Y H:i" }}</span></td>
           <td class="num">{{ row.emails }}</td><td class="num">{{ row.accepted }}</td><td class="num">{{ row.failed }}</td>
           <td class="num">{{ row.uncertain }}</td><td class="num">{{ row.bounced }}</td>
-          <td class="num">{% if row.bounce_rate is None %}–{% else %}{{ row.bounce_rate }}%{% endif %}</td><td class="num">{{ row.retries }}</td>
+          <td class="num">{% if row.bounce_rate is None %}–{% else %}{{ row.bounce_rate }}%{% endif %}</td>
+          <td class="num">{{ row.delivered }}</td><td class="num">{{ row.junk }}</td><td class="num">{{ row.retries }}</td>
         </tr>
       {% endfor %}</tbody>
     </table></div>

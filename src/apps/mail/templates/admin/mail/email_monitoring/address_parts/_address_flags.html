@@ -5,4 +5,5 @@
     {% if contact.subscribe %}<span class="i2g-monitor-badge">Subscribed</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Unsubscribed</span>{% endif %}
   {% endif %}
   {% if row.suppressed_at %}<span class="i2g-monitor-badge i2g-monitor-badge--danger" title="{{ row.suppressed_reason }}">{{ row.get_suppression_display|default:"Suppressed" }}</span>{% endif %}
+  {% if row.left_org_has_contact_hint %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">Notice contact: review</span>{% endif %}
 </span>

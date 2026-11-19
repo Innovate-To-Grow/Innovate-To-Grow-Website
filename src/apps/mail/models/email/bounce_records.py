@@ -25,6 +25,12 @@ class BouncedAddressCampaign(ProjectControlModel):
     source = models.CharField(max_length=8, choices=Source.choices)
     match = models.CharField(max_length=8, choices=Match.choices, default=Match.EXACT)
     bounce_count = models.PositiveIntegerField(default=0)
+    graph_category_counts = models.JSONField(
+        default=dict,
+        db_default={},
+        blank=True,
+        help_text="Exact-match Graph bounce categories recorded for this campaign/address pair.",
+    )
     first_at = models.DateTimeField(null=True, blank=True)
     last_at = models.DateTimeField(null=True, blank=True, db_index=True)
     ses_bounce_type = models.CharField(max_length=16, blank=True, default="")

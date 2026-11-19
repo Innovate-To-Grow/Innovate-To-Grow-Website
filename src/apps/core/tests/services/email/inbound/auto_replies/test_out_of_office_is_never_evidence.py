@@ -58,6 +58,20 @@ class OutOfOfficeIsNeverEvidenceTests(SimpleTestCase):
                 )
                 self.assertEqual(verdict.classification, "left_org")
 
+    def test_departure_with_generic_hours_or_greeting_still_names_the_contact(self):
+        for text in (
+            "I have retired from Acme. Contact Riley Chen at riley@example.org. Our office is closed on weekends.",
+            "I have permanently left the company. Contact Riley Chen at riley@example.org. Have a nice weekend!",
+            "I have resigned. Contact Riley Chen at riley@example.org.",
+        ):
+            with self.subTest(text=text):
+                verdict = classify(evidence({"Auto-Submitted": "auto-replied"}, text_head=text), own_addresses=OWN)
+                self.assertEqual(
+                    (verdict.classification, verdict.contact, verdict.contact_name),
+                    ("left_org", "riley@example.org", "Riley Chen"),
+                )
+        self.assertEqual(kind_of("I resigned from the committee, but still work here."), "other")
+
     def test_the_wider_absence_wording_never_hides_a_persons_message(self):
         # With only Exchange's rule marker, absence wording that a person writes too is no notice.
         verdict = classify(

@@ -5,7 +5,8 @@ Nothing here contacts Microsoft: the bounce processor's readiness is the same lo
 (configuration, mailbox allow-list, mailbox scope), and its last outcome is what its state row recorded. The cadence
 comes from the functions that schedule the scans, and every other app that lists the same Inbox on its own schedule
 (the helpdesk's intake) is listed with its own cadence, through ``core``'s inbox-reader registry, so the card always
-says how often the mailbox is really read.
+says how often the mailbox is really read. The delivery status card beside it (Message Trace and the no-bounce
+inference) is built in ``trace``.
 """
 
 from datetime import timedelta
@@ -20,6 +21,7 @@ from apps.core.services.email.bounces.scanning.jobs import catch_up_seconds, int
 from apps.core.services.email.inbound import format_interval, inbox_readers
 
 from .scope import monitoring_began
+from .trace import delivery_trace
 
 # A scan older than this many intervals means the scans have stopped (most likely the background worker is down).
 STALE_INTERVALS = 3
@@ -109,11 +111,13 @@ def _local_input(value) -> str:
 
 
 def monitoring_health() -> dict:
+    bounces = bounce_processing()
     return {
         "telemetry_enabled": bool(settings.EMAIL_MONITORING["telemetry_enabled"]),
         "store_subjects": bool(settings.EMAIL_MONITORING["store_subjects"]),
         "retention_days": settings.EMAIL_MONITORING["retention_days"],
         "bounce_retention_days": settings.EMAIL_MONITORING["bounce_retention_days"],
         "monitoring_began": monitoring_began(),
-        "bounces": bounce_processing(),
+        "bounces": bounces,
+        "trace": delivery_trace(bounces),
     }

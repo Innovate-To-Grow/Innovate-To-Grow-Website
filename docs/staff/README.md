@@ -14,7 +14,7 @@ is needed. For how the system is built, see the [System overview](../architectur
 | 1 | Getting started | Planned |
 | 2 | [Members & import](02-members-and-import.md) | **Written** |
 | 3 | [Blasts & email monitoring](03-blasts-and-email-monitoring.md) | **Written** |
-| 4 | Replies, the i2g@ Inbox and the helpdesk | Planned: after the helpdesk ships |
+| 4 | Replies, the i2g@ Inbox and the helpdesk | Planned: operating guide for shadow mode |
 | 5 | SMS | Planned: after the SMS compliance work ships |
 | 6 | Events | Planned |
 | 7 | Website content | Planned |
@@ -43,10 +43,9 @@ Writing, testing and sending a broadcast email, choosing the audience, personal 
 means, the Email Monitoring dashboard (one page with tabs, including Amazon SES, the former Delivery Dashboard),
 bounce reports, reading older reports again, and the Bounced addresses page.
 
-### 4. Replies, the i2g@ Inbox and the helpdesk (planned)
+### 4. Replies, the i2g@ Inbox and the helpdesk (planned guide)
 
-To be written once the helpdesk is live (it starts in a "shadow" mode in which it records tickets and sends
-nothing):
+To be written for the helpdesk's "shadow" mode, in which it records tickets and sends nothing:
 
 - Where replies to blasts go, and reading them in Outlook or in the admin's inbox page.
 - The helpdesk: every message that arrives in the i2g@ucmerced.edu Inbox becomes a ticket, or joins the ticket of
@@ -106,7 +105,7 @@ Collected from the chapters as questions come in.
 | Login link | `{{login_link}}` in a campaign: a personal link that signs that recipient in. Treat it like a password. |
 | API accepted | Microsoft accepted the email for delivery. It is **not** proof that it was delivered. |
 | Bounce report | The "Undeliverable" message a mail server sends back when it cannot deliver an email. |
-| Suppressed, undeliverable | Coming soon: an address staff marked so that campaigns skip it. |
+| Suppressed, undeliverable | An address staff marked so that campaigns skip it (chapter 3). |
 
 ## Conventions
 

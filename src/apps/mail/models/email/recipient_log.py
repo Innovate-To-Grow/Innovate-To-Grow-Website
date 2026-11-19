@@ -1,7 +1,12 @@
 from django.conf import settings
 from django.db import models
+from django.db.models.deletion import ProtectedError
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 
 from apps.core.models import ProjectControlModel
+
+from .campaign import EmailCampaign
 
 DELIVERY_STATUS_CHOICES = [
     ("pending", "Pending"),
@@ -74,3 +79,13 @@ class RecipientLog(ProjectControlModel):
 
     def __str__(self):
         return f"{self.email_address} — {self.get_status_display()}"
+
+
+@receiver(pre_delete, sender=RecipientLog)
+def protect_retry_delivery_log(sender, instance, using, origin, **kwargs):
+    """Retain the submission record even when a log is deleted separately from its campaign."""
+    if isinstance(origin, EmailCampaign) or getattr(origin, "model", None) is EmailCampaign:
+        # The campaign guard already covers its cascaded logs; an ordinary blast can have thousands.
+        return
+    if sender.objects.using(using).filter(pk=instance.pk, campaign__retry_source_campaign__isnull=False).exists():
+        raise ProtectedError("The recipient log of a submitted retry must be retained.", [instance])

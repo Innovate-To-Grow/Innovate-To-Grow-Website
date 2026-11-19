@@ -1,5 +1,5 @@
-"""One outgoing email's full operational history: every attempt with its error details, and the bounce reports
-matched to it, with what each status does and does not prove."""
+"""One outgoing email's full operational history: every attempt with its error details, the bounce reports matched
+to it and its Message Trace facts (raw status, when checked), with what each status does and does not prove."""
 
 from datetime import timedelta
 
@@ -30,11 +30,27 @@ STATUS_MEANING = {
 DELIVERY_MEANING = {
     DeliveryStatus.NOT_APPLICABLE: "The email was never accepted, so there is no delivery to report on.",
     DeliveryStatus.UNKNOWN: (
-        "No bounce report has been matched to this email. That is not proof of delivery: a report can arrive "
-        "later, or may not be matched reliably."
+        "No bounce report has been matched to this email, and no other evidence is known yet. That is not proof of "
+        "delivery: a report can arrive later, or may not be matched reliably."
+    ),
+    DeliveryStatus.NO_BOUNCE: (
+        "The bounce scan has read the sending mailbox well past this email's send and found no bounce report for it: "
+        "it was likely delivered, but this is not proof (some servers drop mail without a report)."
+    ),
+    DeliveryStatus.DELIVERED: (
+        "Microsoft's message trace reports that Exchange handed the email to the recipient's mail server. For an "
+        "external recipient that is not proof it reached the inbox: the receiving server may still filter it."
     ),
     DeliveryStatus.DELAYED: "A delivery-delay report was received; the receiving server was still retrying.",
-    DeliveryStatus.FAILURE_CONFIRMED: "A bounce report confirms that delivery failed for at least one recipient.",
+    DeliveryStatus.FILTERED_AS_SPAM: (
+        "Microsoft's message trace reports that the email was filtered as spam: it was not delivered to the inbox."
+    ),
+    DeliveryStatus.QUARANTINED: (
+        "Microsoft's message trace reports that the email was quarantined: it waits for review and was not delivered."
+    ),
+    DeliveryStatus.FAILURE_CONFIRMED: (
+        "A bounce report, or Microsoft's message trace, confirms that delivery failed for at least one recipient."
+    ),
 }
 
 
@@ -78,4 +94,7 @@ def email_detail(email: OutboundEmail) -> dict:
         "delivery_meaning": DELIVERY_MEANING.get(email.delivery_status, ""),
         "kind": kind_label(email.last_error_kind),
         "is_probe": email.category == EmailCategory.ACCESS_CHECK,
+        "trace": {"status": email.trace_status, "checked_at": email.trace_checked_at}
+        if email.trace_checked_at
+        else None,
     }

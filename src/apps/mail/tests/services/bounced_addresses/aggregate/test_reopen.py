@@ -21,13 +21,19 @@ class ReopenTests(TestCase):
         )
 
     def test_a_new_matched_missing_address_or_disabled_mailbox_reopens_a_dismissed_address(self):
-        for category, status_code, match in (
-            ("hard", "5.1.1", "message_id"),
-            ("mailbox_disabled", "5.2.1", "recipient"),
+        for category, status_code in (
+            ("hard", "5.1.1"),
+            ("mailbox_disabled", "5.2.1"),
         ):
             with self.subTest(category=category):
                 BouncedAddress.objects.filter(address="d@example.org").update(status=Status.DISMISSED)
-                make_bounce(recipient="d@example.org", category=category, status_code=status_code, match_method=match)
+                make_bounce(
+                    recipient="d@example.org",
+                    category=category,
+                    status_code=status_code,
+                    match_method="message_id",
+                    trusted_recipient=True,
+                )
 
                 count_now()
 
@@ -49,7 +55,10 @@ class ReopenTests(TestCase):
 
     def test_a_report_received_before_the_dismissal_does_not_reopen_it(self):
         make_bounce(
-            recipient="d@example.org", received_at=self.dismissed_at - timedelta(hours=1), match_method="message_id"
+            recipient="d@example.org",
+            received_at=self.dismissed_at - timedelta(hours=1),
+            match_method="message_id",
+            trusted_recipient=True,
         )
 
         count_now()

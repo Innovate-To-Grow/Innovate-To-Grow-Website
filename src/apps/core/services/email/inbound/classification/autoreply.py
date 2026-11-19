@@ -1,18 +1,20 @@
 """Automatic replies: the headers that mark one, what its own text says (an absence, or that the person left), the
-address a left-the-organisation notice names instead, and whether a message may ever be answered automatically.
+contact name, address and phone a left-the-organisation notice names, and whether a message may ever be answered
+automatically.
 
 A reply's quoted original (Outlook's header block, also as an HTML-only message's text gives it, "On … wrote:", ">"
 lines, an original- or forwarded-message banner) is cut off before any phrase is read, and a reply's or automatic
 reply's subject ("RE: …", "Automatic reply: …") adds no words, so the site's own campaign text and subject, sent
 back, never decide anything. A notice that mentions an absence is an out-of-office reply even when it also says
 someone left, and "nobody reads this mailbox" alone is no notice that someone left: an out-of-office reply is never
-evidence against an address. The address a notice names is a hint only: never verified, never applied.
+evidence against an address. Contact details a notice names are hints only: never verified, never applied.
 Pure functions: no database, no network.
 """
 
 import re
 from typing import NamedTuple
 
+from .contact_hints import _unusable, named_contact, named_person, named_phone
 from .headers import first
 from .rules import (
     ABSENCE_RE,
@@ -24,21 +26,14 @@ from .rules import (
     LEFT_ORG,
     LEFT_ORG_RE,
     LIST_HEADERS,
-    NOREPLY_RE,
     REPLY_SUBJECT_RE,
-    REPORT_SENDERS,
     SYSTEM,
     VACATION_RE,
 )
 
 # How much of the decoded text the content rules read.
 TEXT_HEAD_CHARS = 4096
-# Addresses read from one notice's text, and how far before one the words that introduce it are read.
-MAX_ADDRESSES = 20
-CUE_CHARS = 120
 VACATION, OTHER = "vacation", "other"
-NEW_ADDRESS, CONTACT, MENTIONED = "new_address", "contact", "mentioned"
-
 QUOTE_START_RE = re.compile(
     r"^(?:_{10,}|-{2,} ?(?:original message|forwarded message|mensaje original|message d[’']origine|"
     r"urspr[üu]ngliche nachricht|messaggio originale|mensagem original|oorspronkelijk bericht)|"
@@ -48,28 +43,14 @@ QUOTE_START_RE = re.compile(
     r"[^\n]{0,120}:|>)",
     re.IGNORECASE | re.MULTILINE,
 )
-EMAIL_RE = re.compile(
-    r"(?<![\w.+-])[\w.+-]{1,64}@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?){1,8}",
+# A recurring office-hours footer or a sign-off does not name a current absence.
+_ROUTINE_FOOTER_RE = re.compile(
+    r"\b(?:(?:our|the) offices? (?:is|are) (?:normally |usually )?closed (?:on|at) (?:the )?(?:weekends?|holidays?)|"
+    r"have a (?:nice|good|great) (?:weekend|holiday)|happy holidays)\b",
     re.IGNORECASE,
 )
-_SENTENCE_END_RE = re.compile(r"[.!?;]\s|\n\s*\n")
 # Runs of spaces, tabs and no-break spaces (HTML text is full of them): one space, so the phrases match.
 _SPACES_RE = re.compile(r"[^\S\n]+")
-# Words just before an address that introduce the person's own new address...
-NEW_ADDRESS_CUE_RE = re.compile(
-    r"\bnew (?:e-?mail|mail|contact|address)|\b(?:reach|reached|find|contact) (?:me|him|her|them) (?:now )?at\b|"
-    r"\bnow (?:at|reachable at|using)\b|\bnuev[oa] (?:correo|direcci[óo]n|e-?mail)|\bnouvelle adresse|"
-    r"\bneue (?:e-?mail-?)?adresse|\bnov[oa] (?:e-?mail|endere[çc]o)|\bnuovo indirizzo|\bnieuwe? (?:e-?mail)?adres",
-    re.IGNORECASE,
-)
-# ...or someone to contact instead.
-CONTACT_CUE_RE = re.compile(
-    r"\b(?:contact|reach out to|reach|e-?mail|write to|direct|forward|send|redirect|address|call|ask)\b|"
-    r"\bcomun[íi]que(?:se)? con\b|\bcont[áa]cte(?:se|nos)?\b|\bescrib(?:a|ir|e) a\b|\bdir[íi]j(?:a|ase)\b|"
-    r"\bcontactez\b|\b[ée]crire [àa]\b|\badress(?:ez|er)\b|\bwenden sie sich\b|\bkontaktier|\bschreiben sie\b|"
-    r"\bcontatt|\bentre em contato\b|\bneem contact\b|\bstuur\b",
-    re.IGNORECASE,
-)
 # X-Auto-Response-Suppress values that ask for no automatic reply (Exchange's own list).
 _SUPPRESS_WORDS = ("all", "autoreply", "oof")
 
@@ -82,6 +63,8 @@ class Notice(NamedTuple):
     signals: tuple[str, ...]
     contact: str = ""
     contact_kind: str = ""
+    contact_name: str = ""
+    contact_phone: str = ""
 
 
 def own_text(text: str) -> str:
@@ -105,37 +88,10 @@ def kind_of(text: str, *, notice: bool = False) -> str:
     if VACATION_RE.search(text):
         return VACATION
     left = bool(LEFT_ORG_RE.search(text))
-    if (left or notice) and ABSENCE_RE.search(text):
+    absence_text = _ROUTINE_FOOTER_RE.sub("", text) if left else text
+    if (left or notice) and ABSENCE_RE.search(absence_text):
         return VACATION
     return LEFT_ORG if left else OTHER
-
-
-def _unusable(address: str) -> bool:
-    local = address.partition("@")[0]
-    return local in REPORT_SENDERS or bool(NOREPLY_RE.match(local))
-
-
-def named_contact(text: str, exclude) -> tuple[str, str]:
-    """The address a notice names instead of the one mailed, and how: ``new_address`` (the person's own new
-    address), ``contact`` (someone to contact instead) or ``mentioned`` (the only address it names); ``("", "")``
-    when there is none. ``exclude`` holds the sender's and the site's addresses (lower case)."""
-    candidates: dict[str, str] = {}
-    for match in EMAIL_RE.finditer(text):
-        address = match.group(0).lower().strip(".")
-        if address in exclude or address in candidates or _unusable(address):
-            continue
-        fragment = _SENTENCE_END_RE.split(text[max(0, match.start() - CUE_CHARS) : match.start()])[-1]
-        if NEW_ADDRESS_CUE_RE.search(fragment):
-            return address, NEW_ADDRESS
-        candidates[address] = CONTACT if CONTACT_CUE_RE.search(fragment) else ""
-        if len(candidates) >= MAX_ADDRESSES:
-            break
-    cued = [address for address, how in candidates.items() if how]
-    if cued:
-        return cued[0], CONTACT
-    if len(candidates) == 1:
-        return next(iter(candidates)), MENTIONED
-    return "", ""
 
 
 def _signals(evidence) -> tuple[list[str], list[str], bool]:
@@ -167,7 +123,7 @@ def detect(evidence, own_addresses) -> Notice | None:
     found = tuple(signals + exchange)
     if kind == LEFT_ORG:
         contact, how = named_contact(text, {*own_addresses, evidence.from_address})
-        return Notice(LEFT_ORG, LEFT_ORG, found, contact, how)
+        return Notice(LEFT_ORG, LEFT_ORG, found, contact, how, named_person(text), named_phone(text))
     if kind == OTHER and not replied:
         return Notice(SYSTEM, "auto_generated", found)
     return Notice(AUTO_REPLY, kind, found)

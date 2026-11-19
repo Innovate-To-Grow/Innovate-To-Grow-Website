@@ -16,7 +16,7 @@ from apps.core.services.email.telemetry import kind_label
 from apps.mail.models import EmailCampaign, RecipientLog
 
 from ..charts import buckets, series, trunc
-from .overview import FAILED_OUTCOMES, attempt_figures, message_figures, rate
+from .overview import FAILED_OUTCOMES, JUNK_STATUSES, attempt_figures, message_figures, rate
 from .scope import HOURLY_MAX_SPAN, Scope, monitoring_began
 
 Status = OutboundEmail.Status
@@ -42,6 +42,8 @@ def comparisons(scope: Scope) -> list[dict]:
             failed=Count("pk", filter=Q(status__in=[Status.FAILED, Status.NOT_SENT])),
             uncertain=Count("pk", filter=Q(status=Status.UNCERTAIN)),
             bounced=Count("pk", filter=Q(delivery_status=DeliveryStatus.FAILURE_CONFIRMED)),
+            delivered=Count("pk", filter=Q(delivery_status=DeliveryStatus.DELIVERED)),
+            junk=Count("pk", filter=Q(delivery_status__in=JUNK_STATUSES)),
             retries=Coalesce(Sum(F("attempt_count") - 1, filter=Q(attempt_count__gt=0)), 0),
             first_sent=Min("created_at"),
         )
@@ -89,7 +91,7 @@ def _timeline(emails, attempts, bounces) -> dict | None:
 def failed_recipients(emails) -> tuple[list[OutboundEmail], int]:
     rows = emails.filter(
         Q(status__in=[Status.FAILED, Status.NOT_SENT, Status.UNCERTAIN])
-        | Q(delivery_status__in=[DeliveryStatus.FAILURE_CONFIRMED, DeliveryStatus.DELAYED])
+        | Q(delivery_status__in=[DeliveryStatus.FAILURE_CONFIRMED, DeliveryStatus.DELAYED, *JUNK_STATUSES])
     ).order_by("-last_attempt_at", "recipient")
     return list(rows[:FAILED_RECIPIENT_LIMIT]), rows.count()
 

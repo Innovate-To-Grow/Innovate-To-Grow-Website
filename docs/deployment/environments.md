@@ -51,6 +51,15 @@ Variables are loaded from `src/.env` locally and injected via ECS task definitio
 | `EMAIL_TELEMETRY_ENABLED`, `EMAIL_TELEMETRY_STORE_SUBJECTS` | Record every outgoing email and attempt; keep subjects ([Email monitoring](../integrations/messaging/email-monitoring.md#configuration)) | No (both default to true) |
 | `EMAIL_BOUNCE_PROCESSING_ENABLED`, `EMAIL_BOUNCE_MAILBOXES` | Read bounce reports in the Graph sending mailbox; the only mailboxes it may read (comma-separated) | No (default true, `i2g@ucmerced.edu`) |
 
+The other `EMAIL_MONITORING` values have no environment variable; they are set in
+`src/config/settings/base/integrations/email/email_monitoring/__init__.py` and documented in
+[Email monitoring → Configuration](../integrations/messaging/email-monitoring.md#configuration). This includes the
+delivery-status keys `no_bounce_after_hours` (48) and the Message Trace sync's `trace_interval_seconds` (1800),
+`trace_max_requests_per_run` (5), `trace_page_size` (1000), `trace_max_bytes` (4 MiB), `trace_min_age_minutes` (15)
+and `trace_give_up_hours` (48), each kept within safe bounds by the code. Message Trace itself is switched on in the
+database (the Graph configuration's **Message Trace Delivery Status**, off by default), not by an environment
+variable; see [Microsoft Graph email → Optional: Message Trace](../integrations/messaging/microsoft-graph-email.md#optional-message-trace-delivery-status).
+
 ### AWS / Storage
 
 | Variable | Purpose | Required in prod |

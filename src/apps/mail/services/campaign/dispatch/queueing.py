@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from apps.core.services.background_jobs import enqueue_job
 from apps.mail.models import EmailCampaign, SmsCampaign
+from apps.mail.services.campaign.content.retry import assert_retry_campaign_eligible, assert_retry_recipients
 
 from .channels import EMAIL, SMS, DeliveryChannel
 
@@ -16,13 +17,18 @@ def _queue_campaign(channel: DeliveryChannel, campaign, *, sent_by) -> dict[str,
     as they run, and the worker leaves the campaign lane unclaimed while it waits for its next slot, so jobs queued
     meanwhile still run first.
     """
-    recipients = channel.recipients(campaign)
+    is_retry = channel is EMAIL and bool(getattr(campaign, "retry_source_campaign_id", None))
+    recipients = [] if is_retry else channel.recipients(campaign)
     now = timezone.now()
     available_at = channel.available_at(now)
     with transaction.atomic():
         campaign = channel.campaign_model.objects.select_for_update().get(pk=campaign.pk)
         if campaign.status != "draft":
             raise ValueError(channel.not_draft_message)
+        if is_retry:
+            eligibility = assert_retry_campaign_eligible(campaign)
+            recipients = channel.recipients(campaign)
+            assert_retry_recipients(campaign, recipients, eligibility=eligibility)
         for recipient in recipients:
             _queue_recipient(channel, campaign, recipient, available_at=available_at)
         campaign.status = "queued" if recipients else "sent"

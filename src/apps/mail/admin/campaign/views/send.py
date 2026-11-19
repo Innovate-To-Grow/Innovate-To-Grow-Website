@@ -10,8 +10,13 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 from unfold.decorators import action
 
-from apps.core.models import EmailServiceConfig
 from apps.mail.models import EmailCampaign
+from apps.mail.services.campaign.content.retry import (
+    RetryRefused,
+    assert_retry_campaign_eligible,
+    assert_retry_recipients,
+)
+from apps.mail.services.campaign.content.retry_delivery import delivery_config_for_campaign
 from apps.mail.services.campaign.delivery.pacing import delivery_pacing_notice
 
 from . import services as campaign_api
@@ -40,6 +45,16 @@ class CampaignSendMixin:
             messages.warning(request, "This campaign has already been sent.")
             return HttpResponseRedirect(change_url)
 
+        retry_recipients = None
+        if obj.retry_source_campaign_id:
+            try:
+                eligibility = assert_retry_campaign_eligible(obj)
+                retry_recipients = campaign_api.get_recipients(obj)
+                assert_retry_recipients(obj, retry_recipients, eligibility=eligibility)
+            except RetryRefused as exc:
+                messages.error(request, f"Retry cannot be sent: {exc}")
+                return HttpResponseRedirect(change_url)
+
         if request.method == "POST":
             from django.conf import settings as django_settings
 
@@ -51,6 +66,9 @@ class CampaignSendMixin:
 
             try:
                 self._background_send(obj.pk, request.user.pk)
+            except RetryRefused as exc:
+                messages.error(request, f"Retry was not sent: {exc}")
+                return HttpResponseRedirect(change_url)
             except ValueError:
                 messages.warning(request, "This campaign has already been sent.")
                 return HttpResponseRedirect(change_url)
@@ -61,7 +79,8 @@ class CampaignSendMixin:
 
             return HttpResponseRedirect(reverse("admin:mail_emailcampaign_send_status", args=[object_id]))
 
-        recipients = campaign_api.get_recipients(obj)
+        recipients = retry_recipients if retry_recipients is not None else campaign_api.get_recipients(obj)
+        delivery_config = delivery_config_for_campaign(obj)
         context = {
             **self.admin_site.each_context(request),
             "title": f"Confirm Send - {obj.name}",
@@ -69,7 +88,9 @@ class CampaignSendMixin:
             "recipient_count": len(recipients),
             "skipped_count": len(getattr(recipients, "skipped", [])),
             "without_login_link_count": campaign_api.recipients_without_login_link(obj, recipients),
-            "delivery_notice": delivery_pacing_notice(EmailServiceConfig.load(), len(recipients)),
+            "delivery_notice": delivery_pacing_notice(delivery_config, len(recipients)),
+            "retry_sending_method": delivery_config.get_provider_display() if obj.retry_source_campaign_id else "",
+            "retry_from_email": obj.retry_from_email if obj.retry_source_campaign_id else "",
             "preview_url": reverse("admin:mail_emailcampaign_send_preview", args=[object_id]),
         }
         return TemplateResponse(request, "admin/mail/emailcampaign_send/confirm_send.html", context)

@@ -1,7 +1,7 @@
 from .background_job import BackgroundJob
-from .delivery_rate_limit import DeliveryRateLimit
-from .delivery_rate_state import DeliveryRateState, DeliveryUsageBucket
-from .email_bounce import EmailBounce, EmailMonitorState
+from .delivery_rate_state import DeliveryRateLimit, DeliveryRateState, DeliveryUsageBucket
+from .email_bounce import EmailBounce
+from .email_monitor_state import EmailDeliveryTraceState, EmailMonitorState
 from .email_telemetry import EmailCategory, OutboundEmail, OutboundEmailAttempt
 from .inbound_message import InboundMessage
 from .legacy_access_grant import LegacyAccessGrant
@@ -14,6 +14,7 @@ __all__ = [
     "DeliveryUsageBucket",
     "EmailBounce",
     "EmailCategory",
+    "EmailDeliveryTraceState",
     "EmailMonitorState",
     "InboundMessage",
     "LegacyAccessGrant",

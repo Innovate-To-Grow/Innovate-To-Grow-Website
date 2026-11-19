@@ -1,12 +1,7 @@
-"""Bounce notifications read from the sending mailbox, and the bounce processor's durable state.
+"""Bounce diagnostics for each failed or delayed recipient (the scanner's own state: ``email_monitor_state``).
 
-``EmailBounce`` holds one row per failed (or delayed) recipient of one non-delivery report, matched to the outgoing
-email it reports on when a reliable identifier allows it (``apps.core.services.email.bounces``). Only the fields
-below are kept: never the report's text or the original message's body.
-
-Each row has a fine **category** (what went wrong, from the SMTP reply code, the enhanced status code and, for generic
-codes only, the diagnostic text) and the coarse **classification** derived from it (hard, soft, rejected, delayed,
-unknown), which the dashboard's charts and an email's worst bounce use.
+Categories describe the failure; classifications summarize it for charts. A trusted report binds its SMTP
+final recipient to the outbound envelope and Message-ID. Original mail bodies are never stored.
 """
 
 from django.db import models
@@ -19,28 +14,30 @@ from .email_telemetry import OutboundEmail
 CATEGORY_GUIDANCE = {
     "hard": "The address does not exist. Strong evidence: mark it undeliverable or replace it.",
     "mailbox_disabled": "The mailbox is disabled. Strong evidence: replace the address, or mark it undeliverable.",
-    "mailbox_full": "The mailbox is full: temporary. It only counts toward the repeated-failure threshold.",
+    "mailbox_full": (
+        "The mailbox is full: temporary. Retry the address after the recipient frees space; repeated failures "
+        "count toward review."
+    ),
     "transient": (
         "Temporary problem (connection, DNS, timeout, expired after retries, message size): the address is probably "
-        "fine. It only counts toward the repeated-failure threshold; the next campaign tries it again."
+        "fine. Retry the address after the receiving service recovers; repeated failures count toward review."
     ),
     "spam_rejected": (
         "Our sending side: spam filtering, a block list, our sending reputation or sender authentication (SPF, DKIM, "
-        "DMARC), or the content. Check those, not the contact."
+        "DMARC), or the content. Check those, then retry from another configured sender; the problem is not the "
+        "contact."
     ),
     "relay_denied": (
         "Our sending side: the receiving server refused to relay our message. Check our sending route and "
-        "authorisation (connector, sending mailbox, SPF), not the contact."
+        "authorisation (connector, sending mailbox, SPF), then retry from another configured sender; the problem "
+        "is not the contact."
     ),
     "policy_rejected": (
         "The recipient's server policy refused the message (for example a group that only takes internal senders). "
         "Not a bad address: no action on the contact."
     ),
     "delayed": "Still retrying: not a failure yet.",
-    "unknown": (
-        "Unclear: the report gives no specific code or reason. It only counts toward the repeated-failure threshold; "
-        "read the diagnostic."
-    ),
+    "unknown": "The cause is unclear. Review the report before deciding whether to act.",
 }
 # The same in a few words, for table rows.
 CATEGORY_HINTS = {
@@ -52,7 +49,7 @@ CATEGORY_HINTS = {
     "relay_denied": "Our sending side: sending route or authorisation",
     "policy_rejected": "The recipient's policy: no action on the contact",
     "delayed": "Still retrying",
-    "unknown": "Unclear: counts toward the threshold only",
+    "unknown": "Unclear: review the evidence",
 }
 
 
@@ -123,6 +120,9 @@ class EmailBounce(ProjectControlModel):
     reason = models.CharField(max_length=255, blank=True, default="")
     email = models.ForeignKey(OutboundEmail, null=True, blank=True, on_delete=models.SET_NULL, related_name="bounces")
     campaign_id = models.UUIDField(null=True, blank=True, db_index=True)
+    trusted_recipient = models.BooleanField(
+        default=False, db_default=False, help_text="The DSN final recipient and original Message-ID match the envelope."
+    )
     match_method = models.CharField(
         max_length=16, choices=MatchMethod.choices, default=MatchMethod.UNMATCHED, db_index=True
     )
@@ -158,40 +158,3 @@ class EmailBounce(ProjectControlModel):
     def guidance_for(category: str) -> str:
         """What a category means for the address and what to look at ("" for an unknown value)."""
         return CATEGORY_GUIDANCE.get(category, "")
-
-
-class EmailMonitorState(ProjectControlModel):
-    """The bounce processor's checkpoint, lease and health for one mailbox, and the controls staff set for it on the
-    monitoring dashboard (pause, first-scan lookback)."""
-
-    mailbox = models.CharField(max_length=254, unique=True)
-    paused = models.BooleanField(default=False, help_text="Paused from the dashboard: scans skip this mailbox.")
-    checkpoint_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="Received time of the newest message every scan before it fully processed, or the earlier time "
-        "staff chose with Rescan since.",
-    )
-    initial_lookback_hours = models.PositiveIntegerField(
-        null=True,
-        blank=True,
-        help_text="How many hours back the first scan reads while there is no checkpoint (set on the Email Monitoring "
-        "dashboard). Empty: the EMAIL_MONITORING default.",
-    )
-    lease_token = models.UUIDField(null=True, blank=True, editable=False)
-    lease_until = models.DateTimeField(null=True, blank=True, editable=False)
-    last_run_started_at = models.DateTimeField(null=True, blank=True)
-    last_run_finished_at = models.DateTimeField(null=True, blank=True)
-    last_success_at = models.DateTimeField(null=True, blank=True)
-    last_error_at = models.DateTimeField(null=True, blank=True)
-    last_error = models.CharField(max_length=500, blank=True, default="")
-    consecutive_failures = models.PositiveIntegerField(default=0)
-    next_run_after = models.DateTimeField(null=True, blank=True)
-    last_run_stats = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        verbose_name = "Email Monitor State"
-        verbose_name_plural = "Email Monitor States"
-
-    def __str__(self):
-        return f"Bounce processing for {self.mailbox}"

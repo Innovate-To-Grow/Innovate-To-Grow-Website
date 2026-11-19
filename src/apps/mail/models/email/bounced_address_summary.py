@@ -1,13 +1,14 @@
 """What the Bounced addresses list shows about an address: its counts by category, the latest category's label and
 guidance, and the resolution."""
 
+from django.utils import timezone
+
 from apps.core.models import EmailBounce
 
 from .bounce_records import BouncedAddressAction
 
 Category = EmailBounce.Category
-# The categories that count toward "repeated temporary failures" (with SES transient and undetermined bounces).
-TEMPORARY_CATEGORIES = (Category.TRANSIENT, Category.MAILBOX_FULL, Category.UNKNOWN)
+TEMPORARY_CATEGORIES = (Category.TRANSIENT, Category.MAILBOX_FULL)
 # Short labels for the counts column, in the order shown.
 CATEGORY_SHORT_LABELS = {
     Category.HARD: "not found",
@@ -24,6 +25,12 @@ CATEGORY_SHORT_LABELS = {
 
 class BouncedAddressSummaryMixin:
     """Count and label properties for ``BouncedAddress``."""
+
+    CONTACT_KINDS = {
+        "new_address": "their new address, the notice says",
+        "contact": "who to contact instead, the notice says",
+        "mentioned": "an address the notice names",
+    }
 
     @property
     def is_suppressed(self) -> bool:
@@ -56,10 +63,10 @@ class BouncedAddressSummaryMixin:
 
     @property
     def temporary_total(self) -> int:
-        """Temporary failures: Graph reports of a temporary, full-mailbox or unknown category, and SES transient and
-        undetermined bounces. They only ever count toward "repeated temporary failures"."""
+        """Graph temporary and full-mailbox failures plus SES events classified as temporary receiving failures."""
         graph = sum(self.category_count(category) for category in TEMPORARY_CATEGORIES)
-        return graph + self.ses_transient_count + self.ses_undetermined_count
+        ses = (self.ses_last or {}).get("review_counts") or {}
+        return graph + int(ses.get("temporary", 0))
 
     @property
     def last_category_label(self) -> str:
@@ -94,6 +101,20 @@ class BouncedAddressSummaryMixin:
     @property
     def left_org_contact_label(self) -> str:
         return self.CONTACT_KINDS.get(self.left_org_contact_kind, "an address the notice names")
+
+    @property
+    def left_org_hint_is_current(self) -> bool:
+        return (
+            self.left_org_hint_source_id is not None
+            and self.left_org_hint_expires_at is not None
+            and self.left_org_hint_expires_at > timezone.now()
+        )
+
+    @property
+    def left_org_has_contact_hint(self) -> bool:
+        return self.left_org_hint_is_current and bool(
+            self.left_org_contact or self.left_org_contact_name or self.left_org_contact_phone
+        )
 
     @property
     def graph_is_latest(self) -> bool:

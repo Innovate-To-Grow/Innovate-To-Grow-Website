@@ -132,7 +132,7 @@ class ClassifyTests(SimpleTestCase):
     are tested in ``test_bounce_categories``."""
 
     def test_hard_bounces(self):
-        for status in ("5.1.1", "5.1.10", "5.1.2", "5.2.1", "5.4.1", "5.4.4"):
+        for status in ("5.1.1", "5.1.10", "5.1.2", "5.2.1", "5.4.310"):
             with self.subTest(status=status):
                 verdict = classify("failed", status)
                 self.assertEqual((verdict.classification, verdict.is_permanent), (Classification.HARD, True))

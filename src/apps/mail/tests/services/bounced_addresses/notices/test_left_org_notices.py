@@ -7,6 +7,7 @@ synthetic."""
 import itertools
 from datetime import timedelta
 
+from django.conf import settings
 from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
@@ -52,7 +53,12 @@ class CountingTests(TestCase):
 
     def test_a_matched_notice_counts_against_the_address_the_site_mailed(self):
         member = make_person(JORDAN)
-        notice = make_notice(named_contact="Riley.Chen@contoso.example", named_contact_kind="contact")
+        notice = make_notice(
+            named_contact="Riley.Chen@contoso.example",
+            named_contact_kind="contact",
+            named_contact_name="Riley Chen",
+            named_contact_phone="+12095550123",
+        )
         before = ContactEmail.objects.get(email_address=JORDAN)
 
         result = count_now()
@@ -64,6 +70,13 @@ class CountingTests(TestCase):
             (1, notice.received_at, notice.received_at),
         )
         self.assertEqual((row.left_org_contact, row.left_org_contact_kind), ("riley.chen@contoso.example", "contact"))
+        self.assertEqual((row.left_org_contact_name, row.left_org_contact_phone), ("Riley Chen", "+12095550123"))
+        self.assertEqual(row.left_org_hint_source, notice)
+        self.assertEqual(
+            row.left_org_hint_expires_at,
+            notice.processed_at + timedelta(days=settings.EMAIL_MONITORING["left_org_hint_retention_days"]),
+        )
+        self.assertTrue(row.left_org_has_contact_hint)
         self.assertEqual(row.left_org_ticket, notice.result["ticket"])
         self.assertEqual((row.first_bounce_at, row.last_bounce_at), (notice.received_at, notice.received_at))
         self.assertEqual((row.suggestion, row.status, row.suppressed_at), (Suggestion.LEFT_ORG, "open", None))
@@ -159,8 +172,14 @@ class EvidenceOnlyTests(TestCase):
     def test_the_suggestion_order(self):
         cases = (
             ({"complaint_count": 1}, Suggestion.UNSUBSCRIBE),
-            ({}, Suggestion.UNDELIVERABLE),
-            ({"hard_count": 0, "category_counts": {"mailbox_disabled": 1}}, Suggestion.REPLACE),
+            (
+                {"trusted_graph_hard_count": 1, "trusted_graph_last_permanent_at": timezone.now()},
+                Suggestion.UNDELIVERABLE,
+            ),
+            (
+                {"trusted_graph_disabled_count": 1, "trusted_graph_last_permanent_at": timezone.now()},
+                Suggestion.REPLACE,
+            ),
             ({"hard_count": 0, "soft_count": 5}, Suggestion.LEFT_ORG),
             ({"hard_count": 0, "rejected_count": 1, "category_counts": {"relay_denied": 1}}, Suggestion.LEFT_ORG),
         )

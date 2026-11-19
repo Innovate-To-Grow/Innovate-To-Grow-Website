@@ -78,12 +78,14 @@ class ReaderRequestTests(GraphReaderFixtureMixin, TestCase):
 
 class AllowListTests(TestCase):
     def test_the_graph_allow_list_still_only_reads_and_sends(self):
-        """No new Microsoft Graph request (no PATCH, move, forward or mark-read) came with the inbound queue."""
+        """No new Microsoft Graph request (no PATCH, move, forward or mark-read) came with the inbound queue; the only
+        later addition is the read-only Message Trace list of one sender."""
         self.assertEqual(
             [(method, host) for method, host, _pattern in transport.ALLOWED_REQUESTS],
             [
                 ("POST", transport.AUTHORITY_HOST),
                 ("POST", transport.GRAPH_HOST),
+                ("GET", transport.GRAPH_HOST),
                 ("GET", transport.GRAPH_HOST),
                 ("GET", transport.GRAPH_HOST),
                 ("GET", transport.GRAPH_HOST),

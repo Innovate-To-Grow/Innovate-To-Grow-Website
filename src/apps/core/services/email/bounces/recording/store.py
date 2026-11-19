@@ -3,7 +3,8 @@
 Each (report, recipient) is saved once: its key is derived from the mailbox, the report's own Message-ID (or its
 Graph id when it has none) and the recipient, and the key is unique in the table, so scanning a report again (the
 scan overlap, a retried run, two workers) never adds a second row. A matched email's API status is left as it was
-(it was accepted); only its delivery status moves to "failure confirmed" (or "delayed" while nothing worse is known).
+(it was accepted); its delivery status moves to "failure confirmed" (over any status, a trace's "delivered" too)
+or to "delayed" (unless something stronger is known: ``DeliveryStatus.stronger_than``).
 
 A report is classified from what is stored (action, status code, scrubbed diagnostic), so it can be classified again
 from the row alone: ``reclassify_stored`` after the rules change (Bounced addresses → Rebuild counts), and
@@ -78,6 +79,7 @@ def save_report(*, mailbox: str, graph_id: str, received_at: datetime, report: B
             continue
         found = match(
             recipient=row.recipient,
+            final_recipient=row.final_recipient,
             original_message_id=report.original_message_id,
             original_subject=report.original_subject,
             received_at=received_at,
@@ -104,6 +106,7 @@ def save_report(*, mailbox: str, graph_id: str, received_at: datetime, report: B
             "email": found.email,
             "campaign_id": found.email.campaign_id if found.email is not None else None,
             "match_method": found.method,
+            "trusted_recipient": bool(row.final_recipient and found.method == EmailBounce.MatchMethod.MESSAGE_ID),
             "match_note": text.clean(found.note, 255),
         }
         try:
@@ -123,7 +126,8 @@ def apply_to_email(email_id, bounce: EmailBounce) -> None:
     now = timezone.now()
     emails = OutboundEmail.objects.filter(pk=email_id)
     if bounce.classification == Classification.DELAYED:
-        emails.exclude(delivery_status=DeliveryStatus.FAILURE_CONFIRMED).update(
+        # Never over a stronger status; an uncertain send ("not accepted") still becomes delayed.
+        emails.exclude(delivery_status__in=DeliveryStatus.stronger_than(DeliveryStatus.DELAYED)).update(
             delivery_status=DeliveryStatus.DELAYED, updated_at=now
         )
         return

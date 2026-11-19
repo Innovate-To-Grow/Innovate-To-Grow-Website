@@ -105,10 +105,18 @@ def _decide(status: str, smtp: str, text: str) -> tuple[str, str]:
             return _refined(text, phrases.TEMPORARY_REFINEMENTS, Category.TRANSIENT)
         return _refined(text, phrases.ALL, Category.UNKNOWN)
     if status in codes.SIZE_CODES and phrases.ZERO_LIMIT_RE.search(text):
-        return Category.MAILBOX_DISABLED, phrases.ZERO_LIMIT.reason
+        return Category.TRANSIENT, phrases.ZERO_LIMIT.reason
     found = codes.specific(*parts)
     if status in codes.AMBIGUOUS:
-        return _refined(text, phrases.AMBIGUOUS_REFINEMENTS, found)
+        refined, why = _refined(text, phrases.AMBIGUOUS_REFINEMENTS, found)
+        missing = phrases.refine(text, {Category.HARD})
+        if refined in {Category.RELAY_DENIED, Category.SPAM_REJECTED} and missing:
+            return Category.UNKNOWN, "Conflicting sending-side and recipient diagnostics; review the report"
+        if missing and (refined == Category.UNKNOWN or phrases.ZERO_LIMIT_RE.search(text)):
+            return missing.category, missing.reason
+        if refined == Category.UNKNOWN and status == "5.4.1" and "recipient address rejected: access denied" in text:
+            return Category.HARD, "Exchange rejected the recipient address (access denied)"
+        return refined, why
     if found is not None:
         return found, ""
     category = codes.default(*parts)

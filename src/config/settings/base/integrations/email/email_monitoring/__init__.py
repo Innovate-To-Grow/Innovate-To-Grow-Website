@@ -68,6 +68,9 @@ EMAIL_MONITORING = {
     # never was (not received: a rescan records old mail, which must still wait to be imported). What a consumer made
     # of it (a helpdesk ticket) has its own retention.
     "inbound_retention_days": 90,
+    # Unverified third-party email, name and US-phone hints copied from a left-organisation notice are retained only
+    # this long after that message was processed. They are also cleared when the source inbound row is deleted.
+    "left_org_hint_retention_days": 90,
     # Ask Microsoft Graph for immutable message ids (Prefer: IdType="ImmutableId"), which survive a move to another
     # Outlook folder. Off by default: switching changes the ids the bounce scan, the helpdesk's intake and the Admin
     # Inbox see once (bounce records and helpdesk tickets still de-duplicate through the internet Message-ID).
@@ -98,6 +101,20 @@ EMAIL_MONITORING = {
     # A bounce without the original Message-ID is matched to an email sent to the same recipient with the same
     # subject in this window before it, and only when exactly one such email exists.
     "bounce_match_window_hours": 120,
+    # An accepted Graph email shows "No bounce received" (likely delivered, not proof) once the bounce scan has read
+    # its sending mailbox this many hours past the send without a report. Never above bounce_match_window_hours.
+    "no_bounce_after_hours": 48,
+    # Message Trace sync (off unless the Graph config's Message Trace toggle is on): seconds between two syncs (never
+    # under 300), Graph requests per sync, rows asked per request (1-5000), and the most bytes read of one response
+    # (a longer one fails the request).
+    "trace_interval_seconds": 1800,
+    "trace_max_requests_per_run": 5,
+    "trace_page_size": 1000,
+    "trace_max_bytes": 4 * 1024 * 1024,
+    # An email is first traced this many minutes after it was accepted (Exchange needs time to report it), and no
+    # longer once this many hours passed.
+    "trace_min_age_minutes": 15,
+    "trace_give_up_hours": 48,
     # How a message is recognised as a bounce candidate before its MIME is read (case-insensitive): a subject
     # prefix, or a sender whose local part is one of these (or starts with "microsoftexchange", Exchange's NDR sender).
     "ndr_subject_prefixes": (

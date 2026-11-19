@@ -12,12 +12,14 @@ from apps.core.models import EmailServiceConfig
 from apps.core.services.delivery_rates import WaitMode, wait_mode
 from apps.core.services.delivery_rates.rules.defaults import section
 from apps.mail.models import RecipientLog
-from apps.mail.services.audience.suppression import is_suppressed
+from apps.mail.services.audience.suppression import CampaignAddressHeld, check_before_delivery, is_suppressed
+from apps.mail.services.campaign.content.retry import assert_retry_campaign_eligible, assert_retry_recipients
 
 from ...audience import get_recipients
 from ..content.personalize import personalize
 from ..content.preview import render_email_html
 from ..delivery.errors import unexpected_delivery_error_message
+from .configuration import load_delivery
 from .progress import (
     _fail_campaign_for_missing_delivery_config,
     _finalize_campaign,
@@ -26,13 +28,15 @@ from .progress import (
 )
 from .recipient_logs import _configured_provider, _record_send_result, pause_recipients, skip_suppressed_log
 from .recipients import _recipient_context, _unsubscribe_url_for, carries_login_link
-from .transport import SesSendResult, _get_configuration_set_name, _get_ses_client, _send_via_ses
+from .transport import SesSendResult, _get_ses_client, _send_via_ses
 
 logger = logging.getLogger(__name__)
 
 
 def send_campaign(campaign, sent_by):
+    eligibility = assert_retry_campaign_eligible(campaign)
     recipients = get_recipients(campaign)
+    assert_retry_recipients(campaign, recipients, eligibility=eligibility)
     _mark_campaign_sending(campaign, sent_by, len(recipients))
     logs = RecipientLog.objects.bulk_create(
         [
@@ -49,7 +53,7 @@ def send_campaign(campaign, sent_by):
     if not recipients:
         return _finalize_campaign(campaign)
 
-    delivery = _load_delivery()
+    delivery = load_delivery(campaign, EmailServiceConfig, _get_ses_client)
     if delivery[1] is None:
         _fail_campaign_for_missing_delivery_config(campaign, recipients)
     if delivery[0].provider == "ses" and not delivery[2]:
@@ -61,20 +65,10 @@ def send_campaign(campaign, sent_by):
     return _finalize_campaign(campaign)
 
 
-def _load_delivery():
-    """``(config, provider config or None, SES configuration set)`` as configured right now."""
-    config = EmailServiceConfig.load()
-    return config, _get_ses_client(config), _get_configuration_set_name(config)
-
-
 def send_to_recipients(campaign, pending, delivery=None) -> None:
-    """Send each ``(recipient, log)`` on the bulk lane in turn; pause the rest when the delivery limits hold them back.
-
-    The email configuration is re-read every ``jobs.runner_refresh_recipients`` recipients, so a provider change
-    made while a long campaign runs applies to the remaining recipients.
-    """
+    """Send bulk recipients until paused; refresh ordinary routes regularly and preserve a retry's pinned route."""
     refresh_every = section("jobs")["runner_refresh_recipients"]
-    delivery = delivery or _load_delivery()
+    delivery = delivery or load_delivery(campaign, EmailServiceConfig, _get_ses_client)
     # Every admission in this thread may wait up to the dedicated cap for its slot instead of being deferred.
     with wait_mode(WaitMode.DEDICATED):
         for index, (recipient, log) in enumerate(pending, start=1):
@@ -83,7 +77,7 @@ def send_to_recipients(campaign, pending, delivery=None) -> None:
                 break
             if index % refresh_every == 0:
                 _refresh_campaign_progress(campaign)
-                delivery = _load_delivery()
+                delivery = load_delivery(campaign, EmailServiceConfig, _get_ses_client)
 
 
 def _send_one_recipient(campaign, config, ses_client, configuration_set, recipient, *, log=None) -> bool:
@@ -107,8 +101,16 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
         body_html = personalize(campaign.body, context)
         unsubscribe_url = _unsubscribe_url_for(campaign, recipient)
         wrapped_html = render_email_html(body_html, unsubscribe_url=unsubscribe_url)
-        result = _send_when_taken(
-            lambda: _send_with_configured_provider(
+
+        def live_retry_check():
+            # The transport calls this after delivery-rate admission, immediately before each possible provider
+            # invocation (including a retry after provider throttling).
+            eligibility = assert_retry_campaign_eligible(campaign, recipient_log=log)
+            assert_retry_recipients(campaign, [recipient], eligibility=eligibility)
+            check_before_delivery(recipient["email"])
+
+        def send_after_live_retry_check():
+            return _send_with_configured_provider(
                 config=config,
                 ses_client=ses_client,
                 configuration_set=configuration_set,
@@ -120,11 +122,16 @@ def _send_one_recipient(campaign, config, ses_client, configuration_set, recipie
                 delivery_attempt=log.attempts,
                 keep_sent_copy=not carries_login_link(context, subject, body_html),
                 campaign_id=campaign.pk,
+                before_provider_call=live_retry_check,
             )
-        )
+
+        result = _send_when_taken(send_after_live_retry_check)
         if result is None:
             return False
         _record_send_result(campaign, log, result)
+    except CampaignAddressHeld:
+        if skip_suppressed_log(log):
+            campaign.failed_count += 1
     except Exception as exc:
         logger.exception("Failed to process recipient %s", recipient["email"])
         RecipientLog.objects.filter(
@@ -171,6 +178,7 @@ def _send_with_configured_provider(
     delivery_attempt=0,
     keep_sent_copy=True,
     campaign_id=None,
+    before_provider_call=None,
 ):
     if ses_client is not None:
         return _send_via_ses(
@@ -185,5 +193,6 @@ def _send_with_configured_provider(
             delivery_attempt=delivery_attempt,
             keep_sent_copy=keep_sent_copy,
             campaign_id=campaign_id,
+            before_provider_call=before_provider_call,
         )
     return SesSendResult(provider="", error="Email delivery is not configured.")

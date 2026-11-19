@@ -25,7 +25,9 @@ PARKED = datetime(9999, 12, 31, tzinfo=UTC)
 PARKED_ID = uuid.UUID(int=2**128 - 1)
 GRAPH_COUNT_FIELDS = ("hard_count", "soft_count", "rejected_count", "delayed_count", "unknown_count")
 # The counts a rebuild starts again (the left-the-organisation notices stay).
+TRUSTED_GRAPH_FIELDS = ("trusted_graph_hard_count", "trusted_graph_disabled_count")
 REBUILT_COUNT_FIELDS = (
+    *TRUSTED_GRAPH_FIELDS,
     *GRAPH_COUNT_FIELDS,
     "matched_count",
     "ses_permanent_count",
@@ -34,6 +36,8 @@ REBUILT_COUNT_FIELDS = (
     "complaint_count",
 )
 COUNTED_FIELDS = [
+    *TRUSTED_GRAPH_FIELDS,
+    "trusted_graph_last_permanent_at",
     "hard_count",
     "soft_count",
     "rejected_count",
@@ -61,6 +65,10 @@ COUNTED_FIELDS = [
     "left_org_last_at",
     "left_org_contact",
     "left_org_contact_kind",
+    "left_org_contact_name",
+    "left_org_contact_phone",
+    "left_org_hint_source",
+    "left_org_hint_expires_at",
     "left_org_ticket",
     "first_bounce_at",
     "last_bounce_at",

@@ -73,7 +73,7 @@ test.describe.serial('Email Monitoring, the unified delivery page', {tag: '@admi
 
     await expectCurrentTab(page, 'Overview');
     await expect(page.getByRole('heading', {name: 'Bounce processing'})).toBeVisible();
-    await expect(page.locator('[data-monitor-kpis] .i2g-monitor-tile')).toHaveCount(6);
+    await expect(page.locator('[data-monitor-kpis] .i2g-monitor-tile')).toHaveCount(9);
     await expect(page.getByRole('heading', {name: /^Recipients and API attempts/})).toBeVisible();
     await expect(page.getByRole('heading', {name: /^Trends/})).toBeVisible();
     await expect(page.getByRole('heading', {name: /^Broadcast campaigns/})).toBeVisible();
