@@ -5,8 +5,8 @@ from django.db import transaction
 from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import ChatConversation
 
-from .actions.engine.context import ACTION_CONVERSATION_ID, current_user
-from .query_tools.tool_modules.custom.allowlist import MODEL_MAP
+from ...query_tools.tool_modules.custom.allowlist import MODEL_MAP
+from .context import ACTION_CONVERSATION_ID, current_user
 
 _TOOLS_BY_GRANT = {
     ("authn",): (

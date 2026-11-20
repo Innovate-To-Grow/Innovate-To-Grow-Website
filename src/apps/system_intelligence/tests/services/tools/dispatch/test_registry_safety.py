@@ -2,7 +2,7 @@ import json
 
 from agents.tool_context import ToolContext
 from asgiref.sync import async_to_sync
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TransactionTestCase
 from django.urls import reverse
 
 from apps.event.tests.helpers import make_admin
@@ -13,10 +13,10 @@ from apps.system_intelligence.models import (
     SystemIntelligenceExport,
 )
 from apps.system_intelligence.services import actions
+from apps.system_intelligence.services.actions.engine.tool_access import DYNAMIC_TOOLS, STATIC_TOOL_GRANTS, TOOL_DENIED
 from apps.system_intelligence.services.agents.definition.agent_builder import build_agent_tools
 from apps.system_intelligence.services.agents.definition.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
 from apps.system_intelligence.services.query_tools import TOOL_REGISTRY, execute_tool
-from apps.system_intelligence.services.tool_access import DYNAMIC_TOOLS, STATIC_TOOL_GRANTS, TOOL_DENIED
 from apps.system_intelligence.services.tools.framework.registry import get_agent_tool_callables
 
 READ_TOOL_NAMES = frozenset(
@@ -105,7 +105,7 @@ class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
         self.assertFalse(read_only_tools & EXPORT_TOOL_NAMES)
 
 
-class AssistantToolAuthorizationTests(TestCase):
+class AssistantToolAuthorizationTests(TransactionTestCase):
     def setUp(self):
         self.user = make_admin(apps=["system_intelligence", "authn"])
         self.conversation = ChatConversation.objects.create(created_by=self.user)

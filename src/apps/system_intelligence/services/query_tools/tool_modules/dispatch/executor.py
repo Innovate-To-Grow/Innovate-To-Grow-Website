@@ -32,7 +32,7 @@ def execute_tool(tool_use, *, user=None):
         return f"Unknown tool: {name}"
 
     try:
-        from apps.system_intelligence.services.tool_access import TOOL_DENIED, authorize_tool
+        from apps.system_intelligence.services.actions.engine.tool_access import TOOL_DENIED, authorize_tool
 
         if not user_can_access_app(user, "system_intelligence"):
             return TOOL_DENIED

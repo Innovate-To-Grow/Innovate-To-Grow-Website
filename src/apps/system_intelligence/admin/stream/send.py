@@ -13,7 +13,7 @@ from apps.system_intelligence.models import (
     ChatMessage,
     SystemIntelligenceConfig,
 )
-from apps.system_intelligence.services.tool_access import has_chat_grants
+from apps.system_intelligence.services.actions.engine.tool_access import has_chat_grants
 
 from .async_events import _async_event_stream
 from .sync_events import _event_stream

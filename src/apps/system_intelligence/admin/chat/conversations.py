@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import ChatConversation
 from apps.system_intelligence.services import actions as system_intelligence_actions
-from apps.system_intelligence.services.tool_access import has_chat_grants
+from apps.system_intelligence.services.actions.engine.tool_access import has_chat_grants
 
 
 def conversations_fragment(request):

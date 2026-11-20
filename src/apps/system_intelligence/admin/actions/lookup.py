@@ -6,7 +6,7 @@ from django.core.exceptions import PermissionDenied
 from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services.actions.comparison import block_key
-from apps.system_intelligence.services.tool_access import has_chat_grants
+from apps.system_intelligence.services.actions.engine.tool_access import has_chat_grants
 
 
 def _get_user_action_request(request, action_id):
