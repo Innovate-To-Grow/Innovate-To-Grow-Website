@@ -1,6 +1,7 @@
 """The intake pages: the intake card's next scan and last-scan line say only what holds (no next scan while switched
 off, not active or paused), and Ingest Problems' "Dismiss (handled)" takes a problem that can never be imported out of
-the Problems view, audited, without a column of its own (Retry undoes it)."""
+the Problems view, audited, without a column of its own (Retry undoes it). Retry is audited too and says why it left
+rows as they were; the Classification filter names classifications as the list's column does, with no blank choice."""
 
 from datetime import timedelta
 
@@ -11,6 +12,7 @@ from django.urls import reverse
 from django.utils import dateformat, timezone
 
 from apps.core.models import InboundMessage
+from apps.core.services.email.inbound import LABELS
 from apps.helpdesk.tests.admin.test_intake_admin import IntakeAdminTestCase
 
 from ....models import HelpdeskSettings, IntakeState
@@ -116,3 +118,33 @@ class DismissTests(TestCase):
         self.assertNotIn(DISMISSED, self.failed.result)
         InboundMessage.objects.filter(pk=self.failed.pk).update(status=Status.FAILED)  # it fails again
         self.assertEqual(self.listed(), {self.gone.pk, self.failed.pk})
+
+    def test_retry_is_audited_and_says_why_it_left_a_message_as_it_was(self):
+        self.act("dismiss", self.gone)
+
+        response = self.act("retry", self.gone, self.failed, self.done)
+
+        self.assertContains(
+            response,
+            "2 messages queued again for import. 1 left as it was: only failed or skipped messages are retried.",
+        )
+        retried = LogEntry.objects.filter(change_message__startswith="Retried")
+        self.assertEqual(
+            dict(retried.values_list("object_id", "change_message")),
+            {
+                str(self.gone.pk): "Retried: queued again for import. Its dismissal was cleared.",
+                str(self.failed.pk): "Retried: queued again for import.",
+            },
+        )
+        self.assertEqual({entry.user for entry in retried}, {self.staff})
+
+    def test_the_classification_filter_names_them_as_the_column_does_with_no_blank_choice(self):
+        InboundMessage.objects.filter(pk=self.done.pk).update(classification="auto_reply")
+
+        response = self.client.get(self.url, {"state": "all"})
+
+        changelist = response.context["cl"]
+        found = next(spec for spec in changelist.filter_specs if spec.title == "classification")
+        self.assertEqual([choice["display"] for choice in found.choices(changelist)], ["All", *LABELS.values()])
+        filtered = self.client.get(self.url, {"state": "all", found.parameter_name: "auto_reply"})
+        self.assertEqual([row.pk for row in filtered.context["cl"].result_list], [self.done.pk])

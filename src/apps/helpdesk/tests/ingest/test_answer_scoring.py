@@ -3,6 +3,8 @@
 - an answer is scored on what its sender wrote, whatever the order: a quote first (bottom-posted), "> " lines in
   between, or an HTML-only answer with its quote block; the phishing checks read the whole message, HTML included, so
   a raw-IP or deceptive link keeps a phish spam even under a quote;
+- written below its quote's "On … wrote:" line (as text, or in Thunderbird's HTML), it is scored on what follows; an
+  answer that is all quote has no words of its own, nor has the original below an Outlook header block;
 - an answer Exchange rates as spam reaches staff, warned, rather than vanishing on the ticket;
 - any one phishing signal (a shortener, hidden HTML) keeps a proven sender's phish spam;
 - links rewritten by Proofpoint URL Defense (v2 and v3) are judged by where they go."""
@@ -12,6 +14,7 @@ from django.test import TestCase
 
 from ...models import Ticket, TicketMessage
 from ...services import tickets
+from ...services.ingest.routing import scam
 from .. import corpus
 from ..helpers import helpdesk_staff, receive
 from ..service.intake.scam_mail import DMARC_PASS, WORD_REASONS, locked_out
@@ -28,6 +31,25 @@ GMAIL_QUOTE = (
     '<div class="gmail_quote"><div class="gmail_attr">On Wed, Nov 11, 2026 at 10:00 AM Innovate to Grow wrote:<br>'
     '</div><blockquote class="gmail_quote">Hello Lee, your account has been unlocked. Click here on the sign-in page '
     "to reset your password within 24 hours.</blockquote></div>"
+)
+ON_WROTE = "On Fri, Nov 20, 2026 at 12:27 PM Innovate to Grow <i2g@ucmerced.edu> wrote:"
+OWN_PHISH = (
+    "Your account has been suspended. Reply immediately within 24 hours with your password, your bank account number "
+    "and your date of birth, or your account will be closed."
+)
+OWN_PHISH_REASONS = [
+    "Body contains urgency/pressure language (3 pattern(s))",
+    "Body requests personal/financial information (4 type(s))",
+]
+HTML_ONLY = "Message is HTML-only with no plain-text alternative"  # the structure check reads the whole message
+# Thunderbird's quote: its "On … wrote:" outside the blockquote.
+THUNDERBIRD = (
+    '<div class="moz-cite-prefix">On 11/20/26 12:27 PM, Innovate to Grow wrote:<br></div>'
+    '<blockquote type="cite">Hello Lee, we reset it. Please tell us if it works.</blockquote>'
+)
+OUTLOOK = (
+    "From: Innovate to Grow <i2g@ucmerced.edu>\nSent: Friday, November 20, 2026 12:27 PM\n"
+    "To: Lee Kim <lee@example.org>\nSubject: RE: Cannot sign in\n\n"
 )
 
 
@@ -47,6 +69,51 @@ class _AnswerCase(TestCase):
     def answer(self, text, **values) -> TicketMessage:
         return self.answered(corpus.message(sender=LEE, subject=self.subject, text=text, **values))
 
+    def html_answer(self, html, message_id="<lee-3@x>") -> TicketMessage:
+        head = f"From: {LEE}\r\nTo: i2g@ucmerced.edu\r\nSubject: {self.subject}\r\nMessage-ID: {message_id}\r\n"
+        return self.answered(f"{head}Content-Type: text/html; charset=utf-8\r\n\r\n{html}".encode())
+
+
+class BelowTheQuoteTests(_AnswerCase):
+    def assertWarned(self, message, *more):
+        # High on its own words, which never makes an answer spam: flagged suspicious, with the reasons.
+        self.assertEqual((message.kind, message.scam_level), (Kind.CUSTOMER, "medium"))
+        self.assertEqual(message.scam_reasons, [*OWN_PHISH_REASONS, *more])
+
+    def assertNotScored(self, message):
+        self.assertEqual((message.kind, message.scam_level, message.scam_reasons), (Kind.CUSTOMER, "low", []))
+
+    def test_an_answer_below_its_quotes_on_wrote_line_is_judged_on_what_follows(self):
+        text = f"{ON_WROTE}\n> Hello Lee, we reset it. Please tell us if it works.\n\n{OWN_PHISH}"
+
+        self.assertWarned(self.answer(text))
+        self.assertEqual(scam.own_words(text, ""), OWN_PHISH)
+
+    def test_so_is_one_in_thunderbirds_html(self):
+        layouts = {"below the quote": THUNDERBIRD, "a greeting above it": f"<p>Hi Lee,</p>{THUNDERBIRD}"}
+        for index, (layout, quote) in enumerate(layouts.items()):
+            with self.subTest(layout):
+                message = self.html_answer(f"{quote}<p>{OWN_PHISH}</p>", f"<lee-tb-{index}@x>")
+
+                self.assertWarned(message, HTML_ONLY)
+
+    def test_an_answer_that_is_all_quote_has_no_words_of_its_own(self):
+        text = f"{ON_WROTE}\n> Hello Lee, your account has been suspended: reply immediately with your password."
+
+        self.assertNotScored(self.answer(text))
+        self.assertEqual((scam.own_words(text, ""), scam.own_words("", THUNDERBIRD)), ("", ""))
+
+    def test_the_original_below_an_outlook_header_block_is_never_its_own(self):
+        answers = {
+            "top-posted": f"Thanks, it works now.\n\n{OUTLOOK}{OWN_PHISH}",
+            "nothing above it": f"{OUTLOOK}{OWN_PHISH}",
+            "below a banner": f"-----Original Message-----\n{OUTLOOK}{OWN_PHISH}",
+        }
+        for index, (case, text) in enumerate(answers.items()):
+            with self.subTest(case):
+                self.assertNotScored(self.answer(text, message_id=f"<lee-ol-{index}@x>"))
+        self.assertEqual(scam.own_words(answers["nothing above it"], ""), "")
+
 
 class AnswerWordsTests(_AnswerCase):
     def test_a_bottom_posted_phish_is_judged_on_its_own_words_and_link(self):
@@ -62,10 +129,7 @@ class AnswerWordsTests(_AnswerCase):
         self.assertEqual((self.ticket.status, self.ticket.unread), (Status.OPEN, True))
 
     def test_an_html_only_answer_leaves_out_its_quote_block(self):
-        head = f"From: {LEE}\r\nTo: i2g@ucmerced.edu\r\nSubject: {self.subject}\r\nMessage-ID: <lee-3@x>\r\n"
-        raw = f"{head}Content-Type: text/html; charset=utf-8\r\n\r\n<div>Thanks, it works now!</div>{GMAIL_QUOTE}"
-
-        message = self.answered(raw.encode())
+        message = self.html_answer(f"<div>Thanks, it works now!</div>{GMAIL_QUOTE}")
 
         self.assertEqual((message.kind, message.scam_level, message.scam_reasons), (Kind.CUSTOMER, "low", []))
 

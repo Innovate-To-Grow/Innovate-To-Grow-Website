@@ -92,7 +92,7 @@ class _Walker:
             else (_file_message(part) if as_file else _inner_message(part))
         )
         if inner is None:
-            self.parsed.incomplete = True  # past the limit, or not readable: the original is in Outlook
+            self.parsed.attached_dropped += 1  # past the limit, or not readable: the card says so (Outlook has it)
             return
         headers = mime.header_map(inner)
         nested = ParsedMessage(headers=headers)

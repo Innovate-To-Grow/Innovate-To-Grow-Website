@@ -13,9 +13,10 @@ The rules (Hongzhe's decision of 2026-11-11 on top of item2-helpdesk-bounces-pla
   it opens a ticket of its own, so a person's message is never hidden in a closed one).
 - The site's own messages keep no body or attachment (they may hold sign-in codes).
 - A person's new ticket starts with medium impact and urgency (moderate priority) and, unless it is backfilled, its
-  SLA clock (``sla``); automated mail starts low and has no clock. Its requester is the sender, or the person a web
-  form relays (Reply-To, ``routing.people``). With sending on and the acknowledgement switched on, the requester is
-  told the ticket number (``outbound.acknowledgement``).
+  SLA clock (``sla``); automated mail starts low and has no clock. Its requester is the sender, or the person it
+  speaks for (``routing.people``: a web form's, a list's poster); a mailing list's own address is no participant.
+  With sending on and the acknowledgement switched on, the requester is told the ticket number
+  (``outbound.acknowledgement``).
 """
 
 from dataclasses import dataclass, replace
@@ -68,7 +69,7 @@ def store(
             # A reply to a campaign email sent without a Message-ID (found by its sender and subject).
             match = replace(match, campaign_id=reply.campaign_id)
         ticket, created, rule = _target(match, parsed, classified, settings, row.received_at, own)
-        message = _add_message(ticket, row, parsed, classified, settings, fingerprint)
+        message = _add_message(ticket, row, parsed, classified, settings, fingerprint, own)
         if not created:
             _joined(ticket, message, classified, rule, own)
         elif not classified.automated:
@@ -114,10 +115,16 @@ def _flood_target(address: str, settings: HelpdeskSettings, received: datetime) 
     return open_tickets.select_for_update().order_by("-first_message_at").first()
 
 
-def _requester(parsed, classified, own) -> tuple[str, str]:
-    """Who a new ticket is for: its sender, or on a person's message the one a web form relays (``people``)."""
-    person = None if classified.automated else people.reply_to_person(parsed, own)
-    return person or (parsed.from_name, parsed.from_address)
+def _requester(parsed, classified, own) -> tuple:
+    """``(name, address, member)`` of whom a new ticket is for: its sender, or on a person's message the one it speaks
+    for (``people``); the member by that address, else by the sender's when it is their other address (one name)."""
+    speaker = people.speaks_for(parsed, own)
+    if classified.automated or not speaker.address:
+        return parsed.from_name, parsed.from_address, _member_for(parsed.from_address)
+    member = _member_for(speaker.address)
+    if member is None and people.same_person(parsed.from_name, speaker.name):
+        member = _member_for(parsed.from_address)
+    return speaker.name, speaker.address, member
 
 
 def _member_for(address: str):
@@ -139,8 +146,9 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
     ticket_priority = priority.priority_for(impact, urgency)
     backfilled = timezone.now() - received > timedelta(hours=int(settings.backfill_age_hours))
     clock = {} if automated or backfilled else sla.start_values(ticket_priority, received)
-    name, address = _requester(parsed, classified, own)
-    replying = [parsed.reply_to, *(item for _name, item in people.reply_to_pairs(parsed))]
+    name, address, member = _requester(parsed, classified, own)
+    replying = [parsed.reply_to, *(item for _name, item in people.reply_to_pairs(parsed)), address]
+    unlisted = own | set(people.list_addresses(parsed))  # a mailing list's own address is no participant
     ticket = numbering.create_ticket(
         subject=scrub_subject(parsed.subject) or "(no subject)",
         status=closed_status if automated else Status.NEW,
@@ -150,8 +158,8 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
         **clock,
         requester_email=address[:254],
         requester_name=scrub_subject(name),
-        requester_member=_member_for(address),
-        participants=_participants([parsed.from_address, *replying, *parsed.to, *parsed.cc], own),
+        requester_member=member,
+        participants=_participants([parsed.from_address, *replying, *parsed.to, *parsed.cc], unlisted),
         campaign=EmailCampaign.objects.filter(pk=campaign_id).first() if campaign_id else None,
         related_ticket=related,
         classification=verdict.classification,

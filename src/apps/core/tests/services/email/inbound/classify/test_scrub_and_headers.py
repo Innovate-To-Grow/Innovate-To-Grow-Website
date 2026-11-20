@@ -26,8 +26,10 @@ class ScrubTests(SimpleTestCase):
         )
         for link in links:
             with self.subTest(link):
+                # Only the token goes: the retired path holds none, so its query (no token in it) is text.
+                kept = "?member=1" if "unsubscribe-login" in link else ""
                 self.assertTrue(is_sensitive_url(link))
-                self.assertEqual(scrub_links(f"Use {link} today."), f"Use {LINK_PLACEHOLDER} today.")
+                self.assertEqual(scrub_links(f"Use {link} today."), f"Use {LINK_PLACEHOLDER}{kept} today.")
 
     def test_a_link_wrapped_by_a_safe_links_service_is_removed(self):
         wrapped = (

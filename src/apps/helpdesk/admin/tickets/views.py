@@ -121,13 +121,12 @@ def reply_context(request, ticket: Ticket, settings: HelpdeskSettings) -> dict:
         for item in templates
     ]
     chosen = next((item for item in filled if item["id"] == str(request.GET.get("template") or "")), None)
-    requester = ticket.requester_email.lower()
     default_status = "" if ticket.status in DONE else Ticket.Status.PENDING_CUSTOMER
     return {
         "helpdesk_reply_url": reverse("admin:helpdesk_ticket_reply", args=[ticket.pk]),
         "helpdesk_reply_to": ticket.requester_email,
         "helpdesk_reply_subject": outbound.reply_subject(ticket),
-        "helpdesk_reply_cc_suggestions": [item for item in ticket.participants or [] if item.lower() != requester],
+        "helpdesk_reply_cc_suggestions": outbound.cc_suggestions(ticket),
         "helpdesk_reply_templates": filled,
         "helpdesk_reply_template": chosen,
         "helpdesk_reply_body": (draft or {}).get("body") or (chosen["body"] if chosen else ""),

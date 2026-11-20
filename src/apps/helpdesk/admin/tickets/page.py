@@ -71,9 +71,7 @@ class TicketPageMixin:
 
     @display(description="Requester")
     def requester_display(self, obj):
-        if obj.requester_name:
-            return f"{obj.requester_name} <{obj.requester_email}>"
-        return obj.requester_email or "—"
+        return f"{obj.requester_name} <{obj.requester_email}>" if obj.requester_name else obj.requester_email or "—"
 
     @display(description="Participants")
     def participants_display(self, obj):
@@ -126,8 +124,7 @@ class TicketPageMixin:
     def save_model(self, request, obj, form, change):
         # Only what this person edited (``TicketForm.edited``): a value changed by someone else since the page was
         # shown stays as it is now.
-        edited = getattr(form, "edited", None)
-        edited = form.changed_data if edited is None else edited
+        edited = form.changed_data if getattr(form, "edited", None) is None else form.edited
         changes = {name: form.cleaned_data[name] for name in EDITABLE if name in edited}
         changed = tickets.update_ticket(obj, actor=request.user, **changes) if change else []
         obj.refresh_from_db()
@@ -146,12 +143,16 @@ class TicketPageMixin:
 
     @action(description=tickets.MOVE_TO_QUEUE, icon="move_to_inbox")
     def move_to_queue_here(self, request, obj):
-        """The queue action's move, for this ticket (what the form edited is saved first, as for any Unfold
-        submit-line action); its message, and an admin-history entry when it moved."""
+        """The queue action's move, for this ticket (the form's edits are saved first, as for any Unfold submit-line
+        action); its message, an admin-history entry when it moved, and by whom when someone moved it meanwhile."""
         started = timezone.now()
         count = tickets.move_to_queue([obj], actor=request.user)
-        self._done(request, count, "moved to the queue", 1 - count, MOVE_SKIPPED)
-        self._log(request, [obj], started, "Moved to the queue: not automated.")
+        if not count and (moved := obj.events.filter(kind=tickets.Kind.RECLASSIFIED).last()):
+            by = f" (by {moved.actor.get_full_name() or moved.actor})" if moved.actor else ""
+            messages.info(request, f"{obj.display_number} was moved to the queue already{by}; your changes were saved.")
+        else:
+            self._done(request, count, "moved to the queue", 1 - count, MOVE_SKIPPED)
+            self._log(request, [obj], started, "Moved to the queue: not automated.")
 
     def response_change(self, request, obj):
         # Run here, after the save: ``save_model`` above never calls Unfold's, which would run it as well.

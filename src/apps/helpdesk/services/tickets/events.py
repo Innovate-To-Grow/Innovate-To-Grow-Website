@@ -136,7 +136,7 @@ _DESCRIBERS = {
         f"Related ticket: I2G-#{data.get('number')} ({data.get('reason') or 'same conversation'})"
     ),
     Kind.MENTION: lambda event, data: (
-        f"The message names I2G-#{data.get('number')}, but its sender is not a participant of that ticket"
+        f"The message names I2G-#{data.get('number')}, but it is not from a participant of that ticket"
     ),
     Kind.FLOOD: lambda event, data: (
         f"Grouped into this ticket: many new tickets from {data.get('from') or 'one sender'}"
@@ -154,7 +154,7 @@ _DESCRIBERS = {
     Kind.RECLASSIFIED: lambda event, data: (
         event.get_kind_display()
         + (
-            f"; its requester is now {data['requester']}, whom its message named in Reply-To"
+            f"; its requester is now {data['requester']}, who wrote it (through a web form or a mailing list)"
             if data.get("requester")
             else ""
         )

@@ -76,6 +76,7 @@ class ParsedMessage:
     html: str = ""
     attachments: list = field(default_factory=list)
     attached_messages: list = field(default_factory=list)
+    attached_dropped: int = 0
     has_calendar: bool = False
     truncated: bool = False
     incomplete: bool = False

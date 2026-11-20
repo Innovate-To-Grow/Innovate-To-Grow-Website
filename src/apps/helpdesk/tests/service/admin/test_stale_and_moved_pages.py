@@ -4,17 +4,21 @@
   dismissal went, so nothing was queued);
 - a ticket page shown while the ticket was automated mail or spam (Status read-only, so not posted) saves without
   "This field is required." once someone has moved the ticket to the queue: a field the page did not show is not
-  edited by its save, and its move button just reports the ticket moved already;
+  edited by its save, and its move button says who moved the ticket already and that the edits were saved (not "0
+  tickets moved", which reads like a failure);
 - a backfilled ticket moved to the queue says its SLA ran from the move."""
 
+from django.contrib.admin.models import LogEntry
+from django.contrib.messages import get_messages
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
 from apps.core.models import InboundMessage
 
+from ....models import TicketCategory
 from ....services import tickets
-from ...helpers import helpdesk_staff, queue
+from ...helpers import helpdesk_staff, make_admin, queue
 from ...helpers.service import Status
 from ..page.support import PageCase, change_url
 from .test_page_move_to_queue import BUTTON, automated
@@ -53,6 +57,24 @@ class StalePageTests(PageCase):
                 self.assertEqual(response.status_code, 302)
         ticket.refresh_from_db()
         self.assertEqual((ticket.status, ticket.automated), (Status.NEW, False))
+
+    def test_its_move_button_says_who_moved_it_meanwhile_and_that_the_edits_were_saved(self):
+        ticket, events = automated(), TicketCategory.objects.create(name="Events")
+        shown = self.shown(ticket)
+        blake = make_admin(apps=["helpdesk"], email="blake@example.com", first_name="Blake", last_name="Agent")
+        tickets.move_to_queue([ticket], actor=blake)
+
+        response = self.client.post(change_url(ticket), {**shown, "category": str(events.pk), BUTTON: ""})
+
+        said = [(message.level_tag, str(message)) for message in get_messages(response.wsgi_request)]
+        moved = f"{ticket.display_number} was moved to the queue already (by Blake Agent); your changes were saved."
+        self.assertEqual(said, [("info", moved)])
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.category, events)
+        self.assertEqual(
+            list(LogEntry.objects.filter(object_id=str(ticket.pk)).values_list("change_message", flat=True)),
+            ["Changed category."],  # its own save only: the move was Blake's
+        )
 
 
 class BackfilledFlagTests(PageCase):

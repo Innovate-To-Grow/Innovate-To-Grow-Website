@@ -112,7 +112,7 @@ class EventDescriptionTests(TestCase):
             Kind.RELATED: ({"number": 1007}, "Related ticket: I2G-#1007 (same conversation)"),
             Kind.MENTION: (
                 {"number": 1009},
-                "The message names I2G-#1009, but its sender is not a participant of that ticket",
+                "The message names I2G-#1009, but it is not from a participant of that ticket",
             ),
             Kind.FLOOD: (
                 {"from": "pat@example.org"},

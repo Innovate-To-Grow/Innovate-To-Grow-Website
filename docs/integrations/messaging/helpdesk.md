@@ -28,8 +28,8 @@ the H2 phase is built as described below (replies, acknowledgement, notification
 | **Queue** | People's open tickets (new, in progress, on hold), most recent activity first. A dot marks an unread customer message. |
 | **My Tickets** / **My Groups** / **Unassigned** | The same list, assigned to you / to an assignment group you are a member of / to nobody. |
 | **SLA Breached** | Tickets whose first response or resolution is overdue (flagged, or past due and not flagged yet). |
-| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** (here, or beside **Save** on the ticket's page) when a person's message landed here: it becomes a person's unread ticket, classified as a person's, New when nobody answered it yet (else In progress), its requester's messages shown as theirs (quoted under a reply; one the scam checks made spam is flagged suspicious instead; their automatic replies stay automated) and, for list mail or a web form, the person its Reply-To names as requester; moved from its page, it counts as read (you are looking at it), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
-| **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry** and **Dismiss (handled)**: a message that can never be imported (deleted in Outlook first) leaves the default view with an admin-history line, keeps its status and error, and stays under the **Dismissed** and **Everything** filters until retention; Retry clears the dismissal. |
+| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** (here, or beside **Save** on the ticket's page) when a person's message landed here: it becomes a person's unread ticket, classified as a person's, New when nobody answered it yet (else In progress), its requester's messages shown as theirs (quoted under a reply; one the scam checks made spam is flagged suspicious instead; their automatic replies stay automated) and, for list mail or a web form, the person who wrote it as requester (a form's person, a list's poster); moved from its page, it counts as read (you are looking at it; on a page opened before someone else moved it, the button says "… was moved to the queue already (by <name>); your changes were saved." and the page's edits are saved), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
+| **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry** and **Dismiss (handled)**: a message that can never be imported (deleted in Outlook first) leaves the default view with an admin-history line, keeps its status and error, and stays under the **Dismissed** and **Everything** filters until retention; Retry clears the dismissal. Retry writes an admin-history line for each message it queued again ("Retried: queued again for import.", plus "Its dismissal was cleared." when it had one); both actions say why they left the other selected rows as they were. The **Classification** filter names classifications as the list does ("Automatic reply", "Human (or uncertain)"). |
 | **Categories**, **Assignment Groups**, **SLA Targets**, **Response Templates** | Ticket categories (each may name a default group); the teams that work tickets; the response and resolution targets per priority (only an I2G Master changes them); canned replies. One that tickets still use is switched off, not deleted (its delete page lists what uses it). |
 | **Settings** | The helpdesk's limits, retention periods and switches (shadow mode, acknowledgement and notifications: only an I2G Master changes those; auto-close), under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
 
@@ -70,13 +70,17 @@ are never sent. Opening a ticket marks it read.
   Settings ("Why: Exchange rated it spam (SCL 6; spam from SCL 5 on Settings).", "… bulk mail (BCL 8; bulk from
   BCL 7 on Settings).", or "Exchange's spam filter marked it as spam."); mail Exchange marks as internal to the
   organisation shows "Exchange: internal" with its authentication results.
-- Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`; a link to
-  one is no longer a link (its text stays, followed by the placeholder). The same holds for forwarded messages,
-  for a saved message attached as a file (`.eml`, shown like a forward as a summary of its headers and text,
-  never kept as a file) and for attached text files (any `text/*` file, or one named `.txt`, `.csv`, `.ics`,
-  `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came (only the link goes: the text
-  after it stays, and a calendar or contact file's folded lines are read joined). A saved message past the
-  limit of five, or one that cannot be read, marks the message as cut off (the original is in Outlook).
+- Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`. Only the
+  link goes, up to the end of its token: each link of a line is judged on its own, so the words and other links
+  around it stay (a CSV row keeps its other cells and links; "(see <link>). It did not work." keeps "). It did
+  not work."); a link wrapped by Safe Links goes whole. A link to one is no longer a link (its text stays, followed
+  by the placeholder), also when its address is written with backslashes, which the browser reads as slashes. The
+  same holds for forwarded messages, for a saved message attached as a file (`.eml`, shown like a forward as a
+  summary of its headers and text, never kept as a file) and for attached text files (any `text/*` file, or one
+  named `.txt`, `.csv`, `.ics`, `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came (a
+  calendar or contact file's folded lines are read joined, and a UTF-16 file without a byte order mark is read and
+  written back in the byte order it was written in). Saved messages past the limit of five, or that cannot be
+  read, are counted on the message's card ("2 more attached messages are not shown"; the original is in Outlook).
 - Attachments download as files. Files other than text (PDF, Office documents, images, archives, Outlook `.msg`)
   are stored as received: a sign-in link inside one is not removed. Archives (zip, 7z, rar, …) open a warning
   first; blocked file types
@@ -153,13 +157,15 @@ the notification switch; other Helpdesk staff see them read-only. Sending code l
 module imports a sending API, and that each job checks shadow mode before it sends.
 
 - **Replies.** The reply form on the ticket page sends to the requester (for mail a web form relays, the person
-  it names in Reply-To; optional Cc, at most 10, never one of the
-  site's own addresses; Cc addresses become participants, so their answers thread too) from the site's address,
-  subject `Re: <subject> [I2G-#1234]`, with the Mail app's branded reply layout, the requester's own latest message
-  quoted in the HTML and the text part (never another sender's, e.g. after a merge; its date in the site's time
-  zone), and a footer asking to keep the number in the subject. Reply-To is the mailbox the requester's mail arrived
-  in when that is not the From address. The text is sent as written: only a personal sign-in link pasted into it is
-  removed. The form shows the subject before sending. The status can be set with it (default: On hold – awaiting
+  it names in Reply-To; optional Cc, at most 10, never one of the site's own addresses nor a mailing list, and the
+  form suggests only people: no relay, no no-reply address; Cc addresses become participants, so their answers
+  thread too) from the site's address, subject `Re: <subject> [I2G-#1234]`, with the Mail app's branded reply
+  layout, the requester's own latest message with words of its own quoted in the HTML and the text part (never
+  another sender's, e.g. after a merge, nor an answer that only quotes staff's reply; its date in the site's time
+  zone), and a footer asking to keep the number in the subject. A ticket whose requester is a mailing list (one
+  that hid its poster) cannot be answered from the helpdesk: a reply would reach all its members, so write to the
+  person from Outlook. Reply-To is the mailbox the requester's mail arrived in when that is not the From address.
+  The text is sent as written: only a personal sign-in link pasted into it is removed. The form shows the subject before sending. The status can be set with it (default: On hold – awaiting
   requester; on a resolved or closed ticket, keep the current status). A refused reply (a bad Cc, too long, shadow
   mode switched on meanwhile) comes back with its text, Cc and status and the reason beside the form; the same reply
   sent again within 10 minutes is refused (a double submit). Microsoft Graph cannot send `In-Reply-To`/`References`,
@@ -235,10 +241,16 @@ module imports a sending API, and that each job checks shadow mode before it sen
    brand's name in a person's name (Chase Lee) and a Reply-To or Return-Path elsewhere (web forms, mailing services)
    count for nothing. A proven sender whose words alone score medium is not flagged (a person asking how to reset a
    password). An answer on a person's ticket is scored on what its sender wrote: without the lines it quotes (above
-   or below its own, `>` lines, an HTML quote block) and without a "Re:" subject (the ticket's own); the phishing
-   signals read the whole message, HTML included. An answer Exchange rates spam is shown on its ticket, flagged
-   suspicious ("Exchange rated it spam (SCL 5)"), and brings the ticket back like any answer. Microsoft Safe Links
-   and Proofpoint URL Defense are unwrapped before the link checks. A message that claims the site's address
+   or below its own, `>` lines, an HTML quote block) and without a "Re:" subject (the ticket's own). Its own words
+   are those before the quote or, when there are none, those below the quote's "On … wrote:" line (a bottom-posted
+   answer, also in Thunderbird's HTML); an answer that is all quote has none, and nothing below an Outlook header
+   block ("From: … Sent: …", "-----Original Message-----") is ever its own, since that quote carries no `>` marks.
+   The phishing signals read the whole message, HTML included. An answer Exchange rates spam is shown on its ticket, flagged
+   suspicious ("Exchange rated it spam (SCL 5)"), and brings the ticket back like any answer. Links rewritten
+   by Microsoft Safe Links, Proofpoint URL Defense, Barracuda Link Protection and Mimecast URL Protect are unwrapped
+   before the link checks, so a link is judged by where it goes (a Mimecast link names only its host, so it is
+   judged as that host's); one going to another domain than its text names is still a mismatch. Other rewriters
+   (Cisco, Trend Micro) are not unwrapped: a forward through them whose link text names a domain can still be spam. A message that claims the site's address
    without proof is flagged suspicious. Address headers are unfolded before they are read, so a
    long quoted display name folded across lines still gives its address. In more detail:
    - **Replies to the site's mail** (`ingest/routing/replies.py`, before classifying): a message whose In-Reply-To or
@@ -289,8 +301,10 @@ module imports a sending API, and that each job checks shadow mode before it sen
      spam, and for such messages.
 4. **Threading** (`matching.py`), first match wins: `In-Reply-To`/`References` naming a message of a ticket (a
    reply to a campaign email instead opens a ticket linked to the campaign); the subject token `[I2G-#1234]`
-   (also without brackets) **only if the sender is a participant** of that ticket (anyone can type a number); the
-   Graph `conversationId`, again only for a participant. Merged tickets are followed.
+   (also without brackets) **only from a participant** of that ticket (anyone can type a number): the sender, or the
+   person the message speaks for (a web form's, below); the Graph `conversationId`, again only for a participant,
+   and for a message that speaks for someone else only as that person. A relay (an address that wrote on a ticket
+   for its requester under another name, a web form) is no participant there. Merged tickets are followed.
 5. **Rules** (`store.py`):
    - Automated mail joins the ticket it threads to as a collapsed entry and changes nothing on it. Otherwise it
      opens a ticket closed at once (spam: status Spam), low priority, hidden. It never reopens a ticket.
@@ -304,14 +318,19 @@ module imports a sending API, and that each job checks shadow mode before it sen
      is stored once.
    - The site's own mail keeps no body or attachment (it may hold sign-in codes).
    - Mail imported more than `backfill_age_hours` (24) after it arrived opens tickets marked as backfilled.
-   - **Web forms.** A person's message whose Reply-To names someone who is neither its sender, nor one of the site's
-     own addresses, nor an address it was sent to (a list asking for replies to itself) opens a ticket for that
-     person (the first such one): they are the requester (replies go to them, as from any mail program, and their
-     form text is quoted under a reply), every Reply-To address and the form's own participants. The message threads
-     by number or conversation as that person, so one form's submissions never join each other's tickets. A Reply-To
-     is unauthenticated, so it gets no acknowledgement. A form sending from a no-reply address with such a Reply-To
-     is a person's message, never answered automatically (otherwise a no-reply sender is bulk mail). Moving list mail
-     or a relayed message to the queue gives the ticket to that person the same way (the timeline says so).
+   - **Web forms and other relays** (`ingest/routing/people.py`). A person's message whose Reply-To names someone
+     who is neither its sender, nor one of the site's own addresses, nor an address it was sent To (a person asking
+     for replies to their team), nor a mailing list's own address (its List-Post) opens a ticket for that person
+     (the first such one), also when the form copies them (Cc): they are the requester (replies go to them, as from
+     any mail program, and their form text is quoted under a reply), every Reply-To address and the form's own
+     participants. One form's submissions never join each other's tickets. A Reply-To is unauthenticated, so it gets
+     no acknowledgement. A form sending from a no-reply address with such a Reply-To is a person's message, never
+     answered automatically (otherwise a no-reply sender is bulk mail). A Reply-To naming the sender's other address
+     under the same name (work and home) is the same person: the ticket keeps the member it belongs to, and both
+     addresses thread. A mailing list's own address is never a participant; a list that rewrites its poster (Mailman's
+     munged From, Google Groups) speaks for the poster (X-Original-From, else the Reply-To or Cc address that is not
+     the list). Moving list mail or a relayed message to the queue gives the ticket to that person, with their name
+     (the timeline says so).
 
 **Ticket numbers** come from the PostgreSQL sequence `helpdesk_ticket_number_seq` (created by `helpdesk/0001`,
 never below 1001): unique under concurrent creation; a rolled-back number is skipped. SQLite (local development)
@@ -474,6 +493,10 @@ saves every column and would overwrite a running scan's lease.
   new mail (check **Automated & Spam**), never an answer on a person's ticket. The internal marker is trusted as Exchange documents it (it
   strips organisation headers from outside mail); it was checked against simulated headers only, so confirm it with
   a real message from a campus colleague.
+- **Whom a message is for is read from its headers**: a web form must name its person in Reply-To (one that writes
+  the address only in its text opens a ticket for the form's own address); two submissions of one form that name
+  nobody may join one ticket; a person writing with Reply-To their other address gets no acknowledgement (the
+  Reply-To is unauthenticated); a mailing list that hides its poster cannot be answered from the helpdesk.
 - **No requester portal** or watch list: requesters interact by email only.
 - **Mail deleted or moved out of the Inbox before a scan is missed**; only the Inbox is read. With immutable ids
   off (`EMAIL_GRAPH_IMMUTABLE_IDS`), a message moved in Outlook between its listing and its import is skipped as
@@ -483,7 +506,9 @@ saves every column and would overwrite a running scan's lease.
 - **Inline images are not shown** in the message (they are listed as attachments).
 - **Sign-in links are removed from text only**: message text and HTML, forwarded and saved (`.eml`) messages, and
   text files. A PDF, Office document, image, archive or Outlook `.msg` file is stored as received, so a personal
-  sign-in link inside one reaches whoever downloads it.
+  sign-in link inside one reaches whoever downloads it. A text file in UTF-16 without a byte order mark that declares
+  no charset (or a wrong one), or a UTF-32 file without a mark, is not read as what it is, so a link inside it stays
+  too.
 - **Replies are recognised only to mail the telemetry still holds** (180 days) and, for mail sent without a
   Message-ID, only from the address mailed with the same subject, or by a message of a person's ticket they name; a
   reply to older mail, or from another address of the person, is classified on its own headers. So is a first answer

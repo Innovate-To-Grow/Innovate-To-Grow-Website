@@ -131,7 +131,7 @@ def _verdict(
     noreply_only = (
         verdict.classification == BULK and verdict.subtype == "noreply" and verdict.signals == ("noreply_sender",)
     )
-    if noreply_only and people.reply_to_person(parsed, own) is not None:
+    if noreply_only and people.speaks_for(parsed, own).address:
         # A web form sending, from a no-reply address, what someone wrote: theirs, never answered automatically.
         verdict = Verdict(HUMAN, signals=("noreply_relay",), hints=(NO_AUTO_RESPONSE,))
     return verdict

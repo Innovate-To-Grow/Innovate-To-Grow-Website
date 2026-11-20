@@ -58,6 +58,11 @@ class TicketMessage(ProjectControlModel):
     to_addresses = models.JSONField(default=list, blank=True)
     cc_addresses = models.JSONField(default=list, blank=True)
     reply_to = models.CharField(max_length=254, blank=True, default="")
+    # Whom an inbound message speaks for when not its sender (a web form's Reply-To, a mailing list's poster), and the
+    # mailing list it came through: a list is never a requester (``services.ingest.routing.people``).
+    on_behalf_of = models.CharField(max_length=254, blank=True, default="", db_default="")
+    on_behalf_name = models.CharField(max_length=255, blank=True, default="", db_default="")
+    list_address = models.CharField(max_length=254, blank=True, default="", db_default="")
     subject = models.CharField(max_length=255, blank=True, default="")
     occurred_at = models.DateTimeField(
         db_index=True, help_text="When the mailbox received it (notes: when written); the Date header is not trusted."

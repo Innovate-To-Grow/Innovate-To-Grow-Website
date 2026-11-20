@@ -80,6 +80,18 @@ class SanitizeTests(SimpleTestCase):
         # No link any more, and its text (the link itself) shows the placeholder once.
         self.assertEqual(cleaned, f"<p>Use {LINK_PLACEHOLDER}</p>")
 
+    def test_a_link_written_with_backslashes_is_judged_as_the_browser_reads_it(self):
+        # In an http(s) address, and a relative one (the frame's page is https), the browser reads "\" as "/": the
+        # first two are working one-click unsubscribe links. Read as written too, a "\" never hides a token.
+        for href in (
+            "https:\\\\i2g.ucmerced.edu\\unsubscribe\\Zx81kLmQ2pRt7vWy\\",
+            "\\unsubscribe\\Zx81kLmQ2pRt7vWy\\",
+            "https://i2g.ucmerced.edu/unsubscribe/Zx81\\kLmQ2pRt7vWy/",
+        ):
+            with self.subTest(href):
+                cleaned = clean(f'<p><a href="{href}">backslash-unsub</a></p>')
+                self.assertEqual(cleaned, f"<p>backslash-unsub {LINK_PLACEHOLDER}</p>")
+
     def test_long_html_is_cut_and_closed_again(self):
         html = "<div>" + "<p>paragraph text</p>" * 500 + "</div>"
 

@@ -7,13 +7,22 @@ from .acknowledgement import queue_acknowledgement
 from .compose import fill, reply_subject
 from .jobs import register_outbound
 from .notifications import assignment_changed
-from .replies import REPLY_MAX_CHARS, ReplyRefused, can_reply, last_inbound, queue_reply, site_addresses
+from .recipients import cc_suggestions
+from .replies import (
+    REPLY_MAX_CHARS,
+    ReplyRefused,
+    can_reply,
+    last_inbound,
+    queue_reply,
+    site_addresses,
+)
 
 __all__ = [
     "REPLY_MAX_CHARS",
     "ReplyRefused",
     "assignment_changed",
     "can_reply",
+    "cc_suggestions",
     "fill",
     "last_inbound",
     "queue_acknowledgement",

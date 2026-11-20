@@ -4,8 +4,9 @@ Nothing is sent while shadow mode is on (``tickets.shadow.sending_allowed``): th
 ``queue_reply`` refuses. A reply is stored on the ticket as a ``Kind.REPLY`` message and sent by the background job
 ``helpdesk.send_reply`` once the transaction commits (``jobs``), so a provider outage retries instead of losing it.
 It is the ticket's first response once it is sent (not when queued: a reply that never goes out answers nobody), and
-the status chosen with it is set at once. A reply quotes only the requester's own latest message (a merged ticket or a
-Cc'd participant never has someone else's words sent to them), and never goes to one of the site's own addresses.
+the status chosen with it is set at once. A reply quotes only the requester's own latest message with words of its
+own (a merged ticket or a Cc'd participant never has someone else's words sent to them, nor staff's own reply quoted
+back), and never goes to one of the site's own addresses or to a mailing list (it would reach all its members).
 Staff's text is sent as written; only a personal sign-in link pasted into it is removed.
 """
 
@@ -21,9 +22,11 @@ from apps.core.utils.security import is_plain_address
 
 from ...models import HelpdeskSettings, IntakeState, Ticket, TicketEvent, TicketMessage
 from ..ingest.pipeline.messages import MAX_PARTICIPANTS
+from ..ingest.routing.scam import own_words
 from ..tickets import events, shadow
-from ..tickets.working import scrub_sign_in_links
+from ..tickets.scrub import scrub_sign_in_links
 from . import compose, jobs
+from .recipients import requester_addresses, ticket_lists
 
 Kind = TicketMessage.Kind
 REPLY_MAX_CHARS = 20000
@@ -71,6 +74,11 @@ def can_reply(ticket: Ticket, settings: HelpdeskSettings | None = None) -> str:
         return "The requester's address cannot be mailed (it is not a plain address)."
     if ticket.requester_email.lower() in site_addresses(ticket):
         return "The requester is one of the helpdesk's own addresses."
+    if ticket.requester_email.lower() in ticket_lists(ticket):
+        return (
+            f"The requester {ticket.requester_email} is a mailing list: a reply would reach all its members. Write to "
+            "the person from Outlook."
+        )
     if not jobs_enabled():
         return "Background jobs are off, so a reply could not be delivered."
     return ""
@@ -86,20 +94,26 @@ def parse_cc(value: str, ticket: Ticket | None = None) -> list[str]:
     own = next((address for address in addresses if address in site_addresses(ticket)), None)
     if own is not None:
         raise ReplyRefused(f"{own} is the helpdesk's own address: it is never copied on a reply.")
+    listed = next((address for address in addresses if ticket is not None and address in ticket_lists(ticket)), None)
+    if listed is not None:
+        raise ReplyRefused(f"{listed} is a mailing list: a reply would reach all its members.")
     return list(dict.fromkeys(addresses))
 
 
 def last_inbound(ticket: Ticket) -> TicketMessage | None:
-    """The requester's own latest message on the ticket (quoted under a reply); never another sender's."""
+    """The requester's own latest message on the ticket (quoted under a reply), from one of their addresses or written
+    for them (a web form's); never another sender's. One that only quotes (staff's own reply) is passed over."""
     if not ticket.requester_email:
         return None
-    # A web form's message is theirs too: it names them in Reply-To (``ingest.routing.people``).
-    theirs = Q(from_address__iexact=ticket.requester_email) | Q(reply_to__iexact=ticket.requester_email)
-    return (
-        TicketMessage.objects.filter(theirs, ticket=ticket, kind=Kind.CUSTOMER)
-        .order_by("-occurred_at", "-created_at")
-        .first()
+    theirs = Q(on_behalf_of__iexact=ticket.requester_email)
+    for address in requester_addresses(ticket):
+        theirs |= Q(from_address__iexact=address)
+    found = TicketMessage.objects.filter(theirs, ticket=ticket, kind=Kind.CUSTOMER).order_by(
+        "-occurred_at", "-created_at"
     )
+    candidates = list(found[:20])
+    said = (message for message in candidates if own_words(message.body_text, message.body_html).strip())
+    return next(said, candidates[0] if candidates else None)
 
 
 def from_address() -> str:

@@ -2,13 +2,15 @@
 optional Bedrock second opinion, so no message text leaves the site).
 
 - The words: a message that answers a person's ticket (``replies.answers_a_person``) is judged on what its sender
-  wrote, without what it quotes ("> …" lines, the "On … wrote:" or Outlook header block and what follows it, an HTML
-  quote block) and without a reply's subject (the ticket's own): staff's reply ("your account has been unlocked: click
-  here …") reads like a phish.
+  wrote (``own_words``), without what it quotes ("> …" lines, an HTML quote block, an Outlook header block and what
+  follows it) and without a reply's subject (the ticket's own): staff's reply ("your account has been unlocked: click
+  here …") reads like a phish. Its own words are those before the quote, or below a quote's "On … wrote:" line when
+  none come before (a bottom-posted answer).
 - The phishing signals look at the whole message, quote included (staff's replies carry none): a look-alike or
   punycode sender or link domain (one imitating the site's own, ``ucrnerced.edu``, too); a link that hides where it
   goes (text naming another domain, a raw IP, a shortener); hidden HTML; failed DMARC or SPF. Link protection
-  (Microsoft Safe Links, Proofpoint URL Defense) is unwrapped first, so a link is judged by where it goes.
+  (Microsoft Safe Links, Proofpoint URL Defense, Mimecast, Barracuda) is unwrapped first (``links``), so a link is
+  judged by where it goes.
 - Spam: a high score, unless the sender proved their domain (DMARC, Exchange's composite authentication, or Exchange
   marking the mail internal to the organisation) or the message answers a person's ticket: then only a phishing
   signal keeps it spam (any of them; an SPF soft fail or a DKIM failure alone does not), and otherwise it is flagged
@@ -18,14 +20,12 @@ optional Bedrock second opinion, so no message text leaves the site).
 - The reasons kept for staff: the five that weigh most, phishing signals first, in the checks' order.
 """
 
-import html as html_lib
 import re
 from dataclasses import dataclass
-from urllib.parse import parse_qs, urlsplit
 
 from bs4 import BeautifulSoup
 
-from apps.core.services.email.inbound.classification.autoreply import own_subject, own_text
+from apps.core.services.email.inbound.classification.autoreply import QUOTE_START_RE, own_subject, own_text
 from apps.core.services.email.inbound.classification.headers import first
 from apps.mail.services.scam_detector import (
     BRAND_NAMES,
@@ -50,17 +50,14 @@ from apps.mail.services.scam_detector.links import extract_links, extract_text_u
 from apps.mail.services.scam_detector.structure import html_hidden_reasons
 
 from ..reading.message import ParsedMessage
+from .links import unwrap_links
 
 MAX_REASONS = 5
 PROVEN_BY = ("dmarc", "compauth")  # methods whose "pass" in Authentication-Results proves the From domain
 INTERNAL = "internal"
 DECISIVE = 2  # what a phishing signal weighs at least to keep a trusted sender's high score spam
-_WRAPPED_RE = re.compile(
-    r"https://(?:[a-z0-9.-]*safelinks\.protection\.outlook\.com/\?|urldefense\.proofpoint\.com/v2/url\?|"
-    r"urldefense\.com/v3/__)[^\s\"'<>]+",
-    re.IGNORECASE,
-)
 _QUOTED_LINE_RE = re.compile(r"^[ \t]*>[^\n]*\n?", re.MULTILINE)
+_SPACES_RE = re.compile(r"[^\S\n]+")  # as ``own_text`` reads them (HTML text is full of no-break spaces)
 _SPREAD = "Links point to "  # the link check's only finding that says nothing about where a link goes
 
 
@@ -85,25 +82,10 @@ def authenticated(auth: dict) -> bool:
     return passed or str(auth.get("authas", "")).lower() == INTERNAL
 
 
-def _unwrapped(match) -> str:
-    wrapped = html_lib.unescape(match.group(0))
-    if "/v3/__" in wrapped:
-        inner = wrapped.split("/v3/__", 1)[1].split("__;", 1)[0]
-    else:
-        query = parse_qs(urlsplit(wrapped).query)
-        inner = (query.get("url") or query.get("u") or [""])[0]
-        if "urldefense.proofpoint.com" in wrapped.lower():  # v2 writes "-3A" for ":" and "_" for "/"
-            inner = re.sub(r"-([0-9A-Fa-f]{2})", lambda hit: chr(int(hit.group(1), 16)), inner.replace("_", "/"))
-    return (inner or match.group(0)).replace('"', "%22")
-
-
-def unwrap_links(value: str) -> str:
-    return _WRAPPED_RE.sub(_unwrapped, value or "")
-
-
 def _html_without_quotes(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
-    for quote in soup.select("blockquote, .gmail_quote, .yahoo_quoted"):
+    # Thunderbird's "On … wrote:" sits outside its blockquote, often split over lines by a mailto link.
+    for quote in soup.select("blockquote, .gmail_quote, .yahoo_quoted, .moz-cite-prefix"):
         quote.decompose()
     marker = soup.select_one("#appendonsend, #divRplyFwdMsg")  # Outlook: the quoted message follows it
     if marker is not None:
@@ -113,11 +95,21 @@ def _html_without_quotes(html: str) -> str:
     return soup.get_text("\n")
 
 
+def _attribution(match) -> str:
+    # Of the quote starts core knows, only "On … wrote:" (in its languages) is one line ending in ":": an Outlook
+    # header block spans lines, and what follows it or a banner is a quote without "> " marks.
+    found = match.group(0)
+    return "" if found.endswith(":") and "\n" not in found else found
+
+
 def own_words(text: str, html: str) -> str:
-    """What the sender of an answer wrote: its text (or its HTML's) without the lines it quotes."""
+    """What the sender of an answer wrote, from its text (or its HTML's); "" when it is all quote. Its words before
+    the quote or, when there are none, below the quote's "On … wrote:" line (bottom-posted); never what follows an
+    Outlook header block, whose quoted original carries no "> " marks."""
     if not text.strip() and html:
         text = _html_without_quotes(html)
-    return own_text(_QUOTED_LINE_RE.sub("", text))
+    text = _QUOTED_LINE_RE.sub("", _SPACES_RE.sub(" ", text))
+    return own_text(text).strip() or own_text(QUOTE_START_RE.sub(_attribution, text)).strip()
 
 
 def scam_input(parsed: ParsedMessage) -> dict:

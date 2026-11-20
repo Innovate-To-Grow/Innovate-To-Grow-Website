@@ -92,9 +92,12 @@ def _prepare(html: str) -> str:
 
 def _removed(href: str) -> bool:
     """Whether scrubbing removes the link: a personal sign-in link (also a relative one), or one holding such a link,
-    read as the browser reads it (it drops tabs and line breaks anywhere, and spaces and controls around it)."""
+    read as the browser reads it: it drops tabs and line breaks anywhere, and spaces and controls around it, and in an
+    http(s) address (a relative one is resolved against the https page) it reads a backslash as a slash."""
     href = href.translate(_URL_BREAKS).strip("".join(map(chr, range(0x21))))
-    return is_sensitive_url(href) or LINK_PLACEHOLDER in scrub_links(href)
+    # As written too: a mailto: link keeps its "\", and a "/" in its place could cut a token too short to be seen.
+    readings = (href, href.replace("\\", "/"))
+    return any(is_sensitive_url(read) or LINK_PLACEHOLDER in scrub_links(read) for read in readings)
 
 
 _URL_BREAKS = str.maketrans("", "", "\t\n\r")

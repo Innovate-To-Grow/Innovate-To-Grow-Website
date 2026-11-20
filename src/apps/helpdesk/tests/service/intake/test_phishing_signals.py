@@ -8,7 +8,9 @@
 - a proven sender whose words alone score medium is not flagged (a person asking how to reset their password);
 - a sender imitating the site's own domain (ucrnerced.edu) is a look-alike: spam however authenticated;
 - the five reasons kept are those that weigh most, a phishing signal always among them;
-- Microsoft Safe Links are unwrapped before the link checks: a link through Microsoft's wrapper is no mismatch."""
+- Microsoft Safe Links are unwrapped before the link checks: a link through Microsoft's wrapper is no mismatch;
+- so are Mimecast's (which name only the host they go to) and Barracuda's: an authenticated forward through either
+  is a suspicious person's ticket, but one going elsewhere than its text names is still a mismatch, and spam."""
 
 from django.test import override_settings
 
@@ -29,6 +31,12 @@ SAFE_LINK = (
     "https://nam02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.ucmerced.edu%2Faccount&amp;data=05%7C01"
     "&amp;reserved=0"
 )
+# Each gateway's rewrite of a link to https://{host}/account.
+GATEWAYS = {
+    "Mimecast": "https://protect-us.mimecast.com/s/r1BdC8qQ0fYWGJBCDlXmA?domain={host}",
+    "Mimecast's newer links": "https://url.us.m.mimecastprotect.com/s/r1BdC8qQ0fYWGJBCDlXmA?domain={host}",
+    "Barracuda": "https://linkprotect.cudasvc.com/url?a=https%3a%2f%2f{host}%2faccount&amp;c=E,1,abc123&amp;typo=1",
+}
 
 
 class NoPhishingSignalTests(_VerdictCase):
@@ -56,6 +64,25 @@ class NoPhishingSignalTests(_VerdictCase):
         html = f'<p>Reset it at <a href="{SAFE_LINK}">https://www.ucmerced.edu/account</a></p>'
 
         self.assertSuspiciousPersonsTicket(receive(locked_out(DMARC_PASS, html=html)))
+
+
+class GatewayLinkTests(_VerdictCase):
+    def forward(self, gateway: str, host: str) -> bytes:
+        """A sponsor's authenticated forward whose link reads https://www.ucmerced.edu/account, through ``gateway``."""
+        href = GATEWAYS[gateway].format(host=host)
+        html = f'<p>Reset it at <a href="{href}">https://www.ucmerced.edu/account</a></p>'
+        message_id = f"<gateway-{list(GATEWAYS).index(gateway)}-{host}@mail.example.org>"
+        return locked_out(DMARC_PASS, html=html, message_id=message_id)
+
+    def test_an_authenticated_forward_through_mimecast_or_barracuda_is_suspicious_not_spam(self):
+        for gateway in GATEWAYS:
+            with self.subTest(gateway):
+                self.assertSuspiciousPersonsTicket(receive(self.forward(gateway, "www.ucmerced.edu")))
+
+    def test_one_going_elsewhere_than_its_text_names_is_still_a_mismatch(self):
+        for gateway in GATEWAYS:
+            with self.subTest(gateway):
+                self.assertSpam(receive(self.forward(gateway, "reset-portal.example")), [*WORD_REASONS, MISMATCH])
 
 
 class ProofTests(_VerdictCase):

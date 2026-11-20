@@ -17,7 +17,7 @@ import hashlib
 import re
 
 from ....models import HelpdeskSettings, TicketAttachment
-from ...tickets.working import scrub_sign_in_links
+from ...tickets.scrub import scrub_sign_in_links
 from .message import _PART_ERRORS, ParsedAttachment, text_codec
 
 # Leading bytes of the formats worth recognising (the declared type and the file name are the sender's claim).
@@ -139,9 +139,18 @@ def _scrubbed(data: bytes, codec: str, errors: str, folded: bool) -> bytes:
 
 
 def _codec(data: bytes, charset: str) -> str:
-    """A UTF-16 byte order mark (then kept as the text's first character), else the declared charset, else UTF-8."""
+    """A UTF-16 byte order mark (then kept as the text's first character), else the declared charset, else UTF-8.
+    UTF-16 declared without a mark is big-endian by RFC 2781, but either order is sent: it is read, and written back
+    (adding no mark), in the order its text shows. Python's "utf-16" would read it little-endian and add a mark."""
     marked = next((codec for mark, codec in _UTF16_BOMS if data.startswith(mark)), "")
-    return marked or text_codec(charset)
+    codec = marked or text_codec(charset)
+    return _utf16_order(data) if codec == "utf-16" else codec
+
+
+def _utf16_order(data: bytes) -> str:
+    # Read in the wrong order, Latin text (a link, digits, punctuation) turns into CJK: in the right one its high
+    # bytes are NULs. Big-endian when it cannot be told.
+    return "utf-16-le" if data[1::2].count(0) > data[0::2].count(0) else "utf-16-be"
 
 
 def needs_warning(attachment: TicketAttachment, settings: HelpdeskSettings) -> bool:
