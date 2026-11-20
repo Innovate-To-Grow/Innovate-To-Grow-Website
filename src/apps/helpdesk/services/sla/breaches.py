@@ -1,15 +1,13 @@
 """Which tickets' SLA is breached or at risk (the queue's SLA filter and view), and the worker's marking of clocks
 that ran past their due time."""
 
-import operator
-from datetime import datetime, timedelta
-from functools import reduce
+from datetime import datetime
 
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from ...models import SLATarget, Ticket, TicketEvent
+from ...models import Ticket, TicketEvent
 from .clock import RUNNING_STATUSES
 
 
@@ -26,22 +24,33 @@ def breached_q(now: datetime) -> Q:
     return Q(response_breached=True) | Q(resolution_breached=True) | _response_overdue(now) | _resolution_overdue(now)
 
 
+# What the queue's SLA column reads of a ticket's clock.
+_CLOCK_FIELDS = (
+    "status",
+    "sla_started_at",
+    "response_due_at",
+    "resolution_due_at",
+    "first_responded_at",
+    "sla_paused_at",
+    "sla_paused_seconds",
+    "response_breached",
+    "resolution_breached",
+)
+
+
 def at_risk_q(now: datetime, warning_percent: int) -> Q:
-    """Open tickets with a clock running past ``warning_percent`` of its target and not overdue yet: what the queue's
-    SLA column shows as at risk. A clock's due time is its start plus the target (plus the time it stood still), so
-    "past the share" is "due within the rest of the target" for the ticket's priority."""
-    rest = (100 - int(warning_percent)) / 100
-    parts = []
-    for target in SLATarget.objects.all():
-        response_until = now + timedelta(minutes=target.response_minutes * rest)
-        resolution_until = now + timedelta(minutes=target.resolution_minutes * rest)
-        response = Q(first_responded_at__isnull=True, response_due_at__gte=now, response_due_at__lte=response_until)
-        resolution = Q(sla_paused_at__isnull=True, resolution_due_at__gte=now, resolution_due_at__lte=resolution_until)
-        parts.append(
-            Q(priority=target.priority)
-            & ((response & Q(status__in=Ticket.OPEN_STATUSES)) | (resolution & Q(status__in=RUNNING_STATUSES)))
-        )
-    return reduce(operator.or_, parts) if parts else Q(pk__in=[])
+    """Open tickets with a clock running past ``warning_percent`` of its own span and not overdue yet. Each open ticket
+    with a clock is judged as the queue's SLA column reads it (``display.queue_label``), so the filter and the column
+    agree whatever targets were edited since the clocks were set."""
+    from .display import queue_label
+
+    candidates = Ticket.objects.filter(status__in=Ticket.OPEN_STATUSES, sla_started_at__isnull=False)
+    pks = [
+        ticket.pk
+        for ticket in candidates.only(*_CLOCK_FIELDS).iterator(chunk_size=500)
+        if queue_label(ticket, now, warning_percent)[0] == "at_risk"
+    ]
+    return Q(pk__in=pks)
 
 
 def mark_breaches(*, now: datetime | None = None, should_stop=None) -> int:

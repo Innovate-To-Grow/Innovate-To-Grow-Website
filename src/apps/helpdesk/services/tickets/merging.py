@@ -85,7 +85,7 @@ def merge(tickets, *, actor) -> Ticket | None:
         participants = list(target.participants)
         last_activity, unread, still_open = target.last_activity_at, target.unread, False
         for source in sources:
-            _stop_queued_replies(source, target)
+            queued = list(queued_replies(source))
             moved = TicketMessage.objects.filter(ticket=source).update(ticket=target, updated_at=now)
             if not source.automated:
                 # Automated mail's addresses would let its senders (and anyone it was sent to) thread into the
@@ -99,6 +99,8 @@ def merge(tickets, *, actor) -> Ticket | None:
             )
             events.record(source, Kind.MERGED, actor=actor, into=target.number)
             events.record(target, Kind.MERGED, actor=actor, source=source.number, messages=moved)
+            # After the merge on the timeline: a staff reply that will not go out puts the target in front of staff.
+            unread = _stop_queued_replies(queued, source, target) or unread
         unique = [address for address in dict.fromkeys(participants) if address]
         Ticket.objects.filter(pk=target.pk).update(
             participants=unique, last_activity_at=last_activity, unread=unread, updated_at=now
@@ -110,14 +112,19 @@ def merge(tickets, *, actor) -> Ticket | None:
     return target
 
 
-def _stop_queued_replies(source: Ticket, target: Ticket) -> None:
-    """Replies queued on ``source`` are not sent once it is merged (the send job sends only queued replies)."""
+def queued_replies(source: Ticket):
+    """The replies and acknowledgements still waiting to be sent on ``source`` (a merge stops them)."""
+    return TicketMessage.objects.filter(
+        ticket=source, kind=TicketMessage.Kind.REPLY, delivery_status=TicketMessage.Delivery.QUEUED
+    )
+
+
+def _stop_queued_replies(queued, source: Ticket, target: Ticket) -> bool:
+    """Replies queued on ``source`` are not sent once it is merged (the send job sends only queued replies);
+    whether a staff reply was among them."""
     error = (
         f"Not sent: {source.display_number} was merged into {target.display_number} before it went out. "
         "Write the reply again here if it is still needed."
-    )
-    queued = TicketMessage.objects.filter(
-        ticket=source, kind=TicketMessage.Kind.REPLY, delivery_status=TicketMessage.Delivery.QUEUED
     )
     for reply in queued:
         TicketMessage.objects.filter(pk=reply.pk).update(
@@ -125,6 +132,7 @@ def _stop_queued_replies(source: Ticket, target: Ticket) -> None:
         )
         what = "acknowledgement" if reply.automatic else "reply"
         events.record(target, Kind.REPLY_FAILED, what=what, error=error)
+    return any(not reply.automatic for reply in queued)
 
 
 def _number(ticket: Ticket) -> int:

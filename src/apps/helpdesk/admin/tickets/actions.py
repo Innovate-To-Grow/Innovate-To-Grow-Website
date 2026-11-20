@@ -17,16 +17,19 @@ from unfold.decorators import action
 from ...models import Ticket
 from ...services import tickets
 from ...services.tickets.changes import RESOLUTION_NOTES_MAX_CHARS
+from ...services.tickets.merging import queued_replies
+from ..intake.sending import LFTextField
 from .filters import MailTypeFilter
 
 
 class ResolveForm(forms.Form):
     code = forms.ChoiceField(label="Resolution code", choices=[("", "---------"), *Ticket.ResolutionCode.choices])
-    notes = forms.CharField(
+    # A line break counts once, as on the ticket page (the browser posts CRLF).
+    notes = LFTextField(
         label="Resolution notes",
         required=False,
         max_length=RESOLUTION_NOTES_MAX_CHARS,
-        widget=forms.Textarea(attrs={"rows": 3}),
+        widget=forms.Textarea(attrs={"rows": 3, "maxlength": RESOLUTION_NOTES_MAX_CHARS}),
     )
 
 
@@ -108,7 +111,9 @@ class TicketActionsMixin:
     @action(description="Not automated: move to the queue")
     def move_to_queue(self, request, queryset):
         chosen, started = list(queryset), timezone.now()
-        self._done(request, tickets.move_to_queue(chosen, actor=request.user), "moved to the queue")
+        count = tickets.move_to_queue(chosen, actor=request.user)
+        why = "only automated mail and spam are moved (a merged ticket never)."
+        self._done(request, count, "moved to the queue", len(chosen) - count, why)
         self._log(request, chosen, started, "Moved to the queue: not automated (bulk action).")
 
     @action(description="Merge into the oldest selected ticket (not automated mail or spam)")
@@ -128,7 +133,8 @@ class TicketActionsMixin:
     @action(description="Mark as spam")
     def mark_spam(self, request, queryset):
         chosen, started = list(queryset), timezone.now()
-        self._done(request, tickets.mark_spam(chosen, actor=request.user), "marked as spam")
+        count = tickets.mark_spam(chosen, actor=request.user)
+        self._done(request, count, "marked as spam", len(chosen) - count, "they are spam or merged already.")
         self._log(request, chosen, started, "Marked as spam (bulk action).")
 
     def get_action_confirmation_word(self, action_name):
@@ -139,7 +145,10 @@ class TicketActionsMixin:
     def get_actions(self, request):
         actions = super().get_actions(request)
         if request.GET.get(MailTypeFilter.parameter_name) == "automated":
-            actions.pop("merge_tickets", None)  # every ticket listed is automated mail or spam: nothing to merge into
+            # Every ticket listed is automated mail or spam: nothing to merge into, resolve, close or reopen there
+            # (a person's message goes back with "Not automated: move to the queue").
+            for name in ("merge_tickets", "resolve_tickets", "close_tickets", "reopen_tickets"):
+                actions.pop(name, None)
         return actions
 
     def response_action(self, request, queryset):
@@ -151,10 +160,12 @@ class TicketActionsMixin:
             refusal = tickets.merge_refusal(selected) if action_name == "merge_tickets" else ""
             if action_name == "merge_tickets" and not refusal and len(self._unmerged(selected)) < 2:
                 refusal = "Select at least two tickets that are not merged already."
+            if action_name == "mark_spam" and all(ticket.status in ("spam", "merged") for ticket in selected):
+                refusal = "Nothing to mark: the selected tickets are spam or merged already."
             if refusal:
                 messages.error(request, refusal)
                 return HttpResponseRedirect(request.get_full_path())
-            if not self._should_skip_confirmation(request):
+            if not self.action_confirmation_off(request):
                 messages.info(request, self._confirmation_note(action_name, selected))
         return super().response_action(request, queryset)
 
@@ -174,6 +185,10 @@ class TicketActionsMixin:
         numbers = ", ".join(ticket.display_number for ticket in selected[:20])
         more = f" and {len(selected) - 20} more" if len(selected) > 20 else ""
         if action_name == "merge_tickets":
-            target = self._unmerged(selected)[0]
-            return f"Merging {numbers}{more} into {target.display_number} (the oldest)."
+            target, *sources = self._unmerged(selected)
+            waiting = [s.display_number for s in sources if queued_replies(s).filter(automatic=False).exists()]
+            stopped = (
+                f" A reply queued on {', '.join(waiting)} will not be sent: write it again there." if waiting else ""
+            )
+            return f"Merging {numbers}{more} into {target.display_number} (the oldest).{stopped}"
         return f"Marking as spam: {numbers}{more}."

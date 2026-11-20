@@ -105,11 +105,15 @@ def _failed(message: TicketMessage, error: str, status: str = Delivery.FAILED) -
         ticket = Ticket.objects.filter(pk=message.ticket_id).first()
         if message.automatic or ticket is None:
             return
+        reason = "delivery not confirmed" if status == Delivery.UNCERTAIN else "the reply did not go out"
         if ticket.status == Ticket.Status.PENDING_CUSTOMER:
             # Back in front of staff: New again while nobody answered it yet (moving it on is still its first
             # response), else In progress. The system's own move is no response.
             back = Ticket.Status.NEW if ticket.first_responded_at is None else Ticket.Status.OPEN
-            update_ticket(ticket, actor=None, status=back, reason="the reply did not go out", first_response=False)
+            update_ticket(ticket, actor=None, status=back, reason=reason, first_response=False)
+        elif ticket.status in (Ticket.Status.RESOLVED, Ticket.Status.CLOSED):
+            # A closing reply that never reached the requester: the ticket is not done (nor left to auto-close).
+            update_ticket(ticket, actor=None, status=Ticket.Status.OPEN, reason=reason, first_response=False)
         Ticket.objects.filter(pk=ticket.pk).update(unread=True)
 
 

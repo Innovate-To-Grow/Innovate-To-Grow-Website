@@ -175,3 +175,23 @@ html {
   background: rgb(55 65 81);
   color: rgb(229 231 235);
 }
+
+/* The floating action bar of the queue never covers its last row; the number never wraps (it is the row's th). */
+#changelist-form {
+  padding-bottom: 6rem;
+}
+
+#result_list th.field-number_column {
+  white-space: nowrap;
+}
+
+/* Insert is a secondary button (the theme styles every submit button as primary, with an id in its selector). */
+#helpdesk-reply-picker .i2g-helpdesk-button.is-secondary {
+  background: rgb(229 231 235);
+  color: rgb(31 41 55);
+}
+
+.dark #helpdesk-reply-picker .i2g-helpdesk-button.is-secondary {
+  background: rgb(55 65 81);
+  color: rgb(229 231 235);
+}

@@ -18,7 +18,15 @@ mark, resolving, closing, reopening, assigning, spam and the move to the queue i
 the subject token), ``shadow`` (shadow mode) and ``retention`` (the hourly clean-up).
 """
 
-from .changes import AssignmentRefused, Kind, Status, helpdesk_staff, membership_problem, update_ticket
+from .changes import (
+    AssignmentRefused,
+    Kind,
+    Status,
+    eligible_members,
+    helpdesk_staff,
+    membership_problem,
+    update_ticket,
+)
 from .merging import MOVE_TO_QUEUE, MergeRefused, merge, merge_refusal
 from .working import (
     NOTE_MAX_CHARS,
@@ -45,6 +53,7 @@ __all__ = [
     "add_note",
     "assign",
     "close",
+    "eligible_members",
     "helpdesk_staff",
     "mark_read",
     "mark_spam",

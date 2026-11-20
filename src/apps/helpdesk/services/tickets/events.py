@@ -30,9 +30,9 @@ def _label(value) -> str:
     return str(value or "")
 
 
-def record_changes(current: Ticket, values: dict, *, actor, name) -> None:
+def record_changes(current: Ticket, values: dict, *, actor, name, reopened: bool = False) -> None:
     """One entry per field ``update_ticket`` changes (``values``, against the row ``current``), in a fixed order;
-    ``name`` labels a member (the assignee)."""
+    ``name`` labels a member (the assignee); ``reopened``: the change reopens the ticket (its resolution goes)."""
     fields = (
         ("impact", Kind.IMPACT, lambda value: _IMPACT.get(value, value)),
         ("urgency", Kind.URGENCY, lambda value: _URGENCY.get(value, value)),
@@ -49,11 +49,12 @@ def record_changes(current: Ticket, values: dict, *, actor, name) -> None:
             record(current, kind, actor=actor, **{"from": before, "to": after})
     if "resolution_code" in values or "resolution_notes" in values:
         code = values.get("resolution_code", current.resolution_code)
-        if not code and not values.get("resolution_notes") and current.resolution_code:
+        if reopened and current.resolution_code:
             # Reopening clears the resolution (``changes.reopen_values``).
             record(current, Kind.RESOLUTION, actor=actor, cleared=current.resolution_code)
             return
-        record(current, Kind.RESOLUTION, actor=actor, code=code, notes="resolution_notes" in values)
+        was = {"was": current.resolution_code} if not code and current.resolution_code else {}
+        record(current, Kind.RESOLUTION, actor=actor, code=code, notes="resolution_notes" in values, **was)
 
 
 def _change(data: dict, labels: dict | None = None) -> str:
@@ -87,6 +88,8 @@ def _merged(event, data) -> str:
 def _resolution(event, data) -> str:
     if data.get("cleared"):
         return f"Resolution cleared on reopening (was: {_RESOLUTION.get(data['cleared'], data['cleared'])})"
+    if data.get("was") and not data.get("code"):
+        return f"Resolution code cleared (was: {_RESOLUTION.get(data['was'], data['was'])})"
     code = _RESOLUTION.get(data.get("code") or "", "") or "no code"
     return f"Resolution: {code}" + (" (notes updated)" if data.get("notes") else "")
 

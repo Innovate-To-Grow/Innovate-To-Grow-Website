@@ -140,7 +140,7 @@ class MergeIsFinalAdminTests(_MergedCase):
         self.assertEqual(dict(page.context["adminform"].form.fields), {})  # every field is shown read-only
         self.assertNotContains(page, 'name="_save"')
         self.assertContains(page, "Merged")
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual((response.status_code, response.url), (302, url))  # refused with the reason
         self.assertEqual(snapshot(), before)
 
     def test_merged_is_not_offered_on_a_tickets_page_and_a_posted_one_is_refused(self):

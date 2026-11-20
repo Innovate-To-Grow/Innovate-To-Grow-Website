@@ -11,14 +11,22 @@ when it runs), and the "Automated & spam" view, where every ticket is one, offer
 from mail, and deleted only by retention or an I2G Master (behind the typed confirmation).
 """
 
-from django.contrib import admin
+from django.contrib import admin, messages
 
 from apps.core.admin import BaseModelAdmin
 
-from ...models import Ticket
+from ...models import AssignmentGroup, Ticket
 from ...services.tickets import shadow
 from .actions import TicketActionsMixin
-from .filters import AssigneeFilter, GroupFilter, MailTypeFilter, SLAFilter, StatusViewFilter, UnreadFilter
+from .filters import (
+    AssigneeFilter,
+    GroupFilter,
+    MailTypeFilter,
+    PriorityFilter,
+    SLAFilter,
+    StatusViewFilter,
+    UnreadFilter,
+)
 from .page import TicketPageMixin
 from .queue import TicketQueueMixin
 
@@ -46,7 +54,7 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         GroupFilter,
         SLAFilter,
         UnreadFilter,
-        "priority",
+        PriorityFilter,
         "category",
     )
     list_select_related = ("category", "assignee", "assignment_group")
@@ -139,11 +147,16 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
 
     class Media:
         css = {"all": ("helpdesk/css/helpdesk.css",)}
-        js = ("helpdesk/js/ticket-page.js",)
+        js = ("helpdesk/js/ticket-page.js", "helpdesk/js/ticket-form.js")
 
     # --- access ----------------------------------------------------------------------------------------------------
 
     def changelist_view(self, request, extra_context=None):
+        if request.GET.get(GroupFilter.parameter_name) == "mine" and request.method == "GET":
+            if not AssignmentGroup.objects.filter(members=request.user).exists():
+                messages.info(
+                    request, "You are in no assignment group, so My Groups is empty: Helpdesk → Assignment Groups."
+                )
         extra = {"helpdesk_shadow_mode": shadow.shadow_mode_on(), **(extra_context or {})}
         return super().changelist_view(request, extra)
 

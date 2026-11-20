@@ -67,9 +67,9 @@ def queue_acknowledgement(ticket: Ticket, message: TicketMessage, settings: Help
         from_name="Innovate to Grow",
         from_address=from_address(),
         to_addresses=[address],
-        subject=compose.reply_subject(ticket),
+        subject=compose.reply_subject(ticket, strict=True),
         occurred_at=now,
-        body_text=compose.fill(settings.acknowledgement_text, ticket),
+        body_text=compose.fill(settings.acknowledgement_text, ticket, strict=True),
         delivery_status=TicketMessage.Delivery.QUEUED,
     )
     events.record(ticket, TicketEvent.Kind.ACKNOWLEDGED, to=address)

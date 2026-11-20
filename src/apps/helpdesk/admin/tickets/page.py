@@ -1,5 +1,7 @@
 """The ticket page: its read-only displays, saving, the change view and the page's own URLs."""
 
+from django.contrib import messages
+from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
@@ -121,6 +123,13 @@ class TicketPageMixin:
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         ticket = self.get_object(request, object_id)
+        if request.method == "POST" and ticket is not None and ticket.status == Ticket.Status.MERGED:
+            # Merged while the page was open: its page is read-only now, so the save is refused with the reason.
+            target = f" into {ticket.merged_into.display_number}" if ticket.merged_into_id else ""
+            messages.error(
+                request, f"{ticket.display_number} was merged{target} while you were editing: nothing was saved."
+            )
+            return HttpResponseRedirect(reverse("admin:helpdesk_ticket_change", args=[ticket.pk]))
         extra = dict(extra_context or {})
         if ticket is not None and self.has_view_permission(request, ticket):
             settings = HelpdeskSettings.load()

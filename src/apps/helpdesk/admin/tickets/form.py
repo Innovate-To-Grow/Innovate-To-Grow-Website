@@ -60,6 +60,8 @@ class TicketForm(forms.ModelForm):
         for name in EDITABLE:
             if name in self.fields:
                 self.fields[name].show_hidden_initial = True
+                # The browser must not restore an older value on Back: it would count as this person's edit.
+                self.fields[name].widget.attrs["autocomplete"] = "off"
         status = self.fields.get("status")
         if status is not None:
             current = self.instance.status

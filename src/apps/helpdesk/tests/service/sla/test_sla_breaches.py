@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from ....models import SLATarget, Ticket, TicketEvent
 from ....services import sla
-from ...helpers.service import Status, new_ticket
+from ...helpers.service import Status, clocked_ticket, new_ticket
 
 Kind = TicketEvent.Kind
 HOUR = timedelta(hours=1)
@@ -52,33 +52,41 @@ class QueueQueryTests(TestCase):
 
         self.assertEqual(self.matching(sla.breached_q(now)), {"flagged", "response overdue", "resolution overdue"})
 
-    def test_at_risk_lists_running_clocks_past_the_warning_share_of_their_priority_target(self):
+    def test_at_risk_lists_running_clocks_past_the_warning_share_of_their_own_span(self):
         now = timezone.now()
-        # Moderate: 24 h to respond, 5 days to resolve; past 75 % is the last 6 h / 30 h before the due time.
-        due_ticket(subject="response at risk", response_in=2 * HOUR, resolution_in=90 * HOUR)
-        due_ticket(subject="resolution at risk", status=Status.OPEN, first_responded_at=now, resolution_in=5 * HOUR)
-        due_ticket(
-            subject="paused",
-            status=Status.PENDING_CUSTOMER,
-            first_responded_at=now,
-            sla_paused_at=now,
-            resolution_in=5 * HOUR,
+        ago = lambda hours: now - timedelta(hours=hours)  # noqa: E731
+        # Moderate: 24 h to respond, 5 days to resolve.
+        clocked_ticket(subject="response at risk", started=ago(20))  # 83 % of the response used
+        responded = {"status": Status.OPEN, "first_responded_at": ago(100)}
+        clocked_ticket(subject="resolution at risk", started=ago(108), **responded)  # 90 % of the resolution
+        clocked_ticket(
+            subject="paused", started=ago(108), sla_paused_at=now, **{**responded, "status": Status.PENDING_CUSTOMER}
         )
-        due_ticket(subject="on track", response_in=10 * HOUR, resolution_in=90 * HOUR)
-        due_ticket(subject="overdue", response_in=-HOUR, resolution_in=90 * HOUR)
-        due_ticket(subject="closed", status=Status.CLOSED, response_in=HOUR, resolution_in=HOUR)
-        # Critical: 1 h to respond, 8 h to resolve: 2 h left is still on track at 75 %.
-        due_ticket(subject="critical", priority=Ticket.Priority.URGENT, response_in=2 * HOUR, resolution_in=8 * HOUR)
+        clocked_ticket(subject="on track", started=ago(14))  # 58 %
+        clocked_ticket(subject="overdue", started=ago(25))
+        clocked_ticket(subject="closed", started=ago(20), status=Status.CLOSED)
+        clocked_ticket(subject="critical", priority=Ticket.Priority.URGENT, started=now - timedelta(minutes=10))
 
         self.assertEqual(self.matching(sla.at_risk_q(now, 75)), {"response at risk", "resolution at risk"})
         self.assertEqual(self.matching(sla.at_risk_q(now, 50)), {"response at risk", "resolution at risk", "on track"})
         self.assertEqual(self.matching(sla.at_risk_q(now, 99)), set())
 
-    def test_at_risk_needs_a_target(self):
-        due_ticket(subject="response at risk", response_in=HOUR, resolution_in=HOUR)
-        SLATarget.objects.all().delete()
+    def test_each_clock_is_judged_by_its_own_span_whatever_the_target_is_now(self):
+        """As the queue's SLA column reads it: a clock set under a 2-day target is 42 % used after 20 h, though the
+        target is 1 day now."""
+        now = timezone.now()
+        SLATarget.objects.filter(priority=Ticket.Priority.NORMAL).update(response_minutes=48 * 60)
+        clocked_ticket(subject="two-day clock", started=now - timedelta(hours=20))
+        SLATarget.objects.filter(priority=Ticket.Priority.NORMAL).update(response_minutes=24 * 60)
 
-        self.assertEqual(self.matching(sla.at_risk_q(timezone.now(), 75)), set())
+        self.assertEqual(self.matching(sla.at_risk_q(now, 75)), set())
+        self.assertEqual(self.matching(sla.at_risk_q(now, 40)), {"two-day clock"})
+
+    def test_a_clock_without_due_times_is_never_at_risk(self):
+        SLATarget.objects.filter(priority=Ticket.Priority.NORMAL).update(is_active=False)
+        clocked_ticket(subject="target off", started=timezone.now() - timedelta(hours=20))
+
+        self.assertEqual(self.matching(sla.at_risk_q(timezone.now(), 1)), set())
 
 
 class MarkBreachesTests(TestCase):

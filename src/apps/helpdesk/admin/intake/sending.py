@@ -10,7 +10,7 @@ from django.template.defaultfilters import linebreaksbr
 from django.utils.html import format_html
 from unfold.decorators import display
 
-from ...services.outbound.compose import unknown_placeholders
+from ...services.outbound.compose import ACKNOWLEDGEMENT_PLACEHOLDERS, unknown_placeholders
 
 LABELS = {
     "shadow_mode": "Shadow mode (nothing is sent)",
@@ -19,6 +19,10 @@ LABELS = {
     "notify_assignment": "Notify staff of assignments",
     "auto_close_resolved_days": "Auto-close resolved tickets after (days)",
     "sla_warning_percent": "SLA at risk after (% of its time)",
+    "spam_scl_threshold": "Spam SCL threshold",
+    "bulk_bcl_threshold": "Bulk BCL threshold",
+    "body_text_max_chars": "Body text max characters",
+    "body_html_max_chars": "Body HTML max characters",
 }
 MASTER_ONLY = "Only an I2G Master can change these: they decide what the helpdesk sends from the site's address."
 # What makes the helpdesk send mail from the site's address, and what its automatic email says: an I2G Master's
@@ -27,10 +31,21 @@ SENDING_FIELDS = ("shadow_mode", "send_acknowledgement", "acknowledgement_text",
 SHOWN = {field: f"{field}_shown" for field in SENDING_FIELDS}
 
 
+class LFTextField(forms.CharField):
+    """Text whose line ends are LF whatever the browser posts (CRLF): an untouched text is no change, in the typed
+    confirmation and the history too."""
+
+    def to_python(self, value):
+        return super().to_python(value).replace("\r\n", "\n")
+
+
 class SettingsForm(forms.ModelForm):
+    class Meta:
+        field_classes = {"acknowledgement_text": LFTextField}
+
     def clean_acknowledgement_text(self):
-        text = str(self.cleaned_data.get("acknowledgement_text") or "").replace("\r\n", "\n")
-        unknown = unknown_placeholders(text)
+        text = str(self.cleaned_data.get("acknowledgement_text") or "")
+        unknown = unknown_placeholders(text, ACKNOWLEDGEMENT_PLACEHOLDERS)
         if unknown:
             raise forms.ValidationError(
                 f"Unknown placeholder{'s' if len(unknown) != 1 else ''}: {', '.join(unknown)}. "
@@ -53,10 +68,13 @@ class SendingFieldsMixin:
         fieldsets = super().get_fieldsets(request, obj)
         if _master(request):
             return fieldsets
+        # For everyone else the sending switches sit together, read-only, under the reason; shadow mode leaves the
+        # Switches, whose other toggles they may change.
         shown = []
         for title, options in fieldsets:
-            fields = tuple(SHOWN.get(name, name) for name in options["fields"])
-            if any(name in SHOWN.values() for name in fields):
+            fields = tuple(SHOWN.get(name, name) for name in options["fields"] if name != "shadow_mode")
+            if "send_acknowledgement" in options["fields"]:
+                fields = (SHOWN["shadow_mode"], *fields)
                 options = {**options, "description": f"{options.get('description', '')} {MASTER_ONLY}".strip()}
             shown.append((title, {**options, "fields": fields}))
         return shown

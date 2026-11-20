@@ -1,7 +1,8 @@
 """A ticket's SLA clock: a response and a resolution due time from its priority's ``SLATarget`` (calendar time).
 
-- The clock starts when the ticket's first message arrived (``sla_started_at``). Automated mail, backfilled mail,
-  tickets from before the SLA existed and priorities whose target is switched off have no clock (no due times).
+- The clock starts when the ticket's first message arrived (``sla_started_at``). Automated mail, backfilled mail and
+  tickets from before the SLA existed have no clock. A ticket whose priority's target is switched off has a start but
+  no due times, until a change to a priority with an active target sets them.
 - **Response** is met by the first of: a reply from the ticket reaching the mail service (when it is sent, not when it
   is queued: a reply that fails is no response), or staff moving the ticket out of New (``first_responded_at``). The
   site cannot see answers written in Outlook; moving the ticket on stands for them.
@@ -30,10 +31,11 @@ def target_for(priority: str) -> SLATarget | None:
 
 
 def start_values(priority: str, started_at: datetime) -> dict:
-    """The clock of a new ticket of ``priority`` whose first message arrived at ``started_at`` (empty: no SLA)."""
+    """The clock of a new ticket of ``priority`` whose first message arrived at ``started_at``. A priority whose target
+    is switched off gets the start without due times: a later change to a priority with an active target sets them."""
     target = target_for(priority)
     if target is None:
-        return {}
+        return {"sla_started_at": started_at}
     return {
         "sla_started_at": started_at,
         "response_due_at": started_at + timedelta(minutes=target.response_minutes),

@@ -1,11 +1,18 @@
 {% extends "admin/base_site.html" %}
+{% load static %}
 {% comment %}The queue's "Resolve…" action: one resolution code (and notes) for the selected tickets.{% endcomment %}
 
 {% block title %}{{ title }}{% endblock %}
 {% block content_title %}<h1>{{ title }}</h1>{% endblock %}
 
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'helpdesk/css/helpdesk.css' %}?v=20261120-resolve">
+{% endblock %}
+
 {% block content %}
 <form method="post" action="" class="i2g-helpdesk-resolve">
+  <h2 class="i2g-helpdesk-heading">{{ title }}</h2>
   {% csrf_token %}
   {% for ticket in tickets %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ ticket.pk }}">{% endfor %}
   <input type="hidden" name="action" value="resolve_tickets">

@@ -31,8 +31,14 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
         ]
         return custom + super().get_urls()
 
+    def action_confirmation_off(self, request) -> bool:
+        """Confirmation off for this admin or the site (never by ``_popup``: Django offers no actions in a popup)."""
+        from django.conf import settings
+
+        return not self.require_confirmation or not getattr(settings, "ADMIN_REQUIRE_CONFIRMATION", True)
+
     def response_action(self, request, queryset):
-        if self._should_skip_confirmation(request):
+        if self.action_confirmation_off(request):
             return super().response_action(request, queryset)
 
         action_form = self._bound_action_form(request)

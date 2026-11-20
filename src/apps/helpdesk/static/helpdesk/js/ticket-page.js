@@ -1,11 +1,12 @@
-/* The ticket page (Helpdesk → Queue → a ticket). Progressive: without this script every form still works.
+/* The ticket page (Helpdesk → Queue → a ticket): its three forms. Progressive: without this script they still work.
  *
- * - Reply form: a response template is inserted where the cursor is (no page reload, so nothing typed is lost);
- *   Enter in Cc does not send the reply; Send works once (no duplicate reply on a double click).
  * - The page has three forms (the ticket's fields, the reply, the internal note). Submitting one while another has
- *   unsaved input asks first, because the page reloads and that input would be lost.
- * - Ticket form: the priority follows impact and urgency at once (saved on Save), Assigned to offers the assignment
- *   group's members (all helpdesk staff for a group without members), and "Assign to me" picks the signed-in member.
+ *   unsaved input asks first (the page reloads and that input would be lost), and so does leaving the page. A reply
+ *   the server put back after a refusal counts as unsaved input.
+ * - Reply form: a response template is inserted where the cursor is (no page reload, so nothing typed is lost);
+ *   Enter in Cc does not send the reply; Send works once (no duplicate reply on a double click); a counter shows the
+ *   characters left (the browser cuts a longer paste without saying so).
+ * The ticket form's own helpers are in ticket-form.js.
  */
 (function () {
   "use strict";
@@ -15,32 +16,31 @@
     return node ? JSON.parse(node.textContent) : null;
   }
 
-  function onReady(callback) {
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", callback);
-    } else {
-      callback();
-    }
+  function filled(form, selector) {
+    return Array.prototype.some.call(form.querySelectorAll(selector), function (field) {
+      return field.value.trim() !== "";
+    });
   }
 
   // --- the three forms: warn before one throws away what was typed in another --------------------------------------
 
   function watchForms() {
+    var reply = document.querySelector("#helpdesk-reply form[method='post']");
+    var note = document.getElementById("helpdesk-note");
     var forms = [
-      { form: document.getElementById("ticket_form"), name: "the ticket's fields", once: false },
-      { form: document.querySelector("#helpdesk-reply form[method='post']"), name: "the reply", once: true },
-      { form: document.getElementById("helpdesk-note"), name: "the internal note", once: true },
+      { form: document.getElementById("ticket_form"), name: "the ticket's fields", once: false, dirty: false },
+      { form: reply, name: "the reply", once: true, dirty: Boolean(reply) && filled(reply, "textarea, #helpdesk-reply-cc") },
+      { form: note, name: "the internal note", once: true, dirty: Boolean(note) && filled(note, "textarea") },
     ].filter(function (item) {
       return item.form;
     });
+    var submitting = false;
     forms.forEach(function (item) {
-      item.dirty = false;
-      item.form.addEventListener("input", function () {
+      var mark = function () {
         item.dirty = true;
-      });
-      item.form.addEventListener("change", function () {
-        item.dirty = true;
-      });
+      };
+      item.form.addEventListener("input", mark);
+      item.form.addEventListener("change", mark);
       item.form.addEventListener("submit", function (event) {
         var others = forms.filter(function (other) {
           return other !== item && other.dirty;
@@ -55,7 +55,7 @@
             return;
           }
         }
-        item.dirty = false;
+        submitting = true;
         if (item.once) {
           // The reply and the note are sent once (the ticket form's buttons carry Save / Save and continue).
           window.setTimeout(function () {
@@ -65,6 +65,15 @@
           }, 0);
         }
       });
+    });
+    window.addEventListener("beforeunload", function (event) {
+      var unsaved = forms.some(function (item) {
+        return item.dirty;
+      });
+      if (unsaved && !submitting) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
     });
   }
 
@@ -83,6 +92,24 @@
     textarea.focus();
   }
 
+  function counter(body) {
+    var max = body.maxLength > 0 ? body.maxLength : 0;
+    if (!max) {
+      return;
+    }
+    var line = document.createElement("p");
+    line.className = "i2g-helpdesk-muted";
+    line.setAttribute("aria-live", "polite");
+    var update = function () {
+      var left = max - body.value.length;
+      line.textContent =
+        left > 0 ? left.toLocaleString() + " characters left" : "The reply is at its limit: anything longer was cut off.";
+    };
+    body.addEventListener("input", update);
+    body.insertAdjacentElement("afterend", line);
+    update();
+  }
+
   function replyForm() {
     var picker = document.querySelector("#helpdesk-reply .i2g-helpdesk-template-picker");
     var body = document.getElementById("helpdesk-reply-body");
@@ -99,6 +126,9 @@
         }
       });
     }
+    if (body) {
+      counter(body);
+    }
     var cc = document.getElementById("helpdesk-reply-cc");
     if (cc) {
       cc.addEventListener("keydown", function (event) {
@@ -112,80 +142,14 @@
     }
   }
 
-  // --- the ticket form -------------------------------------------------------------------------------------------------
-
-  function readonlyValue(labelText) {
-    // A read-only field's value box, found by its label (Unfold's rows carry no field-name class).
-    var labels = document.querySelectorAll("#ticket_form label");
-    for (var index = 0; index < labels.length; index += 1) {
-      if (labels[index].textContent.trim() === labelText) {
-        var line = labels[index].closest(".field-line") || labels[index].parentElement.parentElement;
-        return line ? line.querySelector(".readonly") : null;
-      }
-    }
-    return null;
-  }
-
-  function ticketForm(helpers) {
-    var impact = document.getElementById("id_impact");
-    var urgency = document.getElementById("id_urgency");
-    var priority = document.querySelector(".field-priority .readonly") || readonlyValue("Priority");
-    if (impact && urgency && priority) {
-      var saved = priority.textContent.trim();
-      var preview = function () {
-        var label = helpers.priorities[impact.value + "-" + urgency.value];
-        priority.textContent = label && label !== saved ? label + " (when saved)" : saved;
-      };
-      impact.addEventListener("change", preview);
-      urgency.addEventListener("change", preview);
-    }
-    var group = document.getElementById("id_assignment_group");
-    var assignee = document.getElementById("id_assignee");
-    if (!assignee) {
-      return;
-    }
-    var narrow = function () {
-      var members = (group && helpers.groups[group.value]) || [];
-      Array.prototype.forEach.call(assignee.options, function (option) {
-        var outside = option.value !== "" && members.length > 0 && members.indexOf(option.value) === -1;
-        option.hidden = outside;
-        option.disabled = outside;
-      });
-      var selected = assignee.options[assignee.selectedIndex];
-      if (selected && selected.disabled) {
-        assignee.value = "";
-      }
-    };
-    if (group) {
-      group.addEventListener("change", narrow);
-      narrow();
-    }
-    var mine = Array.prototype.find.call(assignee.options, function (option) {
-      return option.value === helpers.me;
-    });
-    if (mine) {
-      var button = document.createElement("button");
-      button.type = "button";
-      button.className = "i2g-helpdesk-button is-secondary i2g-helpdesk-assign-me";
-      button.textContent = "Assign to me";
-      button.addEventListener("click", function () {
-        if (mine.disabled) {
-          window.alert("You are not a member of the chosen assignment group.");
-          return;
-        }
-        assignee.value = helpers.me;
-        assignee.dispatchEvent(new Event("change", { bubbles: true }));
-      });
-      assignee.insertAdjacentElement("afterend", button);
-    }
-  }
-
-  onReady(function () {
+  function start() {
     watchForms();
     replyForm();
-    var helpers = data("helpdesk-form-data");
-    if (helpers) {
-      ticketForm(helpers);
-    }
-  });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
 })();

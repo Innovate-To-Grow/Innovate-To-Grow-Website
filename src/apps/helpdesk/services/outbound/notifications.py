@@ -90,7 +90,7 @@ def notify_staff_job(job) -> None:
     else:
         what, lead = "Assigned to you", f"{actor} assigned {ticket.display_number} to you."
     text = (
-        f"{lead}\n\nSubject: {compose.without_links(ticket.subject) or '(no subject)'}\n"
+        f"{lead}\n\nSubject: {compose.without_links(ticket.subject, strict=True) or '(no subject)'}\n"
         f"Requester: {ticket.requester_email}\nPriority: {ticket.get_priority_display()}\n\n"
         f"Open the ticket: {compose.ticket_admin_url(ticket)}\n\n"
         "This is an automatic notice: please do not reply to it (a reply would open a new ticket). Work on the ticket "

@@ -52,12 +52,13 @@ class NewTicketClockTests(TestCase):
         self.assertTrue(ticket.backfilled)
         self.assertIsNone(ticket.sla_started_at)
 
-    def test_a_priority_whose_target_is_off_has_no_clock(self):
+    def test_a_priority_whose_target_is_off_starts_a_clock_without_due_times(self):
         SLATarget.objects.filter(priority=Ticket.Priority.NORMAL).update(is_active=False)
 
         ticket = receive(corpus.message())
 
-        self.assertEqual((ticket.sla_started_at, ticket.response_due_at), (None, None))
+        self.assertIsNotNone(ticket.sla_started_at)
+        self.assertEqual((ticket.response_due_at, ticket.resolution_due_at), (None, None))
 
 
 class PauseAndResumeTests(TestCase):

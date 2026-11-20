@@ -47,13 +47,22 @@ def helpdesk_staff():
     return [member for member in members if user_can_access_app(member, "helpdesk")]
 
 
+def eligible_members(group) -> list:
+    """The group's members who may hold its tickets: active staff who still have the Helpdesk app."""
+    return [
+        member
+        for member in group.members.all()
+        if member.is_active and member.is_staff and user_can_access_app(member, "helpdesk")
+    ]
+
+
 def membership_problem(group, assignee) -> str:
-    """Why ``assignee`` cannot hold a ticket of ``group`` ("" when they can): a group that has members has its
-    tickets assigned within them."""
+    """Why ``assignee`` cannot hold a ticket of ``group`` ("" when they can): a group with members who may work
+    tickets has its tickets assigned within them (one whose members all lost the Helpdesk app is open to all staff)."""
     if group is None or assignee is None:
         return ""
-    members = group.members.all()
-    if members.exists() and not members.filter(pk=assignee.pk).exists():
+    eligible = {member.pk for member in eligible_members(group)}
+    if eligible and assignee.pk not in eligible:
         return f"{assignee} is not a member of {group}."
     return ""
 
@@ -130,8 +139,9 @@ def update_ticket(ticket: Ticket, *, actor, first_response: bool = True, reason:
         if status_changed:
             data = {"from": current.status, "to": status, **({"reason": reason} if reason else {})}
             events.record(current, Kind.STATUS, actor=actor, **data)
-            values.update(reopen_values(current, status))
-        events.record_changes(current, values, actor=actor, name=_name)
+            reopened = reopen_values(current, status)
+            values.update(reopened)
+        events.record_changes(current, values, actor=actor, name=_name, reopened=bool(status_changed and reopened))
         if status_changed:
             values.update(_status_values(current, status, now))
         clock_status = status if status_changed else None

@@ -37,18 +37,18 @@ class UndeliveredReplyTests(JobTestCase):
         self.assertIsNotNone(self.ticket.sla_paused_at)
         return message, job
 
-    def assert_back_in_front_of_staff(self, to=Status.NEW):
+    def assert_back_in_front_of_staff(self, to=Status.NEW, reason="the reply did not go out"):
         self.ticket.refresh_from_db()
         self.assertEqual((self.ticket.status, self.ticket.unread), (to, True))
         self.assertIsNone(self.ticket.sla_paused_at)  # the resolution clock runs again
         back = [event for event in self.ticket.events.filter(kind=Kind.STATUS) if event.data["from"] == WAITING]
         self.assertEqual(len(back), 1)
-        expected = {"from": WAITING, "to": to, "reason": "the reply did not go out"}
+        expected = {"from": WAITING, "to": to, "reason": reason}
         self.assertEqual((back[0].actor, back[0].data), (None, expected))
         label = "New" if to == Status.NEW else "In progress"
         self.assertEqual(
             events.describe(back[0]),
-            f"Status changed: On hold – awaiting requester → {label} (the reply did not go out)",
+            f"Status changed: On hold – awaiting requester → {label} ({reason})",
         )
 
     def failure(self) -> str:
@@ -85,7 +85,7 @@ class UndeliveredReplyTests(JobTestCase):
 
         finish(job, BackgroundJob.Status.UNCERTAIN)
 
-        self.assert_back_in_front_of_staff()
+        self.assert_back_in_front_of_staff(reason="delivery not confirmed")
         message.refresh_from_db()
         self.assertEqual(message.delivery_status, Delivery.UNCERTAIN)
         lead = "Not confirmed: "

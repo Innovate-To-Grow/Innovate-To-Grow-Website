@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from ...models import AssignmentGroup, HelpdeskSettings, Ticket
 from ...services import sla
+from ...services.sla.priority import SEVERITY
 
 Status = Ticket.Status
 ACTIVE, DONE = "active", "done"
@@ -74,7 +75,8 @@ class StatusViewFilter(_DefaultChoiceFilter):
         return (
             (ACTIVE, "Open (new, in progress, on hold)"),
             (DONE, "Resolved & closed"),
-            *Status.choices,
+            # Spam is never among people's mail (Mail: people, the default).
+            *(choice for choice in Status.choices if choice[0] != Status.SPAM or self._mail in ("automated", "all")),
             ("any", "Any status"),
         )
 
@@ -148,7 +150,7 @@ class SLAFilter(admin.SimpleListFilter):
             share = int(HelpdeskSettings.load().sla_warning_percent)
             return queryset.filter(sla.at_risk_q(now, share)).exclude(sla.breached_q(now))
         if self.value() == "none":
-            return queryset.filter(sla_started_at__isnull=True)
+            return queryset.filter(response_due_at__isnull=True, resolution_due_at__isnull=True)
         return queryset
 
 
@@ -161,3 +163,17 @@ class UnreadFilter(admin.SimpleListFilter):
 
     def queryset(self, request, queryset):
         return queryset.filter(unread=True) if self.value() == "yes" else queryset
+
+
+class PriorityFilter(admin.SimpleListFilter):
+    """Priorities from the most severe (the stored values do not sort by severity)."""
+
+    title = "priority"
+    parameter_name = "priority"
+
+    def lookups(self, request, model_admin):
+        labels = dict(Ticket.Priority.choices)
+        return [(value, labels[value]) for value in SEVERITY]
+
+    def queryset(self, request, queryset):
+        return queryset.filter(priority=self.value()) if self.value() in Ticket.Priority.values else queryset

@@ -26,13 +26,13 @@ _TLDS = (
     "page|link|live|email|click|work|club|top|xyz|zip|mov|tk|ml|ga|cf|gq|ws|cc|tv|ly|gl|su|us|uk|ca|de|fr|eu|nl|be|"
     "at|ch|it|es|pl|se|no|ru|cn|jp|kr|in|au|br"
 )
-# URLs, www. hosts, host names with a path ("evil.example/login"), bare host names on those top-level domains and IPv4
-# addresses: anything a mail client may turn into a link.
-_LINK_RE = re.compile(
-    r"(?:[a-z][a-z0-9+.-]*://|www\.)\S+"
-    r"|\b[\w-]+(?:\.[\w-]+)+/\S*"
-    rf"|\b(?:[a-z0-9-]+\.)+(?:{_TLDS})\b(?::\d+)?"
-    r"|\b\d{1,3}(?:\.\d{1,3}){3}\b(?::\d+)?",
+# URLs, www. hosts and host names with a path ("evil.example/login"): what a mail client turns into a link.
+_LINK = r"(?:[a-z][a-z0-9+.-]*://|www\.)\S+|\b[\w-]+(?:\.[\w-]+)+/\S*"
+_LINK_RE = re.compile(_LINK, re.IGNORECASE)
+# Also bare host names on those top-level domains and IPv4 addresses, which some clients link too: for automatic mail
+# an outsider triggers (the acknowledgement, the notices), where no staff member reads the text before it goes out.
+_STRICT_LINK_RE = re.compile(
+    rf"{_LINK}|\b(?:[a-z0-9-]+\.)+(?:{_TLDS})\b(?::\d+)?|\b\d{{1,3}}(?:\.\d{{1,3}}){{3}}\b(?::\d+)?",
     re.IGNORECASE,
 )
 # Marks an automatic message (RFC 3834) and asks Exchange not to answer it, so responders never answer each other.
@@ -47,26 +47,43 @@ def person(member) -> str:
     return member.get_full_name() or str(member)
 
 
-def without_links(value: str) -> str:
+def without_links(value: str, *, strict: bool = False) -> str:
     """A value the sender of inbound mail chose (their display name, the subject), with anything link-like removed:
-    filled into an email from the site's address, it must not carry an outsider's link (a phishing relay)."""
-    return " ".join(_LINK_RE.sub("[link removed]", str(value or "")).split())
+    filled into an email from the site's address, it must not carry an outsider's link (a phishing relay). ``strict``
+    (automatic mail nobody reads first) removes bare host names and IPv4 addresses too."""
+    pattern = _STRICT_LINK_RE if strict else _LINK_RE
+    return " ".join(pattern.sub("[link removed]", str(value or "")).split())
 
 
 PLACEHOLDERS = ("{ticket}", "{requester_name}", "{subject}", "{agent_name}")
-_PLACEHOLDER_RE = re.compile(r"\{[^{}\s]{1,40}\}")
+# The acknowledgement has no agent: it goes out by itself.
+ACKNOWLEDGEMENT_PLACEHOLDERS = ("{ticket}", "{requester_name}", "{subject}")
+_TOKEN_RE = re.compile(r"\{([^{}\n]{1,60})\}")
 
 
-def unknown_placeholders(text: str) -> list[str]:
-    """The ``{...}`` tokens of ``text`` that are no placeholder (they would be sent as typed)."""
-    return sorted(set(_PLACEHOLDER_RE.findall(str(text or ""))) - set(PLACEHOLDERS))
+def _near(token: str) -> str:
+    return re.sub(r"[\s-]+", "_", token.strip().lower())
 
 
-def fill(text: str, ticket: Ticket, *, agent=None) -> str:
+def unknown_placeholders(text: str, allowed=PLACEHOLDERS) -> list[str]:
+    """The ``{...}`` tokens of ``text`` that would be sent as typed: an unknown name, or a misspelt placeholder such
+    as ``{requester name}`` or ``{ subject }``. Braces around ordinary words with spaces ("{see below}") are prose."""
+    known = {placeholder[1:-1] for placeholder in PLACEHOLDERS}
+    found = set()
+    for match in _TOKEN_RE.finditer(str(text or "")):
+        token, inner = match.group(0), match.group(1)
+        if token in allowed:
+            continue
+        if _near(inner) in known or not re.search(r"\s", inner):
+            found.add(token)
+    return sorted(found)
+
+
+def fill(text: str, ticket: Ticket, *, agent=None, strict: bool = False) -> str:
     values = {
         "{ticket}": ticket.display_number,
-        "{requester_name}": without_links(ticket.requester_name) or "there",
-        "{subject}": without_links(ticket.subject) or "(no subject)",
+        "{requester_name}": without_links(ticket.requester_name, strict=strict) or "there",
+        "{subject}": without_links(ticket.subject, strict=strict) or "(no subject)",
         "{agent_name}": person(agent) or "the Innovate to Grow team",
     }
     for placeholder, value in values.items():
@@ -74,15 +91,16 @@ def fill(text: str, ticket: Ticket, *, agent=None) -> str:
     return text
 
 
-def reply_subject(ticket: Ticket) -> str:
-    subject = numbering.TOKEN_RE.sub("", without_links(ticket.subject)).replace("[]", "").strip()
+def reply_subject(ticket: Ticket, *, strict: bool = False) -> str:
+    subject = numbering.TOKEN_RE.sub("", without_links(ticket.subject, strict=strict)).replace("[]", "").strip()
     subject = _REPLY_PREFIX_RE.sub("", subject).strip() or "Your message"
     token = f" [{ticket.display_number}]"
     return f"Re: {subject[: 255 - len(token) - 4]}{token}"
 
 
 def notice_subject(ticket: Ticket, what: str) -> str:
-    return f"[{ticket.display_number}] {what}: {without_links(ticket.subject) or '(no subject)'}"[:255]
+    subject = without_links(ticket.subject, strict=True) or "(no subject)"
+    return f"[{ticket.display_number}] {what}: {subject}"[:255]
 
 
 def footer(ticket: Ticket) -> str:

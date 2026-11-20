@@ -1,13 +1,14 @@
 """The ticket queue: which tickets it lists and how, its columns and their sort orders, and the ticket form's choices.
 
 Priority and status sort in their order of severity and of the ticket's life, not alphabetically by stored value; the
-SLA column sorts by the due time of the clock that runs now. A ticket number typed in the search ("1234", "#1234" or
-"I2G-#1234") finds that ticket whatever the filters, listed first.
+SLA column sorts as it reads: breaches first, then running clocks by their due time, then paused clocks, then
+tickets that are done or have no clock. A ticket number typed in the search ("1234", "#1234" or "I2G-#1234")
+finds that ticket whatever the filters, listed first unless a column sort is chosen.
 """
 
 from datetime import UTC, datetime
 
-from django.db.models import Case, Count, F, IntegerField, Q, Value, When
+from django.db.models import Case, Count, DateTimeField, F, IntegerField, Q, Value, When
 from django.db.models.functions import Coalesce, NullIf
 from django.utils import timezone
 from django.utils.html import format_html
@@ -50,10 +51,16 @@ def _rank(field: str, order) -> Case:
 
 
 STATUS_RANK = _rank("status", (*Ticket.OPEN_STATUSES, Status.RESOLVED, Status.CLOSED, Status.MERGED, Status.SPAM))
-# The due time of the clock the SLA column shows (the response until it is met); tickets without a clock sort last.
-SLA_DUE = Coalesce(
-    Case(When(first_responded_at__isnull=True, then=F("response_due_at")), default=F("resolution_due_at")),
-    Value(datetime(9999, 12, 31, tzinfo=UTC)),
+# What the SLA column sorts by: a breach first, then the due time of the clock it shows (the response until it is
+# met), a paused resolution clock after every running one, and last tickets that are done or have no clock.
+_FIRST, _PAUSED, _LAST = (Value(datetime(year, 1, 1, tzinfo=UTC)) for year in (1970, 9998, 9999))
+SLA_DUE = Case(
+    When(Q(response_breached=True) | Q(resolution_breached=True), then=_FIRST),
+    When(Q(sla_started_at__isnull=True) | ~Q(status__in=Ticket.OPEN_STATUSES), then=_LAST),
+    When(first_responded_at__isnull=True, then=Coalesce(F("response_due_at"), _LAST)),
+    When(sla_paused_at__isnull=False, then=_PAUSED),
+    default=Coalesce(F("resolution_due_at"), _LAST),
+    output_field=DateTimeField(),
 )
 REQUESTER = Coalesce(NullIf("requester_name", Value("")), "requester_email")
 RELATED = ("category", "assignment_group", "assignee")
@@ -83,16 +90,13 @@ class TicketQueueMixin:
         results, may_have_duplicates = super().get_search_results(request, queryset, search_term)
         number = numbering.parse_number(search_term)
         if number is not None:
-            results = results | self.get_queryset(request).filter(number=number)
-            may_have_duplicates = True
+            # A fresh queryset: the filters' joins stay in the subquery (no doubled counts). The list is ordered before
+            # it is searched, so its order (a sorted column, or the default) is kept behind the number match.
+            found = Q(pk__in=results.values("pk")) | Q(number=number)
+            first = Case(When(number=number, then=Value(0)), default=Value(1)).asc()
+            results = self.get_queryset(request).filter(found).order_by(first, *queryset.query.order_by)
+            may_have_duplicates = False
         return results, may_have_duplicates
-
-    def get_ordering(self, request):
-        ordering = list(super().get_ordering(request) or ())
-        number = numbering.parse_number(request.GET.get("q", ""))
-        if number is not None:
-            ordering.insert(0, Case(When(number=number, then=Value(0)), default=Value(1)).asc())
-        return ordering
 
     def get_form(self, request, obj=None, change=False, **kwargs):
         form = super().get_form(request, obj, change, **kwargs)
@@ -110,6 +114,7 @@ class TicketQueueMixin:
             field = form.base_fields.get(name)
             if field is not None:
                 field.queryset = field.queryset.filter(Q(is_active=True) | Q(pk=current))
+                field.label_from_instance = lambda item: str(item) if item.is_active else f"{item} (inactive)"
         for name in RELATED:
             # Groups, categories and members are set up on their own pages, not from a ticket (whose trash icon would
             # delete the group or category for every ticket).

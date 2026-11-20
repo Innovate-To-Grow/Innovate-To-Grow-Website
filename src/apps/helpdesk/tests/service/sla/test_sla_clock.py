@@ -45,11 +45,11 @@ class StartTests(TestCase):
             },
         )
 
-    def test_an_inactive_or_missing_target_gives_no_clock(self):
+    def test_an_inactive_or_missing_target_gives_a_start_without_due_times(self):
         SLATarget.objects.filter(priority=Ticket.Priority.HIGH).update(is_active=False)
 
-        self.assertEqual(sla.start_values(Ticket.Priority.HIGH, NOW), {})
-        self.assertEqual(sla.start_values("nonsense", NOW), {})
+        self.assertEqual(sla.start_values(Ticket.Priority.HIGH, NOW), {"sla_started_at": NOW})
+        self.assertEqual(sla.start_values("nonsense", NOW), {"sla_started_at": NOW})
         self.assertIsNone(sla.target_for(Ticket.Priority.HIGH))
 
 

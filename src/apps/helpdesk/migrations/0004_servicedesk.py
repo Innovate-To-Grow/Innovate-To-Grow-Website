@@ -103,8 +103,8 @@ class Migration(migrations.Migration):
             model_name="helpdesksettings",
             name="acknowledgement_text",
             field=models.TextField(
-                db_default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nTo add information, reply to this email and keep {ticket} in the subject.\n\nInnovate to Grow, UC Merced",
-                default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nTo add information, reply to this email and keep {ticket} in the subject.\n\nInnovate to Grow, UC Merced",
+                db_default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nInnovate to Grow, UC Merced",
+                default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nInnovate to Grow, UC Merced",
                 help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link removed). Only an I2G Master can change it.",
             ),
         ),
@@ -490,15 +490,6 @@ class Migration(migrations.Migration):
         ),
         # Found by the live check of the admin flows: a group or category that tickets use is protected (switched
         # off, not deleted), an unconfirmed delivery has a state of its own, clearer help and texts.
-        migrations.AlterField(
-            model_name="helpdesksettings",
-            name="acknowledgement_text",
-            field=models.TextField(
-                db_default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nInnovate to Grow, UC Merced",
-                default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nInnovate to Grow, UC Merced",
-                help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link removed). Only an I2G Master can change it.",
-            ),
-        ),
         migrations.AlterField(
             model_name="slatarget",
             name="is_active",

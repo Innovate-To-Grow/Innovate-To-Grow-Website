@@ -95,13 +95,13 @@ def _joined(ticket: Ticket, message: TicketMessage, classified: Classified, rule
     if rule == "reopened":
         cleared = reopen_values(ticket, Status.OPEN)
         updates.update(status=Status.OPEN, closed_at=None, resolved_at=None, **cleared)
-        events.record(ticket, TicketEvent.Kind.REOPENED, reason="the customer replied", **_move(ticket.status))
+        events.record(ticket, TicketEvent.Kind.REOPENED, reason="the requester replied", **_move(ticket.status))
         if cleared and ticket.resolution_code:
             # Resolving it again asks for a new code.
             events.record(ticket, TicketEvent.Kind.RESOLUTION, cleared=ticket.resolution_code)
     elif ticket.status == Status.PENDING_CUSTOMER:
         updates["status"] = Status.OPEN
-        events.record(ticket, TicketEvent.Kind.STATUS, reason="the customer replied", **_move(ticket.status))
+        events.record(ticket, TicketEvent.Kind.STATUS, reason="the requester replied", **_move(ticket.status))
     if updates.get("status") == Status.OPEN:
         # The requester answered: a resolution clock that stood still (waiting for them, or resolved) runs again.
         updates.update(sla.status_values(ticket, Status.OPEN, timezone.now()))

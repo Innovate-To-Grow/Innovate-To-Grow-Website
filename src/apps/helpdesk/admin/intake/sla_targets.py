@@ -3,7 +3,8 @@
 Targets are policy (ServiceNow keeps SLA definitions to its administrators): Helpdesk staff see them, only an I2G
 Master changes them, so a desk cannot loosen its own targets. A target is switched off rather than deleted (a missing
 row and an inactive one both mean "no SLA" for new tickets of that priority), and a priority's row is created only
-when it has none (the migration creates all four).
+when it has none (the migration creates all four). A change applies to new tickets and to priority changes, not to
+clocks already running.
 """
 
 from django import forms
@@ -15,7 +16,11 @@ from apps.core.admin import BaseModelAdmin
 from ...models import SLATarget, Ticket
 from ...services.sla.priority import PRIORITY_RANK
 
-MINUTES_HELP = "In minutes (60 = 1 hour, 1440 = 1 day); calendar time, not business hours."
+MINUTES_HELP = (
+    "In minutes (60 = 1 hour, 1440 = 1 day); calendar time, not business hours. A change applies to new tickets and to "
+    "priority changes, not to clocks already running."
+)
+MASTER_ONLY = "Only an I2G Master changes SLA targets: a desk cannot loosen its own targets."
 
 
 def _is_master(request) -> bool:
@@ -29,6 +34,10 @@ def _duration(minutes: int) -> str:
     return " ".join(part for part in parts if part) or "0 min"
 
 
+def _missing() -> set:
+    return set(Ticket.Priority.values) - set(SLATarget.objects.values_list("priority", flat=True))
+
+
 @admin.register(SLATarget)
 class SLATargetAdmin(BaseModelAdmin):
     require_confirmation = False
@@ -38,11 +47,19 @@ class SLATargetAdmin(BaseModelAdmin):
     def get_ordering(self, request):
         return [PRIORITY_RANK.asc()]
 
-    def get_fields(self, request, obj=None):
+    def get_list_display(self, request):
+        return [name for name in super().get_list_display(request) if name != "created_at"]
+
+    def get_fieldsets(self, request, obj=None):
+        if not _is_master(request):
+            fields = ("priority_label", "response_display", "resolution_display", "is_active")
+            return ((None, {"description": MASTER_ONLY, "fields": fields}),)
         first = "priority_label" if obj is not None else "priority"
-        return (first, "response_minutes", "resolution_minutes", "is_active")
+        return ((None, {"fields": (first, "response_minutes", "resolution_minutes", "is_active")}),)
 
     def get_readonly_fields(self, request, obj=None):
+        if not _is_master(request):
+            return ("priority_label", "response_display", "resolution_display", "is_active")
         return ("priority_label",) if obj is not None else ()
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
@@ -54,6 +71,12 @@ class SLATargetAdmin(BaseModelAdmin):
         if db_field.name in ("response_minutes", "resolution_minutes") and field is not None:
             field.help_text = f"{db_field.help_text} {MINUTES_HELP}"
         return field
+
+    def render_change_form(self, request, context, add=False, change=False, form_url="", obj=None):
+        if add:
+            # The last missing priority leaves nothing to add after it.
+            context["show_save_and_add_another"] = len(_missing()) > 1
+        return super().render_change_form(request, context, add=add, change=change, form_url=form_url, obj=obj)
 
     @display(description="Priority", ordering=PRIORITY_RANK)
     def priority_label(self, obj):
@@ -68,8 +91,7 @@ class SLATargetAdmin(BaseModelAdmin):
         return _duration(obj.resolution_minutes)
 
     def has_add_permission(self, request):
-        missing = set(Ticket.Priority.values) - set(SLATarget.objects.values_list("priority", flat=True))
-        return bool(missing) and _is_master(request) and super().has_add_permission(request)
+        return bool(_missing()) and _is_master(request) and super().has_add_permission(request)
 
     def has_change_permission(self, request, obj=None):
         return _is_master(request) and super().has_change_permission(request, obj)

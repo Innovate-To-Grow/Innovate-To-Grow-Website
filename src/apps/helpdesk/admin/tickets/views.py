@@ -52,6 +52,11 @@ def note_view(request, pk):
     require_helpdesk_access(request)
     ticket = get_object_or_404(Ticket, pk=pk)
     body = str(request.POST.get("body") or "").replace("\r\n", "\n").strip()
+    if ticket.status == Ticket.Status.MERGED:
+        target = ticket.merged_into
+        where = f" into {target.display_number}: add the note there" if target is not None else ""
+        messages.error(request, f"{ticket.display_number} was merged{where}. Nothing was added.")
+        return HttpResponseRedirect(_ticket_url(target or ticket))
     if not body:
         messages.error(request, "Write the note before adding it.")
     elif len(body) > tickets.NOTE_MAX_CHARS:
@@ -89,7 +94,12 @@ def reply_context(request, ticket: Ticket, settings: HelpdeskSettings) -> dict:
     refusal = outbound.can_reply(ticket, settings)
     if refusal:
         # A reply refused because sending stopped meanwhile: its text stays on the page to copy.
-        return {"helpdesk_reply_refusal": refusal, "helpdesk_reply_body": (draft or {}).get("body", "")}
+        draft = draft or {}
+        return {
+            "helpdesk_reply_refusal": refusal,
+            "helpdesk_reply_body": draft.get("body", ""),
+            "helpdesk_reply_cc": draft.get("cc", ""),
+        }
     same_category = Case(
         When(Q(category_id=ticket.category_id) & Q(category__isnull=False), then=Value(0)),
         default=Value(1),
@@ -130,15 +140,17 @@ def reply_context(request, ticket: Ticket, settings: HelpdeskSettings) -> dict:
 
 
 def form_helpers(request, ticket: Ticket) -> dict:
-    """What the ticket form's script needs: each group's members (the Assigned to list follows the group), the
-    priority each impact and urgency give, and who "Assign to me" means."""
+    """What the ticket form's script needs: each group's members who may hold its tickets (the Assigned to list
+    follows the group), the priority each impact and urgency give, who "Assign to me" means, and whether the page
+    shows the saved values (a GET) rather than a refused save's input."""
     groups = {
-        str(group.pk): [str(pk) for pk in group.members.values_list("pk", flat=True)]
-        for group in AssignmentGroup.objects.all()
+        str(group.pk): [str(member.pk) for member in tickets.eligible_members(group)]
+        for group in AssignmentGroup.objects.prefetch_related("members")
     }
     labels = dict(Ticket.Priority.choices)
     priorities = {f"{i}-{u}": str(labels[priority_for(i, u)]) for i in (1, 2, 3) for u in (1, 2, 3)}
-    return {"helpdesk_form_data": {"groups": groups, "priorities": priorities, "me": str(request.user.pk)}}
+    data = {"groups": groups, "priorities": priorities, "me": str(request.user.pk), "fresh": request.method == "GET"}
+    return {"helpdesk_form_data": data}
 
 
 @require_GET
