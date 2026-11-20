@@ -17,7 +17,10 @@ from ...helpers.service import Status, clocked_ticket, new_ticket
 from .support import PageCase, change_url, ticket_admin
 
 HOUR = timedelta(hours=1)
-MOVE = 'hidden from the default queue. If a person wrote it, use "Not automated: move to the queue".'
+MOVE = (
+    'hidden from the default queue. If a person wrote it, use "Not automated: move to the queue" beside Save at the '
+    "bottom of this page."
+)
 
 
 class SLAPanelTests(PageCase):

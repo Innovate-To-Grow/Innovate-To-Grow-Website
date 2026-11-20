@@ -75,7 +75,7 @@ class TimelineTests(TicketPageTestCase):
         self.assertContains(
             response,
             "Automatic reply — hidden from the default queue. If a person wrote it, use "
-            "&quot;Not automated: move to the queue&quot;.",
+            "&quot;Not automated: move to the queue&quot; beside Save at the bottom of this page.",
         )
 
     def test_events_and_notes_appear_in_order(self):

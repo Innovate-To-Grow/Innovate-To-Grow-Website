@@ -13,7 +13,7 @@ from ... import corpus
 from ...helpers import helpdesk_staff, receive
 from .scam_mail import DMARC_PASS, SCAM, WORD_REASONS, locked_out, scam_signals
 
-ANALYZE = "apps.helpdesk.services.ingest.routing.classify.analyze_email"
+ANALYZE = "apps.helpdesk.services.ingest.routing.scam.analyze_email"
 SUSPICIOUS = "Suspicious: the scam checks found warning signs."
 SPAM = "Marked as spam by the scam checks."
 WHY = f"Why: {'; '.join(WORD_REASONS)}."

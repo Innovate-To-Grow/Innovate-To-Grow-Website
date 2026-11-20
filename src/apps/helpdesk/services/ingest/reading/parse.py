@@ -3,11 +3,12 @@
 Anyone can mail the mailbox, so the input is hostile. Headers are read with ``core``'s hardened helpers (``compat32``
 parsing, every value cut to 998 characters before it is decoded); the MIME tree is walked to at most ``MAX_PARTS``
 parts and ``MAX_DEPTH`` levels (a message is marked ``incomplete`` past them); each text part is decoded from at most
-``TEXT_PART_MAX_BYTES``; attached messages (forwards, the original inside a bounce report) are read to a summary of
-their headers and text, never kept as raw bytes, and their own attachments are ignored. A message cut off at the
-read limit (``truncated``) keeps what was read. NUL characters are dropped from every text read (headers, bodies,
-part headers): PostgreSQL text cannot hold them, and a body that has some (a UTF-16 part labelled as another charset
-is full of them) must still become a ticket. Nothing here touches the database.
+``TEXT_PART_MAX_BYTES``; attached messages (forwards, the original inside a bounce report, a saved ``.eml`` file
+whatever type it is sent as) are read to a summary of their headers and text, never kept as raw bytes, and their own
+attachments are ignored. A message cut off at the read limit (``truncated``) keeps what was read. NUL characters are
+dropped from every text read (headers, bodies, part headers): PostgreSQL text cannot hold them, and a body that has
+some (a UTF-16 part labelled as another charset is full of them) must still become a ticket. Nothing here touches
+the database.
 """
 
 from apps.core.services.email.inbound.classification import headers as mime

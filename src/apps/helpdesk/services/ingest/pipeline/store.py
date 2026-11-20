@@ -13,8 +13,9 @@ The rules (Hongzhe's decision of 2026-11-11 on top of item2-helpdesk-bounces-pla
   it opens a ticket of its own, so a person's message is never hidden in a closed one).
 - The site's own messages keep no body or attachment (they may hold sign-in codes).
 - A person's new ticket starts with medium impact and urgency (moderate priority) and, unless it is backfilled, its
-  SLA clock (``sla``); automated mail starts low and has no clock. With sending on and the acknowledgement
-  switched on, the requester is told the ticket number (``outbound.acknowledgement``).
+  SLA clock (``sla``); automated mail starts low and has no clock. Its requester is the sender, or the person a web
+  form relays (Reply-To, ``routing.people``). With sending on and the acknowledgement switched on, the requester is
+  told the ticket number (``outbound.acknowledgement``).
 """
 
 from dataclasses import dataclass, replace
@@ -34,7 +35,7 @@ from ...outbound import acknowledgement
 from ...sla import priority
 from ...tickets import events, numbering
 from ..reading.message import ParsedMessage
-from ..routing import matching
+from ..routing import matching, people
 from ..routing.classify import Classified
 from .messages import Status, _add_message, _joined, _participants
 
@@ -91,7 +92,7 @@ def _target(match, parsed, classified, settings, received: datetime, own) -> tup
             return _new(**new, campaign_id=match.campaign_id, related=ticket, rule="follow_up"), True, "follow_up"
         return ticket, False, match.rule
     if not classified.automated:
-        grouped = _flood_target(parsed.from_address, settings, received)
+        grouped = _flood_target(_requester(parsed, classified, own)[1], settings, received)
         if grouped is not None:
             return grouped, False, "flood"
     return _new(**new, campaign_id=match.campaign_id, rule="new"), True, "new"
@@ -110,6 +111,12 @@ def _flood_target(address: str, settings: HelpdeskSettings, received: datetime) 
     # neither reopens it nor shows under the default status filter). With none open, it opens a ticket of its own.
     open_tickets = recent.filter(status__in=Ticket.OPEN_STATUSES)
     return open_tickets.select_for_update().order_by("-first_message_at").first()
+
+
+def _requester(parsed, classified, own) -> tuple[str, str]:
+    """Who a new ticket is for: its sender, or on a person's message the one a web form relays (``people``)."""
+    person = None if classified.automated else people.reply_to_person(parsed, own)
+    return person or (parsed.from_name, parsed.from_address)
 
 
 def _member_for(address: str):
@@ -131,6 +138,7 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
     ticket_priority = priority.priority_for(impact, urgency)
     backfilled = timezone.now() - received > timedelta(hours=int(settings.backfill_age_hours))
     clock = {} if automated or backfilled else sla.start_values(ticket_priority, received)
+    name, address = _requester(parsed, classified, own)
     ticket = numbering.create_ticket(
         subject=scrub_subject(parsed.subject) or "(no subject)",
         status=closed_status if automated else Status.NEW,
@@ -138,9 +146,9 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
         impact=impact,
         urgency=urgency,
         **clock,
-        requester_email=parsed.from_address[:254],
-        requester_name=scrub_subject(parsed.from_name),
-        requester_member=_member_for(parsed.from_address),
+        requester_email=address[:254],
+        requester_name=scrub_subject(name),
+        requester_member=_member_for(address),
         participants=_participants([parsed.from_address, parsed.reply_to, *parsed.to, *parsed.cc], own),
         campaign=EmailCampaign.objects.filter(pk=campaign_id).first() if campaign_id else None,
         related_ticket=related,

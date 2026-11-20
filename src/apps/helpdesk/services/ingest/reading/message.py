@@ -1,5 +1,6 @@
 """What reading one inbound message yields, and the limits it is read within."""
 
+import codecs
 import hashlib
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -15,6 +16,8 @@ TEXT_PART_MAX_BYTES = 4 * 1024 * 1024
 ATTACHED_TEXT_MAX_CHARS = 64 * 1024
 HTML_TO_TEXT_MAX_CHARS = 256 * 1024
 NESTED_TYPES = frozenset({"message/rfc822", "message/global"})
+# A saved message attached as a file, whatever type it is sent as: read like an attached message, never kept raw.
+MESSAGE_FILE_SUFFIXES = (".eml",)
 # Machine-readable parts of a report: the bounce processor reads them; they are neither body nor attachment here.
 REPORT_PARTS = frozenset(
     {
@@ -28,6 +31,18 @@ REPORT_PARTS = frozenset(
 )
 BODY_TYPES = ("text/plain", "text/html")
 _PART_ERRORS = (AssertionError, LookupError, TypeError, ValueError, UnicodeError, IndexError, AttributeError)
+# Codecs no mail program writes text in: punycode decodes in quadratic time (a crafted 4 MB body would stall the
+# import for minutes), and the escape codecs turn plain bytes into other characters. Such text is read as UTF-8.
+_ODD_CODECS = frozenset({"punycode", "idna", "unicode-escape", "raw-unicode-escape"})
+
+
+def text_codec(charset: str) -> str:
+    """The codec to read text declared in ``charset``: Python's name for it, else UTF-8."""
+    try:
+        name = codecs.lookup(charset).name if charset else "utf-8"
+    except _PART_ERRORS:
+        return "utf-8"
+    return "utf-8" if name in _ODD_CODECS else name
 
 
 @dataclass
@@ -38,6 +53,7 @@ class ParsedAttachment:
     is_inline: bool = False
     data: bytes | None = None
     size: int = 0
+    charset: str = ""
 
 
 @dataclass

@@ -11,14 +11,15 @@ tracking pixels never load). Sanitizing keeps text formatting, lists, tables and
 - bleach keeps only the allow-listed tags, attributes and ``http``/``https``/``mailto``/``tel`` links (no event
   handlers, ``javascript:`` URLs or ``srcset``), and its CSS sanitizer only harmless style properties;
 - every link opens in a new tab with ``rel="noopener noreferrer"``;
-- personal sign-in links are scrubbed (``core``'s inbound ``scrub``).
+- personal sign-in links are scrubbed (``core``'s inbound ``scrub``), and a link to one is no link any more: its
+  text stays, followed by ``[sign-in link removed]``.
 """
 
 import bleach
 from bleach.css_sanitizer import CSSSanitizer
 from bs4 import BeautifulSoup, Comment
 
-from apps.core.services.email.inbound import scrub_links
+from apps.core.services.email.inbound import LINK_PLACEHOLDER, is_sensitive_url, scrub_links
 
 ALLOWED_TAGS = frozenset(
     {
@@ -82,8 +83,25 @@ def _prepare(html: str) -> str:
     for image in soup.find_all("img"):
         alt = str(image.get("alt") or "").strip()[:100]
         image.replace_with(f"[image: {alt}]" if alt else IMAGE_PLACEHOLDER)
+    for anchor in soup.find_all("a", href=True):
+        if _removed(str(anchor.get("href") or "")):
+            _unlink(anchor)
     body = soup.body
     return "".join(str(child) for child in body.contents) if body is not None else str(soup)
+
+
+def _removed(href: str) -> bool:
+    """Whether scrubbing removes the link: a personal sign-in link (also a relative one), or one holding such a link."""
+    return is_sensitive_url(href) or LINK_PLACEHOLDER in scrub_links(href)
+
+
+def _unlink(anchor) -> None:
+    # Left as the href, the placeholder would be a link relative to the ticket page (it opens the admin): the anchor
+    # goes, its content stays, followed by the placeholder unless its own text already shows one.
+    text = anchor.get_text()
+    if LINK_PLACEHOLDER not in scrub_links(text):
+        anchor.append(f" {LINK_PLACEHOLDER}" if text.strip() else LINK_PLACEHOLDER)
+    anchor.unwrap()
 
 
 def _clean(html: str) -> str:
@@ -107,8 +125,8 @@ def sanitize_html(html: str, *, max_chars: int) -> tuple[str, bool]:
     cut = len(html) > INPUT_MAX_CHARS
     cleaned = scrub_links(_clean(_prepare(html)))
     if len(cleaned) > max_chars:
-        # Cut with room to spare, then sanitize again: bleach re-parses the cut markup and closes whatever it left
-        # open, and the closing tags it adds fit in the room left.
+        # Cut with room to spare, then sanitize again: bleach re-parses the cut markup, drops a tag cut in half (so no
+        # link is cut into a different one) and closes whatever it left open; the closing tags fit in the room left.
         room = max_chars - min(_CLOSING_ROOM, max_chars // 10)
         cleaned, cut = _trim(scrub_links(_clean(cleaned[:room])), max_chars), True
     return cleaned.strip(), cut

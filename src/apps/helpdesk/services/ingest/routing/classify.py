@@ -2,16 +2,15 @@
 
 The header classifier decides whether a message is automated (``apps.core.services.email.inbound.classification.classify``). It is
 told first whether the message replies to the site's mail: an email the site sent (``replies.site_mail_replied``), or
-a message of a person's ticket (``replies.answers_a_person``: a follow-up in a conversation, typically to an answer
-staff sent from Outlook). So a person who answers from a CRM or sales tool (whose mail carries bulk headers) is still
-a person; list mail that replies to an email the site sent (a reply sent to a whole mailing list) stays list mail,
-flagged ``reply_to_our_mail`` so staff find it among the automated tickets. A message it leaves as human (which includes "uncertain") is also scored by
-the scam detector's deterministic rules (``analyze_email``; never the optional Bedrock second opinion, so no message
-text leaves the site): a high score makes it spam, a medium one keeps it a normal ticket flagged suspicious, as does a
-message that claims the site's own address without proof. A sender who proved their domain (DMARC or Exchange's
-composite authentication) is not made spam on its words alone (a person asking about a locked account reads like a
-phish): unless the sender, links, structure or authentication checks warn too, the message stays a person's ticket,
-flagged suspicious. The checks' reasons are kept on the message for staff.
+a person's ticket (``replies.answers_a_person``: a follow-up in its conversation, typically to an answer staff sent
+from Outlook, or a participant writing under its number). So a person who answers from a CRM or sales tool (whose
+mail carries bulk headers) is still a person; list mail that replies to an email the site sent (a reply sent to a
+whole mailing list) stays list mail, flagged ``reply_to_our_mail`` so staff find it among the automated tickets. A web
+form that sends, from a no-reply address, what someone wrote (Reply-To: that person, ``people``) is a person's
+message, never answered automatically. A message it leaves as human (which includes "uncertain") is judged by the
+scam checks (``scam``): spam, a person's ticket flagged suspicious (as is a message that claims the site's own
+address without proof), or neither; their reasons are kept on the message for staff. Exchange marking a message
+internal to the organisation (``auth["authas"]``) proves its sender as DMARC does.
 
 What the inbound queue row keeps of the verdict (``Classified.result``): the email the site sent that the message
 answers, how it was found and the address it went to, and, for a left-the-organisation notice, any contact name,
@@ -24,23 +23,14 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 
 from apps.core.models import EmailServiceConfig, OutboundEmail
-from apps.core.services.email.inbound import Evidence, Verdict, auth_summary, classify
+from apps.core.services.email.inbound import NO_AUTO_RESPONSE, Evidence, Verdict, auth_summary, classify
 from apps.mail.services.audience.suppression import normalize_address
-from apps.mail.services.scam_detector import (
-    BRAND_NAMES,
-    MEDIUM_THRESHOLD,
-    analyze_email,
-    check_address_alignment,
-    check_authentication,
-    check_links,
-    check_sender,
-    check_structure,
-)
 
 from ....models import HelpdeskSettings
 from ..reading.message import ParsedMessage
-from . import replies
+from . import people, replies, scam
 
+HUMAN = "human"
 SPAM = "spam"
 BULK = "bulk"
 REPLY_FLAG = "reply_to_our_mail"
@@ -96,20 +86,6 @@ def own_addresses(mailbox: str) -> frozenset[str]:
     return frozenset(str(address or "").strip().lower() for address in addresses) - {""}
 
 
-def _scam_input(parsed: ParsedMessage) -> dict:
-    headers = parsed.headers
-    return {
-        "from_email": parsed.from_address,
-        "from_name": parsed.from_name,
-        "subject": parsed.subject,
-        "text": parsed.text[:65536],
-        "html": parsed.html[:262144],
-        "reply_to": parsed.reply_to,
-        "return_path": (headers.get("return-path") or [""])[0].strip().strip("<>").lower()[:254],
-        "authentication_results": " ".join(headers.get("authentication-results", ()))[:8192],
-    }
-
-
 def same_organisation(first: str, second: str) -> bool:
     """Whether two addresses share a domain, or one's domain is a subdomain of the other's."""
     one, two = first.rpartition("@")[2], second.rpartition("@")[2]
@@ -152,48 +128,33 @@ def _verdict(
     )
     if verdict.contact and replied is not None and verdict.contact == replied.recipient:
         verdict = replace(verdict, contact="", contact_kind="")  # the address the site mailed is not a new one
+    noreply_only = (
+        verdict.classification == BULK and verdict.subtype == "noreply" and verdict.signals == ("noreply_sender",)
+    )
+    if noreply_only and people.reply_to_person(parsed, own) is not None:
+        # A web form sending, from a no-reply address, what someone wrote: theirs, never answered automatically.
+        verdict = Verdict(HUMAN, signals=("noreply_relay",), hints=(NO_AUTO_RESPONSE,))
     return verdict
 
 
 def classify_message(
-    parsed: ParsedMessage, *, mailbox: str, settings: HelpdeskSettings, received_at: datetime
+    parsed: ParsedMessage, *, mailbox: str, settings: HelpdeskSettings, received_at: datetime, conversation_id: str = ""
 ) -> Classified:
     window = timedelta(days=int(settings.reply_match_window_days))
     found = replies.site_mail_replied(parsed, received_at=received_at, window=window)
     replied = site_reply_of(found, parsed.from_address)
-    answers = replied is not None or replies.answers_a_person(parsed)
-    verdict = _verdict(parsed, own_addresses(mailbox), settings, replied, answers=answers)
-    auth = auth_summary(parsed.headers)
+    person = replies.answers_a_person(parsed, conversation_id)
+    own = own_addresses(mailbox)
+    verdict = _verdict(parsed, own, settings, replied, answers=replied is not None or person)
+    auth = {**auth_summary(parsed.headers), **({"authas": scam.INTERNAL} if scam.internal(parsed.headers) else {})}
     if verdict.automated:
         flags = (REPLY_FLAG,) if verdict.classification == BULK and replied is not None else ()
         return Classified(verdict, flags=flags, auth=auth, site_reply=replied)
     flags = [hint for hint in verdict.hints if hint in FLAGGED_HINTS]
-    scam_input = _scam_input(parsed)
-    analysis = analyze_email(scam_input)
-    scam_level, reasons = str(analysis.get("risk_level") or ""), tuple(analysis.get("reasons") or ())[:5]
-    if scam_level == "high" and _authenticated(auth) and not _technical_warning(scam_input):
-        scam_level = "medium"
-    if scam_level == "high":
+    judged = scam.judge(parsed, auth, own, answered=person)
+    if judged.spam:
         spam = Verdict(SPAM, "scam_score", ("scam_score_high",), verdict.hints)
-        return Classified(spam, scam_level, auth=auth, site_reply=replied, scam_reasons=reasons)
-    if scam_level == "medium" or "claims_own_address" in verdict.hints:
+        return Classified(spam, judged.level, auth=auth, site_reply=replied, scam_reasons=judged.reasons)
+    if judged.level == "medium" or "claims_own_address" in verdict.hints:
         flags.append("suspicious")
-    kept = reasons if scam_level == "medium" else ()
-    return Classified(verdict, scam_level, tuple(dict.fromkeys(flags)), auth, replied, kept)
-
-
-def _authenticated(auth: dict) -> bool:
-    return any(str((auth or {}).get(method, "")).lower() == "pass" for method in ("dmarc", "compauth"))
-
-
-def _technical_warning(scam_input: dict) -> bool:
-    """Whether the checks that look past the words (sender, links, structure, authentication, address alignment)
-    warn by themselves."""
-    findings = [
-        *check_sender(scam_input, BRAND_NAMES),
-        *check_links(scam_input, BRAND_NAMES),
-        *check_structure(scam_input),
-        *check_authentication(scam_input),
-        *check_address_alignment(scam_input),
-    ]
-    return sum(score for score, _reason in findings) >= MEDIUM_THRESHOLD
+    return Classified(verdict, judged.level, tuple(dict.fromkeys(flags)), auth, replied, judged.reasons)

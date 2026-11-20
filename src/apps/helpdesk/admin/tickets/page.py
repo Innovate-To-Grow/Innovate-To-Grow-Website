@@ -1,11 +1,12 @@
-"""The ticket page: its read-only displays, saving, the change view and the page's own URLs."""
+"""The ticket page: its read-only displays, saving, the change view and the page's own URLs and actions."""
 
 from django.contrib import messages
+from django.contrib.admin.templatetags.admin_urls import add_preserved_filters
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
-from unfold.decorators import display
+from unfold.decorators import action, display
 
 from apps.core.services.email.inbound import LABELS
 
@@ -14,12 +15,26 @@ from ...services import sla, tickets
 from ...services.sla.display import paused_left
 from ...services.tickets import shadow
 from . import timeline, views
+from .actions import MOVE_SKIPPED
 from .form import EDITABLE
+
+# The page's "Not automated: move to the queue" (an Unfold submit-line action: a button beside Save).
+MOVE_HERE = "move_to_queue_here"
+
+
+def _no_sla(ticket: Ticket) -> str:
+    """No SLA, and why when a person's ticket was imported too late for one (backfilled mail has no clock)."""
+    if not ticket.backfilled or ticket.sla_started_at or ticket.is_automated_or_spam or not ticket.first_message_at:
+        return "No SLA"
+    late = max(0.0, (ticket.created_at - ticket.first_message_at).total_seconds())
+    hours = max(1, round(late / 3600))
+    after = f"{hours} h" if hours < 72 else f"{round(late / 86400)} days"
+    return f"No SLA (backfilled: imported {after} after it arrived)"
 
 
 def _clock_html(clock: sla.Clock, ticket: Ticket, met_at=None) -> str:
     if clock.state == "none":
-        return "No SLA"
+        return _no_sla(ticket)
     if clock.state == "paused":
         # The due time moves on while the clock stands still: what is left of the target says more.
         due = f" — {paused_left(ticket)} left when it runs again"
@@ -66,9 +81,15 @@ class TicketPageMixin:
     @display(description="Classification")
     def classification_display(self, obj):
         label = LABELS.get(obj.classification, obj.classification or "—")
-        if obj.automated or obj.status == Ticket.Status.SPAM:
-            return f'{label} — hidden from the default queue. If a person wrote it, use "{tickets.MOVE_TO_QUEUE}".'
-        return label
+        if not obj.is_automated_or_spam:
+            return label
+        if obj.status == Ticket.Status.MERGED:
+            return f"{label} — hidden from the default queue; it was merged, so it stays as it is."
+        # The page's own button beside Save carries this name (so does the queue's bulk action).
+        return (
+            f'{label} — hidden from the default queue. If a person wrote it, use "{tickets.MOVE_TO_QUEUE}" beside '
+            "Save at the bottom of this page."
+        )
 
     @display(description="Flags")
     def flags_display(self, obj):
@@ -121,6 +142,23 @@ class TicketPageMixin:
         if isinstance(message, str):
             super().log_change(request, obj, message)
 
+    @action(description=tickets.MOVE_TO_QUEUE, icon="move_to_inbox")
+    def move_to_queue_here(self, request, obj):
+        """The queue action's move, for this ticket (what the form edited is saved first, as for any Unfold
+        submit-line action); its message, and an admin-history entry when it moved."""
+        started = timezone.now()
+        count = tickets.move_to_queue([obj], actor=request.user)
+        self._done(request, count, "moved to the queue", 1 - count, MOVE_SKIPPED)
+        self._log(request, [obj], started, "Moved to the queue: not automated.")
+
+    def response_change(self, request, obj):
+        # Run here, after the save: ``save_model`` above never calls Unfold's, which would run it as well.
+        if f"{self.opts.app_label}_{self.opts.model_name}_{MOVE_HERE}" in request.POST:
+            self.move_to_queue_here(request, obj)
+            context = {"preserved_filters": self.get_preserved_filters(request), "opts": self.opts}
+            return HttpResponseRedirect(add_preserved_filters(context, request.path))
+        return super().response_change(request, obj)
+
     def change_view(self, request, object_id, form_url="", extra_context=None):
         ticket = self.get_object(request, object_id)
         if request.method == "POST" and ticket is not None and ticket.status == Ticket.Status.MERGED:
@@ -137,6 +175,7 @@ class TicketPageMixin:
                 tickets.mark_read([ticket])
             extra.update(
                 helpdesk_timeline=timeline.build(ticket, settings),
+                helpdesk_settings=settings,  # the message cards name the SCL and BCL thresholds in effect
                 helpdesk_note_url=reverse("admin:helpdesk_ticket_note", args=[ticket.pk]),
                 helpdesk_shadow_mode=shadow.shadow_mode_on(settings),
                 **views.reply_context(request, ticket, settings),

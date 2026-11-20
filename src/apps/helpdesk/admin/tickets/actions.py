@@ -21,6 +21,9 @@ from ...services.tickets.merging import queued_replies
 from ..intake.sending import LFTextField
 from .filters import MailTypeFilter
 
+# Why "Not automated: move to the queue" left a ticket as it was (the queue's action and the ticket page's).
+MOVE_SKIPPED = "only automated mail and spam are moved (a merged ticket never)."
+
 
 class ResolveForm(forms.Form):
     code = forms.ChoiceField(label="Resolution code", choices=[("", "---------"), *Ticket.ResolutionCode.choices])
@@ -112,8 +115,7 @@ class TicketActionsMixin:
     def move_to_queue(self, request, queryset):
         chosen, started = list(queryset), timezone.now()
         count = tickets.move_to_queue(chosen, actor=request.user)
-        why = "only automated mail and spam are moved (a merged ticket never)."
-        self._done(request, count, "moved to the queue", len(chosen) - count, why)
+        self._done(request, count, "moved to the queue", len(chosen) - count, MOVE_SKIPPED)
         self._log(request, chosen, started, "Moved to the queue: not automated (bulk action).")
 
     @action(description="Merge into the oldest selected ticket (not automated mail or spam)")

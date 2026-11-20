@@ -17,6 +17,7 @@ from . import events
 from .changes import DONE, AssignmentRefused, Kind, Status, _name, update_ticket
 
 NOTE_MAX_CHARS = 20000
+HUMAN = "human"
 _URL_RE = re.compile(r"(?i)\b(?:https?://|www\.)[^\s\"'<>]+")
 
 
@@ -104,11 +105,24 @@ def mark_spam(tickets, *, actor) -> int:
     return count
 
 
+def _theirs(ticket: Ticket) -> bool:
+    """The requester's messages filed as automated mail become theirs: shown, quoted under a reply, and warned about
+    as suspicious (no longer spam) when the scam checks scored them; whether one was."""
+    filed = TicketMessage.objects.filter(
+        ticket=ticket, kind=TicketMessage.Kind.AUTOMATED, from_address__iexact=ticket.requester_email
+    )
+    scored = filed.filter(scam_level__in=("medium", "high")).exists()
+    filed.filter(scam_level="high").update(scam_level="medium")
+    filed.update(kind=TicketMessage.Kind.CUSTOMER, classification=HUMAN)
+    return scored
+
+
 def move_to_queue(tickets, *, actor) -> int:
     """Automated (or spam) tickets the classifier or staff got wrong become people's open, unread tickets, with an SLA
     clock running: New again when nobody answered it yet (so moving it on is still its first response), else In
-    progress. A merged one stays as it is: its messages are on the ticket it was merged into. The update checks the
-    row itself, so a ticket merged (or moved) since the list was shown is left alone."""
+    progress; classified as a person's, with the requester's messages theirs again (``_theirs``). A merged one stays
+    as it is: its messages are on the ticket it was merged into. The update checks the row itself, so a ticket merged
+    (or moved) since the list was shown is left alone."""
     now = timezone.now()
     count = 0
     for ticket in tickets:
@@ -119,7 +133,10 @@ def move_to_queue(tickets, *, actor) -> int:
             if not current.is_automated_or_spam or current.status == Status.MERGED:
                 continue
             status = Status.NEW if current.first_responded_at is None else Status.OPEN
-            values = {"automated": False, "status": status, "closed_at": None, "resolved_at": None, "unread": True}
+            values = {"automated": False, "classification": HUMAN, "status": status, "unread": True}
+            values.update(closed_at=None, resolved_at=None)
+            if _theirs(current):
+                values["flags"] = list(dict.fromkeys([*current.flags, "suspicious"]))
             if current.automated and (current.impact, current.urgency) == AUTOMATED_DEFAULT:
                 # Automated mail starts low; a person's message starts where any other does (a person's ticket staff
                 # marked spam keeps the impact and urgency staff gave it).

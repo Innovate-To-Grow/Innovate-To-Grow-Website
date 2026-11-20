@@ -181,7 +181,11 @@ class AcknowledgementLimitTests(TestCase):
         unsaved = HelpdeskSettings(shadow_mode=False, send_acknowledgement=True)
         ticket = new_ticket()
         message = TicketMessage.objects.create(
-            ticket=ticket, kind=TicketMessage.Kind.CUSTOMER, occurred_at=timezone.now(), auth_summary={"dmarc": "PASS"}
+            ticket=ticket,
+            kind=TicketMessage.Kind.CUSTOMER,
+            from_address=ticket.requester_email,
+            occurred_at=timezone.now(),
+            auth_summary={"dmarc": "PASS"},
         )
 
         with self.captureOnCommitCallbacks(execute=True):

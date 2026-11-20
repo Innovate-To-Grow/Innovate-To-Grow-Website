@@ -1,7 +1,8 @@
 """Helpdesk → Queue: the ticket list and the ticket page.
 
 The list opens on people's open tickets: automated mail and spam are hidden unless the Mail filter asks for them
-(the sidebar's "Automated & spam"). The ticket page works a ticket ServiceNow style: status, impact and urgency (the
+(the sidebar's "Automated & spam"); "Not automated: move to the queue" brings one back, from the list or beside Save
+on its page. The ticket page works a ticket ServiceNow style: status, impact and urgency (the
 priority follows), category, assignment group and assignee, and the resolution code and notes (each change goes to
 the ticket's audit trail; no typed confirmation, which would be noise on every status change). It shows the SLA
 clocks, the timeline, the reply form (only while shadow mode is off) and the internal-note form. A merged ticket's
@@ -12,6 +13,8 @@ from mail, and deleted only by retention or an I2G Master (behind the typed conf
 """
 
 from django.contrib import admin, messages
+from django.contrib.admin.utils import unquote
+from django.core.exceptions import ValidationError
 
 from apps.core.admin import BaseModelAdmin
 
@@ -27,7 +30,7 @@ from .filters import (
     StatusViewFilter,
     UnreadFilter,
 )
-from .page import TicketPageMixin
+from .page import MOVE_HERE, TicketPageMixin
 from .queue import TicketQueueMixin
 
 
@@ -83,6 +86,7 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         "mark_unread",
         "move_to_queue",
     )
+    actions_submit_line = (MOVE_HERE,)  # the ticket page's own "Not automated: move to the queue"
     empty_value_display = "—"
     fieldsets = (
         (
@@ -171,6 +175,17 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         if obj is not None and obj.status == Ticket.Status.MERGED:
             return False
         return super().has_change_permission(request, obj)
+
+    def get_actions_submit_line(self, request, object_id):
+        # The page's move to the queue only where it moves something: automated mail or spam that is not merged.
+        actions = super().get_actions_submit_line(request, object_id)
+        try:
+            ticket = Ticket.objects.only("status", "automated").filter(pk=unquote(str(object_id))).first()
+        except (ValidationError, ValueError):
+            ticket = None
+        if ticket is not None and ticket.is_automated_or_spam and self.has_change_permission(request, ticket):
+            return actions
+        return [item for item in actions if not item.action_name.endswith(f"_{MOVE_HERE}")]
 
     def _should_skip_confirmation(self, request):
         # Saving the ticket page needs no typed confirmation (it would be noise on every status change). Deleting a

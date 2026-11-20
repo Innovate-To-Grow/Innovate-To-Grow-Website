@@ -28,8 +28,8 @@ the H2 phase is built as described below (replies, acknowledgement, notification
 | **Queue** | People's open tickets (new, in progress, on hold), most recent activity first. A dot marks an unread customer message. |
 | **My Tickets** / **My Groups** / **Unassigned** | The same list, assigned to you / to an assignment group you are a member of / to nobody. |
 | **SLA Breached** | Tickets whose first response or resolution is overdue (flagged, or past due and not flagged yet). |
-| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here: it becomes a person's unread ticket, New when nobody answered it yet (else In progress), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
-| **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry**. |
+| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** (here, or beside **Save** on the ticket's page) when a person's message landed here: it becomes a person's unread ticket, classified as a person's, New when nobody answered it yet (else In progress), its requester's messages shown as theirs (quoted under a reply; one the scam checks made spam is flagged suspicious instead), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
+| **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry** and **Dismiss (handled)**: a message that can never be imported (deleted in Outlook first) leaves the default view with an admin-history line, keeps its status and error, and stays under the **Dismissed** and **Everything** filters until retention; Retry clears the dismissal. |
 | **Categories**, **Assignment Groups**, **SLA Targets**, **Response Templates** | Ticket categories (each may name a default group); the teams that work tickets; the response and resolution targets per priority (only an I2G Master changes them); canned replies. One that tickets still use is switched off, not deleted (its delete page lists what uses it). |
 | **Settings** | The helpdesk's limits, retention periods and switches (shadow mode, acknowledgement and notifications: only an I2G Master changes those; auto-close), under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
 
@@ -54,7 +54,9 @@ redo it). It shows the two SLA clocks, the timeline (messages, replies with thei
 field changes), the **reply form** (only while shadow mode is off) and the internal-note form; submitting one of the
 page's forms while another has unsaved input asks first. The Status list has no **Merged** (only a merge makes one),
 no **Spam** (the queue's Mark as spam, behind its confirmation) and no **New** once the ticket has left it.
-Automated mail and spam are reopened only with **Not automated: move to the queue**; a merged ticket's page is
+Automated mail and spam are reopened only with **Not automated: move to the queue**, in the queue or beside
+**Save** on the ticket page (offered on automated mail and spam that is not merged; it saves what was edited on
+the page first, then moves the ticket and comes back to its page; no typed confirmation); a merged ticket's page is
 read-only, takes no notes (they go on the ticket it was merged into), and a save started before the merge is
 refused with the reason. On a page opened fresh, a value the browser restores on Back is reset to the saved one. Linked tickets show both ways (related / follow-up, merged into / merged in). Groups, categories and
 members are set up on their own pages, not from the ticket. Notes are seen only by staff with the Helpdesk app and
@@ -62,10 +64,20 @@ are never sent. Opening a ticket marks it read.
 
 - Message HTML was sanitized when it was imported and is shown in a sandboxed frame without scripts; images are
   replaced by `[image]` (remote images would track the reader; inline ones are listed as attachments).
-- A message the scam checks found suspicious carries a warning with the checks' reasons; do not open its links
-  before checking the sender.
-- Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`.
-- Attachments download as files. Archives (zip, 7z, rar, …) open a warning first; blocked file types
+- A message the scam checks found suspicious, or made spam, carries a warning with the checks' reasons (the five
+  that weigh most); do not open its links before checking the sender.
+- Mail that Exchange's own rating made spam or bulk mail says why on its card, with the threshold in effect on
+  Settings ("Why: Exchange rated it spam (SCL 6; spam from SCL 5 on Settings).", "… bulk mail (BCL 8; bulk from
+  BCL 7 on Settings).", or "Exchange's spam filter marked it as spam."); mail Exchange marks as internal to the
+  organisation shows "Exchange: internal" with its authentication results.
+- Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`; a link to
+  one is no longer a link (its text stays, followed by the placeholder). The same holds for forwarded messages,
+  for a saved message attached as a file (`.eml`, shown like a forward as a summary of its headers and text,
+  never kept as a file) and for attached text files (any `text/*` file, or one named `.txt`, `.csv`, `.ics`,
+  `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came.
+- Attachments download as files. Files other than text (PDF, Office documents, images, archives, Outlook `.msg`)
+  are stored as received: a sign-in link inside one is not removed. Archives (zip, 7z, rar, …) open a warning
+  first; blocked file types
   (executables, scripts, disk images, HTML/SVG, macro-enabled Office files, OneNote, CHM) and files over the size
   limit keep only their name, size and type: open the message in Outlook if you need them.
 - Automated messages in a thread are collapsed.
@@ -95,7 +107,7 @@ a merged ticket is not sent (it was written for that ticket): the target's timel
 | ServiceNow | Helpdesk | Notes |
 |---|---|---|
 | Number `INC0010001` | `I2G-#1234` | Also the subject token that threads mail back to the ticket. |
-| State | Status: New, In progress, On hold – awaiting requester, On hold – awaiting internal, Resolved, Closed (and Merged, Spam) | A requester's reply puts "awaiting requester" back to In progress and reopens a ticket closed less than `reopen_window_days` ago. |
+| State | Status: New, In progress, On hold – awaiting requester, On hold – awaiting internal, Resolved, Closed (and Merged, Spam) | A requester's reply puts "awaiting requester" back to In progress and reopens a ticket closed less than `reopen_window_days` ago. The scam checks never hide such an answer as spam on its words alone (they judge only what it adds: [How a message becomes a ticket](#how-a-message-becomes-a-ticket)). |
 | Impact × Urgency → Priority | Impact 1–3 × Urgency 1–3 → 1 Critical, 2 High, 3 Moderate, 4 Low (`services/sla/priority.py`) | ServiceNow's "5 – Planning" (3 × 3) is Low. A person's new ticket starts at 2 × 2 (Moderate), automated mail at 3 × 3 (Low). The stored values (`urgent`, `high`, `normal`, `low`) are unchanged. |
 | Assignment group / Assigned to | **Assignment Groups** (members, manager) and the assignee | A category's **default group** is set on a ticket given that category while it has no group, when that group is active and the ticket's assignee (if any) is one of its members (assignment rule). With a group that has members who still have the Helpdesk app, the assignee must be one of them: on the page, in bulk and by the rule alike (a group whose members all lost the app is open to all staff). |
 | Work notes / Additional comments | Internal notes / replies to the requester | Replies only while shadow mode is off. |
@@ -138,7 +150,8 @@ line `helpdesk_shadow_mode`). Only an **I2G Master** can change shadow mode, the
 the notification switch; other Helpdesk staff see them read-only. Sending code lives only in `services/outbound/`; a test pins that no other helpdesk
 module imports a sending API, and that each job checks shadow mode before it sends.
 
-- **Replies.** The reply form on the ticket page sends to the requester (optional Cc, at most 10, never one of the
+- **Replies.** The reply form on the ticket page sends to the requester (for mail a web form relays, the person
+  it names in Reply-To; optional Cc, at most 10, never one of the
   site's own addresses; Cc addresses become participants, so their answers thread too) from the site's address,
   subject `Re: <subject> [I2G-#1234]`, with the Mail app's branded reply layout, the requester's own latest message
   quoted in the HTML and the text part (never another sender's, e.g. after a merge; its date in the site's time
@@ -159,8 +172,9 @@ module imports a sending API, and that each job checks shadow mode before it sen
   unread.
 - **Acknowledgement** (`send_acknowledgement`, off by default). When a person's message opens a new ticket, the
   requester gets `acknowledgement_text` with the ticket number. Its address comes from inbound mail, so it must not
-  be a relay: it is sent only when the message passed **DMARC** (or Exchange's composite authentication), so a forged
-  From never gets one; never for automated mail, spam, backfilled mail or a message that must not be answered
+  be a relay: it is sent only to the message's sender, when the message passed **DMARC** or Exchange's composite
+  authentication or Exchange marks it internal to the organisation, so neither a forged From nor a Reply-To
+  (a web form's relayed person) gets one; never for automated mail, spam, backfilled mail or a message that must not be answered
   automatically (`shadow.automatic_reply_allowed`, RFC 3834); at most once a day per address and 200 a day in all;
   never to one of the site's own addresses; and `{requester_name}` / `{subject}`, the sender's own words, are filled
   in without links or bare host names (a staff reply's subject keeps host names: staff read it before sending) (the default text uses neither); an unknown placeholder is refused when the text is saved. It
@@ -206,30 +220,40 @@ module imports a sending API, and that each job checks shadow mode before it sen
    notices, auto-generated notices), list or bulk mail, spam (Exchange SCL ≥ 5 or its spam verdict), else human.
    Only strong signals (headers, and the auto-reply subject prefixes mail systems write in several languages)
    make a message automated; **anything uncertain is human**. Content-only signs become hints (flags such as
-   `possible_auto_reply`). A human message is also scored by the Mail app's rule-based scam checks (never the
-   optional Bedrock review): high → spam, medium → a "suspicious" flag, with up to five of the checks' reasons kept
-   on the message and shown to staff. For a sender who passed DMARC or Exchange's composite authentication, a high
-   score from its words alone is only "suspicious" (a person asking about a locked account reads like a phish); it
-   stays spam when the sender, link, structure or authentication checks warn on their own. A message that claims
-   the site's address without proof is flagged suspicious. Address headers are unfolded before they are read, so a
+   `possible_auto_reply`). A human message is also judged by the Mail app's rule-based scam checks (never the
+   optional Bedrock review; `ingest/routing/scam.py`): high → spam, medium → a "suspicious" flag, with the five
+   reasons that weigh most (a phishing signal among them) kept on the message and shown to staff. A sender is
+   **proven** by DMARC, Exchange's composite authentication, or Exchange marking the mail internal to the
+   organisation (`X-MS-Exchange-Organization-AuthAs: Internal`, the topmost one: Exchange strips it from outside
+   mail). For a proven sender, and for an answer on a person's ticket, a high score is only "suspicious" (a person
+   asking about a locked account reads like a phish); it stays spam on a **phishing signal**: a look-alike or
+   punycode sender or link domain (one imitating the site's own, such as `ucrnerced.edu`, too), a link that hides
+   where it goes (text naming another domain, a raw IP, a shortener), hidden HTML, or failed authentication. A
+   missing display name, a brand's name in a person's name (Chase Lee) and a Reply-To or Return-Path elsewhere (web
+   forms, mailing services) are none. A proven sender whose words alone score medium is not flagged (a person asking
+   how to reset a password). An answer on a person's ticket is scored on what it adds: neither the reply it quotes
+   nor a "Re:" subject (the ticket's own). Microsoft Safe Links are unwrapped before the link checks. A message that
+   claims the site's address without proof is flagged suspicious. Address headers are unfolded before they are read, so a
    long quoted display name folded across lines still gives its address. In more detail:
    - **Replies to the site's mail** (`ingest/routing/replies.py`, before classifying): a message whose In-Reply-To or
      References name an email the site sent (the telemetry's `OutboundEmail`, kept 180 days), or, for an email sent
      without a Message-ID the site knows (Graph JSON: campaign mail carrying a sign-in link), a reply from the address
      it went to with the same subject once "RE:", "Automatic reply:" and gateway tags such as "[EXTERNAL]" come off,
-     sent at most `reply_match_window_days` (30) before. A message whose In-Reply-To or References name a message of
-     a **person's ticket** (not automated mail or spam) counts too: a follow-up in the conversation, most often to an
-     answer staff wrote from the mailbox in Outlook, which the site never records (it names no email the site sent,
-     so it is attributed to no address). Such a reply is never list or bulk mail on **weak** signals alone: `List-Unsubscribe` and the other unsubscribe headers, an email service provider's or CRM's own headers
+     sent at most `reply_match_window_days` (30) before. A message that threads to a **person's ticket** (not
+     automated mail or spam: its In-Reply-To or References name one of its messages, or a participant writes under
+     its number or in its conversation) counts too: a follow-up in the conversation, most often to an answer staff
+     wrote from the mailbox in Outlook, which the site never records (it names no email the site sent, so it is
+     attributed to no address). Such a reply is never list or bulk mail on **weak** signals alone: `List-Unsubscribe` and the other unsubscribe headers, an email service provider's or CRM's own headers
      (SendGrid, Mailchimp, HubSpot, Salesforce `X-SFDC-*`, …), `Precedence: bulk`, a no-reply sender, or Exchange's
      bulk complaint level. Those become hints on it (`bulk_headers_on_reply`), so a person who answers a campaign
      from a CRM tool lands in the queue. A list's **distribution** (`List-Id`, `List-Post`, `Precedence: list`) still
-     makes it list mail, flagged `reply to our mail` (decision to confirm), and the spam checks always apply. Every
+     makes it list mail, flagged `reply to our mail` (decision to confirm), and the scam checks still judge it (on
+     what it adds). Every
      verdict on a reply carries the hint `replies_to_site_mail`, and a reply to a campaign email opens a ticket
      linked to that campaign either way.
    - **Bulk complaint level.** Exchange's BCL (`X-Microsoft-Antispam: BCL:n`) at or above `bulk_bcl_threshold` (7,
      Exchange Online's own default) makes a message list or bulk mail (a weak signal); it is shown with the
-     authentication results.
+     authentication results, and mail it made bulk says so on its card.
    - **Automatic replies** (`autoreply.py`): `Auto-Submitted` (not `no`), `X-Autoreply`, `X-Autorespond` and the
      other responder headers, `Precedence: auto_reply`, and the automatic-reply subject prefixes in about twenty
      languages. Exchange's rule markers (`X-MS-Exchange-Inbox-Rules-Loop`, `X-MS-Exchange-Generated-Message-Source`)
@@ -274,6 +298,11 @@ module imports a sending API, and that each job checks shadow mode before it sen
      is stored once.
    - The site's own mail keeps no body or attachment (it may hold sign-in codes).
    - Mail imported more than `backfill_age_hours` (24) after it arrived opens tickets marked as backfilled.
+   - **Web forms.** A person's message whose Reply-To is one address that is neither its sender nor one of the site's
+     own (a form relaying what someone wrote) opens a ticket for that person: they are the requester (replies go to
+     them, as from any mail program), the form's address a participant. A Reply-To is unauthenticated, so it gets no
+     acknowledgement. A form sending from a no-reply address with such a Reply-To is a person's message, never
+     answered automatically (otherwise a no-reply sender is bulk mail).
 
 **Ticket numbers** come from the PostgreSQL sequence `helpdesk_ticket_number_seq` (created by `helpdesk/0001`,
 never below 1001): unique under concurrent creation; a rolled-back number is skipped. SQLite (local development)
@@ -286,7 +315,7 @@ takes the highest number plus one. Display: `I2G-#1234`.
 | Listed-message metadata | `core.InboundMessage` | `inbound_retention_days` (90) after processing, or after recording while it waits (`EMAIL_MONITORING`) |
 | Unverified contact hints copied from a left-the-organisation notice (name, email and US-only `+1` phone) | `mail.BouncedAddress` | Available for review for `left_org_hint_retention_days` (90) after processing. Expired details are hidden immediately and cleared by the next address-counting run. Deleting the source row clears the copy immediately. |
 | Message text (personal sign-in links and token-shaped runs scrubbed) and sanitized HTML, capped at 256 KB / 1 MB | `helpdesk.TicketMessage` | 730 days after the ticket closed |
-| Attachments (10 MB per file, 25 MB per message; blocked types never) | `helpdesk.TicketAttachment.content` (PostgreSQL, not S3: the production media bucket serves public URLs) | 365 days after the ticket closed |
+| Attachments (10 MB per file, 25 MB per message; blocked types never; text files with personal sign-in links replaced, other files as received; a saved `.eml` message only as a summary on its message) | `helpdesk.TicketAttachment.content` (PostgreSQL, not S3: the production media bucket serves public URLs) | 365 days after the ticket closed |
 | Bodies of automated mail / of spam | | 90 / 30 days after arrival |
 | Tickets (number, subject, requester, dates, audit trail) | `helpdesk.Ticket`, `TicketEvent` | 1,095 days after closing |
 | Replies and acknowledgements sent (text as written, recipients, delivery state) | `helpdesk.TicketMessage` (`kind=reply`) | Like the ticket's other message bodies |
@@ -363,7 +392,8 @@ controls on the card, so they are not edited beside them.
 
 The **intake card** sits above the Helpdesk → Settings form. It shows the intake's state (running, paused, waiting
 for the first scan, last scan failed, no recent successful scan, switched off, or not active with the reason), the
-last and next scan, the checkpoint, the interval and how many messages wait to be imported, and has four controls.
+last and next scan (no next scan while switched off, not active or paused), the checkpoint, the interval and how
+many messages wait to be imported, and has four controls.
 Each needs the Helpdesk app, is a POST form with CSRF (`/admin/helpdesk/helpdesksettings/intake/`, `action=scan`,
 `pause`, `resume`, `rescan&since=YYYY-MM-DDTHH:MM`, or `lookback&lookback_hours=N`), and changes the intake only:
 bounce processing has its own card on Email Monitoring, and its Pause, Rescan since and lookback never change the
@@ -427,10 +457,14 @@ saves every column and would overwrite a running scan's lease.
 - **Replies are plain text** (rendered into the branded layout) with no attachments; answers written in Outlook are
   still not seen by the site, so they neither show on the ticket nor stop the response SLA (move the ticket out of New
   instead). The reply form cannot resolve a ticket (resolve it on the page with its code).
-- **Ingest Problems has Retry only** (no Dismiss): a message gone from the mailbox stays listed until retention.
-- **Scam checks on authenticated mail**: a sender who passed DMARC (or composite authentication) is not made spam on
-  its words alone; it becomes a person's ticket flagged suspicious, unless the sender, link, structure or
-  authentication checks warn too (then spam, with the reasons on the card). Exchange's own spam verdict still applies.
+- **A dismissed ingest problem is not deleted**: it stays under Dismissed and Everything until retention
+  (`inbound_retention_days`) removes it with the rest of the queue.
+- **Scam checks are rules**: a proven sender (DMARC, composite authentication, or Exchange's internal marker) or an
+  answer on a person's ticket is not made spam on its words alone; it becomes a person's message flagged suspicious,
+  unless a phishing signal keeps it spam (with the reasons on the card). Exchange's own spam verdict (SCL) still
+  applies, to answers too: check **Automated & Spam**. The internal marker is trusted as Exchange documents it (it
+  strips organisation headers from outside mail); it was checked against simulated headers only, so confirm it with
+  a real message from a campus colleague.
 - **No requester portal** or watch list: requesters interact by email only.
 - **Mail deleted or moved out of the Inbox before a scan is missed**; only the Inbox is read. With immutable ids
   off (`EMAIL_GRAPH_IMMUTABLE_IDS`), a message moved in Outlook between its listing and its import is skipped as
@@ -438,6 +472,9 @@ saves every column and would overwrite a running scan's lease.
 - **A very dense Inbox stalls the intake's catch-up** as it does bounce processing's: it lists with the same bounds
   ([Email monitoring, Limitations](email-monitoring.md#limitations)).
 - **Inline images are not shown** in the message (they are listed as attachments).
+- **Sign-in links are removed from text only**: message text and HTML, forwarded and saved (`.eml`) messages, and
+  text files. A PDF, Office document, image, archive or Outlook `.msg` file is stored as received, so a personal
+  sign-in link inside one reaches whoever downloads it.
 - **Replies are recognised only to mail the telemetry still holds** (180 days) and, for mail sent without a
   Message-ID, only from the address mailed with the same subject, or by a message of a person's ticket they name; a
   reply to older mail, or from another address of the person, is classified on its own headers. So is a first answer

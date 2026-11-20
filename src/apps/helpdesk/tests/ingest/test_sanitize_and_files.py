@@ -77,8 +77,8 @@ class SanitizeTests(SimpleTestCase):
     def test_personal_sign_in_links_are_scrubbed(self):
         cleaned = clean(f'<p>Use <a href="{LOGIN_LINK}">{LOGIN_LINK}</a></p>')
 
-        self.assertNotIn("token=", cleaned)
-        self.assertEqual(cleaned.count(LINK_PLACEHOLDER), 2)
+        # No link any more, and its text (the link itself) shows the placeholder once.
+        self.assertEqual(cleaned, f"<p>Use {LINK_PLACEHOLDER}</p>")
 
     def test_long_html_is_cut_and_closed_again(self):
         html = "<div>" + "<p>paragraph text</p>" * 500 + "</div>"

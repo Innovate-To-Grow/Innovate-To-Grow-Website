@@ -1,4 +1,5 @@
-"""Walking a message's MIME parts: bodies, attachments and attached messages, within the limits."""
+"""Walking a message's MIME parts: bodies, attachments and attached messages (forwarded parts, saved ``.eml`` files),
+within the limits."""
 
 import mimetypes
 
@@ -12,12 +13,14 @@ from .message import (
     MAX_ATTACHED_MESSAGES,
     MAX_DEPTH,
     MAX_PARTS,
+    MESSAGE_FILE_SUFFIXES,
     NESTED_TYPES,
     REPORT_PARTS,
     TEXT_PART_MAX_BYTES,
     ParsedAttachment,
     ParsedMessage,
     html_to_text,
+    text_codec,
 )
 
 
@@ -47,9 +50,9 @@ class _Walker:
             for sub in payload if isinstance(payload, list) else ():
                 self.walk(sub, depth + 1)
         elif content_type not in REPORT_PARTS:
-            self._leaf(part, content_type)
+            self._leaf(part, content_type, depth)
 
-    def _leaf(self, part, content_type: str) -> None:
+    def _leaf(self, part, content_type: str, depth: int) -> None:
         if content_type == "text/calendar":
             self.parsed.has_calendar = True
         disposition = _disposition(part)
@@ -60,15 +63,14 @@ class _Walker:
                 self.parsed.text = f"{self.parsed.text}\n\n{body}" if self.parsed.text else body
             else:
                 self.parsed.html = f"{self.parsed.html}\n{body}" if self.parsed.html else body
-        elif not self.nested:
-            self._attachment(part, content_type, disposition, filename)
+        elif not self.nested:  # an attached message's own attachments are ignored
+            if filename.lower().endswith(MESSAGE_FILE_SUFFIXES):
+                self._attached_message(part, depth, as_file=True)
+            else:
+                self._attachment(part, content_type, disposition, filename)
 
     def _attachment(self, part, content_type: str, disposition: str, filename: str) -> None:
-        try:
-            data = part.get_payload(decode=True)
-        except _PART_ERRORS:
-            data = None
-        data = data if isinstance(data, bytes) else None
+        data = _payload(part)
         content_id = text.message_id(_header(part, "Content-ID"))
         number = len(self.parsed.attachments) + 1
         self.parsed.attachments.append(
@@ -79,13 +81,15 @@ class _Walker:
                 is_inline=disposition == "inline" or (bool(content_id) and disposition != "attachment"),
                 data=data,
                 size=len(data) if data is not None else 0,
+                charset=_charset(part),
             )
         )
 
-    def _attached_message(self, part, depth: int) -> None:
-        payload = part.get_payload()
-        inner = payload[0] if isinstance(payload, list) and payload else None
-        if inner is None or len(self.parsed.attached_messages) >= MAX_ATTACHED_MESSAGES:
+    def _attached_message(self, part, depth: int, *, as_file: bool = False) -> None:
+        if len(self.parsed.attached_messages) >= MAX_ATTACHED_MESSAGES:
+            return
+        inner = _file_message(part) if as_file else _inner_message(part)
+        if inner is None:
             return
         headers = mime.header_map(inner)
         nested = ParsedMessage(headers=headers)
@@ -99,6 +103,28 @@ class _Walker:
                 "text": (nested.text or html_to_text(nested.html))[:ATTACHED_TEXT_MAX_CHARS],
             }
         )
+
+
+def _inner_message(part):
+    payload = part.get_payload()
+    return payload[0] if isinstance(payload, list) and payload else None
+
+
+def _file_message(part):
+    """The message saved in an attached file (an .eml), read from its decoded bytes like the outer message."""
+    data = _payload(part)
+    try:
+        return mime.parse(data) if data else None
+    except _PART_ERRORS:
+        return None
+
+
+def _payload(part) -> bytes | None:
+    try:
+        data = part.get_payload(decode=True)
+    except _PART_ERRORS:
+        return None
+    return data if isinstance(data, bytes) else None
 
 
 def _header(part, name: str) -> str:
@@ -116,6 +142,13 @@ def _content_type(part) -> str:
 def _disposition(part) -> str:
     try:
         return str(part.get_content_disposition() or "").lower()
+    except _PART_ERRORS:
+        return ""
+
+
+def _charset(part) -> str:
+    try:
+        return str(part.get_content_charset() or "")[:64]
     except _PART_ERRORS:
         return ""
 
@@ -140,16 +173,12 @@ def clean_filename(name: str) -> str:
 
 
 def _decode_text(part) -> str:
-    try:
-        payload = part.get_payload(decode=True)
-    except _PART_ERRORS:
-        return ""
-    if not isinstance(payload, bytes):
+    payload = _payload(part)
+    if payload is None:
         return ""
     payload = payload[:TEXT_PART_MAX_BYTES]
     try:
-        charset = part.get_content_charset() or "utf-8"
-        decoded = payload.decode(charset, errors="replace")
+        decoded = payload.decode(text_codec(part.get_content_charset() or ""), errors="replace")
     except _PART_ERRORS:
         decoded = payload.decode("utf-8", errors="replace")
     return decoded.replace("\r\n", "\n").replace("\r", "\n").replace("\x00", "")

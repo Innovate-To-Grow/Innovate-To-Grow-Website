@@ -1,8 +1,9 @@
 """The scam verdict on a person's mail (``classify_message``): a high score on mail whose sender proved their domain
-(DMARC, or Exchange's composite authentication) gives a person's ticket flagged suspicious, unless the checks that look
-past the words (sender, links, structure, authentication, address alignment) reach the medium threshold on their own;
-without that proof such mail stays spam. A person locked out of their account reads like a phish: such mail used to be
-spam however it was authenticated. Microsoft Graph is never contacted."""
+(DMARC, or Exchange's composite authentication) gives a person's ticket flagged suspicious, unless phishing signals
+(a look-alike sender domain, links that hide where they go, hidden HTML, failed authentication) reach the medium
+threshold on their own; a Reply-To or Return-Path elsewhere (a web form, a mailing service) is no such signal. Without
+that proof such mail stays spam. A person locked out of their account reads like a phish: such mail used to be spam
+however it was authenticated. Microsoft Graph is never contacted."""
 
 from django.core.cache import cache
 from django.test import TestCase
@@ -58,11 +59,20 @@ class AuthenticatedSenderTests(_VerdictCase):
         summary = ticket.messages.get().auth_summary
         self.assertEqual((summary["dmarc"], summary["compauth"]), ("bestguesspass", "pass"))
 
-    def test_a_technical_warning_under_the_medium_threshold_does_not_make_it_spam(self):
-        # A Reply-To on another domain scores 2: alone it stays under the medium threshold (3).
-        ticket = receive(locked_out(DMARC_PASS, headers={"Reply-To": "Pat <pat.doe@home.example>"}))
+    def test_a_reply_to_and_return_path_elsewhere_are_no_phishing_signals(self):
+        # A web form or a mailing service: 2 + 1 points, past the medium threshold, yet nothing hides where mail goes.
+        cases = {
+            "a Reply-To on another domain": ({"Reply-To": "Pat <pat.doe@home.example>"}, [REPLY_TO_ELSEWHERE]),
+            "and a Return-Path too": (
+                {"Reply-To": "pat.doe@home.example", "Return-Path": "<bounce@mailer.example>"},
+                [REPLY_TO_ELSEWHERE, RETURN_PATH_ELSEWHERE],
+            ),
+        }
+        for index, (case, (headers, alignment)) in enumerate(cases.items()):
+            with self.subTest(case):
+                raw = locked_out(DMARC_PASS, headers=headers, message_id=f"<aligned-{index}@mail.example.org>")
 
-        self.assertSuspiciousPersonsTicket(ticket, reasons=[*WORD_REASONS, REPLY_TO_ELSEWHERE])
+                self.assertSuspiciousPersonsTicket(receive(raw), reasons=[*WORD_REASONS, *alignment])
 
 
 class UnprovenSenderTests(_VerdictCase):
@@ -114,10 +124,6 @@ class TechnicalWarningTests(_VerdictCase):
                     "HTML contains hidden elements (display:none / visibility:hidden)",
                     "HTML contains zero-size text (font-size:0)",
                 ],
-            ),
-            "Reply-To and Return-Path on other domains (2 + 1)": (
-                {"headers": {"Reply-To": "pat.doe@home.example", "Return-Path": "<bounce@mailer.example>"}},
-                [*WORD_REASONS, REPLY_TO_ELSEWHERE, RETURN_PATH_ELSEWHERE],
             ),
         }
         for index, (case, (values, reasons)) in enumerate(warnings.items()):

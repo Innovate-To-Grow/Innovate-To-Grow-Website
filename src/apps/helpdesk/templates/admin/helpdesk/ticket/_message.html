@@ -5,8 +5,18 @@
   {% if message.cc_addresses %}<dt>Cc</dt><dd>{{ message.cc_addresses|join:", " }}</dd>{% endif %}
   {% if message.reply_to and message.reply_to != message.from_address %}<dt>Reply-To</dt><dd>{{ message.reply_to }}</dd>{% endif %}
   {% if message.sent_at %}<dt>Date header</dt><dd>{{ message.sent_at|date:"M j, Y H:i" }} (as claimed by the sender)</dd>{% endif %}
-  {% if message.auth_summary %}<dt>Authentication</dt><dd>{% for key, value in message.auth_summary.items %}{{ key|upper }} {{ value }}{% if not forloop.last %} · {% endif %}{% endfor %}</dd>{% endif %}
+  {% if message.auth_summary %}<dt>Authentication</dt><dd>{% for key, value in message.auth_summary.items %}{% if key == "authas" %}Exchange: {{ value }}{% else %}{{ key|upper }} {{ value }}{% endif %}{% if not forloop.last %} · {% endif %}{% endfor %}</dd>{% endif %}
 </dl>
+{% comment %}Exchange's own rating, when it decided the verdict (subtype "scl", or a bcl_N signal), with the threshold now on Settings.{% endcomment %}
+{% with bcl=message.auth_summary.bcl|stringformat:"s" %}
+{% if message.classification == "spam" and message.subtype == "scl" %}
+  <p class="i2g-helpdesk-muted">Why: Exchange rated it spam (SCL {{ message.auth_summary.scl }}; spam from SCL {{ helpdesk_settings.spam_scl_threshold }} on Settings).</p>
+{% elif message.classification == "spam" and message.subtype == "filter_verdict" %}
+  <p class="i2g-helpdesk-muted">Why: Exchange's spam filter marked it as spam.</p>
+{% elif message.classification == "bulk" and "bcl_"|add:bcl in message.signals %}
+  <p class="i2g-helpdesk-muted">Why: Exchange rated it bulk mail (BCL {{ bcl }}; bulk from BCL {{ helpdesk_settings.bulk_bcl_threshold }} on Settings).</p>
+{% endif %}
+{% endwith %}
 {% if message.scam_level == "medium" or message.scam_level == "high" %}
   <p class="i2g-helpdesk-warning" role="note">
     <span class="material-symbols-outlined" aria-hidden="true">gpp_maybe</span>

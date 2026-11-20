@@ -36,6 +36,14 @@ class BodyTests(SimpleTestCase):
 
         self.assertEqual(parse(raw).text, "caf�")
 
+    def test_text_in_a_codec_no_mail_program_writes_is_read_as_utf_8(self):
+        # Punycode decodes in quadratic time: a crafted 4 MB body would stall the import for minutes.
+        for charset in ("punycode", "unicode-escape"):
+            with self.subTest(charset):
+                raw = f"From: a@example.org\r\nContent-Type: text/plain; charset={charset}\r\n\r\n".encode()
+
+                self.assertEqual(parse(raw + rb"Thanks-for the help A").text, r"Thanks-for the help A")
+
     def test_report_parts_are_neither_body_nor_attachment(self):
         parsed = parse(corpus.read_receipt())
 
