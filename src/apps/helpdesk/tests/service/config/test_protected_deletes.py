@@ -2,10 +2,11 @@
 
 A ticket's category and assignment group, and a category's default group, are protected (``on_delete=PROTECT``): the
 admin's delete page, and the list's "Delete selected" action, show Django's "Cannot delete" page naming what uses
-it, and nothing is deleted. A group or category nothing uses deletes as before (members and a manager do not keep a
+it (with the advice to switch it off, never a note that the user may not delete tickets), and nothing is deleted. A group or category nothing uses deletes as before (members and a manager do not keep a
 group; a response template's category is only cleared)."""
 
 from django.contrib.admin import helpers
+from django.contrib.messages import get_messages
 from django.core.cache import cache
 from django.db.models import ProtectedError
 from django.test import TestCase
@@ -14,6 +15,11 @@ from django.urls import reverse
 from ....models import AssignmentGroup, ResponseTemplate, TicketCategory
 from ...helpers import helpdesk_staff
 from ...helpers.service import Status, new_ticket
+
+IN_USE = (
+    "Still in use (listed below), so it cannot be deleted. Switch it off instead (Is active): it stays on those "
+    "tickets and is no longer offered."
+)
 
 
 class ProtectedDeleteTests(TestCase):
@@ -33,6 +39,9 @@ class ProtectedDeleteTests(TestCase):
             self.assertEqual(response.context["title"], f"Cannot delete {obj._meta.verbose_name}")
             self.assertEqual(len(response.context["protected"]), 1)
             self.assertIn(used_by, response.context["protected"][0])
+            # Nothing would be deleted: no "your account doesn't have permission to delete tickets" instead.
+            self.assertFalse(response.context["perms_lacking"])
+            self.assertEqual([str(m) for m in get_messages(response.wsgi_request)], [IN_USE])
         self.assertTrue(type(obj).objects.filter(pk=obj.pk).exists())
 
     def test_a_group_a_ticket_uses_is_not_deleted(self):

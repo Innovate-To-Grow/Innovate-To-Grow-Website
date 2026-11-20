@@ -60,6 +60,17 @@ class NewTicketClockTests(TestCase):
         self.assertIsNotNone(ticket.sla_started_at)
         self.assertEqual((ticket.response_due_at, ticket.resolution_due_at), (None, None))
 
+    def test_a_later_change_to_a_priority_with_a_target_sets_its_due_times(self):
+        SLATarget.objects.filter(priority=Ticket.Priority.NORMAL).update(is_active=False)
+        ticket = receive(corpus.message())
+
+        tickets.update_ticket(ticket, actor=helpdesk_staff(), impact=1, urgency=1)  # 1 – Critical: 1 h / 8 h
+
+        ticket.refresh_from_db()
+        self.assertEqual(ticket.priority, Ticket.Priority.URGENT)
+        self.assertEqual(ticket.response_due_at, ticket.sla_started_at + HOUR)
+        self.assertEqual(ticket.resolution_due_at, ticket.sla_started_at + 8 * HOUR)
+
 
 class PauseAndResumeTests(TestCase):
     def setUp(self):

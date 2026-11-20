@@ -318,6 +318,9 @@ Every custom view (ticket notes, replies, attachment downloads) checks the grant
 are created only from mail; only an I2G Master can delete one by hand, behind the typed confirmation (otherwise only
 retention deletes). Opening the linked member or campaign needs the Members or Mail app. The queue's **Export
 selected data** action (every admin list has it) exports the selected tickets' columns for the same staff.
+Assignment groups, categories, response templates and SLA targets save without the typed confirmation (list toggles
+included), unlike most admin pages: they are everyday setup, and a group or category that tickets use cannot be
+deleted (it is switched off). Settings, ticket deletion, merge and mark-as-spam keep the typed confirmation.
 
 ## Settings
 
