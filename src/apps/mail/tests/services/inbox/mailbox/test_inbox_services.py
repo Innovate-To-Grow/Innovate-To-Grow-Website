@@ -8,6 +8,7 @@ from unittest.mock import Mock, patch
 from django.core.cache import cache
 from django.test import TestCase
 
+from apps.core.models import GmailAccessAccount
 from apps.mail.services.inbox.connection import (
     INBOX_LIST_CACHE_KEY,
     InboxError,
@@ -17,6 +18,7 @@ from apps.mail.services.inbox.formatting import (
     extract_from,
     extract_to,
     format_date,
+    timestamp_of,
 )
 from apps.mail.services.inbox.messages import (
     detailed_message,
@@ -28,6 +30,18 @@ from apps.mail.services.inbox.messages import (
 @contextmanager
 def _inbox_context(client):
     yield client
+
+
+def create_gmail_account(**overrides):
+    """A configured Gmail IMAP access account: the inbox reads only accounts saved in the database."""
+    values = {
+        "name": "Gmail",
+        "is_active": True,
+        "imap_host": "imap.gmail.com",
+        "gmail_username": "i2g@gmail.com",
+        "gmail_password": "app-password",
+    }
+    return GmailAccessAccount.objects.create(**{**values, **overrides})
 
 
 def _fake_message(**overrides):
@@ -86,6 +100,22 @@ class InboxFormattingTests(TestCase):
     def test_extract_to_handles_missing_recipients(self):
         self.assertEqual(extract_to(SimpleNamespace(to_values=None)), [])
 
+    def test_timestamp_of_a_datetime(self):
+        moment = datetime(2026, 1, 2, 14, 5)
+        self.assertEqual(timestamp_of(moment), moment.timestamp())
+
+    def test_timestamp_of_anything_else_is_zero(self):
+        for value in (None, "", "Mon, 01 Jan 2026"):
+            with self.subTest(value=value):
+                self.assertEqual(timestamp_of(value), 0.0)
+
+    def test_timestamp_of_an_unrepresentable_datetime_is_zero(self):
+        class Unrepresentable(datetime):
+            def timestamp(self):
+                raise OverflowError("out of range")
+
+        self.assertEqual(timestamp_of(Unrepresentable(2026, 1, 1)), 0.0)
+
 
 class InboxMessageMappingTests(TestCase):
     def test_message_summary_maps_fields(self):
@@ -137,21 +167,24 @@ class InboxMessageMappingTests(TestCase):
 class ListInboxMessagesTests(TestCase):
     def setUp(self):
         cache.clear()
+        self.account = create_gmail_account()
+        self.key = f"imap:{self.account.pk}"
 
     def tearDown(self):
         cache.clear()
 
     def test_list_returns_cached_when_present(self):
         cached = [{"uid": "99", "subject": "cached"}]
-        cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", cached, 300)
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:{self.key}:INBOX:30", cached, 300)
 
-        result = list_inbox_messages(limit=30)
+        with patch("apps.mail.services.inbox._open_inbox", side_effect=AssertionError("IMAP was opened")):
+            result = list_inbox_messages(limit=30)
 
         self.assertEqual(result, cached)
 
     def test_list_cache_isolated_per_folder(self):
-        cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", [{"uid": "1", "subject": "inbox"}], 300)
-        cache.set(f"{INBOX_LIST_CACHE_KEY}:SENT:30", [{"uid": "1", "subject": "sent"}], 300)
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:{self.key}:INBOX:30", [{"uid": "1", "subject": "inbox"}], 300)
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:{self.key}:SENT:30", [{"uid": "1", "subject": "sent"}], 300)
 
         self.assertEqual(list_inbox_messages(limit=30)[0]["subject"], "inbox")
         self.assertEqual(list_inbox_messages(limit=30, folder="SENT")[0]["subject"], "sent")
@@ -165,11 +198,13 @@ class ListInboxMessagesTests(TestCase):
 
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]["uid"], "42")
-        self.assertEqual(cache.get(f"{INBOX_LIST_CACHE_KEY}:INBOX:30"), result)
+        self.assertEqual((result[0]["account"], result[0]["account_address"]), (self.key, "i2g@gmail.com"))
+        self.assertEqual(result[0]["timestamp"], datetime(2026, 1, 1, 9, 30).timestamp())
+        self.assertEqual(cache.get(f"{INBOX_LIST_CACHE_KEY}:{self.key}:INBOX:30"), result)
 
     def test_list_reraises_inbox_error(self):
         with patch("apps.mail.services.inbox._open_inbox", side_effect=InboxError("config")):
-            with self.assertRaises(InboxError):
+            with self.assertRaisesMessage(InboxError, "config"):
                 list_inbox_messages(limit=30, force_refresh=True)
 
     def test_list_wraps_unexpected_error(self):

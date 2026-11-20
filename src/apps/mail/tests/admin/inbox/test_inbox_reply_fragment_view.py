@@ -150,14 +150,14 @@ class InboxListViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Inbox")
 
-    @patch("apps.mail.admin.inbox.services.list_inbox_messages", side_effect=InboxError("config"))
+    @patch("apps.mail.admin.inbox.services.list_all_inbox_messages", side_effect=InboxError("config"))
     def test_fragment_inbox_error_shows_config_message(self, mock_list):
         response = self.client.get(reverse("admin:mail_inbox_fragment"))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Check the Microsoft Graph mailbox scope or the Gmail import configuration")
+        self.assertContains(response, "Check the Microsoft Graph mailbox scope or the Gmail access accounts")
 
-    @patch("apps.mail.admin.inbox.services.list_inbox_messages", side_effect=RuntimeError("boom"))
+    @patch("apps.mail.admin.inbox.services.list_all_inbox_messages", side_effect=RuntimeError("boom"))
     def test_fragment_unexpected_error_shows_server_logs_message(self, mock_list):
         response = self.client.get(reverse("admin:mail_inbox_fragment"))
 

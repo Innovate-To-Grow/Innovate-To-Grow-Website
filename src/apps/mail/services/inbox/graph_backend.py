@@ -30,7 +30,7 @@ from apps.core.services.email.graph.mailbox import (
 )
 
 from .connection import InboxBusy, InboxError
-from .formatting import format_date
+from .formatting import format_date, timestamp_of
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,15 @@ def active_reader() -> GraphMailboxReader | None:
     mailbox = graph.sender_mailbox(EmailServiceConfig.load().from_email)
     if not graph.allows(mailbox, "read"):
         return None
+    return GraphMailboxReader(graph, mailbox)
+
+
+def reader_for(mailbox: str) -> GraphMailboxReader:
+    """A reader for one mailbox of the active Graph config's scope (``accounts``); raises ``InboxError`` when the
+    scope no longer grants read on it."""
+    graph = MicrosoftGraphProviderConfig.load()
+    if not graph.is_configured or not graph.allows(mailbox, "read"):
+        raise InboxError("That mailbox is not available in the Inbox.")
     return GraphMailboxReader(graph, mailbox)
 
 
@@ -93,6 +102,7 @@ def _summary(message: dict, own_addresses: frozenset[str] = frozenset()) -> dict
         "from_email": from_email,
         "to": [_recipient(item) for item in message.get("toRecipients") or [] if isinstance(item, dict)],
         "date": _format_iso(message.get("receivedDateTime")),
+        "timestamp": timestamp_of(parse_datetime(str(message.get("receivedDateTime") or ""))),
         "snippet": snippet[:197].rstrip() + "..." if len(snippet) > 200 else snippet,
         "is_seen": bool(message.get("isRead")),
         "from_own_mailbox": from_email.strip().lower() in own_addresses,
@@ -119,6 +129,7 @@ def _detail(uid: str, message) -> dict[str, Any]:
         "from_email": from_email,
         "to": [{"name": address.display_name, "email": address.addr_spec} for address in _addresses(message, "To")],
         "date": format_date(_message_date(message)),
+        "timestamp": timestamp_of(_message_date(message)),
         "html": html,
         "text": text or (BeautifulSoup(html, "html.parser").get_text("\n").strip() if html else ""),
         "message_id": str(message.get("Message-ID", "") or "").strip(),

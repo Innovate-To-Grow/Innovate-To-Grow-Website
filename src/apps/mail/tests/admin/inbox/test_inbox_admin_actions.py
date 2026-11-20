@@ -22,7 +22,7 @@ class InboxAdminFragmentTest(_InboxAdminFragmentCase):
         response = self.client.get(reverse("admin:mail_inbox_detail_fragment", args=["42"]) + "?folder=SENT")
 
         self.assertEqual(response.status_code, 200)
-        mock_fetch.assert_called_once_with("42", folder="SENT")
+        mock_fetch.assert_called_once_with("42", folder="SENT", account="")
         self.assertNotContains(response, "data-inbox-reply-link")
 
     @patch("apps.mail.admin.inbox.services.assess_email")

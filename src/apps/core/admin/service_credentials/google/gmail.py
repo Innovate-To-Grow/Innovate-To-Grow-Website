@@ -23,8 +23,16 @@ class GmailAccessAccountForm(forms.ModelForm):
 @admin.register(GmailAccessAccount)
 class GmailAccessAccountAdmin(BaseModelAdmin):
     form = GmailAccessAccountForm
-    list_display = ("name", "status_badge", "imap_host", "gmail_username", "updated_at")
-    list_filter = ("is_active",)
+    list_display = (
+        "name",
+        "status_badge",
+        "imap_host",
+        "gmail_username",
+        "show_in_inbox",
+        "reply_enabled",
+        "updated_at",
+    )
+    list_filter = ("is_active", "show_in_inbox", "reply_enabled")
     search_fields = ("name", "gmail_username", "imap_host")
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config"]
@@ -42,6 +50,19 @@ class GmailAccessAccountAdmin(BaseModelAdmin):
                     ("gmail_username", "gmail_password"),
                 ),
                 "description": "Credentials used to read recent sent Gmail templates over IMAP.",
+            },
+        ),
+        (
+            _("Mail Inbox"),
+            {
+                "fields": (
+                    ("show_in_inbox", "reply_enabled"),
+                    ("smtp_host", "smtp_port"),
+                ),
+                "description": (
+                    "The active account is always read in Mail -> Inbox; others are read when Show in Inbox is on. "
+                    "Replies from this address go over SMTP (STARTTLS) with the login above."
+                ),
             },
         ),
         (_("Info"), {"fields": ("updated_at",)}),

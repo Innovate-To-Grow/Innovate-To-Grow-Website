@@ -18,6 +18,7 @@
 
     replaceSection('.i2g-mail-toolbar');
     replaceSection('[data-inbox-account-panel]');
+    replaceSection('[data-inbox-unavailable]');
     replaceSection('[data-inbox-status]');
 
     var newHead = tmp.querySelector('.i2g-inbox-list-head');
@@ -103,7 +104,8 @@
           root.innerHTML = html;
           var savedUid = getHashUid();
           if (savedUid) {
-            var savedRow = root.querySelector('[data-inbox-row][data-uid="' + savedUid + '"]');
+            var escapedUid = window.CSS && CSS.escape ? CSS.escape(savedUid) : savedUid.replace(/["\\]/g, '\\$&');
+            var savedRow = root.querySelector('[data-inbox-row][data-uid="' + escapedUid + '"]');
             if (savedRow) {
               loadPreview(root, savedRow);
               restoreListScroll(root, sessionScroll);
@@ -127,4 +129,3 @@
       r.classList.toggle('is-active', r.getAttribute('data-uid') === uid);
     });
   }
-

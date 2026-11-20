@@ -113,6 +113,27 @@ def _gmail_factory(config: object, **provider_options) -> GmailProvider:
     )
 
 
+def _gmail_smtp_factory(config: object, **provider_options) -> SMTPProvider:
+    """Send as one Gmail IMAP access account over SMTP with its own login: only Mail -> Inbox replies use it, with
+    a stand-in configuration naming the account (``gmail_account_id``). The account is reloaded and re-checked on
+    every send, so turning its replies off takes effect at once."""
+    del provider_options
+    from apps.core.models import GmailAccessAccount
+
+    account = GmailAccessAccount.objects.filter(pk=getattr(config, "gmail_account_id", None)).first()
+    if account is None or not account.reply_configured:
+        raise PermanentEmailDeliveryError("Replies from this Gmail account are not enabled.")
+    return SMTPProvider(
+        host=account.smtp_host,
+        port=account.smtp_port,
+        from_email=account.gmail_username,
+        from_name=getattr(config, "from_name", ""),
+        username=account.gmail_username,
+        password=account.gmail_password,
+        use_tls=True,
+    )
+
+
 def active_rate_target() -> tuple[str, str] | None:
     """The active email delivery channel and identity (``delivery_rates.lifecycle.families``), or None while email is not set
     up. Registered for the email family in ``CoreConfig.ready``."""
@@ -132,3 +153,4 @@ register_provider("ses", _ses_factory)
 register_provider("smtp", _smtp_factory)
 register_provider("graph", _graph_factory)
 register_provider("gmail", _gmail_factory)
+register_provider("gmail_smtp", _gmail_smtp_factory)

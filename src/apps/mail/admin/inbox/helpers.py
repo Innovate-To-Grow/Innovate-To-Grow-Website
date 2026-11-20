@@ -1,6 +1,7 @@
 """Inbox admin helper functions."""
 
 from html import escape
+from urllib.parse import urlencode
 
 from apps.core.utils.access import user_can_access_app
 
@@ -26,6 +27,19 @@ def parse_folder(request) -> str:
     """Parse and validate the requested inbox folder (INBOX or SENT)."""
     folder = str(request.GET.get("folder", inbox_api.INBOX_FOLDER)).upper()
     return folder if folder in inbox_api.INBOX_FOLDER_CHOICES else inbox_api.INBOX_FOLDER
+
+
+def parse_account(request, *, default: str = "") -> str:
+    """The requested inbox account key (``?account=``). The inbox services accept only a configured account's key,
+    so this only trims it; ``default`` stands in when none is named."""
+    value = str(request.GET.get("account", "") or "").strip()
+    return value[:300] or default
+
+
+def with_query(url: str, **params) -> str:
+    """``url`` with the non-empty ``params`` as its query string (``urlencode``d)."""
+    query = urlencode({key: value for key, value in params.items() if value})
+    return f"{url}?{query}" if query else url
 
 
 def sent_mail_restricted(user) -> bool:

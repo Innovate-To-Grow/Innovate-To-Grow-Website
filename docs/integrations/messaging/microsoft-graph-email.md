@@ -776,11 +776,13 @@ a full mailbox makes Graph answer `507`, and sending stops until space is freed.
 
 ## Admin inbox
 
-When the active Graph configuration grants read permission on its sending mailbox, **Mail → Inbox** reads
-that mailbox through Graph instead of Gmail IMAP; otherwise the Gmail import account is used as before.
-The page shows the mailbox and `Microsoft Graph` as the source. An expired or removed certificate makes the
-configuration count as not configured, so the inbox then falls back to the Gmail import account, if one is
-configured.
+**Mail → Inbox** is a universal inbox
+([Universal inbox](../../cms-admin/member-and-mail-tools.md#universal-inbox-mail--inbox)): it reads every mailbox
+the active Graph configuration's scope grants read permission on (the sending mailbox first) through Graph,
+alongside the Gmail access accounts, and **All accounts** merges them. Each Graph mailbox is shown with
+`Microsoft Graph` as the source. An expired or removed certificate makes the configuration count as not
+configured, so its mailboxes leave the inbox and only the Gmail access accounts, if any, are read. A reply may be
+sent From any scoped mailbox with send permission once the configuration has passed `takeover_problem`.
 
 - It lists the newest messages of **Inbox** or **Sent Items**
   (`GET /v1.0/users/{mailbox}/mailFolders/{inbox|sentitems}/messages`) and opens a message as its original

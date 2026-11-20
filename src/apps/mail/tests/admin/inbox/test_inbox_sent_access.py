@@ -16,6 +16,7 @@ from django.urls import reverse
 from apps.core.models import EmailServiceConfig
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.admin.inbox import helpers
+from apps.mail.services.inbox import InboxListing
 
 SERVICES = "apps.mail.admin.inbox.services"
 CODE = "482913"
@@ -83,7 +84,8 @@ class SentAccessTestCase(TestCase):
 class SentFolderListTests(SentAccessTestCase):
     def setUp(self):
         super().setUp()
-        self.list_messages = self.patch("list_inbox_messages", return_value=[_summary()])
+        # The list shows every inbox account by default (``list_all_inbox_messages``).
+        self.list_messages = self.patch("list_all_inbox_messages", return_value=InboxListing(messages=[_summary()]))
 
     def fragment(self, user):
         self.client.force_login(user)
@@ -101,7 +103,9 @@ class SentFolderListTests(SentAccessTestCase):
         self.graph_active.assert_not_called()
 
     def test_mail_staff_see_own_mail_in_full(self):
-        self.list_messages.return_value = [_summary(subject=f"Your code {CODE}", from_own_mailbox=True)]
+        self.list_messages.return_value = InboxListing(
+            messages=[_summary(subject=f"Your code {CODE}", from_own_mailbox=True)]
+        )
 
         response = self.fragment(self.mail_staff)
 

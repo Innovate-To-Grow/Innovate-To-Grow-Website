@@ -49,6 +49,19 @@ def get_gmail_config() -> GmailAccessAccount:
     return config
 
 
+def get_account_config(account) -> GmailAccessAccount:
+    """The ``GmailAccessAccount`` row of an IMAP inbox account (``accounts.InboxAccount``), reloaded for this read."""
+    if account is None:
+        return get_gmail_config()
+    try:
+        config = GmailAccessAccount.objects.filter(pk=account.gmail_account_id).first()
+    except (OperationalError, ProgrammingError) as exc:
+        raise InboxError("Gmail configuration is unavailable. Run the latest migrations first.") from exc
+    if config is None or not config.is_configured or not (config.is_active or config.show_in_inbox):
+        raise InboxError("That Gmail account is not available in the Inbox.")
+    return config
+
+
 def resolve_mailbox(mailbox: str | None = None) -> str:
     from apps.mail.services.campaign.gmail_import import resolve_gmail_mailbox
 
@@ -65,11 +78,12 @@ def _select_sent_folder(client) -> None:
 
 
 @contextmanager
-def _open_inbox(mailbox: str | None = None, folder: str = INBOX_FOLDER):
+def _open_inbox(mailbox: str | None = None, folder: str = INBOX_FOLDER, *, account=None):
+    """Log in to a Gmail IMAP inbox account (``account``; None: the active Gmail access account) on ``folder``."""
     # gmail_import is imported lazily (like resolve_mailbox) to avoid an inbox -> gmail_import cycle.
     from apps.mail.services.campaign.gmail_import.session import busy_text, gmail_imap_session
 
-    config = get_gmail_config()
+    config = get_account_config(account)
     resolved_mailbox = resolve_mailbox(mailbox or config.mailbox)
     # parse_folder already enforces the {INBOX, SENT} allowlist; any non-SENT value
     # (incl. an unexpected one) routes to INBOX below.

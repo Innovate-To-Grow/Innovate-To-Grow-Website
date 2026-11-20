@@ -12,6 +12,16 @@ def format_date(value: Any) -> str:
     return ""
 
 
+def timestamp_of(value: Any) -> float:
+    """Seconds since the epoch, for sorting messages of several accounts together (0 when the date is unknown)."""
+    if not isinstance(value, datetime):
+        return 0.0
+    try:
+        return value.timestamp()
+    except (OverflowError, OSError, ValueError):
+        return 0.0
+
+
 def build_snippet(message: Any) -> str:
     html = str(getattr(message, "html", "") or "").strip()
     text = str(getattr(message, "text", "") or "").strip()

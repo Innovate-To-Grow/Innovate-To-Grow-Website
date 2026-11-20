@@ -3,10 +3,12 @@ from django.db import models, transaction
 
 class GmailAccessAccount(models.Model):
     """
-    Gmail IMAP access account for importing HTML templates from sent mail.
+    Gmail IMAP access account for importing HTML templates from sent mail and for the admin Inbox.
 
-    Multiple configs can exist but only one may be active at a time.
-    Managed via Django admin under Site Settings.
+    Multiple configs can exist but only one may be active at a time: the active one is the account "Import from
+    Gmail" reads, and it is always shown in Mail -> Inbox. Any other account is read only when it opts in with
+    ``show_in_inbox``. ``reply_enabled`` lets staff reply from the Inbox as this account, over SMTP with the same
+    login (for Gmail: ``smtp.gmail.com`` with the app password). Managed via Django admin under Site Settings.
     """
 
     name = models.CharField(
@@ -40,6 +42,24 @@ class GmailAccessAccount(models.Model):
         verbose_name="Gmail Password",
         help_text="Gmail app password used for IMAP login.",
     )
+    show_in_inbox = models.BooleanField(
+        default=False,
+        verbose_name="Show in Inbox",
+        help_text="Also read this account in Mail -> Inbox while it is not the active account (the active one always is).",
+    )
+    reply_enabled = models.BooleanField(
+        default=False,
+        verbose_name="Allow Replies From This Account",
+        help_text="Offer this address as a From choice when replying in Mail -> Inbox; sent over SMTP with the login above.",
+    )
+    smtp_host = models.CharField(
+        max_length=254,
+        blank=True,
+        default="smtp.gmail.com",
+        verbose_name="SMTP Host",
+        help_text="Used only for Inbox replies from this account (STARTTLS).",
+    )
+    smtp_port = models.PositiveIntegerField(default=587, verbose_name="SMTP Port")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -78,6 +98,13 @@ class GmailAccessAccount(models.Model):
     @property
     def is_configured(self):
         return bool(self.imap_host and self.gmail_username and self.gmail_password)
+
+    @property
+    def reply_configured(self) -> bool:
+        """Replies may be sent as this account: opted in, with a login and an SMTP server."""
+        return bool(
+            self.reply_enabled and self.gmail_username and self.gmail_password and self.smtp_host and self.smtp_port
+        )
 
     @property
     def mailbox(self):

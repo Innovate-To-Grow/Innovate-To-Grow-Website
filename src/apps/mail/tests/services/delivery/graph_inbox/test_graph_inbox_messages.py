@@ -1,4 +1,6 @@
-"""Inbox list/fetch routing: Microsoft Graph when read is granted on the I2G mailbox, Gmail IMAP otherwise."""
+"""Inbox list/fetch routing: Microsoft Graph when read is granted on the I2G mailbox, Gmail IMAP otherwise.
+
+Each account caches under its own key (``inbox:list:<account key>:...``), so Graph and IMAP entries never mix."""
 
 from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
@@ -7,13 +9,14 @@ from django.core.cache import cache
 from django.db.utils import OperationalError, ProgrammingError
 from django.test import TestCase
 
-from apps.core.models import EmailServiceConfig, MicrosoftGraphProviderConfig
+from apps.core.models import EmailServiceConfig, GmailAccessAccount, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.identity import auth
 from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadBusy, GraphReadError
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.mail.services.inbox.connection import INBOX_LIST_CACHE_KEY, INBOX_MSG_CACHE_PREFIX, InboxBusy, InboxError
 from apps.mail.services.inbox.messages import fetch_inbox_message, list_inbox_messages
 from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import (
+    ACCOUNT_KEYS,
     GRAPH_MESSAGE,
     MAILBOX,
     MESSAGE_ID,
@@ -26,6 +29,7 @@ from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend impo
 LIST_TARGET = "apps.core.services.email.graph.mailbox.GraphMailboxReader.list_messages"
 FETCH_TARGET = "apps.core.services.email.graph.mailbox.GraphMailboxReader.fetch_mime"
 OPEN_INBOX = "apps.mail.services.inbox._open_inbox"
+GRAPH_KEY = f"graph:{MAILBOX}"
 
 
 class GraphInboxFixtureMixin:
@@ -51,12 +55,13 @@ class GraphInboxRoutingTests(GraphInboxFixtureMixin, TestCase):
     def test_list_reads_through_graph_and_caches_under_a_graph_key(self, list_messages):
         results = list_inbox_messages(limit=30, folder="INBOX")
 
-        self.assertEqual([set(item) for item in results], [SUMMARY_KEYS])
+        self.assertEqual([set(item) for item in results], [SUMMARY_KEYS | ACCOUNT_KEYS])
         self.assertEqual(results[0]["uid"], MESSAGE_ID)
+        self.assertEqual((results[0]["account"], results[0]["account_address"]), (GRAPH_KEY, MAILBOX))
         reader, folder, limit = list_messages.call_args.args
         self.assertIsInstance(reader, GraphMailboxReader)
         self.assertEqual((reader.mailbox, folder, limit), (MAILBOX, "INBOX", 30))
-        self.assertEqual(cache.get(f"{INBOX_LIST_CACHE_KEY}:graph:INBOX:30"), results)
+        self.assertEqual(cache.get(f"{INBOX_LIST_CACHE_KEY}:{GRAPH_KEY}:INBOX:30"), results)
         self.assertIsNone(cache.get(f"{INBOX_LIST_CACHE_KEY}:INBOX:30"))
         self.open_inbox.assert_not_called()
 
@@ -86,7 +91,8 @@ class GraphInboxRoutingTests(GraphInboxFixtureMixin, TestCase):
         self.open_inbox.assert_not_called()
 
     def test_an_imap_cache_entry_is_never_served_for_graph(self):
-        cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", [{"uid": "imap-1"}])
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:INBOX:30", [{"uid": "legacy-1"}])
+        cache.set(f"{INBOX_LIST_CACHE_KEY}:imap:1:INBOX:30", [{"uid": "imap-1"}])
 
         with patch(LIST_TARGET, autospec=True, return_value=[]):
             self.assertEqual(list_inbox_messages(limit=30), [])
@@ -100,7 +106,8 @@ class GraphInboxRoutingTests(GraphInboxFixtureMixin, TestCase):
         self.assertEqual(fetch_mime.call_count, 1)
         self.assertEqual(fetch_mime.call_args.args[1], MESSAGE_ID)
         self.assertEqual(detail["subject"], "Re: Event question")
-        self.assertEqual(cache.get(f"{INBOX_MSG_CACHE_PREFIX}graph:INBOX:{MESSAGE_ID}"), detail)
+        self.assertEqual(cache.get(f"{INBOX_MSG_CACHE_PREFIX}{GRAPH_KEY}:INBOX:{MESSAGE_ID}"), detail)
+        self.assertEqual(detail["account"], GRAPH_KEY)
         self.assertIsNone(cache.get(f"{INBOX_MSG_CACHE_PREFIX}INBOX:{MESSAGE_ID}"))
 
     def test_fetch_never_marks_the_message_read(self):
@@ -109,7 +116,7 @@ class GraphInboxRoutingTests(GraphInboxFixtureMixin, TestCase):
         with patch(FETCH_TARGET, autospec=True, return_value=RAW_MIME):
             fetch_inbox_message(MESSAGE_ID)
 
-        self.assertFalse(cache.get(f"{INBOX_LIST_CACHE_KEY}:graph:INBOX:30")[0]["is_seen"])
+        self.assertFalse(cache.get(f"{INBOX_LIST_CACHE_KEY}:{GRAPH_KEY}:INBOX:30")[0]["is_seen"])
 
     def test_reads_use_get_only(self):
         """End to end through the transport: one token POST to the identity platform, then only GETs to Graph."""
@@ -133,13 +140,25 @@ class GraphInboxRoutingTests(GraphInboxFixtureMixin, TestCase):
             with self.assertRaisesMessage(InboxError, "busy"):
                 fetch_inbox_message(MESSAGE_ID)
 
-        self.assertIsNone(cache.get(f"{INBOX_MSG_CACHE_PREFIX}graph:INBOX:{MESSAGE_ID}"))
+        self.assertIsNone(cache.get(f"{INBOX_MSG_CACHE_PREFIX}{GRAPH_KEY}:INBOX:{MESSAGE_ID}"))
 
 
 class ImapFallbackTests(GraphInboxFixtureMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        GmailAccessAccount.objects.all().delete()
+        self.gmail = GmailAccessAccount.objects.create(
+            name="Gmail",
+            is_active=True,
+            imap_host="imap.gmail.com",
+            gmail_username="i2g@gmail.com",
+            gmail_password="app-password",
+        )
+        self.imap_key = f"imap:{self.gmail.pk}"
+
     def use_imap(self, messages):
         @contextmanager
-        def fake_inbox(mailbox=None, folder="INBOX"):
+        def fake_inbox(mailbox=None, folder="INBOX", *, account=None):
             client = MagicMock()
             client.fetch.return_value = iter(messages)
             yield client
@@ -155,7 +174,9 @@ class ImapFallbackTests(GraphInboxFixtureMixin, TestCase):
 
         graph_list.assert_not_called()
         self.open_inbox.assert_called_once()
-        self.assertEqual(cache.get(f"{INBOX_LIST_CACHE_KEY}:INBOX:30"), [])
+        self.assertEqual(self.open_inbox.call_args.kwargs["account"].key, self.imap_key)
+        self.assertEqual(cache.get(f"{INBOX_LIST_CACHE_KEY}:{self.imap_key}:INBOX:30"), [])
+        self.assertIsNone(cache.get(f"{INBOX_LIST_CACHE_KEY}:{GRAPH_KEY}:INBOX:30"))
 
     def test_no_graph_config_reads_through_imap(self):
         self.use_imap([])
@@ -165,10 +186,19 @@ class ImapFallbackTests(GraphInboxFixtureMixin, TestCase):
 
         graph_fetch.assert_not_called()
 
+    def test_without_any_account_the_inbox_is_not_configured(self):
+        self.gmail.delete()
+
+        with self.assertRaisesMessage(InboxError, "No inbox account is configured."):
+            list_inbox_messages()
+        with self.assertRaisesMessage(InboxError, "No inbox account is configured."):
+            fetch_inbox_message("1")
+        self.open_inbox.assert_not_called()
+
     def test_missing_tables_are_reported_as_an_inbox_error(self):
         for error in (OperationalError("no such table"), ProgrammingError("relation does not exist")):
             with self.subTest(type(error).__name__):
-                target = "apps.mail.services.inbox.graph_backend.active_reader"
+                target = "apps.mail.services.inbox.accounts.MicrosoftGraphProviderConfig.load"
                 with patch(target, side_effect=error), self.assertRaisesMessage(InboxError, "migrations"):
                     list_inbox_messages()
                 with patch(target, side_effect=error), self.assertRaisesMessage(InboxError, "migrations"):

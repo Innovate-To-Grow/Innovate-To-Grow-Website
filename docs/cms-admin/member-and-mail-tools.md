@@ -183,7 +183,7 @@ their go-live checks), and has:
   store, never in the database. The sender mailbox
   defaults to the From email; both must be in the scope with send permission.
   With read permission, **Mail → Inbox** reads that mailbox through Graph
-  instead of the Gmail import account; its **Sent** folder (and any message
+  alongside the Gmail access accounts ([Universal inbox](#universal-inbox-mail--inbox)); its **Sent** folder (and any message
   from the site's own address) is then shown to staff with the Mail app only, and Sent
   mail is never sent to the AI scam review. Opening an Inbox message whose
   rule score is in the medium band still sends its sender, subject,
@@ -445,6 +445,33 @@ Resending a ticket email revokes the registration's previous link before issuing
 ### Gmail import
 
 The campaign admin includes a Gmail import feature (`src/apps/mail/services/campaign/gmail_import/`) that can fetch email templates from a Gmail account for use as campaign bodies.
+
+### Universal inbox (Mail → Inbox)
+
+**Mail → Inbox** reads every configured mailbox (`src/apps/mail/services/inbox/accounts.py`):
+
+- every mailbox in the active Microsoft Graph configuration's **mailbox scope** with read permission
+  (*Read only* or *Send and read*), the sending mailbox first;
+- the active **Gmail Access Account** (also the Import from Gmail account), and any other Gmail Access Account with
+  **Show in Inbox** on.
+
+With more than one account the toolbar has an **Account** menu: **All accounts** (the default) merges the newest
+messages of every account, newest first, and tags each row with the address it was received at; choosing one account
+shows only that mailbox. An account that cannot be read right now (held back by its delivery rate, or failing) is
+named in a banner while the others are still listed. Each account keeps its own cache and delivery-rate slot.
+
+A reply's **From** menu lists every address the site can send as (`src/apps/mail/services/inbox/senders.py`), and
+starts with the address the message was received at when it is one of them:
+
+| From choice | When it is offered | Sent through |
+|---|---|---|
+| Notification Delivery's From address | email delivery is active and configured | the active provider, as before |
+| A Graph mailbox | in the scope with send permission, and the Graph configuration passed what switching email to Graph requires | Microsoft Graph |
+| A Gmail API account | on the allow-list and verified by the access check for the installed key | Gmail API |
+| A Gmail Access Account | **Allow Replies From This Account** on, with its SMTP host/port (default `smtp.gmail.com:587`, STARTTLS) | SMTP with the account's own login (app password) |
+
+Only listed choices are accepted, and each provider re-checks its allow-list on every send, so turning an account
+off takes effect at once. Every reply still goes through the delivery-rate limiter and the email telemetry.
 
 ### Recipient logs
 

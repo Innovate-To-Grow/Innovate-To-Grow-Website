@@ -5,10 +5,13 @@ from apps.core.models import EmailServiceConfig
 from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email, email_tracking
 from apps.core.utils.security import is_plain_address
 
+from .senders import DEFAULT_SENDER, resolve_identity
+
 logger = logging.getLogger(__name__)
 REPLY_SEND_FAILURE_MESSAGE = "Failed to send reply. Please check server logs for details."
 REPLY_DELIVERY_NOT_CONFIGURED = "Email delivery is not configured. Check Notification Delivery in admin."
 REPLY_INVALID_ADDRESS_MESSAGE = "Use plain email addresses such as name@example.com in To and Cc."
+REPLY_SENDER_UNAVAILABLE_MESSAGE = "That From address is not available. Reload the reply form and choose another."
 
 
 def render_reply_html(body_text, original_from="", original_date="", quoted_text=""):
@@ -50,7 +53,10 @@ def send_reply(
     original_date: str = "",
     quoted_text: str = "",
     cc_email: str = "",
+    sender: str = DEFAULT_SENDER,
 ) -> str:
+    """Send a reply From ``sender`` (a ``senders.SendIdentity`` key; ``default``: Notification Delivery). Returns ""
+    when the provider accepted it, else the error to show."""
     config = EmailServiceConfig.load()
     cc_list = [email.strip() for email in cc_email.split(",") if email.strip()] if cc_email else []
     # The To address comes from the original sender's From header, so it may be crafted.
@@ -67,13 +73,19 @@ def send_reply(
         references=references,
     )
 
+    if (sender or DEFAULT_SENDER) != DEFAULT_SENDER:
+        identity = resolve_identity(sender)
+        if identity is None:
+            return REPLY_SENDER_UNAVAILABLE_MESSAGE
+        return _deliver_reply(config=identity.delivery_config(config), to_email=to_email, message=message)
+
     if not config.delivery_configured:
         return REPLY_DELIVERY_NOT_CONFIGURED
 
-    return _send_reply_via_ses(config=config, to_email=to_email, cc_list=cc_list, message=message)
+    return _deliver_reply(config=config, to_email=to_email, message=message)
 
 
-def _send_reply_via_ses(*, config, to_email, cc_list, message) -> str:
+def _deliver_reply(*, config, to_email, message) -> str:
     try:
         with email_tracking(category="inbox_reply"):
             deliver_email(message, config=config)
