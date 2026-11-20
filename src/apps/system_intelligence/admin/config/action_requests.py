@@ -4,7 +4,9 @@ from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.admin.common.base import BaseModelAdmin
-from apps.system_intelligence.models import SystemIntelligenceActionRequest
+from apps.core.utils.access import user_can_access_app
+from apps.system_intelligence.models import ChatConversation, SystemIntelligenceActionRequest
+from apps.system_intelligence.services.tool_access import has_chat_grants
 
 
 @admin.register(SystemIntelligenceActionRequest)
@@ -51,6 +53,22 @@ class SystemIntelligenceActionRequestAdmin(BaseModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
+        grants = getattr(request.user, "admin_apps", None) or []
+        conversations = ChatConversation.objects.filter(created_by=request.user)
+        restricted = [
+            pk
+            for pk, required_apps in conversations.values_list("pk", "required_tool_apps")
+            if not has_chat_grants(request.user, required_apps)
+        ]
+        return queryset.filter(
+            conversation__created_by=request.user,
+            target_app_label__in=[grant for grant in grants if user_can_access_app(request.user, grant)],
+        ).exclude(conversation_id__in=restricted)
 
     def has_delete_permission(self, request, obj=None):
         return False

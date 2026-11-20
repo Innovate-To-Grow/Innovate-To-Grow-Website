@@ -5,6 +5,7 @@ import json
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.event.tests.helpers import make_admin
 from apps.system_intelligence.services.query_tools import execute_tool, get_tool_definitions
 from apps.system_intelligence.services.query_tools.tool_modules.domains.analytics import get_page_views
 from apps.system_intelligence.services.query_tools.tool_modules.domains.cms import search_cms_pages, search_news
@@ -46,13 +47,11 @@ class ExecuteToolTest(TestCase):
         from apps.projects.models import Semester
 
         Semester.objects.create(year=2025, season=1, is_published=True)
-        result = execute_tool({"name": "search_semesters", "input": {"year": 2025}})
+        user = make_admin(apps=["system_intelligence", "projects"])
+        result = execute_tool({"name": "search_semesters", "input": {"year": 2025}}, user=user)
         self.assertIn("2025", result)
 
     def test_tool_error_is_caught(self):
-        # search_projects with a bad filter type triggers an exception inside the tool;
-        # use run_custom_query via execute_tool with an unknown model to hit the success path,
-        # then force an error by patching the registry function.
         from unittest.mock import patch
 
         def boom(_params):
@@ -60,9 +59,10 @@ class ExecuteToolTest(TestCase):
 
         with patch.dict(
             "apps.system_intelligence.services.query_tools.tool_modules.dispatch.executor.TOOL_REGISTRY",
-            {"boomtool": boom},
+            {"search_projects": boom},
         ):
-            result = execute_tool({"name": "boomtool", "input": {}})
+            user = make_admin(apps=["system_intelligence", "projects"])
+            result = execute_tool({"name": "search_projects", "input": {}}, user=user)
         self.assertIn("Tool error: kaboom", result)
 
 

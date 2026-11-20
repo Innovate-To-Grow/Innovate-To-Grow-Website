@@ -1,0 +1,75 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Private storage for System Intelligence exports.
+Parameters:
+  ExportBucketName:
+    Type: String
+  TaskRoleName:
+    Type: String
+Resources:
+  ExportBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName:
+        Ref: ExportBucketName
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: AbortIncompleteUploads
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+  ExportBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: ExportBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Deny
+            Principal: "*"
+            Action: "s3:*"
+            Resource:
+              - Fn::GetAtt: [ExportBucket, Arn]
+              - Fn::Sub: "${ExportBucket.Arn}/*"
+            Condition:
+              Bool:
+                aws:SecureTransport: "false"
+  ExportTaskRolePolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: SystemIntelligencePrivateExports
+      Roles:
+        - Ref: TaskRoleName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Action: s3:ListBucket
+            Resource:
+              Fn::GetAtt: [ExportBucket, Arn]
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:AbortMultipartUpload
+            Resource:
+              Fn::Sub: "${ExportBucket.Arn}/system_intelligence_exports/*"
+Outputs:
+  BucketName:
+    Value:
+      Ref: ExportBucket

@@ -11,9 +11,9 @@ from .constants import MAX_TOOL_ROUNDS
 logger = logging.getLogger(__name__)
 
 
-def invoke_bedrock(conversation_messages, *, chat_config=None, aws_config=None, model_id=None):
+def invoke_bedrock(conversation_messages, *, chat_config=None, aws_config=None, model_id=None, user=None):
     """Call the Bedrock Converse API (non-streaming)."""
-    client, messages, kwargs = prepare(conversation_messages, chat_config, aws_config, model_id)
+    client, messages, kwargs = prepare(conversation_messages, chat_config, aws_config, model_id, user=user)
     tool_calls_log = []
     for round_num in range(MAX_TOOL_ROUNDS):
         kwargs["messages"] = messages
@@ -28,7 +28,9 @@ def invoke_bedrock(conversation_messages, *, chat_config=None, aws_config=None, 
         output_message = response["output"]["message"]
         messages.append(output_message)
         if response.get("stopReason") == "tool_use":
-            messages.append({"role": "user", "content": collect_tool_results(output_message, tool_calls_log)})
+            messages.append(
+                {"role": "user", "content": collect_tool_results(output_message, tool_calls_log, user=user)}
+            )
             continue
         text_parts = [block["text"] for block in output_message["content"] if "text" in block]
         return {"text": "".join(text_parts), "tool_calls": tool_calls_log}
@@ -38,13 +40,13 @@ def invoke_bedrock(conversation_messages, *, chat_config=None, aws_config=None, 
     }
 
 
-def collect_tool_results(output_message, tool_calls_log):
+def collect_tool_results(output_message, tool_calls_log, *, user=None):
     tool_results = []
     for block in output_message["content"]:
         if "toolUse" not in block:
             continue
         tool_info = block["toolUse"]
-        result_text = execute_tool(tool_info)
+        result_text = execute_tool(tool_info, user=user)
         tool_calls_log.append(
             {
                 "name": tool_info.get("name", "unknown"),

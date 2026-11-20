@@ -6,20 +6,25 @@
     app.state.conversations = payload.conversations || [];
     app.renderConversations();
     if (selectId) return app.selectConversation(selectId);
-    if (!app.state.currentId && app.state.conversations.length) {
-      return app.selectConversation(app.state.conversations[0].id);
+    if (!app.state.currentId) {
+      const first = app.state.conversations.find((item) => !item.restricted);
+      if (first) return app.selectConversation(first.id);
+      app.state.readOnly = false;
+      app.setStreaming(app.state.streaming);
+      app.renderEmpty();
     }
-    if (!app.state.conversations.length) app.renderEmpty();
   };
 
   app.selectConversation = async function (id) {
     app.state.currentId = id;
     app.renderConversations();
     const payload = await app.fetchJson(app.urlFor("detail", id));
+    app.state.readOnly = Boolean(payload.read_only);
+    app.setStreaming(app.state.streaming);
     app.els.title.textContent = payload.title || "New Chat";
     app.setMode(payload.mode);
     app.renderMessages(payload.messages || []);
-    app.setStatus(app.state.mode === "plan" ? "Plan mode" : "Ready");
+    app.setStatus(app.state.readOnly ? "Archived. Start a new chat to continue." : app.state.mode === "plan" ? "Plan mode" : "Ready");
   };
 
   app.createConversation = async function () {

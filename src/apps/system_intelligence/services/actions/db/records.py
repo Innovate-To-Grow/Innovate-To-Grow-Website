@@ -4,8 +4,10 @@ from typing import Any
 from django.apps import apps
 from django.core.serializers.json import DjangoJSONEncoder
 
+from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.services.query_tools.tool_modules.domains.helpers import MAX_ROWS, _truncate
 
+from ..engine.context import current_user
 from ..engine.exceptions import ActionRequestError
 from ..engine.utils import json_safe
 from ..orm import (
@@ -24,8 +26,9 @@ from ..orm import (
 def list_database_models() -> str:
     """List ORM models available for safe System Intelligence reads/writes."""
     rows = []
+    user = current_user()
     for model in apps.get_models():
-        if is_model_denied(model, write=False):
+        if is_model_denied(model, write=False) or not user_can_access_app(user, model._meta.app_label):
             continue
         rows.append(
             {
