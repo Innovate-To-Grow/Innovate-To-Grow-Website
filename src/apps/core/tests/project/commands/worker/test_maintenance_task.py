@@ -52,6 +52,7 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
             purge_finished_delivery_traces=record("delivery trace jobs", 0),
             ensure_helpdesk_intake_scheduled=record("helpdesk intake", False),
             ensure_helpdesk_ingest_scheduled=record("helpdesk ingest", False),
+            run_helpdesk_automation=record("helpdesk automation", {"auto_closed": 0, "sla_breaches": 0}),
             purge_expired_helpdesk=record("helpdesk retention", HELPDESK_NOTHING_PURGED),
             purge_finished_helpdesk_ingests=record("helpdesk ingest jobs", 0),
             purge_finished_helpdesk_intake_scans=record("helpdesk intake scans", 0),
@@ -79,6 +80,7 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
                 "delivery trace jobs",
                 "helpdesk intake",
                 "helpdesk ingest",
+                "helpdesk automation",
                 "helpdesk retention",
                 "helpdesk ingest jobs",
                 "helpdesk intake scans",
@@ -102,6 +104,7 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
                 "Email telemetry retention",
                 "Helpdesk intake scheduling",
                 "Helpdesk ingest scheduling",
+                "Helpdesk SLA and auto-close",
                 "Helpdesk retention",
             ],
         )

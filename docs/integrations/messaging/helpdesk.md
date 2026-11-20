@@ -1,4 +1,4 @@
-# Helpdesk (tickets from the i2g@ mailbox), shadow mode
+# Helpdesk (tickets from the i2g@ mailbox), a ServiceNow-style service desk
 
 Every message that reaches the Inbox of the site's Microsoft Graph mailbox (`i2g@ucmerced.edu`) becomes a
 ticket in the Django admin (**Helpdesk** section), or joins the ticket of its conversation. Automated mail
@@ -7,32 +7,44 @@ spam, the site's own mail) also becomes a ticket, but one that is closed at once
 never notifies anyone and never reopens. A person's answer to the site's own mail stays a person's, even when it
 was sent from a CRM or marketing tool.
 
-The helpdesk ships in **shadow mode**: it reads the mailbox and writes tickets, and **sends nothing**. There is no
-reply composer, no acknowledgement and no notification, and nothing in Outlook changes (no mail is marked read,
-moved, flagged or forwarded). Staff keep answering from Outlook. The design and the open questions are in the
-Item 2 plan (`item2-helpdesk-bounces-plan-2026-11-10.md`, §2, kept with the project notes, not in this
-repository), which predates two decisions recorded here: automated mail *is* a ticket (closed and hidden), and
-only phase H1 plus merge and spam from H2 is built.
+Tickets are worked the way ServiceNow works incidents ([Working tickets](#working-tickets-servicenow-style)):
+impact × urgency gives the priority, a ticket has an **assignment group** and an **assignee**, an **SLA** clock
+gives its first-response and resolution due times, and resolving it records a **resolution code** and notes.
+Resolved tickets close by themselves after 7 days.
+
+The helpdesk still starts in **shadow mode**: it reads the mailbox and writes tickets, and **sends nothing**. Shadow
+mode is a switch in Helpdesk → Settings. Off, staff **reply to the requester from the ticket page** (ServiceNow's
+"additional comments"; internal notes stay the "work notes"), and the **acknowledgement** of a new ticket and the
+**assignment notifications** are sent when their own switches are on ([Replies and notifications](#replies-and-notifications)).
+Either way nothing in Outlook changes (no mail is marked read, moved, flagged or forwarded). The design and the open
+questions are in the Item 2 plan (`item2-helpdesk-bounces-plan-2026-11-10.md`, §2, kept with the project notes, not in
+this repository), which predates the decisions recorded here: automated mail *is* a ticket (closed and hidden), and
+the H2 phase is built as described below (replies, acknowledgement, notifications, SLA, response templates).
 
 ## For staff
 
 | Sidebar entry | What it shows |
 |---|---|
 | **Queue** | People's open tickets (new, open, pending), most recent activity first. A dot marks an unread customer message. |
-| **My Tickets** / **Unassigned** | The same list, assigned to you / to nobody. |
+| **My Tickets** / **My Groups** / **Unassigned** | The same list, assigned to you / to an assignment group you are a member of / to nobody. |
+| **SLA Breached** | Tickets whose first response or resolution is overdue (flagged, or past due and not flagged yet). |
 | **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here. A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
 | **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry**. |
-| **Categories**, **Settings** | Ticket categories; the helpdesk's limits, retention periods and switches, under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
+| **Categories**, **Assignment Groups**, **SLA Targets**, **Response Templates** | Ticket categories (each may name a default group); the teams that work tickets; the response and resolution targets per priority; canned replies. |
+| **Settings** | The helpdesk's limits, retention periods and switches (shadow mode, acknowledgement, notifications, auto-close), under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
 
-The list filters (**Mail**: people / automated & spam / everything; **Status**; **Assignee**; **Unread**; priority;
-category) and the search (a number such as `1234` or `I2G-#1234`, the subject, or the requester's address or
-name) narrow the queue.
+The list filters (**Mail**: people / automated & spam / everything; **Status**; **Assignee**; **Assignment group**:
+my groups / no group / one group; **SLA**: breached / due within 24 hours / no SLA; **Unread**; priority; category)
+and the search (a number such as `1234` or `I2G-#1234`, the subject, or the requester's address or name) narrow the
+queue. The **SLA** column shows the clock that matters now: the first response until it is met, then the resolution
+(on track with its due time, at risk, paused, breached or met).
 
-**The ticket page** edits status, priority, category and assignee (no typed confirmation; every change is in the
-ticket's timeline and the admin history), shows the timeline (messages, internal notes, field changes) and has
-the internal-note form. A merged ticket's status cannot be changed, and **Merged** is not in the Status list: only a
-merge makes a ticket merged. Notes are seen only by staff with the Helpdesk app and are never sent. Opening a ticket
-marks it read.
+**The ticket page** edits status, impact and urgency (the priority follows, read-only), category, assignment group
+and assignee, and the resolution code and notes (no typed confirmation; every change is in the ticket's timeline and
+the admin history). It shows the two SLA clocks, the timeline (messages, replies with their delivery state, internal
+notes, field changes), the **reply form** (only while shadow mode is off) and the internal-note form. A merged
+ticket's status cannot be changed, and **Merged** is not in the Status list: only a merge makes a ticket merged.
+Notes are seen only by staff with the Helpdesk app and are never sent. Opening a ticket marks it read.
 
 - Message HTML was sanitized when it was imported and is shown in a sandboxed frame without scripts; images are
   replaced by `[image]` (remote images would track the reader; inline ones are listed as attachments).
@@ -55,6 +67,65 @@ runs too, and `Ticket.clean()` refuses such a merge target for any form. Automat
 shows there collapsed and changes nothing else on it (not its status, unread mark, participants or last activity),
 as when it threads there by itself; the merged ticket stays hidden (still automated, now merged), and later mail of
 its thread lands on the person's ticket.
+
+## Working tickets (ServiceNow style)
+
+| ServiceNow | Helpdesk | Notes |
+|---|---|---|
+| Number `INC0010001` | `I2G-#1234` | Also the subject token that threads mail back to the ticket. |
+| State | Status: New, In progress, On hold – awaiting requester, On hold – awaiting internal, Resolved, Closed (and Merged, Spam) | A requester's reply puts "awaiting requester" back to In progress and reopens a ticket closed less than `reopen_window_days` ago. |
+| Impact × Urgency → Priority | Impact 1–3 × Urgency 1–3 → 1 Critical, 2 High, 3 Moderate, 4 Low (`services/tickets/priority.py`) | ServiceNow's "5 – Planning" (3 × 3) is Low. A person's new ticket starts at 2 × 2 (Moderate), automated mail at 3 × 3 (Low). The stored values (`urgent`, `high`, `normal`, `low`) are unchanged. |
+| Assignment group / Assigned to | **Assignment Groups** (members, manager) and the assignee | A category's **default group** is set on a ticket given that category while it has no group (assignment rule). With a group that has members, the assignee must be one of them. |
+| Work notes / Additional comments | Internal notes / replies to the requester | Replies only while shadow mode is off. |
+| SLA definitions | **SLA Targets**, one per priority | See [SLA](#sla). |
+| Close code / close notes | Resolution code / resolution notes | A code is required to resolve or close a ticket on the ticket page (the bulk Close action does not ask). |
+| Auto-close of resolved incidents | `auto_close_resolved_days` (7) | Closed by the worker's hourly maintenance ("Helpdesk SLA and auto-close"); a reply before then reopens. |
+| Templates | **Response Templates** | Choose one above the reply form and press **Insert**: `{ticket}`, `{requester_name}`, `{subject}`, `{agent_name}` are filled in, then edit and send. Templates of the ticket's category are listed first. |
+
+### SLA
+
+Each priority's **SLA target** (Helpdesk → SLA Targets) gives a first-response time and a resolution time, in
+calendar time (no business hours). Seeded by `helpdesk.0004`: Critical 1 h / 8 h, High 4 h / 2 days, Moderate 1 day /
+5 days, Low 3 days / 10 days. A target switched off means no SLA for that priority; targets cannot be deleted.
+
+- The clock starts when the ticket's first message arrived. Automated mail, backfilled mail (imported more than
+  `backfill_age_hours` late) and tickets from before this release have no clock.
+- **First response** is met by the first reply sent from the ticket, or by staff moving the ticket out of New (the site
+  cannot see answers written in Outlook; moving the ticket on stands for them). The acknowledgement does not count.
+- **Resolution** runs while the ticket is New, In progress or On hold – awaiting internal, and stands still while it
+  is On hold – awaiting requester, Resolved or Closed. When it runs again (the requester replied, the ticket was
+  reopened) the time it stood still is added to its due time.
+- A priority change sets the new priority's targets, from the same start, and judges both clocks again.
+- A clock is **at risk** once `sla_warning_percent` (75 %) of its time is used and **breached** once its due time
+  passes before it is met. Breaches are flagged when they are seen (a change on the ticket, the worker's hourly
+  maintenance, which also writes "SLA breached" on the timeline); the queue's SLA column and filter also show
+  overdue clocks not flagged yet. No email is sent for a breach.
+
+### Replies and notifications
+
+Everything here needs **shadow mode off** (Helpdesk → Settings; every change of it is in the admin history and the log
+line `helpdesk_shadow_mode`). Sending code lives only in `services/outbound/`; a test pins that no other helpdesk
+module imports a sending API, and that each job checks shadow mode before it sends.
+
+- **Replies.** The reply form on the ticket page sends to the requester (optional Cc, at most 10; Cc addresses
+  become participants, so their answers thread too) from the site's address, subject `Re: <subject> [I2G-#1234]`,
+  with the Mail app's branded reply layout, the requester's latest message quoted, and a footer asking to keep the
+  number in the subject. The status can be set with it (default: On hold – awaiting requester). Microsoft Graph cannot
+  send `In-Reply-To`/`References`, so the subject token is what threads the answer back (accepted only from a
+  participant, as before). The reply is stored on the ticket and sent by the background job `helpdesk.send_reply`
+  (transactional lane, paced by the delivery-rate limiter); the timeline shows it Queued, then Sent, or Failed with
+  the reason (a fixed text; the provider's error stays in the job and the server log). A job is never retried once the
+  provider call began, so a reply is never sent twice; when it is uncertain whether it went out, the timeline says so.
+- **Acknowledgement** (`send_acknowledgement`, off by default). When a person's message opens a new ticket, the
+  requester gets `acknowledgement_text` with the ticket number. Never for automated mail, spam, backfilled mail or a
+  message that must not be answered automatically (`shadow.automatic_reply_allowed`, RFC 3834), and at most once a
+  day per address, so two auto-responders cannot answer each other.
+- **Assignment notifications** (`notify_assignment`, on). Assigning a ticket to someone else emails them; assigning it
+  to a group with nobody assigned emails the group's members. Never to the member who made the change, only to active
+  staff with the Helpdesk app. The email names the ticket (number, subject, requester, priority) and links to the
+  ticket page (`BACKEND_URL`); it never contains the requester's message.
+- Switching shadow mode back on stops every helpdesk email not sent yet: each job checks it again when it runs (a
+  reply then shows as Failed: "shadow mode was switched on").
 
 ## How a message becomes a ticket
 
@@ -126,8 +197,8 @@ its thread lands on the person's ticket.
      came through a list or a bulk sender, asks for no automatic reply, or has no return path), and also a message
      whose own text looks automated (an absence, a left-the-organisation notice, a system acknowledgement, a receipt)
      or that claims the site's address without proof, since a responder that marks nothing would answer an
-     acknowledgement with another. `shadow.automatic_reply_allowed` is the gate any later acknowledgement or
-     notification must pass: false in shadow mode, for automated mail, for a message on a ticket that is automated or
+     acknowledgement with another. `shadow.automatic_reply_allowed` is the gate the acknowledgement passes
+     ([Replies and notifications](#replies-and-notifications)): false in shadow mode, for automated mail, for a message on a ticket that is automated or
      spam, and for such messages.
 4. **Threading** (`matching.py`), first match wins: `In-Reply-To`/`References` naming a message of a ticket (a
    reply to a campaign email instead opens a ticket linked to the campaign); the subject token `[I2G-#1234]`
@@ -161,6 +232,7 @@ takes the highest number plus one. Display: `I2G-#1234`.
 | Attachments (10 MB per file, 25 MB per message; blocked types never) | `helpdesk.TicketAttachment.content` (PostgreSQL, not S3: the production media bucket serves public URLs) | 365 days after the ticket closed |
 | Bodies of automated mail / of spam | | 90 / 30 days after arrival |
 | Tickets (number, subject, requester, dates, audit trail) | `helpdesk.Ticket`, `TicketEvent` | 1,095 days after closing |
+| Replies and acknowledgements sent (text as written, recipients, delivery state) | `helpdesk.TicketMessage` (`kind=reply`) | Like the ticket's other message bodies |
 
 The inbound queue row also keeps what the import made of a message (`result`): its ticket and, for a reply to the
 site's mail, the email it answers (`site_mail`), how that was found (`site_match`: `message_id` or
@@ -181,8 +253,9 @@ helpdesk is internal: only staff with the Helpdesk app see it, and no note to OI
 ## Permissions
 
 The **Helpdesk** app grant (`Member.admin_apps` contains `helpdesk`, or I2G Master) gives everything in the
-helpdesk: the queue, ticket pages, notes, assignment, merge, spam, Ingest Problems and Settings. Every custom view
-(ticket notes, attachment downloads) checks the grant itself (403 without it). Tickets are created only from
+helpdesk: the queue, ticket pages, notes, replies, assignment, merge, spam, Ingest Problems, assignment groups, SLA
+targets, response templates and Settings (shadow mode included). Every custom view (ticket notes, replies, attachment
+downloads) checks the grant itself (403 without it). Tickets are created only from
 mail; only an I2G Master can delete one by hand, behind the typed confirmation (otherwise only retention deletes).
 Opening the linked member or campaign needs the Members or Mail app.
 
@@ -194,7 +267,11 @@ intake's own controls ([Intake controls](#intake-controls)).
 | Field | Default | Meaning |
 |---|---|---|
 | `enabled` | on | Read the Inbox and import its mail. Off: the helpdesk neither reads nor imports; switched back on, the intake continues from its checkpoint, so mail that arrived meanwhile (and is still in the Inbox) becomes tickets then. |
-| `shadow_mode` | on (read-only) | Nothing is ever sent. This release has no sending code; the switch is shown, not editable. |
+| `shadow_mode` | on | On: nothing is ever sent. Off: replies from the ticket page, and the acknowledgement and notifications below when they are on. |
+| `send_acknowledgement`, `acknowledgement_text` | off, a short thank-you naming `{ticket}` | Email the requester when their message opens a new ticket ([Replies and notifications](#replies-and-notifications)). |
+| `notify_assignment` | on | Email staff a ticket is assigned to (or their group's members). |
+| `auto_close_resolved_days` | 7 | Resolved tickets close by themselves after this many days (0: never). |
+| `sla_warning_percent` | 75 | A running SLA clock is shown as at risk once this share of its time is used. |
 | `pause_while_campaign_sending` | on | Wait while a campaign is sending. |
 | `ingest_batch_size`, `ingest_max_seconds`, `max_attempts` | 100, 60, 5 | Budget of one run; attempts before a message is listed under Ingest Problems. |
 | `message_max_bytes`, `attachment_max_bytes` | 25 MB, 10 MB | Most of one message read (also capped by `GRAPH_INBOX_MESSAGE_MAX_BYTES`); largest attachment stored. |
@@ -259,6 +336,10 @@ saves every column and would overwrite a running scan's lease.
    on PostgreSQL, the ticket number sequence), `helpdesk.0002_intake_state` (the intake's state table) and
    `helpdesk.0003_reply_detection_settings` (`bulk_bcl_threshold` and `reply_match_window_days`, with database
    defaults for the rolling deploy). No data migration: messages imported before the release keep their verdicts.
+   `helpdesk.0004_servicedesk` adds the ServiceNow-style fields (impact, urgency, assignment group, SLA clock,
+   resolution, reply delivery state), the Assignment Group, SLA Target and Response Template tables and the new
+   settings, all with database defaults for the rolling deploy, and seeds the four SLA targets. Existing tickets keep
+   their priority, start at impact and urgency 2, and have no SLA clock. Shadow mode stays as it was saved (on).
 2. The background worker (`itg-background-worker`) and `BACKGROUND_JOBS_ENABLED` are required: the scan and the
    import are background jobs. Nothing happens without them.
 3. The Microsoft Graph mailbox scope must grant **read** on the sending mailbox, as for bounce processing. No new
@@ -269,11 +350,19 @@ saves every column and would overwrite a running scan's lease.
    opens backfilled tickets). Use **Rescan since** on the intake card for older mail.
 5. To stop reading and importing without a deploy, use **Pause intake** on the intake card (it keeps the
    checkpoint), or switch off **enabled** in Helpdesk → Settings.
+6. Before switching shadow mode off: create the assignment groups (and their members), set the categories' default
+   groups, review the SLA targets and write the response templates; make sure `BACKEND_URL` is the admin's public
+   address (the notification links use it) and that email delivery works (Notification Delivery). Sending uses the
+   site's normal email configuration (Graph or SES) on the transactional lane; no new permission is needed.
 
 ## Limitations and follow-ups
 
-- **No sending** (by design in shadow mode): replies, acknowledgements, notifications, SLA timers and canned
-  responses are phase H2; the `shadow` module holds the switch any sending code must check first.
+- **SLA in calendar time only**: no business-hours schedules or holidays, and no breach warning emails (the queue's
+  SLA column, the SLA Breached view and the timeline show them).
+- **Replies are plain text** (rendered into the branded layout) with no attachments; answers written in Outlook are
+  still not seen by the site, so they neither show on the ticket nor stop the response SLA (move the ticket out of New
+  instead).
+- **No requester portal** or watch list: requesters interact by email only.
 - **Mail deleted or moved out of the Inbox before a scan is missed**; only the Inbox is read. With immutable ids
   off (`EMAIL_GRAPH_IMMUTABLE_IDS`), a message moved in Outlook between its listing and its import is skipped as
   gone (Ingest Problems).

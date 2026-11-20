@@ -18,6 +18,7 @@ HELPDESK_NOTHING_PURGED = {
     "attachments": 0,
     "tickets": 0,
 }
+HELPDESK_NOTHING_AUTOMATED = {"auto_closed": 0, "sla_breaches": 0}
 
 
 LOGGER_NAME = "apps.core.management.commands.run_background_worker"
@@ -44,6 +45,7 @@ MAINTENANCE_SERVICES = {
     "purge_finished_delivery_traces": 0,
     "ensure_helpdesk_intake_scheduled": False,
     "ensure_helpdesk_ingest_scheduled": False,
+    "run_helpdesk_automation": HELPDESK_NOTHING_AUTOMATED,
     "purge_expired_helpdesk": HELPDESK_NOTHING_PURGED,
     "purge_finished_helpdesk_ingests": 0,
     "purge_finished_helpdesk_intake_scans": 0,
@@ -99,6 +101,7 @@ BATCHED_SERVICES = (
     "sync_sms_opt_outs",
     "purge_expired_email_telemetry",
     "purge_expired_inbound_queue",
+    "run_helpdesk_automation",
     "purge_expired_helpdesk",
 )
 

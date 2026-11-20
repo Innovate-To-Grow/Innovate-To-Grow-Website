@@ -28,6 +28,10 @@ EXPECTED_KINDS = {
     # (apps.helpdesk.services.intake.jobs); neither sends anything.
     "helpdesk.ingest_inbound",
     "helpdesk.intake_scan",
+    # The helpdesk's replies / acknowledgements and staff notifications (apps.helpdesk.services.outbound.jobs), sent
+    # only while its shadow mode is off.
+    "helpdesk.notify_staff",
+    "helpdesk.send_reply",
     "mail.email_recipient",
     "mail.sms_recipient",
     # A phone-only registrant's ticket text (apps.mail.services.sms.delivery.ticket).
