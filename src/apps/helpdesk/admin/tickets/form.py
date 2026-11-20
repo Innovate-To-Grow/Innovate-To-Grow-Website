@@ -64,6 +64,9 @@ class TicketForm(forms.ModelForm):
                 # related-object wrapper renders the select it wraps.
                 widget = self.fields[name].widget
                 getattr(widget, "widget", widget).attrs["autocomplete"] = "off"
+                if self.is_bound and not self._posted(name):
+                    # Read-only when the page was shown (automated mail or spam then, moved to the queue since).
+                    self.fields[name].required = False
         status = self.fields.get("status")
         if status is not None:
             current = self.instance.status
@@ -71,6 +74,9 @@ class TicketForm(forms.ModelForm):
             status.choices = [choice for choice in status.choices if choice[0] not in hidden or choice[0] == current]
             # A page shown earlier may still post the status it showed then; it is judged in ``clean``.
             status.valid_value = lambda value: value in Status.values
+
+    def _posted(self, name: str) -> bool:
+        return name in self.data or self[name].html_initial_name in self.data
 
     def clean_resolution_notes(self):
         notes = str(self.cleaned_data.get("resolution_notes") or "").replace("\r\n", "\n")
@@ -106,6 +112,9 @@ class TicketForm(forms.ModelForm):
         conflicts = []
         for name in EDITABLE:
             if name not in self.fields or name not in cleaned:
+                continue
+            if not self._posted(name):
+                cleaned[name] = getattr(self.instance, name)  # the page did not show it
                 continue
             field = self.fields[name]
             now = _text(field, self.initial.get(name))

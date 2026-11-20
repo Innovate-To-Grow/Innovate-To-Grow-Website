@@ -10,11 +10,11 @@
 {% comment %}Exchange's own rating, when it decided the verdict (subtype "scl", or a bcl_N signal), with the threshold now on Settings.{% endcomment %}
 {% with bcl=message.auth_summary.bcl|stringformat:"s" %}
 {% if message.classification == "spam" and message.subtype == "scl" %}
-  <p class="i2g-helpdesk-muted">Why: Exchange rated it spam (SCL {{ message.auth_summary.scl }}; spam from SCL {{ helpdesk_settings.spam_scl_threshold }} on Settings).</p>
+  <p class="i2g-helpdesk-muted">Why: Exchange rated it spam (SCL {{ message.auth_summary.scl }}; {% if message.auth_summary.scl >= helpdesk_settings.spam_scl_threshold %}spam from SCL {{ helpdesk_settings.spam_scl_threshold }} on Settings{% else %}spam at the threshold when it arrived; Settings now says from SCL {{ helpdesk_settings.spam_scl_threshold }}{% endif %}).</p>
 {% elif message.classification == "spam" and message.subtype == "filter_verdict" %}
   <p class="i2g-helpdesk-muted">Why: Exchange's spam filter marked it as spam.</p>
 {% elif message.classification == "bulk" and "bcl_"|add:bcl in message.signals %}
-  <p class="i2g-helpdesk-muted">Why: Exchange rated it bulk mail (BCL {{ bcl }}; bulk from BCL {{ helpdesk_settings.bulk_bcl_threshold }} on Settings).</p>
+  <p class="i2g-helpdesk-muted">Why: Exchange rated it bulk mail (BCL {{ bcl }}; {% if message.auth_summary.bcl >= helpdesk_settings.bulk_bcl_threshold %}bulk from BCL {{ helpdesk_settings.bulk_bcl_threshold }} on Settings{% else %}bulk at the threshold when it arrived; Settings now says from BCL {{ helpdesk_settings.bulk_bcl_threshold }}{% endif %}).</p>
 {% endif %}
 {% endwith %}
 {% if message.scam_level == "medium" or message.scam_level == "high" %}

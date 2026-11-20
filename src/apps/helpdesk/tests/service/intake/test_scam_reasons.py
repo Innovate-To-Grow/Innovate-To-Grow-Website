@@ -13,7 +13,7 @@ from ... import corpus
 from ...helpers import helpdesk_staff, receive
 from .scam_mail import DMARC_PASS, SCAM, WORD_REASONS, locked_out, scam_signals
 
-ANALYZE = "apps.helpdesk.services.ingest.routing.scam.analyze_email"
+FINDINGS = "apps.helpdesk.services.ingest.routing.scam.findings"
 SUSPICIOUS = "Suspicious: the scam checks found warning signs."
 SPAM = "Marked as spam by the scam checks."
 WHY = f"Why: {'; '.join(WORD_REASONS)}."
@@ -34,7 +34,10 @@ class StoredReasonsTests(TestCase):
         reasons = ["R" * 300, *(f"Reason {number}" for number in range(2, 9))]
 
         for level in ("medium", "high"):
-            with self.subTest(level), patch(ANALYZE, return_value={"risk_level": level, "reasons": reasons}):
+            # Weights adding up to the level: 8 × 1 is high (7 or more), 3 + 0 … is medium (3 to 6).
+            weights = [1] * 8 if level == "high" else [3] + [0] * 7
+            scored = ([*zip(weights, reasons, strict=True)], [])
+            with self.subTest(level), patch(FINDINGS, return_value=scored):
                 message = receive(corpus.message(message_id=f"<{level}@mail.example.org>")).messages.get()
 
                 self.assertEqual(message.scam_level, level)

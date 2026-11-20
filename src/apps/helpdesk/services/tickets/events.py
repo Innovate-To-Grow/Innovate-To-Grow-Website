@@ -151,6 +151,14 @@ _DESCRIBERS = {
     Kind.NOTIFIED: _notified,
     Kind.RESPONDED: _responded,
     Kind.SLA_BREACHED: _breached,
+    Kind.RECLASSIFIED: lambda event, data: (
+        event.get_kind_display()
+        + (
+            f"; its requester is now {data['requester']}, whom its message named in Reply-To"
+            if data.get("requester")
+            else ""
+        )
+    ),
 }
 
 

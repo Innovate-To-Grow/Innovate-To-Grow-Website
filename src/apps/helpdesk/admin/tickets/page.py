@@ -20,6 +20,7 @@ from .form import EDITABLE
 
 # The page's "Not automated: move to the queue" (an Unfold submit-line action: a button beside Save).
 MOVE_HERE = "move_to_queue_here"
+BACKFILLED = "no SLA and no acknowledgement"
 
 
 def _no_sla(ticket: Ticket) -> str:
@@ -94,8 +95,9 @@ class TicketPageMixin:
     @display(description="Flags")
     def flags_display(self, obj):
         flags = [str(flag).replace("_", " ") for flag in obj.flags or []]
-        if obj.backfilled:
-            flags.append("backfilled (imported late: no SLA and no acknowledgement)")
+        if obj.backfilled:  # a clock means it was moved to the queue since
+            late = "no acknowledgement; SLA from its move to the queue" if obj.sla_started_at else BACKFILLED
+            flags.append(f"backfilled (imported late: {late})")
         return ", ".join(flags) or "—"
 
     @display(description="Linked tickets")

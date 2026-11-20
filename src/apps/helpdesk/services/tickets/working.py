@@ -8,7 +8,9 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from apps.authn.models import ContactEmail
 from apps.core.services.email.inbound import LINK_PLACEHOLDER, is_sensitive_url
+from apps.core.utils.security import is_plain_address
 
 from ...models import Ticket, TicketMessage
 from .. import sla
@@ -18,13 +20,29 @@ from .changes import DONE, AssignmentRefused, Kind, Status, _name, update_ticket
 
 NOTE_MAX_CHARS = 20000
 HUMAN = "human"
+# Automatic replies of the requester (not their own words): a move leaves them automated.
+AUTOMATIC = ("auto_reply", "bounce", "receipt", "system", "own")
 _URL_RE = re.compile(r"(?i)\b(?:https?://|www\.)[^\s\"'<>]+")
 
 
+# Where a sign-in link ends inside a run of text: its token never holds these (a CSV cell, "(see …).").
+_LINK_END_RE = re.compile(r"[,;)\]!]|\.(?![A-Za-z0-9])")
+
+
+def _scrubbed(match) -> str:
+    url = match.group(0)
+    if not is_sensitive_url(url):
+        return url
+    end = _LINK_END_RE.search(url)
+    if end and is_sensitive_url(url[: end.start()]):
+        return LINK_PLACEHOLDER + _URL_RE.sub(_scrubbed, url[end.start() :])
+    return LINK_PLACEHOLDER
+
+
 def scrub_sign_in_links(value) -> str:
-    """Text staff write (a note, a reply) with only the site's personal sign-in and subscription links replaced: every
-    other link is kept as written, long ones included."""
-    return _URL_RE.sub(lambda match: LINK_PLACEHOLDER if is_sensitive_url(match.group(0)) else match.group(0), value)
+    """Text staff write (a note, a reply) or a text file with only the site's personal sign-in and subscription links
+    replaced: every other link is kept as written, long ones included, and so is the text right after a link."""
+    return _URL_RE.sub(_scrubbed, value)
 
 
 def add_note(ticket: Ticket, *, actor, body: str) -> TicketMessage:
@@ -105,12 +123,28 @@ def mark_spam(tickets, *, actor) -> int:
     return count
 
 
-def _theirs(ticket: Ticket) -> bool:
+def _relayed(ticket: Ticket) -> str:
+    """The person the message that opened ``ticket`` named in Reply-To instead of its sender (a web form, a list
+    rewriting its senders), unless that is one of the site's own addresses or one the message was sent to (a list's
+    own): the requester once it is a person's ticket, as ``ingest.routing.people`` judges new mail."""
+    from ..outbound.replies import site_addresses
+
+    first = ticket.messages.filter(kind__in=TicketMessage.INBOUND_KINDS).order_by("occurred_at", "created_at").first()
+    address = str(getattr(first, "reply_to", "") or "").strip().lower()
+    if not address or address == first.from_address.lower() or not is_plain_address(address):
+        return ""
+    sent_to = {str(item).lower() for item in [*(first.to_addresses or ()), *(first.cc_addresses or ())]}
+    return "" if address in sent_to or address in site_addresses(ticket) else address
+
+
+def _theirs(ticket: Ticket, relayed: str) -> bool:
     """The requester's messages filed as automated mail become theirs: shown, quoted under a reply, and warned about
-    as suspicious (no longer spam) when the scam checks scored them; whether one was."""
-    filed = TicketMessage.objects.filter(
-        ticket=ticket, kind=TicketMessage.Kind.AUTOMATED, from_address__iexact=ticket.requester_email
-    )
+    as suspicious (no longer spam) when the scam checks scored them; whether one was. Their automatic replies (an
+    out-of-office, a bounce) stay automated, except the message that opened the ticket: that one was misjudged."""
+    opening = ticket.messages.filter(kind__in=TicketMessage.INBOUND_KINDS).order_by("occurred_at", "created_at").first()
+    sender = Q(from_address__iexact=ticket.requester_email) | (Q(reply_to__iexact=relayed) if relayed else Q(pk=None))
+    misjudged = Q(pk=getattr(opening, "pk", None)) | ~Q(classification__in=AUTOMATIC)
+    filed = TicketMessage.objects.filter(sender, misjudged, ticket=ticket, kind=TicketMessage.Kind.AUTOMATED)
     scored = filed.filter(scam_level__in=("medium", "high")).exists()
     filed.filter(scam_level="high").update(scam_level="medium")
     filed.update(kind=TicketMessage.Kind.CUSTOMER, classification=HUMAN)
@@ -135,8 +169,14 @@ def move_to_queue(tickets, *, actor) -> int:
             status = Status.NEW if current.first_responded_at is None else Status.OPEN
             values = {"automated": False, "classification": HUMAN, "status": status, "unread": True}
             values.update(closed_at=None, resolved_at=None)
-            if _theirs(current):
+            relayed = _relayed(current)
+            if _theirs(current, relayed):
                 values["flags"] = list(dict.fromkeys([*current.flags, "suspicious"]))
+            if relayed:
+                member = ContactEmail.objects.filter(email_address__iexact=relayed, member__isnull=False).first()
+                values.update(
+                    requester_email=relayed, requester_name="", requester_member=getattr(member, "member", None)
+                )
             if current.automated and (current.impact, current.urgency) == AUTOMATED_DEFAULT:
                 # Automated mail starts low; a person's message starts where any other does (a person's ticket staff
                 # marked spam keeps the impact and urgency staff gave it).
@@ -154,6 +194,7 @@ def move_to_queue(tickets, *, actor) -> int:
             Ticket.objects.filter(Q(automated=True) | Q(status=Status.SPAM), pk=current.pk).update(
                 **values, updated_at=now
             )
-            events.record(current, Kind.RECLASSIFIED, actor=actor, **{"from": current.classification, "to": "human"})
+            moved = {"from": current.classification, "to": "human", **({"requester": relayed} if relayed else {})}
+            events.record(current, Kind.RECLASSIFIED, actor=actor, **moved)
         count += 1
     return count

@@ -24,7 +24,13 @@ class ExchangeRatingTests(PageCase):
 
         self.assertContains(self.page(ticket), SPAM_WHY.format(6, 5))
         HelpdeskSettings.objects.create(spam_scl_threshold=7)
-        self.assertContains(self.page(ticket), SPAM_WHY.format(6, 7))
+        # Raised past its level since: the reason says so rather than contradict itself ("SCL 6; spam from SCL 7").
+        page = self.page(ticket)
+        self.assertNotContains(page, SPAM_WHY.format(6, 7))
+        self.assertContains(
+            page,
+            "Why: Exchange rated it spam (SCL 6; spam at the threshold when it arrived; Settings now says from SCL 7).",
+        )
 
     def test_bulk_mail_by_its_bulk_complaint_level_says_so(self):
         ticket = receive(corpus.message(message_id="<bcl@vendor.example>", headers={"X-Microsoft-Antispam": "BCL:8;"}))

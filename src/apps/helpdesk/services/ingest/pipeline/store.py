@@ -61,7 +61,8 @@ def store(
         )
         if duplicate is not None:
             return Stored(duplicate.ticket, None, duplicate=True, rule="duplicate")
-        match = matching.find(parsed, conversation_id=row.conversation_id, prefer_human=not classified.automated)
+        human = not classified.automated
+        match = matching.find(parsed, conversation_id=row.conversation_id, prefer_human=human, own=own)
         reply = classified.site_reply
         if match.campaign_id is None and reply is not None and reply.campaign_id is not None:
             # A reply to a campaign email sent without a Message-ID (found by its sender and subject).
@@ -139,6 +140,7 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
     backfilled = timezone.now() - received > timedelta(hours=int(settings.backfill_age_hours))
     clock = {} if automated or backfilled else sla.start_values(ticket_priority, received)
     name, address = _requester(parsed, classified, own)
+    replying = [parsed.reply_to, *(item for _name, item in people.reply_to_pairs(parsed))]
     ticket = numbering.create_ticket(
         subject=scrub_subject(parsed.subject) or "(no subject)",
         status=closed_status if automated else Status.NEW,
@@ -149,7 +151,7 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
         requester_email=address[:254],
         requester_name=scrub_subject(name),
         requester_member=_member_for(address),
-        participants=_participants([parsed.from_address, parsed.reply_to, *parsed.to, *parsed.cc], own),
+        participants=_participants([parsed.from_address, *replying, *parsed.to, *parsed.cc], own),
         campaign=EmailCampaign.objects.filter(pk=campaign_id).first() if campaign_id else None,
         related_ticket=related,
         classification=verdict.classification,

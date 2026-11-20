@@ -22,6 +22,7 @@ from apps.core.models import OutboundEmail
 from ....models import Ticket, TicketMessage
 from ...tickets import numbering
 from ..reading.message import ParsedMessage
+from . import people
 
 MERGE_HOPS = 10
 CANDIDATE_TICKETS = 20
@@ -111,7 +112,7 @@ def _by_conversation(conversation_id: str, sender: str, *, prefer_human: bool) -
     return None
 
 
-def find(parsed: ParsedMessage, *, conversation_id: str = "", prefer_human: bool = True) -> Match:
+def find(parsed: ParsedMessage, *, conversation_id: str = "", prefer_human: bool = True, own=frozenset()) -> Match:
     references = references_of(parsed)
     campaign_id = None
     if references:
@@ -119,7 +120,7 @@ def find(parsed: ParsedMessage, *, conversation_id: str = "", prefer_human: bool
         if ticket is not None:
             return Match(ticket, "references")
         campaign_id = _campaign(references)
-    sender = parsed.from_address
+    sender = people.identity(parsed, own)  # the person a relay names, never the relay
     ticket, mentions = _by_token(numbering.subject_numbers(parsed.subject), sender)
     if ticket is not None:
         return Match(ticket, "subject_token", campaign_id)

@@ -1,7 +1,8 @@
 """Phishing signals, proof of the sender and the reasons kept, after the third live check of the admin:
 
-- a brand's name in a person's name (Chase Lee) and a web form's missing display name are no phishing signals:
-  authenticated mail scoring high on its words stays a person's ticket, flagged suspicious;
+- a brand's name in a person's name (Chase Lee) and a web form's missing display name or Reply-To are no phishing
+  signals, and for a proven sender they count for nothing: authenticated mail scoring high on its words stays a
+  person's ticket flagged suspicious on its words, and Chase's password question reads like anyone else's;
 - mail Exchange marks internal to the organisation proves its sender as DMARC does (a colleague's urgent request is a
   person's ticket, and is acknowledged); the marker proves nothing below the server's own;
 - a proven sender whose words alone score medium is not flagged (a person asking how to reset their password);
@@ -33,19 +34,23 @@ SAFE_LINK = (
 class NoPhishingSignalTests(_VerdictCase):
     def test_a_brand_in_a_persons_name_is_none(self):
         ticket = receive(locked_out(DMARC_PASS, sender="Chase Lee <chase.lee@example.org>"))
-
-        self.assertSuspiciousPersonsTicket(
-            ticket, reasons=['Display name mentions "Chase" but email domain is example.org', *WORD_REASONS]
+        question = {"subject": "Urgent: forgot my password", "text": "Hi, I forgot my password. How do I reset it?"}
+        chase = receive(
+            corpus.message(
+                sender="Chase Lee <chase.lee@example.org>",
+                headers={"Authentication-Results": DMARC_PASS},
+                message_id="<chase@mail.example.org>",
+                **question,
+            )
         )
+
+        self.assertSuspiciousPersonsTicket(ticket)  # its words' reasons only
+        self.assertEqual((chase.flags, chase.messages.get().scam_level), ([], "low"))
 
     def test_a_web_forms_missing_display_name_and_reply_to_are_none(self):
         raw = locked_out(DMARC_PASS, sender="forms@relay.example", headers={"Reply-To": "sam@example.edu"})
 
-        reasons = ["Sender has no display name", *WORD_REASONS]
-        self.assertSuspiciousPersonsTicket(
-            receive(raw),
-            reasons=[*reasons, "Reply-To domain (example.edu) differs from the sender domain (relay.example)"],
-        )
+        self.assertSuspiciousPersonsTicket(receive(raw))
 
     def test_a_safe_links_wrapper_is_no_mismatch(self):
         html = f'<p>Reset it at <a href="{SAFE_LINK}">https://www.ucmerced.edu/account</a></p>'

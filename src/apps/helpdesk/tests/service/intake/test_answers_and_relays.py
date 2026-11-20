@@ -124,11 +124,13 @@ class RelayTests(TestCase):
         self.assertEqual(ticket.requester_email, "pat@example.org")
         self.assertEqual(self.acknowledgements(ticket), [["pat@example.org"]])
 
-    def test_a_reply_to_naming_several_people_or_the_sender_changes_nothing(self):
-        several = self.relayed(reply_to="pat@example.org, kim@example.org", message_id="<form-2@x>")
+    def test_a_reply_to_naming_several_people_takes_the_first_and_keeps_them_all(self):
+        several = self.relayed(reply_to="pat@example.org, Kim Lee <kim@example.org>", message_id="<form-2@x>")
         same = self.relayed(sender="Pat Doe <pat@example.org>", reply_to="PAT@example.org", message_id="<form-3@x>")
 
-        self.assertEqual((several.requester_email, same.requester_email), ("forms@relay.example", "pat@example.org"))
+        self.assertEqual((several.requester_email, same.requester_email), ("pat@example.org", "pat@example.org"))
+        self.assertTrue({"forms@relay.example", "pat@example.org", "kim@example.org"} <= set(several.participants))
+        self.assertEqual(self.acknowledgements(several), [])  # the form never gets one, nor an unproven Reply-To
 
     def test_a_form_relayed_from_a_no_reply_address_is_a_persons_message_never_answered_automatically(self):
         ticket = self.relayed(sender="noreply@relay.example", reply_to="Robin Person <robin.person@example.org>")

@@ -28,7 +28,7 @@ the H2 phase is built as described below (replies, acknowledgement, notification
 | **Queue** | People's open tickets (new, in progress, on hold), most recent activity first. A dot marks an unread customer message. |
 | **My Tickets** / **My Groups** / **Unassigned** | The same list, assigned to you / to an assignment group you are a member of / to nobody. |
 | **SLA Breached** | Tickets whose first response or resolution is overdue (flagged, or past due and not flagged yet). |
-| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** (here, or beside **Save** on the ticket's page) when a person's message landed here: it becomes a person's unread ticket, classified as a person's, New when nobody answered it yet (else In progress), its requester's messages shown as theirs (quoted under a reply; one the scam checks made spam is flagged suspicious instead), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
+| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** (here, or beside **Save** on the ticket's page) when a person's message landed here: it becomes a person's unread ticket, classified as a person's, New when nobody answered it yet (else In progress), its requester's messages shown as theirs (quoted under a reply; one the scam checks made spam is flagged suspicious instead; their automatic replies stay automated) and, for list mail or a web form, the person its Reply-To names as requester; moved from its page, it counts as read (you are looking at it), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
 | **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry** and **Dismiss (handled)**: a message that can never be imported (deleted in Outlook first) leaves the default view with an admin-history line, keeps its status and error, and stays under the **Dismissed** and **Everything** filters until retention; Retry clears the dismissal. |
 | **Categories**, **Assignment Groups**, **SLA Targets**, **Response Templates** | Ticket categories (each may name a default group); the teams that work tickets; the response and resolution targets per priority (only an I2G Master changes them); canned replies. One that tickets still use is switched off, not deleted (its delete page lists what uses it). |
 | **Settings** | The helpdesk's limits, retention periods and switches (shadow mode, acknowledgement and notifications: only an I2G Master changes those; auto-close), under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
@@ -74,7 +74,9 @@ are never sent. Opening a ticket marks it read.
   one is no longer a link (its text stays, followed by the placeholder). The same holds for forwarded messages,
   for a saved message attached as a file (`.eml`, shown like a forward as a summary of its headers and text,
   never kept as a file) and for attached text files (any `text/*` file, or one named `.txt`, `.csv`, `.ics`,
-  `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came.
+  `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came (only the link goes: the text
+  after it stays, and a calendar or contact file's folded lines are read joined). A saved message past the
+  limit of five, or one that cannot be read, marks the message as cut off (the original is in Outlook).
 - Attachments download as files. Files other than text (PDF, Office documents, images, archives, Outlook `.msg`)
   are stored as received: a sign-in link inside one is not removed. Archives (zip, 7z, rar, …) open a warning
   first; blocked file types
@@ -226,14 +228,18 @@ module imports a sending API, and that each job checks shadow mode before it sen
    **proven** by DMARC, Exchange's composite authentication, or Exchange marking the mail internal to the
    organisation (`X-MS-Exchange-Organization-AuthAs: Internal`, the topmost one: Exchange strips it from outside
    mail). For a proven sender, and for an answer on a person's ticket, a high score is only "suspicious" (a person
-   asking about a locked account reads like a phish); it stays spam on a **phishing signal**: a look-alike or
+   asking about a locked account reads like a phish); any one **phishing signal** keeps it spam: a look-alike or
    punycode sender or link domain (one imitating the site's own, such as `ucrnerced.edu`, too), a link that hides
-   where it goes (text naming another domain, a raw IP, a shortener), hidden HTML, or failed authentication. A
-   missing display name, a brand's name in a person's name (Chase Lee) and a Reply-To or Return-Path elsewhere (web
-   forms, mailing services) are none. A proven sender whose words alone score medium is not flagged (a person asking
-   how to reset a password). An answer on a person's ticket is scored on what it adds: neither the reply it quotes
-   nor a "Re:" subject (the ticket's own). Microsoft Safe Links are unwrapped before the link checks. A message that
-   claims the site's address without proof is flagged suspicious. Address headers are unfolded before they are read, so a
+   where it goes (text naming another domain, a raw IP, a shortener), hidden HTML, or failed DMARC or SPF (an SPF
+   soft fail or a DKIM failure alone does not). Such a sender is judged by its domain: a missing display name, a
+   brand's name in a person's name (Chase Lee) and a Reply-To or Return-Path elsewhere (web forms, mailing services)
+   count for nothing. A proven sender whose words alone score medium is not flagged (a person asking how to reset a
+   password). An answer on a person's ticket is scored on what its sender wrote: without the lines it quotes (above
+   or below its own, `>` lines, an HTML quote block) and without a "Re:" subject (the ticket's own); the phishing
+   signals read the whole message, HTML included. An answer Exchange rates spam is shown on its ticket, flagged
+   suspicious ("Exchange rated it spam (SCL 5)"), and brings the ticket back like any answer. Microsoft Safe Links
+   and Proofpoint URL Defense are unwrapped before the link checks. A message that claims the site's address
+   without proof is flagged suspicious. Address headers are unfolded before they are read, so a
    long quoted display name folded across lines still gives its address. In more detail:
    - **Replies to the site's mail** (`ingest/routing/replies.py`, before classifying): a message whose In-Reply-To or
      References name an email the site sent (the telemetry's `OutboundEmail`, kept 180 days), or, for an email sent
@@ -298,11 +304,14 @@ module imports a sending API, and that each job checks shadow mode before it sen
      is stored once.
    - The site's own mail keeps no body or attachment (it may hold sign-in codes).
    - Mail imported more than `backfill_age_hours` (24) after it arrived opens tickets marked as backfilled.
-   - **Web forms.** A person's message whose Reply-To is one address that is neither its sender nor one of the site's
-     own (a form relaying what someone wrote) opens a ticket for that person: they are the requester (replies go to
-     them, as from any mail program), the form's address a participant. A Reply-To is unauthenticated, so it gets no
-     acknowledgement. A form sending from a no-reply address with such a Reply-To is a person's message, never
-     answered automatically (otherwise a no-reply sender is bulk mail).
+   - **Web forms.** A person's message whose Reply-To names someone who is neither its sender, nor one of the site's
+     own addresses, nor an address it was sent to (a list asking for replies to itself) opens a ticket for that
+     person (the first such one): they are the requester (replies go to them, as from any mail program, and their
+     form text is quoted under a reply), every Reply-To address and the form's own participants. The message threads
+     by number or conversation as that person, so one form's submissions never join each other's tickets. A Reply-To
+     is unauthenticated, so it gets no acknowledgement. A form sending from a no-reply address with such a Reply-To
+     is a person's message, never answered automatically (otherwise a no-reply sender is bulk mail). Moving list mail
+     or a relayed message to the queue gives the ticket to that person the same way (the timeline says so).
 
 **Ticket numbers** come from the PostgreSQL sequence `helpdesk_ticket_number_seq` (created by `helpdesk/0001`,
 never below 1001): unique under concurrent creation; a rolled-back number is skipped. SQLite (local development)
@@ -461,8 +470,8 @@ saves every column and would overwrite a running scan's lease.
   (`inbound_retention_days`) removes it with the rest of the queue.
 - **Scam checks are rules**: a proven sender (DMARC, composite authentication, or Exchange's internal marker) or an
   answer on a person's ticket is not made spam on its words alone; it becomes a person's message flagged suspicious,
-  unless a phishing signal keeps it spam (with the reasons on the card). Exchange's own spam verdict (SCL) still
-  applies, to answers too: check **Automated & Spam**. The internal marker is trusted as Exchange documents it (it
+  unless a phishing signal keeps it spam (with the reasons on the card). Exchange's own spam verdict (SCL) hides
+  new mail (check **Automated & Spam**), never an answer on a person's ticket. The internal marker is trusted as Exchange documents it (it
   strips organisation headers from outside mail); it was checked against simulated headers only, so confirm it with
   a real message from a campus colleague.
 - **No requester portal** or watch list: requesters interact by email only.

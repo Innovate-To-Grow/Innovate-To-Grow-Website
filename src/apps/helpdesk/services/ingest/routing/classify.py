@@ -143,10 +143,14 @@ def classify_message(
     window = timedelta(days=int(settings.reply_match_window_days))
     found = replies.site_mail_replied(parsed, received_at=received_at, window=window)
     replied = site_reply_of(found, parsed.from_address)
-    person = replies.answers_a_person(parsed, conversation_id)
     own = own_addresses(mailbox)
+    person = replies.answers_a_person(parsed, conversation_id, own)
     verdict = _verdict(parsed, own, settings, replied, answers=replied is not None or person)
     auth = {**auth_summary(parsed.headers), **({"authas": scam.INTERNAL} if scam.internal(parsed.headers) else {})}
+    exchange_spam = verdict.classification == SPAM and person
+    if exchange_spam:
+        # An answer on a person's ticket is never hidden on Exchange's rating alone: staff see it, warned.
+        verdict = Verdict(HUMAN, verdict.subtype, verdict.signals, (*verdict.hints, "exchange_spam_answer"))
     if verdict.automated:
         flags = (REPLY_FLAG,) if verdict.classification == BULK and replied is not None else ()
         return Classified(verdict, flags=flags, auth=auth, site_reply=replied)
@@ -155,6 +159,15 @@ def classify_message(
     if judged.spam:
         spam = Verdict(SPAM, "scam_score", ("scam_score_high",), verdict.hints)
         return Classified(spam, judged.level, auth=auth, site_reply=replied, scam_reasons=judged.reasons)
-    if judged.level == "medium" or "claims_own_address" in verdict.hints:
+    level, reasons = judged.level, judged.reasons
+    if exchange_spam:
+        level, reasons = "medium", (_exchange_reason(verdict, auth), *reasons)[: scam.MAX_REASONS]
+    if level == "medium" or "claims_own_address" in verdict.hints:
         flags.append("suspicious")
-    return Classified(verdict, judged.level, tuple(dict.fromkeys(flags)), auth, replied, judged.reasons)
+    return Classified(verdict, level, tuple(dict.fromkeys(flags)), auth, replied, reasons)
+
+
+def _exchange_reason(verdict: Verdict, auth: dict) -> str:
+    if verdict.subtype == "scl" and auth.get("scl") is not None:
+        return f"Exchange rated it spam (SCL {auth['scl']})"
+    return "Exchange's spam filter marked it as spam"

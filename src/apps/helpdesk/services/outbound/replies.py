@@ -12,6 +12,7 @@ Staff's text is sent as written; only a personal sign-in link pasted into it is 
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.models import EmailServiceConfig
@@ -92,8 +93,10 @@ def last_inbound(ticket: Ticket) -> TicketMessage | None:
     """The requester's own latest message on the ticket (quoted under a reply); never another sender's."""
     if not ticket.requester_email:
         return None
+    # A web form's message is theirs too: it names them in Reply-To (``ingest.routing.people``).
+    theirs = Q(from_address__iexact=ticket.requester_email) | Q(reply_to__iexact=ticket.requester_email)
     return (
-        TicketMessage.objects.filter(ticket=ticket, kind=Kind.CUSTOMER, from_address__iexact=ticket.requester_email)
+        TicketMessage.objects.filter(theirs, ticket=ticket, kind=Kind.CUSTOMER)
         .order_by("-occurred_at", "-created_at")
         .first()
     )

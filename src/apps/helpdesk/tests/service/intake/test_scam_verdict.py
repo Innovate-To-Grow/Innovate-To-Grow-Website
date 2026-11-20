@@ -60,19 +60,17 @@ class AuthenticatedSenderTests(_VerdictCase):
         self.assertEqual((summary["dmarc"], summary["compauth"]), ("bestguesspass", "pass"))
 
     def test_a_reply_to_and_return_path_elsewhere_are_no_phishing_signals(self):
-        # A web form or a mailing service: 2 + 1 points, past the medium threshold, yet nothing hides where mail goes.
+        # A web form or a mailing service: nothing hides where the mail goes, and a proven sender's Reply-To and
+        # Return-Path count for nothing (they are neither reasons nor points).
         cases = {
-            "a Reply-To on another domain": ({"Reply-To": "Pat <pat.doe@home.example>"}, [REPLY_TO_ELSEWHERE]),
-            "and a Return-Path too": (
-                {"Reply-To": "pat.doe@home.example", "Return-Path": "<bounce@mailer.example>"},
-                [REPLY_TO_ELSEWHERE, RETURN_PATH_ELSEWHERE],
-            ),
+            "a Reply-To on another domain": {"Reply-To": "Pat <pat.doe@home.example>"},
+            "and a Return-Path too": {"Reply-To": "pat.doe@home.example", "Return-Path": "<bounce@mailer.example>"},
         }
-        for index, (case, (headers, alignment)) in enumerate(cases.items()):
+        for index, (case, headers) in enumerate(cases.items()):
             with self.subTest(case):
                 raw = locked_out(DMARC_PASS, headers=headers, message_id=f"<aligned-{index}@mail.example.org>")
 
-                self.assertSuspiciousPersonsTicket(receive(raw), reasons=[*WORD_REASONS, *alignment])
+                self.assertSuspiciousPersonsTicket(receive(raw))
 
 
 class UnprovenSenderTests(_VerdictCase):

@@ -86,10 +86,13 @@ class _Walker:
         )
 
     def _attached_message(self, part, depth: int, *, as_file: bool = False) -> None:
-        if len(self.parsed.attached_messages) >= MAX_ATTACHED_MESSAGES:
-            return
-        inner = _file_message(part) if as_file else _inner_message(part)
+        inner = (
+            None
+            if len(self.parsed.attached_messages) >= MAX_ATTACHED_MESSAGES
+            else (_file_message(part) if as_file else _inner_message(part))
+        )
         if inner is None:
+            self.parsed.incomplete = True  # past the limit, or not readable: the original is in Outlook
             return
         headers = mime.header_map(inner)
         nested = ParsedMessage(headers=headers)

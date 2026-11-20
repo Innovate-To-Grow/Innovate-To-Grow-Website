@@ -94,9 +94,9 @@ def site_mail_replied(parsed: ParsedMessage, *, received_at: datetime, window: t
     return Replied(inferred, INFERRED) if inferred is not None else None
 
 
-def answers_a_person(parsed: ParsedMessage, conversation_id: str = "") -> bool:
+def answers_a_person(parsed: ParsedMessage, conversation_id: str = "", own=frozenset()) -> bool:
     """Whether ``parsed`` threads to a person's ticket (neither automated mail nor spam): a message answering automated
     mail proves nothing."""
-    ticket = find(parsed, conversation_id=conversation_id, prefer_human=True).ticket
+    ticket = find(parsed, conversation_id=conversation_id, prefer_human=True, own=own).ticket
     done = (Ticket.Status.SPAM, Ticket.Status.MERGED)
     return ticket is not None and not ticket.automated and ticket.status not in done

@@ -82,9 +82,10 @@ class PersonTests(TestCase):
     def test_a_high_scam_score_makes_unauthenticated_mail_spam_and_a_medium_one_suspicious(self):
         # corpus.message carries no Authentication-Results; with a DMARC or compauth pass a high score on the words
         # alone gives a suspicious person's ticket instead (tests/service/intake/test_scam_verdict.py).
-        with patch("apps.helpdesk.services.ingest.routing.scam.analyze_email", return_value={"risk_level": "high"}):
+        findings = "apps.helpdesk.services.ingest.routing.scam.findings"
+        with patch(findings, return_value=([(7, "Scored high")], [])):
             spam = receive(corpus.message(message_id="<s1@example.org>"))
-        with patch("apps.helpdesk.services.ingest.routing.scam.analyze_email", return_value={"risk_level": "medium"}):
+        with patch(findings, return_value=([(3, "Scored medium")], [])):
             suspicious = receive(corpus.message(message_id="<s2@example.org>", sender="other@example.org"))
 
         self.assertEqual((spam.status, spam.automated, spam.classification), (Status.SPAM, True, "spam"))

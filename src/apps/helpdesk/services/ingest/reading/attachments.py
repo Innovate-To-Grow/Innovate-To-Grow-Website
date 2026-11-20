@@ -14,6 +14,7 @@ the content is a raster image; archives are offered only after a warning.
 
 import codecs
 import hashlib
+import re
 
 from ....models import HelpdeskSettings, TicketAttachment
 from ...tickets.working import scrub_sign_in_links
@@ -45,6 +46,9 @@ TEXT_EXTENSIONS = frozenset(
     }
 )  # fmt: skip
 _UTF16_BOMS = ((codecs.BOM_UTF16_LE, "utf-16-le"), (codecs.BOM_UTF16_BE, "utf-16-be"))
+# Calendar and contact files fold long lines (RFC 5545 and 6350: a line break, then one space or tab).
+_FOLDED_TYPES = frozenset({"text/calendar", "text/vcard", "text/x-vcard"})
+_FOLD_RE = re.compile(r"\r?\n[ \t]")
 
 
 def sniff(data: bytes | None) -> str:
@@ -87,7 +91,9 @@ def prepare(items: list[ParsedAttachment], settings: HelpdeskSettings, *, trunca
             reason = "Not stored: the message's files together exceed the per-message limit; open it in Outlook."
         else:
             # Staff download what is stored: a text file must not hand them the requester's sign-in link.
-            content = scrub_text_file(item.data, item.charset) if is_text_file(item, detected) else item.data
+            folded = item.content_type in _FOLDED_TYPES or extension(item.filename) in {"ics", "vcf"}
+            text_file = is_text_file(item, detected)
+            content = scrub_text_file(item.data, item.charset, folded=folded) if text_file else item.data
             stored_total += item.size
         kept = item.data if content is None else content  # a stored file's size and hash are those of what is stored
         rows.append(
@@ -112,21 +118,22 @@ def is_text_file(item: ParsedAttachment, detected: str) -> bool:
     return not detected and (item.content_type.startswith("text/") or extension(item.filename) in TEXT_EXTENSIONS)
 
 
-def scrub_text_file(data: bytes, charset: str = "") -> bytes:
+def scrub_text_file(data: bytes, charset: str = "", *, folded: bool = False) -> bytes:
     """A text file with its personal sign-in links replaced, read and written back with the same codec (``_codec``):
     ``surrogateescape`` keeps the bytes it cannot read as they were, and a file without such a link is returned as
-    it came."""
+    it came. A ``folded`` file (calendar, contact) is read unfolded, and written back so when a link went."""
     codec = _codec(data, charset)
     for errors in ("surrogateescape", "replace"):
         try:
-            return _scrubbed(data, codec, errors)
+            return _scrubbed(data, codec, errors, folded)
         except _PART_ERRORS:
             pass
-    return _scrubbed(data, "utf-8", "surrogateescape")  # reads and writes back any bytes
+    return _scrubbed(data, "utf-8", "surrogateescape", folded)  # reads and writes back any bytes
 
 
-def _scrubbed(data: bytes, codec: str, errors: str) -> bytes:
+def _scrubbed(data: bytes, codec: str, errors: str, folded: bool) -> bytes:
     text = data.decode(codec, errors)
+    text = _FOLD_RE.sub("", text) if folded else text
     scrubbed = scrub_sign_in_links(text)
     return data if scrubbed == text else scrubbed.encode(codec, errors)
 

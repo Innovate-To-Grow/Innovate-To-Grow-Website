@@ -142,14 +142,16 @@ class IngestRecordAdmin(BaseModelAdmin):
 
     @action(description="Retry: import again")
     def retry(self, request, queryset):
+        # Taken first: on the Dismissed view the list's own filter would lose them once their dismissal goes.
+        chosen = self.model.objects.filter(pk__in=list(queryset.values_list("pk", flat=True)))
         # A retried message that fails again is a problem again: its dismissal goes with the retry.
-        for row in queryset.filter(status__in=PROBLEMS, result__has_key=DISMISSED):
+        for row in chosen.filter(status__in=PROBLEMS, result__has_key=DISMISSED):
             kept = {key: value for key, value in row.result.items() if key != DISMISSED}
             InboundMessage.objects.filter(pk=row.pk, status=row.status).update(result=kept)
-        count = consume.requeue(queryset)
+        count = consume.requeue(chosen)
         if count:
             jobs.ensure_scheduled()
-        messages.success(request, f"{_messages(count)} queued again for import.")
+        (messages.success if count else messages.warning)(request, f"{_messages(count)} queued again for import.")
 
     @action(description="Dismiss (handled)")
     def dismiss(self, request, queryset):

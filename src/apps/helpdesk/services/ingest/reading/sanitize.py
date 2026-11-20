@@ -91,8 +91,13 @@ def _prepare(html: str) -> str:
 
 
 def _removed(href: str) -> bool:
-    """Whether scrubbing removes the link: a personal sign-in link (also a relative one), or one holding such a link."""
+    """Whether scrubbing removes the link: a personal sign-in link (also a relative one), or one holding such a link,
+    read as the browser reads it (it drops tabs and line breaks anywhere, and spaces and controls around it)."""
+    href = href.translate(_URL_BREAKS).strip("".join(map(chr, range(0x21))))
     return is_sensitive_url(href) or LINK_PLACEHOLDER in scrub_links(href)
+
+
+_URL_BREAKS = str.maketrans("", "", "\t\n\r")
 
 
 def _unlink(anchor) -> None:
