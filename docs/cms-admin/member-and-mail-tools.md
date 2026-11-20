@@ -183,7 +183,7 @@ their go-live checks), and has:
   store, never in the database. The sender mailbox
   defaults to the From email; both must be in the scope with send permission.
   With read permission, **Mail → Inbox** reads that mailbox through Graph
-  instead of the Gmail import account; its **Sent** folder (and any message
+  alongside the Gmail access accounts ([Universal inbox](#universal-inbox-mail--inbox)); its **Sent** folder (and any message
   from the site's own address) is then shown to staff with the Mail app only, and Sent
   mail is never sent to the AI scam review. Opening an Inbox message whose
   rule score is in the medium band still sends its sender, subject,
@@ -445,6 +445,53 @@ Resending a ticket email revokes the registration's previous link before issuing
 ### Gmail import
 
 The campaign admin includes a Gmail import feature (`src/apps/mail/services/campaign/gmail_import/`) that can fetch email templates from a Gmail account for use as campaign bodies.
+
+### Universal inbox (Mail → Inbox)
+
+**Mail → Inbox** reads every configured mailbox (`src/apps/mail/services/inbox/reading/accounts.py`):
+
+- every mailbox in the active Microsoft Graph configuration's **mailbox scope** with read permission
+  (*Read only* or *Send and read*), the sending mailbox first;
+- the active **Gmail Access Account** (also the Import from Gmail account), and any other Gmail Access Account with
+  **Show in Inbox** on.
+
+With more than one account the toolbar has an **Account** menu: **All accounts** (the default) merges the newest
+messages of every account, newest first, and tags each row with the address it was received at; choosing one account
+shows only that mailbox. Each account keeps its own cache and delivery-rate slot.
+
+**Only accounts that connect are shown.** An account whose last read failed (it could not connect, or Gmail refused
+its sign-in) is left out of the menu and the list, and a note names it. It comes back as soon as it connects again:
+the background poll retries it every few minutes, **Refresh** retries every account at once, saving the account's
+configuration shows it again immediately, and a page view retries it after 10 minutes. An account that is only held
+back by its delivery rate stays listed, with its messages as last loaded.
+
+**New mail is checked in the background.** The background worker polls every account's Inbox every
+`MAIL_INBOX_POLL_SECONDS` (default 180 s; `0` turns polling off) as job kind `mail.inbox_poll`
+(`src/apps/mail/services/inbox/polling/`), whether or not anyone has the inbox open, and records the outcome and
+the newest 50 message summaries (sender, subject, preview, read state; no bodies) in `InboxAccountState`. Gmail is
+polled incrementally (two UID searches, then only the new messages are downloaded), so polling stays well under
+Gmail's daily IMAP download limit. The sidebar's **Inbox** item shows the unread count, and an open Inbox page reloads
+its list every minute while it is visible (not while a reply is being written).
+
+**Caching.** The Inbox list (15, 30 or 50 messages) is served from the poll's snapshot while it is fresh (two poll
+intervals and a minute), so opening the inbox connects to no mailbox; 100 messages, the Sent folder and **Refresh**
+read live. Lists are also kept per container (5 minutes for a live read, 30 seconds from a snapshot), opened messages
+for 30 minutes, and the account and From lists for a minute; saving any mail configuration drops the account and
+From lists at once (in the container that saved it; others follow within a minute, and every read and send
+re-checks its configuration anyway).
+
+A reply's **From** menu lists every address the site can send as (`src/apps/mail/services/inbox/sending/senders.py`), and
+starts with the address the message was received at when it is one of them:
+
+| From choice | When it is offered | Sent through |
+|---|---|---|
+| Notification Delivery's From address | email delivery is active and configured | the active provider, as before |
+| A Graph mailbox | in the scope with send permission, and the Graph configuration passed what switching email to Graph requires | Microsoft Graph |
+| A Gmail API account | on the allow-list and verified by the access check for the installed key | Gmail API |
+| A Gmail Access Account | **Allow Replies From This Account** on, with its SMTP host/port (default `smtp.gmail.com:587`, STARTTLS) | SMTP with the account's own login (app password) |
+
+Only listed choices are accepted, and each provider re-checks its allow-list on every send, so turning an account
+off takes effect at once. Every reply still goes through the delivery-rate limiter and the email telemetry.
 
 ### Recipient logs
 

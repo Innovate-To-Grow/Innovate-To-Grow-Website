@@ -13,7 +13,7 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.mail.services.inbox.reply import render_reply_html
+from apps.mail.services.inbox.sending.reply import render_reply_html
 
 from ...models import Ticket
 from ..tickets import numbering

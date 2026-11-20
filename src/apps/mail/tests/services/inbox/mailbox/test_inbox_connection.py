@@ -1,11 +1,12 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from django.core.cache import cache
 from django.db.utils import OperationalError
 from django.test import TestCase
 
 from apps.core.models import GmailAccessAccount
-from apps.mail.services.inbox.connection import (
+from apps.mail.services.inbox.reading.connection import (
     InboxError,
     _open_inbox,
     get_gmail_config,
@@ -15,6 +16,8 @@ from apps.mail.services.inbox.connection import (
 
 class InboxConnectionTests(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         self.config = GmailAccessAccount.objects.create(
             name="Gmail",
             is_active=True,
@@ -28,7 +31,7 @@ class InboxConnectionTests(TestCase):
 
     def test_get_gmail_config_raises_on_db_error(self):
         with patch(
-            "apps.mail.services.inbox.connection.GmailAccessAccount.load",
+            "apps.mail.services.inbox.reading.connection.GmailAccessAccount.load",
             side_effect=OperationalError("no such table"),
         ):
             with self.assertRaisesMessage(InboxError, "Gmail configuration is unavailable"):
@@ -36,7 +39,7 @@ class InboxConnectionTests(TestCase):
 
     def test_get_gmail_config_raises_when_not_configured(self):
         with patch(
-            "apps.mail.services.inbox.connection.GmailAccessAccount.load",
+            "apps.mail.services.inbox.reading.connection.GmailAccessAccount.load",
             return_value=SimpleNamespace(is_configured=False),
         ):
             with self.assertRaisesMessage(InboxError, "No active Gmail import account is configured."):
@@ -58,8 +61,8 @@ class InboxConnectionTests(TestCase):
         mailbox_client.login.return_value = login_context
 
         with (
-            patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
-            patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client) as mock_mailbox,
+            patch("apps.mail.services.inbox.reading.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
+            patch("apps.mail.services.inbox.reading.connection.MailBox", return_value=mailbox_client) as mock_mailbox,
         ):
             with _open_inbox() as client:
                 self.assertIs(client, login_client)
@@ -77,8 +80,8 @@ class InboxConnectionTests(TestCase):
         mailbox_client.login.return_value = login_context
 
         with (
-            patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
-            patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client),
+            patch("apps.mail.services.inbox.reading.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
+            patch("apps.mail.services.inbox.reading.connection.MailBox", return_value=mailbox_client),
             patch("apps.mail.services.campaign.gmail_import.connection.select_sent_folder") as mock_select,
         ):
             with _open_inbox(folder="SENT") as client:
@@ -99,8 +102,8 @@ class InboxConnectionTests(TestCase):
         mailbox_client.login.return_value = login_context
 
         with (
-            patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
-            patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client),
+            patch("apps.mail.services.inbox.reading.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
+            patch("apps.mail.services.inbox.reading.connection.MailBox", return_value=mailbox_client),
             patch(
                 "apps.mail.services.campaign.gmail_import.connection.select_sent_folder",
                 side_effect=GmailImportError("no sent folder"),
@@ -112,8 +115,8 @@ class InboxConnectionTests(TestCase):
 
     def test_open_inbox_wraps_connection_failure(self):
         with (
-            patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
-            patch("apps.mail.services.inbox.connection.MailBox", side_effect=RuntimeError("no connection")),
+            patch("apps.mail.services.inbox.reading.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
+            patch("apps.mail.services.inbox.reading.connection.MailBox", side_effect=RuntimeError("no connection")),
         ):
             with self.assertRaisesMessage(InboxError, "Unable to connect to inbox for campaigns@ucmerced.edu."):
                 with _open_inbox():
@@ -128,8 +131,8 @@ class InboxConnectionTests(TestCase):
         mailbox_client.login.return_value = login_context
 
         with (
-            patch("apps.mail.services.inbox.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
-            patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client),
+            patch("apps.mail.services.inbox.reading.connection.resolve_mailbox", return_value="campaigns@ucmerced.edu"),
+            patch("apps.mail.services.inbox.reading.connection.MailBox", return_value=mailbox_client),
         ):
             # An InboxError raised inside the with-body must propagate unchanged,
             # not be re-wrapped as a connection failure.

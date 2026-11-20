@@ -63,7 +63,7 @@ def assess_email(msg: dict[str, Any], *, folder: str = "INBOX") -> dict[str, Any
     Sent mail (the Sent folder, or a message from the site's own address) never goes to the AI reviewer: the site
     wrote it, so a scam verdict means nothing, and it can hold live sign-in codes and links. It keeps the rule score.
     """
-    from apps.mail.services.inbox.connection import SENT_FOLDER
+    from apps.mail.services.inbox.reading.connection import SENT_FOLDER
 
     from .llm_classifier import llm_review
 

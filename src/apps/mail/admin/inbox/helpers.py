@@ -1,6 +1,7 @@
 """Inbox admin helper functions."""
 
 from html import escape
+from urllib.parse import urlencode
 
 from apps.core.utils.access import user_can_access_app
 
@@ -28,6 +29,19 @@ def parse_folder(request) -> str:
     return folder if folder in inbox_api.INBOX_FOLDER_CHOICES else inbox_api.INBOX_FOLDER
 
 
+def parse_account(request, *, default: str = "") -> str:
+    """The requested inbox account key (``?account=``). The inbox services accept only a configured account's key,
+    so this only trims it; ``default`` stands in when none is named."""
+    value = str(request.GET.get("account", "") or "").strip()
+    return value[:300] or default
+
+
+def with_query(url: str, **params) -> str:
+    """``url`` with the non-empty ``params`` as its query string (``urlencode``d)."""
+    query = urlencode({key: value for key, value in params.items() if value})
+    return f"{url}?{query}" if query else url
+
+
 def sent_mail_restricted(user) -> bool:
     """Whether *user* may not read Sent mail: staff granted the Mail app (and superusers) may; anyone else may not
     while the inbox reads the Graph mailbox, or while the Gmail account it reads is one the site sends as through the
@@ -35,7 +49,7 @@ def sent_mail_restricted(user) -> bool:
 
     That folder holds what the site sends: Graph keeps what carries no credential flag there (campaigns, replies),
     and Gmail keeps a copy of everything, sign-in codes included. The list and the message view leave the site's
-    tagged credential mail out of Sent for every reader (``apps.mail.services.inbox.messages``), so links and codes
+    tagged credential mail out of Sent for every reader (``apps.mail.services.inbox.reading.messages``), so links and codes
     stay hidden. When the backend cannot be resolved, the answer is "restricted".
     """
     if user_can_access_app(user, "mail"):

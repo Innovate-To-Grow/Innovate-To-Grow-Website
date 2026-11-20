@@ -33,6 +33,8 @@ EXPECTED_KINDS = {
     "helpdesk.notify_staff",
     "helpdesk.send_reply",
     "mail.email_recipient",
+    # The universal inbox's new-mail poll (apps.mail.services.inbox.polling.poller); it sends nothing.
+    "mail.inbox_poll",
     "mail.sms_recipient",
     # A phone-only registrant's ticket text (apps.mail.services.sms.delivery.ticket).
     "mail.ticket_sms",

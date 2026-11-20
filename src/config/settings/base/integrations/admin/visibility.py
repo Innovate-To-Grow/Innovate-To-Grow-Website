@@ -70,3 +70,18 @@ def _helpdesk_queue_view(name):
         return {"me": "mine", "none": "unassigned"}.get(assignee, "queue") == name
 
     return active
+
+
+def _helpdesk_view_item(title, query, name):
+    """The sidebar entry of one view of the ticket list (``query`` on the list's path), lit by ``name``."""
+    return {
+        "title": title,
+        "link": f"{_HELPDESK_TICKETS_PATH}{query}",
+        "permission": _can("helpdesk"),
+        "active": _helpdesk_queue_view(name),
+    }
+
+
+def _helpdesk_link(title, model):
+    """The sidebar entry of one helpdesk admin page."""
+    return {"title": title, "link": f"/admin/helpdesk/{model}/", "permission": _can("helpdesk")}

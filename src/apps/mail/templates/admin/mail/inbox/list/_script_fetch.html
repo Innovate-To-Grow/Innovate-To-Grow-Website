@@ -18,6 +18,7 @@
 
     replaceSection('.i2g-mail-toolbar');
     replaceSection('[data-inbox-account-panel]');
+    replaceSection('[data-inbox-hidden]');
     replaceSection('[data-inbox-status]');
 
     var newHead = tmp.querySelector('.i2g-inbox-list-head');
@@ -77,14 +78,16 @@
     } catch (e) { return 0; }
   }
 
-  function fetchInbox(root, params) {
+  // options.quiet (the auto-refresh): no spinner, no alert on failure, and the list keeps its scroll position.
+  function fetchInbox(root, params, options) {
     var url = root.getAttribute('data-fragment-url');
     if (!url) return;
+    var quiet = !!(options && options.quiet);
     var activeUid = getActiveUid(root);
     var preservePreview = hasPreviewContent(root);
     var scrollTop = saveListScroll(root);
-    var sessionScroll = preservePreview ? 0 : popSessionScroll();
-    var btn = root.querySelector('[data-inbox-refresh]');
+    var sessionScroll = preservePreview ? 0 : (quiet ? scrollTop : popSessionScroll());
+    var btn = quiet ? null : root.querySelector('[data-inbox-refresh]');
     if (btn) {
       btn.classList.add('i2g-inbox-refresh--loading');
       btn.setAttribute('disabled', 'disabled');
@@ -103,16 +106,20 @@
           root.innerHTML = html;
           var savedUid = getHashUid();
           if (savedUid) {
-            var savedRow = root.querySelector('[data-inbox-row][data-uid="' + savedUid + '"]');
+            var escapedUid = window.CSS && CSS.escape ? CSS.escape(savedUid) : savedUid.replace(/["\\]/g, '\\$&');
+            var savedRow = root.querySelector('[data-inbox-row][data-uid="' + escapedUid + '"]');
             if (savedRow) {
               loadPreview(root, savedRow);
               restoreListScroll(root, sessionScroll);
             }
+          } else if (quiet) {
+            restoreListScroll(root, sessionScroll);
           }
         }
         applyInboxLayoutState(root);
       })
       .catch(function () {
+        if (quiet) return;
         var skel = root.querySelector('#inbox-loading-skeleton');
         if (skel) skel.innerHTML = '<div class="p-8 text-center text-red-600 text-sm">Failed to load inbox. <button data-inbox-refresh class="underline text-primary-600 ml-1">Retry</button></div>';
         else window.alert('Could not refresh inbox.');
@@ -127,4 +134,3 @@
       r.classList.toggle('is-active', r.getAttribute('data-uid') === uid);
     });
   }
-

@@ -50,11 +50,13 @@ class GraphMessageNotFound(GraphReadError):
 
 
 class GraphReadBusy(GraphReadError):
-    """The read was held back by the delivery rate (Microsoft asked to wait, or reads are paced); nothing was sent."""
+    """The read was held back by the delivery rate (Microsoft asked to wait, or reads are paced); nothing was sent.
+    ``reason`` is the limiter's reason code (``breaker:auth`` while Microsoft refuses the app's sign-in)."""
 
-    def __init__(self, retry_after: int):
+    def __init__(self, retry_after: int, *, reason: str = ""):
         super().__init__(f"Microsoft Graph is busy; try again in about {retry_after} seconds.")
         self.retry_after = retry_after
+        self.reason = reason
 
 
 def is_message_id(value) -> bool:
@@ -122,7 +124,7 @@ class GraphMailboxReader:
                 DeliveryChannel.GRAPH_READ, mailbox_identity(self.mailbox), max_wait=wait_cap(WaitMode.READ)
             )
         except RateDeferred as exc:
-            raise GraphReadBusy(exc.retry_after) from None
+            raise GraphReadBusy(exc.retry_after, reason=str(exc.reason or "")) from None
         try:
             response = self._request(path, max_bytes)
         except GraphReadError as exc:

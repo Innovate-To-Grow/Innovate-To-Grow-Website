@@ -407,9 +407,10 @@ person fixes their mailbox.
 
 ## 3.8 Replies to a blast
 
-Replies arrive in the i2g@ucmerced.edu Inbox. Read them in Outlook or on **Broadcast Delivery → Gmail Inbox**:
-despite its name, that page shows the i2g@ucmerced.edu mailbox when Microsoft Graph is set up to read it, and it
-warns about suspicious messages. Replies often quote the original email, including the
+Replies arrive in the i2g@ucmerced.edu Inbox. Read them in Outlook or on **Broadcast Delivery → Inbox**: that page
+shows every configured mailbox that connects (the i2g@ucmerced.edu mailbox when Microsoft Graph is set up to read
+it), checks them for new mail every few minutes even while nobody has it open (the sidebar shows the unread count),
+lets you reply from any configured address, and warns about suspicious messages. Replies often quote the original email, including the
 person's own sign-in link: do not forward replies outside the I2G team. A helpdesk that turns each message into a
 ticket is being built (chapter 4). It hides automatic replies, newsletters and other automated mail, but a person's
 answer to our email stays in its queue even when they sent it from a sales or marketing tool (such as Salesforce) that

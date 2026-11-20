@@ -13,8 +13,17 @@
         <div class="mb-4 rounded-default border border-base-200 bg-white dark:border-base-700 dark:bg-base-800 overflow-hidden">
             <!-- From -->
             <div class="px-4 py-3 border-b border-base-100 dark:border-base-700 flex items-center gap-3">
-                <label class="text-sm text-base-400 shrink-0 w-16">From:</label>
+                <label class="text-sm text-base-400 shrink-0 w-16" for="reply-sender">From:</label>
+                {% if senders %}
+                <select id="reply-sender" name="sender"
+                        class="flex-1 text-sm border border-base-200 dark:border-base-600 rounded-md px-3 py-1.5 bg-white dark:bg-base-900 text-font-default-light dark:text-font-default-dark focus:border-primary-500 focus:ring-1 focus:ring-primary-500 focus:outline-none">
+                    {% for sender in senders %}
+                    <option value="{{ sender.key }}" {% if sender.key == selected_sender %}selected{% endif %}>{{ sender.label }}</option>
+                    {% endfor %}
+                </select>
+                {% else %}
                 <span class="text-sm text-font-default-light dark:text-font-default-dark">{{ from_address }}</span>
+                {% endif %}
             </div>
 
             <!-- To -->
