@@ -61,6 +61,28 @@
     } catch (e) {}
   }
 
+  // The universal inbox shows every account ('all') or one account key; the server ignores an unknown key.
+  var ACCOUNT_KEY = 'i2g-inbox-account';
+
+  function getStoredAccount() {
+    try {
+      return window.localStorage.getItem(ACCOUNT_KEY) || 'all';
+    } catch (e) {
+      return 'all';
+    }
+  }
+
+  function storeAccount(account) {
+    try {
+      window.localStorage.setItem(ACCOUNT_KEY, account || 'all');
+    } catch (e) {}
+  }
+
+  function getAccount(root) {
+    var sel = root ? root.querySelector('[data-inbox-account]') : null;
+    return sel ? sel.value : getStoredAccount();
+  }
+
   function getFolder(root) {
     var activeTab = root ? root.querySelector('[data-inbox-folder].i2g-mail-folder-tab--active') : null;
     if (activeTab) return activeTab.getAttribute('data-inbox-folder') === 'SENT' ? 'SENT' : 'INBOX';
@@ -149,4 +171,3 @@
     if (!content) return false;
     return !content.querySelector('#inbox-preview-empty');
   }
-

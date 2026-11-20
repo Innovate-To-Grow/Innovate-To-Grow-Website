@@ -65,7 +65,8 @@ class AdminSidebarNavigationTest(SimpleTestCase):
 
         self.assertEqual(items_by_title["Delivery Operations"]["link"], "/admin/mail/email-monitoring/")
         self.assertEqual(items_by_title["Email Sending Method"]["link"], "/admin/mail/sending-method/")
-        self.assertEqual(items_by_title["Gmail Inbox"]["link"], "/admin/mail/inbox/")
+        self.assertEqual(items_by_title["Inbox"]["link"], "/admin/mail/inbox/")
+        self.assertEqual(items_by_title["Inbox"]["badge"], "apps.mail.admin.inbox.badge.inbox_unread_badge")
         self.assertEqual(items_by_title["Broadcast Campaigns"]["link"], "/admin/mail/emailcampaign/")
         self.assertNotIn("Delivery Status & Settings", items_by_title)
         self.assertNotIn("Delivery Dashboard", items_by_title)

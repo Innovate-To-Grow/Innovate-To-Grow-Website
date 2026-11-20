@@ -84,7 +84,13 @@ SIDEBAR = {
                     "active": _is_email_sending_method,
                 },
                 {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/", "permission": _can("mail")},
-                {"title": "Gmail Inbox", "link": "/admin/mail/inbox/", "permission": _can("mail")},
+                {
+                    "title": "Inbox",
+                    "link": "/admin/mail/inbox/",
+                    "permission": _can("mail"),
+                    # Unread mail across every connected inbox account, from the background poller.
+                    "badge": "apps.mail.admin.inbox.badge.inbox_unread_badge",
+                },
             ],
         },
         {

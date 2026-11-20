@@ -3,6 +3,7 @@ from .email.bounced_address import BouncedAddress
 from .email.campaign import EmailCampaign
 from .email.login_link import LoginLinkToken
 from .email.recipient_log import RecipientLog
+from .inbox.account_state import InboxAccountState
 from .sms.campaign import SmsCampaign
 from .sms.campaign_recipients import SmsRecipientLog
 from .sms.config import SmsConfig
@@ -15,6 +16,7 @@ __all__ = [
     "BouncedAddressAction",
     "BouncedAddressCampaign",
     "EmailCampaign",
+    "InboxAccountState",
     "LoginLinkToken",
     "RecipientLog",
     "SmsCampaign",

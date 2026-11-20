@@ -82,7 +82,7 @@
         // A uid is unique only within its folder, so drop the open preview/hash.
         clearPreviewPane(folderRoot);
         setHashUid(null);
-        fetchInbox(folderRoot, { limit: getLimit(folderRoot), folder: nextFolder, refresh: '1' });
+        fetchInbox(folderRoot, { limit: getLimit(folderRoot), folder: nextFolder, account: getAccount(folderRoot), refresh: '1' });
       }
       return;
     }
@@ -91,7 +91,7 @@
     if (btn) {
       e.preventDefault();
       var root = getRoot(btn);
-      if (root) fetchInbox(root, { limit: getLimit(root), folder: getFolder(root), refresh: '1' });
+      if (root) fetchInbox(root, { limit: getLimit(root), folder: getFolder(root), account: getAccount(root), refresh: '1' });
       return;
     }
 
@@ -157,15 +157,26 @@
   });
 
   document.body.addEventListener('change', function (e) {
+    var accountSel = e.target.closest('[data-inbox-account]');
+    if (accountSel) {
+      var accountRoot = getRoot(accountSel);
+      if (!accountRoot) return;
+      storeAccount(accountSel.value);
+      // The open message belongs to the previous selection: drop the preview/hash.
+      clearPreviewPane(accountRoot);
+      setHashUid(null);
+      fetchInbox(accountRoot, { limit: getLimit(accountRoot), folder: getFolder(accountRoot), account: accountSel.value });
+      return;
+    }
     var sel = e.target.closest('[data-inbox-limit]');
     if (!sel) return;
     var root = getRoot(sel);
-    if (root) fetchInbox(root, { limit: getLimit(root), folder: getFolder(root) });
+    if (root) fetchInbox(root, { limit: getLimit(root), folder: getFolder(root), account: getAccount(root) });
   });
 
   /* Auto-load on page ready */
   var root = document.getElementById('inbox-all-dynamic');
-  if (root) fetchInbox(root, { folder: getStoredFolder() });
+  if (root) fetchInbox(root, { folder: getStoredFolder(), account: getStoredAccount() });
 
   window.addEventListener('resize', resizePreviewIframe);
 

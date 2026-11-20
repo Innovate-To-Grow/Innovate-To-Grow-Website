@@ -1,4 +1,4 @@
-<div class="i2g-mail-shell">
+<div class="i2g-mail-shell" data-inbox-auto-refresh="{{ auto_refresh_seconds|default:0 }}">
     <div class="i2g-mail-toolbar">
         <div class="i2g-mail-toolbar__identity">
             <span class="material-symbols-outlined i2g-mail-toolbar__icon">{% if folder == 'SENT' %}send{% else %}inbox{% endif %}</span>
@@ -29,6 +29,21 @@
         </div>
 
         <div class="i2g-mail-toolbar__actions">
+            {% comment %}Universal inbox: every configured mailbox merged, or one of them (services.inbox.accounts).{% endcomment %}
+            {% if inbox_accounts|length > 1 %}
+            <label class="i2g-inbox-limit-control">
+                <span>Account</span>
+                <select data-inbox-account
+                        aria-label="Inbox account"
+                        class="rounded border border-base-200 dark:border-base-600 bg-white dark:bg-base-800 text-xs px-1.5 py-0.5 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-1 focus:ring-primary-500">
+                    <option value="{{ all_accounts }}" {% if selected_account == all_accounts %}selected{% endif %}>All accounts</option>
+                    {% for item in inbox_accounts %}
+                    <option value="{{ item.key }}" {% if item.key == selected_account %}selected{% endif %}>{{ item.label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            {% endif %}
+
             <button type="button"
                     data-inbox-refresh
                     class="i2g-inbox-refresh-btn cursor-pointer font-sans">
@@ -74,7 +89,20 @@
             <span class="i2g-mail-account-field__label">Folder</span>
             <span class="i2g-mail-account-field__value">{{ folder|default:"INBOX" }}</span>
         </div>
+        {% if show_account_column %}
+        <div class="i2g-mail-account-field">
+            <span class="i2g-mail-account-field__label">Mailboxes</span>
+            <span class="i2g-mail-account-field__value">{% for item in inbox_accounts %}{{ item.label }}{% if not forloop.last %}, {% endif %}{% endfor %}</span>
+        </div>
+        {% endif %}
     </div>
+
+    {% if hidden_message %}
+    <div data-inbox-hidden class="i2g-inbox-status i2g-inbox-status--warning">
+        <span class="material-symbols-outlined !text-[18px]">cloud_off</span>
+        <span>{{ hidden_message }}</span>
+    </div>
+    {% endif %}
 
     {% if error_message %}
     <div data-inbox-status class="i2g-inbox-status i2g-inbox-status--error">
@@ -110,10 +138,10 @@
 
             <div id="inbox-message-list" class="i2g-inbox-list" data-inbox-list>
                 {% for msg in inbox_messages %}
-                <a href="{% url 'admin:mail_inbox_detail' msg.uid %}?folder={{ folder|default:'INBOX' }}"
+                <a href="{% url 'admin:mail_inbox_detail' msg.uid %}?folder={{ folder|default:'INBOX' }}&amp;account={{ msg.account|urlencode:'' }}"
                    data-inbox-row
-                   data-uid="{{ msg.uid }}"
-                   data-preview-url="{% url 'admin:mail_inbox_detail_fragment' msg.uid %}?folder={{ folder|default:'INBOX' }}"
+                   data-uid="{{ msg.account }}|{{ msg.uid }}"
+                   data-preview-url="{% url 'admin:mail_inbox_detail_fragment' msg.uid %}?folder={{ folder|default:'INBOX' }}&amp;account={{ msg.account|urlencode:'' }}"
                    class="inbox-list-row group flex gap-3 px-4 py-3 text-left no-underline transition-colors cursor-pointer
                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500
                           {% if not msg.is_seen %}is-unread{% endif %}">
@@ -139,6 +167,12 @@
                         {% if msg.snippet %}
                         <div class="text-[11px] text-base-500 dark:text-base-400 truncate leading-snug">
                             {{ msg.snippet }}
+                        </div>
+                        {% endif %}
+                        {% if show_account_column and msg.account_address %}
+                        <div data-inbox-row-account class="i2g-inbox-row-account" title="Received at {{ msg.account_address }}">
+                            <span class="material-symbols-outlined !text-[12px]" aria-hidden="true">alternate_email</span>
+                            <span class="truncate">{{ msg.account_address }}</span>
                         </div>
                         {% endif %}
                     </div>

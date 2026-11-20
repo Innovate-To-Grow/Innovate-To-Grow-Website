@@ -98,8 +98,9 @@ only as a fingerprint). Exports made from the admin contain personal data and sh
    changing the mailbox, and records them. Staff see them on **Email Monitoring**. Nothing about a member changes
    because of a bounce unless a staff member decides it should.
 6. **Replies.** Replies to campaigns, out-of-office notices and other mail also arrive in the i2g@ucmerced.edu
-   Inbox. Staff read them in Outlook or in the admin's inbox page (**Broadcast Delivery → Gmail Inbox**, which shows
-   the i2g@ mailbox when Microsoft Graph is set up to read it).
+   Inbox. Staff read them in Outlook or in the admin's universal inbox (**Broadcast Delivery → Inbox**, which shows
+   every configured mailbox that connects, the i2g@ mailbox included when Microsoft Graph is set up to read it, and
+   is checked for new mail in the background).
 
 The site can read the i2g@ mailbox but cannot change it: it never moves, deletes, forwards or marks messages, and
 its connection to Microsoft refuses every request except sending and reading. The app it uses authenticates with a

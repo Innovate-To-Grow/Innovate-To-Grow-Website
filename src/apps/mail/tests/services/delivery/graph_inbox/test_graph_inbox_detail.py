@@ -7,11 +7,11 @@ from django.utils import timezone
 
 from apps.core.models import EmailServiceConfig
 from apps.core.services.email.graph.mailbox import GraphMessageNotFound, GraphReadError
-from apps.mail.services.inbox import graph_backend
-from apps.mail.services.inbox.connection import InboxError
-from apps.mail.services.inbox.formatting import format_date
-from apps.mail.services.inbox.messages import detailed_message
-from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import (
+from apps.mail.services.inbox.reading import graph_backend
+from apps.mail.services.inbox.reading.connection import InboxError
+from apps.mail.services.inbox.reading.formatting import format_date
+from apps.mail.services.inbox.reading.messages import detailed_message
+from apps.mail.tests.services.delivery.graph_inbox.helpers import (
     DETAIL_KEYS,
     GRAPH_MESSAGE,
     MAILBOX,
@@ -73,7 +73,7 @@ class DetailTests(TestCase):
 
     def test_undecodable_body_is_logged_and_left_blank(self):
         with patch("email.message.EmailMessage.get_body", side_effect=LookupError("bad charset")):
-            with self.assertLogs("apps.mail.services.inbox.graph_backend", "WARNING"):
+            with self.assertLogs("apps.mail.services.inbox.reading.graph_backend", "WARNING"):
                 detail = self.detail()
 
         self.assertEqual((detail["html"], detail["text"]), ("", ""))

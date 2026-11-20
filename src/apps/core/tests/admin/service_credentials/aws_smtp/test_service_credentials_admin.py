@@ -41,6 +41,10 @@ class GmailAccessAccountAdminTests(TestCase):
                 "imap_host": "imap.gmail.com",
                 "gmail_username": "updated@ucmerced.edu",
                 "gmail_password": "new-app-password",
+                "show_in_inbox": "on",
+                "reply_enabled": "on",
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": "587",
                 "_save": "Save",
             },
         )
@@ -50,6 +54,10 @@ class GmailAccessAccountAdminTests(TestCase):
         self.assertEqual(self.config.name, "Updated Gmail Access Account")
         self.assertEqual(self.config.gmail_username, "updated@ucmerced.edu")
         self.assertEqual(self.config.gmail_password, "new-app-password")
+        self.assertTrue(self.config.show_in_inbox)
+        self.assertTrue(self.config.reply_enabled)
+        self.assertEqual((self.config.smtp_host, self.config.smtp_port), ("smtp.gmail.com", 587))
+        self.assertTrue(self.config.reply_configured)
 
 
 class AWSCredentialConfigAdminTests(TestCase):

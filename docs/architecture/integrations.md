@@ -69,8 +69,10 @@ store (`apps.core.services.credential_store`; in production the Secrets Manager 
 `MicrosoftGraphCertificate` row pins its version. The Graph transport refuses every
 request except the token request, `sendMail` and three read-only GETs before
 connecting. Graph answers `202 Accepted` with no message ID, so the MIME `Message-ID`
-is recorded instead. With read permission on the sending mailbox, the admin inbox
-(**Mail → Inbox**) reads that mailbox through Graph instead of Gmail IMAP.
+is recorded instead. The admin inbox (**Mail → Inbox**) is a universal inbox: it reads
+every scoped mailbox with read permission through Graph alongside the Gmail IMAP accounts, and a
+reply may be sent From any configured sending address
+([Universal inbox](../cms-admin/member-and-mail-tools.md#universal-inbox-mail--inbox)).
 
 `verify_graph_access` (or **Run access check** in the admin) asks Microsoft what the
 app may do, compares it with the approved roles and mailbox scope, and records a

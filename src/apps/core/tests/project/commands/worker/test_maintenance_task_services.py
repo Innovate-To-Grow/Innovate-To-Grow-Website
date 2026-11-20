@@ -31,6 +31,19 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
             logs.output,
         )
 
+    def test_the_inbox_poll_is_restarted_and_its_finished_jobs_purged(self):
+        with self.assertLogs(LOGGER_NAME, level="DEBUG") as logs:
+            self.run_patched(
+                ensure_inbox_poll_scheduled=lambda **_kwargs: True, purge_finished_inbox_polls=lambda **_kwargs: 5
+            )
+
+        self.assertIn(f"DEBUG:{LOGGER_NAME}:Queued an inbox poll", logs.output)
+        self.assertIn(f"INFO:{LOGGER_NAME}:Purged 5 finished inbox poll jobs", logs.output)
+
+    def test_an_idle_inbox_poll_task_logs_nothing(self):
+        with self.assertNoLogs(LOGGER_NAME, level="DEBUG"):
+            self.run_patched()
+
     def test_bounced_address_counts_are_logged_only_when_something_changed(self):
         with self.assertLogs(LOGGER_NAME, level="INFO") as logs:
             self.run_patched(
@@ -126,6 +139,7 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
             ensure_helpdesk_intake_scheduled=RuntimeError("l"),
             ensure_helpdesk_ingest_scheduled=RuntimeError("j"),
             purge_expired_helpdesk=RuntimeError("k"),
+            ensure_inbox_poll_scheduled=RuntimeError("m"),
         ):
             patcher.start()
             self.addCleanup(patcher.stop)
