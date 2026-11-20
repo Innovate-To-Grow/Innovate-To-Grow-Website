@@ -3,11 +3,11 @@ import logging
 from django.core.cache import cache
 
 from ..clients._aws import get_management_client
-from .discovery import fetch_foundation_models, profile_base_model_ids, provider_from_id
+from .discovery import fetch_foundation_models, fetch_inference_profiles, resolve_profile_model
 
 logger = logging.getLogger(__name__)
 
-MODEL_CACHE_KEY = "bedrock_available_models"
+MODEL_CACHE_KEY = "bedrock_available_models_v2"
 MODEL_CACHE_TTL = 600
 
 
@@ -28,40 +28,24 @@ def get_available_models(force_refresh=False):
 
 def fetch_models_from_aws():
     mgmt = get_management_client()
-    profiles_by_provider = fetch_inference_profiles(mgmt)
-    fm_by_provider = fetch_foundation_models(mgmt)
-    all_providers = set(profiles_by_provider) | set(fm_by_provider)
-    if not all_providers:
-        return []
-    profile_base_ids = profile_base_model_ids(profiles_by_provider)
-    grouped = []
-    for provider in sorted(all_providers):
-        models = list(profiles_by_provider.get(provider, []))
-        for mid, name in fm_by_provider.get(provider, []):
-            if mid not in profile_base_ids and not any(model[0] == mid for model in models):
-                models.append((mid, name))
-        if models:
-            models.sort(key=lambda model: model[1])
-            grouped.append((provider, models))
-    return grouped
-
-
-def _system_defined_profiles(mgmt):
-    for page in mgmt.get_paginator("list_inference_profiles").paginate():
-        for profile in page.get("inferenceProfileSummaries", []):
-            if profile.get("type") == "SYSTEM_DEFINED":
-                yield profile
-
-
-def fetch_inference_profiles(mgmt):
-    profiles = {}
-    try:
-        for profile in _system_defined_profiles(mgmt):
-            pid = profile["inferenceProfileId"]
-            profiles.setdefault(provider_from_id(pid), []).append((pid, profile.get("inferenceProfileName", pid)))
-    except Exception:
-        logger.warning("list_inference_profiles failed, will use foundation models only")
-    return profiles
+    foundation_models = fetch_foundation_models(mgmt)
+    model_metadata = foundation_models.copy()
+    profile_base_ids = set()
+    grouped = {}
+    for profile in fetch_inference_profiles(mgmt):
+        model_id, details = resolve_profile_model(mgmt, profile, model_metadata)
+        modalities = details.get("outputModalities")
+        if modalities and "TEXT" not in modalities:
+            continue
+        profile_base_ids.add(model_id)
+        profile_id = profile["inferenceProfileId"]
+        provider = details.get("providerName") or "Other"
+        grouped.setdefault(provider, []).append((profile_id, profile.get("inferenceProfileName") or profile_id))
+    for model_id, details in foundation_models.items():
+        if model_id not in profile_base_ids:
+            provider = details.get("providerName") or "Other"
+            grouped.setdefault(provider, []).append((model_id, details.get("modelName") or model_id))
+    return [(provider, sorted(models, key=lambda model: model[1])) for provider, models in sorted(grouped.items())]
 
 
 def normalize_bedrock_model_id(model_id: str) -> str:

@@ -34,6 +34,7 @@ EXPECTED_KINDS = {
     "mail.sms_recipient",
     # A phone-only registrant's ticket text (apps.mail.services.sms.delivery.ticket).
     "mail.ticket_sms",
+    "system_intelligence.delete_export",
 }
 
 

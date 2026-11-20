@@ -1,5 +1,6 @@
 from django.core.cache import cache
 from django.test import override_settings
+from django.urls import reverse
 
 from apps.cms.models import CMSBlock, CMSPage
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
@@ -26,8 +27,11 @@ class SystemIntelligenceCMSActionTests(SystemIntelligenceActionBase):
         self.assertEqual(page.blocks.get().data, {"body_html": "<p>Old</p>"})
         action = SystemIntelligenceActionRequest.objects.get(id=response["action_request"]["id"])
         self.assertEqual(action.status, SystemIntelligenceActionRequest.STATUS_PENDING)
-        self.assertIn("cms_preview_token=", action.preview_url)
-        self.assertEqual(cache.get(f"cms:preview:{action.preview_token}")["title"], "About Innovate")
+        self.assertEqual(
+            response["action_request"]["preview_url"],
+            reverse("admin:system_intelligence_action_preview", args=[action.pk]),
+        )
+        self.assertFalse(action.preview_token)
         comparison = response["action_request"]["comparison"]
         self.assertEqual(comparison["fields"][0]["field"], "title")
         self.assertEqual(comparison["blocks"][0]["before_text"], "Old")

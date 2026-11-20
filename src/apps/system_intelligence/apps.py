@@ -11,7 +11,14 @@ class SystemIntelligenceConfig(AppConfig):
     def ready(self):
         from django.contrib import admin
 
+        from apps.core.services.background_jobs import register_job_kind
+
         from .admin import get_system_intelligence_urls
+        from .services.tools.exports.cleanup import CLEANUP_JOB
+
+        register_job_kind(
+            CLEANUP_JOB, handler="apps.system_intelligence.services.tools.exports.cleanup.delete_export_job"
+        )
 
         if getattr(admin.AdminSite, "_system_intelligence_urls_patched", False):
             return

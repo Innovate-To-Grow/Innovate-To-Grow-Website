@@ -21,10 +21,11 @@ from openpyxl.utils import get_column_letter
 
 from apps.core.services.helpers.sheets_safety import safe_sheet_value
 from apps.system_intelligence.models import SystemIntelligenceExport
-from apps.system_intelligence.services.actions.engine.context import current_conversation, current_user_id
+from apps.system_intelligence.services.actions.engine.context import current_conversation, current_user, current_user_id
 from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
 from apps.system_intelligence.services.actions.engine.utils import json_safe
 from apps.system_intelligence.services.actions.orm import (
+    check_model_permission,
     field_output_name,
     resolve_model,
     safe_model_fields,
@@ -93,7 +94,7 @@ def _saved_export(model, *, conversation, user_id, title, selected, rows) -> Sys
         field_names=list(selected),
         row_count=len(rows),
     )
-    export.file.save(filename, ContentFile(buffer.getvalue()), save=False)
+    export.private_file.save(filename, ContentFile(buffer.getvalue()), save=False)
     export.save()
     return export
 
@@ -121,6 +122,7 @@ def create_export(
 
     try:
         model = resolve_model(app_label, model_name, write=False)
+        check_model_permission(current_user(), model, "view")
     except ActionRequestError as exc:
         raise ExportError(str(exc)) from exc
 

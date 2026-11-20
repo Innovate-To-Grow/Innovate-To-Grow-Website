@@ -21,12 +21,21 @@ def export_download_view(request, export_id):
         export = SystemIntelligenceExport.objects.get(id=export_id, created_by=request.user)
     except SystemIntelligenceExport.DoesNotExist:
         return JsonResponse({"error": "Export not found"}, status=404)
-    if not export.file:
+    app_label, dot, _model = export.model_label.partition(".")
+    if not dot or not user_can_access_app(request.user, app_label):
+        return JsonResponse({"error": "Export not found"}, status=404)
+    file = export.private_file or export.file
+    if not file:
+        return JsonResponse({"error": "Export file is missing on storage"}, status=410)
+    try:
+        stream = file.open("rb")
+    except FileNotFoundError:
         return JsonResponse({"error": "Export file is missing on storage"}, status=410)
     response = FileResponse(
-        export.file.open("rb"),
+        stream,
         as_attachment=True,
         filename=export.filename,
         content_type=XLSX_CONTENT_TYPE,
     )
+    response["Cache-Control"] = "private, no-store"
     return response
