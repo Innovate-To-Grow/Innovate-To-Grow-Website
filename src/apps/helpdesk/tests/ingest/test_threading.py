@@ -7,6 +7,7 @@ from django.utils import timezone
 from apps.helpdesk.tests.ingest.test_ingest_rules import Kind, Status, event_kinds
 
 from ...models import HelpdeskSettings, Ticket, TicketMessage
+from ...services.tickets import events
 from .. import corpus
 from ..helpers import FakeReader, ingest, queue, receive
 
@@ -43,6 +44,19 @@ class ThreadingTests(TestCase):
         self.assertEqual(reopened.pk, self.first.pk)
         self.assertEqual((reopened.status, reopened.closed_at, reopened.resolved_at), (Status.OPEN, None, None))
         self.assertIn(Kind.REOPENED, event_kinds(reopened))
+        self.assertNotIn(Kind.RESOLUTION, event_kinds(reopened))  # it had no code to clear
+
+    def test_reopening_by_the_requesters_reply_clears_the_resolution(self):
+        Ticket.objects.filter(pk=self.first.pk).update(
+            status=Status.CLOSED, closed_at=timezone.now(), resolution_code="solved", resolution_notes="Sent the times."
+        )
+
+        reopened = self.reply(in_reply_to="<m1@mail.example.org>")
+
+        self.assertEqual((reopened.status, reopened.resolution_code, reopened.resolution_notes), (Status.OPEN, "", ""))
+        cleared = reopened.events.get(kind=Kind.RESOLUTION)
+        self.assertEqual(cleared.data, {"cleared": "solved"})
+        self.assertEqual(events.describe(cleared), "Resolution cleared on reopening (was: Solved)")
 
     def test_a_reply_long_after_closing_opens_a_linked_follow_up(self):
         closed_at = timezone.now() - timedelta(days=HelpdeskSettings().reopen_window_days + 1)

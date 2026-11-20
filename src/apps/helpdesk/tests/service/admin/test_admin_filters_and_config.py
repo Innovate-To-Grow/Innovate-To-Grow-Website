@@ -9,10 +9,10 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from ....admin.intake.service_desk import _duration
+from ....admin.intake.sla_targets import _duration
 from ....admin.tickets.filters import _DefaultChoiceFilter
 from ....models import AssignmentGroup, ResponseTemplate, SLATarget, Ticket
-from ...helpers import helpdesk_staff, make_admin
+from ...helpers import helpdesk_staff, make_admin, make_superuser
 from ...helpers.service import Status, clocked_ticket, new_ticket
 
 HOUR = timedelta(hours=1)
@@ -31,7 +31,7 @@ class QueueFilterTests(TestCase):
         new_ticket(subject="theirs", assignment_group=self.theirs)
         new_ticket(subject="no group")
         new_ticket(subject="breached", sla_started_at=now - 3 * HOUR, response_due_at=now - HOUR)
-        new_ticket(subject="due soon", sla_started_at=now - HOUR, response_due_at=now + 2 * HOUR)
+        clocked_ticket(subject="at risk", started=now - 20 * HOUR)  # 20 h of a 24 h first-response target
         clocked_ticket(subject="on track", priority=Ticket.Priority.LOW)
 
     def listed(self, query):
@@ -42,12 +42,12 @@ class QueueFilterTests(TestCase):
     def test_group_filter(self):
         self.assertEqual(self.listed("group=mine"), {"mine"})
         self.assertEqual(self.listed(f"group={self.theirs.pk}"), {"theirs"})
-        self.assertEqual(self.listed("group=none"), {"no group", "breached", "due soon", "on track"})
+        self.assertEqual(self.listed("group=none"), {"no group", "breached", "at risk", "on track"})
         self.assertEqual(self.listed("group=not-a-uuid"), set())
 
     def test_sla_filter(self):
         self.assertEqual(self.listed("sla=breached"), {"breached"})
-        self.assertEqual(self.listed("sla=due_soon"), {"due soon"})
+        self.assertEqual(self.listed("sla=at_risk"), {"at risk"})
         self.assertEqual(self.listed("sla=none"), {"mine", "theirs", "no group"})
         self.assertEqual(len(self.listed("")), 6)  # no SLA choice: every open ticket
 
@@ -59,8 +59,9 @@ class QueueFilterTests(TestCase):
         response = self.client.get(reverse("admin:helpdesk_ticket_changelist"))
 
         self.assertContains(response, "Technical")
-        self.assertContains(response, "Response: Breached")
-        self.assertContains(response, "Response due ")
+        self.assertContains(response, "Response breached")
+        self.assertContains(response, "At risk · Response due ")
+        self.assertContains(response, "Response due ", count=2)  # at risk, and on track
 
 
 class SLAColumnTests(TestCase):
@@ -74,7 +75,7 @@ class SLAColumnTests(TestCase):
         self.assertEqual(self.admin.sla_column(clocked_ticket(started=now - 30 * HOUR))[0], "breached")
         state, text = self.admin.sla_column(clocked_ticket(started=now - 20 * HOUR))
         self.assertEqual(state, "at_risk")
-        self.assertTrue(text.startswith("Response due "))
+        self.assertTrue(text.startswith("At risk · Response due "))
         resolved = clocked_ticket(status=Status.RESOLVED, first_responded_at=now)
         self.assertEqual(self.admin.sla_column(resolved), ("met", "Resolution: Met"))
         self.assertEqual(self.admin.group_column(new_ticket()), "—")
@@ -117,6 +118,7 @@ class ConfigAdminTests(TestCase):
 
     def test_a_new_sla_target_picks_its_priority_from_the_list(self):
         SLATarget.objects.filter(priority="low").delete()
+        self.client.force_login(make_superuser(email="master@example.com"))  # targets are an I2G Master's
 
         add = self.client.get(reverse("admin:helpdesk_slatarget_add"))
         response = self.client.post(
@@ -124,7 +126,8 @@ class ConfigAdminTests(TestCase):
             {"priority": "low", "response_minutes": "90", "resolution_minutes": "1500", "is_active": "on"},
         )
 
-        self.assertEqual(add.context["adminform"].form.fields["priority"].choices, Ticket.Priority.choices)
+        # Only the priority that has no target yet.
+        self.assertEqual(add.context["adminform"].form.fields["priority"].choices, [("low", "4 – Low")])
         self.assertEqual(response.status_code, 302)
         self.assertEqual(SLATarget.objects.get(priority="low").response_minutes, 90)
 

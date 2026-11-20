@@ -8,7 +8,10 @@ a person; list mail that replies to an email the site sent (a reply sent to a wh
 flagged ``reply_to_our_mail`` so staff find it among the automated tickets. A message it leaves as human (which includes "uncertain") is also scored by
 the scam detector's deterministic rules (``analyze_email``; never the optional Bedrock second opinion, so no message
 text leaves the site): a high score makes it spam, a medium one keeps it a normal ticket flagged suspicious, as does a
-message that claims the site's own address without proof.
+message that claims the site's own address without proof. A sender who proved their domain (DMARC or Exchange's
+composite authentication) is not made spam on its words alone (a person asking about a locked account reads like a
+phish): unless the sender, links, structure or authentication checks warn too, the message stays a person's ticket,
+flagged suspicious. The checks' reasons are kept on the message for staff.
 
 What the inbound queue row keeps of the verdict (``Classified.result``): the email the site sent that the message
 answers, how it was found and the address it went to, and, for a left-the-organisation notice, any contact name,
@@ -23,7 +26,16 @@ from datetime import datetime, timedelta
 from apps.core.models import EmailServiceConfig, OutboundEmail
 from apps.core.services.email.inbound import Evidence, Verdict, auth_summary, classify
 from apps.mail.services.audience.suppression import normalize_address
-from apps.mail.services.scam_detector import analyze_email
+from apps.mail.services.scam_detector import (
+    BRAND_NAMES,
+    MEDIUM_THRESHOLD,
+    analyze_email,
+    check_address_alignment,
+    check_authentication,
+    check_links,
+    check_sender,
+    check_structure,
+)
 
 from ....models import HelpdeskSettings
 from ..reading.message import ParsedMessage
@@ -56,6 +68,7 @@ class Classified:
     flags: tuple[str, ...] = ()
     auth: dict = field(default_factory=dict)
     site_reply: SiteReply | None = None
+    scam_reasons: tuple[str, ...] = ()
 
     @property
     def automated(self) -> bool:
@@ -155,10 +168,32 @@ def classify_message(
         flags = (REPLY_FLAG,) if verdict.classification == BULK and replied is not None else ()
         return Classified(verdict, flags=flags, auth=auth, site_reply=replied)
     flags = [hint for hint in verdict.hints if hint in FLAGGED_HINTS]
-    scam_level = str(analyze_email(_scam_input(parsed)).get("risk_level") or "")
+    scam_input = _scam_input(parsed)
+    analysis = analyze_email(scam_input)
+    scam_level, reasons = str(analysis.get("risk_level") or ""), tuple(analysis.get("reasons") or ())[:5]
+    if scam_level == "high" and _authenticated(auth) and not _technical_warning(scam_input):
+        scam_level = "medium"
     if scam_level == "high":
         spam = Verdict(SPAM, "scam_score", ("scam_score_high",), verdict.hints)
-        return Classified(spam, scam_level, auth=auth, site_reply=replied)
+        return Classified(spam, scam_level, auth=auth, site_reply=replied, scam_reasons=reasons)
     if scam_level == "medium" or "claims_own_address" in verdict.hints:
         flags.append("suspicious")
-    return Classified(verdict, scam_level, tuple(dict.fromkeys(flags)), auth, replied)
+    kept = reasons if scam_level == "medium" else ()
+    return Classified(verdict, scam_level, tuple(dict.fromkeys(flags)), auth, replied, kept)
+
+
+def _authenticated(auth: dict) -> bool:
+    return any(str((auth or {}).get(method, "")).lower() == "pass" for method in ("dmarc", "compauth"))
+
+
+def _technical_warning(scam_input: dict) -> bool:
+    """Whether the checks that look past the words (sender, links, structure, authentication, address alignment)
+    warn by themselves."""
+    findings = [
+        *check_sender(scam_input, BRAND_NAMES),
+        *check_links(scam_input, BRAND_NAMES),
+        *check_structure(scam_input),
+        *check_authentication(scam_input),
+        *check_address_alignment(scam_input),
+    ]
+    return sum(score for score, _reason in findings) >= MEDIUM_THRESHOLD

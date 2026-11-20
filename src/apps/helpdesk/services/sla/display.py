@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
+from django.utils import timezone
+
 from ...models import Ticket
 from .clock import Status
 
@@ -65,3 +67,40 @@ def current_clock(ticket: Ticket, now: datetime, warning_percent: int) -> tuple[
     if response.state in ("running", "at_risk", "breached") and ticket.first_responded_at is None and ticket.is_open:
         return "Response", response
     return "Resolution", resolution_clock(ticket, now, warning_percent)
+
+
+def span(seconds: float) -> str:
+    """A duration as staff read it: "2 d 4 h", "3 h 20 min", "45 min"."""
+    minutes = max(0, int(seconds // 60))
+    days, rest = divmod(minutes, 1440)
+    hours, minutes = divmod(rest, 60)
+    if days:
+        return f"{days} d {hours} h"
+    return f"{hours} h {minutes} min" if hours else f"{minutes} min"
+
+
+def paused_left(ticket: Ticket) -> str:
+    """What was left of the resolution target when its clock stopped (the due time moves on while it stands)."""
+    if ticket.sla_paused_at is None or ticket.resolution_due_at is None:
+        return ""
+    return span((ticket.resolution_due_at - ticket.sla_paused_at).total_seconds())
+
+
+def queue_label(ticket: Ticket, now: datetime, warning_percent: int) -> tuple[str, str]:
+    """The queue's SLA column as (state, text): a breach of either clock first (it stays visible after a late
+    response), then the clock that runs now, its state in words as well as in color."""
+    which, clock = current_clock(ticket, now, warning_percent)
+    flagged = (("Response", ticket.response_breached), ("Resolution", ticket.resolution_breached))
+    breached = [name for name, flag in flagged if flag]
+    if clock.state == "breached" and which not in breached:
+        breached.append(which)
+    if breached:
+        return "breached", f"{' & '.join(breached)} breached"
+    if clock.state == "none":
+        return "none", "—"
+    if clock.state == "paused":
+        return "paused", f"{which} paused · {paused_left(ticket)} left"
+    if clock.state in ("running", "at_risk") and clock.due is not None:
+        lead = "At risk · " if clock.state == "at_risk" else ""
+        return clock.state, f"{lead}{which} due {timezone.localtime(clock.due):%b %d %H:%M}"
+    return clock.state, f"{which}: {clock.label}"

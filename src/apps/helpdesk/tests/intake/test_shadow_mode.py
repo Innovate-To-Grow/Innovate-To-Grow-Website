@@ -72,6 +72,22 @@ def _imports(path: Path):
                 yield alias.name, set()
 
 
+def _calling(path: Path, callee: str):
+    """The names of the functions in ``path`` that call ``callee`` (by its name or as an attribute)."""
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.FunctionDef) and any(
+            isinstance(call, ast.Call) and callee in (getattr(call.func, "id", ""), getattr(call.func, "attr", ""))
+            for call in ast.walk(node)
+        ):
+            yield node.name
+
+
+def _function(path: Path, name: str) -> str:
+    source = path.read_text(encoding="utf-8")
+    nodes = (node for node in ast.walk(ast.parse(source)) if isinstance(node, ast.FunctionDef))
+    return ast.get_source_segment(source, next(node for node in nodes if node.name == name))
+
+
 class NoSendingCodeTests(TestCase):
     def test_only_the_outbound_module_imports_a_sending_api(self):
         offenders = []
@@ -89,10 +105,18 @@ class NoSendingCodeTests(TestCase):
         self.assertEqual(offenders, [])
 
     def test_every_send_checks_shadow_mode_first(self):
-        source = (HELPDESK_ROOT / "services" / "outbound" / "jobs.py").read_text(encoding="utf-8")
-        for handler in ("def send_reply_job", "def notify_staff_job"):
-            body = source.split(handler, 1)[1].split("\ndef ", 1)[0]
-            self.assertLess(body.index("sending_allowed"), body.index("deliver_email("), handler)
+        outbound = HELPDESK_ROOT.joinpath(*OUTBOUND)
+        senders = {
+            (path.name, name) for path in sorted(outbound.glob("*.py")) for name in _calling(path, "deliver_email")
+        }
+        # The two sending handlers are the only code that hands mail to the email facade.
+        self.assertEqual(senders, {("jobs.py", "send_reply_job"), ("notifications.py", "notify_staff_job")})
+        reply = _function(outbound / "jobs.py", "send_reply_job")
+        self.assertLess(reply.index("shadow.sending_allowed("), reply.index("deliver_email("))
+        notice = _function(outbound / "notifications.py", "notify_staff_job")
+        self.assertLess(notice.index("_due("), notice.index("deliver_email("))
+        # ``_due`` is where the notice job checks shadow mode (with the notify switch and the ticket's state).
+        self.assertIn("shadow.sending_allowed(settings)", _function(outbound / "notifications.py", "_due"))
 
 
 class NothingIsSentTests(TestCase):

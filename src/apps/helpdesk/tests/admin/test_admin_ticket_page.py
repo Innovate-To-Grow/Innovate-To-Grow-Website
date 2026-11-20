@@ -71,7 +71,12 @@ class TimelineTests(TicketPageTestCase):
 
         self.assertContains(response, "<details>")
         self.assertContains(response, "Automatic reply")
-        self.assertContains(response, "automated, hidden from the default queue")
+        # The classification says how a person's message misread as automated mail gets back to the queue.
+        self.assertContains(
+            response,
+            "Automatic reply — hidden from the default queue. If a person wrote it, use "
+            "&quot;Not automated: move to the queue&quot;.",
+        )
 
     def test_events_and_notes_appear_in_order(self):
         self.client.post(reverse("admin:helpdesk_ticket_note", args=[self.ticket.pk]), {"body": "Called the sender."})
@@ -112,9 +117,9 @@ class SaveTests(TicketPageTestCase):
             TicketEvent.Kind.ASSIGNED,
         }
         self.assertTrue(expected <= kinds)
-        self.assertEqual(
+        self.assertEqual(  # the fields as the page names them
             LogEntry.objects.get(object_id=str(self.ticket.pk)).change_message,
-            "Changed status, impact, priority, assignee.",
+            "Changed status, impact, priority, assigned to.",
         )
 
     def test_saving_never_overwrites_what_the_ingest_wrote_meanwhile(self):

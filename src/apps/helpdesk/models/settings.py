@@ -2,7 +2,7 @@
 
 Every limit and retention period is a field with a documented default (docs/integrations/messaging/helpdesk.md), so staff
 with the Helpdesk grant can tune them without a deploy. ``shadow_mode`` is on by default: nothing is sent (no replies,
-acknowledgements or notifications) until staff switch it off here; the mailbox itself is only ever read.
+acknowledgements or notifications) until an I2G Master switches it off here; the mailbox is only ever read.
 """
 
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -18,12 +18,11 @@ DEFAULT_BLOCKED_EXTENSIONS = (
 DEFAULT_WARN_EXTENSIONS = "zip 7z rar gz tgz tar bz2 xz cab arj"
 _SINGLETON = "helpdesk"
 # Only {ticket}: the requester's name and subject are the sender's own words, and an acknowledgement goes to an
-# address nobody verified (see services.outbound.replies).
+# address nobody verified (services.outbound.acknowledgement). The email's footer says how to reply.
 DEFAULT_ACKNOWLEDGEMENT = (
     "Hello,\n\n"
     "Thank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. "
     "A member of our team will get back to you soon.\n\n"
-    "To add information, reply to this email and keep {ticket} in the subject.\n\n"
     "Innovate to Grow, UC Merced"
 )
 

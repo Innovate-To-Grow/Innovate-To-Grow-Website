@@ -30,7 +30,10 @@ def auto_close_resolved(*, now=None, should_stop=None) -> int:
             break
         # ``update_ticket`` locks and judges the row again: a ticket reopened meanwhile is left alone.
         fresh = Ticket.objects.filter(pk=ticket.pk, status=Ticket.Status.RESOLVED).first()
-        if fresh is not None and "status" in update_ticket(fresh, actor=None, status=Ticket.Status.CLOSED):
+        reason = f"closed automatically {days} day{'s' if days != 1 else ''} after it was resolved"
+        if fresh is not None and "status" in update_ticket(
+            fresh, actor=None, status=Ticket.Status.CLOSED, reason=reason
+        ):
             closed += 1
     return closed
 

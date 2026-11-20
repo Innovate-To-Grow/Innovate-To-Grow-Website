@@ -2,7 +2,7 @@
 
 A reply (``Kind.REPLY``, ServiceNow's "additional comments") is written by staff on the ticket page, or is the
 automatic acknowledgement of a new ticket (``automatic``), and is sent by the background job ``helpdesk.send_reply``
-(``services.outbound``): ``delivery_status`` follows it from queued to sent or failed. A note (``Kind.NOTE``, the
+(``services.outbound``): ``delivery_status`` follows it from queued to sent, failed or not confirmed. A note (``Kind.NOTE``, the
 "work notes") is never sent.
 
 Bodies are stored in PostgreSQL: the text as received (scrubbed of personal sign-in links) and the HTML sanitized on
@@ -31,8 +31,11 @@ class TicketMessage(ProjectControlModel):
         QUEUED = "queued", "Queued"
         SENT = "sent", "Sent"
         FAILED = "failed", "Failed"
+        # The mail service did not confirm it: it may or may not have arrived (never sent again by itself).
+        UNCERTAIN = "uncertain", "Not confirmed"
 
     INBOUND_KINDS = (Kind.CUSTOMER, Kind.AUTOMATED)
+    SCAM_REASON = "scam: "
 
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="messages")
     kind = models.CharField(max_length=12, choices=Kind.choices, db_index=True)
@@ -79,7 +82,7 @@ class TicketMessage(ProjectControlModel):
         default=False, db_default=False, help_text="Sent by the helpdesk itself (the acknowledgement of a new ticket)."
     )
     delivery_status = models.CharField(
-        max_length=8, choices=Delivery.choices, blank=True, default="", db_default="", db_index=True
+        max_length=12, choices=Delivery.choices, blank=True, default="", db_default="", db_index=True
     )
     delivery_error = models.CharField(max_length=255, blank=True, default="", db_default="")
     delivered_at = models.DateTimeField(null=True, blank=True)
@@ -91,6 +94,13 @@ class TicketMessage(ProjectControlModel):
 
     def __str__(self):
         return f"{self.get_kind_display()} on {self.ticket_id}"
+
+    @property
+    def scam_reasons(self) -> list[str]:
+        """Why the scam checks warned about it (kept among its signals), shown to staff."""
+        return [
+            str(item)[len(self.SCAM_REASON) :] for item in self.signals or [] if str(item).startswith(self.SCAM_REASON)
+        ]
 
 
 class TicketAttachment(ProjectControlModel):

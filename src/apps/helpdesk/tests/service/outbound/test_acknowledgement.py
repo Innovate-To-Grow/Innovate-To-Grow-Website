@@ -13,7 +13,7 @@ from apps.core.models import BackgroundJob
 from apps.core.services.email.inbound import NO_AUTO_RESPONSE
 
 from ....models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
-from ....services.outbound import jobs, replies
+from ....services.outbound import acknowledgement, jobs
 from ... import corpus
 from ...helpers import FakeReader, receive
 from ...helpers.service import new_ticket, sending_settings
@@ -65,6 +65,7 @@ class AcknowledgementIngestTests(TestCase):
         self.assertEqual(ack.subject, f"Re: Question about the showcase [{ticket.display_number}]")
         self.assertIn(f"opened ticket {ticket.display_number}", ack.body_text)
         self.assertNotIn("{", ack.body_text)
+        self.assertNotIn("in the subject", ack.body_text)  # the email's footer says how to reply
         self.assertEqual(ticket.events.get(kind=TicketEvent.Kind.ACKNOWLEDGED).data, {"to": "pat@example.org"})
         job = BackgroundJob.objects.get(kind=jobs.REPLY_JOB_KIND)
         self.assertEqual(job.payload, {"message_id": str(ack.pk)})
@@ -137,7 +138,7 @@ class AcknowledgementLimitTests(TestCase):
             **message_values,
         )
         with self.captureOnCommitCallbacks(execute=True):
-            return replies.queue_acknowledgement(ticket, message, self.settings)
+            return acknowledgement.queue_acknowledgement(ticket, message, self.settings)
 
     def test_one_per_address_a_day(self):
         first = self.opened()
@@ -149,7 +150,7 @@ class AcknowledgementLimitTests(TestCase):
         self.assertIsNotNone(self.opened())
 
     def test_at_most_the_daily_cap_in_all(self):
-        with patch.object(replies, "ACK_DAILY_CAP", 2):
+        with patch.object(acknowledgement, "ACK_DAILY_CAP", 2):
             self.assertIsNotNone(self.opened("a@example.org"))
             self.assertIsNotNone(self.opened("b@example.org"))
             self.assertIsNone(self.opened("c@example.org"))
@@ -174,7 +175,7 @@ class AcknowledgementLimitTests(TestCase):
                 auth_summary={"dmarc": "pass"},
             )
             with self.subTest(values):
-                self.assertIsNone(replies.queue_acknowledgement(ticket, message, self.settings))
+                self.assertIsNone(acknowledgement.queue_acknowledgement(ticket, message, self.settings))
 
     def test_unsaved_settings_still_judge_every_limit(self):
         unsaved = HelpdeskSettings(shadow_mode=False, send_acknowledgement=True)
@@ -184,4 +185,4 @@ class AcknowledgementLimitTests(TestCase):
         )
 
         with self.captureOnCommitCallbacks(execute=True):
-            self.assertIsNotNone(replies.queue_acknowledgement(ticket, message, unsaved))
+            self.assertIsNotNone(acknowledgement.queue_acknowledgement(ticket, message, unsaved))

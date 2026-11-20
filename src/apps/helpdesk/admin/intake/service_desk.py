@@ -1,23 +1,67 @@
-"""Helpdesk → Assignment Groups, SLA Targets and Response Templates: how tickets are worked, ServiceNow style.
+"""Helpdesk → Assignment Groups, Categories and Response Templates: how tickets are worked, ServiceNow style (SLA
+targets are in ``sla_targets``).
 
-Group members and managers are chosen among staff who have the Helpdesk app. An SLA target is one row per priority;
-it is switched off rather than deleted (both mean "no SLA" for that priority).
+Names are unique whatever their case. Group members and managers are chosen among staff who have the Helpdesk app;
+someone who lost it stays listed (marked) until removed by hand, so an unrelated save never drops them. A category's
+default group and a template's category are chosen among active ones. A group or category that tickets still use is
+switched off, not deleted (the delete page lists what uses it). Groups, categories and members are set up here, not
+from a ticket's page, so the related-object buttons are not offered.
 """
 
 from django import forms
 from django.contrib import admin
-from django.db.models import Count
+from django.db.models import Count, Q
 from unfold.decorators import display
 
 from apps.core.admin import BaseModelAdmin
 
-from ...models import AssignmentGroup, ResponseTemplate, SLATarget, Ticket
+from ...models import AssignmentGroup, ResponseTemplate, TicketCategory
 from ...services import tickets
+from ...services.outbound.compose import unknown_placeholders
+
+RELATED_FLAGS = ("can_add_related", "can_change_related", "can_delete_related", "can_view_related")
+
+
+def no_related_buttons(form, *names) -> None:
+    for name in names:
+        widget = getattr(form.base_fields.get(name), "widget", None)
+        for flag in RELATED_FLAGS:
+            if hasattr(widget, flag):
+                setattr(widget, flag, False)
+
+
+class UniqueNameForm(forms.ModelForm):
+    """A name taken in another case ("events" beside "Events") is refused; spaces are tidied."""
+
+    def clean_name(self):
+        name = " ".join(str(self.cleaned_data.get("name") or "").split())
+        model = self._meta.model
+        if model.objects.filter(name__iexact=name).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError(f"“{name}” is taken already (names are compared whatever their case).")
+        return name
+
+
+class ResponseTemplateForm(UniqueNameForm):
+    def clean_body(self):
+        body = str(self.cleaned_data.get("body") or "").replace("\r\n", "\n")
+        unknown = unknown_placeholders(body)
+        if unknown:
+            raise forms.ValidationError(
+                f"Unknown placeholder{'s' if len(unknown) != 1 else ''}: {', '.join(unknown)}. "
+                "Use {ticket}, {requester_name}, {subject} or {agent_name}."
+            )
+        return body
+
+
+def _active_or(field, current_pk) -> None:
+    if field is not None:
+        field.queryset = field.queryset.filter(Q(is_active=True) | Q(pk=current_pk))
 
 
 @admin.register(AssignmentGroup)
 class AssignmentGroupAdmin(BaseModelAdmin):
     require_confirmation = False
+    form = UniqueNameForm
     list_display = ("name", "description", "manager", "member_count", "is_active", "order")
     list_editable = ("is_active", "order")
     list_select_related = ("manager",)
@@ -32,67 +76,56 @@ class AssignmentGroupAdmin(BaseModelAdmin):
     def member_count(self, obj):
         return getattr(obj, "member_total", 0)
 
-    def formfield_for_manytomany(self, db_field, request, **kwargs):
-        if db_field.name == "members":
-            kwargs["queryset"] = _staff_queryset()
-        return super().formfield_for_manytomany(db_field, request, **kwargs)
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        from apps.authn.models import Member
 
-    def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        if db_field.name == "manager":
-            kwargs["queryset"] = _staff_queryset()
-        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+        form = super().get_form(request, obj, change, **kwargs)
+        staff = {member.pk for member in tickets.helpdesk_staff()}
+        kept = set()
+        if obj is not None:
+            kept = set(obj.members.values_list("pk", flat=True)) | ({obj.manager_id} if obj.manager_id else set())
+        people = Member.objects.filter(pk__in=staff | kept).order_by("first_name", "last_name")
+        for name in ("members", "manager"):
+            field = form.base_fields.get(name)
+            if field is not None:
+                field.queryset = people
+                field.label_from_instance = lambda member: (
+                    str(member) if member.pk in staff else f"{member} (no Helpdesk access)"
+                )
+        no_related_buttons(form, "manager", "members")
+        return form
 
 
-def _staff_queryset():
-    from apps.authn.models import Member
-
-    return Member.objects.filter(pk__in=[member.pk for member in tickets.helpdesk_staff()])
-
-
-@admin.register(SLATarget)
-class SLATargetAdmin(BaseModelAdmin):
+@admin.register(TicketCategory)
+class TicketCategoryAdmin(BaseModelAdmin):
     require_confirmation = False
-    list_display = ("priority_label", "response_display", "resolution_display", "is_active")
-    list_editable = ("is_active",)
-    fields = ("priority", "response_minutes", "resolution_minutes", "is_active")
+    form = UniqueNameForm
+    list_display = ("name", "default_group", "is_active", "order")
+    list_editable = ("is_active", "order")
+    list_select_related = ("default_group",)
+    search_fields = ("name",)
+    ordering = ("order", "name")
 
-    def get_readonly_fields(self, request, obj=None):
-        return ("priority",) if obj is not None else ()
-
-    def formfield_for_dbfield(self, db_field, request, **kwargs):
-        if db_field.name == "priority":
-            return forms.ChoiceField(choices=Ticket.Priority.choices, label="Priority")
-        return super().formfield_for_dbfield(db_field, request, **kwargs)
-
-    @display(description="Priority", ordering="priority")
-    def priority_label(self, obj):
-        return dict(Ticket.Priority.choices).get(obj.priority, obj.priority)
-
-    @display(description="First response within")
-    def response_display(self, obj):
-        return _duration(obj.response_minutes)
-
-    @display(description="Resolution within")
-    def resolution_display(self, obj):
-        return _duration(obj.resolution_minutes)
-
-    def has_delete_permission(self, request, obj=None):
-        return False  # switch a target off instead: a missing row and an inactive one both mean "no SLA"
-
-
-def _duration(minutes: int) -> str:
-    days, rest = divmod(int(minutes or 0), 24 * 60)
-    hours, mins = divmod(rest, 60)
-    parts = [f"{days} d" if days else "", f"{hours} h" if hours else "", f"{mins} min" if mins else ""]
-    return " ".join(part for part in parts if part) or "0 min"
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form = super().get_form(request, obj, change, **kwargs)
+        _active_or(form.base_fields.get("default_group"), obj.default_group_id if obj is not None else None)
+        no_related_buttons(form, "default_group")
+        return form
 
 
 @admin.register(ResponseTemplate)
 class ResponseTemplateAdmin(BaseModelAdmin):
     require_confirmation = False
+    form = ResponseTemplateForm
     list_display = ("name", "category", "is_active", "order")
     list_editable = ("is_active", "order")
     list_filter = ("is_active", "category")
     list_select_related = ("category",)
     search_fields = ("name", "body")
     ordering = ("order", "name")
+
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form = super().get_form(request, obj, change, **kwargs)
+        _active_or(form.base_fields.get("category"), obj.category_id if obj is not None else None)
+        no_related_buttons(form, "category")
+        return form

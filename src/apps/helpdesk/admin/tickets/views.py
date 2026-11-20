@@ -1,14 +1,16 @@
-"""The ticket page's own views: adding an internal note, replying to the requester, and downloading an attachment.
+"""The ticket page's own views (adding an internal note, replying to the requester, downloading an attachment) and
+the context its reply form and field helpers need.
 
 ``admin_view`` only requires a staff login, so each view checks the Helpdesk grant itself (403 without it), and an
 attachment must belong to the ticket in its URL. A download is always ``Content-Disposition: attachment`` with
 ``X-Content-Type-Options: nosniff``, served as ``application/octet-stream`` unless it is a raster image, and never
 cached; an archive is offered only after a warning page, and a file whose content is not stored is a 404 that says
-why.
+why. A refused reply comes back with what was typed (kept in the session for the next view of the page).
 """
 
 from django.contrib import admin, messages
 from django.core.exceptions import PermissionDenied
+from django.db.models import Case, IntegerField, Q, Value, When
 from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -18,9 +20,10 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.core.utils.access import user_can_access_app
 
-from ...models import HelpdeskSettings, Ticket, TicketAttachment
+from ...models import AssignmentGroup, HelpdeskSettings, ResponseTemplate, Ticket, TicketAttachment
 from ...services import outbound, tickets
 from ...services.ingest.reading import attachments as files
+from ...services.sla.priority import priority_for
 
 # The statuses the reply form offers, set on the ticket when the reply is queued; "" keeps the current one.
 REPLY_STATUS_CHOICES = (
@@ -28,6 +31,7 @@ REPLY_STATUS_CHOICES = (
     ("", "Keep the current status"),
     (Ticket.Status.OPEN, "In progress"),
 )
+DONE = (Ticket.Status.RESOLVED, Ticket.Status.CLOSED)
 
 
 def require_helpdesk_access(request) -> None:
@@ -39,11 +43,15 @@ def _ticket_url(ticket: Ticket) -> str:
     return reverse("admin:helpdesk_ticket_change", args=[ticket.pk])
 
 
+def _draft_key(ticket: Ticket) -> str:
+    return f"helpdesk_reply_draft:{ticket.pk}"
+
+
 @require_POST
 def note_view(request, pk):
     require_helpdesk_access(request)
     ticket = get_object_or_404(Ticket, pk=pk)
-    body = str(request.POST.get("body") or "").strip()
+    body = str(request.POST.get("body") or "").replace("\r\n", "\n").strip()
     if not body:
         messages.error(request, "Write the note before adding it.")
     elif len(body) > tickets.NOTE_MAX_CHARS:
@@ -63,19 +71,74 @@ def reply_view(request, pk):
     status = str(request.POST.get("status") or "")
     if status not in {value for value, _label in REPLY_STATUS_CHOICES}:
         status = ""
+    body, cc = str(request.POST.get("body") or ""), str(request.POST.get("cc") or "")
     try:
-        outbound.queue_reply(
-            ticket,
-            actor=request.user,
-            body=str(request.POST.get("body") or ""),
-            cc=str(request.POST.get("cc") or ""),
-            status=status,
-        )
+        outbound.queue_reply(ticket, actor=request.user, body=body, cc=cc, status=status)
     except outbound.ReplyRefused as refused:
-        messages.error(request, str(refused))
+        messages.error(request, f"The reply was not sent: {refused}")
+        request.session[_draft_key(ticket)] = {"body": body, "cc": cc, "status": status, "error": str(refused)}
         return HttpResponseRedirect(f"{_ticket_url(ticket)}#helpdesk-reply")
     messages.success(request, f"Reply queued to {ticket.requester_email}; its delivery shows on the timeline.")
     return HttpResponseRedirect(f"{_ticket_url(ticket)}#helpdesk-timeline")
+
+
+def reply_context(request, ticket: Ticket, settings: HelpdeskSettings) -> dict:
+    """The reply form: why it is not offered, or its fields, templates (the ticket's category first, each already
+    filled in for the ticket) and what a refused reply left typed."""
+    draft = request.session.pop(_draft_key(ticket), None) if request.method == "GET" else None
+    refusal = outbound.can_reply(ticket, settings)
+    if refusal:
+        # A reply refused because sending stopped meanwhile: its text stays on the page to copy.
+        return {"helpdesk_reply_refusal": refusal, "helpdesk_reply_body": (draft or {}).get("body", "")}
+    same_category = Case(
+        When(Q(category_id=ticket.category_id) & Q(category__isnull=False), then=Value(0)),
+        default=Value(1),
+        output_field=IntegerField(),
+    )
+    templates = list(
+        ResponseTemplate.objects.filter(is_active=True)
+        .select_related("category")
+        .annotate(same_category=same_category)
+        .order_by("same_category", "order", "name")
+    )
+    filled = [
+        {
+            "id": str(item.pk),
+            "name": item.name,
+            "category": item.category.name if item.category_id else "",
+            "body": outbound.fill(item.body, ticket, agent=request.user),
+        }
+        for item in templates
+    ]
+    chosen = next((item for item in filled if item["id"] == str(request.GET.get("template") or "")), None)
+    requester = ticket.requester_email.lower()
+    default_status = "" if ticket.status in DONE else Ticket.Status.PENDING_CUSTOMER
+    return {
+        "helpdesk_reply_url": reverse("admin:helpdesk_ticket_reply", args=[ticket.pk]),
+        "helpdesk_reply_to": ticket.requester_email,
+        "helpdesk_reply_subject": outbound.reply_subject(ticket),
+        "helpdesk_reply_cc_suggestions": [item for item in ticket.participants or [] if item.lower() != requester],
+        "helpdesk_reply_templates": filled,
+        "helpdesk_reply_template": chosen,
+        "helpdesk_reply_body": (draft or {}).get("body") or (chosen["body"] if chosen else ""),
+        "helpdesk_reply_cc": (draft or {}).get("cc", ""),
+        "helpdesk_reply_error": (draft or {}).get("error", ""),
+        "helpdesk_reply_statuses": REPLY_STATUS_CHOICES,
+        "helpdesk_reply_status": (draft or {}).get("status", default_status),
+        "helpdesk_reply_max": outbound.REPLY_MAX_CHARS,
+    }
+
+
+def form_helpers(request, ticket: Ticket) -> dict:
+    """What the ticket form's script needs: each group's members (the Assigned to list follows the group), the
+    priority each impact and urgency give, and who "Assign to me" means."""
+    groups = {
+        str(group.pk): [str(pk) for pk in group.members.values_list("pk", flat=True)]
+        for group in AssignmentGroup.objects.all()
+    }
+    labels = dict(Ticket.Priority.choices)
+    priorities = {f"{i}-{u}": str(labels[priority_for(i, u)]) for i in (1, 2, 3) for u in (1, 2, 3)}
+    return {"helpdesk_form_data": {"groups": groups, "priorities": priorities, "me": str(request.user.pk)}}
 
 
 @require_GET

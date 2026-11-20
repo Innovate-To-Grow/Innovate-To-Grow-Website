@@ -7,6 +7,7 @@ from apps.core.services.email.inbound import scrub_links, scrub_subject
 from ....models import Ticket, TicketAttachment, TicketEvent, TicketMessage
 from ... import sla
 from ...tickets import events
+from ...tickets.changes import reopen_values
 from ..reading import attachments
 from ..reading.message import ParsedMessage
 from ..reading.sanitize import sanitize_html
@@ -16,6 +17,7 @@ Status = Ticket.Status
 OWN_MAIL_NOTE = "Sent from the site's own address: its content is not stored (it may hold sign-in codes)."
 MAX_PARTICIPANTS = 50
 MAX_REFERENCES = 20
+SCAM_REASON = TicketMessage.SCAM_REASON  # a scam check's reason, kept among the message's signals
 
 
 def _participants(addresses, own) -> list[str]:
@@ -67,7 +69,10 @@ def _add_message(ticket, row, parsed, classified, settings, fingerprint) -> Tick
         scam_level=classified.scam_level,
         classification=verdict.classification,
         subtype=verdict.subtype,
-        signals=list(dict.fromkeys((*verdict.signals, *verdict.hints)))[:20],
+        signals=[
+            *list(dict.fromkeys((*verdict.signals, *verdict.hints)))[:20],
+            *(f"{SCAM_REASON}{reason}"[:200] for reason in classified.scam_reasons),
+        ],
     )
     if not own_mail:
         values = attachments.prepare(parsed.attachments, settings, truncated=parsed.truncated)
@@ -88,8 +93,12 @@ def _joined(ticket: Ticket, message: TicketMessage, classified: Classified, rule
     }
     events.record(ticket, TicketEvent.Kind.CUSTOMER_MESSAGE, **{"from": message.from_address, "rule": rule})
     if rule == "reopened":
-        updates.update(status=Status.OPEN, closed_at=None, resolved_at=None)
+        cleared = reopen_values(ticket, Status.OPEN)
+        updates.update(status=Status.OPEN, closed_at=None, resolved_at=None, **cleared)
         events.record(ticket, TicketEvent.Kind.REOPENED, reason="the customer replied", **_move(ticket.status))
+        if cleared and ticket.resolution_code:
+            # Resolving it again asks for a new code.
+            events.record(ticket, TicketEvent.Kind.RESOLUTION, cleared=ticket.resolution_code)
     elif ticket.status == Status.PENDING_CUSTOMER:
         updates["status"] = Status.OPEN
         events.record(ticket, TicketEvent.Kind.STATUS, reason="the customer replied", **_move(ticket.status))

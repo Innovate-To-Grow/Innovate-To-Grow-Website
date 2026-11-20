@@ -1,5 +1,7 @@
 """Who sees each sidebar entry and when it is marked active: the request-dependent callbacks ``navigation`` uses."""
 
+from urllib.parse import parse_qs
+
 from apps.core.utils.access import user_can_access_app
 
 from .tabs import SERVICE_CREDENTIAL_MODELS
@@ -49,17 +51,21 @@ def _is_email_sending_method(request):
 
 
 def _helpdesk_queue_view(name):
-    """Sidebar "active" callback for one view of the ticket list (the six views share one path)."""
+    """Sidebar "active" callback for one view of the ticket list (the six views share one path). A ticket page lights
+    the view it was opened from (the list's filters it carries in ``_changelist_filters``)."""
 
     def active(request):
         if not request.path.startswith(_HELPDESK_TICKETS_PATH):
             return False
-        mail, assignee = request.GET.get("mail", ""), request.GET.get("assignee", "")
-        if mail in ("automated", "all"):
+        params = request.GET
+        if "_changelist_filters" in params:
+            params = {key: values[-1] for key, values in parse_qs(params["_changelist_filters"]).items()}
+        mail, assignee = params.get("mail", ""), params.get("assignee", "")
+        if mail == "automated":
             return name == "automated"
-        if request.GET.get("sla", "") == "breached":
+        if params.get("sla", "") == "breached":
             return name == "breached"
-        if request.GET.get("group", "") == "mine" and not assignee:
+        if params.get("group", "") == "mine" and not assignee:
             return name == "groups"
         return {"me": "mine", "none": "unassigned"}.get(assignee, "queue") == name
 

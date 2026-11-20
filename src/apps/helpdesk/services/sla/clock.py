@@ -2,9 +2,9 @@
 
 - The clock starts when the ticket's first message arrived (``sla_started_at``). Automated mail, backfilled mail,
   tickets from before the SLA existed and priorities whose target is switched off have no clock (no due times).
-- **Response** is met by the first of: a reply sent to the requester from the ticket, or staff moving the ticket out
-  of New (``first_responded_at``). The site cannot see answers written in Outlook; moving the ticket on stands for
-  them.
+- **Response** is met by the first of: a reply from the ticket reaching the mail service (when it is sent, not when it
+  is queued: a reply that fails is no response), or staff moving the ticket out of New (``first_responded_at``). The
+  site cannot see answers written in Outlook; moving the ticket on stands for them.
 - **Resolution** runs while the ticket is New, In progress or On hold – awaiting internal, and stands still while it
   waits for the requester and while it is resolved or closed (``sla_paused_at``). When it runs again, the time it
   stood still is added to the due time (``sla_paused_seconds``), so a reply that reopens a resolved ticket continues
@@ -102,10 +102,13 @@ def _standing_seconds(ticket: Ticket, now: datetime) -> int:
     return max(0, int((now - ticket.sla_paused_at).total_seconds()))
 
 
-def update_values(current: Ticket, values: dict, status: str | None, now: datetime) -> tuple[dict, bool]:
+def update_values(
+    current: Ticket, values: dict, status: str | None, now: datetime, *, respond: bool = True
+) -> tuple[dict, bool]:
     """The clock's columns for ``update_ticket``'s changes (``values``, and a move to ``status`` when not None), and
-    whether this is the first response (staff moving the ticket out of New). Both are judged on the row as it will be
-    once a priority change in the same save applies its new due times."""
+    whether this is the first response (staff moving the ticket out of New; not with ``respond`` False, for a reply's
+    own status change, whose sending is the response). Both are judged on the row as it will be once a priority
+    change in the same save applies its new due times."""
     result, responded = {}, False
     if "priority" in values:
         result.update(priority_values(current, values["priority"], now))
@@ -113,7 +116,7 @@ def update_values(current: Ticket, values: dict, status: str | None, now: dateti
         return result, responded
     staged = Ticket(**{**_clock(current), **{key: value for key, value in result.items() if key in CLOCK_FIELDS}})
     staged.status = current.status
-    if current.status == Status.NEW and status != Status.SPAM:
+    if respond and current.status == Status.NEW and status != Status.SPAM:
         first = responded_values(staged, now)
         if first:
             result.update(first)

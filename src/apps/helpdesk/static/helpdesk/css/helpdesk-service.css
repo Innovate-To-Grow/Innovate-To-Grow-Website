@@ -20,7 +20,8 @@
 }
 
 .i2g-helpdesk-sla.is-at-risk,
-.i2g-helpdesk-delivery.is-queued {
+.i2g-helpdesk-delivery.is-queued,
+.i2g-helpdesk-delivery.is-uncertain {
   background: rgb(254 243 199);
   color: rgb(120 53 15);
 }
@@ -61,10 +62,76 @@
   color: inherit;
 }
 
-.i2g-helpdesk-template-picker {
-  display: flex;
+.i2g-helpdesk-reply-form form.i2g-helpdesk-template-picker {
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.i2g-helpdesk-reply-form textarea[readonly] {
+  opacity: 0.85;
+}
+
+.i2g-helpdesk-reasons {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.i2g-helpdesk-assign-me {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* The queue: the subject keeps a readable width; the sticky save bar never hides the field in focus. */
+#result_list td.field-subject_column,
+#result_list th.column-subject_column {
+  min-width: 16rem;
+}
+
+#result_list td.field-number_column,
+#result_list td.field-sla_column {
+  white-space: nowrap;
+}
+
+html {
+  scroll-padding-bottom: 6rem;
+}
+
+/* The queue's "Resolve…" action page. */
+.i2g-helpdesk-resolve {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 48rem;
+}
+
+.i2g-helpdesk-resolve-list {
+  list-style: disc;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.i2g-helpdesk-resolve-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.i2g-helpdesk-resolve-field select,
+.i2g-helpdesk-resolve-field textarea {
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  background: transparent;
+  color: inherit;
+}
+
+.i2g-helpdesk-resolve-buttons {
+  display: flex;
+  gap: 0.75rem;
   align-items: center;
 }
 
@@ -87,7 +154,8 @@
 }
 
 .dark .i2g-helpdesk-sla.is-at-risk,
-.dark .i2g-helpdesk-delivery.is-queued {
+.dark .i2g-helpdesk-delivery.is-queued,
+.dark .i2g-helpdesk-delivery.is-uncertain {
   background: rgb(120 53 15);
   color: rgb(253 230 138);
 }

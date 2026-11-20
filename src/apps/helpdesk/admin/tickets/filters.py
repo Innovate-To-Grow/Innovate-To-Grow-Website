@@ -2,8 +2,10 @@
 
 - Mail: people (default), automated & spam, or everything. Automated mail is hidden unless asked for.
 - Status: open statuses (default; "any status" once automated mail is shown), resolved & closed, one status, or any.
+  The two groups have keys of their own ("active", "done"), so "open" and "closed" mean the single statuses.
 - Assignee: me, unassigned, or anyone (default).
-- Assignment group: my groups, no group, or one group. SLA: breached, due within 24 hours, or no SLA.
+- Assignment group: my groups, no group, or one group (an inactive group is listed while tickets still have it).
+- SLA: breached, at risk (a running clock past the settings' warning share of its target), or no SLA.
 """
 
 import uuid
@@ -12,10 +14,11 @@ from django.contrib import admin
 from django.db.models import Q
 from django.utils import timezone
 
-from ...models import AssignmentGroup, Ticket
+from ...models import AssignmentGroup, HelpdeskSettings, Ticket
 from ...services import sla
 
 Status = Ticket.Status
+ACTIVE, DONE = "active", "done"
 
 
 class _DefaultChoiceFilter(admin.SimpleListFilter):
@@ -65,21 +68,21 @@ class StatusViewFilter(_DefaultChoiceFilter):
         super().__init__(request, params, model, model_admin)
 
     def default_value(self) -> str:
-        return "any" if self._mail in ("automated", "all") else "open"
+        return "any" if self._mail in ("automated", "all") else ACTIVE
 
     def lookups(self, request, model_admin):
         return (
-            ("open", "Open (new, open, pending)"),
-            ("closed", "Resolved & closed"),
+            (ACTIVE, "Open (new, in progress, on hold)"),
+            (DONE, "Resolved & closed"),
             *Status.choices,
             ("any", "Any status"),
         )
 
     def queryset(self, request, queryset):
         selected = self.selected()
-        if selected == "open":
+        if selected == ACTIVE:
             return queryset.filter(status__in=Ticket.OPEN_STATUSES)
-        if selected == "closed":
+        if selected == DONE:
             return queryset.filter(status__in=(Status.RESOLVED, Status.CLOSED))
         if selected in Status.values:
             return queryset.filter(status=selected)
@@ -109,7 +112,9 @@ class GroupFilter(admin.SimpleListFilter):
     parameter_name = "group"
 
     def lookups(self, request, model_admin):
-        groups = [(str(group.pk), group.name) for group in AssignmentGroup.objects.filter(is_active=True)]
+        used = Ticket.objects.filter(assignment_group__isnull=False).values("assignment_group")
+        listed = AssignmentGroup.objects.filter(Q(is_active=True) | Q(pk__in=used))
+        groups = [(str(group.pk), group.name if group.is_active else f"{group.name} (inactive)") for group in listed]
         return (("mine", "My groups"), ("none", "No group"), *groups)
 
     def queryset(self, request, queryset):
@@ -132,14 +137,16 @@ class SLAFilter(admin.SimpleListFilter):
     parameter_name = "sla"
 
     def lookups(self, request, model_admin):
-        return (("breached", "Breached"), ("due_soon", "Due within 24 hours"), ("none", "No SLA"))
+        share = int(HelpdeskSettings.load().sla_warning_percent)
+        return (("breached", "Breached"), ("at_risk", f"At risk (past {share}% of the target)"), ("none", "No SLA"))
 
     def queryset(self, request, queryset):
         now = timezone.now()
         if self.value() == "breached":
             return queryset.filter(sla.breached_q(now))
-        if self.value() == "due_soon":
-            return queryset.filter(sla.due_soon_q(now)).exclude(sla.breached_q(now))
+        if self.value() == "at_risk":
+            share = int(HelpdeskSettings.load().sla_warning_percent)
+            return queryset.filter(sla.at_risk_q(now, share)).exclude(sla.breached_q(now))
         if self.value() == "none":
             return queryset.filter(sla_started_at__isnull=True)
         return queryset

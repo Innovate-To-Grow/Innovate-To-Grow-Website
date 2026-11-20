@@ -12,40 +12,50 @@ merged into a person's ticket changes nothing on it but its timeline, like autom
 itself (``ingest.pipeline.store``), and stays hidden: still automated, now merged. A merge is final: no status change, spam
 mark or move to the queue un-merges a ticket, and only ``merge`` makes one merged.
 
-The steps live in ``changes`` (status, assignee, notes, read state, spam, back to the queue) and ``merging``, and
-are re-exported here. Beside them: ``events`` (the audit trail), ``numbering`` (ticket numbers and the subject
-token), ``shadow`` (shadow mode) and ``retention`` (the hourly clean-up).
+The field changes and the rules every path shares (group membership, reopening) live in ``changes``; notes, the read
+mark, resolving, closing, reopening, assigning, spam and the move to the queue in ``working``; merges in
+``merging``. They are re-exported here. Beside them: ``events`` (the audit trail), ``numbering`` (ticket numbers and
+the subject token), ``shadow`` (shadow mode) and ``retention`` (the hourly clean-up).
 """
 
-from .changes import (
+from .changes import AssignmentRefused, Kind, Status, helpdesk_staff, membership_problem, update_ticket
+from .merging import MOVE_TO_QUEUE, MergeRefused, merge, merge_refusal
+from .working import (
     NOTE_MAX_CHARS,
-    Kind,
-    Status,
     add_note,
     assign,
-    helpdesk_staff,
+    close,
     mark_read,
     mark_spam,
+    mark_unread,
     move_to_queue,
+    reopen,
+    resolve,
+    scrub_sign_in_links,
     set_status,
-    update_ticket,
 )
-from .merging import MOVE_TO_QUEUE, MergeRefused, merge, merge_refusal
 
 __all__ = [
     "NOTE_MAX_CHARS",
     "MOVE_TO_QUEUE",
+    "AssignmentRefused",
     "Kind",
     "Status",
     "MergeRefused",
     "add_note",
     "assign",
+    "close",
     "helpdesk_staff",
     "mark_read",
     "mark_spam",
+    "mark_unread",
+    "membership_problem",
     "merge",
     "merge_refusal",
     "move_to_queue",
+    "reopen",
+    "resolve",
+    "scrub_sign_in_links",
     "set_status",
     "update_ticket",
 ]

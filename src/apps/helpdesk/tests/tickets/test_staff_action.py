@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.helpdesk.tests.tickets.test_tickets import Kind, Status, new_ticket
 
-from ...models import TicketCategory, TicketMessage
+from ...models import AssignmentGroup, TicketCategory, TicketMessage
 from ...services import tickets
 from .. import corpus
 from ..helpers import FakeReader, helpdesk_staff, make_admin, make_superuser, receive
@@ -72,10 +72,21 @@ class StaffActionTests(TestCase):
         other = new_ticket(unread=True)
 
         self.assertEqual(tickets.set_status([self.ticket, other], Status.CLOSED, actor=self.agent), 2)
-        self.assertEqual(tickets.assign([self.ticket], self.agent, actor=self.agent), 1)
+        self.assertEqual(tickets.assign([self.ticket], self.agent, actor=self.agent), (1, 0))  # (changed, refused)
         self.assertEqual(tickets.mark_read([self.ticket, other]), 1)
         other.refresh_from_db()
         self.assertFalse(other.unread)
+        self.assertEqual(tickets.mark_unread([self.ticket, other]), 2)
+
+    def test_assigning_outside_a_group_with_members_is_refused_and_counted(self):
+        group = AssignmentGroup.objects.create(name="Events")
+        group.members.add(make_admin(apps=["helpdesk"], email="member@example.com"))
+        grouped = new_ticket(assignment_group=group)
+
+        self.assertEqual(tickets.assign([self.ticket, grouped], self.agent, actor=self.agent), (1, 1))
+        grouped.refresh_from_db()
+        self.assertIsNone(grouped.assignee)
+        self.assertFalse(grouped.events.exists())
 
     def test_spam_and_moving_automated_mail_to_the_queue(self):
         automated = new_ticket(
@@ -90,10 +101,13 @@ class StaffActionTests(TestCase):
 
         self.assertEqual(tickets.move_to_queue([automated, self.ticket, merged], actor=self.agent), 2)
         automated.refresh_from_db()
+        self.ticket.refresh_from_db()
+        # Nobody answered either yet: New again, so moving it on is still its first response.
         self.assertEqual(
             (automated.automated, automated.status, automated.closed_at, automated.unread),
-            (False, Status.OPEN, None, True),
+            (False, Status.NEW, None, True),
         )
+        self.assertEqual((self.ticket.status, self.ticket.unread), (Status.NEW, True))
         self.assertEqual(automated.events.get(kind=Kind.RECLASSIFIED).data, {"from": "auto_reply", "to": "human"})
 
     def test_merging_moves_everything_into_the_oldest_ticket(self):

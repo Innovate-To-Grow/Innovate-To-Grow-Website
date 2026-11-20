@@ -75,12 +75,14 @@ class TemplatePrefillTests(ReplyPageTestCase):
     def test_a_chosen_template_fills_the_reply_with_its_placeholders_replaced(self):
         response = self.client.get(f"{self.url}?template={self.template.pk}")
 
-        self.assertEqual(response.context["helpdesk_reply_template"], self.template)
+        filled = f"Hi Pat Doe, about {self.ticket.display_number} (Question about the showcase) — Avery Agent"
         self.assertEqual(
-            response.context["helpdesk_reply_body"],
-            f"Hi Pat Doe, about {self.ticket.display_number} (Question about the showcase) — Avery Agent",
+            response.context["helpdesk_reply_template"],
+            {"id": str(self.template.pk), "name": "Showcase time", "category": "", "body": filled},
         )
+        self.assertEqual(response.context["helpdesk_reply_body"], filled)
         self.assertContains(response, f"Hi Pat Doe, about {self.ticket.display_number}")
+        self.assertContains(response, f'<option value="{self.template.pk}" selected>Showcase time</option>', html=True)
 
     def test_an_unknown_or_malformed_or_inactive_template_fills_nothing(self):
         inactive = ResponseTemplate.objects.create(name="Old", body="Old text", is_active=False)
@@ -97,7 +99,9 @@ class TemplatePrefillTests(ReplyPageTestCase):
 
         response = self.client.get(self.url)
 
-        self.assertEqual(list(response.context["helpdesk_reply_templates"]), [first, self.template])
+        offered = response.context["helpdesk_reply_templates"]
+        self.assertEqual([item["id"] for item in offered], [str(first.pk), str(self.template.pk)])
+        self.assertEqual([item["category"] for item in offered], ["Registration", ""])
 
 
 class ReplyViewTests(ReplyPageTestCase):

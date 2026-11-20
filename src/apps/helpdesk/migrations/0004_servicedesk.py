@@ -488,5 +488,76 @@ class Migration(migrations.Migration):
                 "ordering": ["order", "name"],
             },
         ),
+        # Found by the live check of the admin flows: a group or category that tickets use is protected (switched
+        # off, not deleted), an unconfirmed delivery has a state of its own, clearer help and texts.
+        migrations.AlterField(
+            model_name="helpdesksettings",
+            name="acknowledgement_text",
+            field=models.TextField(
+                db_default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nInnovate to Grow, UC Merced",
+                default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nInnovate to Grow, UC Merced",
+                help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link removed). Only an I2G Master can change it.",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="slatarget",
+            name="is_active",
+            field=models.BooleanField(
+                default=True,
+                help_text="Off: new tickets of this priority (and tickets moved to it) get no SLA; clocks already running keep their due times.",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="ticket",
+            name="assignment_group",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="tickets",
+                to="helpdesk.assignmentgroup",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="ticket",
+            name="category",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="tickets",
+                to="helpdesk.ticketcategory",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="ticketcategory",
+            name="default_group",
+            field=models.ForeignKey(
+                blank=True,
+                help_text="Assignment rule: a ticket given this category while it has no group is assigned to this group.",
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="default_for_categories",
+                to="helpdesk.assignmentgroup",
+            ),
+        ),
+        migrations.AlterField(
+            model_name="ticketmessage",
+            name="delivery_status",
+            field=models.CharField(
+                blank=True,
+                choices=[
+                    ("", "—"),
+                    ("queued", "Queued"),
+                    ("sent", "Sent"),
+                    ("failed", "Failed"),
+                    ("uncertain", "Not confirmed"),
+                ],
+                db_default="",
+                db_index=True,
+                default="",
+                max_length=12,
+            ),
+        ),
         migrations.RunPython(seed_sla_targets, migrations.RunPython.noop),
     ]

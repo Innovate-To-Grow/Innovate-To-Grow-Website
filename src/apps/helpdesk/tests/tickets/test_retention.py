@@ -8,6 +8,7 @@ from apps.core.models import InboundMessage
 from apps.helpdesk.tests.tickets.test_tickets import Kind, Status, new_ticket
 
 from ...models import HelpdeskSettings, IngestRecord, Ticket, TicketAttachment, TicketCategory, TicketMessage
+from ...services.outbound import jobs
 from ...services.tickets import events, retention
 
 
@@ -103,7 +104,7 @@ class EventDescriptionTests(TestCase):
                 {"what": "reply", "error": "Could not be sent."},
                 "The reply was not sent: Could not be sent.",
             ),
-            Kind.NOTIFIED: ({"reason": "group", "count": 3}, "The assignment group's 3 members notified by email"),
+            Kind.NOTIFIED: ({"reason": "group", "count": 3}, "Assignment notice emailed to the group's 3 members"),
             Kind.RESPONDED: ({"by": "reply"}, "First response: a reply was sent"),
             Kind.SLA_BREACHED: ({"which": "response"}, "SLA breached: the response is overdue"),
             Kind.ASSIGNED: ({"from": "", "to": "Avery Agent"}, "Assignee changed: — → Avery Agent"),
@@ -125,6 +126,30 @@ class EventDescriptionTests(TestCase):
         merged_in = events.record(ticket, Kind.MERGED, source=1004, messages=2)
         self.assertEqual(events.describe(merged_in), "I2G-#1004 merged into this ticket (2 messages moved)")
         self.assertEqual(events.describe(events.record(ticket, Kind.CREATED)), "Ticket opened")
+
+    def test_the_variants_of_one_kind(self):
+        ticket = new_ticket()
+        shadow = "Not sent: shadow mode was switched on before it went out."
+        samples = (
+            (Kind.NOTIFIED, {"reason": "assigned", "count": 1}, "Assignment notice emailed to the assignee"),
+            (Kind.NOTIFIED, {"reason": "group", "count": 1}, "Assignment notice emailed to the group's 1 member"),
+            (
+                Kind.REPLY_FAILED,
+                {"what": "reply", "error": shadow},
+                "The reply was not sent: shadow mode was switched on before it went out.",
+            ),
+            (Kind.REPLY_FAILED, {"what": "acknowledgement"}, "The acknowledgement was not sent: delivery failed"),
+            (
+                Kind.REPLY_FAILED,
+                {"what": "reply", "error": jobs.UNCERTAIN_ERROR, "uncertain": True},
+                f"The reply may not have been delivered: {jobs.UNCERTAIN_ERROR}",
+            ),
+            (Kind.RESOLUTION, {"cleared": "solved"}, "Resolution cleared on reopening (was: Solved)"),
+            (Kind.MERGED, {"source": 1004, "messages": 1}, "I2G-#1004 merged into this ticket (1 message moved)"),
+        )
+        for kind, data, expected in samples:
+            with self.subTest(kind=kind, data=data):
+                self.assertEqual(events.describe(events.record(ticket, kind, **data)), expected)
 
 
 class ModelTests(TestCase):

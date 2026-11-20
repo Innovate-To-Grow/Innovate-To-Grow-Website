@@ -1,8 +1,9 @@
 """Replies to the requester: when they are refused (shadow mode, merged, automated or spam, an address that cannot be
 mailed or is the site's own, jobs off, an empty or too long text, a bad Cc), and what a queued reply stores, records
-and enqueues; and which message a reply quotes."""
+and enqueues (the first response only once the job sent it); and which message a reply quotes."""
 
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -16,6 +17,7 @@ from ....services.outbound import jobs, replies
 from ... import corpus
 from ...helpers import helpdesk_staff
 from ...helpers.service import Status, clocked_ticket, new_ticket, sending_settings
+from .test_jobs import DELIVER, claimed, delivered
 
 Kind = TicketEvent.Kind
 Delivery = TicketMessage.Delivery
@@ -33,6 +35,10 @@ class QueueReplyTests(TestCase):
         values.setdefault("body", "Hello Pat, the showcase starts at 10.")
         with self.captureOnCommitCallbacks(execute=True):
             return outbound.queue_reply(ticket or self.ticket, actor=self.agent, **values)
+
+    def send(self, message):
+        with patch(DELIVER, side_effect=delivered):
+            jobs.send_reply_job(claimed(BackgroundJob.objects.get(dedupe_key=f"reply:{message.pk}")))
 
     def test_refused_while_shadow_mode_is_on(self):
         HelpdeskSettings.objects.update(shadow_mode=True)
@@ -60,15 +66,23 @@ class QueueReplyTests(TestCase):
             ("", "Write the reply"),
             ("   \n ", "Write the reply"),
             ("\x00", "Write the reply"),
-            ("Hello. " * 3000, "at most 20,000 characters"),
+            ("Hello. " * 3000, "A reply can be at most 20,000 characters (20,999 written)."),
         ):
             with self.subTest(len(body)), self.assertRaisesMessage(outbound.ReplyRefused, reason):
                 self.reply(body=body)
         self.assertFalse(BackgroundJob.objects.exists())
 
     def test_refused_with_a_bad_cc(self):
-        with self.assertRaisesMessage(outbound.ReplyRefused, "Use plain email addresses"):
+        with self.assertRaisesMessage(
+            outbound.ReplyRefused,
+            '"not an address" in Cc is not a plain email address (use name@example.com, separated by commas).',
+        ):
             self.reply(cc="not an address")
+        with self.assertRaisesMessage(
+            outbound.ReplyRefused, "i2g@g.ucmerced.edu is the helpdesk's own address: it is never copied on a reply."
+        ):
+            self.reply(cc="kim@example.org, I2G@g.ucmerced.edu")
+        self.assertFalse(TicketMessage.objects.filter(kind=TicketMessage.Kind.REPLY).exists())
 
     def test_a_reply_is_stored_queued_recorded_and_enqueued_when_it_commits(self):
         message = self.reply(body=f"  See {corpus.LOGIN_LINK}  ", cc="Kim@example.org, pat@example.org")
@@ -87,10 +101,11 @@ class QueueReplyTests(TestCase):
         self.assertEqual(
             (reply_event.actor, reply_event.data), (self.agent, {"to": "pat@example.org", "cc": ["kim@example.org"]})
         )
-        self.assertEqual(self.ticket.events.get(kind=Kind.RESPONDED).data, {"by": "reply"})
+        # Queued is no response yet: the job records it once the reply went out.
+        self.assertFalse(self.ticket.events.filter(kind=Kind.RESPONDED).exists())
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.participants, ["pat@example.org", "kim@example.org"])
-        self.assertEqual(self.ticket.first_responded_at, message.occurred_at)
+        self.assertIsNone(self.ticket.first_responded_at)
         self.assertEqual(self.ticket.last_activity_at, message.occurred_at)
         self.assertEqual(self.ticket.status, Status.NEW)  # no status given: kept
         job = BackgroundJob.objects.get(kind=jobs.REPLY_JOB_KIND)
@@ -104,30 +119,45 @@ class QueueReplyTests(TestCase):
         self.assertFalse(BackgroundJob.objects.exists())
         self.assertEqual(len(callbacks), 1)
 
-    def test_a_status_chosen_with_the_reply_is_set_and_responded_once(self):
-        self.reply(status=Status.PENDING_CUSTOMER)
+    def test_a_status_chosen_with_the_reply_is_set_at_once_and_is_no_response_until_it_is_sent(self):
+        message = self.reply(status=Status.PENDING_CUSTOMER)
 
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.status, Status.PENDING_CUSTOMER)
         self.assertIsNotNone(self.ticket.sla_paused_at)
-        self.assertEqual(self.ticket.events.filter(kind=Kind.RESPONDED).count(), 1)
+        self.assertIsNone(self.ticket.first_responded_at)  # leaving New with the reply is not the response
+        self.assertFalse(self.ticket.events.filter(kind=Kind.RESPONDED).exists())
         self.assertEqual(self.ticket.events.get(kind=Kind.STATUS).actor, self.agent)
 
+        self.send(message)
+
+        responded = self.ticket.events.get(kind=Kind.RESPONDED)
+        self.assertEqual((responded.actor, responded.data), (self.agent, {"by": "reply"}))
+
     def test_a_later_reply_is_not_another_first_response(self):
-        self.reply()
-        self.reply(body="One more thing.")
+        first = self.reply()
+        second = self.reply(body="One more thing.")
+        self.send(first)
+        self.send(second)
 
         self.assertEqual(self.ticket.events.filter(kind=Kind.RESPONDED).count(), 1)
         self.assertEqual(self.ticket.events.filter(kind=Kind.REPLY).count(), 2)
         self.assertEqual(BackgroundJob.objects.filter(kind=jobs.REPLY_JOB_KIND).count(), 2)
+        first.refresh_from_db()
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.first_responded_at, first.delivered_at)
 
-    def test_a_late_first_reply_breaches_the_response(self):
+    def test_a_late_first_reply_breaches_the_response_when_it_is_sent(self):
         late = clocked_ticket(started=timezone.now() - timedelta(days=2))
 
-        self.reply(late)
+        message = self.reply(late)
+        late.refresh_from_db()
+        self.assertFalse(late.response_breached)  # judged when it goes out, not when queued
+        self.send(message)
 
         late.refresh_from_db()
         self.assertTrue(late.response_breached)
+        self.assertEqual(late.events.get(kind=Kind.SLA_BREACHED).data, {"which": "response"})
 
 
 class LastInboundTests(TestCase):

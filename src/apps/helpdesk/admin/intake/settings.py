@@ -1,32 +1,35 @@
-"""Helpdesk → Settings (one row of admin-editable limits, retention periods and switches) and → Categories
-(assignment groups, SLA targets and response templates are in ``service_desk``).
+"""Helpdesk → Settings: one row of admin-editable limits, retention periods and switches (Categories, Assignment
+groups and Response templates are in ``service_desk``, SLA targets in ``sla_targets``).
 
 Shadow mode is a switch here: on (the default), nothing is sent; off, staff reply from the ticket page and the
 acknowledgement and assignment notifications are sent when switched on. Only an I2G Master (superuser) can change
-these sending switches and the acknowledgement's text; every change is in the admin history and the log. Above the form sits the intake card (its controls are in ``intake``). Saving the
-settings switched on restarts the intake and wakes the ingest, so mail that arrived while the helpdesk was off is read
-and imported.
+these sending switches and the acknowledgement's text (``sending``); others see them read-only, with the reason. Every
+change is in the admin history and the log. Above the form sits the intake card (its controls are in ``intake``).
+Saving the settings switched on restarts the intake and wakes the ingest, so mail that arrived while the helpdesk was
+off is read and imported.
 """
 
 import logging
 
 from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 
 from apps.core.admin import BaseModelAdmin
 
-from ...models import HelpdeskSettings, TicketCategory
+from ...models import HelpdeskSettings
 from ...services.ingest.pipeline import jobs
 from ...services.intake import jobs as intake_jobs
 from ...services.intake import status as intake_status
 from . import controls as intake
+from .sending import SendingFieldsMixin
 
 logger = logging.getLogger(__name__)
 
 
 @admin.register(HelpdeskSettings)
-class HelpdeskSettingsAdmin(BaseModelAdmin):
+class HelpdeskSettingsAdmin(SendingFieldsMixin, BaseModelAdmin):
     # The intake card (its own POST forms) sits above the settings form, outside it.
     change_form_outer_before_template = "admin/helpdesk/intake/card.html"
     fieldsets = (
@@ -86,16 +89,6 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
     class Media:
         css = {"all": ("helpdesk/css/helpdesk.css",)}
 
-    # What makes the helpdesk send mail from the site's address, and what its automatic email says: an I2G Master's
-    # decision, not every Helpdesk grant holder's (a compromised helpdesk account must not turn it into a mailer).
-    SENDING_FIELDS = ("shadow_mode", "send_acknowledgement", "acknowledgement_text", "notify_assignment")
-
-    def get_readonly_fields(self, request, obj=None):
-        fields = tuple(super().get_readonly_fields(request, obj))
-        if getattr(request.user, "is_superuser", False):
-            return fields
-        return (*fields, *self.SENDING_FIELDS)
-
     def has_add_permission(self, request):
         return super().has_add_permission(request) and not HelpdeskSettings.objects.exists()
 
@@ -112,6 +105,8 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         """One row: the list goes straight to it (or to the add form while the defaults are not saved yet)."""
+        if not self.has_view_or_change_permission(request):
+            raise PermissionDenied
         current = HelpdeskSettings.objects.first()
         if current is not None:
             return HttpResponseRedirect(reverse("admin:helpdesk_helpdesksettings_change", args=[current.pk]))
@@ -128,13 +123,3 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
         if obj.enabled:
             jobs.ensure_scheduled()
             intake_jobs.ensure_scheduled()
-
-
-@admin.register(TicketCategory)
-class TicketCategoryAdmin(BaseModelAdmin):
-    require_confirmation = False
-    list_display = ("name", "default_group", "is_active", "order")
-    list_editable = ("is_active", "order")
-    list_select_related = ("default_group",)
-    search_fields = ("name",)
-    ordering = ("order", "name")

@@ -1,5 +1,5 @@
-"""The SLA clock on real tickets: which new tickets get one (from the ingest), pausing and resuming it as staff and
-the requester move the ticket, the queue's breached / due-soon queries, and the worker's breach marking."""
+"""The queue's breached and at-risk queries (at risk: a running clock past the warning share of its priority's
+target, not overdue yet), and the worker's breach marking."""
 
 from datetime import timedelta
 
@@ -7,7 +7,7 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
-from ....models import Ticket, TicketEvent
+from ....models import SLATarget, Ticket, TicketEvent
 from ....services import sla
 from ...helpers.service import Status, new_ticket
 
@@ -52,10 +52,11 @@ class QueueQueryTests(TestCase):
 
         self.assertEqual(self.matching(sla.breached_q(now)), {"flagged", "response overdue", "resolution overdue"})
 
-    def test_due_soon_lists_running_clocks_due_within_the_window(self):
+    def test_at_risk_lists_running_clocks_past_the_warning_share_of_their_priority_target(self):
         now = timezone.now()
-        due_ticket(subject="response soon", response_in=2 * HOUR, resolution_in=90 * HOUR)
-        due_ticket(subject="resolution soon", status=Status.OPEN, first_responded_at=now, resolution_in=5 * HOUR)
+        # Moderate: 24 h to respond, 5 days to resolve; past 75 % is the last 6 h / 30 h before the due time.
+        due_ticket(subject="response at risk", response_in=2 * HOUR, resolution_in=90 * HOUR)
+        due_ticket(subject="resolution at risk", status=Status.OPEN, first_responded_at=now, resolution_in=5 * HOUR)
         due_ticket(
             subject="paused",
             status=Status.PENDING_CUSTOMER,
@@ -63,13 +64,21 @@ class QueueQueryTests(TestCase):
             sla_paused_at=now,
             resolution_in=5 * HOUR,
         )
-        due_ticket(subject="later", response_in=30 * HOUR, resolution_in=90 * HOUR)
+        due_ticket(subject="on track", response_in=10 * HOUR, resolution_in=90 * HOUR)
         due_ticket(subject="overdue", response_in=-HOUR, resolution_in=90 * HOUR)
         due_ticket(subject="closed", status=Status.CLOSED, response_in=HOUR, resolution_in=HOUR)
+        # Critical: 1 h to respond, 8 h to resolve: 2 h left is still on track at 75 %.
+        due_ticket(subject="critical", priority=Ticket.Priority.URGENT, response_in=2 * HOUR, resolution_in=8 * HOUR)
 
-        self.assertEqual(self.matching(sla.due_soon_q(now)), {"response soon", "resolution soon"})
-        self.assertEqual(self.matching(sla.due_soon_q(now, hours=1)), set())
-        self.assertEqual(self.matching(sla.due_soon_q(now, hours=48)), {"response soon", "resolution soon", "later"})
+        self.assertEqual(self.matching(sla.at_risk_q(now, 75)), {"response at risk", "resolution at risk"})
+        self.assertEqual(self.matching(sla.at_risk_q(now, 50)), {"response at risk", "resolution at risk", "on track"})
+        self.assertEqual(self.matching(sla.at_risk_q(now, 99)), set())
+
+    def test_at_risk_needs_a_target(self):
+        due_ticket(subject="response at risk", response_in=HOUR, resolution_in=HOUR)
+        SLATarget.objects.all().delete()
+
+        self.assertEqual(self.matching(sla.at_risk_q(timezone.now(), 75)), set())
 
 
 class MarkBreachesTests(TestCase):

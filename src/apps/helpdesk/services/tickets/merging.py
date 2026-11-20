@@ -67,7 +67,10 @@ def merge(tickets, *, actor) -> Ticket | None:
     Raises ``MergeRefused`` before anything changes when the oldest is automated mail or spam, when another one is
     spam, or when one was merged meanwhile; the rows are judged once locked, so a ticket marked spam since the list
     was shown is caught too. Automated mail moves its messages (still collapsed automated entries) and nothing else:
-    the ticket's status, unread mark, participants and last activity stay as they were.
+    the ticket's status, unread mark, participants and last activity stay as they were. A person's ticket brings its
+    unread mark, and when it was still open and the oldest is resolved or closed, the oldest is reopened (its SLA
+    clock runs again), so the request stays in the queue. A reply still waiting to be sent is not sent: it was
+    written for the ticket it was on, and is marked so on the timeline.
     """
     planned = _planned(tickets)
     if len(planned) < 2:
@@ -80,22 +83,48 @@ def merge(tickets, *, actor) -> Ticket | None:
         if refusal:
             raise MergeRefused(refusal)
         participants = list(target.participants)
-        last_activity = target.last_activity_at
+        last_activity, unread, still_open = target.last_activity_at, target.unread, False
         for source in sources:
+            _stop_queued_replies(source, target)
             moved = TicketMessage.objects.filter(ticket=source).update(ticket=target, updated_at=now)
             if not source.automated:
                 # Automated mail's addresses would let its senders (and anyone it was sent to) thread into the
                 # person's ticket by its number or conversation; its time would move the ticket up the queue.
                 participants += [*source.participants, source.requester_email]
                 last_activity = max(last_activity, source.last_activity_at)
+                unread = unread or source.unread
+                still_open = still_open or source.is_open
             Ticket.objects.filter(pk=source.pk).update(
                 status=Status.MERGED, merged_into=target, closed_at=source.closed_at or now, updated_at=now
             )
             events.record(source, Kind.MERGED, actor=actor, into=target.number)
             events.record(target, Kind.MERGED, actor=actor, source=source.number, messages=moved)
         unique = [address for address in dict.fromkeys(participants) if address]
-        Ticket.objects.filter(pk=target.pk).update(participants=unique, last_activity_at=last_activity, updated_at=now)
+        Ticket.objects.filter(pk=target.pk).update(
+            participants=unique, last_activity_at=last_activity, unread=unread, updated_at=now
+        )
+        if still_open and target.status in (Status.RESOLVED, Status.CLOSED):
+            from .changes import update_ticket
+
+            update_ticket(target, actor=actor, status=Status.OPEN, reason="an open ticket was merged into it")
     return target
+
+
+def _stop_queued_replies(source: Ticket, target: Ticket) -> None:
+    """Replies queued on ``source`` are not sent once it is merged (the send job sends only queued replies)."""
+    error = (
+        f"Not sent: {source.display_number} was merged into {target.display_number} before it went out. "
+        "Write the reply again here if it is still needed."
+    )
+    queued = TicketMessage.objects.filter(
+        ticket=source, kind=TicketMessage.Kind.REPLY, delivery_status=TicketMessage.Delivery.QUEUED
+    )
+    for reply in queued:
+        TicketMessage.objects.filter(pk=reply.pk).update(
+            delivery_status=TicketMessage.Delivery.FAILED, delivery_error=error
+        )
+        what = "acknowledgement" if reply.automatic else "reply"
+        events.record(target, Kind.REPLY_FAILED, what=what, error=error)
 
 
 def _number(ticket: Ticket) -> int:

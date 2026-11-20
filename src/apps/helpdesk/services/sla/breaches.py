@@ -1,13 +1,15 @@
-"""Which tickets' SLA is breached or falls due soon (the queue's SLA filter and view), and the worker's marking of
-clocks that ran past their due time."""
+"""Which tickets' SLA is breached or at risk (the queue's SLA filter and view), and the worker's marking of clocks
+that ran past their due time."""
 
+import operator
 from datetime import datetime, timedelta
+from functools import reduce
 
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from ...models import Ticket, TicketEvent
+from ...models import SLATarget, Ticket, TicketEvent
 from .clock import RUNNING_STATUSES
 
 
@@ -24,12 +26,22 @@ def breached_q(now: datetime) -> Q:
     return Q(response_breached=True) | Q(resolution_breached=True) | _response_overdue(now) | _resolution_overdue(now)
 
 
-def due_soon_q(now: datetime, hours: int = 24) -> Q:
-    """Open tickets with a clock running that falls due within ``hours`` (and is not overdue yet)."""
-    until = now + timedelta(hours=hours)
-    response = Q(first_responded_at__isnull=True, response_due_at__gte=now, response_due_at__lte=until)
-    resolution = Q(sla_paused_at__isnull=True, resolution_due_at__gte=now, resolution_due_at__lte=until)
-    return (response & Q(status__in=Ticket.OPEN_STATUSES)) | (resolution & Q(status__in=RUNNING_STATUSES))
+def at_risk_q(now: datetime, warning_percent: int) -> Q:
+    """Open tickets with a clock running past ``warning_percent`` of its target and not overdue yet: what the queue's
+    SLA column shows as at risk. A clock's due time is its start plus the target (plus the time it stood still), so
+    "past the share" is "due within the rest of the target" for the ticket's priority."""
+    rest = (100 - int(warning_percent)) / 100
+    parts = []
+    for target in SLATarget.objects.all():
+        response_until = now + timedelta(minutes=target.response_minutes * rest)
+        resolution_until = now + timedelta(minutes=target.resolution_minutes * rest)
+        response = Q(first_responded_at__isnull=True, response_due_at__gte=now, response_due_at__lte=response_until)
+        resolution = Q(sla_paused_at__isnull=True, resolution_due_at__gte=now, resolution_due_at__lte=resolution_until)
+        parts.append(
+            Q(priority=target.priority)
+            & ((response & Q(status__in=Ticket.OPEN_STATUSES)) | (resolution & Q(status__in=RUNNING_STATUSES)))
+        )
+    return reduce(operator.or_, parts) if parts else Q(pk__in=[])
 
 
 def mark_breaches(*, now: datetime | None = None, should_stop=None) -> int:

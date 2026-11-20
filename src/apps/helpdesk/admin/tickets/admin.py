@@ -11,14 +11,11 @@ when it runs), and the "Automated & spam" view, where every ticket is one, offer
 from mail, and deleted only by retention or an I2G Master (behind the typed confirmation).
 """
 
-from django.contrib import admin, messages
-from django.contrib.admin import helpers
-from django.http import HttpResponseRedirect
+from django.contrib import admin
 
 from apps.core.admin import BaseModelAdmin
 
 from ...models import Ticket
-from ...services import tickets
 from ...services.tickets import shadow
 from .actions import TicketActionsMixin
 from .filters import AssigneeFilter, GroupFilter, MailTypeFilter, SLAFilter, StatusViewFilter, UnreadFilter
@@ -37,7 +34,7 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         "sla_column",
         "category",
         "group_column",
-        "assignee",
+        "assignee_column",
         "last_activity_at",
         "message_count",
     )
@@ -59,9 +56,11 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
     actions = (
         "assign_to_me",
         "unassign",
+        "resolve_tickets",
         "close_tickets",
         "reopen_tickets",
         "mark_read",
+        "mark_unread",
         "move_to_queue",
         "merge_tickets",
         "mark_spam",
@@ -69,11 +68,14 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
     actions_no_confirmation = (
         "assign_to_me",
         "unassign",
+        "resolve_tickets",
         "close_tickets",
         "reopen_tickets",
         "mark_read",
+        "mark_unread",
         "move_to_queue",
     )
+    empty_value_display = "—"
     fieldsets = (
         (
             "Ticket",
@@ -86,6 +88,7 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
                     "priority",
                     "category",
                     ("assignment_group", "assignee"),
+                    "links_display",
                 )
             },
         ),
@@ -93,7 +96,7 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         (
             "Resolution",
             {
-                "description": "A resolution code is needed to resolve or close the ticket.",
+                "description": "A resolution code is needed to resolve or close the ticket; reopening clears it.",
                 "fields": ("resolution_code", "resolution_notes", "resolved_at"),
             },
         ),
@@ -101,15 +104,15 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         (
             "Mail",
             {
+                "classes": ("collapse",),
                 "fields": (
                     "classification_display",
                     "flags_display",
                     "campaign",
-                    "links_display",
                     "first_message_at",
                     "last_activity_at",
-                    "closed_at",
-                )
+                    "closed_display",
+                ),
             },
         ),
     )
@@ -129,13 +132,14 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         "links_display",
         "first_message_at",
         "last_activity_at",
-        "closed_at",
+        "closed_display",
     )
     change_form_outer_after_template = "admin/helpdesk/ticket/timeline.html"
     list_before_template = "admin/helpdesk/ticket/shadow_notice.html"
 
     class Media:
         css = {"all": ("helpdesk/css/helpdesk.css",)}
+        js = ("helpdesk/js/ticket-page.js",)
 
     # --- access ----------------------------------------------------------------------------------------------------
 
@@ -149,6 +153,12 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
     def has_delete_permission(self, request, obj=None):
         return bool(getattr(request.user, "is_superuser", False)) and super().has_delete_permission(request, obj)
 
+    def has_change_permission(self, request, obj=None):
+        # A merged ticket is read-only (its messages and mail are on the ticket it was merged into).
+        if obj is not None and obj.status == Ticket.Status.MERGED:
+            return False
+        return super().has_change_permission(request, obj)
+
     def _should_skip_confirmation(self, request):
         # Saving the ticket page needs no typed confirmation (it would be noise on every status change). Deleting a
         # ticket (I2G Master only; its messages, files and audit trail go with it) and the merge and spam actions
@@ -157,30 +167,3 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         if request.method == "POST" and getattr(match, "url_name", "") == f"{self.opts.app_label}_ticket_change":
             return True
         return super()._should_skip_confirmation(request)
-
-    def get_action_confirmation_word(self, action_name):
-        return {"merge_tickets": "MERGE", "mark_spam": "SPAM"}.get(
-            action_name, super().get_action_confirmation_word(action_name)
-        )
-
-    def get_actions(self, request):
-        actions = super().get_actions(request)
-        if request.GET.get(MailTypeFilter.parameter_name) == "automated":
-            actions.pop("merge_tickets", None)  # every ticket listed is automated mail or spam: nothing to merge into
-        return actions
-
-    def response_action(self, request, queryset):
-        # A merge the service would refuse is refused here, before staff are asked to type the confirmation word.
-        refusal = self._merge_refusal(request, queryset)
-        if refusal:
-            messages.error(request, refusal)
-            return HttpResponseRedirect(request.get_full_path())
-        return super().response_action(request, queryset)
-
-    def _merge_refusal(self, request, queryset) -> str:
-        action_form = self._bound_action_form(request)
-        if action_form is None or not action_form.is_valid() or action_form.cleaned_data["action"] != "merge_tickets":
-            return ""
-        if not action_form.cleaned_data["select_across"]:
-            queryset = queryset.filter(pk__in=request.POST.getlist(helpers.ACTION_CHECKBOX_NAME))
-        return tickets.merge_refusal(list(queryset))

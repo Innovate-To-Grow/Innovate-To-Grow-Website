@@ -78,13 +78,13 @@ class Ticket(ProjectControlModel):
         help_text="How soon it must be dealt with.",
     )
     category = models.ForeignKey(
-        TicketCategory, null=True, blank=True, on_delete=models.SET_NULL, related_name="tickets"
+        TicketCategory, null=True, blank=True, on_delete=models.PROTECT, related_name="tickets"
     )
     assignment_group = models.ForeignKey(
         "helpdesk.AssignmentGroup",
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,  # a group or category tickets use is switched off, not deleted
         related_name="tickets",
     )
     assignee = models.ForeignKey(

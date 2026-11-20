@@ -1,3 +1,6 @@
+"""Merging from the queue: refused before the typed confirmation when the service would refuse it (into automated
+mail or spam, spam among the sources, fewer than two tickets), and named on the confirmation page when it is not."""
+
 from django.contrib.admin import helpers
 from django.contrib.messages import get_messages
 from django.core.cache import cache
@@ -77,6 +80,20 @@ class MergeAdminTests(TestCase):
         self.assertNotIn(ACTION_SESSION_KEY, self.client.session)
         self.assertEqual(snapshot(), before)
 
+    @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
+    def test_fewer_than_two_unmerged_tickets_are_refused_before_the_typed_confirmation(self):
+        tickets.merge([self.kim, self.pat], actor=self.agent)  # Parking too is merged into Parking now
+        self.kim.refresh_from_db()
+        before = snapshot()
+
+        for selection in ([self.pat], [self.pat, self.kim]):
+            with self.subTest(len(selection)):
+                response = self.act(*selection, follow=True)
+
+                self.assertEqual(self.messages(response), ["Select at least two tickets that are not merged already."])
+                self.assertNotIn(ACTION_SESSION_KEY, self.client.session)
+        self.assertEqual(snapshot(), before)
+
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
     def test_spam_is_refused_as_part_of_a_merge(self):
         before = snapshot()
@@ -86,6 +103,11 @@ class MergeAdminTests(TestCase):
         self.assertEqual(self.messages(response), [spam_source(self.spam)])
         self.assertEqual(snapshot(), before)
 
+    def note(self, *selected) -> str:
+        """The info message the confirmation page shows for a merge of ``selected`` (in number order)."""
+        numbers = ", ".join(ticket.display_number for ticket in selected)
+        return f"Merging {numbers} into {selected[0].display_number} (the oldest)."
+
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
     def test_a_merge_that_turned_into_spam_after_the_confirmation_page_is_refused_when_it_runs(self):
         self.assertIn("confirm-action", self.act(self.pat, self.kim).url)
@@ -94,7 +116,8 @@ class MergeAdminTests(TestCase):
 
         response = self.confirm()
 
-        self.assertEqual(self.messages(response), [into_hidden(self.pat, "spam")])
+        # The note the confirmation page would have shown, then why nothing was merged.
+        self.assertEqual(self.messages(response), [self.note(self.pat, self.kim), into_hidden(self.pat, "spam")])
         self.assertEqual(snapshot(), before)
         self.assertFalse(TicketEvent.objects.filter(kind=Kind.MERGED).exists())
 
@@ -105,6 +128,7 @@ class MergeAdminTests(TestCase):
 
         page = self.client.get(response.url)
         self.assertContains(page, "Merge into the oldest selected ticket (not automated mail or spam)")
+        self.assertContains(page, self.note(self.pat, self.kim))  # the tickets, and the one they go into
         response = self.confirm()
 
         self.kim.refresh_from_db()

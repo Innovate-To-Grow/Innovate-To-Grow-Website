@@ -1,5 +1,6 @@
 """The worker's hourly helpdesk automation: resolved tickets close by themselves after ``auto_close_resolved_days``
-(0: never; a ticket reopened meanwhile is left alone), and running SLA clocks past their due time are flagged."""
+(0: never; a ticket reopened meanwhile is left alone; the timeline says why it closed), and running SLA clocks past
+their due time are flagged."""
 
 from datetime import timedelta
 from unittest.mock import patch
@@ -12,6 +13,7 @@ from apps.core.management.operations import worker_maintenance
 
 from ....models import HelpdeskSettings, Ticket, TicketEvent
 from ....services.sla import automation
+from ....services.tickets import events
 from ...helpers.service import Status, new_ticket
 
 DAY = timedelta(days=1)
@@ -38,8 +40,11 @@ class AutoCloseTests(TestCase):
         open_ticket.refresh_from_db()
         self.assertEqual((old.status, recent.status, open_ticket.status), (Status.CLOSED, Status.RESOLVED, Status.OPEN))
         self.assertEqual(old.resolved_at.date(), (timezone.now() - 8 * DAY).date())  # kept from when it was resolved
+        self.assertEqual(old.resolution_code, "solved")  # closing is no reopening: the resolution stays
         event = old.events.get(kind=TicketEvent.Kind.STATUS)
-        self.assertEqual((event.actor, event.data), (None, {"from": "resolved", "to": "closed"}))
+        reason = "closed automatically 7 days after it was resolved"
+        self.assertEqual((event.actor, event.data), (None, {"from": "resolved", "to": "closed", "reason": reason}))
+        self.assertEqual(events.describe(event), f"Status changed: Resolved → Closed ({reason})")
 
     def test_the_period_comes_from_the_settings(self):
         HelpdeskSettings.objects.create(auto_close_resolved_days=2)
@@ -48,6 +53,16 @@ class AutoCloseTests(TestCase):
         self.assertEqual(automation.auto_close_resolved(), 1)
         ticket.refresh_from_db()
         self.assertEqual(ticket.status, Status.CLOSED)
+        reason = ticket.events.get(kind=TicketEvent.Kind.STATUS).data["reason"]
+        self.assertEqual(reason, "closed automatically 2 days after it was resolved")
+
+    def test_one_day_reads_in_the_singular(self):
+        HelpdeskSettings.objects.create(auto_close_resolved_days=1)
+        ticket = resolved(2)
+
+        self.assertEqual(automation.auto_close_resolved(), 1)
+        reason = ticket.events.get(kind=TicketEvent.Kind.STATUS).data["reason"]
+        self.assertEqual(reason, "closed automatically 1 day after it was resolved")
 
     def test_zero_days_never_closes(self):
         HelpdeskSettings.objects.create(auto_close_resolved_days=0)

@@ -49,6 +49,10 @@ def record_changes(current: Ticket, values: dict, *, actor, name) -> None:
             record(current, kind, actor=actor, **{"from": before, "to": after})
     if "resolution_code" in values or "resolution_notes" in values:
         code = values.get("resolution_code", current.resolution_code)
+        if not code and not values.get("resolution_notes") and current.resolution_code:
+            # Reopening clears the resolution (``changes.reopen_values``).
+            record(current, Kind.RESOLUTION, actor=actor, cleared=current.resolution_code)
+            return
         record(current, Kind.RESOLUTION, actor=actor, code=code, notes="resolution_notes" in values)
 
 
@@ -76,10 +80,13 @@ def _status(event, data) -> str:
 def _merged(event, data) -> str:
     if data.get("into"):
         return f"Merged into I2G-#{data['into']}"
-    return f"I2G-#{data.get('source')} merged into this ticket ({data.get('messages', 0)} messages moved)"
+    moved = int(data.get("messages") or 0)
+    return f"I2G-#{data.get('source')} merged into this ticket ({moved} message{'s' if moved != 1 else ''} moved)"
 
 
 def _resolution(event, data) -> str:
+    if data.get("cleared"):
+        return f"Resolution cleared on reopening (was: {_RESOLUTION.get(data['cleared'], data['cleared'])})"
     code = _RESOLUTION.get(data.get("code") or "", "") or "no code"
     return f"Resolution: {code}" + (" (notes updated)" if data.get("notes") else "")
 
@@ -87,8 +94,8 @@ def _resolution(event, data) -> str:
 def _notified(event, data) -> str:
     if data.get("reason") == "group":
         count = int(data.get("count") or 0)
-        return f"The assignment group's {count} member{'s' if count != 1 else ''} notified by email"
-    return "The assignee notified by email"
+        return f"Assignment notice emailed to the group's {count} member{'s' if count != 1 else ''}"
+    return "Assignment notice emailed to the assignee"
 
 
 def _responded(event, data) -> str:
@@ -97,7 +104,10 @@ def _responded(event, data) -> str:
 
 def _reply_failed(event, data) -> str:
     what = "acknowledgement" if data.get("what") == "acknowledgement" else "reply"
-    return f"The {what} was not sent: {data.get('error') or 'delivery failed'}"
+    error = str(data.get("error") or "delivery failed")
+    if data.get("uncertain"):
+        return f"The {what} may not have been delivered: {error}"
+    return f"The {what} was not sent: {error.removeprefix('Not sent: ')}"
 
 
 _DESCRIBERS = {

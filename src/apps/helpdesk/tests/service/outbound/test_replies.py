@@ -24,13 +24,24 @@ class CanReplyTests(TestCase):
 
     def test_refusals(self):
         cases = (
-            ("shadow mode", new_ticket(), HelpdeskSettings(shadow_mode=True), "Shadow mode is on"),
+            (
+                "shadow mode",
+                new_ticket(),
+                HelpdeskSettings(shadow_mode=True),
+                "Shadow mode is on: nothing is sent from the helpdesk. An I2G Master can switch it off in Helpdesk → "
+                "Settings.",
+            ),
             ("merged", new_ticket(status=Status.MERGED), self.settings, "This ticket was merged"),
             ("automated", new_ticket(automated=True, status=Status.CLOSED), self.settings, "Automated mail and spam"),
             ("spam", new_ticket(status=Status.SPAM), self.settings, "Automated mail and spam"),
             ("no address", new_ticket(requester_email=""), self.settings, "cannot be mailed"),
             ("display name", new_ticket(requester_email="Pat <pat@example.org>"), self.settings, "cannot be mailed"),
-            ("own address", new_ticket(requester_email="I2G@g.ucmerced.edu"), self.settings, "helpdesk's own address"),
+            (
+                "own address",
+                new_ticket(requester_email="I2G@g.ucmerced.edu"),
+                self.settings,
+                "The requester is one of the helpdesk's own addresses.",
+            ),
         )
         for name, ticket, settings, reason in cases:
             with self.subTest(name):
@@ -56,8 +67,18 @@ class ParseCcTests(TestCase):
         self.assertEqual(replies.parse_cc(None), [])
 
     def test_too_many_or_not_plain_addresses_are_refused(self):
-        with self.assertRaisesMessage(replies.ReplyRefused, "At most 10 Cc addresses."):
+        with self.assertRaisesMessage(replies.ReplyRefused, "At most 10 Cc addresses (11 given)."):
             replies.parse_cc(",".join(f"p{n}@example.org" for n in range(11)))
+        self.assertEqual(len(replies.parse_cc(",".join(f"p{n}@example.org" for n in range(10)))), 10)
         for bad in ("not-an-address", "Kim <kim@example.org>", "kim@example.org\r\nBcc: x@example.org"):
-            with self.subTest(bad), self.assertRaisesMessage(replies.ReplyRefused, "Use plain email addresses"):
-                replies.parse_cc(bad)
+            expected = (
+                f'"{bad.lower()}" in Cc is not a plain email address (use name@example.com, separated by commas).'
+            )
+            with self.subTest(bad), self.assertRaisesMessage(replies.ReplyRefused, expected):
+                replies.parse_cc(f"lee@example.org, {bad}")
+
+    def test_the_sites_own_address_is_never_copied(self):
+        with self.assertRaisesMessage(
+            replies.ReplyRefused, "i2g@g.ucmerced.edu is the helpdesk's own address: it is never copied on a reply."
+        ):
+            replies.parse_cc("lee@example.org; I2G@g.ucmerced.edu")

@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
+from django.utils.module_loading import import_string
 
 from apps.core.models import BackgroundJob
 from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
@@ -16,7 +17,7 @@ from apps.core.services.email import DeliveryResult
 
 from ....models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
 from ....services import outbound
-from ....services.outbound import compose, jobs
+from ....services.outbound import compose, jobs, notifications
 from ...helpers import helpdesk_staff
 from ...helpers.service import Status, new_ticket, sending_settings
 
@@ -67,8 +68,11 @@ class RegistrationTests(TestCase):
     def test_both_kinds_are_registered_with_their_handlers(self):
         kinds = registered_job_kinds()
 
-        self.assertIn(jobs.REPLY_JOB_KIND, kinds)
-        self.assertIn(jobs.NOTIFY_JOB_KIND, kinds)
+        self.assertEqual(kinds[jobs.REPLY_JOB_KIND].handler, "apps.helpdesk.services.outbound.jobs.send_reply_job")
+        self.assertEqual(
+            kinds[jobs.NOTIFY_JOB_KIND].handler, "apps.helpdesk.services.outbound.notifications.notify_staff_job"
+        )
+        self.assertIs(import_string(kinds[jobs.NOTIFY_JOB_KIND].handler), notifications.notify_staff_job)
 
 
 class SendReplyJobTests(JobTestCase):
@@ -81,9 +85,11 @@ class SendReplyJobTests(JobTestCase):
         self.assertEqual(email.subject, f"Re: Judging [{self.ticket.display_number}]")
         self.assertEqual((email.to, email.cc), (("pat@example.org",), ("kim@example.org",)))
         self.assertEqual(email.headers, {"X-I2G-Ticket": self.ticket.display_number})
+        self.assertEqual(email.reply_to, ())  # no inbound mailbox known: answers go to the From address
         self.assertIn("Yes, please register.", email.text_body)
         self.assertIn(compose.footer(self.ticket), email.text_body)
         self.assertIn("Can I judge this year?", email.html_body)  # the requester's message, quoted
+        self.assertIn("Pat Doe wrote:\n> Can I judge this year?", email.text_body)  # in the text part too
         message.refresh_from_db()
         self.assertEqual((message.delivery_status, message.delivery_error), (Delivery.SENT, ""))
         self.assertIsNotNone(message.delivered_at)
@@ -118,11 +124,15 @@ class SendReplyJobTests(JobTestCase):
         ack.refresh_from_db()
         self.assertEqual(ack.delivery_status, Delivery.SENT)
 
-    def test_a_message_already_sent_or_gone_or_not_a_reply_is_skipped(self):
+    def test_only_a_reply_still_queued_is_sent(self):
         message, job = self.queue()
-        TicketMessage.objects.filter(pk=message.pk).update(delivery_status=Delivery.SENT)
-
-        self.run_job(job).assert_not_called()
+        for status in (Delivery.SENT, Delivery.FAILED, Delivery.UNCERTAIN, ""):
+            TicketMessage.objects.filter(pk=message.pk).update(delivery_status=status)
+            with self.subTest(status):
+                self.run_job(job).assert_not_called()
+                message.refresh_from_db()
+                self.assertEqual(message.delivery_status, status)
+        self.assertFalse(self.ticket.events.filter(kind=TicketEvent.Kind.REPLY_FAILED).exists())
         for payload in ({"message_id": str(uuid.uuid4())}, {"message_id": str(self.inbound.pk)}):
             job.payload = payload
             with self.subTest(payload):

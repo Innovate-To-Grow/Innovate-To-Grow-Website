@@ -111,22 +111,36 @@ class MergeIsFinalAdminTests(_MergedCase):
         closed = self.act("close_tickets", self.merged)
         reopened = self.act("reopen_tickets", self.merged)
 
-        self.assertEqual([str(message) for message in get_messages(closed.wsgi_request)], ["0 tickets closed."])
-        self.assertEqual([str(message) for message in get_messages(reopened.wsgi_request)], ["0 tickets reopened."])
+        self.assertEqual(
+            [str(message) for message in get_messages(closed.wsgi_request)],
+            [
+                "0 tickets closed. 1 left as it was: only resolved tickets are closed here; resolve the others first "
+                "(they need a resolution code)."
+            ],
+        )
+        self.assertEqual(
+            [str(message) for message in get_messages(reopened.wsgi_request)],
+            [
+                "0 tickets reopened. 1 left as it was: only resolved or closed people's tickets are reopened; for "
+                'automated mail or spam use "Not automated: move to the queue".'
+            ],
+        )
         self.assertEqual(snapshot(), before)
         queue = self.client.get(reverse(CHANGELIST)).context["cl"].result_list
         self.assertEqual({ticket.subject for ticket in queue}, {"Parking"})
 
-    def test_a_merged_tickets_status_is_read_only_on_its_page(self):
+    def test_a_merged_tickets_page_is_read_only(self):
         url = reverse("admin:helpdesk_ticket_change", args=[self.merged.pk])
         page = self.client.get(url)
         before = snapshot()
 
         response = self.client.post(url, {"status": Status.OPEN, "priority": "normal", "category": "", "assignee": ""})
 
-        self.assertNotIn("status", page.context["adminform"].form.fields)
+        self.assertEqual(page.status_code, 200)
+        self.assertEqual(dict(page.context["adminform"].form.fields), {})  # every field is shown read-only
+        self.assertNotContains(page, 'name="_save"')
         self.assertContains(page, "Merged")
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, 403)
         self.assertEqual(snapshot(), before)
 
     def test_merged_is_not_offered_on_a_tickets_page_and_a_posted_one_is_refused(self):
@@ -140,7 +154,9 @@ class MergeIsFinalAdminTests(_MergedCase):
         )
 
         choices = [value for value, _label in page.context["adminform"].form.fields["status"].choices]
-        self.assertEqual(choices, [status for status in Status.values if status != Status.MERGED])
+        # Neither Merged nor Spam (a queue action behind its typed confirmation), and New only while it is New.
+        hidden = (Status.NEW, Status.MERGED, Status.SPAM)
+        self.assertEqual(choices, [status for status in Status.values if status not in hidden])
         self.assertEqual(response.status_code, 200)
         self.assertIn("status", response.context["adminform"].form.errors)
         self.assertEqual(snapshot(), before)

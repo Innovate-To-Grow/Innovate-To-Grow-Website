@@ -1,6 +1,7 @@
 """Assignment notifications: to the new assignee (never the member who made the change), or to the group's members
 when a group is assigned with nobody in it; only to active staff with the Helpdesk grant; never in shadow mode or with
-``notify_assignment`` off. Queued as ``helpdesk.notify_staff`` when the change commits."""
+``notify_assignment`` off. Queued as ``helpdesk.notify_staff`` when the change commits; the timeline records a notice
+only once the job sent it (``test_job_state_and_notices``)."""
 
 from django.core.cache import cache
 from django.test import TestCase
@@ -45,7 +46,7 @@ class AssignmentNotificationTests(TestCase):
                 }
             ],
         )
-        self.assertEqual(self.ticket.events.get(kind=Kind.NOTIFIED).data, {"reason": "assigned", "count": 1})
+        self.assertFalse(self.ticket.events.filter(kind=Kind.NOTIFIED).exists())  # queued, not sent yet
 
     def test_assigning_oneself_notifies_nobody(self):
         self.update(assignee=self.lead)
@@ -79,7 +80,7 @@ class AssignmentNotificationTests(TestCase):
         (payload,) = self.notices()
         self.assertEqual(payload["reason"], "group")
         self.assertEqual(sorted(payload["recipients"]), ["agent2@example.com", "third@example.com"])
-        self.assertEqual(self.ticket.events.get(kind=Kind.NOTIFIED).data, {"reason": "group", "count": 2})
+        self.assertFalse(self.ticket.events.filter(kind=Kind.NOTIFIED).exists())
 
     def test_a_group_assigned_together_with_an_assignee_notifies_only_the_assignee(self):
         group = AssignmentGroup.objects.create(name="Events")
@@ -93,11 +94,14 @@ class AssignmentNotificationTests(TestCase):
     def test_a_group_change_on_an_assigned_ticket_notifies_nobody(self):
         self.update(assignee=self.agent)
         group = AssignmentGroup.objects.create(name="Events")
-        group.members.add(make_admin(apps=["helpdesk"], email="third@example.com"))
+        # The assignee is one of the group's members (a group they are not in is refused: membership rule).
+        group.members.add(self.agent, make_admin(apps=["helpdesk"], email="third@example.com"))
 
         self.update(assignment_group=group)
 
-        self.assertEqual(len(self.notices()), 1)
+        self.ticket.refresh_from_db()
+        self.assertEqual((self.ticket.assignment_group, self.ticket.assignee), (group, self.agent))
+        self.assertEqual(len(self.notices()), 1)  # only the assignment before it
 
     def test_an_empty_group_notifies_nobody(self):
         self.update(assignment_group=AssignmentGroup.objects.create(name="Nobody"))

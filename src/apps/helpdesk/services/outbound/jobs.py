@@ -1,14 +1,14 @@
-"""The helpdesk's two sending jobs, on the transactional email lane (claimed before campaign mail, paced by the facade).
+"""The helpdesk's sending jobs, on the transactional email lane (claimed before campaign mail, paced by the facade).
 
-- ``helpdesk.send_reply`` sends one stored reply or acknowledgement (``TicketMessage`` of ``Kind.REPLY``) to the
-  requester and marks it sent. A reply is never sent twice: the job is not retried once the provider call began
-  (``can_retry_after_claim=False``), and a message already sent is skipped.
-- ``helpdesk.notify_staff`` emails staff that a ticket was assigned to them (or to their group). It carries the
-  ticket's number, subject and admin link, never the requester's message.
+- ``helpdesk.send_reply`` sends one stored reply or acknowledgement (``TicketMessage`` of ``Kind.REPLY``) that is
+  still queued, and marks it sent; a staff reply then is the ticket's first response. A reply is never sent twice:
+  a failure that leaves it uncertain whether the provider took the message is not retried (the reply is marked not
+  confirmed), a refusal the provider reports as temporary is retried later, and only queued replies are sent.
+- ``helpdesk.notify_staff`` (``notifications``) emails staff that a ticket was assigned to them or their group.
 
-Both check shadow mode again when they run: a job queued before staff switched it back on sends nothing. When the
-worker gives up on a reply (failed, or uncertain whether the provider took it), the state handler marks the message
-failed and puts the reason on the ticket's timeline.
+Both check shadow mode again when they run: a job queued before staff switched it back on sends nothing. A staff
+reply that does not go out (failed, not confirmed, or stopped by a re-check) puts its ticket back in front of staff:
+In progress again when it was waiting for the requester (who got nothing), and unread; the reason is on the timeline.
 """
 
 import logging
@@ -19,6 +19,7 @@ from django.utils import timezone
 from apps.core.services.background_jobs.delivery import provider_call_guard, provider_job_error
 
 from ...models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
+from .. import sla
 from ..tickets import shadow
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,16 @@ logger = logging.getLogger(__name__)
 REPLY_JOB_KIND = "helpdesk.send_reply"
 NOTIFY_JOB_KIND = "helpdesk.notify_staff"
 Delivery = TicketMessage.Delivery
+Kind = TicketEvent.Kind
 SHADOW_ON_ERROR = "Not sent: shadow mode was switched on before it went out."
+FAILED_ERROR = (
+    "Could not be sent: the mail service refused it, or every attempt failed. An I2G Master can see the details in "
+    "Email Monitoring."
+)
+UNCERTAIN_ERROR = (
+    "Not confirmed: the mail service did not confirm the reply, so it may or may not have arrived. Check Outlook's "
+    "Sent Items before writing again."
+)
 _ERROR_MAX = 255
 
 
@@ -43,7 +53,7 @@ def register_outbound() -> None:
     )
     register_job_kind(
         NOTIFY_JOB_KIND,
-        handler="apps.helpdesk.services.outbound.jobs.notify_staff_job",
+        handler="apps.helpdesk.services.outbound.notifications.notify_staff_job",
         family=Family.EMAIL,
         lane=Lane.TRANSACTIONAL,
     )
@@ -79,16 +89,40 @@ def enqueue_notice(ticket: Ticket, *, recipients: list[str], reason: str, actor_
 
 def _mark(message_id, status: str, error: str = "", **extra) -> int:
     values = {"delivery_status": status, "delivery_error": error[:_ERROR_MAX], "updated_at": timezone.now(), **extra}
-    return TicketMessage.objects.filter(pk=message_id).exclude(delivery_status=Delivery.SENT).update(**values)
+    return TicketMessage.objects.filter(pk=message_id, delivery_status=Delivery.QUEUED).update(**values)
 
 
-def _failed(message: TicketMessage, error: str) -> None:
+def _failed(message: TicketMessage, error: str, status: str = Delivery.FAILED) -> None:
+    from ..tickets.changes import update_ticket
+
     with transaction.atomic():
-        if _mark(message.pk, Delivery.FAILED, error):
-            kind = "acknowledgement" if message.automatic else "reply"
-            TicketEvent.objects.create(
-                ticket_id=message.ticket_id, kind=TicketEvent.Kind.REPLY_FAILED, data={"what": kind, "error": error}
-            )
+        if not _mark(message.pk, status, error):
+            return
+        what = "acknowledgement" if message.automatic else "reply"
+        data = {"what": what, "error": error, **({"uncertain": True} if status == Delivery.UNCERTAIN else {})}
+        TicketEvent.objects.create(ticket_id=message.ticket_id, kind=Kind.REPLY_FAILED, data=data)
+        ticket = Ticket.objects.filter(pk=message.ticket_id).first()
+        if message.automatic or ticket is None:
+            return
+        if ticket.status == Ticket.Status.PENDING_CUSTOMER:
+            update_ticket(ticket, actor=None, status=Ticket.Status.OPEN, reason="the reply did not go out")
+        Ticket.objects.filter(pk=ticket.pk).update(unread=True)
+
+
+def _sent(message: TicketMessage) -> None:
+    """Mark the reply sent; a staff reply is the ticket's first response (judged at the time it went out)."""
+    now = timezone.now()
+    with transaction.atomic():
+        if not _mark(message.pk, Delivery.SENT, delivered_at=now) or message.automatic:
+            return
+        ticket = Ticket.objects.select_for_update().filter(pk=message.ticket_id).first()
+        values = sla.responded_values(ticket, now) if ticket is not None else {}
+        if not values:
+            return
+        Ticket.objects.filter(pk=ticket.pk).update(**values, updated_at=now)
+        TicketEvent.objects.create(ticket=ticket, kind=Kind.RESPONDED, actor=message.author, data={"by": "reply"})
+        if values.get("response_breached") and not ticket.response_breached:
+            TicketEvent.objects.create(ticket=ticket, kind=Kind.SLA_BREACHED, data={"which": "response"})
 
 
 def send_reply_job(job) -> None:
@@ -98,7 +132,7 @@ def send_reply_job(job) -> None:
     from . import compose, replies
 
     message = TicketMessage.objects.select_related("ticket").filter(pk=job.payload.get("message_id")).first()
-    if message is None or message.kind != TicketMessage.Kind.REPLY or message.delivery_status == Delivery.SENT:
+    if message is None or message.kind != TicketMessage.Kind.REPLY or message.delivery_status != Delivery.QUEUED:
         return
     settings = HelpdeskSettings.load()
     if not shadow.sending_allowed(settings):
@@ -114,11 +148,14 @@ def send_reply_job(job) -> None:
         _failed(message, "Not sent: the acknowledgement was switched off before it went out.")
         return
     quoted = None if message.automatic else replies.last_inbound(ticket)
+    mailbox = replies.reply_mailbox(ticket)
+    reply_to = (mailbox,) if mailbox and mailbox.lower() != str(message.from_address).lower() else ()
     email = EmailMessage(
         subject=message.subject or compose.reply_subject(ticket),
         to=tuple(message.to_addresses),
         cc=tuple(message.cc_addresses),
-        text_body=compose.reply_text(message.body_text, ticket),
+        reply_to=reply_to,
+        text_body=compose.reply_text(message.body_text, ticket, quoted),
         html_body=compose.reply_html(message.body_text, ticket, quoted),
         headers={"X-I2G-Ticket": ticket.display_number, **(compose.AUTOMATIC_HEADERS if message.automatic else {})},
     )
@@ -128,7 +165,7 @@ def send_reply_job(job) -> None:
             deliver_email(email, before_provider_call=provider_call_guard(job))
     except ProviderDeliveryError as exc:
         raise provider_job_error(exc) from exc
-    _mark(message.pk, Delivery.SENT, delivered_at=timezone.now())
+    _sent(message)
 
 
 def reply_job_state(job) -> None:
@@ -139,38 +176,8 @@ def reply_job_state(job) -> None:
     message = TicketMessage.objects.filter(pk=job.payload.get("message_id")).first()
     if message is None:
         return
+    # The provider's own error stays in the job and the server log; staff get a fixed text (no provider detail).
     if job.status == BackgroundJob.Status.UNCERTAIN:
-        error = "It is not certain the reply was delivered (the mail service did not confirm it). Check Outlook."
+        _failed(message, UNCERTAIN_ERROR, Delivery.UNCERTAIN)
     else:
-        # The provider's own error stays in the job and the server log; staff get a fixed text (no provider detail).
-        error = "Could not be sent: the mail service refused it, or every attempt failed. See Email Monitoring."
-    _failed(message, error)
-
-
-def notify_staff_job(job) -> None:
-    from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
-    from apps.core.services.email import EmailMessage, deliver_email, email_tracking
-
-    from . import compose
-
-    ticket = Ticket.objects.filter(pk=job.payload.get("ticket_id")).first()
-    recipients = tuple(job.payload.get("recipients") or ())
-    if ticket is None or not recipients or not shadow.sending_allowed(HelpdeskSettings.load()):
-        return
-    reason = job.payload.get("reason")
-    actor = job.payload.get("actor") or "Someone"
-    if reason == "group":
-        group = ticket.assignment_group.name if ticket.assignment_group_id else "your group"
-        what, lead = "Assigned to your group", f"{actor} assigned {ticket.display_number} to {group}."
-    else:
-        what, lead = "Assigned to you", f"{actor} assigned {ticket.display_number} to you."
-    text = (
-        f"{lead}\n\nSubject: {ticket.subject or '(no subject)'}\nRequester: {ticket.requester_email}\n"
-        f"Priority: {ticket.get_priority_display()}\n\nOpen the ticket: {compose.ticket_admin_url(ticket)}\n"
-    )
-    email = EmailMessage(subject=compose.notice_subject(ticket, what), to=recipients, text_body=text)
-    try:
-        with email_tracking(category="helpdesk_notice", source_type="helpdesk.ticket", source_id=ticket.pk):
-            deliver_email(email, before_provider_call=provider_call_guard(job))
-    except ProviderDeliveryError as exc:
-        raise provider_job_error(exc) from exc
+        _failed(message, FAILED_ERROR)

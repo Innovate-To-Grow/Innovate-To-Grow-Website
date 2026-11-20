@@ -1,3 +1,5 @@
+"""Helpdesk → Queue actions on misclassified mail (back to the queue) and the ones behind a typed confirmation."""
+
 from django.test import override_settings
 from django.urls import reverse
 
@@ -9,7 +11,9 @@ class ActionTests(_ActionCase):
         response = self.act("move_to_queue", self.automated, follow=True)
 
         self.automated.refresh_from_db()
-        self.assertEqual((self.automated.automated, self.automated.status), (False, Status.OPEN))
+        # Nobody answered it yet: it is New again, so moving it on is still its first response.
+        self.assertEqual((self.automated.automated, self.automated.status), (False, Status.NEW))
+        self.assertTrue(self.automated.unread)
         self.assertContains(response, "1 ticket moved to the queue.")
 
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)

@@ -14,7 +14,7 @@ The rules (Hongzhe's decision of 2026-11-11 on top of item2-helpdesk-bounces-pla
 - The site's own messages keep no body or attachment (they may hold sign-in codes).
 - A person's new ticket starts with medium impact and urgency (moderate priority) and, unless it is backfilled, its
   SLA clock (``sla``); automated mail starts low and has no clock. With sending on and the acknowledgement
-  switched on, the requester is told the ticket number (``outbound.replies.queue_acknowledgement``).
+  switched on, the requester is told the ticket number (``outbound.acknowledgement``).
 """
 
 from dataclasses import dataclass, replace
@@ -30,7 +30,7 @@ from apps.mail.models import EmailCampaign
 
 from ....models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
 from ... import sla
-from ...outbound import replies
+from ...outbound import acknowledgement
 from ...sla import priority
 from ...tickets import events, numbering
 from ..reading.message import ParsedMessage
@@ -70,7 +70,7 @@ def store(
         if not created:
             _joined(ticket, message, classified, rule, own)
         elif not classified.automated:
-            replies.queue_acknowledgement(ticket, message, settings)
+            acknowledgement.queue_acknowledgement(ticket, message, settings)
         for number in match.mentions:
             events.record(ticket, TicketEvent.Kind.MENTION, number=number)
     return Stored(ticket, message, created=created, rule=rule)

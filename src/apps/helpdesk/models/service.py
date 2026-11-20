@@ -4,6 +4,7 @@ templates, and the impact / urgency scale and resolution codes a ticket uses.
 - An **assignment group** is a team of staff (Events, Projects, Technical, …). A ticket has a group and, within it,
   an assignee; "My groups" lists the tickets of every group the signed-in member belongs to. A category may name a
   default group: setting that category on a ticket without a group assigns the group too (an assignment rule).
+  A group or category that tickets (or a category default) still use cannot be deleted: it is switched off instead.
 - An **SLA target** says, for one priority, how long the first response and the resolution may take. A ticket's
   clock starts when its first message arrived; the resolution clock pauses while the ticket waits for the requester
   and while it is resolved or closed (``services.sla``). Calendar time, not business hours.
@@ -12,6 +13,7 @@ templates, and the impact / urgency scale and resolution codes a ticket uses.
 """
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
@@ -49,7 +51,7 @@ class TicketCategory(ProjectControlModel):
         "helpdesk.AssignmentGroup",
         null=True,
         blank=True,
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         related_name="default_for_categories",
         help_text="Assignment rule: a ticket given this category while it has no group is assigned to this group.",
     )
@@ -105,7 +107,11 @@ class SLATarget(ProjectControlModel):
         validators=[MinValueValidator(1), MaxValueValidator(365 * DAY)],
         help_text="Minutes until the ticket should be resolved, not counting the time it waits for the requester.",
     )
-    is_active = models.BooleanField(default=True, help_text="Off: tickets of this priority have no SLA.")
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Off: new tickets of this priority (and tickets moved to it) get no SLA; clocks already "
+        "running keep their due times.",
+    )
 
     class Meta:
         ordering = ["priority"]
@@ -116,6 +122,11 @@ class SLATarget(ProjectControlModel):
         from .ticket import Ticket
 
         return f"SLA for {dict(Ticket.Priority.choices).get(self.priority, self.priority)}"
+
+    def clean(self):
+        super().clean()
+        if self.response_minutes and self.resolution_minutes and self.response_minutes > self.resolution_minutes:
+            raise ValidationError({"response_minutes": "The first response cannot be due after the resolution."})
 
 
 class ResponseTemplate(ProjectControlModel):

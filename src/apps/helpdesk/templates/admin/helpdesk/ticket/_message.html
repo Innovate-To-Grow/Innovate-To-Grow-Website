@@ -7,10 +7,12 @@
   {% if message.sent_at %}<dt>Date header</dt><dd>{{ message.sent_at|date:"M j, Y H:i" }} (as claimed by the sender)</dd>{% endif %}
   {% if message.auth_summary %}<dt>Authentication</dt><dd>{% for key, value in message.auth_summary.items %}{{ key|upper }} {{ value }}{% if not forloop.last %} · {% endif %}{% endfor %}</dd>{% endif %}
 </dl>
-{% if message.scam_level == "medium" %}
+{% if message.scam_level == "medium" or message.scam_level == "high" %}
   <p class="i2g-helpdesk-warning" role="note">
     <span class="material-symbols-outlined" aria-hidden="true">gpp_maybe</span>
-    Suspicious: the scam checks found warning signs. Verify the sender before acting on it, and do not open its links.
+    {% if message.scam_level == "high" %}Marked as spam by the scam checks.{% else %}Suspicious: the scam checks found warning signs.{% endif %}
+    Verify the sender before acting on it, and do not open its links.
+    {% if message.scam_reasons %}<span class="i2g-helpdesk-reasons">Why: {{ message.scam_reasons|join:"; " }}.</span>{% endif %}
   </p>
 {% endif %}
 {% if message.body_purged_at %}

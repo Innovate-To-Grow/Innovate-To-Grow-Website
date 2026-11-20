@@ -2,6 +2,7 @@
 
 from datetime import UTC, datetime
 from email.message import EmailMessage
+from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
@@ -121,6 +122,23 @@ class HeaderTests(SimpleTestCase):
 
         self.assertEqual(mime.addresses(value), [("José", "jose@example.org"), ("", "b@example.org")])
         self.assertEqual(mime.addresses(value, limit=1), [("José", "jose@example.org")])
+
+    def test_addresses_unfold_a_display_name_folded_inside_its_quotes(self):
+        # Read folded, the comma in a long "Last, First - Department" name split it into an entry with no address.
+        expected = [("Smith, Jane - Office of the Registrar, University", "jsmith@example.edu")]
+        raw = b'From: "Smith, Jane - Office of the Registrar,\r\n University" <JSmith@example.edu>\r\n\r\nbody'
+
+        self.assertEqual(mime.addresses(mime.first(mime.header_map(mime.parse(raw)), "from")), expected)
+        for fold in ("\r\n ", "\r\n\t", "\n "):
+            with self.subTest(fold=fold):
+                value = f'"Smith, Jane - Office of the Registrar,{fold}University" <JSmith@example.edu>'
+                self.assertEqual(mime.addresses(value), expected)
+        folded_list = "a@example.org,\r\n Kim <kim@example.org>"
+        self.assertEqual(mime.addresses(folded_list), [("", "a@example.org"), ("Kim", "kim@example.org")])
+
+    def test_addresses_the_parser_cannot_read_are_no_addresses(self):
+        with patch.object(mime, "getaddresses", side_effect=IndexError("malformed")):
+            self.assertEqual(mime.addresses("Pat <pat@example.org>"), [])
 
     def test_message_ids_keep_the_most_recent(self):
         chain = " ".join(f"<id{index}@example.org>" for index in range(60))
