@@ -28,7 +28,7 @@ the H2 phase is built as described below (replies, acknowledgement, notification
 | **Queue** | People's open tickets (new, in progress, on hold), most recent activity first. A dot marks an unread customer message. |
 | **My Tickets** / **My Groups** / **Unassigned** | The same list, assigned to you / to an assignment group you are a member of / to nobody. |
 | **SLA Breached** | Tickets whose first response or resolution is overdue (flagged, or past due and not flagged yet). |
-| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here. A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
+| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here: it becomes a person's unread ticket, New when nobody answered it yet (else In progress), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
 | **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry**. |
 | **Categories**, **Assignment Groups**, **SLA Targets**, **Response Templates** | Ticket categories (each may name a default group); the teams that work tickets; the response and resolution targets per priority (only an I2G Master changes them); canned replies. One that tickets still use is switched off, not deleted. |
 | **Settings** | The helpdesk's limits, retention periods and switches (shadow mode, acknowledgement and notifications: only an I2G Master changes those; auto-close), under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
@@ -38,8 +38,8 @@ resolved & closed / one status / any; **Assignee**; **Assignment group**: my gro
 inactive group too while tickets have it; **SLA**: breached / at risk (past `sla_warning_percent` of its target) / no
 SLA; **Unread**; priority; category) and the search (the subject, or the requester's address or name) narrow the
 queue. A ticket **number** typed in the search (`1234` or `I2G-#1234`) finds that ticket whatever the filters (a
-closed or automated one too), listed first. The **SLA** column shows a breach of either clock first (it stays shown
-after a late response), else the clock that matters now: the first response until it is met, then the resolution
+closed or automated one too), listed first. The **SLA** column shows a breach of either clock first (flagged, or
+overdue and not flagged yet; it stays shown after a late response), else the clock that matters now: the first response until it is met, then the resolution
 (due time, "At risk" in words, paused with the time left, or met). Priority sorts by severity, Status by the
 ticket's life cycle, SLA by the due time of the clock it shows.
 
@@ -112,13 +112,16 @@ and only an I2G Master changes them (a desk cannot loosen its own targets; Helpd
 - The clock starts when the ticket's first message arrived. Automated mail, backfilled mail (imported more than
   `backfill_age_hours` late) and tickets from before this release have no clock.
 - **First response** is met when the first reply from the ticket is sent (not when it is queued: a reply that never
-  goes out answers nobody), or by staff moving the ticket out of New (the site cannot see answers written in Outlook;
-  moving the ticket on stands for them). The reply form's own status change waits for its reply to be sent. The
-  acknowledgement does not count.
+  goes out answers nobody; a late one flags the response breached when it is sent), or by staff moving the ticket
+  on while it has none (out of New, typically; the site cannot see answers written in Outlook, and moving the ticket
+  on stands for them). The reply form's own status change waits for its reply to be sent; a reply that did not go
+  out puts a ticket nobody answered back to New. The acknowledgement does not count.
 - **Resolution** runs while the ticket is New, In progress or On hold – awaiting internal, and stands still while it
   is On hold – awaiting requester, Resolved or Closed. When it runs again (the requester replied, the ticket was
   reopened) the time it stood still is added to its due time.
-- A priority change sets the new priority's targets, from the same start, and judges both clocks again.
+- A priority change sets the new priority's targets, from the same start, and judges both clocks again: a breach the
+  new targets do not have is cleared ("SLA breach cleared" on the timeline, with who changed it), and a later one is
+  recorded again.
 - A clock is **at risk** once `sla_warning_percent` (75 %) of its time is used and **breached** once its due time
   passes before it is met. Breaches are flagged when they are seen (a change on the ticket, or the worker's hourly
   maintenance), each with an "SLA breached" line on the timeline; the queue's SLA column and filter also show
@@ -147,7 +150,8 @@ module imports a sending API, and that each job checks shadow mode before it sen
   provider's error in Email Monitoring) or Not confirmed (the mail service did not confirm it: check Outlook's Sent
   Items before writing again). A refusal the provider reports as temporary is retried later; a send that may have
   gone out is never retried, so a reply is never sent twice. A reply that does not go out puts its ticket back In
-  progress (from On hold – awaiting requester, who got nothing) and unread.
+  progress (from On hold – awaiting requester, who got nothing; New again when nobody answered the ticket yet) and
+  unread.
 - **Acknowledgement** (`send_acknowledgement`, off by default). When a person's message opens a new ticket, the
   requester gets `acknowledgement_text` with the ticket number. Its address comes from inbound mail, so it must not
   be a relay: it is sent only when the message passed **DMARC** (or Exchange's composite authentication), so a forged
@@ -164,9 +168,10 @@ module imports a sending API, and that each job checks shadow mode before it sen
   change, only to active staff with the Helpdesk app, never for automated mail, spam or a merged ticket. The job
   checks all of that again when it runs (the switch, shadow mode, the ticket, and that each recipient is still its
   assignee or a member of its group); the timeline says "Assignment notice emailed" once it went out. The email
-  names the ticket (number, subject without links, requester, priority) and links to the ticket page
-  (`BACKEND_URL`); it never contains the requester's message, is marked automatic (`Auto-Submitted: auto-generated`)
-  and asks not to be answered (an answer would reach the mailbox as a ticket).
+  names the ticket (number, subject without links or host names, requester, priority) and links to the ticket page
+  (`BACKEND_URL`); it never contains the requester's message, is marked automatic (`Auto-Submitted:
+  auto-generated`, `X-Auto-Response-Suppress: All`) and asks not to be answered: an answer reaches the mailbox as a
+  ticket of its own (staff mail is not told apart from a requester's).
 - Switching shadow mode back on stops every helpdesk email not sent yet: each job checks it again when it runs (a
   reply then shows as Failed: "shadow mode was switched on").
 
@@ -320,7 +325,7 @@ intake's own controls ([Intake controls](#intake-controls)).
 | `shadow_mode` | on | On: nothing is ever sent. Off: replies from the ticket page, and the acknowledgement and notifications below when they are on. Only an I2G Master changes it. |
 | `send_acknowledgement`, `acknowledgement_text` | off, a short thank-you naming `{ticket}` | Email the requester when their message opens a new ticket ([Replies and notifications](#replies-and-notifications)). Only an I2G Master changes them. |
 | `notify_assignment` | on | Email staff a ticket is assigned to (or their group's members). Only an I2G Master changes it. |
-| `auto_close_resolved_days` | 7 | Resolved tickets close by themselves after this many days (0: never); the timeline says it was automatic. |
+| `auto_close_resolved_days` | 7 | Resolved tickets close by themselves after this many days (0: never); the timeline reads "Resolved → Closed (closed automatically: resolved more than N days ago)", with no actor. |
 | `sla_warning_percent` | 75 | A running SLA clock is shown (and filtered) as at risk once this share of its time is used. |
 | `pause_while_campaign_sending` | on | Wait while a campaign is sending. |
 | `ingest_batch_size`, `ingest_max_seconds`, `max_attempts` | 100, 60, 5 | Budget of one run; attempts before a message is listed under Ingest Problems. |

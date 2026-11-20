@@ -139,8 +139,12 @@ def update_ticket(ticket: Ticket, *, actor, first_response: bool = True, reason:
         if responded:
             events.record(current, Kind.RESPONDED, actor=actor, by="status")
         for which in ("response", "resolution"):
-            if sla_values.get(f"{which}_breached") and not getattr(current, f"{which}_breached"):
+            # A breach the change brings to light, or one a new priority's target no longer has (both on record).
+            before, after = getattr(current, f"{which}_breached"), sla_values.get(f"{which}_breached")
+            if after and not before:
                 events.record(current, Kind.SLA_BREACHED, which=which)
+            elif after is False and before:
+                events.record(current, Kind.SLA_BREACHED, actor=actor, which=which, cleared=True)
         changed = [field for field in FIELDS if field in values]
         if values or sla_values:
             Ticket.objects.filter(pk=current.pk).update(**values, **sla_values, updated_at=now)

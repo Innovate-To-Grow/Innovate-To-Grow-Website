@@ -1,13 +1,14 @@
 """A staff reply that does not go out puts its ticket back in front of staff: failed, not confirmed, or stopped by the
 job's re-check (shadow mode switched on meanwhile, the ticket marked spam or merged), a ticket that was waiting for
-the requester is In progress again with the reason on its timeline (its clock running again), and the ticket is
-unread. An acknowledgement that does not go out changes nothing on its ticket. Each reply is marked once."""
+the requester is New again while nobody answered it (moving it on then is its first response) or In progress once
+answered, with the reason on its timeline (its clock running again), and the ticket is unread. An acknowledgement
+that does not go out changes nothing on its ticket. Each reply is marked once."""
 
 from apps.core.models import BackgroundJob
 
 from ....models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
 from ....services.outbound import jobs
-from ....services.tickets import events
+from ....services.tickets import events, update_ticket
 from ...helpers.service import Status, clocked_ticket
 from ..outbound.test_jobs import JobTestCase, claimed
 
@@ -36,17 +37,18 @@ class UndeliveredReplyTests(JobTestCase):
         self.assertIsNotNone(self.ticket.sla_paused_at)
         return message, job
 
-    def assert_back_in_front_of_staff(self):
+    def assert_back_in_front_of_staff(self, to=Status.NEW):
         self.ticket.refresh_from_db()
-        self.assertEqual((self.ticket.status, self.ticket.unread), (Status.OPEN, True))
+        self.assertEqual((self.ticket.status, self.ticket.unread), (to, True))
         self.assertIsNone(self.ticket.sla_paused_at)  # the resolution clock runs again
         back = [event for event in self.ticket.events.filter(kind=Kind.STATUS) if event.data["from"] == WAITING]
         self.assertEqual(len(back), 1)
-        expected = {"from": WAITING, "to": Status.OPEN, "reason": "the reply did not go out"}
+        expected = {"from": WAITING, "to": to, "reason": "the reply did not go out"}
         self.assertEqual((back[0].actor, back[0].data), (None, expected))
+        label = "New" if to == Status.NEW else "In progress"
         self.assertEqual(
             events.describe(back[0]),
-            "Status changed: On hold – awaiting requester → In progress (the reply did not go out)",
+            f"Status changed: On hold – awaiting requester → {label} (the reply did not go out)",
         )
 
     def failure(self) -> str:
@@ -60,7 +62,23 @@ class UndeliveredReplyTests(JobTestCase):
         self.assert_back_in_front_of_staff()
         message.refresh_from_db()
         self.assertEqual(message.delivery_status, Delivery.FAILED)
-        self.assertEqual(self.failure(), f"The reply was not sent: {jobs.FAILED_ERROR}")
+        lead = "Could not be sent: "
+        self.assertEqual(self.failure(), f"The reply was not sent: {jobs.FAILED_ERROR.removeprefix(lead)}")
+        # Nobody answered the requester: moving the ticket on is still its first response.
+        self.assertIsNone(self.ticket.first_responded_at)
+        update_ticket(self.ticket, actor=self.agent, status=Status.OPEN)
+        self.ticket.refresh_from_db()
+        self.assertIsNotNone(self.ticket.first_responded_at)
+
+    def test_a_ticket_answered_before_goes_back_in_progress(self):
+        message, job = self.waiting_reply()
+        responded = self.ticket.sla_started_at
+        Ticket.objects.filter(pk=self.ticket.pk).update(first_responded_at=responded)
+
+        finish(job, BackgroundJob.Status.FAILED)
+
+        self.assert_back_in_front_of_staff(Status.OPEN)
+        self.assertEqual(self.ticket.first_responded_at, responded)
 
     def test_a_reply_the_mail_service_did_not_confirm(self):
         message, job = self.waiting_reply()
@@ -70,7 +88,9 @@ class UndeliveredReplyTests(JobTestCase):
         self.assert_back_in_front_of_staff()
         message.refresh_from_db()
         self.assertEqual(message.delivery_status, Delivery.UNCERTAIN)
-        self.assertEqual(self.failure(), f"The reply may not have been delivered: {jobs.UNCERTAIN_ERROR}")
+        lead = "Not confirmed: "
+        expected = f"The reply may not have been delivered: {jobs.UNCERTAIN_ERROR.removeprefix(lead)}"
+        self.assertEqual(self.failure(), expected)
 
     def test_a_reply_stopped_because_shadow_mode_was_switched_on(self):
         message, job = self.waiting_reply()

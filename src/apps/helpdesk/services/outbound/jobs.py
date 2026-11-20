@@ -8,7 +8,8 @@
 
 Both check shadow mode again when they run: a job queued before staff switched it back on sends nothing. A staff
 reply that does not go out (failed, not confirmed, or stopped by a re-check) puts its ticket back in front of staff:
-In progress again when it was waiting for the requester (who got nothing), and unread; the reason is on the timeline.
+unread, and no longer waiting for the requester (who got nothing): New again when nobody answered it yet, else In
+progress; the reason is on the timeline.
 """
 
 import logging
@@ -105,7 +106,10 @@ def _failed(message: TicketMessage, error: str, status: str = Delivery.FAILED) -
         if message.automatic or ticket is None:
             return
         if ticket.status == Ticket.Status.PENDING_CUSTOMER:
-            update_ticket(ticket, actor=None, status=Ticket.Status.OPEN, reason="the reply did not go out")
+            # Back in front of staff: New again while nobody answered it yet (moving it on is still its first
+            # response), else In progress. The system's own move is no response.
+            back = Ticket.Status.NEW if ticket.first_responded_at is None else Ticket.Status.OPEN
+            update_ticket(ticket, actor=None, status=back, reason="the reply did not go out", first_response=False)
         Ticket.objects.filter(pk=ticket.pk).update(unread=True)
 
 

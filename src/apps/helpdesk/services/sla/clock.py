@@ -106,9 +106,10 @@ def update_values(
     current: Ticket, values: dict, status: str | None, now: datetime, *, respond: bool = True
 ) -> tuple[dict, bool]:
     """The clock's columns for ``update_ticket``'s changes (``values``, and a move to ``status`` when not None), and
-    whether this is the first response (staff moving the ticket out of New; not with ``respond`` False, for a reply's
-    own status change, whose sending is the response). Both are judged on the row as it will be once a priority
-    change in the same save applies its new due times."""
+    whether this is the first response: staff moving a ticket on while it has none yet (out of New, typically, or
+    back from a reply that did not go out); not with ``respond`` False (a reply's own status change, whose sending is
+    the response, or the system's own moves), nor a move to spam. Both are judged on the row as it will be once a
+    priority change in the same save applies its new due times."""
     result, responded = {}, False
     if "priority" in values:
         result.update(priority_values(current, values["priority"], now))
@@ -116,7 +117,9 @@ def update_values(
         return result, responded
     staged = Ticket(**{**_clock(current), **{key: value for key, value in result.items() if key in CLOCK_FIELDS}})
     staged.status = current.status
-    if respond and current.status == Status.NEW and status != Status.SPAM:
+    # Without a clock (tickets from before the SLA, automated mail) only leaving New counts, as it always did.
+    unanswered = current.first_responded_at is None and (current.status == Status.NEW or current.sla_started_at)
+    if respond and unanswered and status != Status.SPAM:
         first = responded_values(staged, now)
         if first:
             result.update(first)

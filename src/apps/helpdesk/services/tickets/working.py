@@ -120,10 +120,15 @@ def move_to_queue(tickets, *, actor) -> int:
                 continue
             status = Status.NEW if current.first_responded_at is None else Status.OPEN
             values = {"automated": False, "status": status, "closed_at": None, "resolved_at": None, "unread": True}
-            if (current.impact, current.urgency) == AUTOMATED_DEFAULT:
-                # Automated mail starts low; a person's message starts where any other does.
+            if current.automated and (current.impact, current.urgency) == AUTOMATED_DEFAULT:
+                # Automated mail starts low; a person's message starts where any other does (a person's ticket staff
+                # marked spam keeps the impact and urgency staff gave it).
                 impact, urgency = PERSON_DEFAULT
-                values.update(impact=impact, urgency=urgency, priority=priority_for(impact, urgency))
+                reset = {"impact": impact, "urgency": urgency}
+                if priority_for(impact, urgency) != current.priority:
+                    reset["priority"] = priority_for(impact, urgency)
+                events.record_changes(current, reset, actor=actor, name=_name)
+                values.update(reset)
             if current.sla_started_at is None:
                 # Automated mail never had a clock: it starts now, the moment it became a person's request.
                 values.update(sla.start_values(values.get("priority", current.priority), now))

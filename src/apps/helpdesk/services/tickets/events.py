@@ -105,9 +105,18 @@ def _responded(event, data) -> str:
 def _reply_failed(event, data) -> str:
     what = "acknowledgement" if data.get("what") == "acknowledgement" else "reply"
     error = str(data.get("error") or "delivery failed")
+    for lead in ("Not sent: ", "Could not be sent: ", "Not confirmed: "):
+        error = error.removeprefix(lead)
     if data.get("uncertain"):
         return f"The {what} may not have been delivered: {error}"
-    return f"The {what} was not sent: {error.removeprefix('Not sent: ')}"
+    return f"The {what} was not sent: {error}"
+
+
+def _breached(event, data) -> str:
+    which = data.get("which") or "resolution"
+    if data.get("cleared"):
+        return f"SLA breach cleared: the {which} is within the new priority's target"
+    return f"SLA breached: the {which} is overdue"
 
 
 _DESCRIBERS = {
@@ -138,7 +147,7 @@ _DESCRIBERS = {
     Kind.REPLY_FAILED: _reply_failed,
     Kind.NOTIFIED: _notified,
     Kind.RESPONDED: _responded,
-    Kind.SLA_BREACHED: lambda event, data: f"SLA breached: the {data.get('which') or 'resolution'} is overdue",
+    Kind.SLA_BREACHED: _breached,
 }
 
 

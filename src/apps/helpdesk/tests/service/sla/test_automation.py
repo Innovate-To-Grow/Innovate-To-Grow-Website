@@ -42,7 +42,7 @@ class AutoCloseTests(TestCase):
         self.assertEqual(old.resolved_at.date(), (timezone.now() - 8 * DAY).date())  # kept from when it was resolved
         self.assertEqual(old.resolution_code, "solved")  # closing is no reopening: the resolution stays
         event = old.events.get(kind=TicketEvent.Kind.STATUS)
-        reason = "closed automatically 7 days after it was resolved"
+        reason = "closed automatically: resolved more than 7 days ago"
         self.assertEqual((event.actor, event.data), (None, {"from": "resolved", "to": "closed", "reason": reason}))
         self.assertEqual(events.describe(event), f"Status changed: Resolved → Closed ({reason})")
 
@@ -54,7 +54,7 @@ class AutoCloseTests(TestCase):
         ticket.refresh_from_db()
         self.assertEqual(ticket.status, Status.CLOSED)
         reason = ticket.events.get(kind=TicketEvent.Kind.STATUS).data["reason"]
-        self.assertEqual(reason, "closed automatically 2 days after it was resolved")
+        self.assertEqual(reason, "closed automatically: resolved more than 2 days ago")
 
     def test_one_day_reads_in_the_singular(self):
         HelpdeskSettings.objects.create(auto_close_resolved_days=1)
@@ -62,7 +62,7 @@ class AutoCloseTests(TestCase):
 
         self.assertEqual(automation.auto_close_resolved(), 1)
         reason = ticket.events.get(kind=TicketEvent.Kind.STATUS).data["reason"]
-        self.assertEqual(reason, "closed automatically 1 day after it was resolved")
+        self.assertEqual(reason, "closed automatically: resolved more than 1 day ago")
 
     def test_zero_days_never_closes(self):
         HelpdeskSettings.objects.create(auto_close_resolved_days=0)

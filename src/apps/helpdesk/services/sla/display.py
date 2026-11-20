@@ -90,10 +90,12 @@ def queue_label(ticket: Ticket, now: datetime, warning_percent: int) -> tuple[st
     """The queue's SLA column as (state, text): a breach of either clock first (it stays visible after a late
     response), then the clock that runs now, its state in words as well as in color."""
     which, clock = current_clock(ticket, now, warning_percent)
-    flagged = (("Response", ticket.response_breached), ("Resolution", ticket.resolution_breached))
-    breached = [name for name, flag in flagged if flag]
-    if clock.state == "breached" and which not in breached:
-        breached.append(which)
+    # Both clocks are judged (flagged, or overdue and not flagged yet), not only the one the column shows.
+    judged = (
+        ("Response", response_clock(ticket, now, warning_percent)),
+        ("Resolution", resolution_clock(ticket, now, warning_percent)),
+    )
+    breached = [name for name, judged_clock in judged if judged_clock.state == "breached"]
     if breached:
         return "breached", f"{' & '.join(breached)} breached"
     if clock.state == "none":

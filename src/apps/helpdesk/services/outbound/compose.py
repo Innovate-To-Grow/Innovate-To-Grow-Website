@@ -20,8 +20,21 @@ from ..tickets import numbering
 
 QUOTE_MAX_CHARS = 4000
 _REPLY_PREFIX_RE = re.compile(r"^\s*((re|fw|fwd|aw|sv|antw)\s*:\s*)+", re.IGNORECASE)
-# URLs, www. hosts and bare domains with a path ("evil.example/login"): anything a mail client may turn into a link.
-_LINK_RE = re.compile(r"(?:[a-z][a-z0-9+.-]*://|www\.)\S+|\b[\w-]+(?:\.[\w-]+)+/\S*", re.IGNORECASE)
+# Top-level domains a mail client turns a bare host name ("payroll-update.example.com") into a link for.
+_TLDS = (
+    "com|net|org|edu|gov|mil|int|info|biz|name|pro|mobi|asia|io|co|me|ai|app|dev|cloud|tech|online|site|store|shop|"
+    "page|link|live|email|click|work|club|top|xyz|zip|mov|tk|ml|ga|cf|gq|ws|cc|tv|ly|gl|su|us|uk|ca|de|fr|eu|nl|be|"
+    "at|ch|it|es|pl|se|no|ru|cn|jp|kr|in|au|br"
+)
+# URLs, www. hosts, host names with a path ("evil.example/login"), bare host names on those top-level domains and IPv4
+# addresses: anything a mail client may turn into a link.
+_LINK_RE = re.compile(
+    r"(?:[a-z][a-z0-9+.-]*://|www\.)\S+"
+    r"|\b[\w-]+(?:\.[\w-]+)+/\S*"
+    rf"|\b(?:[a-z0-9-]+\.)+(?:{_TLDS})\b(?::\d+)?"
+    r"|\b\d{1,3}(?:\.\d{1,3}){3}\b(?::\d+)?",
+    re.IGNORECASE,
+)
 # Marks an automatic message (RFC 3834) and asks Exchange not to answer it, so responders never answer each other.
 AUTOMATIC_HEADERS = {"Auto-Submitted": "auto-replied", "X-Auto-Response-Suppress": "All"}
 # The same for the site's own notices to staff (generated, not a reply to anything).

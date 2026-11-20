@@ -142,7 +142,7 @@ class EventDescriptionTests(TestCase):
             (
                 Kind.REPLY_FAILED,
                 {"what": "reply", "error": jobs.UNCERTAIN_ERROR, "uncertain": True},
-                f"The reply may not have been delivered: {jobs.UNCERTAIN_ERROR}",
+                f"The reply may not have been delivered: {jobs.UNCERTAIN_ERROR.removeprefix('Not confirmed: ')}",
             ),
             (Kind.RESOLUTION, {"cleared": "solved"}, "Resolution cleared on reopening (was: Solved)"),
             (Kind.MERGED, {"source": 1004, "messages": 1}, "I2G-#1004 merged into this ticket (1 message moved)"),
