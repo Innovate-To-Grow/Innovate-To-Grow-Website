@@ -1,96 +1,29 @@
 """``inbox.graph_backend``: choosing the Graph reader and mapping Graph data onto the IMAP dictionaries."""
 
 from datetime import datetime
-from types import SimpleNamespace
 
 from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
-from apps.core.models import EmailServiceConfig, MicrosoftGraphMailboxScope, MicrosoftGraphProviderConfig
+from apps.core.models import EmailServiceConfig, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.mailbox import GraphMailboxReader
 from apps.core.tests.graph_helpers import create_graph_config
-from apps.mail.services.inbox import graph_backend
-from apps.mail.services.inbox.connection import InboxError
-from apps.mail.services.inbox.formatting import format_date
-from apps.mail.services.inbox.messages import message_summary
-
-Permission = MicrosoftGraphMailboxScope.Permission
-TENANT_ID = "11111111-2222-3333-4444-555555555555"
-CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-MAILBOX = "i2g@contoso.com"
-MESSAGE_ID = "AAMkAGI2THVSAAA="
-SUMMARY_KEYS = {
-    "uid", "subject", "from_name", "from_email", "to", "date", "timestamp", "snippet", "is_seen", "from_own_mailbox",
-}  # fmt: skip
-DETAIL_KEYS = {
-    "uid", "subject", "from_name", "from_email", "to", "date", "timestamp", "html", "text",
-    "message_id", "references", "reply_to", "return_path", "authentication_results", "from_own_mailbox",
-}  # fmt: skip
-# What the inbox services add to every summary / detail: the account each message was read from.
-ACCOUNT_KEYS = {"account", "account_address"}
-GRAPH_MESSAGE = {
-    "id": MESSAGE_ID,
-    "subject": "  Event question  ",
-    "from": {"emailAddress": {"name": "Ada Lovelace", "address": "ada@example.com"}},
-    "toRecipients": [
-        {"emailAddress": {"name": "I2G", "address": MAILBOX}},
-        {"emailAddress": {"address": "cc@example.com"}},
-        "not a recipient",
-    ],
-    "receivedDateTime": "2026-10-20T15:30:00Z",
-    "bodyPreview": "Hello\n\n  there   friend",
-    "isRead": True,
-}
-RAW_MIME = b"""From: "Ada Lovelace" <ada@example.com>
-To: I2G <i2g@contoso.com>, cc@example.com
-Subject: Re: Event question
-Date: Tue, 20 Oct 2026 15:30:00 +0000
-Message-ID: <reply-1@example.com>
-References: <root@example.com> <orig@example.com>
-Reply-To: Replies <Replies@Example.com>
-Return-Path: <Bounce@Example.com>
-Authentication-Results: mx.contoso.com; spf=pass
-Authentication-Results: mx.contoso.com; dkim=pass
-MIME-Version: 1.0
-Content-Type: multipart/alternative; boundary="b1"
-
---b1
-Content-Type: text/plain; charset="utf-8"
-
-Plain body
---b1
-Content-Type: text/html; charset="utf-8"
-
-<p>HTML body</p>
---b1--
-"""
-
-
-def imap_message(**overrides):
-    values = {
-        "uid": "7",
-        "subject": "s",
-        "from_values": None,
-        "from_": "x@example.com",
-        "to_values": [],
-        "date": None,
-        "html": "",
-        "text": "",
-        "flags": (),
-        "headers": {},
-    }
-    return SimpleNamespace(**{**values, **overrides})
-
-
-def graph_config(permission=Permission.SEND_AND_READ, **overrides):
-    values = {
-        "name": "Graph",
-        "is_active": True,
-        "tenant_id": TENANT_ID,
-        "client_id": CLIENT_ID,
-    }
-    return create_graph_config(scope=(MAILBOX,), permission=permission, **{**values, **overrides})
+from apps.mail.services.inbox.reading import graph_backend
+from apps.mail.services.inbox.reading.connection import InboxError
+from apps.mail.services.inbox.reading.formatting import format_date
+from apps.mail.services.inbox.reading.messages import message_summary
+from apps.mail.tests.services.delivery.graph_inbox.helpers import (
+    CLIENT_ID,
+    GRAPH_MESSAGE,
+    MAILBOX,
+    MESSAGE_ID,
+    SUMMARY_KEYS,
+    TENANT_ID,
+    Permission,
+    graph_config,
+    imap_message,
+)
 
 
 class ActiveReaderTests(TestCase):

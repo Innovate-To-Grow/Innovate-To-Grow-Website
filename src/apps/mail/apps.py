@@ -86,9 +86,9 @@ def register_sms_policy():
 def register_inbox():
     """The universal inbox's poller job (new mail is checked whether or not anyone has the inbox open), and the
     signals that drop its cached account and sender lists when a mail configuration changes."""
-    from apps.mail.services.inbox import invalidation, polling
+    from apps.mail.services.inbox.polling import invalidation, poller
 
-    polling.register()
+    poller.register()
     invalidation.register()
 
 

@@ -448,7 +448,7 @@ The campaign admin includes a Gmail import feature (`src/apps/mail/services/camp
 
 ### Universal inbox (Mail → Inbox)
 
-**Mail → Inbox** reads every configured mailbox (`src/apps/mail/services/inbox/accounts.py`):
+**Mail → Inbox** reads every configured mailbox (`src/apps/mail/services/inbox/reading/accounts.py`):
 
 - every mailbox in the active Microsoft Graph configuration's **mailbox scope** with read permission
   (*Read only* or *Send and read*), the sending mailbox first;
@@ -467,7 +467,7 @@ back by its delivery rate stays listed, with its messages as last loaded.
 
 **New mail is checked in the background.** The background worker polls every account's Inbox every
 `MAIL_INBOX_POLL_SECONDS` (default 180 s; `0` turns polling off) as job kind `mail.inbox_poll`
-(`src/apps/mail/services/inbox/polling.py`), whether or not anyone has the inbox open, and records the outcome and
+(`src/apps/mail/services/inbox/polling/`), whether or not anyone has the inbox open, and records the outcome and
 the newest 50 message summaries (sender, subject, preview, read state; no bodies) in `InboxAccountState`. Gmail is
 polled incrementally (two UID searches, then only the new messages are downloaded), so polling stays well under
 Gmail's daily IMAP download limit. The sidebar's **Inbox** item shows the unread count, and an open Inbox page reloads
@@ -480,7 +480,7 @@ for 30 minutes, and the account and From lists for a minute; saving any mail con
 From lists at once (in the container that saved it; others follow within a minute, and every read and send
 re-checks its configuration anyway).
 
-A reply's **From** menu lists every address the site can send as (`src/apps/mail/services/inbox/senders.py`), and
+A reply's **From** menu lists every address the site can send as (`src/apps/mail/services/inbox/sending/senders.py`), and
 starts with the address the message was received at when it is one of them:
 
 | From choice | When it is offered | Sent through |

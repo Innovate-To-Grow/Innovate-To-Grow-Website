@@ -5,8 +5,12 @@ from django.test import TestCase
 from apps.core.models import GmailAccessAccount
 from apps.mail.admin.inbox.list_views import _connectable, _inbox_account
 from apps.mail.services.inbox import ALL_ACCOUNTS, readable_accounts
-from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import MAILBOX, Permission, graph_config
-from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_messages import GraphInboxFixtureMixin
+from apps.mail.tests.services.delivery.graph_inbox.helpers import (
+    MAILBOX,
+    GraphInboxFixtureMixin,
+    Permission,
+    graph_config,
+)
 
 GRAPH_ACCOUNT = {"account": MAILBOX, "source_label": "Source", "source": "Microsoft Graph"}
 

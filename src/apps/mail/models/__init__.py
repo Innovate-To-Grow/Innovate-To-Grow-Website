@@ -1,9 +1,9 @@
 from .email.bounce_records import BounceAggregationState, BouncedAddressAction, BouncedAddressCampaign
 from .email.bounced_address import BouncedAddress
 from .email.campaign import EmailCampaign
-from .email.inbox_state import InboxAccountState
 from .email.login_link import LoginLinkToken
 from .email.recipient_log import RecipientLog
+from .inbox.account_state import InboxAccountState
 from .sms.campaign import SmsCampaign
 from .sms.campaign_recipients import SmsRecipientLog
 from .sms.config import SmsConfig

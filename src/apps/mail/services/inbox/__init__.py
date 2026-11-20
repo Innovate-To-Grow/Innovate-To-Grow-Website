@@ -2,8 +2,8 @@
 accounts) is read (``accounts``), and a reply may be sent From any configured sending address (``senders``) through
 the email facade."""
 
-from .accounts import ALL_ACCOUNTS, InboxAccount, connectable_accounts, readable_accounts, resolve_account
-from .connection import (
+from .reading.accounts import ALL_ACCOUNTS, InboxAccount, connectable_accounts, readable_accounts, resolve_account
+from .reading.connection import (
     INBOX_FOLDER,
     INBOX_FOLDER_CHOICES,
     INBOX_LIMIT_CHOICES,
@@ -12,10 +12,11 @@ from .connection import (
     InboxError,
     _open_inbox,
 )
-from .graph_backend import graph_inbox_active
-from .messages import InboxListing, fetch_inbox_message, list_all_inbox_messages, list_inbox_messages
-from .reply import render_reply_html, send_reply
-from .senders import DEFAULT_SENDER, SendIdentity, default_identity_for, resolve_identity, send_identities
+from .reading.graph_backend import graph_inbox_active
+from .reading.listing import InboxListing, list_all_inbox_messages, list_inbox_messages
+from .reading.messages import fetch_inbox_message
+from .sending.reply import render_reply_html, send_reply
+from .sending.senders import DEFAULT_SENDER, SendIdentity, default_identity_for, resolve_identity, send_identities
 
 __all__ = [
     "ALL_ACCOUNTS",

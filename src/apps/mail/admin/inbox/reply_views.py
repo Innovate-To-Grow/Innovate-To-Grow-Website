@@ -1,6 +1,6 @@
 """Inbox reply admin views.
 
-A reply may be sent From any configured sending address (``apps.mail.services.inbox.senders``); the form starts
+A reply may be sent From any configured sending address (``apps.mail.services.inbox.sending.senders``); the form starts
 with the address the message was received at when the site can send as it.
 """
 

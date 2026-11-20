@@ -5,18 +5,18 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.core.models import EmailServiceConfig, GmailAccessAccount
-from apps.mail.services.inbox.reply import (
+from apps.mail.services.inbox.sending.reply import (
     REPLY_DELIVERY_NOT_CONFIGURED,
     REPLY_INVALID_ADDRESS_MESSAGE,
     REPLY_SEND_FAILURE_MESSAGE,
     REPLY_SENDER_UNAVAILABLE_MESSAGE,
     send_reply,
 )
-from apps.mail.services.inbox.senders import resolve_identity
-from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import MAILBOX, graph_config
-from apps.mail.tests.services.inbox.senders.test_send_identities import SenderFixtureMixin
+from apps.mail.services.inbox.sending.senders import resolve_identity
+from apps.mail.tests.services.delivery.graph_inbox.helpers import MAILBOX, graph_config
+from apps.mail.tests.services.inbox.senders.helpers import SenderFixtureMixin
 
-DELIVER = "apps.mail.services.inbox.reply.deliver_email"
+DELIVER = "apps.mail.services.inbox.sending.reply.deliver_email"
 
 
 def reply(**overrides):
@@ -114,8 +114,8 @@ class ImapReplyEndToEndTests(SenderFixtureMixin, TestCase):
         GmailAccessAccount.objects.filter(pk=row.pk).update(reply_enabled=False)
 
         with (
-            patch("apps.mail.services.inbox.reply.resolve_identity", return_value=identity),
-            self.assertLogs("apps.mail.services.inbox.reply", "ERROR"),
+            patch("apps.mail.services.inbox.sending.reply.resolve_identity", return_value=identity),
+            self.assertLogs("apps.mail.services.inbox.sending.reply", "ERROR"),
         ):
             error = reply(sender=f"imap:{row.pk}")
 

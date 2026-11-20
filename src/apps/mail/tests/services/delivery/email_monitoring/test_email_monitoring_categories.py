@@ -27,7 +27,7 @@ from apps.event.tests.helpers import make_event, make_member, make_registration,
 from apps.mail.models import EmailCampaign, RecipientLog
 from apps.mail.services.campaign.dispatch import queue_email_campaign
 from apps.mail.services.campaign.send.runner import send_campaign
-from apps.mail.services.inbox.reply import send_reply
+from apps.mail.services.inbox.sending.reply import send_reply
 from apps.mail.tests.services.campaigns.send_providers.test_send_campaign_provider_neutral import (
     FakeGraphTransport,
     ScriptedGraphTransport,

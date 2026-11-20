@@ -1,5 +1,5 @@
 """The sidebar badge of Mail -> Inbox: unread Inbox messages across the accounts that connect, as the background
-poller last found them (``apps.mail.services.inbox.health.unread_total``). It never connects to a mailbox."""
+poller last found them (``apps.mail.services.inbox.polling.health.unread_total``). It never connects to a mailbox."""
 
 import logging
 
@@ -14,7 +14,7 @@ def inbox_unread_badge(request) -> str:
     if user is None or not user_can_access_app(user, "mail"):
         return ""
     try:
-        from apps.mail.services.inbox.health import unread_total
+        from apps.mail.services.inbox.polling.health import unread_total
 
         total = unread_total()
     except Exception:

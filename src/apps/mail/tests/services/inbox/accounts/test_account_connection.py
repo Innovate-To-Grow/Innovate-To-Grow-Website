@@ -6,8 +6,8 @@ from django.db.utils import OperationalError
 from django.test import TestCase
 
 from apps.core.models import GmailAccessAccount
-from apps.mail.services.inbox.accounts import InboxAccount
-from apps.mail.services.inbox.connection import InboxError, _open_inbox, get_account_config
+from apps.mail.services.inbox.reading.accounts import InboxAccount
+from apps.mail.services.inbox.reading.connection import InboxError, _open_inbox, get_account_config
 from apps.mail.tests.services.inbox.accounts.helpers import gmail_account
 
 
@@ -41,7 +41,8 @@ class GetAccountConfigTests(TestCase):
     def test_missing_tables_are_an_inbox_error(self):
         with (
             patch(
-                "apps.mail.services.inbox.connection.GmailAccessAccount.objects.filter", side_effect=OperationalError
+                "apps.mail.services.inbox.reading.connection.GmailAccessAccount.objects.filter",
+                side_effect=OperationalError,
             ),
             self.assertRaisesMessage(InboxError, "Run the latest migrations first."),
         ):
@@ -57,7 +58,7 @@ class GetAccountConfigTests(TestCase):
         mailbox_client = Mock()
         mailbox_client.login.return_value = login_context
 
-        with patch("apps.mail.services.inbox.connection.MailBox", return_value=mailbox_client) as mailbox_class:
+        with patch("apps.mail.services.inbox.reading.connection.MailBox", return_value=mailbox_client) as mailbox_class:
             with _open_inbox(account=account_for(opted_in)):
                 pass
 

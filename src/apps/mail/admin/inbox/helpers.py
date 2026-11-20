@@ -49,7 +49,7 @@ def sent_mail_restricted(user) -> bool:
 
     That folder holds what the site sends: Graph keeps what carries no credential flag there (campaigns, replies),
     and Gmail keeps a copy of everything, sign-in codes included. The list and the message view leave the site's
-    tagged credential mail out of Sent for every reader (``apps.mail.services.inbox.messages``), so links and codes
+    tagged credential mail out of Sent for every reader (``apps.mail.services.inbox.reading.messages``), so links and codes
     stay hidden. When the backend cannot be resolved, the answer is "restricted".
     """
     if user_can_access_app(user, "mail"):

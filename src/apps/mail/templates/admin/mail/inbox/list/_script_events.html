@@ -178,28 +178,6 @@
   var root = document.getElementById('inbox-all-dynamic');
   if (root) fetchInbox(root, { folder: getStoredFolder(), account: getStoredAccount() });
 
-  /* Auto-refresh: the server polls every mailbox for new mail in the background; while this page is visible it
-     reloads its list (served from that poll, so it seldom connects to a mailbox). Skipped while a reply is being
-     written or a load is already running. */
-  function autoRefreshSeconds(r) {
-    var shell = r ? r.querySelector('[data-inbox-auto-refresh]') : null;
-    var value = shell ? parseInt(shell.getAttribute('data-inbox-auto-refresh'), 10) : 0;
-    return value > 0 ? value : 0;
-  }
-
-  var lastAutoRefresh = Date.now();
-  window.setInterval(function () {
-    var r = document.getElementById('inbox-all-dynamic');
-    var seconds = autoRefreshSeconds(r);
-    if (!r || !seconds || document.hidden) return;
-    if (Date.now() - lastAutoRefresh < seconds * 1000) return;
-    if (r.querySelector('#inbox-reply-area form')) return;
-    var busyBtn = r.querySelector('[data-inbox-refresh][disabled]');
-    if (busyBtn) return;
-    lastAutoRefresh = Date.now();
-    fetchInbox(r, { limit: getLimit(r), folder: getFolder(r), account: getAccount(r) }, { quiet: true });
-  }, 5000);
-
   window.addEventListener('resize', resizePreviewIframe);
 
   window.addEventListener('beforeunload', function () {

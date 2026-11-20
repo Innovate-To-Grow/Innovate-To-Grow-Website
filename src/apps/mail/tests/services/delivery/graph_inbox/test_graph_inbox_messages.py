@@ -9,41 +9,32 @@ from django.core.cache import cache
 from django.db.utils import OperationalError, ProgrammingError
 from django.test import TestCase
 
-from apps.core.models import EmailServiceConfig, GmailAccessAccount, MicrosoftGraphProviderConfig
+from apps.core.models import GmailAccessAccount
 from apps.core.services.email.graph.identity import auth
 from apps.core.services.email.graph.mailbox import GraphMailboxReader, GraphReadBusy, GraphReadError
 from apps.core.services.email.graph.transport import HttpResponse
-from apps.mail.services.inbox.connection import INBOX_LIST_CACHE_KEY, INBOX_MSG_CACHE_PREFIX, InboxBusy, InboxError
-from apps.mail.services.inbox.messages import fetch_inbox_message, list_inbox_messages
-from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import (
+from apps.mail.services.inbox.reading.connection import (
+    INBOX_LIST_CACHE_KEY,
+    INBOX_MSG_CACHE_PREFIX,
+    InboxBusy,
+    InboxError,
+)
+from apps.mail.services.inbox.reading.listing import list_inbox_messages
+from apps.mail.services.inbox.reading.messages import fetch_inbox_message
+from apps.mail.tests.services.delivery.graph_inbox.helpers import (
     ACCOUNT_KEYS,
+    FETCH_TARGET,
+    GRAPH_KEY,
     GRAPH_MESSAGE,
+    LIST_TARGET,
     MAILBOX,
     MESSAGE_ID,
     RAW_MIME,
     SUMMARY_KEYS,
+    GraphInboxFixtureMixin,
     Permission,
     graph_config,
 )
-
-LIST_TARGET = "apps.core.services.email.graph.mailbox.GraphMailboxReader.list_messages"
-FETCH_TARGET = "apps.core.services.email.graph.mailbox.GraphMailboxReader.fetch_mime"
-OPEN_INBOX = "apps.mail.services.inbox._open_inbox"
-GRAPH_KEY = f"graph:{MAILBOX}"
-
-
-class GraphInboxFixtureMixin:
-    def setUp(self):
-        super().setUp()
-        cache.clear()
-        self.addCleanup(cache.clear)
-        EmailServiceConfig.objects.all().delete()
-        MicrosoftGraphProviderConfig.objects.all().delete()
-        EmailServiceConfig.objects.create(name="Prod", is_active=True, provider="graph", from_email=MAILBOX)
-        # Gmail IMAP must never be opened while Graph serves the inbox.
-        patcher = patch(OPEN_INBOX, side_effect=AssertionError("IMAP was opened"))
-        self.open_inbox = patcher.start()
-        self.addCleanup(patcher.stop)
 
 
 class GraphInboxRoutingTests(GraphInboxFixtureMixin, TestCase):
@@ -198,7 +189,7 @@ class ImapFallbackTests(GraphInboxFixtureMixin, TestCase):
     def test_missing_tables_are_reported_as_an_inbox_error(self):
         for error in (OperationalError("no such table"), ProgrammingError("relation does not exist")):
             with self.subTest(type(error).__name__):
-                target = "apps.mail.services.inbox.accounts.MicrosoftGraphProviderConfig.load"
+                target = "apps.mail.services.inbox.reading.accounts.MicrosoftGraphProviderConfig.load"
                 with patch(target, side_effect=error), self.assertRaisesMessage(InboxError, "migrations"):
                     list_inbox_messages()
                 with patch(target, side_effect=error), self.assertRaisesMessage(InboxError, "migrations"):

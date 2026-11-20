@@ -726,7 +726,7 @@ Email** prove the credentials.
 | Certificate input, stored key, Entra test, install / rollback / remove, expiry | `src/apps/core/services/email/graph/credential/` |
 | Credential store (Secrets Manager, local file, memory) and its system checks | `src/apps/core/services/credential_store/`, `src/apps/core/checks/` |
 | Mailbox scope enforcement | `src/apps/core/services/email/graph/identity/access.py` |
-| Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox/__init__.py`, `src/apps/mail/services/inbox/graph_backend.py` |
+| Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox/__init__.py`, `src/apps/mail/services/inbox/reading/graph_backend.py` |
 | Sent mail access in the admin inbox | `src/apps/mail/admin/inbox/helpers.py` (`sent_mail_restricted`, `sent_mail_denied`) |
 | Access validation (probes, roles, verdict, evidence) | `src/apps/core/services/email/graph/access_check/`, `manage.py verify_graph_access` |
 | Recorded access checks and the go-live gate | `src/apps/core/models/base/service_credentials/microsoft_graph/access_check.py`, `EmailServiceConfig.validate_activation` |

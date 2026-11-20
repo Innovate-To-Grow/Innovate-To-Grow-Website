@@ -12,8 +12,8 @@ from unittest.mock import MagicMock, patch
 from django.core.cache import cache
 
 from apps.core.models import EmailServiceConfig, GmailAccessAccount, MicrosoftGraphProviderConfig
-from apps.mail.services.inbox.connection import InboxError
-from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import MAILBOX
+from apps.mail.services.inbox.reading.connection import InboxError
+from apps.mail.tests.services.delivery.graph_inbox.helpers import MAILBOX
 
 LIST_TARGET = "apps.core.services.email.graph.mailbox.GraphMailboxReader.list_messages"
 FETCH_TARGET = "apps.core.services.email.graph.mailbox.GraphMailboxReader.fetch_mime"
@@ -43,6 +43,12 @@ def graph_message(uid, received, subject="Graph mail"):
         "bodyPreview": "Hello",
         "isRead": False,
     }
+
+
+GRAPH_MESSAGES = [
+    graph_message("g-20", "2026-10-20T12:00:00Z"),
+    graph_message("g-18", "2026-10-18T12:00:00Z"),
+]
 
 
 def imap_message(uid, day, subject="IMAP mail"):

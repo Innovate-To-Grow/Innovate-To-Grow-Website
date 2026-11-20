@@ -7,15 +7,15 @@ from django.test import TestCase
 
 from apps.core.models import MicrosoftGraphMailboxScope
 from apps.core.tests.graph_helpers import grant
-from apps.mail.services.inbox.accounts import (
+from apps.mail.services.inbox.reading.accounts import (
     ACCOUNT_UNAVAILABLE_MESSAGE,
     NO_ACCOUNTS_MESSAGE,
     InboxAccount,
     readable_accounts,
     resolve_account,
 )
-from apps.mail.services.inbox.connection import InboxError
-from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import MAILBOX, Permission, graph_config
+from apps.mail.services.inbox.reading.connection import InboxError
+from apps.mail.tests.services.delivery.graph_inbox.helpers import MAILBOX, Permission, graph_config
 from apps.mail.tests.services.inbox.accounts.helpers import GRAPH_KEY, UniversalInboxMixin, gmail_account
 
 
@@ -87,7 +87,7 @@ class ReadableAccountsTests(UniversalInboxMixin, TestCase):
         for error in (OperationalError("no such table"), ProgrammingError("relation does not exist")):
             with (
                 self.subTest(type(error).__name__),
-                patch("apps.mail.services.inbox.accounts.MicrosoftGraphProviderConfig.load", side_effect=error),
+                patch("apps.mail.services.inbox.reading.accounts.MicrosoftGraphProviderConfig.load", side_effect=error),
                 self.assertRaisesMessage(InboxError, "Run the latest migrations first."),
             ):
                 readable_accounts()

@@ -1,57 +1,28 @@
 """``inbox.senders``: the From addresses an Inbox reply may use, each gated by its provider's own readiness."""
 
-from types import SimpleNamespace
 from unittest.mock import patch
 
-from django.core.cache import cache
 from django.db.utils import OperationalError
 from django.test import TestCase
 
 from apps.core.models import (
-    AWSCredentialConfig,
     EmailServiceConfig,
-    GmailAccessAccount,
-    GmailApiProviderConfig,
     GmailApiSubject,
     MicrosoftGraphCertificate,
-    MicrosoftGraphProviderConfig,
 )
 from apps.core.tests.gmail_api_helpers import make_config
 from apps.core.tests.graph_helpers import grant
-from apps.mail.services.inbox.senders import (
+from apps.mail.services.inbox.sending.senders import (
     DEFAULT_SENDER,
-    SendIdentity,
-    default_identity_for,
-    resolve_identity,
     send_identities,
 )
-from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import MAILBOX, Permission, graph_config
+from apps.mail.tests.services.delivery.graph_inbox.helpers import MAILBOX, Permission, graph_config
 from apps.mail.tests.services.inbox.accounts.helpers import gmail_account
-
-DEFAULT_ADDRESS = "notify@ucmerced.edu"
-WORKSPACE = "i2g@g.ucmerced.edu"
-
-
-class SenderFixtureMixin:
-    def setUp(self):
-        super().setUp()
-        # The identities are cached per container (``SENDERS_CACHE_KEY``).
-        cache.clear()
-        self.addCleanup(cache.clear)
-        for model in (EmailServiceConfig, MicrosoftGraphProviderConfig, GmailApiProviderConfig, GmailAccessAccount):
-            model.objects.all().delete()
-
-    def default_sender(self, from_email=DEFAULT_ADDRESS):
-        """Notification Delivery on SES, which is ready once AWS credentials are active."""
-        AWSCredentialConfig.objects.create(
-            name="AWS", is_active=True, access_key_id="AKID", secret_access_key="SECRET", default_region="us-west-2"
-        )
-        return EmailServiceConfig.objects.create(
-            name="Mail", is_active=True, provider="ses", from_email=from_email, from_name="I2G"
-        )
-
-    def reply_account(self, username="reply@gmail.com", **overrides):
-        return gmail_account(username, **{"is_active": False, "reply_enabled": True, **overrides})
+from apps.mail.tests.services.inbox.senders.helpers import (
+    DEFAULT_ADDRESS,
+    WORKSPACE,
+    SenderFixtureMixin,
+)
 
 
 class SendIdentitiesTests(SenderFixtureMixin, TestCase):
@@ -149,77 +120,19 @@ class SendIdentitiesTests(SenderFixtureMixin, TestCase):
         row = self.reply_account()
 
         with (
-            patch("apps.mail.services.inbox.senders.GmailApiProviderConfig.load", side_effect=RuntimeError("boom")),
-            self.assertLogs("apps.mail.services.inbox.senders", "ERROR"),
+            patch(
+                "apps.mail.services.inbox.sending.senders.GmailApiProviderConfig.load", side_effect=RuntimeError("boom")
+            ),
+            self.assertLogs("apps.mail.services.inbox.sending.senders", "ERROR"),
         ):
             self.assertEqual(self.keys(), [f"imap:{row.pk}"])
 
     def test_missing_tables_are_raised(self):
         with (
-            patch("apps.mail.services.inbox.senders.EmailServiceConfig.load", side_effect=OperationalError("no table")),
+            patch(
+                "apps.mail.services.inbox.sending.senders.EmailServiceConfig.load",
+                side_effect=OperationalError("no table"),
+            ),
             self.assertRaises(OperationalError),
         ):
             send_identities()
-
-
-class ResolveIdentityTests(SenderFixtureMixin, TestCase):
-    def setUp(self):
-        super().setUp()
-        self.default_sender()
-        graph_config()
-
-    def test_no_key_is_the_default(self):
-        for key in (None, "", DEFAULT_SENDER):
-            with self.subTest(key=key):
-                self.assertEqual(resolve_identity(key).key, DEFAULT_SENDER)
-
-    def test_a_listed_key(self):
-        self.assertEqual(resolve_identity(f"graph:{MAILBOX}").address, MAILBOX)
-
-    def test_an_unlisted_key_is_none(self):
-        for key in ("graph:other@contoso.com", "imap:999999", "gmail_api:x@example.com", "bogus"):
-            with self.subTest(key=key):
-                self.assertIsNone(resolve_identity(key))
-
-
-class DefaultIdentityForTests(TestCase):
-    identities = [
-        SendIdentity(DEFAULT_SENDER, DEFAULT_ADDRESS, "ses", "Notification Delivery"),
-        SendIdentity("imap:1", "Reply@Gmail.com", "gmail_smtp", "SMTP", 1),
-    ]
-
-    def test_the_address_the_message_was_received_at(self):
-        self.assertEqual(default_identity_for(self.identities, " reply@gmail.com ").key, "imap:1")
-
-    def test_else_the_first_choice(self):
-        for address in ("someone@else.com", "", None):
-            with self.subTest(address=address):
-                self.assertEqual(default_identity_for(self.identities, address).key, DEFAULT_SENDER)
-
-    def test_no_choice_is_none(self):
-        self.assertIsNone(default_identity_for([], DEFAULT_ADDRESS))
-
-
-class DeliveryConfigTests(TestCase):
-    base = SimpleNamespace(provider="ses", from_email=DEFAULT_ADDRESS, from_name="I2G", is_active=True)
-
-    def test_the_default_sends_with_notification_delivery_itself(self):
-        identity = SendIdentity(DEFAULT_SENDER, DEFAULT_ADDRESS, "ses", "Notification Delivery")
-
-        self.assertIs(identity.delivery_config(self.base), self.base)
-
-    def test_another_sender_gets_a_stand_in_naming_its_provider_and_address(self):
-        identity = SendIdentity("imap:7", "reply@gmail.com", "gmail_smtp", "SMTP", 7)
-
-        config = identity.delivery_config(self.base)
-
-        self.assertEqual(
-            vars(config),
-            {
-                "provider": "gmail_smtp",
-                "from_email": "reply@gmail.com",
-                "from_name": "I2G",
-                "is_active": True,
-                "gmail_account_id": 7,
-            },
-        )
