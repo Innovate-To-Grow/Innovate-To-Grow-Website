@@ -1,13 +1,14 @@
 """Helpdesk → Queue: the ticket list and the ticket page.
 
 The list opens on people's open tickets: automated mail and spam are hidden unless the Mail filter asks for them
-(the sidebar's "Automated & spam"). The ticket page edits status, priority, category and assignee (each change goes
-to the ticket's audit trail; no typed confirmation, which would be noise on every status change) and shows the
-timeline with the note form below the form. A merged ticket's status is read-only, and the Status list has no
-"Merged": only a merge makes one. Merging and marking spam do need a typed confirmation. A merge into
-automated mail or spam is refused before that confirmation (and again by the service when it runs), and the
-"Automated & spam" view, where every ticket is one, offers no merge. Tickets are created only from mail, and deleted
-only by retention or an I2G Master (behind the typed confirmation). Nothing here sends anything.
+(the sidebar's "Automated & spam"). The ticket page works a ticket ServiceNow style: status, impact and urgency (the
+priority follows), category, assignment group and assignee, and the resolution code and notes (each change goes to
+the ticket's audit trail; no typed confirmation, which would be noise on every status change). It shows the SLA
+clocks, the timeline, the reply form (only while shadow mode is off) and the internal-note form. A merged ticket's
+status is read-only, and the Status list has no "Merged": only a merge makes one. Merging and marking spam do need a
+typed confirmation. A merge into automated mail or spam is refused before that confirmation (and again by the service
+when it runs), and the "Automated & spam" view, where every ticket is one, offers no merge. Tickets are created only
+from mail, and deleted only by retention or an I2G Master (behind the typed confirmation).
 """
 
 from django.contrib import admin, messages
@@ -18,8 +19,9 @@ from apps.core.admin import BaseModelAdmin
 
 from ...models import Ticket
 from ...services import tickets
+from ...services.tickets import shadow
 from .actions import TicketActionsMixin
-from .filters import AssigneeFilter, MailTypeFilter, StatusViewFilter, UnreadFilter
+from .filters import AssigneeFilter, GroupFilter, MailTypeFilter, SLAFilter, StatusViewFilter, UnreadFilter
 from .page import TicketPageMixin
 from .queue import TicketQueueMixin
 
@@ -32,14 +34,25 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         "requester_column",
         "status_column",
         "priority_column",
+        "sla_column",
         "category",
+        "group_column",
         "assignee",
         "last_activity_at",
         "message_count",
     )
     list_display_links = ("number_column", "subject_column")
-    list_filter = (MailTypeFilter, StatusViewFilter, AssigneeFilter, UnreadFilter, "priority", "category")
-    list_select_related = ("category", "assignee")
+    list_filter = (
+        MailTypeFilter,
+        StatusViewFilter,
+        AssigneeFilter,
+        GroupFilter,
+        SLAFilter,
+        UnreadFilter,
+        "priority",
+        "category",
+    )
+    list_select_related = ("category", "assignee", "assignment_group")
     search_fields = ("subject", "requester_email", "requester_name")
     search_help_text = "Number (1234 or I2G-#1234), subject, or the requester's address or name."
     ordering = ("-last_activity_at",)
@@ -62,7 +75,28 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         "move_to_queue",
     )
     fieldsets = (
-        ("Ticket", {"fields": ("number_display", "subject", "status", "priority", "category", "assignee")}),
+        (
+            "Ticket",
+            {
+                "fields": (
+                    "number_display",
+                    "subject",
+                    "status",
+                    ("impact", "urgency"),
+                    "priority",
+                    "category",
+                    ("assignment_group", "assignee"),
+                )
+            },
+        ),
+        ("SLA", {"fields": ("sla_response_display", "sla_resolution_display")}),
+        (
+            "Resolution",
+            {
+                "description": "A resolution code is needed to resolve or close the ticket.",
+                "fields": ("resolution_code", "resolution_notes", "resolved_at"),
+            },
+        ),
         ("Requester", {"fields": ("requester_display", "requester_member", "participants_display")}),
         (
             "Mail",
@@ -82,6 +116,10 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
     readonly_fields = (
         "number_display",
         "subject",
+        "priority",
+        "sla_response_display",
+        "sla_resolution_display",
+        "resolved_at",
         "requester_display",
         "requester_member",
         "participants_display",
@@ -100,6 +138,10 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         css = {"all": ("helpdesk/css/helpdesk.css",)}
 
     # --- access ----------------------------------------------------------------------------------------------------
+
+    def changelist_view(self, request, extra_context=None):
+        extra = {"helpdesk_shadow_mode": shadow.shadow_mode_on(), **(extra_context or {})}
+        return super().changelist_view(request, extra)
 
     def has_add_permission(self, request):
         return False  # tickets come from mail

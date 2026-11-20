@@ -86,20 +86,35 @@ class TimelineTests(TicketPageTestCase):
 class SaveTests(TicketPageTestCase):
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
     def test_a_change_saves_without_typed_confirmation_and_is_audited(self):
-        data = {"status": Status.PENDING_CUSTOMER, "priority": "high", "category": "", "assignee": str(self.agent.pk)}
+        # Impact 1 × urgency 2 makes the priority High (the priority itself is read-only on the page).
+        data = {
+            "status": Status.PENDING_CUSTOMER,
+            "impact": "1",
+            "urgency": "2",
+            "priority": "low",
+            "category": "",
+            "assignee": str(self.agent.pk),
+        }
 
         response = self.client.post(self.url, data)
 
         self.assertEqual(response.status_code, 302)
         self.ticket.refresh_from_db()
         self.assertEqual(
-            (self.ticket.status, self.ticket.priority, self.ticket.assignee),
-            (Status.PENDING_CUSTOMER, "high", self.agent),
+            (self.ticket.status, self.ticket.impact, self.ticket.priority, self.ticket.assignee),
+            (Status.PENDING_CUSTOMER, 1, "high", self.agent),
         )
         kinds = set(self.ticket.events.values_list("kind", flat=True))
-        self.assertTrue({TicketEvent.Kind.STATUS, TicketEvent.Kind.PRIORITY, TicketEvent.Kind.ASSIGNED} <= kinds)
+        expected = {
+            TicketEvent.Kind.STATUS,
+            TicketEvent.Kind.IMPACT,
+            TicketEvent.Kind.PRIORITY,
+            TicketEvent.Kind.ASSIGNED,
+        }
+        self.assertTrue(expected <= kinds)
         self.assertEqual(
-            LogEntry.objects.get(object_id=str(self.ticket.pk)).change_message, "Changed status, priority, assignee."
+            LogEntry.objects.get(object_id=str(self.ticket.pk)).change_message,
+            "Changed status, impact, priority, assignee.",
         )
 
     def test_saving_never_overwrites_what_the_ingest_wrote_meanwhile(self):

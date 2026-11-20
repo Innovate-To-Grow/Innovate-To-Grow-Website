@@ -1,4 +1,9 @@
-"""A ticket's messages (customer mail, automated mail, internal notes) and their attachments.
+"""A ticket's messages (customer mail, automated mail, internal notes, replies sent to the requester) and attachments.
+
+A reply (``Kind.REPLY``, ServiceNow's "additional comments") is written by staff on the ticket page, or is the
+automatic acknowledgement of a new ticket (``automatic``), and is sent by the background job ``helpdesk.send_reply``
+(``services.outbound``): ``delivery_status`` follows it from queued to sent or failed. A note (``Kind.NOTE``, the
+"work notes") is never sent.
 
 Bodies are stored in PostgreSQL: the text as received (scrubbed of personal sign-in links) and the HTML sanitized on
 the way in, shown only inside a sandboxed iframe. The raw MIME is never kept: the mailbox still holds the original.
@@ -19,6 +24,13 @@ class TicketMessage(ProjectControlModel):
         CUSTOMER = "customer", "Customer message"
         AUTOMATED = "automated", "Automated message"
         NOTE = "note", "Internal note"
+        REPLY = "reply", "Reply to requester"
+
+    class Delivery(models.TextChoices):
+        NONE = "", "—"
+        QUEUED = "queued", "Queued"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
 
     INBOUND_KINDS = (Kind.CUSTOMER, Kind.AUTOMATED)
 
@@ -63,6 +75,14 @@ class TicketMessage(ProjectControlModel):
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="helpdesk_notes"
     )
+    automatic = models.BooleanField(
+        default=False, db_default=False, help_text="Sent by the helpdesk itself (the acknowledgement of a new ticket)."
+    )
+    delivery_status = models.CharField(
+        max_length=8, choices=Delivery.choices, blank=True, default="", db_default="", db_index=True
+    )
+    delivery_error = models.CharField(max_length=255, blank=True, default="", db_default="")
+    delivered_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["occurred_at", "created_at"]

@@ -12,6 +12,9 @@ The rules (Hongzhe's decision of 2026-11-11 on top of item2-helpdesk-bounces-pla
   ``flood_window_minutes`` has the next one grouped into their latest open ticket, which is flagged (with none open,
   it opens a ticket of its own, so a person's message is never hidden in a closed one).
 - The site's own messages keep no body or attachment (they may hold sign-in codes).
+- A person's new ticket starts with medium impact and urgency (moderate priority) and, unless it is backfilled, its
+  SLA clock (``tickets.sla``); automated mail starts low and has no clock. With sending on and the acknowledgement
+  switched on, the requester is told the ticket number (``outbound.replies.queue_acknowledgement``).
 """
 
 from dataclasses import dataclass, replace
@@ -26,7 +29,8 @@ from apps.core.services.email.inbound import scrub_subject
 from apps.mail.models import EmailCampaign
 
 from ....models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
-from ...tickets import events, numbering
+from ...outbound import replies
+from ...tickets import events, numbering, priority, sla
 from ..reading.message import ParsedMessage
 from ..routing import matching
 from ..routing.classify import Classified
@@ -63,6 +67,8 @@ def store(
         message = _add_message(ticket, row, parsed, classified, settings, fingerprint)
         if not created:
             _joined(ticket, message, classified, rule, own)
+        elif not classified.automated:
+            replies.queue_acknowledgement(ticket, message, settings)
         for number in match.mentions:
             events.record(ticket, TicketEvent.Kind.MENTION, number=number)
     return Stored(ticket, message, created=created, rule=rule)
@@ -119,10 +125,17 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
     automated = classified.automated
     verdict = classified.verdict
     closed_status = Status.SPAM if verdict.classification == "spam" else Status.CLOSED
+    impact, urgency = priority.AUTOMATED_DEFAULT if automated else priority.PERSON_DEFAULT
+    ticket_priority = priority.priority_for(impact, urgency)
+    backfilled = timezone.now() - received > timedelta(hours=int(settings.backfill_age_hours))
+    clock = {} if automated or backfilled else sla.start_values(ticket_priority, received)
     ticket = numbering.create_ticket(
         subject=scrub_subject(parsed.subject) or "(no subject)",
         status=closed_status if automated else Status.NEW,
-        priority=Ticket.Priority.LOW if automated else Ticket.Priority.NORMAL,
+        priority=ticket_priority,
+        impact=impact,
+        urgency=urgency,
+        **clock,
         requester_email=parsed.from_address[:254],
         requester_name=scrub_subject(parsed.from_name),
         requester_member=_member_for(parsed.from_address),
@@ -133,7 +146,7 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
         automated=automated,
         flags=list(classified.flags),
         unread=not automated,
-        backfilled=timezone.now() - received > timedelta(hours=int(settings.backfill_age_hours)),
+        backfilled=backfilled,
         first_message_at=received,
         last_activity_at=received,
         closed_at=received if automated else None,

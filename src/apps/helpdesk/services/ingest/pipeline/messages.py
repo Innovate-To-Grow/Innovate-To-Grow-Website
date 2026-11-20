@@ -5,7 +5,7 @@ from django.utils import timezone
 from apps.core.services.email.inbound import scrub_links, scrub_subject
 
 from ....models import Ticket, TicketAttachment, TicketEvent, TicketMessage
-from ...tickets import events
+from ...tickets import events, sla
 from ..reading import attachments
 from ..reading.message import ParsedMessage
 from ..reading.sanitize import sanitize_html
@@ -92,6 +92,9 @@ def _joined(ticket: Ticket, message: TicketMessage, classified: Classified, rule
     elif ticket.status == Status.PENDING_CUSTOMER:
         updates["status"] = Status.OPEN
         events.record(ticket, TicketEvent.Kind.STATUS, reason="the customer replied", **_move(ticket.status))
+    if updates.get("status") == Status.OPEN:
+        # The requester answered: a resolution clock that stood still (waiting for them, or resolved) runs again.
+        updates.update(sla.status_values(ticket, Status.OPEN, timezone.now()))
     if rule == "flood":
         updates["flags"] = list(dict.fromkeys([*ticket.flags, "flood"]))
         events.record(ticket, TicketEvent.Kind.FLOOD, **{"from": message.from_address})

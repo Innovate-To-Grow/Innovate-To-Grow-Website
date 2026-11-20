@@ -170,9 +170,10 @@ class ActionTests(_ActionCase):
         self.assertEqual((self.open.assignee, self.open.unread), (None, False))
         self.assertEqual((self.new.status, self.new.assignee), (Status.OPEN, self.agent))
         self.assertEqual(self.automated.status, Status.CLOSED)  # automated mail is moved, never reopened
+        # Closing a new ticket moves it out of New: that is its first response (SLA).
         self.assertEqual(
             list(self.new.events.values_list("kind", flat=True)),
-            [TicketEvent.Kind.ASSIGNED, TicketEvent.Kind.STATUS, TicketEvent.Kind.STATUS],
+            [TicketEvent.Kind.ASSIGNED, TicketEvent.Kind.STATUS, TicketEvent.Kind.RESPONDED, TicketEvent.Kind.STATUS],
         )
 
 
@@ -186,6 +187,8 @@ class SidebarTests(TestCase):
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/"), ["Queue"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?assignee=me"), ["My Tickets"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?assignee=none"), ["Unassigned"])
+        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?group=mine"), ["My Groups"])
+        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?sla=breached"), ["SLA Breached"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?mail=automated&status=any"), ["Automated & Spam"])
         self.assertEqual(self.active_items("/admin/helpdesk/ingestrecord/"), [])
 

@@ -1,8 +1,10 @@
-"""Shadow mode: the helpdesk reads the mailbox and writes tickets, and sends nothing, ever.
+"""Shadow mode: while it is on, the helpdesk reads the mailbox and writes tickets, and sends nothing.
 
-Three layers of proof: the helpdesk's code imports no sending API at all; a whole ingest of every kind of mail runs
-with every sending path (the email facade, Django's mail, the Graph POST transport) wired to fail the test; and the
-only thing it asks of the mailbox is a GET of a message's MIME (the Graph allow-list refuses anything else anyway).
+Three layers of proof: outside ``services/outbound`` (the one module that sends, and checks shadow mode first) the
+helpdesk's code imports no sending API at all, and nowhere does it use Django's mail or the Graph transport; a whole
+ingest of every kind of mail runs with every sending path (the email facade, Django's mail, the Graph POST transport)
+wired to fail the test; and the only thing it asks of the mailbox is a GET of a message's MIME (the Graph allow-list
+refuses anything else anyway).
 """
 
 import ast
@@ -37,6 +39,9 @@ FORBIDDEN_MODULES = (
     "apps.core.services.email.sending.delivery",
     "django.core.mail",
 )
+# Never anywhere, the sending module included: it sends through the email facade only.
+ALWAYS_FORBIDDEN_MODULES = ("apps.core.services.email.graph.transport", "django.core.mail")
+OUTBOUND = ("services", "outbound")
 
 
 class ShadowSwitchTests(TestCase):
@@ -45,33 +50,49 @@ class ShadowSwitchTests(TestCase):
         self.assertTrue(shadow.shadow_mode_on())
         self.assertFalse(shadow.sending_allowed())
 
-    def test_even_switched_off_nothing_may_send_in_this_release(self):
+    def test_switched_off_sending_is_allowed(self):
         settings = HelpdeskSettings(shadow_mode=False)
 
-        self.assertFalse(shadow.SENDING_IMPLEMENTED)
-        self.assertTrue(shadow.shadow_mode_on(settings))
-        self.assertFalse(shadow.sending_allowed(settings))
+        self.assertTrue(shadow.SENDING_IMPLEMENTED)
+        self.assertFalse(shadow.shadow_mode_on(settings))
+        self.assertTrue(shadow.sending_allowed(settings))
+
+    def test_the_code_switch_still_overrides_the_setting(self):
+        with patch.object(shadow, "SENDING_IMPLEMENTED", False):
+            self.assertFalse(shadow.sending_allowed(HelpdeskSettings(shadow_mode=False)))
+
+
+def _imports(path: Path):
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            yield node.module or "", {alias.name for alias in node.names}
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                yield alias.name, set()
 
 
 class NoSendingCodeTests(TestCase):
-    def test_the_helpdesk_imports_no_sending_api(self):
+    def test_only_the_outbound_module_imports_a_sending_api(self):
         offenders = []
         for path in sorted(HELPDESK_ROOT.rglob("*.py")):
-            if "tests" in path.parts or "migrations" in path.parts:
+            relative = path.relative_to(HELPDESK_ROOT)
+            if "tests" in relative.parts or "migrations" in relative.parts:
                 continue
-            tree = ast.parse(path.read_text(encoding="utf-8"))
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom):
-                    module = node.module or ""
-                    names = {alias.name for alias in node.names}
-                    if module.startswith(FORBIDDEN_MODULES) or names & FORBIDDEN_NAMES:
-                        offenders.append(f"{path.relative_to(HELPDESK_ROOT)}: from {module} import {sorted(names)}")
-                elif isinstance(node, ast.Import):
-                    for alias in node.names:
-                        if alias.name.startswith(FORBIDDEN_MODULES):
-                            offenders.append(f"{path.relative_to(HELPDESK_ROOT)}: import {alias.name}")
+            sender = relative.parts[:2] == OUTBOUND
+            for module, names in _imports(path):
+                if module.startswith(ALWAYS_FORBIDDEN_MODULES) or "post" in names:
+                    offenders.append(f"{relative}: {module} {sorted(names)}")
+                elif not sender and (module.startswith(FORBIDDEN_MODULES) or names & FORBIDDEN_NAMES):
+                    offenders.append(f"{relative}: {module} {sorted(names)}")
 
         self.assertEqual(offenders, [])
+
+    def test_every_send_checks_shadow_mode_first(self):
+        source = (HELPDESK_ROOT / "services" / "outbound" / "jobs.py").read_text(encoding="utf-8")
+        for handler in ("def send_reply_job", "def notify_staff_job"):
+            body = source.split(handler, 1)[1].split("\ndef ", 1)[0]
+            self.assertLess(body.index("sending_allowed"), body.index("deliver_email("), handler)
 
 
 class NothingIsSentTests(TestCase):

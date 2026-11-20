@@ -104,10 +104,22 @@ SIDEBAR = {
                     "active": _helpdesk_queue_view("mine"),
                 },
                 {
+                    "title": "My Groups",
+                    "link": f"{_HELPDESK_TICKETS_PATH}?group=mine",
+                    "permission": _can("helpdesk"),
+                    "active": _helpdesk_queue_view("groups"),
+                },
+                {
                     "title": "Unassigned",
                     "link": f"{_HELPDESK_TICKETS_PATH}?assignee=none",
                     "permission": _can("helpdesk"),
                     "active": _helpdesk_queue_view("unassigned"),
+                },
+                {
+                    "title": "SLA Breached",
+                    "link": f"{_HELPDESK_TICKETS_PATH}?sla=breached",
+                    "permission": _can("helpdesk"),
+                    "active": _helpdesk_queue_view("breached"),
                 },
                 {
                     "title": "Automated & Spam",
@@ -117,6 +129,17 @@ SIDEBAR = {
                 },
                 {"title": "Ingest Problems", "link": "/admin/helpdesk/ingestrecord/", "permission": _can("helpdesk")},
                 {"title": "Categories", "link": "/admin/helpdesk/ticketcategory/", "permission": _can("helpdesk")},
+                {
+                    "title": "Assignment Groups",
+                    "link": "/admin/helpdesk/assignmentgroup/",
+                    "permission": _can("helpdesk"),
+                },
+                {"title": "SLA Targets", "link": "/admin/helpdesk/slatarget/", "permission": _can("helpdesk")},
+                {
+                    "title": "Response Templates",
+                    "link": "/admin/helpdesk/responsetemplate/",
+                    "permission": _can("helpdesk"),
+                },
                 {"title": "Settings", "link": "/admin/helpdesk/helpdesksettings/", "permission": _can("helpdesk")},
             ],
         },

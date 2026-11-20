@@ -5,6 +5,7 @@ from ...models import Ticket, TicketEvent
 Kind = TicketEvent.Kind
 _STATUS = dict(Ticket.Status.choices)
 _PRIORITY = dict(Ticket.Priority.choices)
+_RESOLUTION = dict(Ticket.ResolutionCode.choices)
 _RULES = {
     "references": "threaded by its In-Reply-To / References",
     "subject_token": "threaded by the ticket number in its subject",
@@ -48,6 +49,27 @@ def _merged(event, data) -> str:
     return f"I2G-#{data.get('source')} merged into this ticket ({data.get('messages', 0)} messages moved)"
 
 
+def _resolution(event, data) -> str:
+    code = _RESOLUTION.get(data.get("code") or "", "") or "no code"
+    return f"Resolution: {code}" + (" (notes updated)" if data.get("notes") else "")
+
+
+def _notified(event, data) -> str:
+    if data.get("reason") == "group":
+        count = int(data.get("count") or 0)
+        return f"The assignment group's {count} member{'s' if count != 1 else ''} notified by email"
+    return "The assignee notified by email"
+
+
+def _responded(event, data) -> str:
+    return "First response: " + ("a reply was sent" if data.get("by") == "reply" else "the ticket was moved on")
+
+
+def _reply_failed(event, data) -> str:
+    what = "acknowledgement" if data.get("what") == "acknowledgement" else "reply"
+    return f"The {what} was not sent: {data.get('error') or 'delivery failed'}"
+
+
 _DESCRIBERS = {
     Kind.CREATED: _created,
     Kind.CUSTOMER_MESSAGE: _message,
@@ -67,6 +89,16 @@ _DESCRIBERS = {
     Kind.FLOOD: lambda event, data: (
         f"Grouped into this ticket: many new tickets from {data.get('from') or 'one sender'}"
     ),
+    Kind.IMPACT: lambda event, data: f"Impact: {_change(data)}",
+    Kind.URGENCY: lambda event, data: f"Urgency: {_change(data)}",
+    Kind.GROUP: lambda event, data: f"{event.get_kind_display()}: {_change(data)}",
+    Kind.RESOLUTION: _resolution,
+    Kind.REPLY: lambda event, data: f"Reply sent to {data.get('to') or 'the requester'}",
+    Kind.ACKNOWLEDGED: lambda event, data: f"Acknowledgement sent to {data.get('to') or 'the requester'}",
+    Kind.REPLY_FAILED: _reply_failed,
+    Kind.NOTIFIED: _notified,
+    Kind.RESPONDED: _responded,
+    Kind.SLA_BREACHED: lambda event, data: f"SLA breached: the {data.get('which') or 'resolution'} is overdue",
 }
 
 

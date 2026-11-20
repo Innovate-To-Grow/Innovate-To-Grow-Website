@@ -49,7 +49,7 @@ def _is_email_sending_method(request):
 
 
 def _helpdesk_queue_view(name):
-    """Sidebar "active" callback for one view of the ticket list (the four views share one path)."""
+    """Sidebar "active" callback for one view of the ticket list (the six views share one path)."""
 
     def active(request):
         if not request.path.startswith(_HELPDESK_TICKETS_PATH):
@@ -57,6 +57,10 @@ def _helpdesk_queue_view(name):
         mail, assignee = request.GET.get("mail", ""), request.GET.get("assignee", "")
         if mail in ("automated", "all"):
             return name == "automated"
+        if request.GET.get("sla", "") == "breached":
+            return name == "breached"
+        if request.GET.get("group", "") == "mine" and not assignee:
+            return name == "groups"
         return {"me": "mine", "none": "unassigned"}.get(assignee, "queue") == name
 
     return active

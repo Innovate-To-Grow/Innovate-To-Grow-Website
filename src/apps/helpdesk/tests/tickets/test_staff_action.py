@@ -41,7 +41,8 @@ class StaffActionTests(TestCase):
         )
         self.assertIsNotNone(self.ticket.closed_at)
         self.assertIsNotNone(self.ticket.resolved_at)
-        self.assertEqual(self.kinds(), [Kind.STATUS, Kind.PRIORITY, Kind.CATEGORY, Kind.ASSIGNED])
+        # Leaving New is the first response (SLA), recorded after the changes that made it.
+        self.assertEqual(self.kinds(), [Kind.STATUS, Kind.PRIORITY, Kind.CATEGORY, Kind.ASSIGNED, Kind.RESPONDED])
         assigned = self.ticket.events.get(kind=Kind.ASSIGNED)
         self.assertEqual((assigned.actor, assigned.data), (self.agent, {"from": "", "to": "Avery Agent"}))
 

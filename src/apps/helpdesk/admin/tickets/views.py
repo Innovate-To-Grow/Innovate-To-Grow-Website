@@ -1,4 +1,4 @@
-"""The ticket page's own views: adding an internal note, and downloading an attachment.
+"""The ticket page's own views: adding an internal note, replying to the requester, and downloading an attachment.
 
 ``admin_view`` only requires a staff login, so each view checks the Helpdesk grant itself (403 without it), and an
 attachment must belong to the ticket in its URL. A download is always ``Content-Disposition: attachment`` with
@@ -19,8 +19,15 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.core.utils.access import user_can_access_app
 
 from ...models import HelpdeskSettings, Ticket, TicketAttachment
-from ...services import tickets
+from ...services import outbound, tickets
 from ...services.ingest.reading import attachments as files
+
+# The statuses the reply form offers, set on the ticket when the reply is queued; "" keeps the current one.
+REPLY_STATUS_CHOICES = (
+    (Ticket.Status.PENDING_CUSTOMER, "On hold – awaiting requester"),
+    ("", "Keep the current status"),
+    (Ticket.Status.OPEN, "In progress"),
+)
 
 
 def require_helpdesk_access(request) -> None:
@@ -45,6 +52,30 @@ def note_view(request, pk):
         tickets.add_note(ticket, actor=request.user, body=body)
         messages.success(request, "Internal note added. Notes are never sent to anyone.")
     return HttpResponseRedirect(f"{_ticket_url(ticket)}#helpdesk-note")
+
+
+@require_POST
+def reply_view(request, pk):
+    """Queue a reply to the requester (only while shadow mode is off; ``outbound.queue_reply`` decides and says why
+    not). The status chosen with it must be one the form offers."""
+    require_helpdesk_access(request)
+    ticket = get_object_or_404(Ticket, pk=pk)
+    status = str(request.POST.get("status") or "")
+    if status not in {value for value, _label in REPLY_STATUS_CHOICES}:
+        status = ""
+    try:
+        outbound.queue_reply(
+            ticket,
+            actor=request.user,
+            body=str(request.POST.get("body") or ""),
+            cc=str(request.POST.get("cc") or ""),
+            status=status,
+        )
+    except outbound.ReplyRefused as refused:
+        messages.error(request, str(refused))
+        return HttpResponseRedirect(f"{_ticket_url(ticket)}#helpdesk-reply")
+    messages.success(request, f"Reply queued to {ticket.requester_email}; its delivery shows on the timeline.")
+    return HttpResponseRedirect(f"{_ticket_url(ticket)}#helpdesk-timeline")
 
 
 @require_GET

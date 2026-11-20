@@ -3,12 +3,17 @@
 - Mail: people (default), automated & spam, or everything. Automated mail is hidden unless asked for.
 - Status: open statuses (default; "any status" once automated mail is shown), resolved & closed, one status, or any.
 - Assignee: me, unassigned, or anyone (default).
+- Assignment group: my groups, no group, or one group. SLA: breached, due within 24 hours, or no SLA.
 """
+
+import uuid
 
 from django.contrib import admin
 from django.db.models import Q
+from django.utils import timezone
 
-from ...models import Ticket
+from ...models import AssignmentGroup, Ticket
+from ...services.tickets import sla
 
 Status = Ticket.Status
 
@@ -93,6 +98,50 @@ class AssigneeFilter(admin.SimpleListFilter):
             return queryset.filter(assignee=request.user)
         if self.value() == "none":
             return queryset.filter(assignee__isnull=True)
+        return queryset
+
+
+class GroupFilter(admin.SimpleListFilter):
+    """ServiceNow's "My groups' work": the tickets of every group the signed-in member belongs to, one group, or
+    tickets without a group."""
+
+    title = "assignment group"
+    parameter_name = "group"
+
+    def lookups(self, request, model_admin):
+        groups = [(str(group.pk), group.name) for group in AssignmentGroup.objects.filter(is_active=True)]
+        return (("mine", "My groups"), ("none", "No group"), *groups)
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == "mine":
+            # A ticket has one group and a member is in it once, so the join adds no duplicate rows.
+            return queryset.filter(assignment_group__members=request.user)
+        if value == "none":
+            return queryset.filter(assignment_group__isnull=True)
+        if value:
+            try:
+                return queryset.filter(assignment_group_id=uuid.UUID(value))
+            except ValueError:
+                return queryset.none()
+        return queryset
+
+
+class SLAFilter(admin.SimpleListFilter):
+    title = "SLA"
+    parameter_name = "sla"
+
+    def lookups(self, request, model_admin):
+        return (("breached", "Breached"), ("due_soon", "Due within 24 hours"), ("none", "No SLA"))
+
+    def queryset(self, request, queryset):
+        now = timezone.now()
+        if self.value() == "breached":
+            return queryset.filter(sla.breached_q(now))
+        if self.value() == "due_soon":
+            return queryset.filter(sla.due_soon_q(now)).exclude(sla.breached_q(now))
+        if self.value() == "none":
+            return queryset.filter(sla_started_at__isnull=True)
         return queryset
 
 

@@ -8,6 +8,11 @@ campaign is ``SET_NULL``, so a ticket outlives a deleted account and keeps the r
 
 Nothing is ever merged into automated mail or spam (``is_automated_or_spam``): ``services.tickets.merge`` refuses
 it, and ``clean`` refuses such a ``merged_into`` for any form or ``full_clean()`` path.
+
+Tickets are worked ServiceNow style: the priority follows from impact and urgency (``services.tickets.priority``), a
+ticket has an assignment group and an assignee within it, its SLA clock gives a response and a resolution due time
+(``services.tickets.sla``), and resolving it records a resolution code and notes. New columns carry database
+defaults, so the previous release keeps inserting tickets while a deploy rolls out.
 """
 
 from django.conf import settings
@@ -24,6 +29,14 @@ class TicketCategory(ProjectControlModel):
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
     order = models.PositiveIntegerField(default=0)
+    default_group = models.ForeignKey(
+        "helpdesk.AssignmentGroup",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="default_for_categories",
+        help_text="Assignment rule: a ticket given this category while it has no group is assigned to this group.",
+    )
 
     class Meta:
         ordering = ["order", "name"]
@@ -37,19 +50,40 @@ class TicketCategory(ProjectControlModel):
 class Ticket(ProjectControlModel):
     class Status(models.TextChoices):
         NEW = "new", "New"
-        OPEN = "open", "Open"
-        PENDING_CUSTOMER = "pending_customer", "Pending customer"
-        PENDING_INTERNAL = "pending_internal", "Pending internal"
+        OPEN = "open", "In progress"
+        PENDING_CUSTOMER = "pending_customer", "On hold – awaiting requester"
+        PENDING_INTERNAL = "pending_internal", "On hold – awaiting internal"
         RESOLVED = "resolved", "Resolved"
         CLOSED = "closed", "Closed"
         MERGED = "merged", "Merged"
         SPAM = "spam", "Spam"
 
     class Priority(models.TextChoices):
-        LOW = "low", "Low"
-        NORMAL = "normal", "Normal"
-        HIGH = "high", "High"
-        URGENT = "urgent", "Urgent"
+        # The stored values predate the ServiceNow labels; the order of severity is urgent, high, normal, low.
+        LOW = "low", "4 – Low"
+        NORMAL = "normal", "3 – Moderate"
+        HIGH = "high", "2 – High"
+        URGENT = "urgent", "1 – Critical"
+
+    class Impact(models.IntegerChoices):
+        HIGH = 1, "1 – High"
+        MEDIUM = 2, "2 – Medium"
+        LOW = 3, "3 – Low"
+
+    class Urgency(models.IntegerChoices):
+        HIGH = 1, "1 – High"
+        MEDIUM = 2, "2 – Medium"
+        LOW = 3, "3 – Low"
+
+    class ResolutionCode(models.TextChoices):
+        SOLVED = "solved", "Solved"
+        INFORMATION_PROVIDED = "information_provided", "Information provided"
+        WORKAROUND = "workaround", "Solved (workaround)"
+        REFERRED = "referred", "Referred elsewhere"
+        DUPLICATE = "duplicate", "Duplicate"
+        NO_ACTION_NEEDED = "no_action_needed", "No action needed"
+        RESOLVED_BY_REQUESTER = "resolved_by_requester", "Resolved by requester"
+        NOT_SOLVED = "not_solved", "Not solved"
 
     class Source(models.TextChoices):
         EMAIL = "email", "Email"
@@ -62,9 +96,31 @@ class Ticket(ProjectControlModel):
     number = models.PositiveIntegerField(unique=True, editable=False, help_text="Shown as I2G-#<number>.")
     subject = models.CharField(max_length=255, blank=True, default="")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.NEW, db_index=True)
-    priority = models.CharField(max_length=8, choices=Priority.choices, default=Priority.NORMAL, db_index=True)
+    priority = models.CharField(
+        max_length=8,
+        choices=Priority.choices,
+        default=Priority.NORMAL,
+        db_index=True,
+        help_text="Follows from impact and urgency.",
+    )
+    impact = models.PositiveSmallIntegerField(
+        choices=Impact.choices, default=Impact.MEDIUM, db_default=Impact.MEDIUM, help_text="How many people it affects."
+    )
+    urgency = models.PositiveSmallIntegerField(
+        choices=Urgency.choices,
+        default=Urgency.MEDIUM,
+        db_default=Urgency.MEDIUM,
+        help_text="How soon it must be dealt with.",
+    )
     category = models.ForeignKey(
         TicketCategory, null=True, blank=True, on_delete=models.SET_NULL, related_name="tickets"
+    )
+    assignment_group = models.ForeignKey(
+        "helpdesk.AssignmentGroup",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="tickets",
     )
     assignee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -72,6 +128,7 @@ class Ticket(ProjectControlModel):
         blank=True,
         on_delete=models.SET_NULL,
         related_name="helpdesk_assigned_tickets",
+        verbose_name="assigned to",
     )
     requester_email = models.CharField(max_length=254, blank=True, default="", db_index=True)
     requester_name = models.CharField(max_length=255, blank=True, default="")
@@ -117,6 +174,21 @@ class Ticket(ProjectControlModel):
     last_activity_at = models.DateTimeField(default=timezone.now, db_index=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    resolution_code = models.CharField(
+        max_length=24, choices=ResolutionCode.choices, blank=True, default="", db_default=""
+    )
+    resolution_notes = models.TextField(blank=True, default="", db_default="")
+    # The SLA clock (``services.tickets.sla``). No due times: no SLA (automated mail, backfilled mail, an inactive
+    # target). The resolution clock does not run while ``sla_paused_at`` is set; the time it stood still is added to
+    # the resolution due time when it starts again.
+    sla_started_at = models.DateTimeField(null=True, blank=True)
+    response_due_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    resolution_due_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    first_responded_at = models.DateTimeField(null=True, blank=True)
+    sla_paused_at = models.DateTimeField(null=True, blank=True)
+    sla_paused_seconds = models.PositiveIntegerField(default=0, db_default=0)
+    response_breached = models.BooleanField(default=False, db_default=False, db_index=True)
+    resolution_breached = models.BooleanField(default=False, db_default=False, db_index=True)
 
     class Meta:
         ordering = ["-last_activity_at"]
