@@ -2,7 +2,7 @@
 accounts) is read (``accounts``), and a reply may be sent From any configured sending address (``senders``) through
 the email facade."""
 
-from .accounts import ALL_ACCOUNTS, InboxAccount, readable_accounts, resolve_account
+from .accounts import ALL_ACCOUNTS, InboxAccount, connectable_accounts, readable_accounts, resolve_account
 from .connection import (
     INBOX_FOLDER,
     INBOX_FOLDER_CHOICES,
@@ -30,6 +30,7 @@ __all__ = [
     "InboxListing",
     "SendIdentity",
     "_open_inbox",
+    "connectable_accounts",
     "default_identity_for",
     "fetch_inbox_message",
     "graph_inbox_active",

@@ -1,4 +1,4 @@
-<div class="i2g-mail-shell">
+<div class="i2g-mail-shell" data-inbox-auto-refresh="{{ auto_refresh_seconds|default:0 }}">
     <div class="i2g-mail-toolbar">
         <div class="i2g-mail-toolbar__identity">
             <span class="material-symbols-outlined i2g-mail-toolbar__icon">{% if folder == 'SENT' %}send{% else %}inbox{% endif %}</span>
@@ -97,10 +97,11 @@
         {% endif %}
     </div>
 
-    {% if unavailable_message %}
-    <div data-inbox-unavailable class="i2g-inbox-status i2g-inbox-status--error">
-        <span class="material-symbols-outlined !text-[18px]">error</span>
-        <span>{{ unavailable_message }}</span>
+    {% comment %}Accounts that could not connect recently are left out of the list (services.inbox.health).{% endcomment %}
+    {% if hidden_message %}
+    <div data-inbox-hidden class="i2g-inbox-status i2g-inbox-status--warning">
+        <span class="material-symbols-outlined !text-[18px]">cloud_off</span>
+        <span>{{ hidden_message }}</span>
     </div>
     {% endif %}
 

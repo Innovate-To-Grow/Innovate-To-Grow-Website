@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase
 
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
@@ -8,6 +9,8 @@ from apps.mail.services.inbox.reply import send_reply
 
 class InboxReplySendSettingsTest(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         EmailServiceConfig.objects.create(
             name="Mail",
             is_active=True,

@@ -10,6 +10,10 @@ from apps.core.utils.access import user_can_access_app
 from . import services as inbox_api
 from .helpers import hide_own_mail, parse_account, parse_folder, parse_limit, sent_mail_restricted
 
+# While the inbox page is open and visible it reloads its list this often (from the poller's snapshot and the
+# container cache, so it seldom connects to a mailbox).
+AUTO_REFRESH_SECONDS = 60
+
 
 def inbox_list_view(request):
     """Render the inbox shell instantly; JS fetches content asynchronously."""
@@ -28,11 +32,13 @@ def inbox_list_view(request):
 def inbox_fragment_view(request):
     """Return HTML partial for inbox list and config stats.
 
-    ``?account=all`` (the default) merges every inbox account's newest messages; an account key shows that one.
+    ``?account=all`` (the default) merges the newest messages of every account that connects; an account key shows
+    that one. Accounts that could not connect recently are left out of both and named in a note; Refresh
+    (``?refresh=1``) tries every account again.
     """
     if not user_can_access_app(request.user, "mail"):
         raise PermissionDenied("You do not have permission to access the mail inbox.")
-    error_message = busy_message = unavailable_message = ""
+    error_message = busy_message = ""
     showing_stale = False
     inbox_messages = []
     limit = parse_limit(request)
@@ -42,10 +48,10 @@ def inbox_fragment_view(request):
         # The Sent tab is not offered, and a remembered or hand-written ?folder=SENT shows the Inbox instead.
         folder = inbox_api.INBOX_FOLDER
     force_refresh = request.GET.get("refresh") == "1"
-    accounts = _accounts()
+    shown, _hidden = _connectable(retry=force_refresh)
     account = parse_account(request, default=inbox_api.ALL_ACCOUNTS)
-    if account != inbox_api.ALL_ACCOUNTS and account not in {item.key for item in accounts}:
-        # A remembered account that is no longer configured: show every account instead.
+    if account != inbox_api.ALL_ACCOUNTS and account not in {item.key for item in shown}:
+        # A remembered account that is no longer configured, or cannot connect: show every account instead.
         account = inbox_api.ALL_ACCOUNTS
 
     try:
@@ -53,8 +59,6 @@ def inbox_fragment_view(request):
             listing = inbox_api.list_all_inbox_messages(limit=limit, force_refresh=force_refresh, folder=folder)
             inbox_messages, showing_stale = listing.messages, listing.showing_stale
             busy_message = " ".join(listing.busy)
-            if listing.unavailable:
-                unavailable_message = f"Could not load: {', '.join(listing.unavailable)}. Check server logs."
         else:
             inbox_messages = inbox_api.list_inbox_messages(
                 limit=limit, force_refresh=force_refresh, folder=folder, account=account
@@ -71,6 +75,14 @@ def inbox_fragment_view(request):
         error_message = inbox_api.INBOX_UNEXPECTED_ERROR_MESSAGE
     if not sent_folder_allowed:
         inbox_messages = hide_own_mail(inbox_messages)
+    # After the read, which recorded whether each account connected.
+    accounts, hidden = _connectable()
+    hidden_message = ""
+    if hidden:
+        hidden_message = (
+            f"Not shown because they could not connect: {', '.join(item.address for item in hidden)}. "
+            "They are tried again automatically, or now with Refresh."
+        )
 
     return TemplateResponse(
         request,
@@ -84,7 +96,8 @@ def inbox_fragment_view(request):
             "inbox_messages": inbox_messages,
             "error_message": error_message,
             "busy_message": busy_message,
-            "unavailable_message": unavailable_message,
+            "hidden_message": hidden_message,
+            "auto_refresh_seconds": AUTO_REFRESH_SECONDS,
             "showing_stale": showing_stale,
             "limit": limit,
             "limit_choices": inbox_api.INBOX_LIMIT_CHOICES,
@@ -94,12 +107,13 @@ def inbox_fragment_view(request):
     )
 
 
-def _accounts() -> list:
+def _connectable(*, retry: bool = False) -> tuple[list, list]:
+    """``(shown, hidden)`` inbox accounts (``connectable_accounts``); ``([], [])`` when they cannot be listed."""
     try:
-        return inbox_api.readable_accounts()
+        return inbox_api.connectable_accounts(retry=retry)
     except Exception:
         inbox_api.logger.exception("Could not list the inbox accounts.")
-        return []
+        return [], []
 
 
 def _inbox_account(accounts: list, selected: str) -> dict[str, str]:

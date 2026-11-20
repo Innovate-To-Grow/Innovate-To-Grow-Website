@@ -12,6 +12,7 @@ it is one of the accounts listed here, so a hand-written key never reaches a mai
 
 from dataclasses import dataclass
 
+from django.core.cache import cache
 from django.db.models import Q
 from django.db.utils import OperationalError, ProgrammingError
 
@@ -26,6 +27,8 @@ GRAPH_SOURCE = "Microsoft Graph"
 
 ACCOUNT_UNAVAILABLE_MESSAGE = "That mailbox is not available in the Inbox."
 NO_ACCOUNTS_MESSAGE = "No inbox account is configured."
+ACCOUNTS_CACHE_KEY = "inbox:accounts"
+ACCOUNTS_CACHE_TTL = 60
 
 
 @dataclass(frozen=True)
@@ -52,12 +55,37 @@ class InboxAccount:
         return f"{self.address} ({kind})"
 
 
-def readable_accounts() -> list[InboxAccount]:
-    """Every account the Inbox reads, the default one first. Empty when nothing is configured."""
+def readable_accounts(*, use_cache: bool = True) -> list[InboxAccount]:
+    """Every account the Inbox reads, the default one first. Empty when nothing is configured.
+
+    Cached briefly per container (``ACCOUNTS_CACHE_TTL``); saving any configuration it depends on drops the cache
+    (``invalidation``). Each read still re-checks its account (``reader_for``, ``get_account_config``), so a stale
+    entry never reaches a mailbox the configuration no longer allows.
+    """
+    if use_cache:
+        cached = cache.get(ACCOUNTS_CACHE_KEY)
+        if cached is not None:
+            return list(cached)
     try:
-        return [*_graph_accounts(), *_imap_accounts()]
+        accounts = [*_graph_accounts(), *_imap_accounts()]
     except (OperationalError, ProgrammingError) as exc:
         raise InboxError("Mail configuration is unavailable. Run the latest migrations first.") from exc
+    cache.set(ACCOUNTS_CACHE_KEY, accounts, ACCOUNTS_CACHE_TTL)
+    return accounts
+
+
+def connectable_accounts(*, retry: bool = False) -> tuple[list[InboxAccount], list[InboxAccount]]:
+    """``(shown, hidden)``: the accounts the Inbox lists, and those it leaves out because they could not connect
+    recently (``health.hidden_keys``). ``retry`` (the Refresh button) shows every account, to try them again."""
+    from . import health
+
+    accounts = readable_accounts()
+    hidden = set() if retry else health.hidden_keys(accounts)
+    return [a for a in accounts if a.key not in hidden], [a for a in accounts if a.key in hidden]
+
+
+def forget_accounts() -> None:
+    cache.delete(ACCOUNTS_CACHE_KEY)
 
 
 def resolve_account(key: str | None = None) -> InboxAccount:

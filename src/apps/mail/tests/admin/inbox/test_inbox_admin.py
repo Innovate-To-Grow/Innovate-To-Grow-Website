@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
@@ -9,6 +10,8 @@ from apps.mail.services.inbox import InboxListing
 
 class _InboxAdminFragmentCase(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
 

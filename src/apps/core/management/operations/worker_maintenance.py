@@ -14,6 +14,8 @@ from apps.helpdesk.services.ingest.pipeline.jobs import purge_finished_jobs as p
 from apps.helpdesk.services.intake.jobs import ensure_scheduled as ensure_helpdesk_intake_scheduled
 from apps.helpdesk.services.intake.jobs import purge_finished_jobs as purge_finished_helpdesk_intake_scans
 from apps.helpdesk.services.tickets.retention import purge_expired as purge_expired_helpdesk
+from apps.mail.services.inbox.polling import ensure_scheduled as ensure_inbox_poll_scheduled
+from apps.mail.services.inbox.polling import purge_finished_jobs as purge_finished_inbox_polls
 from apps.mail.services.sms.policy.opt_out_sync import run_scheduled as sync_sms_opt_outs
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets
 
@@ -97,6 +99,14 @@ def _schedule_helpdesk_ingest(should_stop=None) -> None:
         logger.debug("Queued a helpdesk ingest run")
 
 
+def _schedule_inbox_poll(should_stop=None) -> None:
+    # The universal inbox's new-mail poll chains itself; this starts it at start-up and restarts it if the chain broke.
+    if ensure_inbox_poll_scheduled():
+        logger.debug("Queued an inbox poll")
+    if purged := purge_finished_inbox_polls():
+        logger.info("Purged %d finished inbox poll jobs", purged)
+
+
 def _purge_helpdesk(should_stop=None) -> None:
     # Ticket bodies, attachments and tickets past the retention periods set in Helpdesk → Settings.
     result = {
@@ -136,4 +146,5 @@ MAINTENANCE_TASKS = (
     ("Helpdesk intake scheduling", _schedule_helpdesk_intake),
     ("Helpdesk ingest scheduling", _schedule_helpdesk_ingest),
     ("Helpdesk retention", _purge_helpdesk),
+    ("Inbox poll scheduling", _schedule_inbox_poll),
 )

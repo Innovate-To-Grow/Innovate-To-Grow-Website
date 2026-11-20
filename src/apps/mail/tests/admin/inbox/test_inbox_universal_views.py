@@ -62,11 +62,16 @@ class UniversalInboxViewCase(TestCase):
         cache.clear()
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
-        self.readable = self.patch("readable_accounts", return_value=list(self.accounts))
+        self.hidden = []
+        self.connectable = self.patch("connectable_accounts", side_effect=self.connectable_accounts)
         self.list_one = self.patch("list_inbox_messages", return_value=[summary("1", IMAP)])
         self.list_all = self.patch(
             "list_all_inbox_messages", return_value=InboxListing(messages=[summary("g1", GRAPH), summary("1", IMAP)])
         )
+
+    def connectable_accounts(self, *, retry=False):
+        hidden = [] if retry else list(self.hidden)
+        return [item for item in self.accounts if item not in hidden], hidden
 
     def patch(self, name, **kwargs):
         patcher = patch(f"{SERVICES}.{name}", **kwargs)
@@ -115,20 +120,61 @@ class InboxListAccountTests(UniversalInboxViewCase):
                 self.assertContains(response, f'<option value="{ALL_ACCOUNTS}" selected>', html=False)
         self.list_one.assert_not_called()
 
-    def test_busy_and_unavailable_accounts_are_named(self):
+    def test_busy_accounts_are_named(self):
         self.list_all.return_value = InboxListing(
             messages=[summary("g1", GRAPH)],
             busy=["i2g@gmail.com: Gmail is busy; try again in about 30 seconds."],
-            unavailable=["other@gmail.com"],
             showing_stale=True,
         )
 
         response = self.fragment()
 
-        self.assertContains(response, "data-inbox-unavailable")
-        self.assertContains(response, "Could not load: other@gmail.com. Check server logs.")
         self.assertContains(response, "Gmail is busy; try again in about 30 seconds.")
         self.assertContains(response, "Subject g1")
+        self.assertNotContains(response, "data-inbox-hidden")
+
+    def test_an_account_that_could_not_connect_is_not_offered_and_is_named(self):
+        self.hidden = [IMAP]
+
+        response = self.fragment()
+
+        self.list_all.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX")
+        self.assertEqual(self.connectable.call_args_list[0].kwargs, {"retry": False})
+        self.assertContains(response, "data-inbox-hidden")
+        self.assertContains(
+            response,
+            "Not shown because they could not connect: i2g@gmail.com. "
+            "They are tried again automatically, or now with Refresh.",
+        )
+        # One account left: no account choice, and the header names it.
+        self.assertNotContains(response, 'aria-label="Inbox account"')
+        self.assertNotContains(response, '<option value="imap:7"', html=False)
+        self.assertContains(response, "i2g@contoso.com")
+
+    def test_a_hidden_account_key_falls_back_to_all(self):
+        self.hidden = [IMAP]
+
+        response = self.fragment("?account=imap:7")
+
+        self.list_one.assert_not_called()
+        self.list_all.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX")
+        self.assertContains(response, "data-inbox-hidden")
+
+    def test_refresh_retries_every_account(self):
+        self.hidden = [IMAP]
+
+        response = self.fragment("?account=imap:7&refresh=1")
+
+        self.assertEqual(self.connectable.call_args_list[0].kwargs, {"retry": True})
+        self.list_one.assert_called_once_with(limit=30, force_refresh=True, folder="INBOX", account="imap:7")
+        # After the read the account is named again if it still could not connect.
+        self.assertEqual(self.connectable.call_args_list[-1].kwargs, {"retry": False})
+        self.assertContains(response, "data-inbox-hidden")
+
+    def test_the_shell_names_its_auto_refresh_interval(self):
+        response = self.fragment()
+
+        self.assertContains(response, 'data-inbox-auto-refresh="60"')
 
     def test_a_held_back_single_account_shows_its_last_list(self):
         busy = InboxBusy("Gmail is busy; try again in about 30 seconds.", 30)
@@ -139,10 +185,10 @@ class InboxListAccountTests(UniversalInboxViewCase):
 
         self.assertContains(response, "Gmail is busy; try again in about 30 seconds.")
         self.assertContains(response, "Stale subject")
-        self.assertNotContains(response, "data-inbox-unavailable")
+        self.assertNotContains(response, "data-inbox-hidden")
 
     def test_an_account_listing_failure_still_renders(self):
-        self.readable.side_effect = RuntimeError("boom")
+        self.connectable.side_effect = RuntimeError("boom")
 
         with self.assertLogs("apps.mail.admin.inbox", "ERROR"):
             response = self.fragment("?account=imap:7")

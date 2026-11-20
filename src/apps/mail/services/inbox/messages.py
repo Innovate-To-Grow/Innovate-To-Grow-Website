@@ -8,8 +8,8 @@ from imap_tools import AND
 
 from apps.mail.services.campaign.gmail_import.credential_mail import WITHOUT_CREDENTIAL_MAIL, without_credential_mail
 
-from . import graph_backend
-from .accounts import NO_ACCOUNTS_MESSAGE, readable_accounts, resolve_account
+from . import graph_backend, health
+from .accounts import NO_ACCOUNTS_MESSAGE, connectable_accounts, resolve_account
 from .connection import (
     INBOX_FOLDER,
     INBOX_LIMIT_CHOICES,
@@ -27,18 +27,23 @@ from .formatting import build_snippet, extract_from, extract_to, format_date, ti
 
 logger = logging.getLogger(__name__)
 
+# A list served from the poller's snapshot is kept this briefly in a container's cache: the next poll may add mail.
+INBOX_SNAPSHOT_CACHE_TTL = 30
+
 
 @dataclass
 class InboxListing:
     """The newest messages of every inbox account, merged (``list_all_inbox_messages``).
 
     ``busy`` and ``unavailable`` name the accounts that could not be read now (held back by the delivery rate, or
-    failing); a held-back account contributes the list it last read, and then ``showing_stale`` is set.
+    failing); a held-back account contributes the list it last read, and then ``showing_stale`` is set. ``hidden``
+    names the accounts left out because they could not connect recently (``health``; Refresh tries them again).
     """
 
     messages: list[dict[str, Any]] = field(default_factory=list)
     busy: list[str] = field(default_factory=list)
     unavailable: list[str] = field(default_factory=list)
+    hidden: list[str] = field(default_factory=list)
     showing_stale: bool = False
 
 
@@ -63,13 +68,17 @@ def list_all_inbox_messages(
 ) -> InboxListing:
     """The newest ``limit`` messages of ``folder`` across every inbox account, newest first.
 
-    An account that cannot be read now is named in the listing instead of failing the whole inbox; ``InboxError``
-    is raised only when no account is configured or none could be read at all.
+    Accounts that could not connect recently are left out (``connectable_accounts``; ``force_refresh`` tries them
+    all again, and so does a list whose every account is left out). An account that cannot be read now is named in
+    the listing instead of failing the whole inbox; ``InboxError`` is raised only when no account is configured or
+    none could be read at all.
     """
-    accounts = readable_accounts()
+    accounts, hidden = connectable_accounts(retry=force_refresh)
+    if not accounts:
+        accounts, hidden = hidden, []
     if not accounts:
         raise InboxError(NO_ACCOUNTS_MESSAGE)
-    listing, merged = InboxListing(), []
+    listing, merged = InboxListing(hidden=[account.address for account in hidden]), []
     for account in accounts:
         try:
             merged.extend(_list_account(account, limit, None, folder=folder, force_refresh=force_refresh))
@@ -92,17 +101,34 @@ def list_all_inbox_messages(
 
 
 def _list_account(account, limit: int, mailbox: str | None, *, folder: str, force_refresh: bool) -> list:
+    """One account's list: this container's cache, else the poller's fresh Inbox snapshot (``health``), else a live
+    read, whose outcome is recorded for every container. ``force_refresh`` always reads live."""
     suffix = f"{account.key}:{folder}:{limit}"
     cache_key = f"{INBOX_LIST_CACHE_KEY}:{suffix}"
+    use_snapshot = folder == INBOX_FOLDER and not mailbox
     if not force_refresh:
         cached = cache.get(cache_key)
         if cached is not None:
             return cached
+        snapshot = health.fresh_snapshot(account, limit) if use_snapshot else None
+        if snapshot is not None:
+            # Kept briefly, so the next poll's mail shows up soon.
+            cache.set(cache_key, snapshot, INBOX_SNAPSHOT_CACHE_TTL)
+            return snapshot
     try:
         results = _tagged(_read_list(account, mailbox, folder, limit), account)
     except InboxBusy as exc:
+        health.record_failure(account, exc)
         exc.stale = cache.get(f"{INBOX_STALE_LIST_CACHE_PREFIX}{suffix}")
+        if exc.stale is None and use_snapshot:
+            exc.stale = health.last_snapshot(account, limit)
         raise
+    except Exception as exc:
+        health.record_failure(account, exc)
+        raise
+    # A live read of the snapshot's size (or larger) also refreshes the snapshot; a smaller one only the health.
+    keeps_snapshot = use_snapshot and limit >= health.SNAPSHOT_LIMIT
+    health.record_ok(account, messages=results[: health.SNAPSHOT_LIMIT] if keeps_snapshot else None)
     cache.set(cache_key, results, INBOX_LIST_CACHE_TTL)
     cache.set(f"{INBOX_STALE_LIST_CACHE_PREFIX}{suffix}", results, INBOX_STALE_LIST_CACHE_TTL)
     return results
@@ -165,6 +191,8 @@ def fetch_inbox_message(
             result = _tagged([detailed_message(message)], inbox_account)[0]
         cache.set(cache_key, result, INBOX_MSG_CACHE_TTL)
         update_list_cache_seen(uid, folder=folder, account=inbox_account.key)
+        if folder == INBOX_FOLDER:
+            health.mark_seen(inbox_account, uid)
         return result
     except InboxError:
         raise

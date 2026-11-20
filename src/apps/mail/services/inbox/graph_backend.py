@@ -22,6 +22,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from apps.core.models import EmailServiceConfig, MicrosoftGraphProviderConfig
+from apps.core.services.delivery_rates import Reason
 from apps.core.services.email.graph.mailbox import (
     GraphMailboxReader,
     GraphMessageNotFound,
@@ -64,7 +65,7 @@ def list_messages(reader: GraphMailboxReader, *, folder: str, limit: int) -> lis
     try:
         messages = reader.list_messages(folder, limit)
     except GraphReadBusy as exc:
-        raise InboxBusy(str(exc), exc.retry_after) from exc
+        raise _busy(exc) from exc
     except GraphReadError as exc:
         raise InboxError(str(exc)) from exc
     own_addresses = _own_addresses(reader)
@@ -77,12 +78,18 @@ def fetch_message(reader: GraphMailboxReader, uid: str) -> dict[str, Any]:
     except GraphMessageNotFound as exc:
         raise InboxError("Message not found.") from exc
     except GraphReadBusy as exc:
-        raise InboxBusy(str(exc), exc.retry_after) from exc
+        raise _busy(exc) from exc
     except GraphReadError as exc:
         raise InboxError(str(exc)) from exc
     detail = _detail(uid, email.message_from_bytes(raw, policy=email.policy.default))
     detail["from_own_mailbox"] = detail["from_email"].strip().lower() in _own_addresses(reader)
     return detail
+
+
+def _busy(exc: GraphReadBusy) -> InboxBusy:
+    """A held-back Graph read; ``refused`` while a breaker holds reads because Microsoft refused the sign-in."""
+    refused = str(getattr(exc, "reason", "") or "") == f"breaker:{Reason.AUTH}"
+    return InboxBusy(str(exc), exc.retry_after, refused=refused)
 
 
 def _own_addresses(reader: GraphMailboxReader) -> frozenset[str]:

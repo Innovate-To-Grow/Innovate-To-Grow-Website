@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.core.models import GmailAccessAccount
-from apps.mail.admin.inbox.list_views import _accounts, _inbox_account
+from apps.mail.admin.inbox.list_views import _connectable, _inbox_account
 from apps.mail.services.inbox import ALL_ACCOUNTS, readable_accounts
 from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_backend import MAILBOX, Permission, graph_config
 from apps.mail.tests.services.delivery.graph_inbox.test_graph_inbox_messages import GraphInboxFixtureMixin
@@ -63,10 +63,10 @@ class InboxAccountTests(GraphInboxFixtureMixin, TestCase):
 
     def test_an_account_listing_failure_is_logged_and_shows_no_account(self):
         with (
-            patch("apps.mail.admin.inbox.services.readable_accounts", side_effect=RuntimeError("boom")),
+            patch("apps.mail.admin.inbox.services.connectable_accounts", side_effect=RuntimeError("boom")),
             self.assertLogs("apps.mail.admin.inbox", "ERROR"),
         ):
-            accounts = _accounts()
+            accounts, hidden = _connectable()
 
-        self.assertEqual(accounts, [])
+        self.assertEqual((accounts, hidden), ([], []))
         self.assertEqual(_inbox_account(accounts, ALL_ACCOUNTS)["account"], "Not configured")

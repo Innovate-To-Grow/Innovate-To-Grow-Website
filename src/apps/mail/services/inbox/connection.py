@@ -5,7 +5,7 @@ from django.db.utils import OperationalError, ProgrammingError
 from imap_tools import MailBox
 
 from apps.core.models import GmailAccessAccount
-from apps.core.services.delivery_rates import RateDeferred
+from apps.core.services.delivery_rates import RateDeferred, Reason
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +31,13 @@ class InboxError(RuntimeError):
 class InboxBusy(InboxError):
     """The read was held back by the delivery rate (Gmail or Microsoft asked to wait, or a breaker holds the
     account): nothing was read. ``retry_after`` is the wait in seconds; a list read also carries the last list it
-    loaded as ``stale`` (None when none is cached)."""
+    loaded as ``stale`` (None when none is cached). ``refused`` means the provider refused the sign-in (a breaker
+    holds the account until its credentials are fixed): the account cannot connect, not merely wait."""
 
-    def __init__(self, message: str, retry_after: int):
+    def __init__(self, message: str, retry_after: int, *, refused: bool = False):
         super().__init__(message)
         self.retry_after = retry_after
+        self.refused = refused
         self.stale = None
 
 
@@ -101,7 +103,8 @@ def _open_inbox(mailbox: str | None = None, folder: str = INBOX_FOLDER, *, accou
                 _select_sent_folder(client)
             yield client
     except RateDeferred as exc:
-        raise InboxBusy(busy_text(exc), exc.retry_after) from None
+        refused = str(getattr(exc, "reason", "")) == f"breaker:{Reason.AUTH}"
+        raise InboxBusy(busy_text(exc), exc.retry_after, refused=refused) from None
     except InboxError:
         raise
     except Exception as exc:

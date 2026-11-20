@@ -76,6 +76,9 @@ DENIED_MODEL_LABELS = {
     "mail.bouncedaddress",
     "mail.bouncedaddressaction",
     "mail.bouncedaddresscampaign",
+    # The universal inbox's per-account state: summaries of the newest messages of every inbox account (senders,
+    # subjects, previews), written only by the inbox poller and the inbox's reads. Staff read them in Mail -> Inbox.
+    "mail.inboxaccountstate",
     # SMS policy: the opt-out list (a write would text a number that replied STOP, or stop texting one), its sync
     # state, the ticket-text log and the audit of personal sign-in link revocations, written only by Mail → SMS
     # Settings / SMS Opt-outs and the senders. SMS links and SMS settings match "token" / "config" in

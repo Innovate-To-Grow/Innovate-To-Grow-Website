@@ -3,6 +3,7 @@
 from datetime import timedelta
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
@@ -14,6 +15,8 @@ from apps.mail.services.inbox.reply import REPLY_SEND_FAILURE_MESSAGE, send_repl
 
 class ReplyDeliveryRateTests(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         self.clock = FakeClock(timezone.now()).install(self)
         self.aws = AWSCredentialConfig.objects.create(
             name="AWS", is_active=True, access_key_id="AKID", secret_access_key="SECRET", default_region="us-west-2"

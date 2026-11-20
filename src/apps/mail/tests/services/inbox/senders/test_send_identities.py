@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.db.utils import OperationalError
 from django.test import TestCase
 
@@ -34,6 +35,9 @@ WORKSPACE = "i2g@g.ucmerced.edu"
 class SenderFixtureMixin:
     def setUp(self):
         super().setUp()
+        # The identities are cached per container (``SENDERS_CACHE_KEY``).
+        cache.clear()
+        self.addCleanup(cache.clear)
         for model in (EmailServiceConfig, MicrosoftGraphProviderConfig, GmailApiProviderConfig, GmailAccessAccount):
             model.objects.all().delete()
 

@@ -2,6 +2,7 @@
 
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
@@ -102,6 +103,8 @@ class InboxHelperTests(TestCase):
 
 class InboxReplyViewTests(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
         EmailServiceConfig.objects.create(

@@ -47,6 +47,8 @@ MAINTENANCE_SERVICES = {
     "purge_expired_helpdesk": HELPDESK_NOTHING_PURGED,
     "purge_finished_helpdesk_ingests": 0,
     "purge_finished_helpdesk_intake_scans": 0,
+    "ensure_inbox_poll_scheduled": False,
+    "purge_finished_inbox_polls": 0,
 }
 
 

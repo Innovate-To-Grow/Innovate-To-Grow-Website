@@ -16,6 +16,7 @@ import logging
 from dataclasses import dataclass
 from types import SimpleNamespace
 
+from django.core.cache import cache
 from django.db.utils import OperationalError, ProgrammingError
 
 from apps.core.models import (
@@ -30,6 +31,8 @@ from apps.core.utils.security import is_plain_address
 logger = logging.getLogger(__name__)
 
 DEFAULT_SENDER = "default"
+SENDERS_CACHE_KEY = "inbox:senders"
+SENDERS_CACHE_TTL = 60
 
 
 @dataclass(frozen=True)
@@ -60,8 +63,26 @@ class SendIdentity:
         )
 
 
-def send_identities() -> list[SendIdentity]:
-    """Every address a reply may be sent From, Notification Delivery's first. Empty when none can send."""
+def send_identities(*, use_cache: bool = True) -> list[SendIdentity]:
+    """Every address a reply may be sent From, Notification Delivery's first. Empty when none can send.
+
+    Cached briefly per container (``SENDERS_CACHE_TTL``) and dropped whenever a configuration it depends on is saved
+    (``invalidation``); the provider re-checks its allow-list on every send, so a stale entry never sends.
+    """
+    if use_cache:
+        cached = cache.get(SENDERS_CACHE_KEY)
+        if cached is not None:
+            return list(cached)
+    identities = _collect()
+    cache.set(SENDERS_CACHE_KEY, identities, SENDERS_CACHE_TTL)
+    return identities
+
+
+def forget_identities() -> None:
+    cache.delete(SENDERS_CACHE_KEY)
+
+
+def _collect() -> list[SendIdentity]:
     identities: list[SendIdentity] = []
     for source in (_default_identity, _graph_identities, _gmail_api_identities, _imap_identities):
         try:

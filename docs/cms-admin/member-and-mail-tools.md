@@ -457,8 +457,28 @@ The campaign admin includes a Gmail import feature (`src/apps/mail/services/camp
 
 With more than one account the toolbar has an **Account** menu: **All accounts** (the default) merges the newest
 messages of every account, newest first, and tags each row with the address it was received at; choosing one account
-shows only that mailbox. An account that cannot be read right now (held back by its delivery rate, or failing) is
-named in a banner while the others are still listed. Each account keeps its own cache and delivery-rate slot.
+shows only that mailbox. Each account keeps its own cache and delivery-rate slot.
+
+**Only accounts that connect are shown.** An account whose last read failed (it could not connect, or Gmail refused
+its sign-in) is left out of the menu and the list, and a note names it. It comes back as soon as it connects again:
+the background poll retries it every few minutes, **Refresh** retries every account at once, saving the account's
+configuration shows it again immediately, and a page view retries it after 10 minutes. An account that is only held
+back by its delivery rate stays listed, with its messages as last loaded.
+
+**New mail is checked in the background.** The background worker polls every account's Inbox every
+`MAIL_INBOX_POLL_SECONDS` (default 180 s; `0` turns polling off) as job kind `mail.inbox_poll`
+(`src/apps/mail/services/inbox/polling.py`), whether or not anyone has the inbox open, and records the outcome and
+the newest 50 message summaries (sender, subject, preview, read state; no bodies) in `InboxAccountState`. Gmail is
+polled incrementally (two UID searches, then only the new messages are downloaded), so polling stays well under
+Gmail's daily IMAP download limit. The sidebar's **Inbox** item shows the unread count, and an open Inbox page reloads
+its list every minute while it is visible (not while a reply is being written).
+
+**Caching.** The Inbox list (15, 30 or 50 messages) is served from the poll's snapshot while it is fresh (two poll
+intervals and a minute), so opening the inbox connects to no mailbox; 100 messages, the Sent folder and **Refresh**
+read live. Lists are also kept per container (5 minutes for a live read, 30 seconds from a snapshot), opened messages
+for 30 minutes, and the account and From lists for a minute; saving any mail configuration drops the account and
+From lists at once (in the container that saved it; others follow within a minute, and every read and send
+re-checks its configuration anyway).
 
 A reply's **From** menu lists every address the site can send as (`src/apps/mail/services/inbox/senders.py`), and
 starts with the address the message was received at when it is one of them:

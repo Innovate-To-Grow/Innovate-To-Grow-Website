@@ -1,5 +1,6 @@
 from unittest.mock import patch
 
+from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
@@ -11,6 +12,8 @@ from apps.mail.tests.admin.inbox.test_inbox_views import _message
 
 class InboxReplyFragmentViewTests(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
         EmailServiceConfig.objects.create(
@@ -107,6 +110,8 @@ class InboxReplyFragmentViewTests(TestCase):
 
 class InboxDetailViewErrorTests(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
 
@@ -141,6 +146,8 @@ class InboxDetailViewErrorTests(TestCase):
 
 class InboxListViewTests(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         self.admin_user = make_superuser()
         self.client.login(username="admin@example.com", password="testpass123")
 

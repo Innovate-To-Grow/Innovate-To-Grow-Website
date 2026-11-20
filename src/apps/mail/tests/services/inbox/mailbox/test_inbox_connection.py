@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
+from django.core.cache import cache
 from django.db.utils import OperationalError
 from django.test import TestCase
 
@@ -15,6 +16,8 @@ from apps.mail.services.inbox.connection import (
 
 class InboxConnectionTests(TestCase):
     def setUp(self):
+        # The inbox account and sender lists are cached per container.
+        cache.clear()
         self.config = GmailAccessAccount.objects.create(
             name="Gmail",
             is_active=True,

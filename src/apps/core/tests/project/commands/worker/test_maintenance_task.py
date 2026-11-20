@@ -55,6 +55,8 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
             purge_expired_helpdesk=record("helpdesk retention", HELPDESK_NOTHING_PURGED),
             purge_finished_helpdesk_ingests=record("helpdesk ingest jobs", 0),
             purge_finished_helpdesk_intake_scans=record("helpdesk intake scans", 0),
+            ensure_inbox_poll_scheduled=record("inbox poll", False),
+            purge_finished_inbox_polls=record("inbox poll jobs", 0),
         )
 
         self.assertEqual(
@@ -82,6 +84,8 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
                 "helpdesk retention",
                 "helpdesk ingest jobs",
                 "helpdesk intake scans",
+                "inbox poll",
+                "inbox poll jobs",
             ],
         )
         self.assertEqual(
@@ -103,6 +107,7 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
                 "Helpdesk intake scheduling",
                 "Helpdesk ingest scheduling",
                 "Helpdesk retention",
+                "Inbox poll scheduling",
             ],
         )
 

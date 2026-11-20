@@ -13,6 +13,7 @@ class MailConfig(AppConfig):
         register_background_jobs()
         register_sms_policy()
         register_inbound_hint_cleanup()
+        register_inbox()
 
         from .admin.email_monitoring import get_email_monitoring_urls
         from .admin.inbox import get_inbox_urls
@@ -80,6 +81,15 @@ def register_sms_policy():
     post_save.connect(
         register_link.forget_register_destination, sender=SmsConfig, dispatch_uid="mail_forget_register_link"
     )
+
+
+def register_inbox():
+    """The universal inbox's poller job (new mail is checked whether or not anyone has the inbox open), and the
+    signals that drop its cached account and sender lists when a mail configuration changes."""
+    from apps.mail.services.inbox import invalidation, polling
+
+    polling.register()
+    invalidation.register()
 
 
 def register_inbound_hint_cleanup():
