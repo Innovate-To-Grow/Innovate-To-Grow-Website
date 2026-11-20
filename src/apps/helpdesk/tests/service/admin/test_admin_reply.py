@@ -7,11 +7,11 @@ from django.urls import reverse
 
 from apps.core.models import BackgroundJob
 
-from ...models import ResponseTemplate, Ticket, TicketCategory, TicketMessage
-from ...services.outbound import jobs
-from .. import corpus
-from ..helpers import FakeReader, helpdesk_staff, make_admin, receive
-from .support import Status, sending_settings
+from ....models import ResponseTemplate, Ticket, TicketCategory, TicketMessage
+from ....services.outbound import jobs
+from ... import corpus
+from ...helpers import FakeReader, helpdesk_staff, make_admin, receive
+from ...helpers.service import Status, sending_settings
 
 
 @override_settings(BACKGROUND_JOBS_ENABLED=True)

@@ -8,6 +8,8 @@ from apps.core.services.email.inbound import scrub_links
 from apps.core.utils.access import user_can_access_app
 
 from ...models import Ticket, TicketEvent, TicketMessage
+from .. import sla
+from ..sla.priority import priority_for
 from . import events
 
 Status = Ticket.Status
@@ -55,20 +57,10 @@ FIELDS = (
 RESOLUTION_NOTES_MAX_CHARS = 20000
 
 
-def _label(value) -> str:
-    return str(value or "")
-
-
-def _record_change(values: dict, current: Ticket, field: str, kind: str, actor, labels=None) -> None:
-    before, after = getattr(current, field), values[field]
-    data = {"from": before, "to": after} if labels is None else {"from": labels(before), "to": labels(after)}
-    events.record(current, kind, actor=actor, **data)
-
-
 def update_ticket(ticket: Ticket, *, actor, **changes) -> list[str]:
     """Apply staff's changes (``FIELDS``); the names of the fields that changed, in ``FIELDS`` order.
 
-    Impact and urgency set the priority (``priority.priority_for``); a priority given directly (the services' own
+    Impact and urgency set the priority (``sla.priority``); a priority given directly (the services' own
     callers) is kept as given. A category with a default group assigns that group to a ticket without one. The SLA
     clock follows: a new priority sets new due times, leaving New is the first response, and a move into or out of
     a waiting status stops or starts the resolution clock (``sla``). Assigning someone else (or a group with nobody in
@@ -78,8 +70,6 @@ def update_ticket(ticket: Ticket, *, actor, **changes) -> list[str]:
     here. Either change would leave ``merged_into`` out of step with the status: an empty ticket back in the queue
     whose mail still goes to the ticket it was merged into, or a ticket "merged" into nothing. It is ignored.
     """
-    from .priority import priority_for
-
     now = timezone.now()
     values = {}
     with transaction.atomic():
@@ -104,10 +94,12 @@ def update_ticket(ticket: Ticket, *, actor, **changes) -> list[str]:
         status_changed = status != current.status and Status.MERGED not in (status, current.status)
         if status_changed:
             events.record(current, Kind.STATUS, actor=actor, **{"from": current.status, "to": status})
-        _record_all(values, current, actor)
+        events.record_changes(current, values, actor=actor, name=_name)
         if status_changed:
             values.update(_status_values(current, status, now))
-        sla_values = _sla_values(current, values, status if status_changed else None, now, actor)
+        sla_values, responded = sla.update_values(current, values, status if status_changed else None, now)
+        if responded:
+            events.record(current, Kind.RESPONDED, actor=actor, by="status")
         changed = [field for field in FIELDS if field in values]
         if values or sla_values:
             Ticket.objects.filter(pk=current.pk).update(**values, **sla_values, updated_at=now)
@@ -121,63 +113,6 @@ def update_ticket(ticket: Ticket, *, actor, **changes) -> list[str]:
                 group_changed="assignment_group" in values,
             )
     return changed
-
-
-def _record_all(values: dict, current: Ticket, actor) -> None:
-    if "impact" in values:
-        _record_change(values, current, "impact", Kind.IMPACT, actor, lambda v: _IMPACT.get(v, v))
-    if "urgency" in values:
-        _record_change(values, current, "urgency", Kind.URGENCY, actor, lambda v: _URGENCY.get(v, v))
-    if "priority" in values:
-        _record_change(values, current, "priority", Kind.PRIORITY, actor)
-    if "category" in values:
-        _record_change(values, current, "category", Kind.CATEGORY, actor, _label)
-    if "assignment_group" in values:
-        _record_change(values, current, "assignment_group", Kind.GROUP, actor, _label)
-    if "assignee" in values:
-        _record_change(values, current, "assignee", Kind.ASSIGNED, actor, _name)
-    if "resolution_code" in values or "resolution_notes" in values:
-        code = values.get("resolution_code", current.resolution_code)
-        events.record(current, Kind.RESOLUTION, actor=actor, code=code, notes="resolution_notes" in values)
-
-
-_IMPACT = dict(Ticket.Impact.choices)
-_URGENCY = dict(Ticket.Urgency.choices)
-
-
-def _sla_values(current: Ticket, values: dict, status: str | None, now, actor) -> dict:
-    from . import sla
-
-    result = {}
-    if "priority" in values:
-        result.update(sla.priority_values(current, values["priority"], now))
-    if status is not None:
-        # Judged on the row as it will be once the new due times above apply (a priority change in the same save).
-        staged = Ticket(**{**_clock(current), **{k: v for k, v in result.items() if k in _CLOCK_FIELDS}})
-        staged.status = current.status
-        if current.status == Status.NEW and status != Status.SPAM:
-            responded = sla.responded_values(staged, now)
-            if responded:
-                result.update(responded)
-                events.record(current, Kind.RESPONDED, actor=actor, by="status")
-        result.update(sla.status_values(staged, status, now))
-    return result
-
-
-_CLOCK_FIELDS = (
-    "sla_started_at",
-    "response_due_at",
-    "resolution_due_at",
-    "first_responded_at",
-    "sla_paused_at",
-    "sla_paused_seconds",
-    "response_breached",
-    "resolution_breached",
-)
-
-
-def _clock(ticket: Ticket) -> dict:
-    return {field: getattr(ticket, field) for field in _CLOCK_FIELDS}
 
 
 def add_note(ticket: Ticket, *, actor, body: str) -> TicketMessage:

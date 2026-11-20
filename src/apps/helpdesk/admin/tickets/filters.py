@@ -13,7 +13,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from ...models import AssignmentGroup, Ticket
-from ...services.tickets import sla
+from ...services import sla
 
 Status = Ticket.Status
 

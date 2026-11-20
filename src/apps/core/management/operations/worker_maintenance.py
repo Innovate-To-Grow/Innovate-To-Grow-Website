@@ -13,7 +13,7 @@ from apps.helpdesk.services.ingest.pipeline.jobs import ensure_scheduled as ensu
 from apps.helpdesk.services.ingest.pipeline.jobs import purge_finished_jobs as purge_finished_helpdesk_ingests
 from apps.helpdesk.services.intake.jobs import ensure_scheduled as ensure_helpdesk_intake_scheduled
 from apps.helpdesk.services.intake.jobs import purge_finished_jobs as purge_finished_helpdesk_intake_scans
-from apps.helpdesk.services.tickets.automation import run as run_helpdesk_automation
+from apps.helpdesk.services.sla.automation import run as run_helpdesk_automation
 from apps.helpdesk.services.tickets.retention import purge_expired as purge_expired_helpdesk
 from apps.mail.services.sms.policy.opt_out_sync import run_scheduled as sync_sms_opt_outs
 from apps.system_intelligence.services.public_assistant import purge_expired_public_assistant_budgets

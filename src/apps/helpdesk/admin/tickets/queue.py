@@ -11,8 +11,8 @@ from django.utils.html import format_html
 from unfold.decorators import display
 
 from ...models import HelpdeskSettings, Ticket, TicketMessage
-from ...services import tickets
-from ...services.tickets import numbering, sla
+from ...services import sla, tickets
+from ...services.tickets import numbering
 
 Status = Ticket.Status
 STATUS_COLORS = {

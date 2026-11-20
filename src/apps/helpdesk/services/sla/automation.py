@@ -3,7 +3,7 @@
 - Resolved tickets close by themselves ``auto_close_resolved_days`` after they were resolved (0: never), as in
   ServiceNow: a requester's reply before then reopens the ticket (the ingest's reopen rule). The change is made by
   the system (no actor) and is on the ticket's timeline.
-- SLA clocks still running past their due time are flagged as breached (``sla.mark_breaches``).
+- SLA clocks still running past their due time are flagged as breached (``breaches.mark_breaches``).
 """
 
 from datetime import timedelta
@@ -11,8 +11,8 @@ from datetime import timedelta
 from django.utils import timezone
 
 from ...models import HelpdeskSettings, Ticket
-from . import sla
-from .changes import update_ticket
+from ..tickets.changes import update_ticket
+from .breaches import mark_breaches
 
 AUTO_CLOSE_BATCH = 500
 
@@ -38,5 +38,5 @@ def auto_close_resolved(*, now=None, should_stop=None) -> int:
 def run(*, should_stop=None) -> dict[str, int]:
     return {
         "auto_closed": auto_close_resolved(should_stop=should_stop),
-        "sla_breaches": sla.mark_breaches(should_stop=should_stop),
+        "sla_breaches": mark_breaches(should_stop=should_stop),
     }

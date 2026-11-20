@@ -25,8 +25,9 @@ from apps.core.services.email.inbound import scrub_links
 from apps.core.utils.security import is_plain_address
 
 from ...models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
+from .. import sla
 from ..ingest.pipeline.messages import MAX_PARTICIPANTS
-from ..tickets import events, shadow, sla
+from ..tickets import events, shadow
 from . import compose, jobs
 
 Kind = TicketMessage.Kind

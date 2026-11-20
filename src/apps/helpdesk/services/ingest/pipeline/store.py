@@ -13,7 +13,7 @@ The rules (Hongzhe's decision of 2026-11-11 on top of item2-helpdesk-bounces-pla
   it opens a ticket of its own, so a person's message is never hidden in a closed one).
 - The site's own messages keep no body or attachment (they may hold sign-in codes).
 - A person's new ticket starts with medium impact and urgency (moderate priority) and, unless it is backfilled, its
-  SLA clock (``tickets.sla``); automated mail starts low and has no clock. With sending on and the acknowledgement
+  SLA clock (``sla``); automated mail starts low and has no clock. With sending on and the acknowledgement
   switched on, the requester is told the ticket number (``outbound.replies.queue_acknowledgement``).
 """
 
@@ -29,8 +29,10 @@ from apps.core.services.email.inbound import scrub_subject
 from apps.mail.models import EmailCampaign
 
 from ....models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
+from ... import sla
 from ...outbound import replies
-from ...tickets import events, numbering, priority, sla
+from ...sla import priority
+from ...tickets import events, numbering
 from ..reading.message import ParsedMessage
 from ..routing import matching
 from ..routing.classify import Classified

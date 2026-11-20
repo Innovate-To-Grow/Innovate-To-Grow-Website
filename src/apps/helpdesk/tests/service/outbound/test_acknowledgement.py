@@ -12,11 +12,11 @@ from django.utils import timezone
 from apps.core.models import BackgroundJob
 from apps.core.services.email.inbound import NO_AUTO_RESPONSE
 
-from ...models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
-from ...services.outbound import jobs, replies
-from .. import corpus
-from ..helpers import FakeReader, receive
-from .support import new_ticket, sending_settings
+from ....models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
+from ....services.outbound import jobs, replies
+from ... import corpus
+from ...helpers import FakeReader, receive
+from ...helpers.service import new_ticket, sending_settings
 
 AUTHENTICATED = {"Authentication-Results": "mx.example; spf=pass; dkim=pass; dmarc=pass action=none"}
 

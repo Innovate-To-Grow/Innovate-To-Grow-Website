@@ -10,9 +10,9 @@ from django.utils import timezone
 
 from apps.core.management.operations import worker_maintenance
 
-from ...models import HelpdeskSettings, Ticket, TicketEvent
-from ...services.tickets import automation
-from .support import Status, new_ticket
+from ....models import HelpdeskSettings, Ticket, TicketEvent
+from ....services.sla import automation
+from ...helpers.service import Status, new_ticket
 
 DAY = timedelta(days=1)
 

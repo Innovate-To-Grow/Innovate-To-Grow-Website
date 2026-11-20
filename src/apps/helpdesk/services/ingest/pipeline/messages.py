@@ -5,7 +5,8 @@ from django.utils import timezone
 from apps.core.services.email.inbound import scrub_links, scrub_subject
 
 from ....models import Ticket, TicketAttachment, TicketEvent, TicketMessage
-from ...tickets import events, sla
+from ... import sla
+from ...tickets import events
 from ..reading import attachments
 from ..reading.message import ParsedMessage
 from ..reading.sanitize import sanitize_html

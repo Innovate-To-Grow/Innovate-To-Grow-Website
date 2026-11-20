@@ -170,8 +170,7 @@ class ActionTests(_ActionCase):
         self.assertEqual((self.open.assignee, self.open.unread), (None, False))
         self.assertEqual((self.new.status, self.new.assignee), (Status.OPEN, self.agent))
         self.assertEqual(self.automated.status, Status.CLOSED)  # automated mail is moved, never reopened
-        # Closing a new ticket moves it out of New: that is its first response (SLA).
-        self.assertEqual(
+        self.assertEqual(  # closing a new ticket moves it out of New: its first response (SLA)
             list(self.new.events.values_list("kind", flat=True)),
             [TicketEvent.Kind.ASSIGNED, TicketEvent.Kind.STATUS, TicketEvent.Kind.RESPONDED, TicketEvent.Kind.STATUS],
         )

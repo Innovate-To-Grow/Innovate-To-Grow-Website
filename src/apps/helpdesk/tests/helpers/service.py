@@ -3,7 +3,7 @@
 from django.utils import timezone
 
 from ...models import HelpdeskSettings, Ticket
-from ...services.tickets import sla
+from ...services import sla
 from ..tickets.test_tickets import new_ticket
 
 Status = Ticket.Status

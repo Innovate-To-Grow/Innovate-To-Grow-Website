@@ -22,6 +22,36 @@ def record(ticket: Ticket, kind: str, *, actor=None, **data) -> TicketEvent:
     return TicketEvent.objects.create(ticket=ticket, kind=kind, actor=actor, data=data)
 
 
+_IMPACT = dict(Ticket.Impact.choices)
+_URGENCY = dict(Ticket.Urgency.choices)
+
+
+def _label(value) -> str:
+    return str(value or "")
+
+
+def record_changes(current: Ticket, values: dict, *, actor, name) -> None:
+    """One entry per field ``update_ticket`` changes (``values``, against the row ``current``), in a fixed order;
+    ``name`` labels a member (the assignee)."""
+    fields = (
+        ("impact", Kind.IMPACT, lambda value: _IMPACT.get(value, value)),
+        ("urgency", Kind.URGENCY, lambda value: _URGENCY.get(value, value)),
+        ("priority", Kind.PRIORITY, None),
+        ("category", Kind.CATEGORY, _label),
+        ("assignment_group", Kind.GROUP, _label),
+        ("assignee", Kind.ASSIGNED, name),
+    )
+    for field, kind, labels in fields:
+        if field in values:
+            before, after = getattr(current, field), values[field]
+            if labels is not None:
+                before, after = labels(before), labels(after)
+            record(current, kind, actor=actor, **{"from": before, "to": after})
+    if "resolution_code" in values or "resolution_notes" in values:
+        code = values.get("resolution_code", current.resolution_code)
+        record(current, Kind.RESOLUTION, actor=actor, code=code, notes="resolution_notes" in values)
+
+
 def _change(data: dict, labels: dict | None = None) -> str:
     labels = labels or {}
     before, after = data.get("from"), data.get("to")

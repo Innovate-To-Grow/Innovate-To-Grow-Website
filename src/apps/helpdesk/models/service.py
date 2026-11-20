@@ -1,11 +1,12 @@
-"""How tickets are worked, ServiceNow style: assignment groups, SLA targets per priority, and response templates.
+"""How tickets are worked, ServiceNow style: categories, assignment groups, SLA targets per priority, response
+templates, and the impact / urgency scale and resolution codes a ticket uses.
 
 - An **assignment group** is a team of staff (Events, Projects, Technical, …). A ticket has a group and, within it,
   an assignee; "My groups" lists the tickets of every group the signed-in member belongs to. A category may name a
   default group: setting that category on a ticket without a group assigns the group too (an assignment rule).
 - An **SLA target** says, for one priority, how long the first response and the resolution may take. A ticket's
   clock starts when its first message arrived; the resolution clock pauses while the ticket waits for the requester
-  and while it is resolved or closed (``services.tickets.sla``). Calendar time, not business hours.
+  and while it is resolved or closed (``services.sla``). Calendar time, not business hours.
 - A **response template** is a canned reply. Placeholders (``{ticket}``, ``{requester_name}``, ``{subject}``,
   ``{agent_name}``) are replaced when it is inserted into the reply form; nothing else in it is interpreted.
 """
@@ -19,6 +20,47 @@ from apps.core.models import ProjectControlModel
 # Minutes in a day / an hour, for readable defaults.
 HOUR = 60
 DAY = 24 * HOUR
+
+
+class Level(models.IntegerChoices):
+    """Impact and urgency: 1 is the highest."""
+
+    HIGH = 1, "1 – High"
+    MEDIUM = 2, "2 – Medium"
+    LOW = 3, "3 – Low"
+
+
+class ResolutionCode(models.TextChoices):
+    SOLVED = "solved", "Solved"
+    INFORMATION_PROVIDED = "information_provided", "Information provided"
+    WORKAROUND = "workaround", "Solved (workaround)"
+    REFERRED = "referred", "Referred elsewhere"
+    DUPLICATE = "duplicate", "Duplicate"
+    NO_ACTION_NEEDED = "no_action_needed", "No action needed"
+    RESOLVED_BY_REQUESTER = "resolved_by_requester", "Resolved by requester"
+    NOT_SOLVED = "not_solved", "Not solved"
+
+
+class TicketCategory(ProjectControlModel):
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+    default_group = models.ForeignKey(
+        "helpdesk.AssignmentGroup",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="default_for_categories",
+        help_text="Assignment rule: a ticket given this category while it has no group is assigned to this group.",
+    )
+
+    class Meta:
+        ordering = ["order", "name"]
+        verbose_name = "Ticket Category"
+        verbose_name_plural = "Ticket Categories"
+
+    def __str__(self):
+        return self.name
 
 
 class AssignmentGroup(ProjectControlModel):

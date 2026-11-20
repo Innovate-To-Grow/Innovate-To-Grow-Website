@@ -2,13 +2,8 @@
 Response templates and Settings (the Helpdesk grant)."""
 
 from .intake.problems import IngestRecordAdmin
-from .intake.settings import (
-    AssignmentGroupAdmin,
-    HelpdeskSettingsAdmin,
-    ResponseTemplateAdmin,
-    SLATargetAdmin,
-    TicketCategoryAdmin,
-)
+from .intake.service_desk import AssignmentGroupAdmin, ResponseTemplateAdmin, SLATargetAdmin
+from .intake.settings import HelpdeskSettingsAdmin, TicketCategoryAdmin
 from .tickets.admin import TicketAdmin
 
 __all__ = [

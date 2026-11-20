@@ -4,10 +4,10 @@ the footer, the quoted HTML and the admin link."""
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from ...models import TicketMessage
-from ...services.outbound import compose
-from ..helpers import helpdesk_staff
-from .support import new_ticket
+from ....models import TicketMessage
+from ....services.outbound import compose
+from ...helpers import helpdesk_staff
+from ...helpers.service import new_ticket
 
 
 class FillTests(TestCase):

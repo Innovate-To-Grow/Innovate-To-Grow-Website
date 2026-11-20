@@ -1,4 +1,4 @@
-"""Tickets and their categories.
+"""Tickets (their categories, impact and urgency scale and resolution codes are in ``service``).
 
 A ticket is opened by the first message of a conversation that reaches the mailbox; later messages of the same
 conversation join it (``services.ingest.routing.matching``). Automated mail (out-of-office replies, bounce reports, receipts,
@@ -11,7 +11,7 @@ it, and ``clean`` refuses such a ``merged_into`` for any form or ``full_clean()`
 
 Tickets are worked ServiceNow style: the priority follows from impact and urgency (``services.tickets.priority``), a
 ticket has an assignment group and an assignee within it, its SLA clock gives a response and a resolution due time
-(``services.tickets.sla``), and resolving it records a resolution code and notes. New columns carry database
+(``services.sla``), and resolving it records a resolution code and notes. New columns carry database
 defaults, so the previous release keeps inserting tickets while a deploy rolls out.
 """
 
@@ -22,29 +22,9 @@ from django.utils import timezone
 
 from apps.core.models import ProjectControlModel
 
+from .service import Level, ResolutionCode, TicketCategory
+
 TICKET_PREFIX = "I2G-#"
-
-
-class TicketCategory(ProjectControlModel):
-    name = models.CharField(max_length=100, unique=True)
-    is_active = models.BooleanField(default=True)
-    order = models.PositiveIntegerField(default=0)
-    default_group = models.ForeignKey(
-        "helpdesk.AssignmentGroup",
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="default_for_categories",
-        help_text="Assignment rule: a ticket given this category while it has no group is assigned to this group.",
-    )
-
-    class Meta:
-        ordering = ["order", "name"]
-        verbose_name = "Ticket Category"
-        verbose_name_plural = "Ticket Categories"
-
-    def __str__(self):
-        return self.name
 
 
 class Ticket(ProjectControlModel):
@@ -65,25 +45,10 @@ class Ticket(ProjectControlModel):
         HIGH = "high", "2 – High"
         URGENT = "urgent", "1 – Critical"
 
-    class Impact(models.IntegerChoices):
-        HIGH = 1, "1 – High"
-        MEDIUM = 2, "2 – Medium"
-        LOW = 3, "3 – Low"
-
-    class Urgency(models.IntegerChoices):
-        HIGH = 1, "1 – High"
-        MEDIUM = 2, "2 – Medium"
-        LOW = 3, "3 – Low"
-
-    class ResolutionCode(models.TextChoices):
-        SOLVED = "solved", "Solved"
-        INFORMATION_PROVIDED = "information_provided", "Information provided"
-        WORKAROUND = "workaround", "Solved (workaround)"
-        REFERRED = "referred", "Referred elsewhere"
-        DUPLICATE = "duplicate", "Duplicate"
-        NO_ACTION_NEEDED = "no_action_needed", "No action needed"
-        RESOLVED_BY_REQUESTER = "resolved_by_requester", "Resolved by requester"
-        NOT_SOLVED = "not_solved", "Not solved"
+    # ServiceNow's scales (``service``): one 1–3 scale for impact and urgency, and the codes a resolution records.
+    Impact = Level
+    Urgency = Level
+    ResolutionCode = ResolutionCode
 
     class Source(models.TextChoices):
         EMAIL = "email", "Email"
@@ -178,7 +143,7 @@ class Ticket(ProjectControlModel):
         max_length=24, choices=ResolutionCode.choices, blank=True, default="", db_default=""
     )
     resolution_notes = models.TextField(blank=True, default="", db_default="")
-    # The SLA clock (``services.tickets.sla``). No due times: no SLA (automated mail, backfilled mail, an inactive
+    # The SLA clock (``services.sla``). No due times: no SLA (automated mail, backfilled mail, an inactive
     # target). The resolution clock does not run while ``sla_paused_at`` is set; the time it stood still is added to
     # the resolution due time when it starts again.
     sla_started_at = models.DateTimeField(null=True, blank=True)

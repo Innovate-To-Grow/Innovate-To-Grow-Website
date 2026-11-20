@@ -7,11 +7,11 @@ from django.test import TestCase
 
 from apps.core.models import BackgroundJob
 
-from ...models import AssignmentGroup, HelpdeskSettings, TicketEvent
-from ...services import tickets
-from ...services.outbound import jobs
-from ..helpers import helpdesk_staff, make_admin
-from .support import new_ticket, sending_settings
+from ....models import AssignmentGroup, HelpdeskSettings, TicketEvent
+from ....services import tickets
+from ....services.outbound import jobs
+from ...helpers import helpdesk_staff, make_admin
+from ...helpers.service import new_ticket, sending_settings
 
 Kind = TicketEvent.Kind
 

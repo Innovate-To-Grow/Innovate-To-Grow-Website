@@ -74,7 +74,7 @@ its thread lands on the person's ticket.
 |---|---|---|
 | Number `INC0010001` | `I2G-#1234` | Also the subject token that threads mail back to the ticket. |
 | State | Status: New, In progress, On hold – awaiting requester, On hold – awaiting internal, Resolved, Closed (and Merged, Spam) | A requester's reply puts "awaiting requester" back to In progress and reopens a ticket closed less than `reopen_window_days` ago. |
-| Impact × Urgency → Priority | Impact 1–3 × Urgency 1–3 → 1 Critical, 2 High, 3 Moderate, 4 Low (`services/tickets/priority.py`) | ServiceNow's "5 – Planning" (3 × 3) is Low. A person's new ticket starts at 2 × 2 (Moderate), automated mail at 3 × 3 (Low). The stored values (`urgent`, `high`, `normal`, `low`) are unchanged. |
+| Impact × Urgency → Priority | Impact 1–3 × Urgency 1–3 → 1 Critical, 2 High, 3 Moderate, 4 Low (`services/sla/priority.py`) | ServiceNow's "5 – Planning" (3 × 3) is Low. A person's new ticket starts at 2 × 2 (Moderate), automated mail at 3 × 3 (Low). The stored values (`urgent`, `high`, `normal`, `low`) are unchanged. |
 | Assignment group / Assigned to | **Assignment Groups** (members, manager) and the assignee | A category's **default group** is set on a ticket given that category while it has no group (assignment rule). With a group that has members, the assignee must be one of them. |
 | Work notes / Additional comments | Internal notes / replies to the requester | Replies only while shadow mode is off. |
 | SLA definitions | **SLA Targets**, one per priority | See [SLA](#sla). |

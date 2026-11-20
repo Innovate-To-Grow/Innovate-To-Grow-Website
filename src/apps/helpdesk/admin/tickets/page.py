@@ -11,8 +11,8 @@ from unfold.decorators import display
 from apps.core.services.email.inbound import LABELS
 
 from ...models import HelpdeskSettings, ResponseTemplate, Ticket
-from ...services import outbound, tickets
-from ...services.tickets import shadow, sla
+from ...services import outbound, sla, tickets
+from ...services.tickets import shadow
 from . import timeline, views
 from .queue import EDITABLE
 from .views import REPLY_STATUS_CHOICES
