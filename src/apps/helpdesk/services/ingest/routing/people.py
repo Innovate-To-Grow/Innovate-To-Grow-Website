@@ -6,9 +6,10 @@
   was sent To (a person asking for replies to their team), nor a mailing list's own address. A form that copies the
   submitter (Cc) still names them. That person is the requester of a new ticket (``pipeline.store``), every Reply-To
   address and the sender participants. As any mail program would, replies go to that person.
-- A mailing list's own address (its List-Post) is never a requester. A list that rewrites its senders (Mailman's
-  munged From, Google Groups: the From is the list) speaks for its poster: X-Original-From, else the Reply-To or Cc
-  address that is not the list.
+- A mailing list's own address (its List-Post; without one, the Reply-To of list mail that is not its sender) is
+  never a requester. List mail speaks for its poster: the sender, or when the list rewrote the sender (Mailman's
+  munged From, Google Groups: the From is the list) X-Original-From, else the Reply-To or Cc address that is not the
+  list.
 - A relay never threads as the people it relayed for (``matching``): one form's submissions do not join each other's
   tickets. A Reply-To naming the sender's other address under the same name (a person writing from work, asking for
   replies at home) speaks for the same person: both addresses are theirs. A Reply-To is not authenticated, so
@@ -38,10 +39,19 @@ def reply_to_pairs(parsed: ParsedMessage) -> list[tuple[str, str]]:
     return headers.addresses(headers.first(parsed.headers, "reply-to"), limit=MAX_REPLY_TO)
 
 
+def _list_mail(parsed: ParsedMessage) -> bool:
+    precedence = headers.first(parsed.headers, "precedence").strip().lower()
+    return bool(headers.first(parsed.headers, "list-id").strip()) or precedence == "list"
+
+
 def list_addresses(parsed: ParsedMessage) -> list[str]:
-    """The mailing list's own addresses (List-Post's mailto), in the header's order."""
+    """The mailing list's own addresses (List-Post's mailto, in the header's order). A list that gives none (an
+    announcement list, "List-Post: NO") is taken at its Reply-To when that is not the sender: where list replies go."""
     found = _MAILTO_RE.findall(headers.joined(parsed.headers, "list-post"))
-    return list(dict.fromkeys(address.strip().lower() for address in found if "@" in address))
+    lists = list(dict.fromkeys(address.strip().lower() for address in found if "@" in address))
+    if not lists and _list_mail(parsed):
+        lists = [address for _name, address in reply_to_pairs(parsed) if address != parsed.from_address][:1]
+    return lists
 
 
 def same_person(name: str, other: str) -> bool:
@@ -58,6 +68,8 @@ def speaks_for(parsed: ParsedMessage, own) -> Speaker:
         poster = headers.addresses(headers.first(parsed.headers, "x-original-from"), limit=1)
         cc = headers.addresses(headers.joined(parsed.headers, "cc"), limit=MAX_REPLY_TO)
         candidates = [*poster, *reply_to_pairs(parsed), *cc]
+    elif _list_mail(parsed):  # posted by its sender: whatever the Reply-To, they are the person
+        candidates = []
     else:
         candidates = reply_to_pairs(parsed)
     for name, address in candidates:

@@ -151,15 +151,16 @@ _DESCRIBERS = {
     Kind.NOTIFIED: _notified,
     Kind.RESPONDED: _responded,
     Kind.SLA_BREACHED: _breached,
-    Kind.RECLASSIFIED: lambda event, data: (
-        event.get_kind_display()
-        + (
-            f"; its requester is now {data['requester']}, who wrote it (through a web form or a mailing list)"
-            if data.get("requester")
-            else ""
-        )
-    ),
+    Kind.RECLASSIFIED: lambda event, data: event.get_kind_display() + _new_requester(data),
 }
+
+
+def _new_requester(data: dict) -> str:
+    if not data.get("requester"):
+        return ""
+    if data.get("alias"):
+        return f"; its requester is now {data['requester']}, the sender's other address it asked replies to go to"
+    return f"; its requester is now {data['requester']}, who wrote it (through a web form or a mailing list)"
 
 
 def describe(event: TicketEvent) -> str:

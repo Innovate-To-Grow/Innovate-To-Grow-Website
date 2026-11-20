@@ -6,6 +6,8 @@ from apps.core.services.email.inbound.classification.rules import NOREPLY_RE
 from ...models import Ticket, TicketMessage
 from ..ingest.routing.people import same_person
 
+INBOUND = TicketMessage.INBOUND_KINDS
+
 
 def ticket_lists(ticket: Ticket) -> set[str]:
     """The mailing lists the ticket's mail came through: a reply never goes to one (it would reach all its members)."""
@@ -13,24 +15,41 @@ def ticket_lists(ticket: Ticket) -> set[str]:
     return {address.lower() for address in found}
 
 
-def requester_addresses(ticket: Ticket) -> set[str]:
-    """The requester's addresses on ``ticket``: theirs, and a sender that wrote for them under their own name (their
-    other address); never a relay's."""
-    addresses = {ticket.requester_email.lower()}
+def aliases(ticket: Ticket) -> dict[str, str]:
+    """The requester's other addresses on ``ticket``, with their name: a sender that wrote for them under that name
+    (work and home). A message from one counts as theirs only under that name (``replies.last_inbound``): a form that
+    names each submitter writes for several people from one address."""
     spoke = TicketMessage.objects.filter(ticket=ticket, on_behalf_of__iexact=ticket.requester_email)
-    for address, name, behalf_name in spoke.values_list("from_address", "from_name", "on_behalf_name"):
-        if same_person(name, behalf_name):
-            addresses.add(address.lower())
-    return addresses
+    return {
+        address.lower(): name
+        for address, name, behalf_name in spoke.values_list("from_address", "from_name", "on_behalf_name")
+        if same_person(name, behalf_name)
+    }
+
+
+def requester_addresses(ticket: Ticket) -> set[str]:
+    return {ticket.requester_email.lower(), *aliases(ticket)}
 
 
 def cc_suggestions(ticket: Ticket) -> list[str]:
-    """Participants a reply may copy: people only, so neither the requester, nor a relay that wrote for someone
-    else (a web form), nor a no-reply address or a mailing list."""
-    relays = TicketMessage.objects.filter(ticket=ticket, on_behalf_of__iexact=ticket.requester_email)
-    skip = requester_addresses(ticket) | ticket_lists(ticket)
-    for address, name, behalf_name in relays.values_list("from_address", "from_name", "on_behalf_name"):
-        if not same_person(name, behalf_name):
-            skip.add(address.lower())
-    found = (str(item).lower() for item in ticket.participants or [])
+    """Participants a reply may copy: people only. A relay (an address that wrote on the ticket only for someone under
+    another name: a web form) is none; whoever wrote on the ticket as themselves, or was addressed by staff, is."""
+    messages = TicketMessage.objects.filter(ticket=ticket)
+    relayed = {
+        address.lower()
+        for address, name, behalf_name in messages.filter(kind__in=INBOUND)
+        .exclude(on_behalf_of="")
+        .values_list("from_address", "from_name", "on_behalf_name")
+        if not same_person(name, behalf_name)
+    }
+    themselves = {
+        item.lower()
+        for item in messages.filter(kind__in=INBOUND, on_behalf_of="").values_list("from_address", flat=True)
+    }
+    for to, cc in messages.filter(kind=TicketMessage.Kind.REPLY, automatic=False).values_list(
+        "to_addresses", "cc_addresses"
+    ):
+        themselves.update(str(item).lower() for item in [*(to or ()), *(cc or ())])
+    found = [str(item).lower() for item in ticket.participants or []]
+    skip = requester_addresses(ticket) | ticket_lists(ticket) | (relayed - themselves)
     return [item for item in found if item not in skip and not NOREPLY_RE.match(item.partition("@")[0])]

@@ -5,12 +5,14 @@ Tried in order; the first that finds a ticket wins:
 1. ``In-Reply-To`` / ``References`` naming a message already on a ticket. A reply to a campaign email names an
    outgoing email (``OutboundEmail``) instead: it finds no ticket, and the new ticket is linked to that campaign.
 2. The subject token ``[I2G-#1234]`` (also without brackets), only from a participant of that ticket: anyone can
-   type a number, so a stranger's mention opens a new ticket that notes it. The participant is the sender, or the
-   person the message speaks for (``people``). A relay (an address that wrote, under another name, for the ticket's
-   requester: a web form) is no participant there, so one form's submissions never join each other's tickets.
+   type a number, so a stranger's mention opens a new ticket that notes it. The participant is the sender or the
+   person the message speaks for (``people``): someone who answers under the ticket's number wrote on it before, or
+   was copied, whatever Reply-To they add (an assistant, a team mailbox, their other address).
 3. Microsoft Graph's ``conversationId``, again only for a participant: a fallback, as Microsoft can change it when an
-   outsider replies, and every reply to one blast may share it (one form's submissions share one subject). A message
-   that speaks for someone else threads this way only as that person.
+   outsider replies, and every reply to one blast may share it (one form's submissions share one subject). So a relay
+   is no participant here: an address that wrote on the ticket for someone under another name (a web form), or that
+   writes now under another name than when it did (a form naming each submitter); and a message that speaks for
+   someone else threads this way only as that person. One form's submissions never join each other's tickets.
 
 A merged ticket is followed to the ticket it was merged into. Where several tickets qualify, a person's message
 prefers one that is not automated (an earlier out-of-office reply of the same thread).
@@ -90,20 +92,18 @@ def _campaign(references: list[str]) -> uuid.UUID | None:
     return email.campaign_id if email is not None else None
 
 
-def _may_thread(ticket: Ticket, person: str, sender: str, *, by_token: bool) -> bool:
-    """Whether a message from ``sender``, speaking for ``person`` (the sender itself when for nobody else), may thread
-    to ``ticket``. A relay is no participant: an address that wrote on it for its requester under another name, or for
-    someone else than this message speaks for. A person's other address (the same name) stays theirs. By conversation
-    a message speaking for someone else threads only as that person; by number, a requester answering with a Reply-To
-    naming someone else (an assistant) threads too."""
-    eligible = participants_of(ticket)
-    relayed = TicketMessage.objects.filter(ticket=ticket, on_behalf_of__iexact=ticket.requester_email)
+def _relays(ticket: Ticket, sender: str, sender_name: str) -> set[str]:
+    """Addresses that wrote on ``ticket`` for someone under another name (a web form), and ``sender`` when it wrote
+    there for someone under another name than it writes under now (a form naming each submitter)."""
+    found = set()
+    relayed = TicketMessage.objects.filter(ticket=ticket, kind__in=TicketMessage.INBOUND_KINDS).exclude(on_behalf_of="")
     for address, name, behalf_name in relayed.values_list("from_address", "from_name", "on_behalf_name"):
-        if not people.same_person(name, behalf_name) or (person != sender and ticket.requester_email.lower() != person):
-            eligible.discard(address.lower())
-    if person in eligible:
-        return True
-    return by_token and person != sender and sender in eligible
+        address = address.lower()
+        if not people.same_person(name, behalf_name) or (
+            address == sender and not people.same_person(name, sender_name)
+        ):
+            found.add(address)
+    return found
 
 
 def _by_token(numbers: list[int], person: str, sender: str) -> tuple[Ticket | None, list[int]]:
@@ -113,20 +113,20 @@ def _by_token(numbers: list[int], person: str, sender: str) -> tuple[Ticket | No
         if ticket is None:
             continue
         target = follow_merges(ticket)
-        if _may_thread(target, person, sender, by_token=True):
+        if {person, sender} & participants_of(target):
             return target, mentions
         mentions.append(number)
     return None, mentions
 
 
-def _by_conversation(conversation_id: str, person: str, sender: str, *, prefer_human: bool):
+def _by_conversation(conversation_id: str, person: str, sender: str, name: str, *, prefer_human: bool):
     ticket_ids = (
         TicketMessage.objects.filter(conversation_id=conversation_id)
         .order_by("-occurred_at")
         .values_list("ticket_id", flat=True)[: CANDIDATE_TICKETS * 5]
     )
     for ticket in _ranked(list(ticket_ids), prefer_human=prefer_human):
-        if _may_thread(ticket, person, sender, by_token=False):
+        if person in participants_of(ticket) - _relays(ticket, sender, name):
             return ticket
     return None
 
@@ -144,7 +144,7 @@ def find(parsed: ParsedMessage, *, conversation_id: str = "", prefer_human: bool
     if ticket is not None:
         return Match(ticket, "subject_token", campaign_id)
     if conversation_id:
-        ticket = _by_conversation(conversation_id, person, sender, prefer_human=prefer_human)
+        ticket = _by_conversation(conversation_id, person, sender, parsed.from_name, prefer_human=prefer_human)
         if ticket is not None:
             return Match(ticket, "conversation", campaign_id, tuple(mentions))
     return Match(None, "", campaign_id, tuple(mentions))

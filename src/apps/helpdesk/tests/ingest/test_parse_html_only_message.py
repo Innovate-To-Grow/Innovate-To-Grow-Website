@@ -1,9 +1,23 @@
 import base64
+import quopri
+from email.message import EmailMessage
+from email.policy import SMTP
 
 from django.test import SimpleTestCase
 
 from ...services.ingest.reading.parse import parse
 from .. import corpus
+
+SAVED = corpus.message(sender="Portal <noreply@i2g.example>", subject="Your sign-in link 登录", text="Your links: here")
+
+
+def with_attached(body: bytes, encoding: str) -> bytes:
+    """A message carrying ``body`` as a message/rfc822 part sent in ``encoding`` (RFC 2046 allows 7bit, 8bit, binary)."""
+    head = (
+        b"From: Sam <sam@example.org>\r\nContent-Type: multipart/mixed; boundary=b\r\n\r\n--b\r\n\r\nSee attached.\r\n"
+    )
+    part = f"--b\r\nContent-Type: message/rfc822\r\nContent-Transfer-Encoding: {encoding}\r\n\r\n".encode()
+    return head + part + body + b"\r\n--b--\r\n"
 
 
 class BodyTests(SimpleTestCase):
@@ -57,3 +71,30 @@ class BodyTests(SimpleTestCase):
         self.assertTrue(parsed.has_calendar)
         self.assertEqual([item.content_type for item in parsed.attachments], ["text/calendar"])
         self.assertTrue(parsed.attachments[0].filename.startswith("attachment-1"))
+
+
+class EncodedAttachedMessageTests(SimpleTestCase):
+    """RFC 2046 forbids base64 and quoted-printable for message/rfc822, yet Python's email library writes base64 (and
+    some clients do): the part is decoded and read like a forward, or counted as not readable."""
+
+    def test_a_message_attached_base64_by_pythons_email_library_is_read(self):
+        mail = EmailMessage(policy=SMTP)
+        mail["From"] = "Sam Saved <sam.saved@example.org>"
+        mail.set_content("The sign-in email I got is attached.")
+        mail.add_attachment(SAVED, maintype="message", subtype="rfc822", filename="signin.eml")
+        self.assertIn(b"Content-Type: message/rfc822\r\nContent-Transfer-Encoding: base64", mail.as_bytes())
+
+        parsed = parse(mail.as_bytes())
+
+        (attached,) = parsed.attached_messages
+        self.assertEqual(
+            (attached["from"], attached["subject"]), ("Portal <noreply@i2g.example>", "Your sign-in link 登录")
+        )
+        self.assertEqual((attached["text"].strip(), parsed.attached_dropped), ("Your links: here", 0))
+
+    def test_a_quoted_printable_one_is_read_and_one_without_headers_is_counted(self):
+        quoted = parse(with_attached(quopri.encodestring(SAVED), "quoted-printable"))
+        headless = parse(with_attached(base64.encodebytes(b"Only some words, no headers.\r\n"), "base64"))
+
+        self.assertEqual([item["subject"] for item in quoted.attached_messages], ["Your sign-in link 登录"])
+        self.assertEqual((headless.attached_messages, headless.attached_dropped), ([], 1))

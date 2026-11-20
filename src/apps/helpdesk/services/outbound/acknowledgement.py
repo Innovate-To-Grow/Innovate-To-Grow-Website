@@ -2,7 +2,8 @@
 
 It goes to an address taken from inbound mail, so it must not become a relay for outsiders: it is sent only to the
 sender, when they passed DMARC or Exchange's composite authentication or Exchange marks the mail internal to the
-organisation, so neither a forged From nor a Reply-To (a web form's relayed person) ever gets one; it passes
+organisation, so neither a forged From nor a Reply-To (a web form's relayed person) ever gets one, nor an
+address known to write for other people (a form's own address); it passes
 ``shadow.automatic_reply_allowed`` (never for automated mail, spam, or a message that asks for no automatic reply);
 it is never sent for backfilled mail or to one of the site's own addresses; at most once per ``ACK_WINDOW`` per
 address and ``ACK_DAILY_CAP`` in all; and its text fills in no link the sender chose (``compose.fill``). It carries
@@ -48,6 +49,9 @@ def queue_acknowledgement(ticket: Ticket, message: TicketMessage, settings: Help
     address = ticket.requester_email
     if address.lower() != message.from_address.lower():
         return None  # the person a web form relays (Reply-To): unauthenticated
+    relayed = TicketMessage.objects.filter(from_address__iexact=address).exclude(on_behalf_of="")
+    if relayed.exclude(pk=message.pk).exists():
+        return None  # an address that wrote for other people (a web form): its nameless submissions get none
     if not is_plain_address(address) or address.lower() in site_addresses(ticket):
         return None
     now = timezone.now()

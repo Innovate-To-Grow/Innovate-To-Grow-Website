@@ -11,6 +11,7 @@ from apps.core.utils.security import is_plain_address
 
 from ...models import Ticket, TicketMessage
 from .. import sla
+from ..ingest.routing.people import same_person
 from ..sla.priority import AUTOMATED_DEFAULT, PERSON_DEFAULT, priority_for
 from . import events
 from .changes import DONE, AssignmentRefused, Kind, Status, _name, update_ticket
@@ -106,17 +107,16 @@ def _opening(ticket: Ticket) -> TicketMessage | None:
 
 def _relayed(ticket: Ticket) -> dict:
     """The requester once ``ticket`` is a person's: whom its opening message spoke for instead of its sender (a web
-    form's person, a list's poster; judged at intake by ``ingest.routing.people``), else nothing to change."""
+    form's person, a list's poster, or the sender's other address under their name: judged at intake by
+    ``ingest.routing.people``), with the member it belongs to; else nothing to change."""
     opening = _opening(ticket)
     address = str(getattr(opening, "on_behalf_of", "") or "").lower()
     if not address or not is_plain_address(address) or address == ticket.requester_email.lower():
         return {}
     contact = ContactEmail.objects.filter(email_address__iexact=address, member__isnull=False).first()
-    return {
-        "requester_email": address,
-        "requester_name": opening.on_behalf_name,
-        "requester_member": getattr(contact, "member", None),
-    }
+    alias = same_person(opening.from_name, opening.on_behalf_name)  # the same person: the member stays theirs
+    member = getattr(contact, "member", None) or (ticket.requester_member if alias else None)
+    return {"requester_email": address, "requester_name": opening.on_behalf_name, "requester_member": member}
 
 
 def _theirs(ticket: Ticket, relayed: str) -> bool:
@@ -157,6 +157,8 @@ def move_to_queue(tickets, *, actor) -> int:
             if _theirs(current, relayed.get("requester_email", "")):
                 values["flags"] = list(dict.fromkeys([*current.flags, "suspicious"]))
             values.update(relayed)
+            if relayed:  # listed as theirs at once, as on a new ticket
+                values["participants"] = list(dict.fromkeys([*current.participants, relayed["requester_email"]]))
             if current.automated and (current.impact, current.urgency) == AUTOMATED_DEFAULT:
                 # Automated mail starts low; a person's message starts where any other does (a person's ticket staff
                 # marked spam keeps the impact and urgency staff gave it).
@@ -175,7 +177,9 @@ def move_to_queue(tickets, *, actor) -> int:
                 **values, updated_at=now
             )
             moved = {"from": current.classification, "to": "human"}
-            moved.update({"requester": relayed["requester_email"]} if relayed else {})
+            if relayed:
+                alias = same_person(_opening(current).from_name, relayed["requester_name"])
+                moved.update(requester=relayed["requester_email"], **({"alias": True} if alias else {}))
             events.record(current, Kind.RECLASSIFIED, actor=actor, **moved)
         count += 1
     return count

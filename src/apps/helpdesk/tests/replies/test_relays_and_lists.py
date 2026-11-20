@@ -1,10 +1,12 @@
 """Web forms and mailing lists: whom the ticket belongs to (``ingest.routing.people``).
 
 - A relay is never taken for the people it relays: form submissions that share a Graph conversation (one subject,
-  one form) open a ticket each, while the same person writing again joins their own.
+  one form) open a ticket each, while the same person writing again joins their own; so does a nameless submission
+  after the form's ticket was merged into a person's ticket.
 - Moving list mail or a relayed message to the queue gives the ticket to the person who wrote it, with their name (a
-  form's person, a list's poster: its Reply-To, X-Original-From or Cc), and the timeline says so. A mailing list's own
-  address (its List-Post) never is the requester nor a participant; a reply never goes to it, nor copies it.
+  form's person, a list's poster: its Reply-To, X-Original-From or Cc), listed as a participant, and the timeline
+  says so. A mailing list's own address (its List-Post; without one, its Reply-To) never is the requester nor a
+  participant; a reply never goes to it, nor copies it.
 - After a move only the misjudged messages become the requester's: their own out-of-office stays automated, and the
   reply quotes their question; a web form's message is quoted as its person's."""
 
@@ -70,6 +72,16 @@ class RelayTests(TestCase):
             "mailing list)",
         )
 
+    def test_a_nameless_submission_never_joins_the_person_a_form_ticket_was_merged_into(self):
+        quinn = receive(corpus.message(sender="Quinn Park <quinn@example.org>", message_id="<quinn@x>"))
+        xavier = receive(submission("Xavier Three <xavier@example.org>", "Parking?", 6), conversation="AAQk-m")
+        tickets.merge([quinn, xavier], actor=self.agent)
+        nameless = submission("", "Can students watch the judging?", 7).replace(b"Reply-To: \r\n", b"")
+
+        self.assertNotEqual(receive(nameless, conversation="AAQk-m").pk, quinn.pk)
+        quinn.refresh_from_db()
+        self.assertNotIn("webform@forms.example", outbound.cc_suggestions(quinn))
+
     def test_a_reply_to_the_message_was_also_sent_to_leaves_the_sender_the_requester(self):
         # A person writing to the site and their team, asking for replies to the team (an address of the message).
         raw = corpus.message(
@@ -94,9 +106,9 @@ class ListTests(TestCase):
         self.agent = helpdesk_staff()
         self.settings = sending_settings()
 
-    def moved(self, sender, number, to=LIST, **headers):
+    def moved(self, sender, number, to=LIST, listing=LIST_HEADERS, **headers):
         raw = corpus.message(
-            sender=sender, to=to, message_id=f"<list-{number}@lists.example.edu>", headers={**LIST_HEADERS, **headers}
+            sender=sender, to=to, message_id=f"<list-{number}@lists.example.edu>", headers={**listing, **headers}
         )
         ticket = receive(raw)
         self.assertTrue(ticket.automated)
@@ -118,12 +130,15 @@ class ListTests(TestCase):
             with self.subTest(case):
                 self.assertEqual((ticket.requester_name, ticket.requester_email), ("Ira Moss", "ira.moss@example.edu"))
                 self.assertNotIn(LIST, ticket.participants)
+                self.assertIn("ira.moss@example.edu", ticket.participants)
                 self.assertEqual(outbound.can_reply(ticket, self.settings), "")
 
     def test_a_list_asking_for_replies_to_itself_leaves_the_poster_the_requester(self):
-        for number, to in ((4, LIST), (5, corpus.SITE)):  # sent To the list, or to each member (personal delivery)
-            with self.subTest(to=to):
-                ticket = self.moved(IRA, number, to=to, **{"Reply-To": LIST})
+        unposted = {"List-Id": LIST_HEADERS["List-Id"], "Precedence": "list"}  # no List-Post: its Reply-To is the list
+        cases = ((4, LIST, LIST_HEADERS), (5, corpus.SITE, LIST_HEADERS), (8, corpus.SITE, unposted))
+        for number, to, listing in cases:  # sent To the list, or to each member (personal delivery)
+            with self.subTest(to=to, listing=listing):
+                ticket = self.moved(IRA, number, to=to, listing=listing, **{"Reply-To": LIST})
 
                 self.assertEqual(ticket.requester_email, "ira.moss@example.edu")
                 self.assertNotIn("requester", ticket.events.get(kind=TicketEvent.Kind.RECLASSIFIED).data)
@@ -131,6 +146,20 @@ class ListTests(TestCase):
                 Ticket.objects.filter(pk=ticket.pk).update(participants=[*ticket.participants, LIST])
                 ticket.refresh_from_db()
                 self.assertNotIn(LIST, outbound.cc_suggestions(ticket))
+                with self.assertRaisesMessage(ReplyRefused, f"{LIST} is a mailing list"):
+                    parse_cc(LIST, ticket)
+
+    def test_list_mail_from_its_poster_is_theirs_whatever_its_reply_to(self):
+        raw = corpus.message(
+            sender=f"Gil Moss via Faculty <{LIST}>",
+            to=LIST,
+            message_id="<gg@x>",
+            headers={**LIST_HEADERS, "X-Original-From": IRA},
+        )
+        self.assertIn("ira.moss@example.edu", receive(raw).participants)  # the poster, while the ticket is the list's
+        organizer = self.moved(IRA, 9, to=corpus.SITE, **{"Reply-To": "Organizer <org@example.edu>"})
+
+        self.assertEqual(organizer.requester_email, "ira.moss@example.edu")
 
     def test_a_list_that_hides_its_poster_is_never_replied_to_nor_copied(self):
         ticket = self.moved(f"Faculty List <{LIST}>", 6, **{"Reply-To": LIST})

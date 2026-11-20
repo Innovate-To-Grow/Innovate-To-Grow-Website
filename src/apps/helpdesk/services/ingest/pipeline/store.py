@@ -147,7 +147,8 @@ def _new(*, parsed, classified, settings, received, own, campaign_id, rule, rela
     backfilled = timezone.now() - received > timedelta(hours=int(settings.backfill_age_hours))
     clock = {} if automated or backfilled else sla.start_values(ticket_priority, received)
     name, address, member = _requester(parsed, classified, own)
-    replying = [parsed.reply_to, *(item for _name, item in people.reply_to_pairs(parsed)), address]
+    speaker = people.speaks_for(parsed, own).address  # a list's poster too, while the ticket is the list's
+    replying = [parsed.reply_to, *(item for _name, item in people.reply_to_pairs(parsed)), address, speaker]
     unlisted = own | set(people.list_addresses(parsed))  # a mailing list's own address is no participant
     ticket = numbering.create_ticket(
         subject=scrub_subject(parsed.subject) or "(no subject)",

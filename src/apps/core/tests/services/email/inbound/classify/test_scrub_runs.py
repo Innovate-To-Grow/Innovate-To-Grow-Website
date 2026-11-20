@@ -45,6 +45,10 @@ LINES = (
     (f"first:\\nwww.i2g.ucmerced.edu/login-link#token={TOKEN}\\nAgenda", f"first:\\n{REMOVED}\\nAgenda"),
     (f"Open {SAFE_LINK} now.", f"Open {REMOVED} now."),  # personal only inside: the wrapper goes whole
     (f"https://i2g.ucmerced.edu/login-link?next={ENCODED},keep", REMOVED),  # one encoded past the visible one
+    # Another site's signed token ("<payload>:<time>:<signature>") goes whole; a ":" before a space is the text's.
+    (f"Verify: https://portal.example/verify?token={SIGNED} thanks", f"Verify: {REMOVED} thanks"),
+    (f"Reset: https://portal.example/reset#reset_token={SIGNED}&next=/ ok", f"Reset: {REMOVED}&next=/ ok"),
+    (f"Ask https://portal.example/verify?token={SIGNED}: it failed", f"Ask {REMOVED}: it failed"),
 )
 
 

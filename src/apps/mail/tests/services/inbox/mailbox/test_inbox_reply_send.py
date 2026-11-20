@@ -14,12 +14,44 @@ from apps.mail.services.inbox.sending.reply import (
     send_reply,
 )
 
+DOCS = "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit?usp=sharing"
+
+
+def anchor(href: str) -> str:
+    return f'<a href="{href}" style="color:#0f2d52;">{href}</a>'
+
 
 class ReplyRenderTests(TestCase):
     def test_render_reply_html_linkifies_urls(self):
         html = render_reply_html("Visit https://example.com now", quoted_text="prior text")
         self.assertIn('<a href="https://example.com"', html)
         self.assertIn("prior text", html)
+
+    def test_a_link_is_found_in_the_text_as_written_and_ends_where_the_sentence_goes_on(self):
+        # Found in the escaped text, a link ended at its first "&" and took the punctuation and words after it.
+        cases = (
+            (
+                f"Edit {DOCS}&tab=t.0#heading=h.abc123 (edit it)",
+                f"Edit {anchor(f'{DOCS}&amp;tab=t.0#heading=h.abc123')} (edit it)",
+            ),
+            (f"Row: {DOCS},[sign-in link removed],team B", f"Row: {anchor(DOCS)},[sign-in link removed],team B"),
+            (f"Open {DOCS}. Then (see {DOCS}).", f"Open {anchor(DOCS)}. Then (see {anchor(DOCS)})."),
+            (f"请看{DOCS}谢谢", f"请看{anchor(DOCS)}谢谢"),  # glued to Chinese text
+            (
+                "Wiki https://en.wikipedia.org/wiki/Mesa_(computing)!",
+                f"Wiki {anchor('https://en.wikipedia.org/wiki/Mesa_(computing)')}!",
+            ),
+        )
+        for body, expected in cases:
+            with self.subTest(body):
+                self.assertIn(expected, render_reply_html(body))
+
+    def test_the_text_around_a_link_is_escaped(self):
+        html = render_reply_html('<b>Hi</b> & "you" https://example.org/a?b=1&c=<2>')
+
+        self.assertIn(
+            f"&lt;b&gt;Hi&lt;/b&gt; &amp; &quot;you&quot; {anchor('https://example.org/a?b=1&amp;c=')}&lt;2&gt;", html
+        )
 
     def test_build_reply_message_sets_threading_headers(self):
         config = SimpleNamespace(source_address="I2G <reply@example.com>")

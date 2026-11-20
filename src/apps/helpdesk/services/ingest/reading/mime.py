@@ -1,7 +1,9 @@
 """Walking a message's MIME parts: bodies, attachments and attached messages (forwarded parts, saved ``.eml`` files),
 within the limits."""
 
+import binascii
 import mimetypes
+from email.errors import MessageError
 
 from apps.core.services.email.inbound.classification import headers as mime
 from apps.core.services.email.telemetry import text
@@ -109,8 +111,19 @@ class _Walker:
 
 
 def _inner_message(part):
+    """The message an attached message part holds. Sent base64 or quoted-printable (RFC 2046 forbids it, yet Python's
+    email library writes it), it was parsed from its encoded text: that is decoded and read like a saved .eml file."""
     payload = part.get_payload()
-    return payload[0] if isinstance(payload, list) and payload else None
+    inner = payload[0] if isinstance(payload, list) and payload else None
+    encoding = _header(part, "Content-Transfer-Encoding").strip().lower()
+    decode = {"base64": binascii.a2b_base64, "quoted-printable": binascii.a2b_qp}.get(encoding)
+    if inner is None or decode is None:
+        return inner
+    try:
+        message = mime.parse(decode(inner.as_bytes()))
+    except (*_PART_ERRORS, MessageError):  # MessageError: a crafted header the generator refuses to write again
+        return None
+    return message if message.keys() else None  # no headers: not readable, counted on the card
 
 
 def _file_message(part):

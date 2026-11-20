@@ -70,12 +70,18 @@ are never sent. Opening a ticket marks it read.
   Settings ("Why: Exchange rated it spam (SCL 6; spam from SCL 5 on Settings).", "… bulk mail (BCL 8; bulk from
   BCL 7 on Settings).", or "Exchange's spam filter marked it as spam."); mail Exchange marks as internal to the
   organisation shows "Exchange: internal" with its authentication results.
-- Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`. Only the
-  link goes, up to the end of its token: each link of a line is judged on its own, so the words and other links
-  around it stay (a CSV row keeps its other cells and links; "(see <link>). It did not work." keeps "). It did
-  not work."); a link wrapped by Safe Links goes whole. A link to one is no longer a link (its text stays, followed
-  by the placeholder), also when its address is written with backslashes, which the browser reads as slashes. The
-  same holds for forwarded messages, for a saved message attached as a file (`.eml`, shown like a forward as a
+- Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`: the site's
+  sign-in and one-click unsubscribe links, its SMS short link (`/l/<token>` on the site's own address; Teams'
+  `/l/meetup-join/…` links stay), and any link with a `token=` parameter, a signed `payload:time:signature` value
+  included. Only the link goes, up to the end of its token: each link of a line is judged on its own, so the words
+  and other links around it stay (a CSV row keeps its other cells and links; "(see <link>). It did not work." keeps
+  "). It did not work."); a link written JSON-escaped (`https:\/\/…`) is read as a link, and a link wrapped by Safe
+  Links or Proofpoint URL Defense goes whole. In HTML, a token split by formatting (Word's spelling marks) goes with
+  its link. A link to one is no longer a link (its text stays, followed by the placeholder), also when its address
+  is written with backslashes, which the browser reads as slashes, and so is a Mimecast-rewritten link to the site's
+  own address (Mimecast names only the host and sends the click on to the link it replaced). The same holds for
+  forwarded messages (also one attached base64 or quoted-printable, as Python's email library writes it), for a
+  saved message attached as a file (`.eml`, shown like a forward as a
   summary of its headers and text, never kept as a file) and for attached text files (any `text/*` file, or one
   named `.txt`, `.csv`, `.ics`, `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came (a
   calendar or contact file's folded lines are read joined, and a UTF-16 file without a byte order mark is read and
@@ -165,7 +171,9 @@ module imports a sending API, and that each job checks shadow mode before it sen
   zone), and a footer asking to keep the number in the subject. A ticket whose requester is a mailing list (one
   that hid its poster) cannot be answered from the helpdesk: a reply would reach all its members, so write to the
   person from Outlook. Reply-To is the mailbox the requester's mail arrived in when that is not the From address.
-  The text is sent as written: only a personal sign-in link pasted into it is removed. The form shows the subject before sending. The status can be set with it (default: On hold – awaiting
+  The text is sent as written: only a personal sign-in link pasted into it is removed. In the HTML part its links
+  are clickable as written: an `&` stays inside its link, and the punctuation or words right after a link stay
+  text. The form shows the subject before sending. The status can be set with it (default: On hold – awaiting
   requester; on a resolved or closed ticket, keep the current status). A refused reply (a bad Cc, too long, shadow
   mode switched on meanwhile) comes back with its text, Cc and status and the reason beside the form; the same reply
   sent again within 10 minutes is refused (a double submit). Microsoft Graph cannot send `In-Reply-To`/`References`,
@@ -301,10 +309,12 @@ module imports a sending API, and that each job checks shadow mode before it sen
      spam, and for such messages.
 4. **Threading** (`matching.py`), first match wins: `In-Reply-To`/`References` naming a message of a ticket (a
    reply to a campaign email instead opens a ticket linked to the campaign); the subject token `[I2G-#1234]`
-   (also without brackets) **only from a participant** of that ticket (anyone can type a number): the sender, or the
-   person the message speaks for (a web form's, below); the Graph `conversationId`, again only for a participant,
-   and for a message that speaks for someone else only as that person. A relay (an address that wrote on a ticket
-   for its requester under another name, a web form) is no participant there. Merged tickets are followed.
+   (also without brackets) **only from a participant** of that ticket (anyone can type a number): the sender or the
+   person the message speaks for (a web form's, below), so whoever wrote on a ticket or was copied answers it under
+   its number, whatever Reply-To they add (an assistant, a team mailbox, their other address); the Graph
+   `conversationId`, again only for a participant, never for a relay (an address that wrote on the ticket for
+   someone under another name, or under another name than it writes under now: a web form), and for a message that
+   speaks for someone else only as that person. Merged tickets are followed.
 5. **Rules** (`store.py`):
    - Automated mail joins the ticket it threads to as a collapsed entry and changes nothing on it. Otherwise it
      opens a ticket closed at once (spam: status Spam), low priority, hidden. It never reopens a ticket.
@@ -320,17 +330,19 @@ module imports a sending API, and that each job checks shadow mode before it sen
    - Mail imported more than `backfill_age_hours` (24) after it arrived opens tickets marked as backfilled.
    - **Web forms and other relays** (`ingest/routing/people.py`). A person's message whose Reply-To names someone
      who is neither its sender, nor one of the site's own addresses, nor an address it was sent To (a person asking
-     for replies to their team), nor a mailing list's own address (its List-Post) opens a ticket for that person
+     for replies to their team), nor a mailing list's own address opens a ticket for that person
      (the first such one), also when the form copies them (Cc): they are the requester (replies go to them, as from
      any mail program, and their form text is quoted under a reply), every Reply-To address and the form's own
-     participants. One form's submissions never join each other's tickets. A Reply-To is unauthenticated, so it gets
-     no acknowledgement. A form sending from a no-reply address with such a Reply-To is a person's message, never
-     answered automatically (otherwise a no-reply sender is bulk mail). A Reply-To naming the sender's other address
-     under the same name (work and home) is the same person: the ticket keeps the member it belongs to, and both
-     addresses thread. A mailing list's own address is never a participant; a list that rewrites its poster (Mailman's
-     munged From, Google Groups) speaks for the poster (X-Original-From, else the Reply-To or Cc address that is not
-     the list). Moving list mail or a relayed message to the queue gives the ticket to that person, with their name
-     (the timeline says so).
+     participants. One form's submissions never join each other's tickets (also a nameless one, or one from a form
+     that names each submitter). A Reply-To is unauthenticated, so it gets no acknowledgement, and neither does an
+     address that has written for someone else (a form's own address). A form sending from a no-reply address with
+     such a Reply-To is a person's message, never answered automatically (otherwise a no-reply sender is bulk mail).
+     A Reply-To naming the sender's other address under the same name (work and home) is the same person: the ticket
+     keeps the member it belongs to. A mailing list's own address (its List-Post; without one, the Reply-To of list
+     mail) is never a participant; list mail speaks for its poster: the sender, or when the list rewrote it
+     (Mailman's munged From, Google Groups) X-Original-From, else the Reply-To or Cc address that is not the list.
+     Moving list mail or a relayed message to the queue gives the ticket to that person, with their name and member,
+     listed as a participant (the timeline says so).
 
 **Ticket numbers** come from the PostgreSQL sequence `helpdesk_ticket_number_seq` (created by `helpdesk/0001`,
 never below 1001): unique under concurrent creation; a rolled-back number is skipped. SQLite (local development)
@@ -494,9 +506,11 @@ saves every column and would overwrite a running scan's lease.
   strips organisation headers from outside mail); it was checked against simulated headers only, so confirm it with
   a real message from a campus colleague.
 - **Whom a message is for is read from its headers**: a web form must name its person in Reply-To (one that writes
-  the address only in its text opens a ticket for the form's own address); two submissions of one form that name
-  nobody may join one ticket; a person writing with Reply-To their other address gets no acknowledgement (the
-  Reply-To is unauthenticated); a mailing list that hides its poster cannot be answered from the helpdesk.
+  the address only in its text opens a ticket for the form's own address, and a form that never names anyone is
+  taken for one person, so its submissions may join one ticket by their shared conversation); a person writing with
+  Reply-To their other address, or who once asked for replies to go to someone else, gets no acknowledgement; an
+  answer without the ticket's number threads by its conversation only from someone who never wrote on the ticket for
+  someone else; a mailing list that hides its poster cannot be answered from the helpdesk.
 - **No requester portal** or watch list: requesters interact by email only.
 - **Mail deleted or moved out of the Inbox before a scan is missed**; only the Inbox is read. With immutable ids
   off (`EMAIL_GRAPH_IMMUTABLE_IDS`), a message moved in Outlook between its listing and its import is skipped as
@@ -508,7 +522,10 @@ saves every column and would overwrite a running scan's lease.
   text files. A PDF, Office document, image, archive or Outlook `.msg` file is stored as received, so a personal
   sign-in link inside one reaches whoever downloads it. A text file in UTF-16 without a byte order mark that declares
   no charset (or a wrong one), or a UTF-32 file without a mark, is not read as what it is, so a link inside it stays
-  too.
+  too. A link written without `https://` or `www.` (such as `i2g.ucmerced.edu/login-link#token=…`) is not read as a
+  link, so its token stays. A Mimecast link to the site in a plain-text message stays as text: only an HTML link to
+  one is unlinked. A word glued without a space after a removed link, across inline formatting
+  (`…token=abc</span><b>Thanks</b>`), goes with the token.
 - **Replies are recognised only to mail the telemetry still holds** (180 days) and, for mail sent without a
   Message-ID, only from the address mailed with the same subject, or by a message of a person's ticket they name; a
   reply to older mail, or from another address of the person, is classified on its own headers. So is a first answer

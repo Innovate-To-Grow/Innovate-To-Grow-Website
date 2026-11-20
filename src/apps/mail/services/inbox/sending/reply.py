@@ -1,8 +1,11 @@
 import logging
 import re
 
+from django.utils.html import escape
+
 from apps.core.models import EmailServiceConfig
 from apps.core.services.email import EmailDeliveryError, EmailMessage, deliver_email, email_tracking
+from apps.core.services.email.inbound import LINK_PLACEHOLDER
 from apps.core.utils.security import is_plain_address
 
 from .senders import DEFAULT_SENDER, resolve_identity
@@ -12,22 +15,43 @@ REPLY_SEND_FAILURE_MESSAGE = "Failed to send reply. Please check server logs for
 REPLY_DELIVERY_NOT_CONFIGURED = "Email delivery is not configured. Check Notification Delivery in admin."
 REPLY_INVALID_ADDRESS_MESSAGE = "Use plain email addresses such as name@example.com in To and Cc."
 REPLY_SENDER_UNAVAILABLE_MESSAGE = "That From address is not available. Reload the reply form and choose another."
+# A link in the raw text: printable ASCII up to a space, "<", ">" or '"' (so Chinese text glued to it stays out), and
+# never into a "[sign-in link removed]" right after it.
+_LINK_RE = re.compile(rf"(?i)https?://(?:(?!{re.escape(LINK_PLACEHOLDER)})[!#-;=?-~])+")
+_TRAILING = ".,;:!?"
+_OPENING = {")": "(", "]": "[", "}": "{"}
+
+
+def _link_end(url: str) -> str:
+    """``url`` without what ends the sentence around it (as Django's ``urlize`` trims): trailing punctuation, and a
+    closing bracket the link does not open."""
+    while url:
+        last = url[-1]
+        unopened = last in _OPENING and url.count(_OPENING[last]) < url.count(last)
+        if last not in _TRAILING and not unopened:
+            break
+        url = url[:-1]
+    return url
+
+
+def _linkified(body_text: str) -> str:
+    """``body_text`` escaped, its links as anchors: found in the raw text, so an "&" stays inside its link."""
+    parts, start = [], 0
+    for found in _LINK_RE.finditer(body_text):
+        url = _link_end(found.group())
+        if url.endswith("://"):
+            continue  # nothing but the scheme is left: it stays text
+        safe = escape(url)
+        parts += [escape(body_text[start : found.start()]), f'<a href="{safe}" style="color:#0f2d52;">{safe}</a>']
+        start = found.start() + len(url)
+    return "".join([*parts, escape(body_text[start:])])
 
 
 def render_reply_html(body_text, original_from="", original_date="", quoted_text=""):
     from django.conf import settings
     from django.template.loader import render_to_string
-    from django.utils.html import escape
 
-    escaped = escape(body_text)
-
-    def _linkify(match):
-        url = match.group(1)
-        safe = escape(url)
-        return f'<a href="{safe}" style="color:#0f2d52;">{safe}</a>'
-
-    escaped = re.sub(r"(https?://[^\s<>&]+)", _linkify, escaped)
-    body_html = escaped.replace("\n", "<br>\n")
+    body_html = _linkified(str(body_text or "")).replace("\n", "<br>\n")
     safe_quoted = escape(quoted_text).replace("\n", "<br>\n") if quoted_text else ""
 
     return render_to_string(

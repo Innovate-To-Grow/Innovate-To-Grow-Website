@@ -8,14 +8,16 @@ limit:
 - a UTF-16 file sent without a byte order mark is read, and written back, in the byte order it was written in;
 - a calendar or contact file (``.ics``, ``.vcf``) folds long lines, so a link folded across lines is found whole
   (and one without a link is stored byte for byte);
-- an HTML link is judged as the browser reads it: a tab or line break inside the href still makes it a sign-in link;
+- an HTML link is judged as the browser reads it: a tab or line break inside the href still makes it a sign-in link,
+  a token split by inline tags (Word's <span class=SpellE>) goes whole, a Mimecast link to the site's host is none;
+- the site's SMS short link (``/l/<token>``) goes from every part of a message, its files, notes and replies;
 - a saved message past the limit of five, or one that cannot be read, is counted and named on the message's card
   (the original is in Outlook) instead of vanishing, and the message is not said to be cut off."""
 
 import codecs
 
 from django.core.cache import cache
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 
 from apps.core.services.email.inbound import LINK_PLACEHOLDER as REMOVED
@@ -24,11 +26,13 @@ from ...models import HelpdeskSettings
 from ...services.ingest.reading import attachments as files
 from ...services.ingest.reading.message import MAX_ATTACHED_MESSAGES, ParsedAttachment
 from ...services.ingest.reading.parse import parse
-from ...services.ingest.reading.sanitize import sanitize_html
 from ...services.tickets import scrub_sign_in_links
 from .. import corpus
 from ..helpers import helpdesk_staff, receive
-from ..service.intake.test_signin_links_in_files import DOC, LINK, SAVED, TOKEN, mail_with
+from ..service.intake.test_signin_links_in_files import DOC, LINK, SAVED, TOKEN, html, mail_with
+
+SMS = "https://i2g.ucmerced.edu/l/SmSsHoRt7kQ2pRt4sQ9pXw"  # FRONTEND_URL + "/l/" + secrets.token_urlsafe(16)
+SITE_HOSTS = override_settings(FRONTEND_URL="https://i2g.ucmerced.edu", BACKEND_URL="https://api.i2g.ucmerced.edu")
 
 
 def folded(line: str) -> str:
@@ -110,9 +114,28 @@ class LinkTests(SimpleTestCase):
     def test_a_tab_or_line_break_inside_an_href_still_makes_it_a_sign_in_link(self):
         broken = LINK.replace("login-link", "login-li&#10;nk").replace("token", "to&#9;ken")
 
-        cleaned = sanitize_html(f'<p><a href="{broken}">split</a></p>', max_chars=10000)[0]
+        self.assertEqual(html(f'<p><a href="{broken}">split</a></p>'), f"<p>split {REMOVED}</p>")
 
-        self.assertEqual(cleaned, f"<p>split {REMOVED}</p>")
+    def test_a_token_split_by_inline_formatting_goes_and_the_tags_stay(self):
+        head, tail, bare = TOKEN[:10], TOKEN[10:], LINK.replace(TOKEN, "")
+        split = f"<p>Split: {bare}{head}<span>{tail}</span> done</p>"
+        word = f"<p>Word: {bare}<span class=SpellE>{head}</span>-<span class=SpellE>{tail}</span>. Done</p>"
+        unlinked = f'<p><span><a href="{LINK}">Sign in</a></span><b>Questions?</b></p>'  # no token cut: words stay
+
+        self.assertEqual(html(split), f"<p>Split: {REMOVED}<span></span> done</p>")
+        self.assertEqual(html(word), f"<p>Word: {REMOVED}<span></span><span></span>. Done</p>")
+        self.assertEqual(html(unlinked), f"<p><span>Sign in {REMOVED}</span><b>Questions?</b></p>")
+
+    @SITE_HOSTS
+    def test_a_mimecast_link_to_the_sites_own_host_is_no_link(self):
+        # Mimecast names only the host, and sends the click on to the link it replaced: maybe a sign-in link.
+        site = "https://protect-us.mimecast.com/s/r1BdC8qQ0f?domain=i2g.ucmerced.edu"
+        also = "https://url.us.m.mimecastprotect.com/s/AbCdEf?domain=API.i2g.ucmerced.edu"
+        other = "https://protect-us.mimecast.com/s/r1BdC8qQ0f?domain=docs.google.com"
+        markup = f'<p><a href="{site}">Sign in</a> <a href="{also}">API</a> <a href="{other}">Docs</a></p>'
+
+        kept = f'<a rel="noopener noreferrer" target="_blank" href="{other}">Docs</a>'
+        self.assertEqual(html(markup), f"<p>Sign in {REMOVED} API {REMOVED} {kept}</p>")
 
 
 class MessageTextTests(TestCase):
@@ -131,6 +154,21 @@ class MessageTextTests(TestCase):
         self.assertEqual(message.body_html, f"<p>Plain (see {REMOVED}). Next sentence.</p>")
         (attached,) = forwarded.messages.get().attached_messages
         self.assertEqual(attached["text"].strip(), words.replace(LINK, REMOVED))
+
+    @SITE_HOSTS
+    def test_the_sms_sign_in_link_goes_from_every_part_of_a_message_and_from_notes(self):
+        words, markup = f"I got this text: {SMS} is it yours?", f'<p><a href="{SMS}">Your link</a> ({SMS}).</p>'
+        sms_file = ("sms.txt", words.encode(), "text/plain")
+        raw = corpus.message(subject=f"Link {SMS}", text=words, html=markup, attachments=[sms_file])
+
+        message = receive(raw).messages.get()
+        (attached,) = receive(corpus.forwarded(inner_text=words)).messages.get().attached_messages
+
+        self.assertEqual((message.subject, message.body_text.strip()), (f"Link {REMOVED}", words.replace(SMS, REMOVED)))
+        self.assertEqual(message.body_html, f"<p>Your link {REMOVED} ({REMOVED}).</p>")
+        self.assertEqual(bytes(message.attachments.get().content), words.replace(SMS, REMOVED).encode())
+        self.assertEqual(attached["text"].strip(), words.replace(SMS, REMOVED))
+        self.assertEqual(scrub_sign_in_links(f"Note: {words}"), f"Note: {words.replace(SMS, REMOVED)}")  # and replies
 
 
 class SavedMessageTests(TestCase):
