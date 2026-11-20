@@ -152,14 +152,14 @@ def _sla_values(current: Ticket, values: dict, status: str | None, now, actor) -
     if "priority" in values:
         result.update(sla.priority_values(current, values["priority"], now))
     if status is not None:
+        # Judged on the row as it will be once the new due times above apply (a priority change in the same save).
+        staged = Ticket(**{**_clock(current), **{k: v for k, v in result.items() if k in _CLOCK_FIELDS}})
+        staged.status = current.status
         if current.status == Status.NEW and status != Status.SPAM:
-            responded = sla.responded_values(current, now)
+            responded = sla.responded_values(staged, now)
             if responded:
                 result.update(responded)
                 events.record(current, Kind.RESPONDED, actor=actor, by="status")
-        # Judged on the row as it will be once the new due times above apply.
-        staged = Ticket(**{**_clock(current), **{k: v for k, v in result.items() if k in _CLOCK_FIELDS}})
-        staged.status = current.status
         result.update(sla.status_values(staged, status, now))
     return result
 
