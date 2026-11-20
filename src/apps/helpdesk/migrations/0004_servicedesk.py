@@ -18,7 +18,6 @@ from django.conf import settings
 from django.db import migrations, models
 
 
-
 HOUR = 60
 DAY = 24 * HOUR
 SLA_TARGETS = (
@@ -38,7 +37,6 @@ def seed_sla_targets(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("helpdesk", "0003_reply_detection_settings"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -105,9 +103,9 @@ class Migration(migrations.Migration):
             model_name="helpdesksettings",
             name="acknowledgement_text",
             field=models.TextField(
-                db_default='Hello {requester_name},\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket} ("{subject}"). A member of our team will get back to you soon.\n\nTo add information, reply to this email and keep {ticket} in the subject.\n\nInnovate to Grow, UC Merced',
-                default='Hello {requester_name},\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket} ("{subject}"). A member of our team will get back to you soon.\n\nTo add information, reply to this email and keep {ticket} in the subject.\n\nInnovate to Grow, UC Merced',
-                help_text="The acknowledgement's text. {ticket}, {requester_name} and {subject} are replaced.",
+                db_default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nTo add information, reply to this email and keep {ticket} in the subject.\n\nInnovate to Grow, UC Merced",
+                default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nTo add information, reply to this email and keep {ticket} in the subject.\n\nInnovate to Grow, UC Merced",
+                help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link removed). Only an I2G Master can change it.",
             ),
         ),
         migrations.AddField(
@@ -138,7 +136,7 @@ class Migration(migrations.Migration):
             field=models.BooleanField(
                 db_default=False,
                 default=False,
-                help_text="Email the requester when their message opens a new ticket (never for automated mail, spam, backfilled mail, or a message that asks for no automatic reply; at most one per address a day). Needs shadow mode off.",
+                help_text="Email the requester when their message opens a new ticket: only when its sender passed DMARC, never for automated mail, spam, backfilled mail, or a message that asks for no automatic reply; at most one per address a day and 200 a day in all. Needs shadow mode off. Only an I2G Master can change it.",
             ),
         ),
         migrations.AddField(
@@ -256,9 +254,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="ticketmessage",
             name="delivery_error",
-            field=models.CharField(
-                blank=True, db_default="", default="", max_length=255
-            ),
+            field=models.CharField(blank=True, db_default="", default="", max_length=255),
         ),
         migrations.AddField(
             model_name="ticketmessage",

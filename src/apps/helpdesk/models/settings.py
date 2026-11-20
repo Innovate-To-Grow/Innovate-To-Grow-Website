@@ -17,10 +17,12 @@ DEFAULT_BLOCKED_EXTENSIONS = (
 )
 DEFAULT_WARN_EXTENSIONS = "zip 7z rar gz tgz tar bz2 xz cab arj"
 _SINGLETON = "helpdesk"
+# Only {ticket}: the requester's name and subject are the sender's own words, and an acknowledgement goes to an
+# address nobody verified (see services.outbound.replies).
 DEFAULT_ACKNOWLEDGEMENT = (
-    "Hello {requester_name},\n\n"
-    "Thank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket} "
-    '("{subject}"). A member of our team will get back to you soon.\n\n'
+    "Hello,\n\n"
+    "Thank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. "
+    "A member of our team will get back to you soon.\n\n"
     "To add information, reply to this email and keep {ticket} in the subject.\n\n"
     "Innovate to Grow, UC Merced"
 )
@@ -47,14 +49,15 @@ class HelpdeskSettings(ProjectControlModel):
     send_acknowledgement = models.BooleanField(
         default=False,
         db_default=False,
-        help_text="Email the requester when their message opens a new ticket (never for automated mail, spam, "
-        "backfilled mail, or a message that asks for no automatic reply; at most one per address a day). Needs "
-        "shadow mode off.",
+        help_text="Email the requester when their message opens a new ticket: only when its sender passed DMARC, never "
+        "for automated mail, spam, backfilled mail, or a message that asks for no automatic reply; at most one per "
+        "address a day and 200 a day in all. Needs shadow mode off. Only an I2G Master can change it.",
     )
     acknowledgement_text = models.TextField(
         default=DEFAULT_ACKNOWLEDGEMENT,
         db_default=DEFAULT_ACKNOWLEDGEMENT,
-        help_text="The acknowledgement's text. {ticket}, {requester_name} and {subject} are replaced.",
+        help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link "
+        "removed). Only an I2G Master can change it.",
     )
     notify_assignment = models.BooleanField(
         default=True,

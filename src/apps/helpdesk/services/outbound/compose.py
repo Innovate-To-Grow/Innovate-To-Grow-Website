@@ -3,7 +3,8 @@
 Every email about a ticket carries ``[I2G-#1234]`` in its subject: Microsoft Graph cannot send ``In-Reply-To`` or
 ``References`` (only ``x-`` headers), so the token is what threads the requester's answer back to the ticket (the
 ingest accepts it only from a participant). Placeholders are plain text replacements; nothing in a template or a
-reply is interpreted as a Django template.
+reply is interpreted as a Django template. The values an outsider chose (their display name, the subject) lose
+anything link-like before they are filled in.
 """
 
 import re
@@ -18,6 +19,10 @@ from ..tickets import numbering
 
 QUOTE_MAX_CHARS = 4000
 _REPLY_PREFIX_RE = re.compile(r"^\s*((re|fw|fwd|aw|sv|antw)\s*:\s*)+", re.IGNORECASE)
+# URLs, www. hosts and bare domains with a path ("evil.example/login"): anything a mail client may turn into a link.
+_LINK_RE = re.compile(r"(?:[a-z][a-z0-9+.-]*://|www\.)\S+|\b[\w-]+(?:\.[\w-]+)+/\S*", re.IGNORECASE)
+# Marks an automatic message (RFC 3834) and asks Exchange not to answer it, so responders never answer each other.
+AUTOMATIC_HEADERS = {"Auto-Submitted": "auto-replied", "X-Auto-Response-Suppress": "All"}
 
 
 def person(member) -> str:
@@ -26,11 +31,17 @@ def person(member) -> str:
     return member.get_full_name() or str(member)
 
 
+def _without_links(value: str) -> str:
+    """A value the sender of inbound mail chose (their display name, the subject), with anything link-like removed:
+    filled into an email from the site's address, it must not carry an outsider's link (a phishing relay)."""
+    return " ".join(_LINK_RE.sub("[link removed]", str(value or "")).split())
+
+
 def fill(text: str, ticket: Ticket, *, agent=None) -> str:
     values = {
         "{ticket}": ticket.display_number,
-        "{requester_name}": ticket.requester_name or "there",
-        "{subject}": ticket.subject or "(no subject)",
+        "{requester_name}": _without_links(ticket.requester_name) or "there",
+        "{subject}": _without_links(ticket.subject) or "(no subject)",
         "{agent_name}": person(agent) or "the Innovate to Grow team",
     }
     for placeholder, value in values.items():
@@ -39,7 +50,7 @@ def fill(text: str, ticket: Ticket, *, agent=None) -> str:
 
 
 def reply_subject(ticket: Ticket) -> str:
-    subject = numbering.TOKEN_RE.sub("", ticket.subject or "").replace("[]", "").strip()
+    subject = numbering.TOKEN_RE.sub("", _without_links(ticket.subject)).replace("[]", "").strip()
     subject = _REPLY_PREFIX_RE.sub("", subject).strip() or "Your message"
     token = f" [{ticket.display_number}]"
     return f"Re: {subject[: 255 - len(token) - 4]}{token}"

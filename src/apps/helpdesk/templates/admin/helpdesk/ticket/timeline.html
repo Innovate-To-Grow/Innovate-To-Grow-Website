@@ -96,6 +96,7 @@ allow-scripts or allow-same-origin here. The admin CSP (inherited by srcdoc docu
         {% csrf_token %}
         <dl class="i2g-helpdesk-meta">
           <dt>To</dt><dd>{{ helpdesk_reply_to }}</dd>
+          <dt>Subject</dt><dd>{{ helpdesk_reply_subject }}</dd>
         </dl>
         <label for="helpdesk-reply-cc">Cc <span class="i2g-helpdesk-muted">(optional, comma-separated)</span></label>
         <input id="helpdesk-reply-cc" name="cc" type="text" maxlength="1000" list="helpdesk-reply-cc-list" autocomplete="off">
@@ -111,7 +112,7 @@ allow-scripts or allow-same-origin here. The admin CSP (inherited by srcdoc docu
         </select>
         <p class="i2g-helpdesk-muted">
           Sent by email from the helpdesk mailbox with the ticket number in the subject, so the requester's answer
-          returns to this ticket. Their latest message is quoted below it.
+          returns to this ticket. The requester's own latest message is quoted below it.
         </p>
         <button type="submit" class="i2g-helpdesk-button">
           <span class="material-symbols-outlined" aria-hidden="true">send</span>Send reply

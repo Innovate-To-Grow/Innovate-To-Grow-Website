@@ -125,6 +125,7 @@ class TicketPageMixin:
         return {
             "helpdesk_reply_url": reverse("admin:helpdesk_ticket_reply", args=[ticket.pk]),
             "helpdesk_reply_to": ticket.requester_email,
+            "helpdesk_reply_subject": outbound.reply_subject(ticket),
             "helpdesk_reply_cc_suggestions": [item for item in ticket.participants or [] if item.lower() != requester],
             "helpdesk_reply_templates": templates,
             "helpdesk_reply_template": chosen,

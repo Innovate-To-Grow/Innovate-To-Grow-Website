@@ -100,10 +100,19 @@ def send_reply_job(job) -> None:
     message = TicketMessage.objects.select_related("ticket").filter(pk=job.payload.get("message_id")).first()
     if message is None or message.kind != TicketMessage.Kind.REPLY or message.delivery_status == Delivery.SENT:
         return
-    if not shadow.sending_allowed(HelpdeskSettings.load()):
+    settings = HelpdeskSettings.load()
+    if not shadow.sending_allowed(settings):
         _failed(message, SHADOW_ON_ERROR)
         return
     ticket = message.ticket
+    # What allowed it when it was queued is judged again: the ticket may have been merged or marked spam since, or
+    # the acknowledgement switched off.
+    if ticket.status == Ticket.Status.MERGED or ticket.is_automated_or_spam:
+        _failed(message, "Not sent: the ticket was merged, marked as spam or moved to automated mail meanwhile.")
+        return
+    if message.automatic and not settings.send_acknowledgement:
+        _failed(message, "Not sent: the acknowledgement was switched off before it went out.")
+        return
     quoted = None if message.automatic else replies.last_inbound(ticket)
     email = EmailMessage(
         subject=message.subject or compose.reply_subject(ticket),
@@ -111,7 +120,7 @@ def send_reply_job(job) -> None:
         cc=tuple(message.cc_addresses),
         text_body=compose.reply_text(message.body_text, ticket),
         html_body=compose.reply_html(message.body_text, ticket, quoted),
-        headers={"X-I2G-Ticket": ticket.display_number},
+        headers={"X-I2G-Ticket": ticket.display_number, **(compose.AUTOMATIC_HEADERS if message.automatic else {})},
     )
     category = "helpdesk_ack" if message.automatic else "helpdesk_reply"
     try:

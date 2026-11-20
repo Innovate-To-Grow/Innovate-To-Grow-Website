@@ -104,22 +104,29 @@ calendar time (no business hours). Seeded by `helpdesk.0004`: Critical 1 h / 8 h
 ### Replies and notifications
 
 Everything here needs **shadow mode off** (Helpdesk → Settings; every change of it is in the admin history and the log
-line `helpdesk_shadow_mode`). Sending code lives only in `services/outbound/`; a test pins that no other helpdesk
+line `helpdesk_shadow_mode`). Only an **I2G Master** can change shadow mode, the acknowledgement switch and text, and
+the notification switch; other Helpdesk staff see them read-only. Sending code lives only in `services/outbound/`; a test pins that no other helpdesk
 module imports a sending API, and that each job checks shadow mode before it sends.
 
 - **Replies.** The reply form on the ticket page sends to the requester (optional Cc, at most 10; Cc addresses
   become participants, so their answers thread too) from the site's address, subject `Re: <subject> [I2G-#1234]`,
-  with the Mail app's branded reply layout, the requester's latest message quoted, and a footer asking to keep the
-  number in the subject. The status can be set with it (default: On hold – awaiting requester). Microsoft Graph cannot
+  with the Mail app's branded reply layout, the requester's own latest message quoted (never another sender's, e.g.
+  after a merge), and a footer asking to keep the number in the subject. The form shows the subject before sending. The status can be set with it (default: On hold – awaiting requester). Microsoft Graph cannot
   send `In-Reply-To`/`References`, so the subject token is what threads the answer back (accepted only from a
   participant, as before). The reply is stored on the ticket and sent by the background job `helpdesk.send_reply`
   (transactional lane, paced by the delivery-rate limiter); the timeline shows it Queued, then Sent, or Failed with
   the reason (a fixed text; the provider's error stays in the job and the server log). A job is never retried once the
   provider call began, so a reply is never sent twice; when it is uncertain whether it went out, the timeline says so.
 - **Acknowledgement** (`send_acknowledgement`, off by default). When a person's message opens a new ticket, the
-  requester gets `acknowledgement_text` with the ticket number. Never for automated mail, spam, backfilled mail or a
-  message that must not be answered automatically (`shadow.automatic_reply_allowed`, RFC 3834), and at most once a
-  day per address, so two auto-responders cannot answer each other.
+  requester gets `acknowledgement_text` with the ticket number. Its address comes from inbound mail, so it must not
+  be a relay: it is sent only when the message passed **DMARC** (or Exchange's composite authentication), so a forged
+  From never gets one; never for automated mail, spam, backfilled mail or a message that must not be answered
+  automatically (`shadow.automatic_reply_allowed`, RFC 3834); at most once a day per address and 200 a day in all;
+  and `{requester_name}` / `{subject}`, the sender's own words, are filled in without links (the default text uses
+  neither). It carries `Auto-Submitted: auto-replied` and `X-Auto-Response-Suppress: All` (Graph sends only the
+  latter), so responders do not answer it.
+- **Checked again when sent.** Each send job re-checks shadow mode, that the ticket was not merged, marked spam or
+  moved to automated mail meanwhile, and (for the acknowledgement) that it is still switched on.
 - **Assignment notifications** (`notify_assignment`, on). Assigning a ticket to someone else emails them; assigning it
   to a group with nobody assigned emails the group's members. Never to the member who made the change, only to active
   staff with the Helpdesk app. The email names the ticket (number, subject, requester, priority) and links to the

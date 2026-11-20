@@ -1,8 +1,8 @@
 """Helpdesk → Settings (one row of admin-editable limits, retention periods and switches) and → Categories.
 
 Shadow mode is a switch here: on (the default), nothing is sent; off, staff reply from the ticket page and the
-acknowledgement and assignment notifications are sent when switched on. Every change of it is in the admin history
-(the change message names it). Above the form sits the intake card (its controls are in ``intake``). Saving the
+acknowledgement and assignment notifications are sent when switched on. Only an I2G Master (superuser) can change
+these sending switches and the acknowledgement's text; every change is in the admin history and the log. Above the form sits the intake card (its controls are in ``intake``). Saving the
 settings switched on restarts the intake and wakes the ingest, so mail that arrived while the helpdesk was off is read
 and imported.
 """
@@ -87,6 +87,16 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
 
     class Media:
         css = {"all": ("helpdesk/css/helpdesk.css",)}
+
+    # What makes the helpdesk send mail from the site's address, and what its automatic email says: an I2G Master's
+    # decision, not every Helpdesk grant holder's (a compromised helpdesk account must not turn it into a mailer).
+    SENDING_FIELDS = ("shadow_mode", "send_acknowledgement", "acknowledgement_text", "notify_assignment")
+
+    def get_readonly_fields(self, request, obj=None):
+        fields = tuple(super().get_readonly_fields(request, obj))
+        if getattr(request.user, "is_superuser", False):
+            return fields
+        return (*fields, *self.SENDING_FIELDS)
 
     def has_add_permission(self, request):
         return super().has_add_permission(request) and not HelpdeskSettings.objects.exists()
