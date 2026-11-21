@@ -61,7 +61,9 @@ class PersonTests(TestCase):
 
     def test_the_requester_is_linked_to_the_member_who_owns_the_address(self):
         member = Member.objects.create_user(password="x", first_name="Pat", last_name="Doe")
-        ContactEmail.objects.create(member=member, email_address="Pat@Example.org", email_type="secondary")
+        ContactEmail.objects.create(
+            member=member, email_address="Pat@Example.org", email_type="secondary", verified=True
+        )
 
         self.assertEqual(receive(corpus.message()).requester_member, member)
 

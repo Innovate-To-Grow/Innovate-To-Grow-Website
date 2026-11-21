@@ -20,15 +20,19 @@ from ...models import Ticket
 from ..tickets import numbering
 
 QUOTE_MAX_CHARS = 4000
-# Reply and forward prefixes in the languages mail programs write them ("AW:", "WG:", "RV:", "回复："), and the tags a
-# mail gateway puts in front ("[EXTERNAL]", "*EXT*"); a list's own tag ("[Faculty]") stays.
+# Reply and forward prefixes in the languages mail programs write them ("AW:", "WG:", "VB:", "回复：", "ΠΡΘ:"), and
+# the tags a mail gateway puts in front ("[EXTERNAL EMAIL]", "*EXT*", "EXTERNAL:"). A list's own tag ("[Faculty]")
+# stays, and what follows it is cleaned too. Italian's one-letter "R:" and "I:" stay: a subject may start so.
 _REPLY_PREFIX_RE = re.compile(
-    r"^\s*(?:(?:(?:re|fwd?|aw|wg|sv|vs|antw|odp|ynt|res|enc|rv|tr|回复|答复|转发)\s*(?:\[\d{1,3}\])?\s*[:：]"
-    r"|\[\s*(?:external|ext|external sender|caution)\s*\]|\*{1,2}\s*(?:external|ext)\s*\*{1,2})\s*)+",
+    r"^\s*(?:(?:(?:re|fwd?|aw|wg|sv|vs|vb|vl|antw|antwort|doorst|odp|pd|ynt|(?:i\u0307?|\u0130)lt|res|enc|rv|tr|"
+    r"回复|答复|转发|回覆|轉寄|απ|πρθ|external)\s*(?:\[\d{1,3}\])?\s*[:：]"
+    r"|\[\s*(?:external(?:\s+(?:email|sender|message))?|ext|caution)\s*\]|\*{1,2}\s*(?:external|ext)\s*\*{1,2})\s*)+",
     re.IGNORECASE,
 )
-# A pair of brackets nothing is left in once ticket numbers are gone ("(I2G-#1004)", "[ I2G-#1004 ]").
-_EMPTY_BRACKETS_RE = re.compile(r"\[\s*\]|\(\s*\)|\{\s*\}|<\s*>")
+_LIST_TAG_RE = re.compile(r"^\s*(\[[^\]\n]{1,40}\])\s*")
+# A ticket number with the brackets around it, also several in one pair ("(I2G-#1004)", "[I2G-#1004, I2G-#1005]"):
+# a pair the sender wrote ("Is <> allowed?") stays.
+_BRACKETED_TOKENS_RE = re.compile(r"[\[({<]\s*I2G-#\d{1,9}(?:\s*[,;/&]\s*I2G-#\d{1,9})*\s*[\])}>]", re.IGNORECASE)
 # Top-level domains a mail client turns a bare host name ("payroll-update.example.com") into a link for.
 _TLDS = (
     "com|net|org|edu|gov|mil|int|info|biz|name|pro|mobi|asia|io|co|me|ai|app|dev|cloud|tech|online|site|store|shop|"
@@ -92,9 +96,12 @@ def clean_subject(ticket: Ticket, *, strict: bool = False) -> str:
     """The ticket's subject as every email about it names it (the reply's and the notice's subject, ``{subject}``):
     without links (``without_links``), ticket numbers (another ticket's "[I2G-#1006]" its sender named is not this
     ticket's) and reply prefixes ("Re:", "Fwd:"); "" when nothing else is left."""
-    subject = numbering.TOKEN_RE.sub("", without_links(ticket.subject, strict=strict))
-    subject = _EMPTY_BRACKETS_RE.sub("", subject)
-    return " ".join(_REPLY_PREFIX_RE.sub("", subject).split())
+    subject = _BRACKETED_TOKENS_RE.sub("", without_links(ticket.subject, strict=strict))
+    subject = _REPLY_PREFIX_RE.sub("", numbering.TOKEN_RE.sub("", subject))
+    tag = _LIST_TAG_RE.match(subject)
+    if tag is not None:  # a list's own tag stays, what follows it is cleaned as well
+        subject = f"{tag.group(1)} {_REPLY_PREFIX_RE.sub('', subject[tag.end() :])}"
+    return " ".join(subject.split())
 
 
 def fill(text: str, ticket: Ticket, *, agent=None, strict: bool = False) -> str:

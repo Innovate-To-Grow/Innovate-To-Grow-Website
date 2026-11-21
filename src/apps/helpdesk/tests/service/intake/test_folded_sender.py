@@ -49,7 +49,9 @@ class FoldedSenderTests(TestCase):
 
     def test_the_requester_is_the_member_and_their_follow_up_joins_by_the_ticket_number(self):
         member = Member.objects.create_user(password="x", first_name="Jane", last_name="Smith")
-        ContactEmail.objects.create(member=member, email_address="jsmith@example.edu", email_type="primary")
+        ContactEmail.objects.create(
+            member=member, email_address="jsmith@example.edu", email_type="primary", verified=True
+        )
         reader = FakeReader()
         ticket = receive(folded(), reader=reader)
         subject = f"Re: Transcript question [{ticket.display_number}]"

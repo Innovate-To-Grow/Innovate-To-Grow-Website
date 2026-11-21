@@ -71,31 +71,40 @@ are never sent. Opening a ticket marks it read.
   BCL 7 on Settings).", or "Exchange's spam filter marked it as spam."); mail Exchange marks as internal to the
   organisation shows "Exchange: internal" with its authentication results.
 - Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`: the site's
-  sign-in and one-click unsubscribe links, its SMS short link (`/l/<token>` on the site's own address; Teams'
+  sign-in links (also the legacy `/magic-login` and `/ticket-login`), the email sign-in link sent with every login
+  and registration code (`/email-auth-link#…&code=…`, removed up to the end of its parameters; the code quoted on its
+  own in that email stays: the helpdesk cannot tell it from any other number, and it expires after 10 minutes), the
+  one-click unsubscribe links, the SMS short link (`/l/<token>` on the site's own address; Teams'
   `/l/meetup-join/…` links stay), and any link with a `token=` parameter, a signed `payload:time:signature` value
   included. Only the link goes, up to the end of its token: each link of a line is judged on its own, so the words
   and other links around it stay (a CSV row keeps its other cells and links; "(see <link>). It did not work." keeps
-  "). It did not work."). The site's own sign-in token ends at the first character the site never writes into one,
-  so a word glued on with `:`, `.` or `/` stays (`[sign-in link removed]:it failed`); another site's `token=` value
+  "). It did not work."). The site's own sign-in token ends at the first character the site never writes into one
+  (a percent-encoded character counts as part of it, as the site's page decodes it), so a word glued on with `:`,
+  `.` or `/` stays (`[sign-in link removed]:it failed`); another site's `token=` value
   goes with its `:`-separated time and signature. A link written JSON-escaped (`https:\/\/…`) is read as a link,
   and a link wrapped by Safe Links or Proofpoint URL Defense that holds a personal one goes whole. In HTML, a link
-  that inline formatting splits (Word's spelling marks, `<span>`, `<b>`, …) is read as one link wherever it is cut
-  (an SMS link split right after `/l/` goes too); the formatting tags stay, right after the placeholder. A link to
+  that inline formatting splits (Word's spelling marks, `<span>`, `<b>`, `<code>`, `<strike>`, `<q>`, a link's own
+  `<a>`, any inline element the frame keeps) is read as one link wherever it is cut, inside `http://` too (an SMS
+  link split right after `/l/` goes too); the formatting tags stay, right after the placeholder. A link to
   one is no longer a link (its text stays, followed by the placeholder), also when its address is written with
   backslashes, which the browser reads as slashes, and so is a Mimecast-rewritten link to the site's own address
   (Mimecast names only the host and sends the click on to the link it replaced), also when Safe Links, Proofpoint
   or another wrapper wrapped it again. A long token-shaped part of any other link (60 or more letters, digits, `+`,
   `-` or `_`) is shown as `[redacted]`, but a link Safe Links or Proofpoint wrapped is judged by the link it holds
-  (the gateway's own parameters stay as written), and a Microsoft Forms link keeps its form id, so they still work.
+  (the gateway's own parameters stay as written; also in the form Safe Links writes for links that open in a
+  Microsoft 365 app, `…/ap/t-59584e83/?url=…`), and a Microsoft Forms link keeps its form id, so they still work.
   The same holds for forwarded messages (also one attached base64 or quoted-printable, as Python's email library
   writes it: decoded from its text as it came and shown like a forward; one whose decoded text holds no header is
-  counted as not readable), for a saved message attached as a file (`.eml`, shown like a forward as a
+  counted as not readable; one sent as HTML only is summarised from its sanitized HTML, a line for each
+  paragraph, list item, table row or line break, its personal links removed as in a message's own HTML), for a
+  saved message attached as a file (`.eml`, shown like a forward as a
   summary of its headers (its date in the site's time zone, as every time on the page) and text, never kept as a
   file) and for attached text files (any `text/*` file, or one
   named `.txt`, `.csv`, `.ics`, `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came (a
   calendar or contact file's folded lines are read joined, and a UTF-16 file without a byte order mark is read and
-  written back in the byte order it was written in). Saved messages past the limit of five, or that cannot be
-  read, are counted on the message's card ("2 more attached messages are not shown"; the original is in Outlook).
+  written back in the byte order it was written in). Saved messages past the limit of five, attached inside
+  another attached message, or that cannot be read, are counted on the message's card ("2 more attached messages
+  are not shown"; the original is in Outlook).
 - Attachments download as files. Files other than text (PDF, Office documents, images, archives, Outlook `.msg`)
   are stored as received: a sign-in link inside one is not removed. Archives (zip, 7z, rar, …) open a warning
   first; blocked file types
@@ -176,8 +185,9 @@ module imports a sending API, and that each job checks shadow mode before it sen
   form suggests only people: no relay, no address that writes for several people (a web form, also after one of
   its nameless submissions joined), no no-reply address; Cc addresses become participants, so their answers
   thread too) from the site's address, subject `Re: <subject> [I2G-#1234]`, with the Mail app's branded reply
-  layout, the requester's own latest message with words of its own (from any of their addresses, a member's
-  registered ones included, which are never offered as a Cc) quoted in the HTML and the text part, one line break
+  layout, the requester's own latest message with words of its own (from any of their addresses: a member's
+  verified ones, and another address the requester named in Reply-To under her own name, none of them ever offered
+  as a Cc) quoted in the HTML and the text part, one line break
   for each of its lines (never another sender's, e.g. after a merge, nor an answer that only quotes staff's reply;
   its date in the site's time zone), and a footer asking to keep the number in the subject. A ticket whose requester is a mailing list (one
   that hid its poster) cannot be answered from the helpdesk: a reply would reach all its members, so write to the
@@ -185,7 +195,10 @@ module imports a sending API, and that each job checks shadow mode before it sen
   The text is sent as written: only a personal sign-in link pasted into it is removed. In the HTML part its links
   are clickable as written: an `&` or an apostrophe inside a link stays in it, letters of any script are part of it
   (`…/wiki/Universität…`, `…/wiki/加利福尼亚…`), and the punctuation or words right after a link stay text, a closing
-  quote, a backtick or a `*` included, and a `_` or `~` that closes the same mark right before the link. The form shows the subject before sending. The status can be set with it (default: On hold – awaiting
+  quote, a backtick or a `*` included, and a `_` or `~` that closes the same mark right before the link. Text of a
+  script written without spaces (Chinese, Japanese, Korean, Thai, Lao, Khmer, Burmese) glued right after a link
+  stays text when the link's last character is of another script; two links glued by punctuation (`…/news,https://…`)
+  are two links. The form shows the subject before sending. The status can be set with it (default: On hold – awaiting
   requester; on a resolved or closed ticket, keep the current status). A refused reply (a bad Cc, too long, shadow
   mode switched on meanwhile) comes back with its text, Cc and status and the reason beside the form; the same reply
   sent again within 10 minutes is refused (a double submit). Microsoft Graph cannot send `In-Reply-To`/`References`,
@@ -205,7 +218,7 @@ module imports a sending API, and that each job checks shadow mode before it sen
   (a web form's relayed person) gets one; never for automated mail, spam, backfilled mail or a message that must not be answered
   automatically (`shadow.automatic_reply_allowed`, RFC 3834); at most once a day per address and 200 a day in all;
   never to one of the site's own addresses; and `{requester_name}` / `{subject}`, the sender's own words, are filled
-  in without links or bare host names (a staff reply's subject keeps host names: staff read it before sending) (the default text uses neither), `{subject}` (here and in a template) also without ticket numbers (another ticket's `[I2G-#1006]` or `(I2G-#1006)` the sender typed, with its brackets), reply and forward prefixes in the languages mail programs write them (`Re:`, `Fwd:`, `AW:`, `WG:`, `RV:`, `回复：`, …) or a mail gateway's tag (`[EXTERNAL]`, `*EXT*`; a list's own tag stays), as the reply's subject, and "(no subject)" when nothing else is left; an unknown placeholder is refused when the text is saved. It
+  in without links or bare host names (a staff reply's subject keeps host names: staff read it before sending) (the default text uses neither), `{subject}` (here and in a template) also without ticket numbers (another ticket's `[I2G-#1006]`, `(I2G-#1006)` or `[I2G-#1004, I2G-#1005]` the sender typed, with their brackets; brackets the sender wrote, as in "Is <> allowed?", stay), reply and forward prefixes in the languages mail programs write them (`Re:`, `Fwd:`, `AW:`, `WG:`, `VB:`, `RV:`, `回复：`, `ΠΡΘ:`, …; Italian's one-letter `R:` and `I:` stay, as a subject may start so) or a mail gateway's tag (`[EXTERNAL EMAIL]`, `*EXT*`, `EXTERNAL:`; a list's own tag such as `[Faculty]` stays, and the prefixes after it go), as the reply's subject, and "(no subject)" when nothing else is left; an unknown placeholder is refused when the text is saved. It
   carries `Auto-Submitted: auto-replied` and `X-Auto-Response-Suppress: All` (Graph sends only the latter), so
   responders do not answer it, and the ticket footer says how to reply.
 - **Checked again when sent.** Each send job re-checks shadow mode, that the ticket was not merged, marked spam or
@@ -325,12 +338,16 @@ module imports a sending API, and that each job checks shadow mode before it sen
    (also without brackets) **only from a participant** of that ticket (anyone can type a number): the person the
    message speaks for (a web form's, below) or the sender, so whoever wrote on a ticket or was copied answers it
    under its number, whatever Reply-To they add (an assistant, a team mailbox, their other address), except, for
-   someone new, a sender that wrote for two or more people who are not on that ticket (a web form, also one writing
-   under each submitter's name) or a relay there (an address that wrote on the ticket for someone under another
-   name, or under another name than it writes under now) that is not the requester: a form's next submission under
-   a form ticket's number opens its own ticket, which notes the mention, also under the number of a ticket the
-   form's nameless submission opened (the form is its requester). The requester's own addresses are never a relay
-   there. The Graph `conversationId`,
+   someone new, a sender that wrote for two or more other people who are not on that ticket (named under another
+   name than its own: a web form; or under another name than it writes under now: a form writing under each
+   submitter's name; its own other addresses, nameless or under its name, never count) or a relay there (an
+   address that wrote on the ticket for someone under another name, or under another name than it writes under now)
+   that is not the requester: a form's next submission under a form ticket's number opens its own ticket, which
+   notes the mention, also under the number of a ticket the form's nameless submission opened (the form is its
+   requester). The requester naming another address of hers, under the name the ticket knows her by, always joins,
+   and her own addresses are never a relay there. A member's addresses count only once verified (anyone can add an
+   address to their account; until its code is entered it may be someone else's): the member link, threading and
+   the quote alike. The Graph `conversationId`,
    again only for a participant, never for a relay, and for a message that speaks for someone else only as that
    person. Names compare by their words, whatever their case, order and punctuation: one name's words among the
    other's are the same person ("Stone, Rhea", "Rhea Stone (Home)", "Rhea Stone"), a one-word name only as the
@@ -362,8 +379,9 @@ module imports a sending API, and that each job checks shadow mode before it sen
      A Reply-To naming the sender's other address under the same name (work and home) is the same person: the ticket
      keeps the member it belongs to. A mailing list's own address (its List-Post; without one, the address its
      List-Id names, `name@domain` for `<name.domain>` as Mailman, Google Groups, Sympa and LISTSERV write it, else an
-     address the list mail is sent To that it comes from or asks replies to, else a Reply-To on the List-Id's domain;
-     never a poster's own Reply-To elsewhere) is never a participant; list mail speaks for its poster: the sender, or when the list rewrote it (Mailman's munged From,
+     address the list mail is sent To that it comes from or asks replies to, else a Reply-To on the List-Id's domain
+     named like it, `faculty-list@lists.example.edu` for `<faculty.lists.example.edu>`; never a poster's own Reply-To,
+     her other address or a colleague's) is never a participant; list mail speaks for its poster: the sender, or when the list rewrote it (Mailman's munged From,
      Google Groups) X-Original-From, else the Reply-To or Cc address that is not the list.
      Moving list mail or a relayed message to the queue gives the ticket to that person, with their name and member
      (list mail is never taken for the sender's other address),
@@ -535,11 +553,14 @@ saves every column and would overwrite a running scan's lease.
   taken for one person, so its submissions may join one ticket by their shared conversation, and a nameless
   submission under a form ticket's number joins it, though it is not quoted to the requester; a form's submission
   for someone new joins a ticket under its number only while the form has written for fewer than two people off
-  that ticket and is no relay there: its very first submissions); a person writing with
+  that ticket and is no relay there: its very first submissions, which are then offered as a Cc there, so a reply
+  copying one may quote another's text); a person writing with
   Reply-To their other address, or who once asked for replies to go to someone else, gets no acknowledgement; an
   answer without the ticket's number threads by its conversation only from the requester or someone who never wrote
   on the ticket for someone else; someone who opened a ticket for another person (an assistant's boss) and names a
-  new person in Reply-To under its number opens a ticket for that person; a mailing list that hides its poster
+  new person in Reply-To under its number opens a ticket for that person, and so does a requester who has named two
+  or more other people (her assistants) on other tickets when she names one of them under her own ticket's number;
+  a mailing list that hides its poster
   cannot be answered from the helpdesk, and one whose List-Id names neither an address it uses nor its domain,
   without List-Post, is known only when it sends from or asks replies to the address it was sent To. A form that has
   written for one person
@@ -548,6 +569,9 @@ saves every column and would overwrite a running scan's lease.
   nameless other address), a reply quotes their own latest message, not a later one the opener wrote without
   Reply-To.
 - **No requester portal** or watch list: requesters interact by email only.
+- **Some times use Django's own format**: the ticket page's Resolved at, First message at and Last activity at,
+  and the queue's Last activity column, read "Nov. 20, 2026, 6:45 p.m." beside the helpdesk's "Nov 20, 2026 18:45"
+  (same time zone).
 - **Mail deleted or moved out of the Inbox before a scan is missed**; only the Inbox is read. With immutable ids
   off (`EMAIL_GRAPH_IMMUTABLE_IDS`), a message moved in Outlook between its listing and its import is skipped as
   gone (Ingest Problems).
@@ -569,7 +593,12 @@ saves every column and would overwrite a running scan's lease.
   transfer encoding other than 7bit, 8bit, binary, base64 or quoted-printable (uuencode) is read as its text came.
   In a reply's HTML part, Chinese, Japanese or Korean text glued without a space right after a link's `/`, `=`,
   `#`, `(` or `_` is read as part of the address (`/wiki/加利福尼亚…`), so `请访问https://i2g.ucmerced.edu/了解更多`
-  links all of it; after any other character of the link it stays text.
+  links all of it; after any other character of the link it stays text. A personal link written in a shape a
+  browser still follows but no mail program writes on its own is not recognised, so its token stays: dot segments
+  (`/./l/<token>`, `/x/../l/`), an `href` without a host, an invisible character (a zero-width space, a soft hyphen)
+  inside it, JSON's `\/` for `/`, more than three Safe Links layers, or the site's host with a final dot. Words glued
+  without a space right after a link that Safe Links or Proofpoint wrapped around a personal link go with it (the
+  wrapper's own parameters run on to the end of that run of text).
 - **Replies are recognised only to mail the telemetry still holds** (180 days) and, for mail sent without a
   Message-ID, only from the address mailed with the same subject, or by a message of a person's ticket they name; a
   reply to older mail, or from another address of the person, is classified on its own headers. So is a first answer

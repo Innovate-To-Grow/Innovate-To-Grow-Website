@@ -8,6 +8,7 @@ from django.test import SimpleTestCase, TestCase
 
 from apps.core.services.email.inbound import LINK_PLACEHOLDER as REMOVED
 
+from ...services.ingest.reading.message import html_to_text
 from ...services.ingest.reading.parse import parse
 from .. import corpus
 from ..helpers import receive
@@ -62,6 +63,21 @@ class BodyTests(SimpleTestCase):
 
         self.assertEqual(parsed.text, "")
         self.assertIn("out of the office", parsed.text_head())
+
+    def test_html_reads_as_a_mail_program_lays_it_out(self):
+        # Each piece of text was a line of its own: "I am", "out of the office", …, and a link a <span> split two.
+        html = (
+            "<p>I am <b>out of the office</b> until <i>Monday</i>.</p><div>Gmail line</div><div><br></div><div>after "
+            "a blank line<br>and a break</div><pre>kept as\nwritten</pre><!-- a comment --><table><tr><td>Name</td>"
+            "<td>Pat</td></tr><tr><th>Team</th><td>A</td></tr></table>"
+            "<p>See https://example.org/<span>a</span>/b\n now</p>"
+        )
+
+        self.assertEqual(
+            html_to_text(html),
+            "I am out of the office until Monday.\nGmail line\n\nafter a blank line\nand a break\nkept as\nwritten\n"
+            "Name Pat\nTeam A\nSee https://example.org/a/b now",
+        )
 
     def test_nul_characters_are_dropped_so_the_message_can_be_stored(self):
         # PostgreSQL text cannot hold NUL; a UTF-16 part labelled as plain text decodes to a NUL after every letter.

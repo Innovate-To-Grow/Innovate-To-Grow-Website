@@ -1,15 +1,17 @@
 """Removing personal sign-in links from inbound mail before anything of it is stored.
 
 People reply quoting a blast, and the quote carries their personal links: ``/login-link#token=…`` (and the legacy
-``/magic-login``), ``/impersonate-login#token=…``, one-click ``unsubscribe/<token>/`` and ``resubscribe/<token>/``,
+``/magic-login`` and ``/ticket-login``), ``/impersonate-login#token=…``, the email sign-in link sent with every login
+and registration code (``/email-auth-link#…&code=…``), one-click ``unsubscribe/<token>/`` and ``resubscribe/<token>/``,
 the retired ``/unsubscribe-login``, the SMS short link ``/l/<token>`` on the site's own hosts (``FRONTEND_URL``,
 ``BACKEND_URL``), or any link with a ``token=`` (or ``…_token=``) parameter. A link starts at every ``http://``,
 ``https://`` (also JSON-escaped, ``https:\\/\\/``) and ``www.``, glued to a word or not, and a run of text without
 spaces is read link by link (a ``www.`` inside a host starts none), so a CSV row or a sentence keeps its other links
 and its words: a personal link is replaced by ``LINK_PLACEHOLDER`` up to where its token ends, and what follows the
-token stays (the site's own sign-in token ends at the first character ``secrets.token_urlsafe`` never writes; another
-site's ``token=`` value may hold "." and ":", as a signed ``payload:time:signature`` does). A link that is personal
-only once unwrapped (percent-encoded in a "safe links" wrapper, or rewritten by Proofpoint URL Defense) goes whole.
+token stays (the site's own sign-in token ends at the first character ``secrets.token_urlsafe`` never writes, a
+percent-encoded one counted in; the email sign-in link at the end of its parameters; another site's ``token=`` value
+may hold "." and ":", as a signed ``payload:time:signature`` does). A link that is personal only once unwrapped
+(percent-encoded in a "safe links" wrapper, or rewritten by Proofpoint URL Defense) goes whole.
 
 ``scrub_links`` (what is stored of inbound mail) also replaces any remaining token-shaped run (60+ base64-ish
 characters, as ``telemetry.text`` scrubs error texts) by ``REDACTED_PLACEHOLDER``. Inside any other link a token is one
@@ -41,22 +43,28 @@ _URL_RE = re.compile(r"(?i)(?:https?:(?://|\\/\\/)|www\.)[^\s\"'<>]+")
 # after "//" or a host's own characters (it is part of that host).
 _LINK_START_RE = re.compile(r"(?i)(?<!/v3/__)(?<!\\/v3\\/__)https?:(?://|\\/\\/)|(?<!//)(?<!\\/)(?<![a-z0-9._-])www\.")
 _SENSITIVE_PATH_RE = re.compile(
-    r"(?i)/(?:login-link|magic-login|impersonate-login|unsubscribe-login)(?:[/?#]|$)|/(?:un|re)subscribe/[^/?#\s]{8,}"
+    r"(?i)/(?:login-link|magic-login|ticket-login|impersonate-login|unsubscribe-login|email-auth-link)(?:[/?#]|$)"
+    r"|/(?:un|re)subscribe/[^/?#\s]{8,}"
 )
 _TOKEN_PARAM_RE = re.compile(r"(?i)[?#&;][a-z_]{0,32}token=")
 # Where a personal link's token ends: past the characters a token holds (signed ".<base64>:<time>:<signature>",
 # URL-safe base64, another site's token value, a ":" only with more of them after it), but before a final "." (a
 # sentence's). A lookahead, so markers that overlap (one inside another's value) are all found and the furthest wins.
+# The email sign-in link holds its code among parameters ``urlencode`` wrote ("&amp;" in HTML): all of them go (a
+# final "?" too is a sentence's).
 _PATH_ENDS = (
-    r"/(?:login-link|magic-login|impersonate-login|unsubscribe-login)/?|/(?:un|re)subscribe/[a-z0-9_.:-]+(?<!\.)/?"
+    r"/(?:login-link|magic-login|ticket-login|impersonate-login|unsubscribe-login)/?"
+    r"|/email-auth-link/?(?:[?#](?:[a-z0-9_.~%+=@?#-]|&(?:amp;)?)*(?<![.&?]))?"
+    r"|/(?:un|re)subscribe/[a-z0-9_.:-]+(?<!\.)/?"
 )
 _TOKEN_END_RE = re.compile(
     rf"(?i)(?=({_PATH_ENDS}|[?#&;][a-z_]{{0,32}}token=[a-z0-9_.~%+/=-]*(?::[a-z0-9_.~%+/=-]+)*(?<!\.)))"
 )
 # The site's own sign-in links hold a ``secrets.token_urlsafe`` token ([A-Za-z0-9_-]), so a word glued after one
-# (":it failed", ".Thanks", "/or") is no part of it. The retired /unsubscribe-login's token was signed, as above.
-_OWN_SIGN_IN_RE = re.compile(r"(?i)[^?#]*/(?:login-link|magic-login|impersonate-login)/?(?:[?#]|$)")
-_OWN_TOKEN_END_RE = re.compile(rf"(?i)(?=({_PATH_ENDS}|[?#&;][a-z_]{{0,32}}token=[a-z0-9_-]*))")
+# (":it failed", ".Thanks", "/or") is no part of it; a percent-encoded character is (the site's page decodes the
+# token, "%51" reads "Q"). The retired /unsubscribe-login's token was signed, as above.
+_OWN_SIGN_IN_RE = re.compile(r"(?i)[^?#]*/(?:login-link|magic-login|ticket-login|impersonate-login)/?(?:[?#]|$)")
+_OWN_TOKEN_END_RE = re.compile(rf"(?i)(?=({_PATH_ENDS}|[?#&;][a-z_]{{0,32}}token=(?:[a-z0-9_-]|%[0-9a-f]{{2}})*))")
 _LONG_TOKEN_RE = re.compile(r"[A-Za-z0-9+/=_.-]{60,}")
 # Within a link: one segment or parameter value, so the run never spans a host, a path or a "name=" ("/", ".", "=").
 _LINK_TOKEN_RE = re.compile(r"[A-Za-z0-9+_-]{60,}")

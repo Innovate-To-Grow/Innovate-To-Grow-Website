@@ -2,7 +2,8 @@
 site's own hosts, so Teams' ``/l/meetup-join/…`` stays), a link JSON-escaped (``https:\\/\\/…``), and a link wrapped
 by Proofpoint URL Defense (v2's "-XX" and "_", v3's "*" marks), which goes whole like a Safe Links wrapper. And
 ordinary links the token-shaped backstop once broke: one a gateway wrapped (judged by the link it holds, the gateway's
-own parameters as written) and a Microsoft Forms link (its ``id=`` names the form)."""
+own parameters as written; also Safe Links' form for a link that opens in an app) and a Microsoft Forms link (its
+``id=`` names the form)."""
 
 from urllib.parse import quote
 
@@ -137,6 +138,18 @@ class GatewayBackstopTests(SimpleTestCase):
                 self.assertEqual(scrub_links(f"Join: {link} today"), f"Join: {link} today")
                 markup = f'<a href="{link.replace("&", "&amp;")}">join</a>'
                 self.assertEqual(scrub_links(markup), markup)
+
+    def test_a_safe_links_wrapper_of_a_link_that_opens_in_an_app_is_judged_by_the_link_it_holds(self):
+        # For a Teams meeting or an Office file Safe Links writes the app's path before "?url=": read as no wrapper,
+        # the link lost the meeting id, the form id and runs of "data=" to [redacted], and broke.
+        for app, link in (("t", MEETING), ("w", LONG_DOC), ("x", FORM)):
+            wrapped = safe_links(link).replace(".com/?url=", f".com/ap/{app}-59584e83/?url=")
+            with self.subTest(app):
+                self.assertEqual(scrub_links(f"Join: {wrapped} today"), f"Join: {wrapped} today")
+                markup = f'<a href="{wrapped.replace("&", "&amp;")}">join</a>'
+                self.assertEqual(scrub_links(markup), markup)
+        personal = safe_links(SIGN_IN).replace(".com/?url=", ".com/ap/t-59584e83/?url=")
+        self.assertEqual(scrub_links(f"Open {personal} now"), f"Open {REMOVED} now")
 
     def test_inside_a_wrapper_a_personal_link_or_a_token_shaped_segment_still_goes(self):
         opaque = "https://files.example/get?id=" + "Q" * 70 + "&x=1"  # another site's opaque token

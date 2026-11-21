@@ -1,5 +1,4 @@
-"""Sign-in links in the shapes the fourth and fifth live checks found slipping through, and saved messages past the
-limit:
+"""Sign-in links in the shapes the fourth and fifth live checks found slipping through:
 
 - a text file, a note, a reply or a message (its text, HTML and forwards) loses only the link: each link of a row is
   judged on its own, so the Docs link in the previous cell, the CSV cell after an unquoted link, a "|", "?" or ":"
@@ -9,27 +8,26 @@ limit:
 - a calendar or contact file (``.ics``, ``.vcf``) folds long lines, so a link folded across lines is found whole
   (and one without a link is stored byte for byte);
 - an HTML link is judged as the browser reads it: a tab or line break inside the href still makes it a sign-in link,
-  a token split by inline tags (Word's <span class=SpellE>) goes whole, a Mimecast link to the site's host is none;
-- the site's SMS short link (``/l/<token>``) goes from every part of a message, its files, notes and replies;
-- a saved message past the limit of five, or one that cannot be read, is counted and named on the message's card
-  (the original is in Outlook) instead of vanishing, and the message is not said to be cut off."""
+  a token split by inline tags (Word's <span class=SpellE>, any phrasing element, also inside the scheme) goes whole,
+  a Mimecast link to the site's host is none;
+- the site's SMS short link (``/l/<token>``) goes from every part of a message, its files, notes and replies.
+
+(Saved messages past the limit are counted on the card: ``service/intake/test_attached_parts``.)"""
 
 import codecs
 
 from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase, override_settings
-from django.urls import reverse
 
 from apps.core.services.email.inbound import LINK_PLACEHOLDER as REMOVED
 
 from ...models import HelpdeskSettings
 from ...services.ingest.reading import attachments as files
-from ...services.ingest.reading.message import MAX_ATTACHED_MESSAGES, ParsedAttachment
-from ...services.ingest.reading.parse import parse
+from ...services.ingest.reading.message import ParsedAttachment
 from ...services.tickets import scrub_sign_in_links
 from .. import corpus
-from ..helpers import helpdesk_staff, receive
-from ..service.intake.test_signin_links_in_files import DOC, LINK, SAVED, TOKEN, html, mail_with
+from ..helpers import receive
+from ..service.intake.test_signin_links_in_files import DOC, LINK, TOKEN, html
 
 SMS = "https://i2g.ucmerced.edu/l/SmSsHoRt7kQ2pRt4sQ9pXw"  # FRONTEND_URL + "/l/" + secrets.token_urlsafe(16)
 SITE_HOSTS = override_settings(FRONTEND_URL="https://i2g.ucmerced.edu", BACKEND_URL="https://api.i2g.ucmerced.edu")
@@ -127,6 +125,26 @@ class LinkTests(SimpleTestCase):
         self.assertEqual(html(unlinked), f"<p><span>Sign in {REMOVED}</span><b>Questions?</b></p>")
 
     @SITE_HOSTS
+    def test_a_link_any_phrasing_element_splits_goes_also_one_cut_inside_its_scheme(self):
+        # Only <span>, <b> and the like were read across: a <code>, <strike> (older Outlook's strikethrough), <q>, …
+        # or an <a> right after "/l/" left the SMS token readable, as did a cut inside "http", and a <cite> right after
+        # "/unsubscribe/" the unsubscribe token.
+        site, sms = SMS.rsplit("/", 1)
+        tags = ("code", "tt", "kbd", "strike", "abbr", "cite", "q")
+        cases = [(f"{site}/<{tag}>{sms}</{tag}> ok", f"{{}}<{tag}></{tag}> ok") for tag in tags] + [
+            (f"{site}/Sm<strike>{sms[2:]}</strike> ok", "{}<strike></strike> ok"),
+            (
+                f'{site}/<a href="{DOC}">{sms}</a> ok',
+                f'{{}}<a rel="noopener noreferrer" target="_blank" href="{DOC}"></a> ok',
+            ),
+            (f"ht<span>tp</span>s://{SMS[8:]} ok", "{}<span></span> ok"),
+            (f"{corpus.UNSUBSCRIBE_LINK[:46]}<cite>{corpus.UNSUBSCRIBE_LINK[46:]}</cite> ok", "{}<cite></cite> ok"),
+        ]
+        for markup, expected in cases:
+            with self.subTest(markup):
+                self.assertEqual(html(f"<p>See {markup}</p>"), f"<p>See {expected.format(REMOVED)}</p>")
+
+    @SITE_HOSTS
     def test_a_mimecast_link_to_the_sites_own_host_is_no_link(self):
         # Mimecast names only the host, and sends the click on to the link it replaced: maybe a sign-in link.
         site = "https://protect-us.mimecast.com/s/r1BdC8qQ0f?domain=i2g.ucmerced.edu"
@@ -169,32 +187,3 @@ class MessageTextTests(TestCase):
         self.assertEqual(bytes(message.attachments.get().content), words.replace(SMS, REMOVED).encode())
         self.assertEqual(attached["text"].strip(), words.replace(SMS, REMOVED))
         self.assertEqual(scrub_sign_in_links(f"Note: {words}"), f"Note: {words.replace(SMS, REMOVED)}")  # and replies
-
-
-class SavedMessageTests(TestCase):
-    def test_saved_messages_past_the_limit_or_unreadable_are_counted_not_taken_for_a_cut(self):
-        many = [(f"booth-{number}.eml", SAVED, "application/octet-stream", {}) for number in range(7)]
-        within = many[:MAX_ATTACHED_MESSAGES]
-
-        past, empty, fine = (
-            parse(mail_with(*many)),
-            parse(mail_with(("empty.eml", b"", "application/octet-stream", {}))),
-            parse(mail_with(*within)),
-        )
-
-        self.assertEqual(
-            (len(past.attached_messages), past.attached_dropped, past.incomplete), (MAX_ATTACHED_MESSAGES, 2, False)
-        )
-        self.assertEqual((empty.attached_dropped, empty.incomplete), (1, False))
-        self.assertEqual((len(fine.attached_messages), fine.attached_dropped), (MAX_ATTACHED_MESSAGES, 0))
-
-    def test_the_card_names_the_saved_messages_left_out(self):
-        cache.clear()
-        self.client.force_login(helpdesk_staff())
-        many = [(f"booth-{number}.eml", SAVED, "application/octet-stream", {}) for number in range(7)]
-        ticket = receive(mail_with(*many))
-
-        page = self.client.get(reverse("admin:helpdesk_ticket_change", args=[ticket.pk]))
-
-        self.assertContains(page, "2 more attached messages are not shown (more than five, or not readable)")
-        self.assertNotContains(page, "This message was cut off here")

@@ -56,8 +56,8 @@ def list_addresses(parsed: ParsedMessage) -> list[str]:
     """The mailing list's own addresses (List-Post's mailto, in the header's order). A list that gives none (an
     announcement list, "List-Post: NO") is known by its List-Id (``name.domain`` for ``name@domain``: Mailman, Google
     Groups, Sympa, LISTSERV), else by an address it is sent To that it comes from (the list rewrote its poster) or
-    asks replies to, else by a Reply-To on the List-Id's domain (``<faculty.lists.example.edu>`` for
-    ``faculty-list@lists.example.edu``); never a poster's own Reply-To elsewhere (her other address)."""
+    asks replies to, else by a Reply-To on the List-Id's domain named like it (``<faculty.lists.example.edu>`` for
+    ``faculty-list@lists.example.edu``); never a poster's own Reply-To (her other address, a colleague's)."""
     found = _MAILTO_RE.findall(headers.joined(parsed.headers, "list-post"))
     lists = list(dict.fromkeys(address.strip().lower() for address in found if "@" in address))
     if lists or not _list_mail(parsed):
@@ -67,8 +67,8 @@ def list_addresses(parsed: ParsedMessage) -> list[str]:
     list_id = _list_id(parsed)
     named = [address for address in seen if list_id and list_id in (address, ".".join(address.split("@", 1)))]
     sent_to = [address for address in dict.fromkeys([parsed.from_address, *replies]) if address in parsed.to]
-    domain = list_id.partition(".")[2]
-    on_domain = [address for address in replies if domain and address.endswith(f"@{domain}")]
+    label, _, domain = list_id.partition(".")
+    on_domain = [item for item in replies if domain and item.endswith(f"@{domain}") and item.startswith(label)]
     return named or sent_to[:1] or [address for address in on_domain if address != parsed.from_address][:1]
 
 
@@ -110,8 +110,3 @@ def reply_to_person(parsed: ParsedMessage, own) -> tuple[str, str] | None:
     """``(name, address)`` of the person ``parsed`` speaks for instead of its sender, else None."""
     speaker = speaks_for(parsed, own)
     return (speaker.name, speaker.address) if speaker.address else None
-
-
-def identity(parsed: ParsedMessage, own) -> str:
-    """Whom a message is from when it threads by number or conversation: the person it speaks for, else its sender."""
-    return speaks_for(parsed, own).address or parsed.from_address

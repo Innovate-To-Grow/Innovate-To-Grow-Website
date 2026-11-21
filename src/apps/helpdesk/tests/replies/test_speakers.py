@@ -157,7 +157,7 @@ class AliasTests(TestCase):
     def setUp(self):
         cache.clear()
         self.dana = Member.objects.create_user(password="x", first_name="Dana", last_name="Member")
-        ContactEmail.objects.create(member=self.dana, email_address="dana@example.com", email_type="primary")
+        ContactEmail.objects.create(member=self.dana, email_address="dana@example.com", verified=True)  # primary
         self.ticket = opened("Dana Member <dana@example.com>", "Dana Member <dana@home.example>", 1)
 
     def test_a_reply_to_her_other_address_keeps_her_member_link_and_both_addresses_thread(self):
@@ -179,7 +179,9 @@ class AliasTests(TestCase):
         self.assertFalse(people.same_person("Kim", "Kai Kim"))  # an assistant named Kim is not her boss
 
     def test_from_another_address_of_hers_it_is_the_requesters_answer(self):
-        ContactEmail.objects.create(member=self.dana, email_address="dana@lab.example", email_type="secondary")
+        ContactEmail.objects.create(
+            member=self.dana, email_address="dana@lab.example", email_type="secondary", verified=True
+        )
         tickets.update_ticket(self.ticket, actor=helpdesk_staff(), status=Status.PENDING_CUSTOMER)
 
         self.assertEqual(answer(self.ticket, "Dana M <dana@lab.example>").pk, self.ticket.pk)

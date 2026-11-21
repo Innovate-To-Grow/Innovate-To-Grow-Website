@@ -21,27 +21,37 @@ REPLY_SENDER_UNAVAILABLE_MESSAGE = "That From address is not available. Reload t
 _LINK_START_RE = re.compile(r"(?i)(?<![_~])([_~]*)https?://")
 # The ASCII a link takes: the printable characters but '"', "<" and ">".
 _LINK_ASCII = frozenset(map(chr, range(0x21, 0x7F))) - set('"<>')
-# Scripts written without spaces between words (Chinese, Japanese, Korean), by the start of their Unicode names.
-_UNSPACED = ("CJK", "HIRAGANA", "KATAKANA", "HANGUL", "BOPOMOFO", "IDEOGRAPHIC", "FULLWIDTH", "HALFWIDTH")
+# Scripts written without spaces between words, by the start of their Unicode names: Chinese, Japanese and Korean
+# (one script here, as a Japanese word mixes them), Thai, Lao, Khmer and Burmese.
+_CJK = ("CJK", "HIRAGANA", "KATAKANA", "HANGUL", "BOPOMOFO", "IDEOGRAPHIC", "FULLWIDTH", "HALFWIDTH")
+_UNSPACED = {**dict.fromkeys(_CJK, "CJK"), **{script: script for script in ("THAI", "LAO", "KHMER", "MYANMAR")}}
 # Never the last character of a link as written: the end of a sentence, a closing quote or backtick, a "*" (bold, a
 # footnote). "_" and "~" can be (an id ending in "_"): one goes only when it closes the same mark right before the link.
 _TRAILING = ".,;:!?'`*"
+# Such a character right before another link ends the one before it there ("…/news,https://…": two links).
+_BETWEEN_LINKS_RE = re.compile(rf"(?i)[{re.escape(_TRAILING)}](?=[_~]*https?://)")
 _OPENING = {")": "(", "]": "[", "}": "{"}
 
 
 def _in_link(text: str, index: int) -> bool:
     """Whether ``text[index]`` goes on with the link before it: printable ASCII but '"', "<", ">" or the start of a
     "[sign-in link removed]"; a letter, digit or combining mark of any script (``…/wiki/Universität…``), never other
-    punctuation (CJK, curly quotes), a symbol or a space. Chinese, Japanese or Korean text glued to the link's ASCII
-    goes on with the sentence ("文件在<link>谢谢"), unless a part of the address starts there: after "/", "=", "#",
-    "(" or "_" (``/wiki/加利福尼亚…``)."""
+    punctuation (CJK, curly quotes), a symbol or a space. Text of a script written without spaces (Chinese, Thai, …)
+    glued to the link's characters of another script goes on with the sentence ("文件在<link>谢谢", "…/Café谢谢"),
+    unless a part of the address starts there: after "/", "=", "#", "(" or "_" (``/wiki/加利福尼亚…``)."""
     char = text[index]
     if char.isascii():
         return char in _LINK_ASCII and not text.startswith(LINK_PLACEHOLDER, index)
     if unicodedata.category(char)[0] not in "LMN":
         return False
-    before = text[index - 1]
-    return not before.isascii() or before in "/=#(_" or not unicodedata.name(char, "").startswith(_UNSPACED)
+    script, before = _unspaced(char), text[index - 1]
+    return not script or before in "/=#(_" or _unspaced(before) == script
+
+
+def _unspaced(char: str) -> str:
+    """The script written without spaces that ``char`` belongs to ("CJK" for Chinese, Japanese and Korean), or ""."""
+    name = unicodedata.name(char, "")
+    return next((script for prefix, script in _UNSPACED.items() if name.startswith(prefix)), "")
 
 
 def _link_end(url: str, opened: str = "") -> str:
@@ -67,7 +77,7 @@ def _linkified(body_text: str) -> str:
         begin, end = found.end(1), found.end()
         if begin < start:
             continue  # inside the link before it, which carries this one (``…/web/2026/https://…``)
-        while end < len(body_text) and _in_link(body_text, end):
+        while end < len(body_text) and _in_link(body_text, end) and not _BETWEEN_LINKS_RE.match(body_text, end):
             end += 1
         url = _link_end(body_text[begin:end], found.group(1))
         if url.endswith("://"):

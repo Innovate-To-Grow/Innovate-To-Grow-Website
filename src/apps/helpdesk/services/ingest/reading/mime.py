@@ -19,9 +19,9 @@ from .message import (
     TEXT_PART_MAX_BYTES,
     ParsedAttachment,
     ParsedMessage,
-    html_to_text,
     text_codec,
 )
+from .sanitize import html_text
 from .tree import parse_mime
 
 
@@ -64,11 +64,10 @@ class _Walker:
                 self.parsed.text = f"{self.parsed.text}\n\n{body}" if self.parsed.text else body
             else:
                 self.parsed.html = f"{self.parsed.html}\n{body}" if self.parsed.html else body
+        elif filename.lower().endswith(MESSAGE_FILE_SUFFIXES):
+            self._attached_message(part, depth, as_file=True)
         elif not self.nested:  # an attached message's own attachments are ignored
-            if filename.lower().endswith(MESSAGE_FILE_SUFFIXES):
-                self._attached_message(part, depth, as_file=True)
-            else:
-                self._attachment(part, content_type, disposition, filename)
+            self._attachment(part, content_type, disposition, filename)
 
     def _attachment(self, part, content_type: str, disposition: str, filename: str) -> None:
         data = _payload(part)
@@ -87,6 +86,9 @@ class _Walker:
         )
 
     def _attached_message(self, part, depth: int, *, as_file: bool = False) -> None:
+        if self.nested:  # a message attached inside an attached one is not read: the card counts it as not shown
+            self.parsed.attached_dropped += 1
+            return
         inner = (
             None
             if len(self.parsed.attached_messages) >= MAX_ATTACHED_MESSAGES
@@ -99,12 +101,13 @@ class _Walker:
         nested = ParsedMessage(headers=headers)
         _Walker(nested, self.counter, nested=True).walk(inner, depth + 1)
         self.parsed.incomplete = self.parsed.incomplete or nested.incomplete
+        self.parsed.attached_dropped += nested.attached_dropped
         self.parsed.attached_messages.append(
             {
                 "from": mime.decoded(mime.first(headers, "from"))[:255],
                 "date": text.clean(mime.first(headers, "date"), 64),
                 "subject": mime.decoded(mime.first(headers, "subject"))[:255],
-                "text": (nested.text or html_to_text(nested.html))[:ATTACHED_TEXT_MAX_CHARS],
+                "text": (nested.text or html_text(nested.html))[:ATTACHED_TEXT_MAX_CHARS],
             }
         )
 

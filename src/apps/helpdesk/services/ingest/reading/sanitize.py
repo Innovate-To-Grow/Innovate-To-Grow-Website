@@ -11,10 +11,14 @@ tracking pixels never load). Sanitizing keeps text formatting, lists, tables and
 - bleach keeps only the allow-listed tags, attributes and ``http``/``https``/``mailto``/``tel`` links (no event
   handlers, ``javascript:`` URLs or ``srcset``), and its CSS sanitizer only harmless style properties;
 - every link opens in a new tab with ``rel="noopener noreferrer"``;
-- personal sign-in links are scrubbed (``core``'s inbound ``scrub``), also one that inline formatting (``<span>``)
-  splits, wherever it is cut, and a link to one is no link any more: its text stays, followed by
-  ``[sign-in link removed]``. So is a Mimecast-rewritten link to the site's own host, also one Safe Links wrapped
-  again: Mimecast names only that host, and sends the click on to the link it replaced (maybe a sign-in link).
+- personal sign-in links are scrubbed (``core``'s inbound ``scrub``), also one that inline formatting (``<span>``,
+  ``<code>``, ``<a>``, any phrasing element kept) splits, wherever it is cut (inside its scheme too), and a link to
+  one is no link any more: its text stays, followed by ``[sign-in link removed]``. So is a Mimecast-rewritten link to
+  the site's own host, also one Safe Links wrapped again: Mimecast names only that host, and sends the click on to
+  the link it replaced (maybe a sign-in link).
+
+What is kept is listed in ``allowlist``. ``html_text`` is the text of sanitized HTML, as an attached message sent as
+HTML only is summarized.
 """
 
 import re
@@ -27,45 +31,16 @@ from bs4 import BeautifulSoup, Comment
 from apps.core.services.email.inbound import LINK_PLACEHOLDER, is_sensitive_url, scrub_links, scrub_personal_links
 from apps.core.services.email.inbound.processing.scrub import readings, site_hosts
 
-ALLOWED_TAGS = frozenset(
-    {
-        "a", "abbr", "b", "blockquote", "br", "caption", "center", "cite", "code", "col", "colgroup", "dd", "del",
-        "div", "dl", "dt", "em", "font", "h1", "h2", "h3", "h4", "h5", "h6", "hr", "i", "ins", "kbd", "li", "ol",
-        "p", "pre", "q", "s", "small", "span", "strike", "strong", "sub", "sup", "table", "tbody", "td", "tfoot",
-        "th", "thead", "tr", "tt", "u", "ul",
-    }
-)  # fmt: skip
-_CELL = ["colspan", "rowspan", "width", "height", "bgcolor", "align", "valign", "nowrap"]
-ALLOWED_ATTRIBUTES = {
-    "*": ["style", "title", "dir", "lang", "align"],
-    "a": ["href", "title"],
-    "td": _CELL,
-    "th": _CELL,
-    "table": ["width", "border", "cellpadding", "cellspacing", "bgcolor", "align"],
-    "col": ["span", "width"],
-    "colgroup": ["span", "width"],
-    "font": ["color", "face", "size"],
-    "ol": ["start", "type"],
-    "ul": ["type"],
-}
-ALLOWED_PROTOCOLS = frozenset({"http", "https", "mailto", "tel"})
-ALLOWED_CSS_PROPERTIES = frozenset(
-    {
-        "color", "background-color", "font", "font-family", "font-size", "font-style", "font-weight",
-        "font-variant", "text-align", "text-decoration", "text-indent", "text-transform", "line-height",
-        "letter-spacing", "word-spacing", "white-space", "vertical-align", "margin", "margin-top", "margin-right",
-        "margin-bottom", "margin-left", "padding", "padding-top", "padding-right", "padding-bottom", "padding-left",
-        "border", "border-top", "border-right", "border-bottom", "border-left", "border-color", "border-style",
-        "border-width", "border-collapse", "border-spacing", "border-radius", "width", "height", "max-width",
-        "min-width", "list-style-type",
-    }
-)  # fmt: skip
-# Removed together with everything inside them.
-DROPPED_WITH_CONTENT = (
-    "script", "style", "iframe", "frame", "frameset", "object", "embed", "applet", "form", "svg", "math", "base",
-    "meta", "link", "head", "title", "noscript", "template", "audio", "video", "canvas", "button", "input", "select",
-    "textarea", "picture", "source", "track", "map", "area",
-)  # fmt: skip
+from .allowlist import (
+    ALLOWED_ATTRIBUTES,
+    ALLOWED_CSS_PROPERTIES,
+    ALLOWED_PROTOCOLS,
+    ALLOWED_TAGS,
+    DROPPED_WITH_CONTENT,
+    INLINE_TAGS,
+)
+from .message import HTML_TO_TEXT_MAX_CHARS, html_to_text
+
 IMAGE_PLACEHOLDER = "[image]"
 # Most of a received HTML body that is parsed at all (a longer one is cut first, then sanitized and capped).
 INPUT_MAX_CHARS = 4 * 1024 * 1024
@@ -82,10 +57,13 @@ _MIMECAST_RE = re.compile(
     r"(?i)https?://(?:protect[a-z0-9-]*\.mimecast\.com|url\.[a-z0-9-]+\.m\.mimecastprotect\.com)/s/"
 )
 # Formatting a mail program puts inside a link's text (Word marks a "misspelt" token with <span class=SpellE>): a
-# link run such tags split is judged as one link, wherever they cut it (also where no piece is long enough alone).
-_INLINE_TAG = r"</?(?:span|b|i|u|em|strong|font|small|sub|sup|s|del|ins)\b[^>]*>"
+# link run such tags split is judged as one link, wherever they cut it (also inside its scheme, "ht<b>tp</b>://…",
+# and where no piece is long enough alone).
+_INLINE_TAG = rf"</?(?:{'|'.join(INLINE_TAGS)})\b[^>]*>"
 _INLINE_TAG_RE = re.compile(_INLINE_TAG, re.IGNORECASE)
-_SPLIT_LINK_RE = re.compile(rf"(?i)(?:https?:(?://|\\/\\/)|www\.)[^\s\"'<>]*(?:(?:{_INLINE_TAG})+[^\s\"'<>]+)+")
+_STARTS = "|".join(f"(?:{_INLINE_TAG})*".join(map(re.escape, start)) for start in ("http://", "https://", "www."))
+# Every link run: one that no tag splits is left to the scrub (``_joined``).
+_LINK_RUN_RE = re.compile(rf"(?i)(?:{_STARTS}|https?:\\/\\/)[^\s\"'<>]*(?:(?:{_INLINE_TAG})+[^\s\"'<>]+)*")
 # The placeholder after an unlinked anchor's own text until the scrub has run: no token was cut there, so the words
 # glued after it stay.
 _UNLINKED = "\ue000"
@@ -171,13 +149,15 @@ def sanitize_html(html: str, *, max_chars: int) -> tuple[str, bool]:
 
 def _scrubbed(html: str) -> str:
     """Serialized ``html`` scrubbed, a link that inline tags split judged as one."""
-    return scrub_links(_SPLIT_LINK_RE.sub(_joined, html)).replace(_UNLINKED, LINK_PLACEHOLDER)
+    return scrub_links(_LINK_RUN_RE.sub(_joined, html)).replace(_UNLINKED, LINK_PLACEHOLDER)
 
 
 def _joined(found) -> str:
     """A link run that inline tags split, written whole when it holds a personal link (so the scrub sees all of it),
     its tags right after the placeholder: none is lost, so the markup stays well formed. Any other run stays as is."""
     split = found.group(0)
+    if not _INLINE_TAG_RE.search(split):
+        return split  # no tag splits it: the scrub judges it as written
     kept = scrub_personal_links(_INLINE_TAG_RE.sub("", split))
     if LINK_PLACEHOLDER not in kept:
         return split
@@ -190,6 +170,12 @@ def _trim(html: str, max_chars: int) -> str:
     html = html[:max_chars]
     opening = html.rfind("<")
     return html[:opening] if opening > html.rfind(">") else html
+
+
+def html_text(html: str) -> str:
+    """The text of HTML as it shows once sanitized (``html_to_text``): an attached message sent as HTML only reads
+    so, its personal links removed as in a message's own HTML (also one inline formatting splits), no style as text."""
+    return html_to_text(sanitize_html(html[:HTML_TO_TEXT_MAX_CHARS], max_chars=HTML_TO_TEXT_MAX_CHARS)[0])
 
 
 def frame_document(html: str) -> str:

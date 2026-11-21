@@ -54,10 +54,11 @@ def follow_merges(ticket: Ticket) -> Ticket:
 
 
 def requesters_of(ticket: Ticket) -> set[str]:
-    """The requester's addresses: theirs, and every address of the member the ticket belongs to."""
+    """The requester's addresses: theirs, and every verified address of the member the ticket belongs to (anyone can
+    add an address to their account; until its code is entered it may be someone else's)."""
     addresses = {ticket.requester_email.lower()}
     if ticket.requester_member_id:
-        member_addresses = ContactEmail.objects.filter(member_id=ticket.requester_member_id)
+        member_addresses = ContactEmail.objects.filter(member_id=ticket.requester_member_id, verified=True)
         addresses |= {address.lower() for address in member_addresses.values_list("email_address", flat=True)}
     return addresses - {""}
 
@@ -115,35 +116,48 @@ def _relays(ticket: Ticket, sender: str, sender_name: str) -> set[str]:
     return found
 
 
-def _writes_for_others(address: str, participants: set[str]) -> bool:
-    """Whether ``address`` wrote for two or more people who are not on the ticket, under any names: a web form (also
-    one writing under each submitter's name), never a requester who named her office or home, nor a person who once
-    named an assistant."""
+def _writes_for_others(address: str, participants: set[str], name: str) -> bool:
+    """Whether ``address`` wrote for two or more other people who are not on the ticket: named under another name
+    than its own (a web form's submitters), or under another name than it writes under now (a form writing under
+    each submitter's name). Its own other addresses (its name, or none) never count, nor people on the ticket."""
     spoke = TicketMessage.objects.filter(kind__in=TicketMessage.INBOUND_KINDS, from_address__iexact=address)
-    others = spoke.exclude(on_behalf_of="").exclude(on_behalf_of__in=participants)
-    return others.order_by().values("on_behalf_of").distinct()[:2].count() > 1
+    rows = spoke.exclude(on_behalf_of="").exclude(on_behalf_of__in=participants).order_by()
+    people_off = set()
+    for from_name, behalf, behalf_name in rows.values_list("from_name", "on_behalf_of", "on_behalf_name").distinct():
+        named_other = bool(behalf_name) and not people.same_person(from_name, behalf_name)
+        renamed = bool(from_name and name) and not people.same_person(from_name, name)
+        if named_other or renamed:
+            people_off.add(behalf.lower())
+            if len(people_off) > 1:
+                return True
+    return False
 
 
-def _answers(ticket: Ticket, person: str, sender: str, name: str) -> bool:
+def _answers(ticket: Ticket, person: str, sender: str, name: str, person_name: str) -> bool:
     """Whether a message under ``ticket``'s number is from someone on it: the person it speaks for, or its sender,
     unless it speaks for someone new and the sender writes for other people or is a relay there (a form's next
-    submitter), not the requester."""
+    submitter), not the requester. The requester naming her own other address (under her name) always is."""
     participants = participants_of(ticket)
     if person in participants:
         return True
-    if sender not in participants or _writes_for_others(sender, participants):
+    if sender not in participants:
         return False
-    return sender in requesters_of(ticket) or sender not in _relays(ticket, sender, name)
+    requester = sender in requesters_of(ticket)
+    if requester and people.same_person(name, person_name) and people.same_person(name, ticket.requester_name):
+        return True  # her other address, under the name the ticket knows her by (not a form writing as each person)
+    if _writes_for_others(sender, participants, name):
+        return False
+    return requester or sender not in _relays(ticket, sender, name)
 
 
-def _by_token(numbers: list[int], person: str, sender: str, name: str) -> tuple[Ticket | None, list[int]]:
+def _by_token(numbers: list[int], speaker, sender: str, name: str) -> tuple[Ticket | None, list[int]]:
     mentions = []
     for number in numbers:
         ticket = Ticket.objects.filter(number=number).first()
         if ticket is None:
             continue
         target = follow_merges(ticket)
-        if _answers(target, person, sender, name):
+        if _answers(target, speaker.address or sender, sender, name, speaker.name):
             return target, mentions
         mentions.append(number)
     return None, mentions
@@ -169,8 +183,9 @@ def find(parsed: ParsedMessage, *, conversation_id: str = "", prefer_human: bool
         if ticket is not None:
             return Match(ticket, "references")
         campaign_id = _campaign(references)
-    person, sender, name = people.identity(parsed, own), parsed.from_address, parsed.from_name
-    ticket, mentions = _by_token(numbering.subject_numbers(parsed.subject), person, sender, name)
+    speaker, sender, name = people.speaks_for(parsed, own), parsed.from_address, parsed.from_name
+    person = speaker.address or sender
+    ticket, mentions = _by_token(numbering.subject_numbers(parsed.subject), speaker, sender, name)
     if ticket is not None:
         return Match(ticket, "subject_token", campaign_id)
     if conversation_id:

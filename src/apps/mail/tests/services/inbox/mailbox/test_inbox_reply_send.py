@@ -85,6 +85,27 @@ class ReplyRenderTests(TestCase):
             with self.subTest(body):
                 self.assertIn(expected, render_reply_html(body))
 
+    def test_text_of_a_script_without_spaces_glued_after_a_link_of_another_script_stays_text(self):
+        # Only Chinese, Japanese and Korean were read so, and only after ASCII: Thai text went into the href, and so
+        # did Chinese after a link ending in "é" (dead links); within one script the address goes on.
+        cases = (
+            ("ดูที่https://www.ucmerced.edu/aboutขอบคุณ", f"ดูที่{anchor('https://www.ucmerced.edu/about')}ขอบคุณ"),
+            ("https://fr.wikipedia.org/wiki/Café谢谢", f"{anchor('https://fr.wikipedia.org/wiki/Café')}谢谢"),
+            ("ລາວhttps://lo.example/aboutຂອບໃຈ ok", f"ລາວ{anchor('https://lo.example/about')}ຂອບໃຈ ok"),
+            ("https://th.wikipedia.org/wiki/ประเทศไทย ok", f"{anchor('https://th.wikipedia.org/wiki/ประเทศไทย')} ok"),
+        )
+        for body, expected in cases:
+            with self.subTest(body):
+                self.assertIn(expected, render_reply_html(body))
+
+    def test_two_links_glued_by_punctuation_are_two_links(self):
+        # The second link was read as part of the first: one anchor whose href named both.
+        river = "https://en.wikipedia.org/wiki/Merced_(river)"
+        for mark in ",;":
+            with self.subTest(mark):
+                html = render_reply_html(f"Two: https://www.ucmerced.edu/news{mark}{river} done")
+                self.assertIn(f"Two: {anchor('https://www.ucmerced.edu/news')}{mark}{anchor(river)} done", html)
+
     def test_each_line_of_the_quote_breaks_once(self):
         # The quote is shown "white-space: pre-wrap": a <br> and a line break both would break the line twice.
         html = render_reply_html("Thanks", quoted_text="Hello,\r\n\r\nour team\nThanks,\nQuinn")

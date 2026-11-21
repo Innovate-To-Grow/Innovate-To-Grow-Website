@@ -28,6 +28,7 @@ LINK = corpus.LOGIN_LINK
 TOKEN = LINK.split("token=")[1]
 SAFE_LINK = f"https://nam02.safelinks.protection.outlook.com/?url={quote(LINK, safe='')}&amp;data=05%7C02"
 DOC = "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit?usp=sharing"
+EMAIL_SIGN_IN = "https://i2g.ucmerced.edu/email-auth-link#flow=login&amp;email=pat%40example.org&amp;code=123456"
 SAVED = corpus.message(
     sender=f"Innovate to Grow <{corpus.SITE}>", subject="Your sign-in link", text=f"Sign in: {LINK}", message_id="<s@x>"
 )
@@ -74,6 +75,7 @@ class RemovedLinkTests(SimpleTestCase):
             f'<a href="/login-link#token={TOKEN}">Sign in</a>': f"Sign in {REMOVED}",  # relative: it was kept whole
             f'<a href="mailto:pat@example.org?body={LINK}">mail it</a>': f"mail it {REMOVED}",
             '<a href="https://i2g.ucmerced.edu/login-link more">Sign in</a>': f"Sign in {REMOVED}",  # only scrubbing
+            f'<a href="{EMAIL_SIGN_IN}">Sign in</a> {EMAIL_SIGN_IN}': f"Sign in {REMOVED} {REMOVED}",  # code mails
         }
         for markup, expected in cases.items():
             with self.subTest(markup):

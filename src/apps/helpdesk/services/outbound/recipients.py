@@ -21,11 +21,19 @@ def aliases(ticket: Ticket) -> dict[str, str]:
     (work and home). A message from one counts as theirs only under that name (``replies.last_inbound``): a form that
     names each submitter writes for several people from one address."""
     spoke = TicketMessage.objects.filter(ticket=ticket, on_behalf_of__iexact=ticket.requester_email)
-    return {
+    found = {
         address.lower(): name
         for address, name, behalf_name in spoke.values_list("from_address", "from_name", "on_behalf_name")
         if same_person(name, behalf_name)
     }
+    # And the other address the requester named in Reply-To under her own name (her home address).
+    named = TicketMessage.objects.filter(ticket=ticket, from_address__iexact=ticket.requester_email)
+    for name, behalf, behalf_name in named.exclude(on_behalf_of="").values_list(
+        "from_name", "on_behalf_of", "on_behalf_name"
+    ):
+        if same_person(name, behalf_name):
+            found.setdefault(behalf.lower(), behalf_name)
+    return found
 
 
 def requester_addresses(ticket: Ticket) -> set[str]:

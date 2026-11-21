@@ -1,10 +1,12 @@
 """A run of text without spaces is scrubbed link by link: a personal link loses its token and no more, and the other
 links and the person's words around it stay (a CSV row, a pipe-separated line, a sentence, a calendar's "\\n", a word
-glued after the site's own token), in one pass however many links a line holds. ``scrub_personal_links`` (notes,
-replies, text files) keeps everything else as written; ``scrub_links`` (inbound mail) also redacts token-shaped runs,
-in text and serialized HTML alike."""
+glued after the site's own token, also one percent-encoded, or after its email sign-in link), in one pass however many
+links a line holds. ``scrub_personal_links`` (notes, replies, text files) keeps everything else as written;
+``scrub_links`` (inbound mail) also redacts token-shaped runs, in text and serialized HTML alike."""
 
+from html import escape
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 from django.test import SimpleTestCase
 
@@ -56,7 +58,17 @@ LINES = (
     (f"时间{SIGN_IN}:10:30开会", f"时间{REMOVED}:10:30开会"),
     (f"Use {SIGN_IN.replace('login-link', 'magic-login')}.Thanks, Pat", f"Use {REMOVED}.Thanks, Pat"),
     (f"Use {SIGN_IN.replace('login-link', 'impersonate-login')}/or the app", f"Use {REMOVED}/or the app"),
+    (f"Old link: {SIGN_IN.replace('login-link', 'ticket-login')}:it failed", f"Old link: {REMOVED}:it failed"),
     (f"Old https://i2g.ucmerced.edu/unsubscribe-login?token={SIGNED} link", f"Old {REMOVED} link"),
+)
+# The site's own token percent-encoded, in part or whole: the site's page decodes it ("%66" reads "f"), so it signs in.
+ENCODED_OWN = (
+    SIGN_IN.replace("token=f", "token=%66"),
+    SIGN_IN.replace(TOKEN, "".join(f"%{ord(c):02X}" for c in TOKEN)),
+)
+# The email sign-in link sent with every login and registration code (``authn``'s ``build_email_action``).
+EMAIL_SIGN_IN = "https://i2g.ucmerced.edu/email-auth-link#" + urlencode(
+    {"flow": "login", "source": "login", "email": "pat.doe@example.org", "code": "123456", "event": "fall-showcase"}
 )
 
 
@@ -73,6 +85,31 @@ class PersonalLinkTests(SimpleTestCase):
 
         self.assertEqual(scrub_personal_links(line), f"Ref {'R' * 70}, see {opaque},{REMOVED},{'A' * 70} (end)")
         self.assertEqual(scrub_personal_links(None), "")
+
+    def test_a_percent_encoded_character_of_the_sites_own_token_is_part_of_it(self):
+        # The token ended at its first "%": its other 63 characters stayed in text files, notes and replies.
+        for link in ENCODED_OWN:
+            for scrubbed in (scrub_personal_links, scrub_links):
+                with self.subTest(link, scrub=scrubbed.__name__):
+                    self.assertEqual(
+                        scrubbed(f"Use {link}:it failed ({link}.Thanks)"), f"Use {REMOVED}:it failed ({REMOVED}.Thanks)"
+                    )
+
+
+class EmailSignInLinkTests(SimpleTestCase):
+    def test_the_email_sign_in_link_goes_to_the_end_of_its_parameters_and_the_quoted_code_stays(self):
+        # It signs the person in while its code is valid (ten minutes), and was kept whole. The code quoted on a line
+        # of its own is any number to the scrub: it stays, and so do the words glued after the link.
+        query = EMAIL_SIGN_IN.replace("#", "?")
+        quoted = f"> Sign in: {EMAIL_SIGN_IN}\n> 123456\n> Or {query}. It failed:{EMAIL_SIGN_IN}:it. Why {query}?"
+        markup = f'<p><a href="{escape(EMAIL_SIGN_IN)}">Sign in</a> or {escape(query)}, ok</p>'
+        for scrubbed in (scrub_personal_links, scrub_links):
+            with self.subTest(scrubbed.__name__):
+                self.assertEqual(
+                    scrubbed(quoted),
+                    f"> Sign in: {REMOVED}\n> 123456\n> Or {REMOVED}. It failed:{REMOVED}:it. Why {REMOVED}?",
+                )
+                self.assertEqual(scrubbed(markup), f'<p><a href="{REMOVED}">Sign in</a> or {REMOVED}, ok</p>')
 
 
 class ScrubLinksTests(SimpleTestCase):

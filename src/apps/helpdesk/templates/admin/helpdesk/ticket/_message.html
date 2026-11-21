@@ -46,7 +46,7 @@
 {% endif %}
 {% for attached in message.attached_list %}
   {% if attached.omitted %}
-  <p class="i2g-helpdesk-muted">{{ attached.omitted }} more attached message{{ attached.omitted|pluralize }} {{ attached.omitted|pluralize:"is,are" }} not shown (more than five, or not readable); the original is in Outlook.</p>
+  <p class="i2g-helpdesk-muted">{{ attached.omitted }} more attached message{{ attached.omitted|pluralize }} {{ attached.omitted|pluralize:"is,are" }} not shown (more than five, inside another attached message, or not readable); the original is in Outlook.</p>
   {% else %}
   <details class="i2g-helpdesk-attached">
     <summary>Attached message: {{ attached.subject|default:"(no subject)" }}{% if attached.from %} — from {{ attached.from }}{% endif %}{% if attached.sent %} — {{ attached.sent|date:"M j, Y H:i" }}{% elif attached.date %} — {{ attached.date }}{% endif %}</summary>

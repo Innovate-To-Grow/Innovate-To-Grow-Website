@@ -1,10 +1,11 @@
 """Links that mail-security gateways wrapped, read for the link they hold (``scrub`` judges a wrapped link by it).
 
-Microsoft Safe Links holds the link percent-encoded in ``url=``. Proofpoint URL Defense v2 holds it in ``u=``, "-XX"
-for a character and "_" for "/"; v3 between ``__`` marks, a "*" for each character it replaced ("**" and a letter for
-a run of them), those characters base64 after ``__;``. What follows the link is the gateway's own: Safe Links'
-``data=`` (the recipient and their mail flow), ``sdata=`` (its signature) and ``reserved=``, Proofpoint's ``d=``,
-``c=``, ``r=``, ``m=``, ``s=`` and ``e=`` or v3's ``__;…!…$`` tail.
+Microsoft Safe Links holds the link percent-encoded in ``url=``, right after its host or, for a link that opens in a
+Microsoft 365 app (a Teams meeting, a Word file), after the app's path (``/ap/t-59584e83/``). Proofpoint URL Defense
+v2 holds it in ``u=``, "-XX" for a character and "_" for "/"; v3 between ``__`` marks, a "*" for each character it
+replaced ("**" and a letter for a run of them), those characters base64 after ``__;``. What follows the link is the
+gateway's own: Safe Links' ``data=`` (the recipient and their mail flow), ``sdata=`` (its signature) and
+``reserved=``, Proofpoint's ``d=``, ``c=``, ``r=``, ``m=``, ``s=`` and ``e=`` or v3's ``__;…!…$`` tail.
 """
 
 import base64
@@ -18,7 +19,8 @@ _PROOFPOINT_RE = re.compile(
     r"|https?://urldefense\.com/v3/__([^\s\"'<>]*?)(?:__;([a-z0-9_-]*)(?:!![a-z0-9_!-]*\$)?|$)"
 )
 _SAFE_LINKS_RE = re.compile(
-    r"(?i)https?://[a-z0-9.-]*safelinks\.protection\.outlook\.com/\?(?:[^\s\"'<>#]*?[&;])?url=([^&\s\"'<>]*)"
+    r"(?i)https?://[a-z0-9.-]*safelinks\.protection\.outlook\.com/(?:ap/[a-z0-9]+-[0-9a-f]+/)?"
+    r"\?(?:[^\s\"'<>#]*?[&;])?url=([^&\s\"'<>]*)"
 )
 # The gateway's own parameters after the link it holds (Safe Links' "data=" names the recipient, "pat%40example.edu"):
 # never a "," "|" "(" or the like, which a sentence or a CSV row puts after a link.

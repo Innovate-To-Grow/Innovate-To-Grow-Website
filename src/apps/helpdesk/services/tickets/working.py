@@ -119,7 +119,7 @@ def _relayed(ticket: Ticket) -> dict:
     address = str(getattr(opening, "on_behalf_of", "") or "").lower()
     if not address or not is_plain_address(address) or address == ticket.requester_email.lower():
         return {}
-    contact = ContactEmail.objects.filter(email_address__iexact=address, member__isnull=False).first()
+    contact = ContactEmail.objects.filter(email_address__iexact=address, member__isnull=False, verified=True).first()
     alias = _alias(opening, opening.on_behalf_name)  # the same person: the member stays theirs
     member = getattr(contact, "member", None) or (ticket.requester_member if alias else None)
     return {"requester_email": address, "requester_name": opening.on_behalf_name, "requester_member": member}

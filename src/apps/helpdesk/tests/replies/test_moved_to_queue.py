@@ -75,7 +75,7 @@ class MovedToQueueTests(TestCase):
 
     def test_a_members_message_naming_her_other_address_stays_hers_once_moved(self):
         dana = Member.objects.create_user(password="x", first_name="Dana", last_name="Member")
-        ContactEmail.objects.create(member=dana, email_address="dana@example.com", email_type="primary")
+        ContactEmail.objects.create(member=dana, email_address="dana@example.com", email_type="primary", verified=True)
         headers = {"Authentication-Results": DMARC_PASS, "Reply-To": "Dana Member <dana@home.example>"}
         spam = receive(
             corpus.message(
@@ -103,8 +103,10 @@ class UnpostedListTests(TestCase):
         self.agent = helpdesk_staff()
         self.settings = sending_settings()
 
-    def moved(self, sender, number, *, to=ANNOUNCE, listing=UNPOSTED, **headers):
-        raw = corpus.message(sender=sender, to=to, message_id=f"<announce-{number}@x>", headers={**listing, **headers})
+    def moved(self, sender, number, *, to=ANNOUNCE, listing=UNPOSTED, raw=False, **headers):
+        if not raw:
+            sender = corpus.message(sender=sender, to=to, message_id=f"<a-{number}@x>", headers={**listing, **headers})
+        raw = sender
         ticket = receive(raw)
         self.assertEqual(tickets.move_to_queue([ticket], actor=self.agent), 1)
         ticket.refresh_from_db()
@@ -146,6 +148,23 @@ class UnpostedListTests(TestCase):
         self.assertNotIn(listed, ticket.participants)
         with self.assertRaisesMessage(ReplyRefused, f"{listed} is a mailing list"):
             parse_cc(listed, ticket)
+
+    def test_a_colleague_on_the_list_ids_domain_is_no_list(self):
+        listing = {"List-Id": "Faculty Announce <faculty-announce.example.edu>", "Precedence": "list"}
+        office = "Engineering Office <eng.office@example.edu>"
+        ticket = self.moved(IRA, 7, to=corpus.SITE, listing=listing, **{"Reply-To": office})
+
+        self.assertEqual(ticket.messages.get().list_address, "")
+        self.assertEqual(parse_cc("eng.office@example.edu", ticket), ["eng.office@example.edu"])
+
+    def test_a_relayed_persons_address_her_member_never_verified_gives_no_member_link(self):
+        eve = Member.objects.create_user(password="x", first_name="Eve", last_name="Member")
+        ContactEmail.objects.create(member=eve, email_address="victor@example.net", email_type="other")
+        raw = corpus.message(sender="Form <forms@relay.example>", message_id="<rv@x>",
+                             headers={"Reply-To": "Victor <victor@example.net>", "Precedence": "bulk"})  # fmt: skip
+        ticket = self.moved(raw, 8, raw=True)
+
+        self.assertEqual((ticket.requester_email, ticket.requester_member), ("victor@example.net", None))
 
     def test_a_posters_own_other_address_in_reply_to_is_no_list(self):
         ticket = self.moved(IRA, 5, **{"Reply-To": "Ira Moss <ira.home@home.example>"})

@@ -131,7 +131,7 @@ def _member_for(address: str):
     if not address:
         return None
     contact = (
-        ContactEmail.objects.filter(email_address__iexact=address, member__isnull=False)
+        ContactEmail.objects.filter(email_address__iexact=address, member__isnull=False, verified=True)
         .select_related("member")
         .first()
     )
