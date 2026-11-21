@@ -75,9 +75,12 @@ class AcknowledgementIngestTests(TestCase):
 
     def test_the_text_is_filled_from_the_settings(self):
         sending_settings(send_acknowledgement=True, acknowledgement_text="Got it: {ticket} / {subject}")
+        named = new_ticket(requester_email="judge@example.org")  # Pat is no participant: the mail opens a ticket
+        subject = f"Re: Question about the showcase [{named.display_number}]"
 
-        ticket = self.receive()
+        ticket = self.receive(corpus.message(subject=subject, headers=AUTHENTICATED))
 
+        # {subject} names only the new ticket: without the "Re:" and the other ticket's number Pat's subject carried.
         self.assertEqual(acks().get().body_text, f"Got it: {ticket.display_number} / Question about the showcase")
 
     def test_never_for_a_reply_that_joins_a_ticket(self):

@@ -3,12 +3,19 @@ import quopri
 from email.message import EmailMessage
 from email.policy import SMTP
 
-from django.test import SimpleTestCase
+from django.core.cache import cache
+from django.test import SimpleTestCase, TestCase
+
+from apps.core.services.email.inbound import LINK_PLACEHOLDER as REMOVED
 
 from ...services.ingest.reading.parse import parse
 from .. import corpus
+from ..helpers import receive
+from ..intake.test_signin_file_edges import SITE_HOSTS, SMS
 
 SAVED = corpus.message(sender="Portal <noreply@i2g.example>", subject="Your sign-in link 登录", text="Your links: here")
+TOKEN = "Qm7Tz2LoGiNaaa9KxW4vB8nR1sY6uE3cH5jF0dP_gA-kLzX2wQ7eR9tY4uI1oP6a"  # as long as the site's: token_urlsafe(48)
+LINK = f"https://i2g.ucmerced.edu/login-link#token={TOKEN}"
 
 
 def with_attached(body: bytes, encoding: str) -> bytes:
@@ -18,6 +25,30 @@ def with_attached(body: bytes, encoding: str) -> bytes:
     )
     part = f"--b\r\nContent-Type: message/rfc822\r\nContent-Transfer-Encoding: {encoding}\r\n\r\n".encode()
     return head + part + body + b"\r\n--b--\r\n"
+
+
+def forwarding_quoted_printable(name: str) -> bytes:
+    """A person forwarding the sign-in email ``name`` sent, attached as message/rfc822 the way Python's email library
+    writes it when asked for quoted-printable: the saved message's line breaks encoded too (=0D=0A), and a soft line
+    break ("=" at the end of a line) at most 76 characters apart, wherever it falls (inside the links)."""
+    saved = EmailMessage(policy=SMTP)
+    saved["From"] = f"{name} <noreply@i2g.example> {LINK}"
+    saved["To"] = "sam@example.org"
+    saved["Subject"] = f"Your sign-in link for the showcase portal {SMS} 登录"
+    saved.set_content(
+        f"Please use this sign-in link to get into the showcase portal right away: {LINK}, thanks\n"
+        f"The text message I got on my phone yesterday evening had this other link: {SMS} 请帮忙\n"
+    )
+    mail = EmailMessage(policy=SMTP)
+    mail["From"] = "Sam Saved <sam.saved@example.org>"
+    mail["To"] = corpus.SITE
+    mail["Subject"] = f"FW: the sign-in email {name} sent"
+    mail["Message-ID"] = f"<saved-qp-{len(name)}@example.org>"
+    mail.set_content("Please see the attached email.")
+    mail.add_attachment(
+        saved.as_bytes(), maintype="message", subtype="rfc822", filename="signin.eml", cte="quoted-printable"
+    )
+    return mail.as_bytes()
 
 
 class BodyTests(SimpleTestCase):
@@ -73,9 +104,13 @@ class BodyTests(SimpleTestCase):
         self.assertTrue(parsed.attachments[0].filename.startswith("attachment-1"))
 
 
-class EncodedAttachedMessageTests(SimpleTestCase):
+class EncodedAttachedMessageTests(TestCase):
     """RFC 2046 forbids base64 and quoted-printable for message/rfc822, yet Python's email library writes base64 (and
-    some clients do): the part is decoded and read like a forward, or counted as not readable."""
+    quoted-printable when asked, and some clients do): the part is decoded from its encoded text as it came and read
+    like a forward, or counted as not readable."""
+
+    def setUp(self):
+        cache.clear()
 
     def test_a_message_attached_base64_by_pythons_email_library_is_read(self):
         mail = EmailMessage(policy=SMTP)
@@ -94,7 +129,40 @@ class EncodedAttachedMessageTests(SimpleTestCase):
 
     def test_a_quoted_printable_one_is_read_and_one_without_headers_is_counted(self):
         quoted = parse(with_attached(quopri.encodestring(SAVED), "quoted-printable"))
-        headless = parse(with_attached(base64.encodebytes(b"Only some words, no headers.\r\n"), "base64"))
 
         self.assertEqual([item["subject"] for item in quoted.attached_messages], ["Your sign-in link 登录"])
-        self.assertEqual((headless.attached_messages, headless.attached_dropped), ([], 1))
+        for encoding, encode in (("base64", base64.encodebytes), ("quoted-printable", quopri.encodestring)):
+            with self.subTest(encoding):
+                headless = parse(with_attached(encode(b"Only some words, no headers.\r\n"), encoding))
+
+                self.assertEqual((headless.attached_messages, headless.attached_dropped), ([], 1))
+
+    @SITE_HOSTS
+    def test_one_attached_quoted_printable_as_python_writes_it_is_read_whole_and_keeps_no_token(self):
+        # Python's parser reads the encoded text as a message: the first line was taken for the From header, cut
+        # inside the link at its soft line break, and the rest (the real headers, and the body still quoted-printable)
+        # was stored, the tokens readable across the breaks. With the longer name a line starts with the link's ":",
+        # which the parser drops while it reads headers: the text cannot be rebuilt from what it kept either.
+        long_name = "Innovate-to-Grow-Showcase-Portal-UC"
+        self.assertIn(b"https=\r\n://i2g.", forwarding_quoted_printable(long_name))
+        for name in ("Portal", long_name):
+            with self.subTest(name):
+                message = receive(forwarding_quoted_printable(name)).messages.get()
+
+                (attached,) = message.attached_messages
+                self.assertEqual(
+                    (attached["from"], attached["subject"]),
+                    (
+                        f"{name} <noreply@i2g.example> {REMOVED}",
+                        f"Your sign-in link for the showcase portal {REMOVED} 登录",
+                    ),
+                )
+                self.assertEqual(
+                    attached["text"].strip(),
+                    f"Please use this sign-in link to get into the showcase portal right away: {REMOVED}, thanks\n"
+                    f"The text message I got on my phone yesterday evening had this other link: {REMOVED} 请帮忙",
+                )
+                stored = f"{message.subject} {message.body_text} {message.attached_messages}"
+                for token in (TOKEN, SMS.rsplit("/", 1)[1]):  # a soft line break falls inside a token once at most
+                    self.assertNotIn(token[: len(token) // 2], stored)
+                    self.assertNotIn(token[len(token) // 2 :], stored)

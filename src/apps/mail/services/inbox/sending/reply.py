@@ -1,5 +1,6 @@
 import logging
 import re
+import unicodedata
 
 from django.utils.html import escape
 
@@ -15,20 +16,45 @@ REPLY_SEND_FAILURE_MESSAGE = "Failed to send reply. Please check server logs for
 REPLY_DELIVERY_NOT_CONFIGURED = "Email delivery is not configured. Check Notification Delivery in admin."
 REPLY_INVALID_ADDRESS_MESSAGE = "Use plain email addresses such as name@example.com in To and Cc."
 REPLY_SENDER_UNAVAILABLE_MESSAGE = "That From address is not available. Reload the reply form and choose another."
-# A link in the raw text: printable ASCII up to a space, "<", ">" or '"' (so Chinese text glued to it stays out), and
-# never into a "[sign-in link removed]" right after it.
-_LINK_RE = re.compile(rf"(?i)https?://(?:(?!{re.escape(LINK_PLACEHOLDER)})[!#-;=?-~])+")
-_TRAILING = ".,;:!?"
+# Where a link starts in the raw text, after the "_" or "~" marks (Markdown's emphasis) that may open right before it
+# (a run of them is read once: the match starts at its first mark); ``_in_link`` reads where the link ends.
+_LINK_START_RE = re.compile(r"(?i)(?<![_~])([_~]*)https?://")
+# The ASCII a link takes: the printable characters but '"', "<" and ">".
+_LINK_ASCII = frozenset(map(chr, range(0x21, 0x7F))) - set('"<>')
+# Scripts written without spaces between words (Chinese, Japanese, Korean), by the start of their Unicode names.
+_UNSPACED = ("CJK", "HIRAGANA", "KATAKANA", "HANGUL", "BOPOMOFO", "IDEOGRAPHIC", "FULLWIDTH", "HALFWIDTH")
+# Never the last character of a link as written: the end of a sentence, a closing quote or backtick, a "*" (bold, a
+# footnote). "_" and "~" can be (an id ending in "_"): one goes only when it closes the same mark right before the link.
+_TRAILING = ".,;:!?'`*"
 _OPENING = {")": "(", "]": "[", "}": "{"}
 
 
-def _link_end(url: str) -> str:
-    """``url`` without what ends the sentence around it (as Django's ``urlize`` trims): trailing punctuation, and a
-    closing bracket the link does not open."""
+def _in_link(text: str, index: int) -> bool:
+    """Whether ``text[index]`` goes on with the link before it: printable ASCII but '"', "<", ">" or the start of a
+    "[sign-in link removed]"; a letter, digit or combining mark of any script (``…/wiki/Universität…``), never other
+    punctuation (CJK, curly quotes), a symbol or a space. Chinese, Japanese or Korean text glued to the link's ASCII
+    goes on with the sentence ("文件在<link>谢谢"), unless a part of the address starts there: after "/", "=", "#",
+    "(" or "_" (``/wiki/加利福尼亚…``)."""
+    char = text[index]
+    if char.isascii():
+        return char in _LINK_ASCII and not text.startswith(LINK_PLACEHOLDER, index)
+    if unicodedata.category(char)[0] not in "LMN":
+        return False
+    before = text[index - 1]
+    return not before.isascii() or before in "/=#(_" or not unicodedata.name(char, "").startswith(_UNSPACED)
+
+
+def _link_end(url: str, opened: str = "") -> str:
+    """``url`` without what ends the sentence around it (as Django's ``urlize`` trims): trailing punctuation and
+    closing quotes, a closing bracket the link does not open, and the marks closing those ``opened`` right before it
+    (``_link_``)."""
+    marks = list(opened)
     while url:
         last = url[-1]
         unopened = last in _OPENING and url.count(_OPENING[last]) < url.count(last)
-        if last not in _TRAILING and not unopened:
+        if last in marks:
+            marks.remove(last)
+        elif last not in _TRAILING and not unopened:
             break
         url = url[:-1]
     return url
@@ -37,13 +63,18 @@ def _link_end(url: str) -> str:
 def _linkified(body_text: str) -> str:
     """``body_text`` escaped, its links as anchors: found in the raw text, so an "&" stays inside its link."""
     parts, start = [], 0
-    for found in _LINK_RE.finditer(body_text):
-        url = _link_end(found.group())
+    for found in _LINK_START_RE.finditer(body_text):
+        begin, end = found.end(1), found.end()
+        if begin < start:
+            continue  # inside the link before it, which carries this one (``…/web/2026/https://…``)
+        while end < len(body_text) and _in_link(body_text, end):
+            end += 1
+        url = _link_end(body_text[begin:end], found.group(1))
         if url.endswith("://"):
             continue  # nothing but the scheme is left: it stays text
         safe = escape(url)
-        parts += [escape(body_text[start : found.start()]), f'<a href="{safe}" style="color:#0f2d52;">{safe}</a>']
-        start = found.start() + len(url)
+        parts += [escape(body_text[start:begin]), f'<a href="{safe}" style="color:#0f2d52;">{safe}</a>']
+        start = begin + len(url)
     return "".join([*parts, escape(body_text[start:])])
 
 

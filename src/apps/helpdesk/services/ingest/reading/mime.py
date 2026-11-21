@@ -1,9 +1,7 @@
 """Walking a message's MIME parts: bodies, attachments and attached messages (forwarded parts, saved ``.eml`` files),
 within the limits."""
 
-import binascii
 import mimetypes
-from email.errors import MessageError
 
 from apps.core.services.email.inbound.classification import headers as mime
 from apps.core.services.email.telemetry import text
@@ -24,6 +22,7 @@ from .message import (
     html_to_text,
     text_codec,
 )
+from .tree import parse_mime
 
 
 class _Counter:
@@ -111,26 +110,21 @@ class _Walker:
 
 
 def _inner_message(part):
-    """The message an attached message part holds. Sent base64 or quoted-printable (RFC 2046 forbids it, yet Python's
-    email library writes it), it was parsed from its encoded text: that is decoded and read like a saved .eml file."""
+    """The message an attached message part holds. One sent base64 or quoted-printable (RFC 2046 forbids it, yet
+    Python's email library writes it) was kept as its encoded text (see ``tree``): it is read like a saved .eml file
+    from its decoded bytes, and is not readable (counted on the card) when they hold no header."""
     payload = part.get_payload()
-    inner = payload[0] if isinstance(payload, list) and payload else None
-    encoding = _header(part, "Content-Transfer-Encoding").strip().lower()
-    decode = {"base64": binascii.a2b_base64, "quoted-printable": binascii.a2b_qp}.get(encoding)
-    if inner is None or decode is None:
-        return inner
-    try:
-        message = mime.parse(decode(inner.as_bytes()))
-    except (*_PART_ERRORS, MessageError):  # MessageError: a crafted header the generator refuses to write again
-        return None
-    return message if message.keys() else None  # no headers: not readable, counted on the card
+    if isinstance(payload, list):
+        return payload[0] if payload else None
+    message = _file_message(part)
+    return message if message is not None and message.keys() else None
 
 
 def _file_message(part):
     """The message saved in an attached file (an .eml), read from its decoded bytes like the outer message."""
     data = _payload(part)
     try:
-        return mime.parse(data) if data else None
+        return parse_mime(data) if data else None
     except _PART_ERRORS:
         return None
 

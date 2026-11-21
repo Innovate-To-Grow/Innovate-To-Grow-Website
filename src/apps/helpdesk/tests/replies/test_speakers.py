@@ -1,13 +1,14 @@
 """Whom a message speaks for, after the fifth and sixth live checks of the admin (``ingest.routing.people``):
 
 - anyone who wrote on a ticket answers it under its number, whatever Reply-To they add: a requester naming an
-  assistant or a home address (Exchange-rated spam included), a sender whose first message named their assistant, a
-  delegate, a team mailbox, a nameless other address;
+  assistant or a home address (Exchange-rated spam included; she still answers in the conversation then), a sender
+  whose first message named their assistant, a delegate, a team mailbox, a nameless other address;
 - one form's submissions never join each other's tickets by their shared conversation: without a Reply-To, or from
   a form that names each submitter; a form's own address is never acknowledged;
 - a web form that copies its submitter (Cc) still gives the ticket to them;
 - a person whose Reply-To is their other address (the same name) keeps their member link, threads from either
-  address, and is quoted from their latest message that says something (never an answer that only quotes);
+  address (in the conversation also when their mail program shows the name differently: "Rhea", "Stone, Rhea"), and
+  is quoted from their latest message that says something (never an answer that only quotes);
 - the reply form suggests people only as Cc: never a relay or a no-reply address, but a sender who answered."""
 
 from django.core.cache import cache
@@ -17,6 +18,7 @@ from apps.authn.models import ContactEmail, Member
 
 from ...models import Ticket, TicketMessage
 from ...services import outbound, tickets
+from ...services.ingest.routing import people
 from ...services.outbound.replies import last_inbound
 from .. import corpus
 from ..helpers import helpdesk_staff, receive
@@ -79,6 +81,13 @@ class AnswerTests(TestCase):
 
         kai = Ticket.objects.get(requester_email="mia@example.org")
         self.assertIn("kai@example.org", outbound.cc_suggestions(kai))  # he answered: a person, no relay
+
+    def test_after_naming_her_office_the_requester_still_answers_in_the_conversation(self):
+        ticket = receive(corpus.message(sender="Riley Chen <riley@example.org>", message_id="<rc@x>"), conversation="C")
+        answer(ticket, "Riley Chen <riley@example.org>", number=5, **{"Reply-To": "Riley Office <office@x.org>"})
+        later = corpus.message(sender="Riley Chen <riley@example.org>", subject="RE: Hello", message_id="<rc-2@x>")
+
+        self.assertEqual(receive(later, conversation="C").pk, ticket.pk)
 
 
 @override_settings(BACKGROUND_JOBS_ENABLED=True)
@@ -157,6 +166,25 @@ class AliasTests(TestCase):
         self.assertEqual((self.ticket.requester_email, self.ticket.requester_member), ("dana@home.example", self.dana))
         self.assertEqual(joined.pk, self.ticket.pk)
         self.assertEqual(last_inbound(joined).internet_message_id, "<answer-2@x>")
+
+    def test_her_answer_in_the_conversation_joins_under_another_form_of_her_name(self):
+        raw = corpus.message(sender="Rhea Stone <rhea.stone@example.org>", message_id="<rhea-1@x>",
+                             headers={**PASS, "Reply-To": "Rhea Stone <rhea.home@home.example>"})  # fmt: skip
+        ticket = receive(raw, conversation="AAQkRHEA")
+
+        for number, sender in enumerate(("Rhea <rhea.stone@example.org>", '"Stone, Rhea" <rhea.stone@example.org>')):
+            answer = corpus.message(sender=sender, subject="RE: Easel count", message_id=f"<rhea-{number + 2}@x>")
+            self.assertEqual(receive(answer, conversation="AAQkRHEA").pk, ticket.pk)
+        self.assertTrue(people.same_person("Rhea", "Stone, Rhea") and people.same_person("'Rhea Stone'", "Rhea Stone"))
+        self.assertFalse(people.same_person("Kim", "Kai Kim"))  # an assistant named Kim is not her boss
+
+    def test_from_another_address_of_hers_it_is_the_requesters_answer(self):
+        ContactEmail.objects.create(member=self.dana, email_address="dana@lab.example", email_type="secondary")
+        tickets.update_ticket(self.ticket, actor=helpdesk_staff(), status=Status.PENDING_CUSTOMER)
+
+        self.assertEqual(answer(self.ticket, "Dana M <dana@lab.example>").pk, self.ticket.pk)
+        moved = self.ticket.events.filter(kind="status").last()
+        self.assertEqual(moved.data["reason"], "the requester replied")
 
     def test_an_answer_that_only_quotes_is_never_quoted_back(self):
         quoted = "On Wed, Nov 11, 2026 at 10:00 AM Innovate to Grow wrote:\n> Hello Dana, yes: the room is booked."

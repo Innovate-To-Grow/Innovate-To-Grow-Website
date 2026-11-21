@@ -11,10 +11,10 @@ tracking pixels never load). Sanitizing keeps text formatting, lists, tables and
 - bleach keeps only the allow-listed tags, attributes and ``http``/``https``/``mailto``/``tel`` links (no event
   handlers, ``javascript:`` URLs or ``srcset``), and its CSS sanitizer only harmless style properties;
 - every link opens in a new tab with ``rel="noopener noreferrer"``;
-- personal sign-in links are scrubbed (``core``'s inbound ``scrub``), also the rest of a token split by inline
-  formatting (``<span>``), and a link to one is no link any more: its text stays, followed by
-  ``[sign-in link removed]``. So is a Mimecast-rewritten link to the site's own host: Mimecast names only that host,
-  and sends the click on to the link it replaced, which may be the person's sign-in link.
+- personal sign-in links are scrubbed (``core``'s inbound ``scrub``), also one that inline formatting (``<span>``)
+  splits, wherever it is cut, and a link to one is no link any more: its text stays, followed by
+  ``[sign-in link removed]``. So is a Mimecast-rewritten link to the site's own host, also one Safe Links wrapped
+  again: Mimecast names only that host, and sends the click on to the link it replaced (maybe a sign-in link).
 """
 
 import re
@@ -24,8 +24,8 @@ import bleach
 from bleach.css_sanitizer import CSSSanitizer
 from bs4 import BeautifulSoup, Comment
 
-from apps.core.services.email.inbound import LINK_PLACEHOLDER, is_sensitive_url, scrub_links
-from apps.core.services.email.inbound.processing.scrub import site_hosts
+from apps.core.services.email.inbound import LINK_PLACEHOLDER, is_sensitive_url, scrub_links, scrub_personal_links
+from apps.core.services.email.inbound.processing.scrub import readings, site_hosts
 
 ALLOWED_TAGS = frozenset(
     {
@@ -81,14 +81,11 @@ _BODY_STYLE = (
 _MIMECAST_RE = re.compile(
     r"(?i)https?://(?:protect[a-z0-9-]*\.mimecast\.com|url\.[a-z0-9-]+\.m\.mimecastprotect\.com)/s/"
 )
-# Formatting a mail program puts inside a link's text (Word marks a "misspelt" token with <span class=SpellE>): the
-# scrub ends the link at the first tag, so the token characters right after a placeholder and such tags go too (not
-# a final ".", a sentence's).
+# Formatting a mail program puts inside a link's text (Word marks a "misspelt" token with <span class=SpellE>): a
+# link run such tags split is judged as one link, wherever they cut it (also where no piece is long enough alone).
 _INLINE_TAG = r"</?(?:span|b|i|u|em|strong|font|small|sub|sup|s|del|ins)\b[^>]*>"
 _INLINE_TAG_RE = re.compile(_INLINE_TAG, re.IGNORECASE)
-_CONTINUED_RE = re.compile(
-    rf"(?i){re.escape(LINK_PLACEHOLDER)}((?:{_INLINE_TAG})+(?:{_INLINE_TAG}|[a-z0-9_.~%+/=:-])*(?<!\.))"
-)
+_SPLIT_LINK_RE = re.compile(rf"(?i)(?:https?:(?://|\\/\\/)|www\.)[^\s\"'<>]*(?:(?:{_INLINE_TAG})+[^\s\"'<>]+)+")
 # The placeholder after an unlinked anchor's own text until the scrub has run: no token was cut there, so the words
 # glued after it stay.
 _UNLINKED = "\ue000"
@@ -116,10 +113,9 @@ def _removed(href: str) -> bool:
     http(s) address (a relative one is resolved against the https page) it reads a backslash as a slash."""
     href = href.translate(_URL_BREAKS).strip("".join(map(chr, range(0x21))))
     # As written too: a mailto: link keeps its "\", and a "/" in its place could cut a token too short to be seen.
-    readings = (href, href.replace("\\", "/"))
     return any(
         is_sensitive_url(read) or LINK_PLACEHOLDER in scrub_links(read) or _mimecast_to_the_site(read)
-        for read in readings
+        for read in (href, href.replace("\\", "/"))
     )
 
 
@@ -127,10 +123,13 @@ _URL_BREAKS = str.maketrans("", "", "\t\n\r")
 
 
 def _mimecast_to_the_site(href: str) -> bool:
-    if not _MIMECAST_RE.match(href):
-        return False
-    domains = parse_qs(urlsplit(href).query).get("domain", [])
-    return any(domain.strip().lower().rstrip(".") in site_hosts() for domain in domains)
+    """Whether ``href`` is, or holds (wrapped again: Safe Links, Proofpoint), a Mimecast link to a site's own host."""
+    for reading in readings(href):  # decoded as the scrubber decodes a wrapper
+        for found in _MIMECAST_RE.finditer(reading):
+            domains = parse_qs(urlsplit(reading[found.start() :]).query).get("domain", [])
+            if any(domain.strip().lower().rstrip(".") in site_hosts() for domain in domains):
+                return True
+    return False
 
 
 def _unlink(anchor) -> None:
@@ -171,13 +170,19 @@ def sanitize_html(html: str, *, max_chars: int) -> tuple[str, bool]:
 
 
 def _scrubbed(html: str) -> str:
-    """Serialized ``html`` scrubbed, and without the token characters that continue a removed link past inline tags
-    (the tags stay, so the markup stays well formed)."""
-    return _CONTINUED_RE.sub(_tags_only, scrub_links(html)).replace(_UNLINKED, LINK_PLACEHOLDER)
+    """Serialized ``html`` scrubbed, a link that inline tags split judged as one."""
+    return scrub_links(_SPLIT_LINK_RE.sub(_joined, html)).replace(_UNLINKED, LINK_PLACEHOLDER)
 
 
-def _tags_only(found) -> str:
-    return LINK_PLACEHOLDER + "".join(_INLINE_TAG_RE.findall(found.group(1)))
+def _joined(found) -> str:
+    """A link run that inline tags split, written whole when it holds a personal link (so the scrub sees all of it),
+    its tags right after the placeholder: none is lost, so the markup stays well formed. Any other run stays as is."""
+    split = found.group(0)
+    kept = scrub_personal_links(_INLINE_TAG_RE.sub("", split))
+    if LINK_PLACEHOLDER not in kept:
+        return split
+    head, _, tail = kept.partition(LINK_PLACEHOLDER)
+    return head + LINK_PLACEHOLDER + "".join(_INLINE_TAG_RE.findall(split)) + tail
 
 
 def _trim(html: str, max_chars: int) -> str:

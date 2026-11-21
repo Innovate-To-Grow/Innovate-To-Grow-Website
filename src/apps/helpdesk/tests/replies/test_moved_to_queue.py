@@ -2,24 +2,32 @@
 admin): classified as a person's, the requester's messages theirs again (shown as the requester's, quoted under a
 reply) and, when the scam checks scored them, flagged suspicious rather than spam; another sender's automated mail on
 the ticket stays as it was. A member's message that asked for replies at her other address (the same name) stays
-hers: the member link is kept, and the timeline names the address as hers, not a web form's."""
+hers: the member link is kept, and the timeline names the address as hers, not a web form's. A mailing list without
+List-Post is known by its List-Id (``name@domain`` for ``name.domain``), else as the address its mail is sent To and
+comes from: its poster's message moved to the queue is the poster's, never the list's, and her own other address in
+Reply-To is no list."""
 
 from django.core.cache import cache
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.authn.models import ContactEmail, Member
 
 from ...models import Ticket, TicketMessage
-from ...services import tickets
-from ...services.outbound.replies import last_inbound
+from ...services import outbound, tickets
+from ...services.outbound.replies import last_inbound, parse_cc
 from ...services.tickets import events
 from .. import corpus
 from ..helpers import helpdesk_staff, receive
+from ..helpers.service import sending_settings
 from ..service.intake.scam_mail import DMARC_PASS, locked_out
 
 Status = Ticket.Status
 Kind = TicketMessage.Kind
+ANNOUNCE = "faculty-announce@lists.example.edu"
+UNPOSTED = {"List-Id": "Faculty Announce <faculty-announce.lists.example.edu>", "Precedence": "list"}
+GROUP = "faculty-ann@googlegroups.example"
+IRA = "Ira Moss <ira.moss@example.edu>"
 
 
 class MovedToQueueTests(TestCase):
@@ -85,3 +93,55 @@ class MovedToQueueTests(TestCase):
             "Moved to the queue; its requester is now dana@home.example, the sender's other address it asked replies "
             "to go to",
         )
+
+
+@override_settings(BACKGROUND_JOBS_ENABLED=True)
+class UnpostedListTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.agent = helpdesk_staff()
+        self.settings = sending_settings()
+
+    def moved(self, sender, number, *, to=ANNOUNCE, listing=UNPOSTED, **headers):
+        raw = corpus.message(sender=sender, to=to, message_id=f"<announce-{number}@x>", headers={**listing, **headers})
+        ticket = receive(raw)
+        self.assertEqual(tickets.move_to_queue([ticket], actor=self.agent), 1)
+        ticket.refresh_from_db()
+        return ticket
+
+    def test_list_mail_rewriting_its_poster_belongs_to_the_poster(self):
+        munged = f"Ira Moss via Faculty Announce <{ANNOUNCE}>"
+        found = {
+            "Reply-To the poster": (ANNOUNCE, self.moved(munged, 1, **{"Reply-To": IRA})),
+            "the poster in Cc": (ANNOUNCE, self.moved(munged, 2, **{"Reply-To": ANNOUNCE, "Cc": IRA})),
+            "Google Groups": (
+                GROUP,
+                self.moved(
+                    f"'Ira Moss' via Faculty <{GROUP}>",
+                    3,
+                    to=GROUP,
+                    listing={"List-Id": f"<{GROUP.replace('@', '.')}>"},
+                    **{"Reply-To": GROUP, "X-Original-From": IRA},
+                ),
+            ),  # fmt: skip
+            "a List-Id naming no address": (
+                ANNOUNCE,
+                self.moved(munged, 4, listing={"List-Id": "<news.example.edu>"}, **{"Reply-To": IRA}),
+            ),
+        }
+        for case, (listed, ticket) in found.items():
+            with self.subTest(case):
+                self.assertEqual((ticket.requester_name, ticket.requester_email), ("Ira Moss", "ira.moss@example.edu"))
+                self.assertEqual(
+                    (ticket.messages.get().list_address, outbound.can_reply(ticket, self.settings)), (listed, "")
+                )
+                self.assertNotIn(listed, ticket.participants)
+
+    def test_a_posters_own_other_address_in_reply_to_is_no_list(self):
+        ticket = self.moved(IRA, 5, **{"Reply-To": "Ira Moss <ira.home@home.example>"})
+
+        self.assertEqual(
+            (ticket.requester_email, ticket.messages.get().list_address), ("ira.moss@example.edu", ANNOUNCE)
+        )
+        self.assertEqual(parse_cc("ira.home@home.example", ticket), ["ira.home@home.example"])
+        self.assertNotIn(ANNOUNCE, outbound.cc_suggestions(ticket))

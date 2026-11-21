@@ -31,9 +31,32 @@ def requester_addresses(ticket: Ticket) -> set[str]:
     return {ticket.requester_email.lower(), *aliases(ticket)}
 
 
+def theirs(message: TicketMessage, ticket: Ticket, other: dict[str, str]) -> bool:
+    """Whether ``message`` is the requester's: from their address, written for them, or from another address of
+    theirs (``other``: ``aliases``) only under their name: a form writing for several people under each one's."""
+    address = message.from_address.lower()
+    if address == ticket.requester_email.lower() or message.on_behalf_of.lower() == ticket.requester_email.lower():
+        return True
+    return address in other and same_person(message.from_name, other[address])
+
+
+def writes_for_others(address: str) -> bool:
+    """Whether ``address`` wrote for two or more people under another name (a web form): no person, even where it
+    wrote as itself (a nameless submission). A person who once named an assistant wrote for one."""
+    spoke = TicketMessage.objects.filter(kind__in=INBOUND, from_address__iexact=address).exclude(on_behalf_of="")
+    people = set()
+    for name, behalf, behalf_name in spoke.order_by().values_list("from_name", "on_behalf_of", "on_behalf_name"):
+        if not same_person(name, behalf_name):
+            people.add(behalf.lower())
+            if len(people) > 1:
+                return True
+    return False
+
+
 def cc_suggestions(ticket: Ticket) -> list[str]:
     """Participants a reply may copy: people only. A relay (an address that wrote on the ticket only for someone under
-    another name: a web form) is none; whoever wrote on the ticket as themselves, or was addressed by staff, is."""
+    another name, or one that writes for several people: a web form) is none; whoever wrote on the ticket as
+    themselves, or was addressed by staff, is."""
     messages = TicketMessage.objects.filter(ticket=ticket)
     relayed = {
         address.lower()
@@ -46,6 +69,7 @@ def cc_suggestions(ticket: Ticket) -> list[str]:
         item.lower()
         for item in messages.filter(kind__in=INBOUND, on_behalf_of="").values_list("from_address", flat=True)
     }
+    themselves = {item for item in themselves if item not in relayed or not writes_for_others(item)}
     for to, cc in messages.filter(kind=TicketMessage.Kind.REPLY, automatic=False).values_list(
         "to_addresses", "cc_addresses"
     ):

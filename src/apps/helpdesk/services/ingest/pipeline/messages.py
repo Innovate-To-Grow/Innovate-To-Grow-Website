@@ -6,6 +6,7 @@ from apps.core.services.email.inbound import scrub_links, scrub_subject
 
 from ....models import Ticket, TicketAttachment, TicketEvent, TicketMessage
 from ... import sla
+from ...outbound.recipients import aliases, theirs
 from ...tickets import events
 from ...tickets.changes import reopen_values
 from ..reading import attachments
@@ -13,6 +14,7 @@ from ..reading.message import ParsedMessage
 from ..reading.sanitize import sanitize_html
 from ..routing import people
 from ..routing.classify import Classified
+from ..routing.matching import requesters_of
 
 Status = Ticket.Status
 OWN_MAIL_NOTE = "Sent from the site's own address: its content is not stored (it may hold sign-in codes)."
@@ -86,6 +88,13 @@ def _add_message(ticket, row, parsed, classified, settings, fingerprint, own=fro
     return message
 
 
+def _reason(ticket: Ticket, message: TicketMessage) -> str:
+    """Why a person's message moved the ticket: its requester answered (from any of their addresses), or someone
+    else on it wrote (a colleague copied, a web form's nameless submission)."""
+    member = message.from_address.lower() in requesters_of(ticket)
+    return "the requester replied" if member or theirs(message, ticket, aliases(ticket)) else "a participant wrote"
+
+
 def _joined(ticket: Ticket, message: TicketMessage, classified: Classified, rule: str, own) -> None:
     if classified.automated:
         events.record(ticket, TicketEvent.Kind.AUTOMATED_MESSAGE, **{"from": message.from_address, "rule": rule})
@@ -101,13 +110,13 @@ def _joined(ticket: Ticket, message: TicketMessage, classified: Classified, rule
     if rule == "reopened":
         cleared = reopen_values(ticket, Status.OPEN)
         updates.update(status=Status.OPEN, closed_at=None, resolved_at=None, **cleared)
-        events.record(ticket, TicketEvent.Kind.REOPENED, reason="the requester replied", **_move(ticket.status))
+        events.record(ticket, TicketEvent.Kind.REOPENED, reason=_reason(ticket, message), **_move(ticket.status))
         if cleared and ticket.resolution_code:
             # Resolving it again asks for a new code.
             events.record(ticket, TicketEvent.Kind.RESOLUTION, cleared=ticket.resolution_code)
     elif ticket.status == Status.PENDING_CUSTOMER:
         updates["status"] = Status.OPEN
-        events.record(ticket, TicketEvent.Kind.STATUS, reason="the requester replied", **_move(ticket.status))
+        events.record(ticket, TicketEvent.Kind.STATUS, reason=_reason(ticket, message), **_move(ticket.status))
     if updates.get("status") == Status.OPEN:
         # The requester answered: a resolution clock that stood still (waiting for them, or resolved) runs again.
         updates.update(sla.status_values(ticket, Status.OPEN, timezone.now()))

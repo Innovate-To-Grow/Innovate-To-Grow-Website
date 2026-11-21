@@ -6,10 +6,10 @@
   was sent To (a person asking for replies to their team), nor a mailing list's own address. A form that copies the
   submitter (Cc) still names them. That person is the requester of a new ticket (``pipeline.store``), every Reply-To
   address and the sender participants. As any mail program would, replies go to that person.
-- A mailing list's own address (its List-Post; without one, the Reply-To of list mail that is not its sender) is
-  never a requester. List mail speaks for its poster: the sender, or when the list rewrote the sender (Mailman's
-  munged From, Google Groups: the From is the list) X-Original-From, else the Reply-To or Cc address that is not the
-  list.
+- A mailing list's own address (its List-Post; without one, the address its List-Id names, ``name@domain`` for
+  ``name.domain``, else one list mail is sent To and either comes from or asks replies to) is never a requester. List
+  mail speaks for its poster: the sender, or when the list rewrote the sender (Mailman's munged From, Google Groups:
+  the From is the list) X-Original-From, else the Reply-To or Cc address that is not the list.
 - A relay never threads as the people it relayed for (``matching``): one form's submissions do not join each other's
   tickets. A Reply-To naming the sender's other address under the same name (a person writing from work, asking for
   replies at home) speaks for the same person: both addresses are theirs. A Reply-To is not authenticated, so
@@ -25,6 +25,8 @@ from ..reading.message import ParsedMessage
 
 MAX_REPLY_TO = 10
 _MAILTO_RE = re.compile(r"<\s*mailto:([^>?\s]+)", re.IGNORECASE)
+_LIST_ID_RE = re.compile(r"<\s*([^<>\s]+)\s*>")
+_WORD_RE = re.compile(r"\w+")
 
 
 @dataclass(frozen=True)
@@ -44,20 +46,42 @@ def _list_mail(parsed: ParsedMessage) -> bool:
     return bool(headers.first(parsed.headers, "list-id").strip()) or precedence == "list"
 
 
+def _list_id(parsed: ParsedMessage) -> str:
+    value = headers.first(parsed.headers, "list-id").strip()
+    found = _LIST_ID_RE.search(value)
+    return (found.group(1) if found else value if " " not in value else "").lower()
+
+
 def list_addresses(parsed: ParsedMessage) -> list[str]:
     """The mailing list's own addresses (List-Post's mailto, in the header's order). A list that gives none (an
-    announcement list, "List-Post: NO") is taken at its Reply-To when that is not the sender: where list replies go."""
+    announcement list, "List-Post: NO") is known by its List-Id (``name.domain`` for ``name@domain``: Mailman, Google
+    Groups, Sympa, LISTSERV), else by an address it is sent To that it comes from (the list rewrote its poster) or
+    asks replies to; never a poster's own Reply-To (her other address)."""
     found = _MAILTO_RE.findall(headers.joined(parsed.headers, "list-post"))
     lists = list(dict.fromkeys(address.strip().lower() for address in found if "@" in address))
-    if not lists and _list_mail(parsed):
-        lists = [address for _name, address in reply_to_pairs(parsed) if address != parsed.from_address][:1]
-    return lists
+    if lists or not _list_mail(parsed):
+        return lists
+    replies = [address for _name, address in reply_to_pairs(parsed)]
+    seen = list(dict.fromkeys([parsed.from_address, *parsed.to, *parsed.cc, *replies]))
+    list_id = _list_id(parsed)
+    named = [address for address in seen if list_id and list_id in (address, ".".join(address.split("@", 1)))]
+    return named or [address for address in dict.fromkeys([parsed.from_address, *replies]) if address in parsed.to][:1]
+
+
+def _words(name: str) -> list[str]:
+    text = str(name or "").casefold()
+    last, comma, first = text.partition(",")  # "Stone, Rhea" is Rhea Stone
+    return _WORD_RE.findall(f"{first} {last}" if comma and first.strip() else text)
 
 
 def same_person(name: str, other: str) -> bool:
-    """Whether two display names are the same person's (the same words, whatever their case)."""
-    words = str(name or "").casefold().split()
-    return bool(words) and words == str(other or "").casefold().split()
+    """Whether two display names are the same person's, as mail programs show one name differently ("Rhea",
+    "Stone, Rhea", "Rhea Stone (Home)" are Rhea Stone): the words of one are among the other's, whatever their case,
+    order and punctuation; a one-word name only as the other's first (an assistant "Kim" is not "Kai Kim")."""
+    short, long = sorted((_words(name), _words(other)), key=len)
+    if not short:
+        return False
+    return short[0] == long[0] if len(short) == 1 else set(short) <= set(long)
 
 
 def speaks_for(parsed: ParsedMessage, own) -> Speaker:

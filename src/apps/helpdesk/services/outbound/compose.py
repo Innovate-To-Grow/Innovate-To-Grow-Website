@@ -4,7 +4,8 @@ Every email about a ticket carries ``[I2G-#1234]`` in its subject: Microsoft Gra
 ``References`` (only ``x-`` headers), so the token is what threads the requester's answer back to the ticket (the
 ingest accepts it only from a participant). Placeholders are plain text replacements; nothing in a template or a
 reply is interpreted as a Django template. The values an outsider chose (their display name, the subject) lose
-anything link-like before they are filled in.
+anything link-like before they are filled in, and the subject its ticket numbers and reply prefixes
+(``clean_subject``), so an email names only its own ticket.
 """
 
 import re
@@ -79,11 +80,19 @@ def unknown_placeholders(text: str, allowed=PLACEHOLDERS) -> list[str]:
     return sorted(found)
 
 
+def clean_subject(ticket: Ticket, *, strict: bool = False) -> str:
+    """The ticket's subject as every email about it names it (the reply's and the notice's subject, ``{subject}``):
+    without links (``without_links``), ticket numbers (another ticket's "[I2G-#1006]" its sender named is not this
+    ticket's) and reply prefixes ("Re:", "Fwd:"); "" when nothing else is left."""
+    subject = numbering.TOKEN_RE.sub("", without_links(ticket.subject, strict=strict)).replace("[]", "")
+    return " ".join(_REPLY_PREFIX_RE.sub("", subject).split())
+
+
 def fill(text: str, ticket: Ticket, *, agent=None, strict: bool = False) -> str:
     values = {
         "{ticket}": ticket.display_number,
         "{requester_name}": without_links(ticket.requester_name, strict=strict) or "there",
-        "{subject}": without_links(ticket.subject, strict=strict) or "(no subject)",
+        "{subject}": clean_subject(ticket, strict=strict) or "(no subject)",
         "{agent_name}": person(agent) or "the Innovate to Grow team",
     }
     for placeholder, value in values.items():
@@ -92,14 +101,13 @@ def fill(text: str, ticket: Ticket, *, agent=None, strict: bool = False) -> str:
 
 
 def reply_subject(ticket: Ticket, *, strict: bool = False) -> str:
-    subject = numbering.TOKEN_RE.sub("", without_links(ticket.subject, strict=strict)).replace("[]", "").strip()
-    subject = _REPLY_PREFIX_RE.sub("", subject).strip() or "Your message"
+    subject = clean_subject(ticket, strict=strict) or "Your message"
     token = f" [{ticket.display_number}]"
     return f"Re: {subject[: 255 - len(token) - 4]}{token}"
 
 
 def notice_subject(ticket: Ticket, what: str) -> str:
-    subject = without_links(ticket.subject, strict=True) or "(no subject)"
+    subject = clean_subject(ticket, strict=True) or "(no subject)"
     return f"[{ticket.display_number}] {what}: {subject}"[:255]
 
 

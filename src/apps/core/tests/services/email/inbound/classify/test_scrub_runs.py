@@ -1,7 +1,8 @@
 """A run of text without spaces is scrubbed link by link: a personal link loses its token and no more, and the other
-links and the person's words around it stay (a CSV row, a pipe-separated line, a sentence, a calendar's "\\n"), in
-one pass however many links a line holds. ``scrub_personal_links`` (notes, replies, text files) keeps everything else
-as written; ``scrub_links`` (inbound mail) also redacts token-shaped runs, in text and serialized HTML alike."""
+links and the person's words around it stay (a CSV row, a pipe-separated line, a sentence, a calendar's "\\n", a word
+glued after the site's own token), in one pass however many links a line holds. ``scrub_personal_links`` (notes,
+replies, text files) keeps everything else as written; ``scrub_links`` (inbound mail) also redacts token-shaped runs,
+in text and serialized HTML alike."""
 
 from unittest.mock import patch
 
@@ -49,6 +50,13 @@ LINES = (
     (f"Verify: https://portal.example/verify?token={SIGNED} thanks", f"Verify: {REMOVED} thanks"),
     (f"Reset: https://portal.example/reset#reset_token={SIGNED}&next=/ ok", f"Reset: {REMOVED}&next=/ ok"),
     (f"Ask https://portal.example/verify?token={SIGNED}: it failed", f"Ask {REMOVED}: it failed"),
+    # The site's own sign-in token (secrets.token_urlsafe) holds no ":", "." or "/": a word glued after it stays. The
+    # retired /unsubscribe-login's token was signed: it goes whole.
+    (f"Sign in at {SIGN_IN}:it failed twice", f"Sign in at {REMOVED}:it failed twice"),
+    (f"时间{SIGN_IN}:10:30开会", f"时间{REMOVED}:10:30开会"),
+    (f"Use {SIGN_IN.replace('login-link', 'magic-login')}.Thanks, Pat", f"Use {REMOVED}.Thanks, Pat"),
+    (f"Use {SIGN_IN.replace('login-link', 'impersonate-login')}/or the app", f"Use {REMOVED}/or the app"),
+    (f"Old https://i2g.ucmerced.edu/unsubscribe-login?token={SIGNED} link", f"Old {REMOVED} link"),
 )
 
 

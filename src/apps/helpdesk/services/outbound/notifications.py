@@ -4,8 +4,9 @@ ticket (not automated mail, spam or a merged ticket); never to the member who ma
 who still have the Helpdesk app; never for an inactive group. Queued when the change commits, and judged again by
 the job when it runs (``notify_staff_job``): the timeline records the notice once it went out.
 
-A notice carries the ticket's number, subject (anything link-like removed), requester, priority and admin link, never
-the requester's message, and asks not to be answered: an answer would reach the helpdesk mailbox as a ticket.
+A notice carries the ticket's number, subject (``compose.clean_subject``: no links, ticket numbers or reply prefixes),
+requester, priority and admin link, never the requester's message, and asks not to be answered: an answer would reach
+the helpdesk mailbox as a ticket.
 """
 
 from django.db import transaction
@@ -90,7 +91,7 @@ def notify_staff_job(job) -> None:
     else:
         what, lead = "Assigned to you", f"{actor} assigned {ticket.display_number} to you."
     text = (
-        f"{lead}\n\nSubject: {compose.without_links(ticket.subject, strict=True) or '(no subject)'}\n"
+        f"{lead}\n\nSubject: {compose.clean_subject(ticket, strict=True) or '(no subject)'}\n"
         f"Requester: {ticket.requester_email}\nPriority: {ticket.get_priority_display()}\n\n"
         f"Open the ticket: {compose.ticket_admin_url(ticket)}\n\n"
         "This is an automatic notice: please do not reply to it (a reply would open a new ticket). Work on the ticket "

@@ -22,12 +22,11 @@ from apps.core.utils.security import is_plain_address
 
 from ...models import HelpdeskSettings, IntakeState, Ticket, TicketEvent, TicketMessage
 from ..ingest.pipeline.messages import MAX_PARTICIPANTS
-from ..ingest.routing.people import same_person
 from ..ingest.routing.scam import own_words
 from ..tickets import events, shadow
 from ..tickets.scrub import scrub_sign_in_links
 from . import compose, jobs
-from .recipients import aliases, ticket_lists
+from .recipients import aliases, theirs, ticket_lists
 
 Kind = TicketMessage.Kind
 REPLY_MAX_CHARS = 20000
@@ -108,13 +107,13 @@ def last_inbound(ticket: Ticket) -> TicketMessage | None:
     if not ticket.requester_email:
         return None
     other = aliases(ticket)
-    theirs = Q(on_behalf_of__iexact=ticket.requester_email) | Q(from_address__iexact=ticket.requester_email)
+    wanted = Q(on_behalf_of__iexact=ticket.requester_email) | Q(from_address__iexact=ticket.requester_email)
     for address in other:
-        theirs |= Q(from_address__iexact=address)
-    found = TicketMessage.objects.filter(theirs, ticket=ticket, kind=Kind.CUSTOMER).order_by(
+        wanted |= Q(from_address__iexact=address)
+    found = TicketMessage.objects.filter(wanted, ticket=ticket, kind=Kind.CUSTOMER).order_by(
         "-occurred_at", "-created_at"
     )
-    candidates = [message for message in found[:20] if _theirs(message, ticket, other)]
+    candidates = [message for message in found[:20] if theirs(message, ticket, other)]
     said = (message for message in candidates if own_words(message.body_text, message.body_html).strip())
     return next(said, candidates[0] if candidates else None)
 
@@ -176,11 +175,3 @@ def queue_reply(ticket: Ticket, *, actor, body: str, cc: str = "", status: str =
             changes.update_ticket(current, actor=actor, status=status, first_response=False)
         transaction.on_commit(lambda: jobs.enqueue_reply(message))
     return message
-
-
-def _theirs(message: TicketMessage, ticket: Ticket, other: dict[str, str]) -> bool:
-    """From another address of theirs only under their name: a form writing for several people under each one's."""
-    address = message.from_address.lower()
-    if address == ticket.requester_email.lower() or message.on_behalf_of.lower() == ticket.requester_email.lower():
-        return True
-    return address in other and same_person(message.from_name, other[address])

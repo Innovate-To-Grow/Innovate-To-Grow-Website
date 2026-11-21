@@ -71,6 +71,30 @@ class SubjectTests(TestCase):
             f"[{ticket.display_number}] Assigned to you: (no subject)",
         )
 
+    def test_the_filled_in_subject_and_the_notice_subject_name_only_the_tickets_own_number(self):
+        # Both kept "Re:" and the number of the ticket the sender named: "about Re: … [I2G-#1006] … ticket I2G-#1019".
+        ticket = new_ticket(subject="Re: Judges briefing time for the showcase [I2G-#1006]")
+        number, subject = ticket.display_number, "Judges briefing time for the showcase"
+
+        for strict in (False, True):  # an inserted template, and the acknowledgement
+            with self.subTest(strict=strict):
+                self.assertEqual(
+                    compose.fill("About {subject} ({ticket})", ticket, strict=strict), f"About {subject} ({number})"
+                )
+        self.assertEqual(compose.notice_subject(ticket, "Assigned to you"), f"[{number}] Assigned to you: {subject}")
+        self.assertEqual(compose.reply_subject(ticket), f"Re: {subject} [{number}]")
+
+    def test_what_is_left_of_the_subject_without_its_numbers_and_prefixes(self):
+        between = new_ticket(subject="Fwd: Badges [I2G-#1006] for Friday")
+        nothing = new_ticket(subject="RE: Fwd: [I2G-#1006]")
+
+        self.assertEqual(compose.fill("{subject}", between), "Badges for Friday")
+        self.assertEqual(compose.fill("{subject}", nothing), "(no subject)")
+        self.assertEqual(
+            compose.notice_subject(nothing, "Assigned to you"),
+            f"[{nothing.display_number}] Assigned to you: (no subject)",
+        )
+
 
 class BodyTests(TestCase):
     def test_the_text_ends_with_the_ticket_footer(self):

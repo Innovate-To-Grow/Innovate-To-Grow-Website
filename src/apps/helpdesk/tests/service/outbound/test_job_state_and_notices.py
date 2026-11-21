@@ -87,6 +87,15 @@ class NotifyStaffJobTests(JobTestCase):
         self.assertIn("This is an automatic notice: please do not reply to it", email.text_body)
         self.assertEqual(self.ticket.events.get(kind=Kind.NOTIFIED).data, {"reason": "assigned", "count": 1})
 
+    def test_the_notice_names_the_ticket_without_a_reply_prefix_or_another_tickets_number(self):
+        Ticket.objects.filter(pk=self.ticket.pk).update(subject="Re: Judging [I2G-#1006]")
+
+        email = self.send(self.notice()).call_args.args[0]
+
+        self.assertEqual(email.subject, f"[{self.ticket.display_number}] Assigned to you: Judging")
+        self.assertIn("\n\nSubject: Judging\n", email.text_body)
+        self.assertNotIn("I2G-#1006", email.text_body)
+
     def test_a_group_notice_names_the_group(self):
         group = AssignmentGroup.objects.create(name="Events")
         group.members.add(self.agent)

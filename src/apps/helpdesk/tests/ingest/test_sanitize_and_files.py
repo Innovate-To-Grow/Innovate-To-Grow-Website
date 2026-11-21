@@ -1,7 +1,7 @@
 """Sanitizing inbound HTML (the allow-list, dropped elements, images, links, sign-in links, caps) and deciding which
 attachments are stored and how they are downloaded."""
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 
 from apps.core.services.email.inbound import LINK_PLACEHOLDER
 
@@ -91,6 +91,18 @@ class SanitizeTests(SimpleTestCase):
             with self.subTest(href):
                 cleaned = clean(f'<p><a href="{href}">backslash-unsub</a></p>')
                 self.assertEqual(cleaned, f"<p>backslash-unsub {LINK_PLACEHOLDER}</p>")
+
+    @override_settings(FRONTEND_URL="https://i2g.ucmerced.edu", BACKEND_URL="https://api.i2g.ucmerced.edu")
+    def test_a_link_cut_early_by_formatting_or_wrapped_again_is_still_judged(self):
+        mimecast = "https%3A%2F%2Fprotect-us.mimecast.com%2Fs%2Fr1BdC8%3Fdomain%3Di2g.ucmerced.edu"  # in Safe Links
+        for markup, expected in (  # no piece of an SMS or unsubscribe token cut this early was judged on its own
+            ("https://i2g.ucmerced.edu/l/<span class=SpellE>SmSsHoRt7kQ2pRt4sQ9pXw</span> ok", "{}<span></span> ok"),
+            ("https://i2g.ucmerced.edu/l/SmSsHo<b>Rt7kQ2pRt4sQ9pXw</b>:it", "{}<b></b>:it"),
+            ("https://api.i2g.ucmerced.edu/mail/unsubscribe/<i>.eJx:1tq2Xy:Sg_0123</i>/ ok", "{}<i></i> ok"),
+            (f'<a href="https://nam12.safelinks.protection.outlook.com/?url={mimecast}">Sign in</a>', "Sign in {}"),
+        ):
+            with self.subTest(markup):
+                self.assertEqual(clean(f"<p>{markup}</p>"), f"<p>{expected.format(LINK_PLACEHOLDER)}</p>")
 
     def test_long_html_is_cut_and_closed_again(self):
         html = "<div>" + "<p>paragraph text</p>" * 500 + "</div>"

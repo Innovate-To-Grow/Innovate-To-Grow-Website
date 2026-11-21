@@ -46,6 +46,45 @@ class ReplyRenderTests(TestCase):
             with self.subTest(body):
                 self.assertIn(expected, render_reply_html(body))
 
+    def test_a_closing_quote_backtick_or_emphasis_mark_after_a_link_stays_text(self):
+        # The link took the mark closing the quote or emphasis around it, so its href named a page that is not there.
+        wiki, drive = "https://en.wikipedia.org/wiki/Merced_(river)", "https://drive.google.com/open?id=1AbC_"
+        cases = (
+            (f"He wrote '{DOCS}' in his note", f"He wrote &#x27;{anchor(DOCS)}&#x27; in his note"),
+            ("see 'https://x.example/s'.", f"see &#x27;{anchor('https://x.example/s')}&#x27;."),
+            (f"Bold *{DOCS}* here", f"Bold *{anchor(DOCS)}* here"),
+            (f"Code `{wiki}` here", f"Code `{anchor(wiki)}` here"),
+            (f"Run `curl {DOCS}` now", f"Run `curl {anchor(DOCS)}` now"),
+            (f"In _{DOCS}_ and ~~{DOCS}~~", f"In _{anchor(DOCS)}_ and ~~{anchor(DOCS)}~~"),
+            # An apostrophe inside a link, and an "_" ending one with no mark before it, are the address's own.
+            ("Ask https://example.org/o'brien now", f"Ask {anchor('https://example.org/o&#x27;brien')} now"),
+            (f"File {drive} and _{drive}_", f"File {anchor(drive)} and _{anchor(drive)}_"),
+        )
+        for body, expected in cases:
+            with self.subTest(body):
+                self.assertIn(expected, render_reply_html(body))
+
+    def test_a_link_keeps_letters_of_any_script_up_to_other_punctuation_a_space_or_glued_cjk_text(self):
+        # Read as printable ASCII only, a link ended at its first other letter ("…/wiki/Universit").
+        german = "https://de.wikipedia.org/wiki/Universität_von_Kalifornien,_Merced"
+        chinese = "https://zh.wikipedia.org/wiki/加利福尼亚大学默塞德分校"
+        japanese = "https://ja.wikipedia.org/wiki/マーセド_(カリフォルニア州)"
+        search = "https://www.baidu.com/s?wd=加州大学"
+        cases = (
+            (f"German: {german} and more", f"German: {anchor(german)} and more"),
+            (f"中文：{chinese} 好", f"中文：{anchor(chinese)} 好"),
+            (f"见{chinese}。下一句", f"见{anchor(chinese)}。下一句"),
+            (f"“{german}”, «{german}»", f"“{anchor(german)}”, «{anchor(german)}»"),
+            (f"{german}\u00a0next", f"{anchor(german)}\u00a0next"),  # a no-break space
+            (f"{japanese}と{search}，好", f"{anchor(japanese)}と{anchor(search)}，好"),
+            # Chinese, Japanese or Korean text glued to the link's last ASCII character goes on with the sentence.
+            (f"詳細は{DOCS}をご覧ください", f"詳細は{anchor(DOCS)}をご覧ください"),
+            (f"{DOCS}를 확인하세요", f"{anchor(DOCS)}를 확인하세요"),
+        )
+        for body, expected in cases:
+            with self.subTest(body):
+                self.assertIn(expected, render_reply_html(body))
+
     def test_the_text_around_a_link_is_escaped(self):
         html = render_reply_html('<b>Hi</b> & "you" https://example.org/a?b=1&c=<2>')
 

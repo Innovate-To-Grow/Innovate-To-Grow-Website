@@ -25,7 +25,7 @@ from ..service.intake.scam_mail import DMARC_PASS, locked_out
 Kind = TicketMessage.Kind
 FORM = "Website Contact Form <webform@forms.example>"
 LIST = "faculty-list@lists.example.edu"
-LIST_HEADERS = {"List-Id": "Faculty <faculty.lists.example.edu>", "List-Post": f"<mailto:{LIST}>"}
+LIST_HEADERS = {"List-Id": "Faculty <faculty-list.lists.example.edu>", "List-Post": f"<mailto:{LIST}>"}
 IRA = "Ira Moss <ira.moss@example.edu>"
 
 

@@ -7,26 +7,29 @@ the retired ``/unsubscribe-login``, the SMS short link ``/l/<token>`` on the sit
 ``https://`` (also JSON-escaped, ``https:\\/\\/``) and ``www.``, glued to a word or not, and a run of text without
 spaces is read link by link (a ``www.`` inside a host starts none), so a CSV row or a sentence keeps its other links
 and its words: a personal link is replaced by ``LINK_PLACEHOLDER`` up to where its token ends, and what follows the
-token stays. A link that is personal only once unwrapped (percent-encoded in a "safe links" wrapper, or rewritten by
-Proofpoint URL Defense) is replaced whole.
+token stays (the site's own sign-in token ends at the first character ``secrets.token_urlsafe`` never writes; another
+site's ``token=`` value may hold "." and ":", as a signed ``payload:time:signature`` does). A link that is personal
+only once unwrapped (percent-encoded in a "safe links" wrapper, or rewritten by Proofpoint URL Defense) goes whole.
 
 ``scrub_links`` (what is stored of inbound mail) also replaces any remaining token-shaped run (60+ base64-ish
 characters, as ``telemetry.text`` scrubs error texts) by ``REDACTED_PLACEHOLDER``. Inside any other link a token is one
 path segment or parameter value (a run without "/" or "."), so a long but ordinary address (a shared document, a deep
-page) is kept whole and still works. ``scrub_personal_links`` (what staff write, a requester's text file) replaces the
-personal links only. Both read the text once, without recursion, and work on plain text and on serialized HTML alike
-(attribute values are quoted, and ``&amp;`` is matched like ``&``).
+page, a Microsoft Forms link, whose ``id=`` names the form) is kept whole and still works; so is a gateway's wrapper
+(Safe Links, Proofpoint), judged by the link it holds (``gateways``), its own parameters as written.
+``scrub_personal_links`` (what staff write, a requester's text file) replaces the personal links only. Both read the
+text once, without recursion, and work on plain text and on serialized HTML alike (attribute values are quoted, and
+``&amp;`` is matched like ``&``).
 """
 
-import base64
 import re
-import string
+from collections.abc import Iterator
 from functools import lru_cache, partial
 from urllib.parse import unquote, urlsplit
 
 from django.conf import settings
 
 from ...telemetry import text
+from . import gateways
 
 LINK_PLACEHOLDER = "[sign-in link removed]"
 REDACTED_PLACEHOLDER = "[redacted]"
@@ -44,23 +47,22 @@ _TOKEN_PARAM_RE = re.compile(r"(?i)[?#&;][a-z_]{0,32}token=")
 # Where a personal link's token ends: past the characters a token holds (signed ".<base64>:<time>:<signature>",
 # URL-safe base64, another site's token value, a ":" only with more of them after it), but before a final "." (a
 # sentence's). A lookahead, so markers that overlap (one inside another's value) are all found and the furthest wins.
+_PATH_ENDS = (
+    r"/(?:login-link|magic-login|impersonate-login|unsubscribe-login)/?|/(?:un|re)subscribe/[a-z0-9_.:-]+(?<!\.)/?"
+)
 _TOKEN_END_RE = re.compile(
-    r"(?i)(?=(/(?:login-link|magic-login|impersonate-login|unsubscribe-login)/?"
-    r"|/(?:un|re)subscribe/[a-z0-9_.:-]+(?<!\.)/?"
-    r"|[?#&;][a-z_]{0,32}token=[a-z0-9_.~%+/=-]*(?::[a-z0-9_.~%+/=-]+)*(?<!\.)))"
+    rf"(?i)(?=({_PATH_ENDS}|[?#&;][a-z_]{{0,32}}token=[a-z0-9_.~%+/=-]*(?::[a-z0-9_.~%+/=-]+)*(?<!\.)))"
 )
-# Proofpoint URL Defense: v2 holds the link in "u=", "-XX" for a character and "_" for "/"; v3 between "__" marks, a
-# "*" for each character it replaced ("**" and a letter for a run of them), those characters base64 after "__;".
-_PROOFPOINT_RE = re.compile(
-    r"(?i)https?://urldefense\.proofpoint\.com/v2/url\?u=([^&\s\"'<>]*)"
-    r"|https?://urldefense\.com/v3/__([^\s\"'<>]*?)(?:__;([a-z0-9_-]*)|$)"
-)
-_V3_MARK_RE = re.compile(r"\*(?:\*(.))?")
-_V3_RUNS = string.ascii_uppercase + string.ascii_lowercase + string.digits + "-_"  # a run of 2, 3, … characters
+# The site's own sign-in links hold a ``secrets.token_urlsafe`` token ([A-Za-z0-9_-]), so a word glued after one
+# (":it failed", ".Thanks", "/or") is no part of it. The retired /unsubscribe-login's token was signed, as above.
+_OWN_SIGN_IN_RE = re.compile(r"(?i)[^?#]*/(?:login-link|magic-login|impersonate-login)/?(?:[?#]|$)")
+_OWN_TOKEN_END_RE = re.compile(rf"(?i)(?=({_PATH_ENDS}|[?#&;][a-z_]{{0,32}}token=[a-z0-9_-]*))")
 _LONG_TOKEN_RE = re.compile(r"[A-Za-z0-9+/=_.-]{60,}")
 # Within a link: one segment or parameter value, so the run never spans a host, a path or a "name=" ("/", ".", "=").
 _LINK_TOKEN_RE = re.compile(r"[A-Za-z0-9+_-]{60,}")
-_REDACTED_IN_LINK = partial(_LINK_TOKEN_RE.sub, REDACTED_PLACEHOLDER)
+# A Microsoft Forms link's "id=" names the form (shared with whoever may answer it), not a person.
+_FORMS_RE = re.compile(r"(?i)https?://forms\.(?:office\.com|microsoft\.com|cloud\.microsoft)/")
+_FORM_ID_KEPT_RE = re.compile(r"(?<![A-Za-z0-9+_-])(?<![?&;]id=)[A-Za-z0-9+_-]{60,}")
 _REDACTED_IN_TEXT = partial(_LONG_TOKEN_RE.sub, REDACTED_PLACEHOLDER)
 # A link can be wrapped (percent-encoded) more than once; a few rounds of decoding find any such inner link.
 _DECODE_ROUNDS = 3
@@ -88,49 +90,33 @@ def _site_link_re(hosts: frozenset[str]):
     return re.compile(rf"(?i)(?<![a-z0-9.-])(?:{names})(?::\d+)?/l/[a-z0-9_-]{{16,64}}(?![a-z0-9_-])")
 
 
-def _proofpoint(found) -> str:
-    """The link a Proofpoint URL Defense wrapper holds."""
-    v2, v3, characters = found.groups()
-    if v2 is not None:
-        return re.sub(r"-([0-9A-Fa-f]{2})", lambda hit: chr(int(hit.group(1), 16)), v2.replace("_", "/"))
-    try:
-        replaced = iter(base64.urlsafe_b64decode(f"{characters or ''}==").decode("utf-8", "replace"))
-    except ValueError:
-        replaced = iter("")
-
-    def mark(hit) -> str:
-        # A character that is lost reads as "#", the one a sign-in link's token follows.
-        count = _V3_RUNS.find(hit.group(1)) + 2 if hit.group(1) else 1
-        return "".join(next(replaced, "#") for _ in range(count))
-
-    return _V3_MARK_RE.sub(mark, v3)
-
-
-def _unwrapped(value: str) -> str:
-    """``value`` with JSON's "\\/" read as "/", and each Proofpoint wrapper replaced by the link it holds."""
-    return _PROOFPOINT_RE.sub(_proofpoint, value.replace("\\/", "/"))
+def readings(url) -> Iterator[str]:
+    """``url`` as each round of decoding reads it (JSON's "\\/" and a Proofpoint wrapper read from the first, then
+    percent-encoding), so that a link a gateway wrapped, once or more than once, is seen too."""
+    candidate = gateways.unwrapped(str(url or ""))
+    for _round in range(_DECODE_ROUNDS + 1):
+        yield candidate
+        decoded = gateways.unwrapped(unquote(candidate))
+        if decoded == candidate:
+            return
+        candidate = decoded
 
 
 def is_sensitive_url(url: str) -> bool:
     """Whether ``url`` is a personal sign-in or subscription link, or holds one: percent-encoded (a "safe links"
     wrapper), JSON-escaped, or wrapped by Proofpoint URL Defense."""
-    candidate, site = _unwrapped(str(url or "")), _site_link_re(site_hosts())
-    for _round in range(_DECODE_ROUNDS + 1):
-        if _SENSITIVE_PATH_RE.search(candidate) or _TOKEN_PARAM_RE.search(candidate):
-            return True
-        if site is not None and site.search(candidate):
-            return True
-        decoded = _unwrapped(unquote(candidate))
-        if decoded == candidate:
-            return False
-        candidate = decoded
-    return False
+    site = _site_link_re(site_hosts())
+    return any(
+        _SENSITIVE_PATH_RE.search(reading) or _TOKEN_PARAM_RE.search(reading) or (site and site.search(reading))
+        for reading in readings(url)
+    )
 
 
 def _token_end(piece: str) -> int:
     """Where the last token in sight in ``piece`` ends (0: none), a JSON-escaped "\\/" read as "/"."""
     plain, site = piece.replace("\\/", "/"), _site_link_re(site_hosts())
-    ends = [found.end(1) for found in _TOKEN_END_RE.finditer(plain)]
+    markers = _OWN_TOKEN_END_RE if _OWN_SIGN_IN_RE.match(plain) else _TOKEN_END_RE
+    ends = [found.end(1) for found in markers.finditer(plain)]
     end = max(ends + ([found.end() for found in site.finditer(plain)] if site else []), default=0)
     shift = 0
     for escaped in re.finditer(r"\\/", piece):  # in ``piece`` each "\/" before the end is a character longer
@@ -140,13 +126,37 @@ def _token_end(piece: str) -> int:
     return end + shift
 
 
+def _segments_redacted(link: str) -> str:
+    """``link`` with each token-shaped segment or parameter value replaced (a Forms link keeps its form's id)."""
+    return (_FORM_ID_KEPT_RE if _FORMS_RE.match(link) else _LINK_TOKEN_RE).sub(REDACTED_PLACEHOLDER, link)
+
+
+def _backstopped(link: str) -> str:
+    """``link`` (no personal one) without its token-shaped segments. A gateway's wrapper (also one inside another) is
+    judged by the link it holds, decoded: its own parameters stay as written, so an ordinary link still works."""
+    wrapper = gateways.held(link)
+    if wrapper is None:
+        return _segments_redacted(link)
+    start, end, own, inner = wrapper
+    for _round in range(_DECODE_ROUNDS):
+        if (deeper := gateways.held(inner)) is None:
+            break
+        inner = deeper[3]
+    written = link[start:end]
+    # A token in the link it holds goes as written there, or with all of that link if only decoding shows it ("%2B").
+    if _segments_redacted(inner) != inner:
+        redacted = _segments_redacted(written)
+        written = redacted if redacted != written else REDACTED_PLACEHOLDER
+    return link[:start] + written + link[end:own] + _segments_redacted(link[own:])
+
+
 def _piece(piece: str, link, words) -> list[str]:
     """One link of a run and the text up to the next one."""
     if not is_sensitive_url(piece):
         return [link(piece)]
     end = _token_end(piece)
     # A wrapper holding a personal link (Proofpoint's, or one percent-encoded past the last token in sight) goes whole.
-    if _PROOFPOINT_RE.match(piece.replace("\\/", "/")) or is_sensitive_url(piece[end:]):
+    if gateways.is_proofpoint(piece) or is_sensitive_url(piece[end:]):
         return [LINK_PLACEHOLDER]
     return [LINK_PLACEHOLDER, words(piece[end:])]
 
@@ -167,7 +177,7 @@ def _scrubbed(value, link, words) -> str:
 def scrub_links(value) -> str:
     """``value`` with every personal sign-in link and token-shaped run replaced: any other link loses only a
     token-shaped segment, the text around links (also right after a personal one) every token-shaped run."""
-    return _scrubbed(value, _REDACTED_IN_LINK, _REDACTED_IN_TEXT)
+    return _scrubbed(value, _backstopped, _REDACTED_IN_TEXT)
 
 
 def scrub_personal_links(value) -> str:
