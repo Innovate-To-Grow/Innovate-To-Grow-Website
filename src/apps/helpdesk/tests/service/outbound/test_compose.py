@@ -98,7 +98,8 @@ class SubjectTests(TestCase):
             with self.subTest(subject):
                 self.assertEqual(compose.fill("{subject}", new_ticket(subject=subject)), "Badges")
         self.assertEqual(compose.fill("{subject}", new_ticket(subject="[Faculty] Re: Badges")), "[Faculty] Badges")
-        for subject in ("VB: Badges", "[EXTERNAL EMAIL] Re: Badges", "Re: Badges [I2G-#4, I2G-#5]", "ΠΡΘ: Badges"):
+        for subject in ("VB: Badges", "[EXTERNAL EMAIL] Re: Badges", "Re: Badges [I2G-#4, I2G-#5]", "ΠΡΘ: Badges",
+                        "Re: Badges [I2G-#4 I2G-#5]", "Badges (I2G-#4 and I2G-#5)"):  # fmt: skip
             with self.subTest(subject):
                 self.assertEqual(compose.fill("{subject}", new_ticket(subject=subject)), "Badges")
         for subject in ("Is <> allowed?", "Fill the [ ] box", "R: help with ggplot"):  # the sender's own words

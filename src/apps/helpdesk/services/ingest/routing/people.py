@@ -27,6 +27,8 @@ MAX_REPLY_TO = 10
 _MAILTO_RE = re.compile(r"<\s*mailto:([^>?\s]+)", re.IGNORECASE)
 _LIST_ID_RE = re.compile(r"<\s*([^<>\s]+)\s*>")
 _WORD_RE = re.compile(r"\w+")
+# A name for something of a person's, not the person ("Riley Chen's Office", "Office of Riley Chen").
+_BELONGING_RE = re.compile(r"\w['’]s\b|\b(?:office|team|desk|staff|assistant)\s+of\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -68,7 +70,12 @@ def list_addresses(parsed: ParsedMessage) -> list[str]:
     named = [address for address in seen if list_id and list_id in (address, ".".join(address.split("@", 1)))]
     sent_to = [address for address in dict.fromkeys([parsed.from_address, *replies]) if address in parsed.to]
     label, _, domain = list_id.partition(".")
-    on_domain = [item for item in replies if domain and item.endswith(f"@{domain}") and item.startswith(label)]
+    own_domain = parsed.from_address.partition("@")[2]  # a colleague's or her own address, never a list host
+    on_domain = [
+        item
+        for item in replies
+        if domain and item.endswith(f"@{domain}") and item.startswith(label) and domain != own_domain
+    ]
     return named or sent_to[:1] or [address for address in on_domain if address != parsed.from_address][:1]
 
 
@@ -81,10 +88,13 @@ def _words(name: str) -> list[str]:
 def same_person(name: str, other: str) -> bool:
     """Whether two display names are the same person's, as mail programs show one name differently ("Rhea",
     "Stone, Rhea", "Rhea Stone (Home)" are Rhea Stone): the words of one are among the other's, whatever their case,
-    order and punctuation; a one-word name only as the other's first (an assistant "Kim" is not "Kai Kim")."""
+    order and punctuation; a one-word name only as the other's first (an assistant "Kim" is not "Kai Kim"); a name
+    for something of a person's ("Riley Chen's Office") only as itself."""
     short, long = sorted((_words(name), _words(other)), key=len)
     if not short:
         return False
+    if _BELONGING_RE.search(f"{name} {other}"):
+        return short == long
     return short[0] == long[0] if len(short) == 1 else set(short) <= set(long)
 
 

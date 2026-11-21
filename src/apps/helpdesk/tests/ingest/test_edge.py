@@ -6,6 +6,7 @@ from apps.helpdesk.tests.ingest.test_ingest_rules import Kind, Status
 
 from ...models import Ticket
 from ...services import outbound, tickets
+from ...services.ingest.routing.people import same_person
 from ...services.outbound.replies import last_inbound
 from .. import corpus
 from ..helpers import FakeReader, helpdesk_staff, receive
@@ -81,6 +82,13 @@ class EdgeTests(TestCase):
             raw = corpus.message(sender=writer, message_id=f"<a{number}@x>", subject=f"Re: [{ticket.display_number}]",
                                  headers={**PASS, "Reply-To": aide})  # fmt: skip
             self.assertEqual(receive(raw).pk, ticket.pk)
+
+    def test_a_mailbox_named_after_her_is_not_her(self):
+        for name in ("Riley Chen's Office", "Office of Riley Chen"):
+            with self.subTest(name):
+                self.assertFalse(same_person(name, "Riley Chen") or same_person("Riley Chen", name))
+                self.assertTrue(same_person(name, name))
+        self.assertTrue(same_person("Rhea Stone (Home)", "Rhea Stone"))  # her own, other address
 
     def test_a_token_naming_no_ticket_is_ignored(self):
         ticket = receive(corpus.message(subject="About I2G-#999999"), reader=self.reader)

@@ -32,7 +32,9 @@ _REPLY_PREFIX_RE = re.compile(
 _LIST_TAG_RE = re.compile(r"^\s*(\[[^\]\n]{1,40}\])\s*")
 # A ticket number with the brackets around it, also several in one pair ("(I2G-#1004)", "[I2G-#1004, I2G-#1005]"):
 # a pair the sender wrote ("Is <> allowed?") stays.
-_BRACKETED_TOKENS_RE = re.compile(r"[\[({<]\s*I2G-#\d{1,9}(?:\s*[,;/&]\s*I2G-#\d{1,9})*\s*[\])}>]", re.IGNORECASE)
+_BRACKETED_TOKENS_RE = re.compile(
+    r"[\[({<]\s*I2G-#\d{1,9}(?:(?:\s*[,;/&]\s*|\s+(?:and\s+|or\s+)?)I2G-#\d{1,9})*\s*[\])}>]", re.IGNORECASE
+)
 # Top-level domains a mail client turns a bare host name ("payroll-update.example.com") into a link for.
 _TLDS = (
     "com|net|org|edu|gov|mil|int|info|biz|name|pro|mobi|asia|io|co|me|ai|app|dev|cloud|tech|online|site|store|shop|"

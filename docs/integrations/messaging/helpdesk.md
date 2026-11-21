@@ -351,7 +351,8 @@ module imports a sending API, and that each job checks shadow mode before it sen
    again only for a participant, never for a relay, and for a message that speaks for someone else only as that
    person. Names compare by their words, whatever their case, order and punctuation: one name's words among the
    other's are the same person ("Stone, Rhea", "Rhea Stone (Home)", "Rhea Stone"), a one-word name only as the
-   other's first ("Rhea" is Rhea Stone, an assistant "Kim" is not Kai Kim). Merged tickets are followed. A person's
+   other's first ("Rhea" is Rhea Stone, an assistant "Kim" is not Kai Kim), and a name for something of a person's only
+   as itself ("Riley Chen's Office" and "Office of Riley Chen" are not Riley Chen). Merged tickets are followed. A person's
    message on a waiting or closed ticket moves it with the reason "the requester replied" when it is the
    requester's (from any of their addresses), else "a participant wrote".
 5. **Rules** (`store.py`):
@@ -380,8 +381,9 @@ module imports a sending API, and that each job checks shadow mode before it sen
      keeps the member it belongs to. A mailing list's own address (its List-Post; without one, the address its
      List-Id names, `name@domain` for `<name.domain>` as Mailman, Google Groups, Sympa and LISTSERV write it, else an
      address the list mail is sent To that it comes from or asks replies to, else a Reply-To on the List-Id's domain
-     named like it, `faculty-list@lists.example.edu` for `<faculty.lists.example.edu>`; never a poster's own Reply-To,
-     her other address or a colleague's) is never a participant; list mail speaks for its poster: the sender, or when the list rewrote it (Mailman's munged From,
+     named like it and not on the poster's own domain, `faculty-list@lists.example.edu` for
+     `<faculty.lists.example.edu>`; never a poster's own Reply-To, her other address or a colleague's) is never a
+     participant; list mail speaks for its poster: the sender, or when the list rewrote it (Mailman's munged From,
      Google Groups) X-Original-From, else the Reply-To or Cc address that is not the list.
      Moving list mail or a relayed message to the queue gives the ticket to that person, with their name and member
      (list mail is never taken for the sender's other address),
@@ -559,7 +561,10 @@ saves every column and would overwrite a running scan's lease.
   answer without the ticket's number threads by its conversation only from the requester or someone who never wrote
   on the ticket for someone else; someone who opened a ticket for another person (an assistant's boss) and names a
   new person in Reply-To under its number opens a ticket for that person, and so does a requester who has named two
-  or more other people (her assistants) on other tickets when she names one of them under her own ticket's number;
+  or more other people (her assistants) on other tickets when she names one of them under her own ticket's number,
+  or an address of hers without a name or under another form of it ("O. Exec"): such an answer that Exchange rates
+  spam is filed as spam, and the new ticket's mention says the message "is not from a participant" of the ticket
+  although its sender is that ticket's requester;
   a mailing list that hides its poster
   cannot be answered from the helpdesk, and one whose List-Id names neither an address it uses nor its domain,
   without List-Post, is known only when it sends from or asks replies to the address it was sent To. A form that has

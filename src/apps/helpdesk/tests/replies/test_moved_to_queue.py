@@ -150,19 +150,21 @@ class UnpostedListTests(TestCase):
             parse_cc(listed, ticket)
 
     def test_a_colleague_on_the_list_ids_domain_is_no_list(self):
-        listing = {"List-Id": "Faculty Announce <faculty-announce.example.edu>", "Precedence": "list"}
-        office = "Engineering Office <eng.office@example.edu>"
-        ticket = self.moved(IRA, 7, to=corpus.SITE, listing=listing, **{"Reply-To": office})
+        cases = (("faculty-announce", "eng.office@example.edu"), ("faculty", "faculty.affairs@example.edu"))
+        for number, (label, office) in enumerate(cases, 7):  # also one named like the list, on her own domain
+            with self.subTest(office):
+                listing = {"List-Id": f"Faculty <{label}.example.edu>", "Precedence": "list"}
+                ticket = self.moved(IRA, number, to=corpus.SITE, listing=listing, **{"Reply-To": f"Office <{office}>"})
 
-        self.assertEqual(ticket.messages.get().list_address, "")
-        self.assertEqual(parse_cc("eng.office@example.edu", ticket), ["eng.office@example.edu"])
+                self.assertEqual(ticket.messages.get().list_address, "")
+                self.assertEqual(parse_cc(office, ticket), [office])
 
     def test_a_relayed_persons_address_her_member_never_verified_gives_no_member_link(self):
         eve = Member.objects.create_user(password="x", first_name="Eve", last_name="Member")
         ContactEmail.objects.create(member=eve, email_address="victor@example.net", email_type="other")
         raw = corpus.message(sender="Form <forms@relay.example>", message_id="<rv@x>",
                              headers={"Reply-To": "Victor <victor@example.net>", "Precedence": "bulk"})  # fmt: skip
-        ticket = self.moved(raw, 8, raw=True)
+        ticket = self.moved(raw, 9, raw=True)
 
         self.assertEqual((ticket.requester_email, ticket.requester_member), ("victor@example.net", None))
 
