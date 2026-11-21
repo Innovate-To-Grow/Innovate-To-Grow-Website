@@ -90,7 +90,8 @@ are never sent. Opening a ticket marks it read.
   The same holds for forwarded messages (also one attached base64 or quoted-printable, as Python's email library
   writes it: decoded from its text as it came and shown like a forward; one whose decoded text holds no header is
   counted as not readable), for a saved message attached as a file (`.eml`, shown like a forward as a
-  summary of its headers and text, never kept as a file) and for attached text files (any `text/*` file, or one
+  summary of its headers (its date in the site's time zone, as every time on the page) and text, never kept as a
+  file) and for attached text files (any `text/*` file, or one
   named `.txt`, `.csv`, `.ics`, `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came (a
   calendar or contact file's folded lines are read joined, and a UTF-16 file without a byte order mark is read and
   written back in the byte order it was written in). Saved messages past the limit of five, or that cannot be
@@ -108,7 +109,7 @@ or closed people's tickets; the resolution is cleared), mark as read / unread, m
 confirmation (`MERGE`, `SPAM`), **merge** and **mark as spam** (the confirmation page names the tickets and, for a
 merge, the one they go into). Close and Reopen never touch automated mail, spam or a merged ticket (a merge is
 final: its messages are on the ticket it was merged into, and so is its mail); the message says how many were left
-as they were and why. Cancel and the finished action return to the list as you had it; each ticket an action
+as they were and why (for automated mail and spam, how to move it to the queue). Cancel and the finished action return to the list as you had it; each ticket an action
 changed gets an admin-history line.
 
 **Merging** puts every selected ticket into the oldest one; nothing is deleted. It never goes into automated mail or
@@ -175,9 +176,10 @@ module imports a sending API, and that each job checks shadow mode before it sen
   form suggests only people: no relay, no address that writes for several people (a web form, also after one of
   its nameless submissions joined), no no-reply address; Cc addresses become participants, so their answers
   thread too) from the site's address, subject `Re: <subject> [I2G-#1234]`, with the Mail app's branded reply
-  layout, the requester's own latest message with words of its own quoted in the HTML and the text part (never
-  another sender's, e.g. after a merge, nor an answer that only quotes staff's reply; its date in the site's time
-  zone), and a footer asking to keep the number in the subject. A ticket whose requester is a mailing list (one
+  layout, the requester's own latest message with words of its own (from any of their addresses, a member's
+  registered ones included, which are never offered as a Cc) quoted in the HTML and the text part, one line break
+  for each of its lines (never another sender's, e.g. after a merge, nor an answer that only quotes staff's reply;
+  its date in the site's time zone), and a footer asking to keep the number in the subject. A ticket whose requester is a mailing list (one
   that hid its poster) cannot be answered from the helpdesk: a reply would reach all its members, so write to the
   person from Outlook. Reply-To is the mailbox the requester's mail arrived in when that is not the From address.
   The text is sent as written: only a personal sign-in link pasted into it is removed. In the HTML part its links
@@ -203,7 +205,7 @@ module imports a sending API, and that each job checks shadow mode before it sen
   (a web form's relayed person) gets one; never for automated mail, spam, backfilled mail or a message that must not be answered
   automatically (`shadow.automatic_reply_allowed`, RFC 3834); at most once a day per address and 200 a day in all;
   never to one of the site's own addresses; and `{requester_name}` / `{subject}`, the sender's own words, are filled
-  in without links or bare host names (a staff reply's subject keeps host names: staff read it before sending) (the default text uses neither), `{subject}` (here and in a template) also without ticket numbers (another ticket's `[I2G-#1006]` the sender typed) or `Re:`/`Fwd:` prefixes, as the reply's subject, and "(no subject)" when nothing else is left; an unknown placeholder is refused when the text is saved. It
+  in without links or bare host names (a staff reply's subject keeps host names: staff read it before sending) (the default text uses neither), `{subject}` (here and in a template) also without ticket numbers (another ticket's `[I2G-#1006]` or `(I2G-#1006)` the sender typed, with its brackets), reply and forward prefixes in the languages mail programs write them (`Re:`, `Fwd:`, `AW:`, `WG:`, `RV:`, `回复：`, …) or a mail gateway's tag (`[EXTERNAL]`, `*EXT*`; a list's own tag stays), as the reply's subject, and "(no subject)" when nothing else is left; an unknown placeholder is refused when the text is saved. It
   carries `Auto-Submitted: auto-replied` and `X-Auto-Response-Suppress: All` (Graph sends only the latter), so
   responders do not answer it, and the ticket footer says how to reply.
 - **Checked again when sent.** Each send job re-checks shadow mode, that the ticket was not merged, marked spam or
@@ -322,10 +324,13 @@ module imports a sending API, and that each job checks shadow mode before it sen
    reply to a campaign email instead opens a ticket linked to the campaign); the subject token `[I2G-#1234]`
    (also without brackets) **only from a participant** of that ticket (anyone can type a number): the person the
    message speaks for (a web form's, below) or the sender, so whoever wrote on a ticket or was copied answers it
-   under its number, whatever Reply-To they add (an assistant, a team mailbox, their other address), except a relay
-   (an address that wrote on the ticket for someone under another name, or under another name than it writes under
-   now: a web form) speaking for someone new: a form's next submission under a form ticket's number opens its own
-   ticket, which notes the mention. The requester's own addresses are never a relay. The Graph `conversationId`,
+   under its number, whatever Reply-To they add (an assistant, a team mailbox, their other address), except, for
+   someone new, a sender that wrote for two or more people who are not on that ticket (a web form, also one writing
+   under each submitter's name) or a relay there (an address that wrote on the ticket for someone under another
+   name, or under another name than it writes under now) that is not the requester: a form's next submission under
+   a form ticket's number opens its own ticket, which notes the mention, also under the number of a ticket the
+   form's nameless submission opened (the form is its requester). The requester's own addresses are never a relay
+   there. The Graph `conversationId`,
    again only for a participant, never for a relay, and for a message that speaks for someone else only as that
    person. Names compare by their words, whatever their case, order and punctuation: one name's words among the
    other's are the same person ("Stone, Rhea", "Rhea Stone (Home)", "Rhea Stone"), a one-word name only as the
@@ -357,10 +362,11 @@ module imports a sending API, and that each job checks shadow mode before it sen
      A Reply-To naming the sender's other address under the same name (work and home) is the same person: the ticket
      keeps the member it belongs to. A mailing list's own address (its List-Post; without one, the address its
      List-Id names, `name@domain` for `<name.domain>` as Mailman, Google Groups, Sympa and LISTSERV write it, else an
-     address the list mail is sent To that it comes from or asks replies to; never a poster's own Reply-To) is never
-     a participant; list mail speaks for its poster: the sender, or when the list rewrote it (Mailman's munged From,
+     address the list mail is sent To that it comes from or asks replies to, else a Reply-To on the List-Id's domain;
+     never a poster's own Reply-To elsewhere) is never a participant; list mail speaks for its poster: the sender, or when the list rewrote it (Mailman's munged From,
      Google Groups) X-Original-From, else the Reply-To or Cc address that is not the list.
-     Moving list mail or a relayed message to the queue gives the ticket to that person, with their name and member,
+     Moving list mail or a relayed message to the queue gives the ticket to that person, with their name and member
+     (list mail is never taken for the sender's other address),
      listed as a participant (the timeline says so).
 
 **Ticket numbers** come from the PostgreSQL sequence `helpdesk_ticket_number_seq` (created by `helpdesk/0001`,
@@ -527,13 +533,16 @@ saves every column and would overwrite a running scan's lease.
 - **Whom a message is for is read from its headers**: a web form must name its person in Reply-To (one that writes
   the address only in its text opens a ticket for the form's own address, and a form that never names anyone is
   taken for one person, so its submissions may join one ticket by their shared conversation, and a nameless
-  submission under a form ticket's number joins it, though it is not quoted to the requester); a person writing with
+  submission under a form ticket's number joins it, though it is not quoted to the requester; a form's submission
+  for someone new joins a ticket under its number only while the form has written for fewer than two people off
+  that ticket and is no relay there: its very first submissions); a person writing with
   Reply-To their other address, or who once asked for replies to go to someone else, gets no acknowledgement; an
   answer without the ticket's number threads by its conversation only from the requester or someone who never wrote
   on the ticket for someone else; someone who opened a ticket for another person (an assistant's boss) and names a
   new person in Reply-To under its number opens a ticket for that person; a mailing list that hides its poster
-  cannot be answered from the helpdesk, and one whose List-Id names no address it uses, without List-Post, is known
-  only when it sends from or asks replies to the address it was sent To. A form that has written for one person
+  cannot be answered from the helpdesk, and one whose List-Id names neither an address it uses nor its domain,
+  without List-Post, is known only when it sends from or asks replies to the address it was sent To. A form that has
+  written for one person
   only is not yet known to write for several, so after its first nameless submission joined that person's ticket
   it is offered as a Cc there. When the requester is a Reply-To person (an assistant's boss, a team mailbox, a
   nameless other address), a reply quotes their own latest message, not a later one the opener wrote without

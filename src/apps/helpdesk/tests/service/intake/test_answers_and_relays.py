@@ -8,8 +8,9 @@
   participant; it gets no acknowledgement (a Reply-To is not authenticated) and a staff reply goes to the person. From
   a no-reply address it is a person's message too, never answered automatically;
 - under a form ticket's number (anyone can type one into the form) a submission for someone new opens their own ticket
-  (Exchange-rated spam stays spam), and one that names nobody is no requester's answer: the form, which writes for
-  several people, is never offered as a Cc."""
+  (Exchange-rated spam stays spam), also under the number of a ticket the form's nameless submission opened (the form
+  is its requester), and one that names nobody is no requester's answer: the form, which writes for several people,
+  is never offered as a Cc."""
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -128,6 +129,23 @@ class RelayTests(TestCase):
         self.assertEqual(self.under_number(pat, 4, "Pat Requester <pat.requester@example.org>").pk, pat.pk)
         pat.refresh_from_db()
         self.assertNotIn("steve@example.net", pat.participants)
+
+    def test_under_a_nameless_submissions_number_one_for_someone_opens_their_own(self):
+        self.relayed(reply_to="Quinn Other <quinn@example.org>", message_id="<form-7@x>")
+        self.relayed(message_id="<form-8@x>")  # the form writes for two people
+        nameless = self.relayed(reply_to="", message_id="<form-9@x>")
+        site, wp = "wordpress@site.example", {"message_id": "<wp-9@x>"}
+        self.relayed(sender=f"Zed Alpha <{site}>", reply_to="Zed Alpha <zed@x.org>", message_id="<wp-7@x>")
+        self.relayed(sender=f"Yan Beta <{site}>", reply_to="Yan Beta <yan@x.org>", message_id="<wp-8@x>")
+        cf7 = self.relayed(sender=f"Wordpress <{site}>", reply_to="", **wp)  # writing under each one's name
+
+        steve = self.under_number(nameless, 7, "Steve Stranger <steve@example.net>")
+        spam = self.under_number(nameless, 8, "Mal Payne <mal@example.net>", **{"X-MS-Exchange-Organization-SCL": "6"})
+        named = self.under_number(cf7, 9, "Steve S <steve@example.net>", sender=f"Steve S <{site}>")
+
+        self.assertEqual((nameless.requester_email, cf7.requester_email), ("forms@relay.example", site))
+        self.assertEqual(len({nameless.pk, cf7.pk, steve.pk, spam.pk, named.pk}), 5)
+        self.assertEqual((steve.requester_email, spam.status), ("steve@example.net", Status.SPAM))
 
     def test_a_nameless_submission_under_the_number_is_no_requesters_answer(self):
         pat, agent = self.relayed(), helpdesk_staff()

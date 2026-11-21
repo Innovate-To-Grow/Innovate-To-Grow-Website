@@ -7,9 +7,10 @@ Tried in order; the first that finds a ticket wins:
 2. The subject token ``[I2G-#1234]`` (also without brackets), only from a participant of that ticket: anyone can
    type a number, so a stranger's mention opens a new ticket that notes it. The participant is the person the
    message speaks for (``people``) or its sender: someone who answers under the ticket's number wrote on it before,
-   or was copied, whatever Reply-To they add (an assistant, a team mailbox, their other address). A relay (below)
-   that is not the requester counts only for itself: a web form's submission for someone new never joins a ticket
-   the form opened, as anyone can type that ticket's number into the form.
+   or was copied, whatever Reply-To they add (an assistant, a team mailbox, their other address). For someone new,
+   a sender that wrote for two or more people who are not on the ticket (a web form) never counts, nor a relay
+   (below) that is not the requester: a form's submission for someone new never joins a ticket the form opened
+   (also one its nameless submission opened, whose requester is the form), as anyone can type that number into it.
 3. Microsoft Graph's ``conversationId``, again only for a participant: a fallback, as Microsoft can change it when an
    outsider replies, and every reply to one blast may share it (one form's submissions share one subject). So a relay
    is no participant here: an address that wrote on the ticket for someone under another name (a web form), or that
@@ -114,13 +115,25 @@ def _relays(ticket: Ticket, sender: str, sender_name: str) -> set[str]:
     return found
 
 
+def _writes_for_others(address: str, participants: set[str]) -> bool:
+    """Whether ``address`` wrote for two or more people who are not on the ticket, under any names: a web form (also
+    one writing under each submitter's name), never a requester who named her office or home, nor a person who once
+    named an assistant."""
+    spoke = TicketMessage.objects.filter(kind__in=TicketMessage.INBOUND_KINDS, from_address__iexact=address)
+    others = spoke.exclude(on_behalf_of="").exclude(on_behalf_of__in=participants)
+    return others.order_by().values("on_behalf_of").distinct()[:2].count() > 1
+
+
 def _answers(ticket: Ticket, person: str, sender: str, name: str) -> bool:
     """Whether a message under ``ticket``'s number is from someone on it: the person it speaks for, or its sender,
-    unless the sender is a relay there speaking for someone new (a form's next submitter, not the requester)."""
+    unless it speaks for someone new and the sender writes for other people or is a relay there (a form's next
+    submitter), not the requester."""
     participants = participants_of(ticket)
     if person in participants:
         return True
-    return sender in participants and (sender in requesters_of(ticket) or sender not in _relays(ticket, sender, name))
+    if sender not in participants or _writes_for_others(sender, participants):
+        return False
+    return sender in requesters_of(ticket) or sender not in _relays(ticket, sender, name)
 
 
 def _by_token(numbers: list[int], person: str, sender: str, name: str) -> tuple[Ticket | None, list[int]]:

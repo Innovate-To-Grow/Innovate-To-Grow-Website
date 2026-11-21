@@ -90,6 +90,14 @@ class SubjectTests(TestCase):
 
         self.assertEqual(compose.fill("{subject}", between), "Badges for Friday")
         self.assertEqual(compose.fill("{subject}", nothing), "(no subject)")
+        for subject in (
+            "Fwd: [I2G-#5] Re: Badges (I2G-#4)",
+            "[EXTERNAL] AW: WG: Badges {I2G-#7}",
+            "回复：Badges [ I2G-#4 ]",
+        ):
+            with self.subTest(subject):
+                self.assertEqual(compose.fill("{subject}", new_ticket(subject=subject)), "Badges")
+        self.assertEqual(compose.fill("{subject}", new_ticket(subject="[Faculty] Badges")), "[Faculty] Badges")
         self.assertEqual(
             compose.notice_subject(nothing, "Assigned to you"),
             f"[{nothing.display_number}] Assigned to you: (no subject)",

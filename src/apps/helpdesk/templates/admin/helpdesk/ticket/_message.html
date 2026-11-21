@@ -44,12 +44,12 @@
 {% if message.body_truncated %}
   <p class="i2g-helpdesk-muted">This message was cut off here (it was larger than the import limits); the original is in Outlook.</p>
 {% endif %}
-{% for attached in message.attached_messages %}
+{% for attached in message.attached_list %}
   {% if attached.omitted %}
   <p class="i2g-helpdesk-muted">{{ attached.omitted }} more attached message{{ attached.omitted|pluralize }} {{ attached.omitted|pluralize:"is,are" }} not shown (more than five, or not readable); the original is in Outlook.</p>
   {% else %}
   <details class="i2g-helpdesk-attached">
-    <summary>Attached message: {{ attached.subject|default:"(no subject)" }}{% if attached.from %} — from {{ attached.from }}{% endif %}{% if attached.date %} — {{ attached.date }}{% endif %}</summary>
+    <summary>Attached message: {{ attached.subject|default:"(no subject)" }}{% if attached.from %} — from {{ attached.from }}{% endif %}{% if attached.sent %} — {{ attached.sent|date:"M j, Y H:i" }}{% elif attached.date %} — {{ attached.date }}{% endif %}</summary>
     {% if attached.text %}<pre class="i2g-helpdesk-text">{{ attached.text }}</pre>{% else %}<p class="i2g-helpdesk-muted">Its text is not stored.</p>{% endif %}
   </details>
   {% endif %}

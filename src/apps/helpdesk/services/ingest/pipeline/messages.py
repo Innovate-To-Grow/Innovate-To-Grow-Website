@@ -91,8 +91,8 @@ def _add_message(ticket, row, parsed, classified, settings, fingerprint, own=fro
 def _reason(ticket: Ticket, message: TicketMessage) -> str:
     """Why a person's message moved the ticket: its requester answered (from any of their addresses), or someone
     else on it wrote (a colleague copied, a web form's nameless submission)."""
-    member = message.from_address.lower() in requesters_of(ticket)
-    return "the requester replied" if member or theirs(message, ticket, aliases(ticket)) else "a participant wrote"
+    theirs_now = theirs(message, ticket, aliases(ticket), requesters_of(ticket))
+    return "the requester replied" if theirs_now else "a participant wrote"
 
 
 def _joined(ticket: Ticket, message: TicketMessage, classified: Classified, rule: str, own) -> None:

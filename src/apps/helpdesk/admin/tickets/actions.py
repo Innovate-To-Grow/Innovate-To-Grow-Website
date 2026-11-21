@@ -92,6 +92,8 @@ class TicketActionsMixin:
         chosen, started = list(queryset), timezone.now()
         count = tickets.close(chosen, actor=request.user)
         why = "only resolved tickets are closed here; resolve the others first (they need a resolution code)."
+        if any(ticket.is_automated_or_spam or ticket.status == Ticket.Status.MERGED for ticket in chosen):
+            why += f' Automated mail and spam go back with "{tickets.MOVE_TO_QUEUE}"; a merged ticket stays as it is.'
         self._done(request, count, "closed", len(chosen) - count, why)
         self._log(request, chosen, started, "Closed (bulk action).")
 

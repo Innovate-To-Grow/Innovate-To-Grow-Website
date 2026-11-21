@@ -115,7 +115,8 @@ class MergeIsFinalAdminTests(_MergedCase):
             [str(message) for message in get_messages(closed.wsgi_request)],
             [
                 "0 tickets closed. 1 left as it was: only resolved tickets are closed here; resolve the others first "
-                "(they need a resolution code)."
+                '(they need a resolution code). Automated mail and spam go back with "Not automated: move to the '
+                'queue"; a merged ticket stays as it is.'
             ],
         )
         self.assertEqual(

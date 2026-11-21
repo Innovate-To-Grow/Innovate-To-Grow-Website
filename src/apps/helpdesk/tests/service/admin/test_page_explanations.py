@@ -1,6 +1,6 @@
 """What the ticket page explains: why Exchange's own rating made mail spam or bulk mail (with the threshold now on
-Settings), Exchange's mark for mail from inside the organisation, why a backfilled ticket has no SLA, and the archive
-warning's two choices, set apart."""
+Settings), Exchange's mark for mail from inside the organisation, why a backfilled ticket has no SLA, the archive
+warning's two choices, set apart, and an attached message's date in the page's own format."""
 
 from datetime import timedelta
 
@@ -54,6 +54,19 @@ class ExchangeRatingTests(PageCase):
             with self.subTest(ticket.subject):
                 self.assertNotContains(self.page(ticket), "Why: Exchange")
         self.assertEqual((listed.classification, low.automated), ("bulk", False))
+
+    def test_an_attached_messages_date_is_shown_in_the_sites_time_like_the_page(self):
+        ticket = new_ticket(status=Status.OPEN)
+        attached = [{"from": "Portal <noreply@i2g.example>", "subject": "Your link", "text": "Hello", "date": date}
+                    for date in ("Sat, 21 Nov 2026 01:56:54 +0000", "the day after tomorrow")]  # fmt: skip
+        TicketMessage.objects.create(
+            ticket=ticket, kind=TicketMessage.Kind.CUSTOMER, occurred_at=timezone.now(), attached_messages=attached
+        )
+
+        response = self.page(ticket)
+
+        self.assertContains(response, "from Portal &lt;noreply@i2g.example&gt; — Nov 20, 2026 17:56</summary>")
+        self.assertContains(response, "— the day after tomorrow</summary>")  # not a date: shown as written
 
     def test_the_authentication_line_shows_exchanges_internal_mark(self):
         ticket = new_ticket(status=Status.OPEN)

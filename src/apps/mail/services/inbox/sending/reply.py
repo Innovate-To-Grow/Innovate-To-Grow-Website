@@ -83,7 +83,9 @@ def render_reply_html(body_text, original_from="", original_date="", quoted_text
     from django.template.loader import render_to_string
 
     body_html = _linkified(str(body_text or "")).replace("\n", "<br>\n")
-    safe_quoted = escape(quoted_text).replace("\n", "<br>\n") if quoted_text else ""
+    # The quote sits in a "white-space: pre-wrap" block, so a line break there is one <br> (Outlook ignores pre-wrap).
+    quoted = str(quoted_text or "").replace("\r\n", "\n").replace("\r", "\n")
+    safe_quoted = escape(quoted).replace("\n", "<br>") if quoted else ""
 
     return render_to_string(
         "mail/email/reply_wrapper.html",

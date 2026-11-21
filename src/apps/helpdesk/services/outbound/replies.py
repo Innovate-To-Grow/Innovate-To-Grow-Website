@@ -22,6 +22,7 @@ from apps.core.utils.security import is_plain_address
 
 from ...models import HelpdeskSettings, IntakeState, Ticket, TicketEvent, TicketMessage
 from ..ingest.pipeline.messages import MAX_PARTICIPANTS
+from ..ingest.routing.matching import requesters_of
 from ..ingest.routing.scam import own_words
 from ..tickets import events, shadow
 from ..tickets.scrub import scrub_sign_in_links
@@ -106,14 +107,14 @@ def last_inbound(ticket: Ticket) -> TicketMessage | None:
     (staff's own reply) is passed over."""
     if not ticket.requester_email:
         return None
-    other = aliases(ticket)
+    other, member = aliases(ticket), requesters_of(ticket)
     wanted = Q(on_behalf_of__iexact=ticket.requester_email) | Q(from_address__iexact=ticket.requester_email)
-    for address in other:
+    for address in {*other, *member}:
         wanted |= Q(from_address__iexact=address)
     found = TicketMessage.objects.filter(wanted, ticket=ticket, kind=Kind.CUSTOMER).order_by(
         "-occurred_at", "-created_at"
     )
-    candidates = [message for message in found[:20] if theirs(message, ticket, other)]
+    candidates = [message for message in found[:20] if theirs(message, ticket, other, member)]
     said = (message for message in candidates if own_words(message.body_text, message.body_html).strip())
     return next(said, candidates[0] if candidates else None)
 

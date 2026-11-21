@@ -4,6 +4,7 @@ copies (a relay that wrote for someone else, a no-reply address, a mailing list:
 from apps.core.services.email.inbound.classification.rules import NOREPLY_RE
 
 from ...models import Ticket, TicketMessage
+from ..ingest.routing.matching import requesters_of
 from ..ingest.routing.people import same_person
 
 INBOUND = TicketMessage.INBOUND_KINDS
@@ -28,16 +29,18 @@ def aliases(ticket: Ticket) -> dict[str, str]:
 
 
 def requester_addresses(ticket: Ticket) -> set[str]:
-    return {ticket.requester_email.lower(), *aliases(ticket)}
+    """The requester's addresses: theirs, every address of the member the ticket belongs to, and ``aliases``."""
+    return requesters_of(ticket) | set(aliases(ticket))
 
 
-def theirs(message: TicketMessage, ticket: Ticket, other: dict[str, str]) -> bool:
-    """Whether ``message`` is the requester's: from their address, written for them, or from another address of
-    theirs (``other``: ``aliases``) only under their name: a form writing for several people under each one's."""
+def theirs(message: TicketMessage, ticket: Ticket, other: dict[str, str], member=frozenset()) -> bool:
+    """Whether ``message`` is the requester's: from their address or one of their member's (``member``:
+    ``matching.requesters_of``), written for them, or from another address of theirs (``other``: ``aliases``) only
+    under their name: a form writing for several people under each one's."""
     address = message.from_address.lower()
     if address == ticket.requester_email.lower() or message.on_behalf_of.lower() == ticket.requester_email.lower():
         return True
-    return address in other and same_person(message.from_name, other[address])
+    return address in member or (address in other and same_person(message.from_name, other[address]))
 
 
 def writes_for_others(address: str) -> bool:

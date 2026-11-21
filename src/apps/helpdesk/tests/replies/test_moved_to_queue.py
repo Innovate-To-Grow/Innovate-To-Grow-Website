@@ -15,7 +15,7 @@ from apps.authn.models import ContactEmail, Member
 
 from ...models import Ticket, TicketMessage
 from ...services import outbound, tickets
-from ...services.outbound.replies import last_inbound, parse_cc
+from ...services.outbound.replies import ReplyRefused, last_inbound, parse_cc
 from ...services.tickets import events
 from .. import corpus
 from ..helpers import helpdesk_staff, receive
@@ -27,6 +27,7 @@ Kind = TicketMessage.Kind
 ANNOUNCE = "faculty-announce@lists.example.edu"
 UNPOSTED = {"List-Id": "Faculty Announce <faculty-announce.lists.example.edu>", "Precedence": "list"}
 GROUP = "faculty-ann@googlegroups.example"
+LIST_ON_DOMAIN = "faculty-list@lists.example.edu"
 IRA = "Ira Moss <ira.moss@example.edu>"
 
 
@@ -136,6 +137,15 @@ class UnpostedListTests(TestCase):
                     (ticket.messages.get().list_address, outbound.can_reply(ticket, self.settings)), (listed, "")
                 )
                 self.assertNotIn(listed, ticket.participants)
+
+    def test_a_reply_to_on_the_list_ids_domain_is_the_list_when_the_list_id_names_no_address(self):
+        listing, listed = {"List-Id": "Faculty <faculty.lists.example.edu>", "Precedence": "list"}, LIST_ON_DOMAIN
+        ticket = self.moved(IRA, 6, to=corpus.SITE, listing=listing, **{"Reply-To": listed})  # personal delivery
+
+        self.assertEqual((ticket.requester_email, ticket.messages.get().list_address), ("ira.moss@example.edu", listed))
+        self.assertNotIn(listed, ticket.participants)
+        with self.assertRaisesMessage(ReplyRefused, f"{listed} is a mailing list"):
+            parse_cc(listed, ticket)
 
     def test_a_posters_own_other_address_in_reply_to_is_no_list(self):
         ticket = self.moved(IRA, 5, **{"Reply-To": "Ira Moss <ira.home@home.example>"})

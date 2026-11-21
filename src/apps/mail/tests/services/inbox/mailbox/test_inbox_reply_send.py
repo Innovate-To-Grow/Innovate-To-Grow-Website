@@ -85,6 +85,12 @@ class ReplyRenderTests(TestCase):
             with self.subTest(body):
                 self.assertIn(expected, render_reply_html(body))
 
+    def test_each_line_of_the_quote_breaks_once(self):
+        # The quote is shown "white-space: pre-wrap": a <br> and a line break both would break the line twice.
+        html = render_reply_html("Thanks", quoted_text="Hello,\r\n\r\nour team\nThanks,\nQuinn")
+
+        self.assertIn("Hello,<br><br>our team<br>Thanks,<br>Quinn</div>", html)
+
     def test_the_text_around_a_link_is_escaped(self):
         html = render_reply_html('<b>Hi</b> & "you" https://example.org/a?b=1&c=<2>')
 

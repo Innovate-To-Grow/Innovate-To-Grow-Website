@@ -105,6 +105,12 @@ def _opening(ticket: Ticket) -> TicketMessage | None:
     return ticket.messages.filter(kind__in=TicketMessage.INBOUND_KINDS).order_by("occurred_at", "created_at").first()
 
 
+def _alias(opening: TicketMessage, name: str) -> bool:
+    """Whether the opening message spoke for the sender's other address under their name: never list mail, whose
+    sender is the list's address ("Ira Moss via Faculty")."""
+    return not opening.list_address and same_person(opening.from_name, name)
+
+
 def _relayed(ticket: Ticket) -> dict:
     """The requester once ``ticket`` is a person's: whom its opening message spoke for instead of its sender (a web
     form's person, a list's poster, or the sender's other address under their name: judged at intake by
@@ -114,7 +120,7 @@ def _relayed(ticket: Ticket) -> dict:
     if not address or not is_plain_address(address) or address == ticket.requester_email.lower():
         return {}
     contact = ContactEmail.objects.filter(email_address__iexact=address, member__isnull=False).first()
-    alias = same_person(opening.from_name, opening.on_behalf_name)  # the same person: the member stays theirs
+    alias = _alias(opening, opening.on_behalf_name)  # the same person: the member stays theirs
     member = getattr(contact, "member", None) or (ticket.requester_member if alias else None)
     return {"requester_email": address, "requester_name": opening.on_behalf_name, "requester_member": member}
 
@@ -178,7 +184,7 @@ def move_to_queue(tickets, *, actor) -> int:
             )
             moved = {"from": current.classification, "to": "human"}
             if relayed:
-                alias = same_person(_opening(current).from_name, relayed["requester_name"])
+                alias = _alias(_opening(current), relayed["requester_name"])
                 moved.update(requester=relayed["requester_email"], **({"alias": True} if alias else {}))
             events.record(current, Kind.RECLASSIFIED, actor=actor, **moved)
         count += 1

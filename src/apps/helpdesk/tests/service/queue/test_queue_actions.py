@@ -10,6 +10,7 @@ from django.contrib import messages
 from django.contrib.messages import get_messages
 
 from ....models import AssignmentGroup, Ticket
+from ....services.tickets import MOVE_TO_QUEUE
 from ...helpers import make_admin
 from ...helpers.service import Status, new_ticket
 from .support import QueueCase, history
@@ -108,7 +109,11 @@ class CloseAndReopenTests(QueueCase):
         response = self.act("close_tickets", self.resolved, self.open, self.automated)
 
         why = "only resolved tickets are closed here; resolve the others first (they need a resolution code)."
-        self.assertEqual(self.messages(response), [f"1 ticket closed. 2 left as they were: {why}"])
+        moved = f' Automated mail and spam go back with "{MOVE_TO_QUEUE}"; a merged ticket stays as it is.'
+        self.assertEqual(self.messages(response), [f"1 ticket closed. 2 left as they were: {why}{moved}"])
+        self.assertEqual(
+            self.messages(self.act("close_tickets", self.open)), [f"0 tickets closed. 1 left as it was: {why}"]
+        )
         self.assertEqual(
             current(self.resolved, self.open, self.automated),
             [(Status.CLOSED, "solved"), (Status.OPEN, ""), (Status.RESOLVED, "solved")],

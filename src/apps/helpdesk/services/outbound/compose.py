@@ -20,7 +20,15 @@ from ...models import Ticket
 from ..tickets import numbering
 
 QUOTE_MAX_CHARS = 4000
-_REPLY_PREFIX_RE = re.compile(r"^\s*((re|fw|fwd|aw|sv|antw)\s*:\s*)+", re.IGNORECASE)
+# Reply and forward prefixes in the languages mail programs write them ("AW:", "WG:", "RV:", "回复："), and the tags a
+# mail gateway puts in front ("[EXTERNAL]", "*EXT*"); a list's own tag ("[Faculty]") stays.
+_REPLY_PREFIX_RE = re.compile(
+    r"^\s*(?:(?:(?:re|fwd?|aw|wg|sv|vs|antw|odp|ynt|res|enc|rv|tr|回复|答复|转发)\s*(?:\[\d{1,3}\])?\s*[:：]"
+    r"|\[\s*(?:external|ext|external sender|caution)\s*\]|\*{1,2}\s*(?:external|ext)\s*\*{1,2})\s*)+",
+    re.IGNORECASE,
+)
+# A pair of brackets nothing is left in once ticket numbers are gone ("(I2G-#1004)", "[ I2G-#1004 ]").
+_EMPTY_BRACKETS_RE = re.compile(r"\[\s*\]|\(\s*\)|\{\s*\}|<\s*>")
 # Top-level domains a mail client turns a bare host name ("payroll-update.example.com") into a link for.
 _TLDS = (
     "com|net|org|edu|gov|mil|int|info|biz|name|pro|mobi|asia|io|co|me|ai|app|dev|cloud|tech|online|site|store|shop|"
@@ -84,7 +92,8 @@ def clean_subject(ticket: Ticket, *, strict: bool = False) -> str:
     """The ticket's subject as every email about it names it (the reply's and the notice's subject, ``{subject}``):
     without links (``without_links``), ticket numbers (another ticket's "[I2G-#1006]" its sender named is not this
     ticket's) and reply prefixes ("Re:", "Fwd:"); "" when nothing else is left."""
-    subject = numbering.TOKEN_RE.sub("", without_links(ticket.subject, strict=strict)).replace("[]", "")
+    subject = numbering.TOKEN_RE.sub("", without_links(ticket.subject, strict=strict))
+    subject = _EMPTY_BRACKETS_RE.sub("", subject)
     return " ".join(_REPLY_PREFIX_RE.sub("", subject).split())
 
 

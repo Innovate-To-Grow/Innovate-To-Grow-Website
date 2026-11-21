@@ -11,6 +11,9 @@ Attachments are stored in the database too (``content``), except blocked file ty
 anything of a message cut off at the read limit, which keep only their metadata and the reason.
 """
 
+from datetime import UTC
+from email.utils import parsedate_to_datetime
+
 from django.conf import settings
 from django.db import models
 
@@ -99,6 +102,19 @@ class TicketMessage(ProjectControlModel):
 
     def __str__(self):
         return f"{self.get_kind_display()} on {self.ticket_id}"
+
+    @property
+    def attached_list(self) -> list[dict]:
+        """The attached messages to show, each with its Date header read as a time (``sent``, shown like every other
+        time on the page), or None when it cannot be read (then the header is shown as written)."""
+        shown = []
+        for item in self.attached_messages or []:
+            try:
+                sent = parsedate_to_datetime(str(item.get("date") or "")) if item.get("date") else None
+            except (TypeError, ValueError, IndexError, OverflowError):
+                sent = None
+            shown.append({**item, "sent": sent.replace(tzinfo=sent.tzinfo or UTC) if sent else None})
+        return shown
 
     @property
     def scam_reasons(self) -> list[str]:

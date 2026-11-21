@@ -185,6 +185,10 @@ class AliasTests(TestCase):
         self.assertEqual(answer(self.ticket, "Dana M <dana@lab.example>").pk, self.ticket.pk)
         moved = self.ticket.events.filter(kind="status").last()
         self.assertEqual(moved.data["reason"], "the requester replied")
+        self.ticket.refresh_from_db()
+        self.assertIn("dana@lab.example", self.ticket.participants)
+        self.assertEqual(last_inbound(self.ticket).from_address, "dana@lab.example")  # quoted, never a Cc
+        self.assertNotIn("dana@lab.example", outbound.cc_suggestions(self.ticket))
 
     def test_an_answer_that_only_quotes_is_never_quoted_back(self):
         quoted = "On Wed, Nov 11, 2026 at 10:00 AM Innovate to Grow wrote:\n> Hello Dana, yes: the room is booked."

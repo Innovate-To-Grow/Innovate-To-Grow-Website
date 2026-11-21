@@ -132,6 +132,7 @@ class ListTests(TestCase):
                 self.assertNotIn(LIST, ticket.participants)
                 self.assertIn("ira.moss@example.edu", ticket.participants)
                 self.assertEqual(outbound.can_reply(ticket, self.settings), "")
+                self.assertNotIn("alias", ticket.events.get(kind=TicketEvent.Kind.RECLASSIFIED).data)  # the list's
 
     def test_a_list_asking_for_replies_to_itself_leaves_the_poster_the_requester(self):
         unposted = {"List-Id": LIST_HEADERS["List-Id"], "Precedence": "list"}  # no List-Post: its Reply-To is the list

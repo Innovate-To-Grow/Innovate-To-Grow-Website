@@ -56,7 +56,8 @@ def list_addresses(parsed: ParsedMessage) -> list[str]:
     """The mailing list's own addresses (List-Post's mailto, in the header's order). A list that gives none (an
     announcement list, "List-Post: NO") is known by its List-Id (``name.domain`` for ``name@domain``: Mailman, Google
     Groups, Sympa, LISTSERV), else by an address it is sent To that it comes from (the list rewrote its poster) or
-    asks replies to; never a poster's own Reply-To (her other address)."""
+    asks replies to, else by a Reply-To on the List-Id's domain (``<faculty.lists.example.edu>`` for
+    ``faculty-list@lists.example.edu``); never a poster's own Reply-To elsewhere (her other address)."""
     found = _MAILTO_RE.findall(headers.joined(parsed.headers, "list-post"))
     lists = list(dict.fromkeys(address.strip().lower() for address in found if "@" in address))
     if lists or not _list_mail(parsed):
@@ -65,7 +66,10 @@ def list_addresses(parsed: ParsedMessage) -> list[str]:
     seen = list(dict.fromkeys([parsed.from_address, *parsed.to, *parsed.cc, *replies]))
     list_id = _list_id(parsed)
     named = [address for address in seen if list_id and list_id in (address, ".".join(address.split("@", 1)))]
-    return named or [address for address in dict.fromkeys([parsed.from_address, *replies]) if address in parsed.to][:1]
+    sent_to = [address for address in dict.fromkeys([parsed.from_address, *replies]) if address in parsed.to]
+    domain = list_id.partition(".")[2]
+    on_domain = [address for address in replies if domain and address.endswith(f"@{domain}")]
+    return named or sent_to[:1] or [address for address in on_domain if address != parsed.from_address][:1]
 
 
 def _words(name: str) -> list[str]:
