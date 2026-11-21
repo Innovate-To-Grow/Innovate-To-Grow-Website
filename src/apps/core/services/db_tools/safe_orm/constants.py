@@ -47,9 +47,12 @@ DENIED_MODEL_LABELS = {
     # mail content, the people who wrote it, staff decisions on it, and the intake's checkpoint and lease (a write
     # would skip or re-import mail). Staff work them in Helpdesk (its own app grant).
     "core.inboundmessage",
+    "helpdesk.assignmentgroup",
     "helpdesk.helpdesksettings",
     "helpdesk.ingestrecord",
     "helpdesk.intakestate",
+    "helpdesk.responsetemplate",
+    "helpdesk.slatarget",
     "helpdesk.ticket",
     "helpdesk.ticketattachment",
     "helpdesk.ticketcategory",

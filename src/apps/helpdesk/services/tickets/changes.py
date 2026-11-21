@@ -1,18 +1,36 @@
-"""What staff change on a ticket: status, assignee, notes, read state, spam, and moving it back to the queue."""
+"""What staff change on a ticket's fields (``update_ticket``), and the rules every change path shares: the assignee is
+a member of the assignment group (``membership_problem``), and reopening clears the resolution."""
 
 from django.db import transaction
-from django.db.models import Q
 from django.utils import timezone
 
-from apps.core.services.email.inbound import scrub_links
 from apps.core.utils.access import user_can_access_app
 
-from ...models import Ticket, TicketEvent, TicketMessage
+from ...models import Ticket, TicketEvent
+from .. import sla
+from ..sla.priority import priority_for
 from . import events
 
 Status = Ticket.Status
 Kind = TicketEvent.Kind
-NOTE_MAX_CHARS = 20000
+DONE = (Status.RESOLVED, Status.CLOSED)
+# The editable fields, in the order a change is reported.
+FIELDS = (
+    "status",
+    "impact",
+    "urgency",
+    "priority",
+    "category",
+    "assignment_group",
+    "assignee",
+    "resolution_code",
+    "resolution_notes",
+)
+RESOLUTION_NOTES_MAX_CHARS = 20000
+
+
+class AssignmentRefused(ValueError):
+    """The assignee is not a member of the ticket's assignment group (the message says so)."""
 
 
 def _name(member) -> str:
@@ -29,6 +47,26 @@ def helpdesk_staff():
     return [member for member in members if user_can_access_app(member, "helpdesk")]
 
 
+def eligible_members(group) -> list:
+    """The group's members who may hold its tickets: active staff who still have the Helpdesk app."""
+    return [
+        member
+        for member in group.members.all()
+        if member.is_active and member.is_staff and user_can_access_app(member, "helpdesk")
+    ]
+
+
+def membership_problem(group, assignee) -> str:
+    """Why ``assignee`` cannot hold a ticket of ``group`` ("" when they can): a group with members who may work
+    tickets has its tickets assigned within them (one whose members all lost the Helpdesk app is open to all staff)."""
+    if group is None or assignee is None:
+        return ""
+    eligible = {member.pk for member in eligible_members(group)}
+    if eligible and assignee.pk not in eligible:
+        return f"{assignee} is not a member of {group}."
+    return ""
+
+
 def _status_values(ticket: Ticket, status: str, now) -> dict:
     values = {"status": status}
     if status in Ticket.CLOSED_STATUSES:
@@ -40,98 +78,93 @@ def _status_values(ticket: Ticket, status: str, now) -> dict:
     return values
 
 
-def update_ticket(ticket: Ticket, *, actor, **changes) -> list[str]:
-    """Apply staff's changes to status, priority, category and assignee; the names of the fields that changed.
+def reopen_values(ticket: Ticket, status: str) -> dict:
+    """Reopening a resolved or closed ticket clears its resolution: resolving it again asks for a new code."""
+    if ticket.status not in DONE or status not in Ticket.OPEN_STATUSES:
+        return {}
+    return {field: "" for field in ("resolution_code", "resolution_notes") if getattr(ticket, field)}
+
+
+def _field_values(current: Ticket, changes: dict) -> dict:
+    values = {}
+    for field in ("impact", "urgency", "category", "assignment_group", "assignee", "resolution_code"):
+        if field in changes and changes[field] != getattr(current, field):
+            values[field] = changes[field]
+    if "resolution_notes" in changes:
+        notes = str(changes["resolution_notes"] or "").replace("\x00", "").replace("\r\n", "\n").strip()
+        if notes[:RESOLUTION_NOTES_MAX_CHARS] != current.resolution_notes:
+            values["resolution_notes"] = notes[:RESOLUTION_NOTES_MAX_CHARS]
+    if "impact" in values or "urgency" in values:
+        computed = priority_for(values.get("impact", current.impact), values.get("urgency", current.urgency))
+        if computed != current.priority:
+            values["priority"] = computed
+    elif "priority" in changes and changes["priority"] != current.priority:
+        values["priority"] = changes["priority"]
+    category = values.get("category")
+    if category is not None and not current.assignment_group_id and "assignment_group" not in values:
+        # The category's assignment rule routes a ticket that has no group yet, to an active group its assignee
+        # (if any) belongs to.
+        default = category.default_group
+        if default is not None and default.is_active:
+            if not membership_problem(default, values.get("assignee", current.assignee)):
+                values["assignment_group"] = default
+    return values
+
+
+def update_ticket(ticket: Ticket, *, actor, first_response: bool = True, reason: str = "", **changes) -> list[str]:
+    """Apply staff's changes (``FIELDS``); the names of the fields that changed, in ``FIELDS`` order.
+
+    Impact and urgency set the priority (``sla.priority``); a priority given directly (the services' own callers) is
+    kept as given. A category with a default group assigns that group to a ticket without one. An assignee outside
+    the ticket's group raises ``AssignmentRefused`` before anything changes. The SLA clock follows: a new priority sets
+    new due times, leaving New is the first response (unless ``first_response`` is False: a reply's own status change
+    waits for the reply to be sent), and a move into or out of a waiting status stops or starts the resolution clock
+    (``sla``); a breach a change brings to light is recorded. Reopening clears the resolution. Assigning someone else
+    (or a group with nobody in it) notifies them when sending is on (``outbound.notifications``).
 
     A merge is final, and only ``merge`` makes one: a merged ticket keeps its status, and no ticket is set to merged
-    here. Either change would leave ``merged_into`` out of step with the status: an empty ticket back in the queue
-    whose mail still goes to the ticket it was merged into, or a ticket "merged" into nothing. It is ignored.
+    here. Either change would leave ``merged_into`` out of step with the status. It is ignored.
     """
     now = timezone.now()
-    values, changed = {}, []
     with transaction.atomic():
         current = Ticket.objects.select_for_update().get(pk=ticket.pk)
+        values = _field_values(current, changes)
+        if {"assignment_group", "assignee"} & set(values):
+            group = values.get("assignment_group", current.assignment_group)
+            problem = membership_problem(group, values.get("assignee", current.assignee))
+            if problem:
+                raise AssignmentRefused(problem)
         status = changes.get("status", current.status)
-        if status != current.status and Status.MERGED not in (status, current.status):
+        status_changed = status != current.status and Status.MERGED not in (status, current.status)
+        if status_changed:
+            data = {"from": current.status, "to": status, **({"reason": reason} if reason else {})}
+            events.record(current, Kind.STATUS, actor=actor, **data)
+            reopened = reopen_values(current, status)
+            values.update(reopened)
+        events.record_changes(current, values, actor=actor, name=_name, reopened=bool(status_changed and reopened))
+        if status_changed:
             values.update(_status_values(current, status, now))
-            events.record(current, Kind.STATUS, actor=actor, **{"from": current.status, "to": status})
-        if "priority" in changes and changes["priority"] != current.priority:
-            values["priority"] = changes["priority"]
-            events.record(current, Kind.PRIORITY, actor=actor, **{"from": current.priority, "to": changes["priority"]})
-        if "category" in changes and changes["category"] != current.category:
-            values["category"] = changes["category"]
-            labels = {"from": str(current.category or ""), "to": str(changes["category"] or "")}
-            events.record(current, Kind.CATEGORY, actor=actor, **labels)
-        if "assignee" in changes and changes["assignee"] != current.assignee:
-            values["assignee"] = changes["assignee"]
-            labels = {"from": _name(current.assignee), "to": _name(changes["assignee"])}
-            events.record(current, Kind.ASSIGNED, actor=actor, **labels)
-        if values:
-            changed = [key for key in ("status", "priority", "category", "assignee") if key in values]
-            Ticket.objects.filter(pk=current.pk).update(**values, updated_at=now)
-    return changed
+        clock_status = status if status_changed else None
+        sla_values, responded = sla.update_values(current, values, clock_status, now, respond=first_response)
+        if responded:
+            events.record(current, Kind.RESPONDED, actor=actor, by="status")
+        for which in ("response", "resolution"):
+            # A breach the change brings to light, or one a new priority's target no longer has (both on record).
+            before, after = getattr(current, f"{which}_breached"), sla_values.get(f"{which}_breached")
+            if after and not before:
+                events.record(current, Kind.SLA_BREACHED, which=which)
+            elif after is False and before:
+                events.record(current, Kind.SLA_BREACHED, actor=actor, which=which, cleared=True)
+        changed = [field for field in FIELDS if field in values]
+        if values or sla_values:
+            Ticket.objects.filter(pk=current.pk).update(**values, **sla_values, updated_at=now)
+        if "assignee" in values or "assignment_group" in values:
+            from ..outbound import notifications
 
-
-def add_note(ticket: Ticket, *, actor, body: str) -> TicketMessage:
-    """An internal note (never sent; personal sign-in links pasted into it are scrubbed like inbound mail)."""
-    now = timezone.now()
-    with transaction.atomic():
-        note = TicketMessage.objects.create(
-            ticket=ticket,
-            kind=TicketMessage.Kind.NOTE,
-            author=actor,
-            from_name=_name(actor)[:255],
-            occurred_at=now,
-            # NUL cannot be stored in PostgreSQL text; a pasted one is dropped rather than failing the save.
-            body_text=scrub_links(body.replace("\x00", "").strip())[:NOTE_MAX_CHARS],
-        )
-        events.record(ticket, Kind.NOTE, actor=actor)
-        Ticket.objects.filter(pk=ticket.pk).update(last_activity_at=now, updated_at=now)
-    return note
-
-
-def mark_read(tickets) -> int:
-    return Ticket.objects.filter(pk__in=[ticket.pk for ticket in tickets], unread=True).update(unread=False)
-
-
-def set_status(tickets, status: str, *, actor) -> int:
-    return sum(1 for ticket in tickets if update_ticket(ticket, actor=actor, status=status))
-
-
-def assign(tickets, assignee, *, actor) -> int:
-    return sum(1 for ticket in tickets if update_ticket(ticket, actor=actor, assignee=assignee))
-
-
-def mark_spam(tickets, *, actor) -> int:
-    count = 0
-    for ticket in tickets:
-        if ticket.status in (Status.SPAM, Status.MERGED):
-            continue
-        # ``update_ticket`` judges the locked row again: a ticket merged (or marked spam) meanwhile is left alone.
-        if "status" in update_ticket(ticket, actor=actor, status=Status.SPAM):
-            events.record(ticket, Kind.SPAM, actor=actor)
-            count += 1
-    return count
-
-
-def move_to_queue(tickets, *, actor) -> int:
-    """Automated (or spam) tickets the classifier got wrong become normal open, unread tickets. A merged one stays as
-    it is: its messages are on the ticket it was merged into, so it would only be an empty ticket in the queue. The
-    update checks the row itself, so a ticket merged (or moved) since the list was shown is left alone."""
-    now = timezone.now()
-    count = 0
-    for ticket in tickets:
-        if not ticket.is_automated_or_spam or ticket.status == Status.MERGED:
-            continue
-        with transaction.atomic():
-            moved = (
-                Ticket.objects.filter(Q(automated=True) | Q(status=Status.SPAM), pk=ticket.pk)
-                .exclude(status=Status.MERGED)
-                .update(
-                    automated=False, status=Status.OPEN, closed_at=None, resolved_at=None, unread=True, updated_at=now
-                )
+            notifications.assignment_changed(
+                current,
+                actor=actor,
+                assignee_changed="assignee" in values,
+                group_changed="assignment_group" in values,
             )
-            if moved:
-                events.record(ticket, Kind.RECLASSIFIED, actor=actor, **{"from": ticket.classification, "to": "human"})
-        count += moved
-    return count
+    return changed

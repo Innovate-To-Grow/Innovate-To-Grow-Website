@@ -61,7 +61,9 @@ class PersonTests(TestCase):
 
     def test_the_requester_is_linked_to_the_member_who_owns_the_address(self):
         member = Member.objects.create_user(password="x", first_name="Pat", last_name="Doe")
-        ContactEmail.objects.create(member=member, email_address="Pat@Example.org", email_type="secondary")
+        ContactEmail.objects.create(
+            member=member, email_address="Pat@Example.org", email_type="secondary", verified=True
+        )
 
         self.assertEqual(receive(corpus.message()).requester_member, member)
 
@@ -79,12 +81,13 @@ class PersonTests(TestCase):
 
         self.assertTrue(old.backfilled)
 
-    def test_a_high_scam_score_makes_it_spam_and_a_medium_one_suspicious(self):
-        with patch("apps.helpdesk.services.ingest.routing.classify.analyze_email", return_value={"risk_level": "high"}):
+    def test_a_high_scam_score_makes_unauthenticated_mail_spam_and_a_medium_one_suspicious(self):
+        # corpus.message carries no Authentication-Results; with a DMARC or compauth pass a high score on the words
+        # alone gives a suspicious person's ticket instead (tests/service/intake/test_scam_verdict.py).
+        findings = "apps.helpdesk.services.ingest.routing.scam.findings"
+        with patch(findings, return_value=([(7, "Scored high")], [])):
             spam = receive(corpus.message(message_id="<s1@example.org>"))
-        with patch(
-            "apps.helpdesk.services.ingest.routing.classify.analyze_email", return_value={"risk_level": "medium"}
-        ):
+        with patch(findings, return_value=([(3, "Scored medium")], [])):
             suspicious = receive(corpus.message(message_id="<s2@example.org>", sender="other@example.org"))
 
         self.assertEqual((spam.status, spam.automated, spam.classification), (Status.SPAM, True, "spam"))

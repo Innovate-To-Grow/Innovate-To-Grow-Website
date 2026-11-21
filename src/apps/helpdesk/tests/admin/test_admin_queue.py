@@ -104,9 +104,10 @@ class ListTests(QueueTestCase):
 
     def test_automated_mail_and_spam_are_shown_on_request(self):
         self.assertEqual(self.listed(mail="automated"), {"Automatic reply: hi", "Win a prize"})
-        self.assertEqual(self.listed(mail="automated", status="open"), set())
+        self.assertEqual(self.listed(mail="automated", status="active"), set())
         self.assertEqual(len(self.listed(mail="all")), 5)
-        self.assertEqual(self.listed(mail="all", status="open"), {"Open question", "New question"})
+        self.assertEqual(self.listed(mail="all", status="active"), {"Open question", "New question"})
+        self.assertEqual(self.listed(mail="all", status="open"), {"Open question"})  # "open" is In progress only
 
     def test_status_filters(self):
         self.assertEqual(self.listed(status="closed"), {"Closed question"})
@@ -141,7 +142,7 @@ class ListTests(QueueTestCase):
         mail = {choice["display"]: choice["selected"] for choice in filters["mail"]}
         status = {choice["display"]: choice["selected"] for choice in filters["status"]}
         self.assertTrue(mail["People (default)"])
-        self.assertTrue(status["Open (new, open, pending)"])
+        self.assertTrue(status["Open (new, in progress, on hold)"])
 
 
 class _ActionCase(QueueTestCase):
@@ -160,20 +161,17 @@ class ActionTests(_ActionCase):
     def test_everyday_actions_run_at_once(self):
         self.act("assign_to_me", self.open, self.new)
         self.act("mark_read", self.open)
-        self.act("close_tickets", self.new)
-        self.act("reopen_tickets", self.new, self.automated)
+        self.act("close_tickets", self.new)  # only resolved tickets are closed: a new one needs a resolution code
+        self.act("reopen_tickets", self.closed, self.automated)
         self.act("unassign", self.open)
 
-        self.open.refresh_from_db()
-        self.new.refresh_from_db()
-        self.automated.refresh_from_db()
+        for item in (self.open, self.new, self.closed, self.automated):
+            item.refresh_from_db()
         self.assertEqual((self.open.assignee, self.open.unread), (None, False))
-        self.assertEqual((self.new.status, self.new.assignee), (Status.OPEN, self.agent))
+        self.assertEqual((self.new.status, self.new.assignee), (Status.NEW, self.agent))
+        self.assertEqual(self.closed.status, Status.OPEN)
         self.assertEqual(self.automated.status, Status.CLOSED)  # automated mail is moved, never reopened
-        self.assertEqual(
-            list(self.new.events.values_list("kind", flat=True)),
-            [TicketEvent.Kind.ASSIGNED, TicketEvent.Kind.STATUS, TicketEvent.Kind.STATUS],
-        )
+        self.assertEqual(list(self.new.events.values_list("kind", flat=True)), [TicketEvent.Kind.ASSIGNED])
 
 
 class SidebarTests(TestCase):
@@ -186,7 +184,10 @@ class SidebarTests(TestCase):
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/"), ["Queue"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?assignee=me"), ["My Tickets"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?assignee=none"), ["Unassigned"])
+        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?group=mine"), ["My Groups"])
+        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?sla=breached"), ["SLA Breached"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?mail=automated&status=any"), ["Automated & Spam"])
+        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?mail=all&status=any"), ["Queue"])
         self.assertEqual(self.active_items("/admin/helpdesk/ingestrecord/"), [])
 
     def test_the_section_needs_the_helpdesk_grant(self):

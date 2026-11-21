@@ -13,7 +13,7 @@ allow-scripts or allow-same-origin here. The admin CSP (inherited by srcdoc docu
     {% include "admin/helpdesk/ticket/_shadow_banner.html" %}
   {% endif %}
 
-  <h2 class="i2g-helpdesk-heading">Timeline</h2>
+  <h2 class="i2g-helpdesk-heading" id="helpdesk-timeline">Timeline</h2>
   <ol class="i2g-helpdesk-timeline">
     {% for entry in helpdesk_timeline %}
       {% if entry.kind == "event" %}
@@ -29,7 +29,25 @@ allow-scripts or allow-same-origin here. The admin CSP (inherited by srcdoc docu
             <span>{{ entry.actor|default:"(former staff member)" }}</span>
             <time datetime="{{ entry.at|date:'c' }}">{{ entry.at|date:"M j, Y H:i" }}</time>
           </header>
-          <div class="i2g-helpdesk-text">{{ entry.message.body_text|linebreaksbr }}</div>
+          {% if entry.message.body_purged_at %}<p class="i2g-helpdesk-muted">The text was removed by retention on {{ entry.message.body_purged_at|date:"M j, Y" }}.</p>{% else %}<div class="i2g-helpdesk-text">{{ entry.message.body_text|linebreaksbr }}</div>{% endif %}
+        </li>
+      {% elif entry.kind == "reply" %}
+        <li class="i2g-helpdesk-card i2g-helpdesk-reply">
+          <header class="i2g-helpdesk-card-head">
+            <span class="material-symbols-outlined" aria-hidden="true">{% if entry.message.automatic %}mark_email_read{% else %}reply{% endif %}</span>
+            <strong>{% if entry.message.automatic %}Acknowledgement (automatic){% else %}Reply to requester{% endif %}</strong>
+            {% if not entry.message.automatic %}<span>{{ entry.actor|default:"(former staff member)" }}</span>{% endif %}
+            <span class="i2g-helpdesk-delivery is-{{ entry.message.delivery_status|default:'none' }}">{{ entry.message.get_delivery_status_display }}</span>
+            <time datetime="{{ entry.at|date:'c' }}">{{ entry.at|date:"M j, Y H:i" }}</time>
+          </header>
+          <dl class="i2g-helpdesk-meta">
+            <dt>To</dt><dd>{{ entry.message.to_addresses|join:", " }}</dd>
+            {% if entry.message.cc_addresses %}<dt>Cc</dt><dd>{{ entry.message.cc_addresses|join:", " }}</dd>{% endif %}
+            <dt>Subject</dt><dd>{{ entry.message.subject }}</dd>
+            {% if entry.message.delivered_at %}<dt>Sent</dt><dd>{{ entry.message.delivered_at|date:"M j, Y H:i" }}</dd>{% endif %}
+          </dl>
+          {% if entry.message.delivery_error %}<p class="i2g-helpdesk-warning" role="note"><span class="material-symbols-outlined" aria-hidden="true">error</span>{{ entry.message.delivery_error }}</p>{% endif %}
+          {% if entry.message.body_purged_at %}<p class="i2g-helpdesk-muted">The text was removed by retention on {{ entry.message.body_purged_at|date:"M j, Y" }}.</p>{% else %}<div class="i2g-helpdesk-text">{{ entry.message.body_text|linebreaksbr }}</div>{% endif %}
         </li>
       {% else %}
         <li class="i2g-helpdesk-card{% if entry.kind == 'automated' %} is-automated{% endif %}">
@@ -59,14 +77,75 @@ allow-scripts or allow-same-origin here. The admin CSP (inherited by srcdoc docu
     {% endfor %}
   </ol>
 
+  {% if helpdesk_reply_url %}
+    <section id="helpdesk-reply" class="i2g-helpdesk-note-form i2g-helpdesk-reply-form" aria-label="Reply to the requester">
+      <h3 class="i2g-helpdesk-heading">Reply to the requester</h3>
+      {% if helpdesk_reply_templates %}
+        {{ helpdesk_reply_templates|json_script:"helpdesk-reply-templates" }}
+        <form method="get" action="#helpdesk-reply" class="i2g-helpdesk-template-picker" id="helpdesk-reply-picker">
+          <label for="helpdesk-reply-template">Response template</label>
+          <select id="helpdesk-reply-template" name="template">
+            <option value="">— none —</option>
+            {% for template in helpdesk_reply_templates %}
+              <option value="{{ template.id }}"{% if helpdesk_reply_template and template.id == helpdesk_reply_template.id %} selected{% endif %}>{{ template.name }}{% if template.category %} ({{ template.category }}){% endif %}</option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="i2g-helpdesk-button is-secondary">Insert</button>
+        </form>
+      {% endif %}
+      <form method="post" action="{{ helpdesk_reply_url }}">
+        {% csrf_token %}
+        {% if helpdesk_reply_error %}<p class="i2g-helpdesk-warning" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>Not sent: {{ helpdesk_reply_error }}</p>{% endif %}
+        <dl class="i2g-helpdesk-meta">
+          <dt>To</dt><dd>{{ helpdesk_reply_to }}</dd>
+          <dt>Subject</dt><dd>{{ helpdesk_reply_subject }}</dd>
+        </dl>
+        <label for="helpdesk-reply-cc">Cc <span class="i2g-helpdesk-muted">(optional, comma-separated)</span></label>
+        <input id="helpdesk-reply-cc" name="cc" type="text" maxlength="1000" list="helpdesk-reply-cc-list" autocomplete="off" value="{{ helpdesk_reply_cc }}">
+        {% if helpdesk_reply_cc_suggestions %}
+          <datalist id="helpdesk-reply-cc-list">{% for address in helpdesk_reply_cc_suggestions %}<option value="{{ address }}">{% endfor %}</datalist>
+          <p class="i2g-helpdesk-muted">Also on this ticket: {{ helpdesk_reply_cc_suggestions|join:", " }}</p>
+        {% endif %}
+        <label for="helpdesk-reply-body"><strong>Message</strong></label>
+        <textarea id="helpdesk-reply-body" name="body" rows="8" maxlength="{{ helpdesk_reply_max }}" required>{{ helpdesk_reply_body }}</textarea>
+        <label for="helpdesk-reply-status">Then set the status to</label>
+        <select id="helpdesk-reply-status" name="status">
+          {% for value, label in helpdesk_reply_statuses %}<option value="{{ value }}"{% if value == helpdesk_reply_status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+        <p class="i2g-helpdesk-muted">
+          Sent by email from the helpdesk mailbox with the ticket number in the subject, so the requester's answer
+          returns to this ticket. The requester's own latest message is quoted below it.
+        </p>
+        <button type="submit" class="i2g-helpdesk-button">
+          <span class="material-symbols-outlined" aria-hidden="true">send</span>Send reply
+        </button>
+      </form>
+    </section>
+  {% elif helpdesk_reply_refusal %}
+    <section id="helpdesk-reply" class="i2g-helpdesk-reply-form" aria-label="Reply to the requester">
+      {% if not helpdesk_shadow_mode %}<p class="i2g-helpdesk-muted">{{ helpdesk_reply_refusal }}</p>{% endif %}
+      {% if helpdesk_reply_body %}
+        <p class="i2g-helpdesk-warning" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>Your reply was not sent: {{ helpdesk_reply_refusal }} Its text is below to copy.</p>
+        {% if helpdesk_reply_cc %}<p class="i2g-helpdesk-muted">Cc: {{ helpdesk_reply_cc }}</p>{% endif %}
+        <textarea readonly rows="6" aria-label="The reply that was not sent">{{ helpdesk_reply_body }}</textarea>
+      {% endif %}
+    </section>
+  {% endif %}
+  {{ helpdesk_form_data|json_script:"helpdesk-form-data" }}
+
+  {% if original.status == "merged" %}
+    <p class="i2g-helpdesk-muted" id="helpdesk-note">This ticket was merged and is read-only: work on
+      {% if original.merged_into %}<a href="{% url 'admin:helpdesk_ticket_change' original.merged_into.pk %}">{{ original.merged_into.display_number }}</a>{% else %}the ticket it was merged into{% endif %}.</p>
+  {% else %}
   <form id="helpdesk-note" method="post" action="{{ helpdesk_note_url }}" class="i2g-helpdesk-note-form">
     {% csrf_token %}
-    <label for="helpdesk-note-body"><strong>Add an internal note</strong></label>
+    <label for="helpdesk-note-body"><strong>Add an internal note</strong> <span class="i2g-helpdesk-muted">(work note)</span></label>
     <textarea id="helpdesk-note-body" name="body" rows="4" maxlength="20000" required></textarea>
     <p class="i2g-helpdesk-muted">Seen only by staff with the Helpdesk app; never sent to anyone.</p>
     <button type="submit" class="i2g-helpdesk-button">
       <span class="material-symbols-outlined" aria-hidden="true">add_comment</span>Add note
     </button>
   </form>
+  {% endif %}
 </section>
 {% endif %}

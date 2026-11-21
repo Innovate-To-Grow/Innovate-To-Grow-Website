@@ -1,8 +1,8 @@
 """The helpdesk's admin-editable settings (one row; ``load()`` returns the defaults while none is saved).
 
 Every limit and retention period is a field with a documented default (docs/integrations/messaging/helpdesk.md), so staff
-with the Helpdesk grant can tune them without a deploy. ``shadow_mode`` is on and stays on in this release: the
-helpdesk has no sending code at all (no replies, acknowledgements or notifications, and no change to the mailbox).
+with the Helpdesk grant can tune them without a deploy. ``shadow_mode`` is on by default: nothing is sent (no replies,
+acknowledgements or notifications) until an I2G Master switches it off here; the mailbox is only ever read.
 """
 
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -17,6 +17,14 @@ DEFAULT_BLOCKED_EXTENSIONS = (
 )
 DEFAULT_WARN_EXTENSIONS = "zip 7z rar gz tgz tar bz2 xz cab arj"
 _SINGLETON = "helpdesk"
+# Only {ticket}: the requester's name and subject are the sender's own words, and an acknowledgement goes to an
+# address nobody verified (services.outbound.acknowledgement). The email's footer says how to reply.
+DEFAULT_ACKNOWLEDGEMENT = (
+    "Hello,\n\n"
+    "Thank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. "
+    "A member of our team will get back to you soon.\n\n"
+    "Innovate to Grow, UC Merced"
+)
 
 
 def _bounded(low: int, high: int) -> list:
@@ -33,8 +41,41 @@ class HelpdeskSettings(ProjectControlModel):
     )
     shadow_mode = models.BooleanField(
         default=True,
-        help_text="Nothing is ever sent: no replies, acknowledgements or notifications, and the mailbox is only read. "
-        "This release has no sending code, so shadow mode cannot be switched off yet.",
+        help_text="On: nothing is ever sent (no replies, acknowledgements or notifications); staff answer from Outlook. "
+        "Off: staff can reply to the requester from the ticket page, and the acknowledgement and notifications "
+        "below are sent when they are switched on. The mailbox is only ever read either way.",
+    )
+    send_acknowledgement = models.BooleanField(
+        default=False,
+        db_default=False,
+        help_text="Email the requester when their message opens a new ticket: only when its sender passed DMARC, never "
+        "for automated mail, spam, backfilled mail, or a message that asks for no automatic reply; at most one per "
+        "address a day and 200 a day in all. Needs shadow mode off. Only an I2G Master can change it.",
+    )
+    acknowledgement_text = models.TextField(
+        default=DEFAULT_ACKNOWLEDGEMENT,
+        db_default=DEFAULT_ACKNOWLEDGEMENT,
+        help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link "
+        "removed). Only an I2G Master can change it.",
+    )
+    notify_assignment = models.BooleanField(
+        default=True,
+        db_default=True,
+        help_text="Email staff when a ticket is assigned to them (or to their group, with nobody in it) by someone "
+        "else. Needs shadow mode off.",
+    )
+    auto_close_resolved_days = models.PositiveSmallIntegerField(
+        default=7,
+        db_default=7,
+        validators=_bounded(0, 365),
+        help_text="Resolved tickets close by themselves after this many days without a reply (0: never). A reply "
+        "before then reopens the ticket.",
+    )
+    sla_warning_percent = models.PositiveSmallIntegerField(
+        default=75,
+        db_default=75,
+        validators=_bounded(1, 99),
+        help_text="A running SLA is shown as at risk once this share of its time is used.",
     )
     pause_while_campaign_sending = models.BooleanField(
         default=True,

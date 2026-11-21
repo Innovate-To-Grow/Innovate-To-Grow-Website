@@ -25,6 +25,16 @@ class TicketEvent(ProjectControlModel):
         RELATED = "related", "Related ticket"
         FLOOD = "flood", "Grouped (many messages from one sender)"
         MENTION = "mention", "Mentions another ticket"
+        IMPACT = "impact", "Impact changed"
+        URGENCY = "urgency", "Urgency changed"
+        GROUP = "group", "Assignment group changed"
+        RESOLUTION = "resolution", "Resolution recorded"
+        REPLY = "reply", "Reply sent to the requester"
+        REPLY_FAILED = "reply_failed", "Reply could not be sent"
+        ACKNOWLEDGED = "acknowledged", "Acknowledgement sent"
+        NOTIFIED = "notified", "Staff notified"
+        RESPONDED = "responded", "First response"
+        SLA_BREACHED = "sla_breached", "SLA breached"
 
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="events")
     actor = models.ForeignKey(

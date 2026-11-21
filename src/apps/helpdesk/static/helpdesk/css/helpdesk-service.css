@@ -1,0 +1,197 @@
+/* Helpdesk admin, ServiceNow-style working: SLA clocks on the ticket page, replies on the timeline (with their
+ * delivery state), the reply form and its template picker (Unfold light and dark themes). Every state carries its
+ * label; color is never the only signal. */
+
+.i2g-helpdesk-sla,
+.i2g-helpdesk-delivery {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0 0.5rem;
+  background: rgb(243 244 246);
+  color: rgb(55 65 81);
+}
+
+.i2g-helpdesk-sla.is-met,
+.i2g-helpdesk-delivery.is-sent {
+  background: rgb(220 252 231);
+  color: rgb(22 101 52);
+}
+
+.i2g-helpdesk-sla.is-at-risk,
+.i2g-helpdesk-delivery.is-queued,
+.i2g-helpdesk-delivery.is-uncertain {
+  background: rgb(254 243 199);
+  color: rgb(120 53 15);
+}
+
+.i2g-helpdesk-sla.is-breached,
+.i2g-helpdesk-delivery.is-failed {
+  background: rgb(254 226 226);
+  color: rgb(153 27 27);
+}
+
+.i2g-helpdesk-reply {
+  border-color: rgb(147 197 253);
+  background: rgb(239 246 255);
+}
+
+.i2g-helpdesk-reply-form input[type="text"],
+.i2g-helpdesk-reply-form select,
+.i2g-helpdesk-template-picker select {
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  background: transparent;
+  color: inherit;
+}
+
+.i2g-helpdesk-reply-form form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.i2g-helpdesk-reply-form textarea {
+  width: 100%;
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  background: transparent;
+  color: inherit;
+}
+
+.i2g-helpdesk-reply-form form.i2g-helpdesk-template-picker {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.i2g-helpdesk-reply-form textarea[readonly] {
+  opacity: 0.85;
+}
+
+.i2g-helpdesk-reasons {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.i2g-helpdesk-assign-me {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+/* The queue: the subject keeps a readable width; the sticky save bar never hides the field in focus. */
+#result_list td.field-subject_column,
+#result_list th.column-subject_column {
+  min-width: 16rem;
+}
+
+#result_list td.field-number_column,
+#result_list td.field-sla_column {
+  white-space: nowrap;
+}
+
+html {
+  scroll-padding-bottom: 6rem;
+}
+
+/* The queue's "Resolve…" action page. */
+.i2g-helpdesk-resolve {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 48rem;
+}
+
+.i2g-helpdesk-resolve-list {
+  list-style: disc;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+}
+
+.i2g-helpdesk-resolve-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.i2g-helpdesk-resolve-field select,
+.i2g-helpdesk-resolve-field textarea {
+  border: 1px solid rgb(209 213 219);
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.5rem;
+  background: transparent;
+  color: inherit;
+}
+
+.i2g-helpdesk-resolve-buttons {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.i2g-helpdesk-button.is-secondary {
+  background: rgb(229 231 235);
+  color: rgb(31 41 55);
+  padding: 0.375rem 0.75rem;
+}
+
+.dark .i2g-helpdesk-sla,
+.dark .i2g-helpdesk-delivery {
+  background: rgb(55 65 81);
+  color: rgb(229 231 235);
+}
+
+.dark .i2g-helpdesk-sla.is-met,
+.dark .i2g-helpdesk-delivery.is-sent {
+  background: rgb(20 83 45);
+  color: rgb(187 247 208);
+}
+
+.dark .i2g-helpdesk-sla.is-at-risk,
+.dark .i2g-helpdesk-delivery.is-queued,
+.dark .i2g-helpdesk-delivery.is-uncertain {
+  background: rgb(120 53 15);
+  color: rgb(253 230 138);
+}
+
+.dark .i2g-helpdesk-sla.is-breached,
+.dark .i2g-helpdesk-delivery.is-failed {
+  background: rgb(127 29 29);
+  color: rgb(254 202 202);
+}
+
+.dark .i2g-helpdesk-reply {
+  border-color: rgb(30 64 175);
+  background: rgb(23 37 84);
+}
+
+.dark .i2g-helpdesk-button.is-secondary {
+  background: rgb(55 65 81);
+  color: rgb(229 231 235);
+}
+
+/* The floating action bar of the queue never covers its last row; the number never wraps (it is the row's th). */
+#changelist-form {
+  padding-bottom: 6rem;
+}
+
+#result_list th.field-number_column {
+  white-space: nowrap;
+}
+
+/* Insert is a secondary button (the theme styles every submit button as primary, with an id in its selector). */
+#helpdesk-reply-picker .i2g-helpdesk-button.is-secondary {
+  background: rgb(229 231 235);
+  color: rgb(31 41 55);
+}
+
+.dark #helpdesk-reply-picker .i2g-helpdesk-button.is-secondary {
+  background: rgb(55 65 81);
+  color: rgb(229 231 235);
+}

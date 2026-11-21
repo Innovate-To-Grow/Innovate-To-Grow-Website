@@ -1,4 +1,4 @@
-# Helpdesk (tickets from the i2g@ mailbox), shadow mode
+# Helpdesk (tickets from the i2g@ mailbox), a ServiceNow-style service desk
 
 Every message that reaches the Inbox of the site's Microsoft Graph mailbox (`i2g@ucmerced.edu`) becomes a
 ticket in the Django admin (**Helpdesk** section), or joins the ticket of its conversation. Automated mail
@@ -7,45 +7,119 @@ spam, the site's own mail) also becomes a ticket, but one that is closed at once
 never notifies anyone and never reopens. A person's answer to the site's own mail stays a person's, even when it
 was sent from a CRM or marketing tool.
 
-The helpdesk ships in **shadow mode**: it reads the mailbox and writes tickets, and **sends nothing**. There is no
-reply composer, no acknowledgement and no notification, and nothing in Outlook changes (no mail is marked read,
-moved, flagged or forwarded). Staff keep answering from Outlook. The design and the open questions are in the
-Item 2 plan (`item2-helpdesk-bounces-plan-2026-11-10.md`, §2, kept with the project notes, not in this
-repository), which predates two decisions recorded here: automated mail *is* a ticket (closed and hidden), and
-only phase H1 plus merge and spam from H2 is built.
+Tickets are worked the way ServiceNow works incidents ([Working tickets](#working-tickets-servicenow-style)):
+impact × urgency gives the priority, a ticket has an **assignment group** and an **assignee**, an **SLA** clock
+gives its first-response and resolution due times, and resolving it records a **resolution code** and notes.
+Resolved tickets close by themselves after 7 days.
+
+The helpdesk still starts in **shadow mode**: it reads the mailbox and writes tickets, and **sends nothing**. Shadow
+mode is a switch in Helpdesk → Settings. Off, staff **reply to the requester from the ticket page** (ServiceNow's
+"additional comments"; internal notes stay the "work notes"), and the **acknowledgement** of a new ticket and the
+**assignment notifications** are sent when their own switches are on ([Replies and notifications](#replies-and-notifications)).
+Either way nothing in Outlook changes (no mail is marked read, moved, flagged or forwarded). The design and the open
+questions are in the Item 2 plan (`item2-helpdesk-bounces-plan-2026-11-10.md`, §2, kept with the project notes, not in
+this repository), which predates the decisions recorded here: automated mail *is* a ticket (closed and hidden), and
+the H2 phase is built as described below (replies, acknowledgement, notifications, SLA, response templates).
 
 ## For staff
 
 | Sidebar entry | What it shows |
 |---|---|
-| **Queue** | People's open tickets (new, open, pending), most recent activity first. A dot marks an unread customer message. |
-| **My Tickets** / **Unassigned** | The same list, assigned to you / to nobody. |
-| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** when a person's message landed here. A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
-| **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry**. |
-| **Categories**, **Settings** | Ticket categories; the helpdesk's limits, retention periods and switches, under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
+| **Queue** | People's open tickets (new, in progress, on hold), most recent activity first. A dot marks an unread customer message. |
+| **My Tickets** / **My Groups** / **Unassigned** | The same list, assigned to you / to an assignment group you are a member of / to nobody. |
+| **SLA Breached** | Tickets whose first response or resolution is overdue (flagged, or past due and not flagged yet). |
+| **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** (here, or beside **Save** on the ticket's page) when a person's message landed here: it becomes a person's unread ticket, classified as a person's, New when nobody answered it yet (else In progress), its requester's messages shown as theirs (quoted under a reply; one the scam checks made spam is flagged suspicious instead; their automatic replies stay automated) and, for list mail or a web form, the person who wrote it as requester (a form's person, a list's poster); moved from its page, it counts as read (you are looking at it; on a page opened before someone else moved it, the button says "… was moved to the queue already (by <name>); your changes were saved." and the page's edits are saved), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
+| **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry** and **Dismiss (handled)**: a message that can never be imported (deleted in Outlook first) leaves the default view with an admin-history line, keeps its status and error, and stays under the **Dismissed** and **Everything** filters until retention; Retry clears the dismissal. Retry writes an admin-history line for each message it queued again ("Retried: queued again for import.", plus "Its dismissal was cleared." when it had one); both actions say why they left the other selected rows as they were. The **Classification** filter names classifications as the list does ("Automatic reply", "Human (or uncertain)"). |
+| **Categories**, **Assignment Groups**, **SLA Targets**, **Response Templates** | Ticket categories (each may name a default group); the teams that work tickets; the response and resolution targets per priority (only an I2G Master changes them); canned replies. One that tickets still use is switched off, not deleted (its delete page lists what uses it). |
+| **Settings** | The helpdesk's limits, retention periods and switches (shadow mode, acknowledgement and notifications: only an I2G Master changes those; auto-close), under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
 
-The list filters (**Mail**: people / automated & spam / everything; **Status**; **Assignee**; **Unread**; priority;
-category) and the search (a number such as `1234` or `I2G-#1234`, the subject, or the requester's address or
-name) narrow the queue.
+The list filters (**Mail**: people / automated & spam / everything; **Status**: open (new, in progress, on hold) /
+resolved & closed / one status / any; **Assignee**; **Assignment group**: my groups / no group / one group, an
+inactive group too while tickets have it; **SLA**: breached / at risk (past `sla_warning_percent` of its own span, as
+the column reads it) / no
+SLA; **Unread**; priority; category) and the search (the subject, or the requester's address or name) narrow the
+queue. A ticket **number** typed in the search (`1234` or `I2G-#1234`) finds that ticket whatever the filters (a
+closed or automated one too), listed first. The **SLA** column shows a breach of either clock first (flagged, or
+overdue and not flagged yet; it stays shown after a late response), else the clock that matters now: the first response until it is met, then the resolution
+(due time, "At risk" in words, paused with the time left, or met). Priority sorts by severity, Status by the
+ticket's life cycle, SLA as it reads (breaches first, then running clocks by due time, then paused clocks, then
+tickets done or without a clock); a ticket number searched stays first under any column sort.
 
-**The ticket page** edits status, priority, category and assignee (no typed confirmation; every change is in the
-ticket's timeline and the admin history), shows the timeline (messages, internal notes, field changes) and has
-the internal-note form. A merged ticket's status cannot be changed, and **Merged** is not in the Status list: only a
-merge makes a ticket merged. Notes are seen only by staff with the Helpdesk app and are never sent. Opening a ticket
-marks it read.
+**The ticket page** edits status, impact and urgency (the priority follows, read-only, and previews as you change
+them), category, assignment group and assignee (the Assigned to list offers the group's members; **Assign to me**),
+and the resolution code and notes (no typed confirmation; every change is in the ticket's timeline and the admin
+history). Only what you changed is saved: a field someone else (or a new message) changed since you opened the page
+keeps its new value, and when you both changed the same field the save is refused with what it is now (reload, then
+redo it). It shows the two SLA clocks, the timeline (messages, replies with their delivery state, internal notes,
+field changes), the **reply form** (only while shadow mode is off) and the internal-note form; submitting one of the
+page's forms while another has unsaved input asks first. The Status list has no **Merged** (only a merge makes one),
+no **Spam** (the queue's Mark as spam, behind its confirmation) and no **New** once the ticket has left it.
+Automated mail and spam are reopened only with **Not automated: move to the queue**, in the queue or beside
+**Save** on the ticket page (offered on automated mail and spam that is not merged; it saves what was edited on
+the page first, then moves the ticket and comes back to its page; no typed confirmation); a merged ticket's page is
+read-only, takes no notes (they go on the ticket it was merged into), and a save started before the merge is
+refused with the reason. On a page opened fresh, a value the browser restores on Back is reset to the saved one. Linked tickets show both ways (related / follow-up, merged into / merged in). Groups, categories and
+members are set up on their own pages, not from the ticket. Notes are seen only by staff with the Helpdesk app and
+are never sent. Opening a ticket marks it read.
 
 - Message HTML was sanitized when it was imported and is shown in a sandboxed frame without scripts; images are
   replaced by `[image]` (remote images would track the reader; inline ones are listed as attachments).
-- A message the scam checks found suspicious carries a warning; do not open its links before checking the sender.
-- Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`.
-- Attachments download as files. Archives (zip, 7z, rar, …) open a warning first; blocked file types
+- A message the scam checks found suspicious, or made spam, carries a warning with the checks' reasons (the five
+  that weigh most); do not open its links before checking the sender.
+- Mail that Exchange's own rating made spam or bulk mail says why on its card, with the threshold in effect on
+  Settings ("Why: Exchange rated it spam (SCL 6; spam from SCL 5 on Settings).", "… bulk mail (BCL 8; bulk from
+  BCL 7 on Settings).", or "Exchange's spam filter marked it as spam."); mail Exchange marks as internal to the
+  organisation shows "Exchange: internal" with its authentication results.
+- Personal sign-in and subscription links quoted in a message are shown as `[sign-in link removed]`: the site's
+  sign-in links (also the legacy `/magic-login` and `/ticket-login`), the email sign-in link sent with every login
+  and registration code (`/email-auth-link#…&code=…`, removed up to the end of its parameters; the code quoted on its
+  own in that email stays: the helpdesk cannot tell it from any other number, and it expires after 10 minutes), the
+  one-click unsubscribe links, the SMS short link (`/l/<token>` on the site's own address; Teams'
+  `/l/meetup-join/…` links stay), and any link with a `token=` parameter, a signed `payload:time:signature` value
+  included. Only the link goes, up to the end of its token: each link of a line is judged on its own, so the words
+  and other links around it stay (a CSV row keeps its other cells and links; "(see <link>). It did not work." keeps
+  "). It did not work."). The site's own sign-in token ends at the first character the site never writes into one
+  (a percent-encoded character counts as part of it, as the site's page decodes it), so a word glued on with `:`,
+  `.` or `/` stays (`[sign-in link removed]:it failed`); another site's `token=` value
+  goes with its `:`-separated time and signature. A link written JSON-escaped (`https:\/\/…`) is read as a link,
+  and a link wrapped by Safe Links or Proofpoint URL Defense that holds a personal one goes whole. In HTML, a link
+  that inline formatting splits (Word's spelling marks, `<span>`, `<b>`, `<code>`, `<strike>`, `<q>`, a link's own
+  `<a>`, any inline element the frame keeps) is read as one link wherever it is cut, inside `http://` too (an SMS
+  link split right after `/l/` goes too); the formatting tags stay, right after the placeholder. A link to
+  one is no longer a link (its text stays, followed by the placeholder), also when its address is written with
+  backslashes, which the browser reads as slashes, and so is a Mimecast-rewritten link to the site's own address
+  (Mimecast names only the host and sends the click on to the link it replaced), also when Safe Links, Proofpoint
+  or another wrapper wrapped it again. A long token-shaped part of any other link (60 or more letters, digits, `+`,
+  `-` or `_`) is shown as `[redacted]`, but a link Safe Links or Proofpoint wrapped is judged by the link it holds
+  (the gateway's own parameters stay as written; also in the form Safe Links writes for links that open in a
+  Microsoft 365 app, `…/ap/t-59584e83/?url=…`), and a Microsoft Forms link keeps its form id, so they still work.
+  The same holds for forwarded messages (also one attached base64 or quoted-printable, as Python's email library
+  writes it: decoded from its text as it came and shown like a forward; one whose decoded text holds no header is
+  counted as not readable; one sent as HTML only is summarised from its sanitized HTML, a line for each
+  paragraph, list item, table row or line break, its personal links removed as in a message's own HTML), for a
+  saved message attached as a file (`.eml`, shown like a forward as a
+  summary of its headers (its date in the site's time zone, as every time on the page) and text, never kept as a
+  file) and for attached text files (any `text/*` file, or one
+  named `.txt`, `.csv`, `.ics`, `.json`, `.xml`, `.md`, `.rtf`, …), which are otherwise stored as they came (a
+  calendar or contact file's folded lines are read joined, and a UTF-16 file without a byte order mark is read and
+  written back in the byte order it was written in). Saved messages past the limit of five, attached inside
+  another attached message, or that cannot be read, are counted on the message's card ("2 more attached messages
+  are not shown"; the original is in Outlook).
+- Attachments download as files. Files other than text (PDF, Office documents, images, archives, Outlook `.msg`)
+  are stored as received: a sign-in link inside one is not removed. Archives (zip, 7z, rar, …) open a warning
+  first; blocked file types
   (executables, scripts, disk images, HTML/SVG, macro-enabled Office files, OneNote, CHM) and files over the size
   limit keep only their name, size and type: open the message in Outlook if you need them.
 - Automated messages in a thread are collapsed.
 
-**Bulk actions:** assign to me, unassign, close, reopen (never an automated ticket), mark as read, move to the
-queue, and, behind a typed confirmation (`MERGE`, `SPAM`), **merge** and **mark as spam**. None of them changes a
-merged ticket's status (a merge is final: its messages are on the ticket it was merged into, and so is its mail).
+**Bulk actions:** assign to me (only on tickets whose group you belong to, or that have none), unassign, **Resolve…**
+(asks for a resolution code and notes; people's open tickets), **Close** (resolved tickets), **Reopen** (resolved
+or closed people's tickets; the resolution is cleared), mark as read / unread, move to the queue, and, behind a typed
+confirmation (`MERGE`, `SPAM`), **merge** and **mark as spam** (the confirmation page names the tickets and, for a
+merge, the one they go into). Close and Reopen never touch automated mail, spam or a merged ticket (a merge is
+final: its messages are on the ticket it was merged into, and so is its mail); the message says how many were left
+as they were and why (for automated mail and spam, how to move it to the queue). Cancel and the finished action return to the list as you had it; each ticket an action
+changed gets an admin-history line.
 
 **Merging** puts every selected ticket into the oldest one; nothing is deleted. It never goes into automated mail or
 spam (a person's messages would be hidden there), and spam is never merged: when the oldest selected ticket is
@@ -54,7 +128,113 @@ confirmation is asked for. The rule is the helpdesk service's (`services/tickets
 runs too, and `Ticket.clean()` refuses such a merge target for any form. Automated mail merged into a person's ticket
 shows there collapsed and changes nothing else on it (not its status, unread mark, participants or last activity),
 as when it threads there by itself; the merged ticket stays hidden (still automated, now merged), and later mail of
-its thread lands on the person's ticket.
+its thread lands on the person's ticket. A person's ticket brings its unread mark, and when it was still open and
+the oldest is resolved or closed, the oldest is reopened (its SLA runs again). A reply still waiting to be sent on
+a merged ticket is not sent (it was written for that ticket): the target's timeline says so; write it again there.
+
+## Working tickets (ServiceNow style)
+
+| ServiceNow | Helpdesk | Notes |
+|---|---|---|
+| Number `INC0010001` | `I2G-#1234` | Also the subject token that threads mail back to the ticket. |
+| State | Status: New, In progress, On hold – awaiting requester, On hold – awaiting internal, Resolved, Closed (and Merged, Spam) | A requester's reply puts "awaiting requester" back to In progress and reopens a ticket closed less than `reopen_window_days` ago. The scam checks never hide such an answer as spam on its words alone (they judge only what it adds: [How a message becomes a ticket](#how-a-message-becomes-a-ticket)). |
+| Impact × Urgency → Priority | Impact 1–3 × Urgency 1–3 → 1 Critical, 2 High, 3 Moderate, 4 Low (`services/sla/priority.py`) | ServiceNow's "5 – Planning" (3 × 3) is Low. A person's new ticket starts at 2 × 2 (Moderate), automated mail at 3 × 3 (Low). The stored values (`urgent`, `high`, `normal`, `low`) are unchanged. |
+| Assignment group / Assigned to | **Assignment Groups** (members, manager) and the assignee | A category's **default group** is set on a ticket given that category while it has no group, when that group is active and the ticket's assignee (if any) is one of its members (assignment rule). With a group that has members who still have the Helpdesk app, the assignee must be one of them: on the page, in bulk and by the rule alike (a group whose members all lost the app is open to all staff). |
+| Work notes / Additional comments | Internal notes / replies to the requester | Replies only while shadow mode is off. |
+| SLA definitions | **SLA Targets**, one per priority | See [SLA](#sla). |
+| Close code / close notes | Resolution code / resolution notes | A code is required to resolve or close a ticket (bulk **Resolve…** asks for one; bulk **Close** closes resolved tickets only), and a resolved or closed ticket keeps it. Reopening clears the code and notes, so resolving again asks for a new code. |
+| Auto-close of resolved incidents | `auto_close_resolved_days` (7) | Closed by the worker's hourly maintenance ("Helpdesk SLA and auto-close"); a reply before then reopens. |
+| Templates | **Response Templates** | Choose one above the reply form and press **Insert**: it is inserted where the cursor is, without a reload (nothing typed is lost), with `{ticket}`, `{requester_name}`, `{subject}`, `{agent_name}` filled in; then edit and send. Templates of the ticket's category are listed first. An unknown `{placeholder}`, or a misspelt one such as `{requester name}`, is refused when the template is saved (braces around words with spaces, such as `{see below}`, stay text). |
+
+### SLA
+
+Each priority's **SLA target** (Helpdesk → SLA Targets) gives a first-response time and a resolution time, in
+calendar time (no business hours). Seeded by `helpdesk.0004`: Critical 1 h / 8 h, High 4 h / 2 days, Moderate 1 day /
+5 days, Low 3 days / 10 days. A target switched off means no due times for new tickets of that priority (their clock
+starts, so a later change to a priority with an active target sets them; clocks already
+running keep their due times); targets cannot be deleted, the first response cannot be due after the resolution,
+and only an I2G Master changes them (a desk cannot loosen its own targets; Helpdesk staff see them).
+
+- The clock starts when the ticket's first message arrived. Automated mail, backfilled mail (imported more than
+  `backfill_age_hours` late) and tickets from before this release have no clock.
+- **First response** is met when the first reply from the ticket is sent (not when it is queued: a reply that never
+  goes out answers nobody; a late one flags the response breached when it is sent), or by staff moving the ticket
+  on while it has none (out of New, typically; the site cannot see answers written in Outlook, and moving the ticket
+  on stands for them). The reply form's own status change waits for its reply to be sent; a reply that did not go
+  out puts a ticket nobody answered back to New. The acknowledgement does not count.
+- **Resolution** runs while the ticket is New, In progress or On hold – awaiting internal, and stands still while it
+  is On hold – awaiting requester, Resolved or Closed. When it runs again (the requester replied, the ticket was
+  reopened) the time it stood still is added to its due time.
+- A priority change sets the new priority's targets, from the same start, and judges both clocks again: a breach the
+  new targets do not have is cleared ("SLA breach cleared" on the timeline, with who changed it), and a later one is
+  recorded again.
+- A clock is **at risk** once `sla_warning_percent` (75 %) of its time is used and **breached** once its due time
+  passes before it is met. Breaches are flagged when they are seen (a change on the ticket, or the worker's hourly
+  maintenance), each with an "SLA breached" line on the timeline; the queue's SLA column and filter also show
+  overdue clocks not flagged yet. No email is sent for a breach.
+
+### Replies and notifications
+
+Everything here needs **shadow mode off** (Helpdesk → Settings; every change of it is in the admin history and the log
+line `helpdesk_shadow_mode`). Only an **I2G Master** can change shadow mode, the acknowledgement switch and text, and
+the notification switch; other Helpdesk staff see them read-only. Sending code lives only in `services/outbound/`; a test pins that no other helpdesk
+module imports a sending API, and that each job checks shadow mode before it sends.
+
+- **Replies.** The reply form on the ticket page sends to the requester (for mail a web form relays, the person
+  it names in Reply-To; optional Cc, at most 10, never one of the site's own addresses nor a mailing list, and the
+  form suggests only people: no relay, no address that writes for several people (a web form, also after one of
+  its nameless submissions joined), no no-reply address; Cc addresses become participants, so their answers
+  thread too) from the site's address, subject `Re: <subject> [I2G-#1234]`, with the Mail app's branded reply
+  layout, the requester's own latest message with words of its own (from any of their addresses: a member's
+  verified ones, and another address the requester named in Reply-To under her own name, none of them ever offered
+  as a Cc) quoted in the HTML and the text part, one line break
+  for each of its lines (never another sender's, e.g. after a merge, nor an answer that only quotes staff's reply;
+  its date in the site's time zone), and a footer asking to keep the number in the subject. A ticket whose requester is a mailing list (one
+  that hid its poster) cannot be answered from the helpdesk: a reply would reach all its members, so write to the
+  person from Outlook. Reply-To is the mailbox the requester's mail arrived in when that is not the From address.
+  The text is sent as written: only a personal sign-in link pasted into it is removed. In the HTML part its links
+  are clickable as written: an `&` or an apostrophe inside a link stays in it, letters of any script are part of it
+  (`…/wiki/Universität…`, `…/wiki/加利福尼亚…`), and the punctuation or words right after a link stay text, a closing
+  quote, a backtick or a `*` included, and a `_` or `~` that closes the same mark right before the link. Text of a
+  script written without spaces (Chinese, Japanese, Korean, Thai, Lao, Khmer, Burmese) glued right after a link
+  stays text when the link's last character is of another script; two links glued by punctuation (`…/news,https://…`)
+  are two links. The form shows the subject before sending. The status can be set with it (default: On hold – awaiting
+  requester; on a resolved or closed ticket, keep the current status). A refused reply (a bad Cc, too long, shadow
+  mode switched on meanwhile) comes back with its text, Cc and status and the reason beside the form; the same reply
+  sent again within 10 minutes is refused (a double submit). Microsoft Graph cannot send `In-Reply-To`/`References`,
+  so the subject token is what threads the answer back (accepted only from a participant, as before). The reply is
+  stored on the ticket and sent by the background job `helpdesk.send_reply` (transactional lane, paced by the
+  delivery-rate limiter); the timeline shows it Queued, then Sent, Failed (a fixed text; an I2G Master sees the
+  provider's error in Email Monitoring) or Not confirmed (the mail service did not confirm it: check Outlook's Sent
+  Items before writing again). A refusal the provider reports as temporary is retried later; a send that may have
+  gone out is never retried, so a reply is never sent twice. A reply that does not go out puts its ticket back In
+  progress (from On hold – awaiting requester, who got nothing; New again when nobody answered the ticket yet; a
+  resolved or closed ticket is reopened, as its closing reply never arrived) and
+  unread.
+- **Acknowledgement** (`send_acknowledgement`, off by default). When a person's message opens a new ticket, the
+  requester gets `acknowledgement_text` with the ticket number. Its address comes from inbound mail, so it must not
+  be a relay: it is sent only to the message's sender, when the message passed **DMARC** or Exchange's composite
+  authentication or Exchange marks it internal to the organisation, so neither a forged From nor a Reply-To
+  (a web form's relayed person) gets one; never for automated mail, spam, backfilled mail or a message that must not be answered
+  automatically (`shadow.automatic_reply_allowed`, RFC 3834); at most once a day per address and 200 a day in all;
+  never to one of the site's own addresses; and `{requester_name}` / `{subject}`, the sender's own words, are filled
+  in without links or bare host names (a staff reply's subject keeps host names: staff read it before sending) (the default text uses neither), `{subject}` (here and in a template) also without ticket numbers (another ticket's `[I2G-#1006]`, `(I2G-#1006)` or `[I2G-#1004, I2G-#1005]` the sender typed, with their brackets; brackets the sender wrote, as in "Is <> allowed?", stay), reply and forward prefixes in the languages mail programs write them (`Re:`, `Fwd:`, `AW:`, `WG:`, `VB:`, `RV:`, `回复：`, `ΠΡΘ:`, …; Italian's one-letter `R:` and `I:` stay, as a subject may start so) or a mail gateway's tag (`[EXTERNAL EMAIL]`, `*EXT*`, `EXTERNAL:`; a list's own tag such as `[Faculty]` stays, and the prefixes after it go), as the reply's subject, and "(no subject)" when nothing else is left; an unknown placeholder is refused when the text is saved. It
+  carries `Auto-Submitted: auto-replied` and `X-Auto-Response-Suppress: All` (Graph sends only the latter), so
+  responders do not answer it, and the ticket footer says how to reply.
+- **Checked again when sent.** Each send job re-checks shadow mode, that the ticket was not merged, marked spam or
+  moved to automated mail meanwhile, and (for the acknowledgement) that it is still switched on.
+- **Assignment notifications** (`notify_assignment`, on). Assigning a person's ticket to someone else emails them;
+  assigning it to an active group with nobody assigned emails the group's members. Never to the member who made the
+  change, only to active staff with the Helpdesk app, never for automated mail, spam or a merged ticket. The job
+  checks all of that again when it runs (the switch, shadow mode, the ticket, and that each recipient is still its
+  assignee or a member of its group); the timeline says "Assignment notice emailed" once it went out. The email
+  names the ticket (number, subject without links, host names, ticket numbers or reply prefixes, requester,
+  priority) and links to the ticket page
+  (`BACKEND_URL`); it never contains the requester's message, is marked automatic (`Auto-Submitted:
+  auto-generated`, `X-Auto-Response-Suppress: All`) and asks not to be answered: an answer reaches the mailbox as a
+  ticket of its own (staff mail is not told apart from a requester's).
+- Switching shadow mode back on stops every helpdesk email not sent yet: each job checks it again when it runs (a
+  reply then shows as Failed: "shadow mode was switched on").
 
 ## How a message becomes a ticket
 
@@ -82,26 +262,50 @@ its thread lands on the person's ticket.
    notices, auto-generated notices), list or bulk mail, spam (Exchange SCL ≥ 5 or its spam verdict), else human.
    Only strong signals (headers, and the auto-reply subject prefixes mail systems write in several languages)
    make a message automated; **anything uncertain is human**. Content-only signs become hints (flags such as
-   `possible_auto_reply`). A human message is also scored by the Mail app's rule-based scam checks (never the
-   optional Bedrock review): high → spam, medium → a "suspicious" flag. A message that claims the site's address
-   without proof is flagged suspicious. In more detail:
+   `possible_auto_reply`). A human message is also judged by the Mail app's rule-based scam checks (never the
+   optional Bedrock review; `ingest/routing/scam.py`): high → spam, medium → a "suspicious" flag, with the five
+   reasons that weigh most (a phishing signal among them) kept on the message and shown to staff. A sender is
+   **proven** by DMARC, Exchange's composite authentication, or Exchange marking the mail internal to the
+   organisation (`X-MS-Exchange-Organization-AuthAs: Internal`, the topmost one: Exchange strips it from outside
+   mail). For a proven sender, and for an answer on a person's ticket, a high score is only "suspicious" (a person
+   asking about a locked account reads like a phish); any one **phishing signal** keeps it spam: a look-alike or
+   punycode sender or link domain (one imitating the site's own, such as `ucrnerced.edu`, too), a link that hides
+   where it goes (text naming another domain, a raw IP, a shortener), hidden HTML, or failed DMARC or SPF (an SPF
+   soft fail or a DKIM failure alone does not). Such a sender is judged by its domain: a missing display name, a
+   brand's name in a person's name (Chase Lee) and a Reply-To or Return-Path elsewhere (web forms, mailing services)
+   count for nothing. A proven sender whose words alone score medium is not flagged (a person asking how to reset a
+   password). An answer on a person's ticket is scored on what its sender wrote: without the lines it quotes (above
+   or below its own, `>` lines, an HTML quote block) and without a "Re:" subject (the ticket's own). Its own words
+   are those before the quote or, when there are none, those below the quote's "On … wrote:" line (a bottom-posted
+   answer, also in Thunderbird's HTML); an answer that is all quote has none, and nothing below an Outlook header
+   block ("From: … Sent: …", "-----Original Message-----") is ever its own, since that quote carries no `>` marks.
+   The phishing signals read the whole message, HTML included. An answer Exchange rates spam is shown on its ticket, flagged
+   suspicious ("Exchange rated it spam (SCL 5)"), and brings the ticket back like any answer. Links rewritten
+   by Microsoft Safe Links, Proofpoint URL Defense, Barracuda Link Protection and Mimecast URL Protect are unwrapped
+   before the link checks, so a link is judged by where it goes (a Mimecast link names only its host, so it is
+   judged as that host's); one going to another domain than its text names is still a mismatch. Other rewriters
+   (Cisco, Trend Micro) are not unwrapped: a forward through them whose link text names a domain can still be spam. A message that claims the site's address
+   without proof is flagged suspicious. Address headers are unfolded before they are read, so a
+   long quoted display name folded across lines still gives its address. In more detail:
    - **Replies to the site's mail** (`ingest/routing/replies.py`, before classifying): a message whose In-Reply-To or
      References name an email the site sent (the telemetry's `OutboundEmail`, kept 180 days), or, for an email sent
      without a Message-ID the site knows (Graph JSON: campaign mail carrying a sign-in link), a reply from the address
      it went to with the same subject once "RE:", "Automatic reply:" and gateway tags such as "[EXTERNAL]" come off,
-     sent at most `reply_match_window_days` (30) before. A message whose In-Reply-To or References name a message of
-     a **person's ticket** (not automated mail or spam) counts too: a follow-up in the conversation, most often to an
-     answer staff wrote from the mailbox in Outlook, which the site never records (it names no email the site sent,
-     so it is attributed to no address). Such a reply is never list or bulk mail on **weak** signals alone: `List-Unsubscribe` and the other unsubscribe headers, an email service provider's or CRM's own headers
+     sent at most `reply_match_window_days` (30) before. A message that threads to a **person's ticket** (not
+     automated mail or spam: its In-Reply-To or References name one of its messages, or a participant writes under
+     its number or in its conversation) counts too: a follow-up in the conversation, most often to an answer staff
+     wrote from the mailbox in Outlook, which the site never records (it names no email the site sent, so it is
+     attributed to no address). Such a reply is never list or bulk mail on **weak** signals alone: `List-Unsubscribe` and the other unsubscribe headers, an email service provider's or CRM's own headers
      (SendGrid, Mailchimp, HubSpot, Salesforce `X-SFDC-*`, …), `Precedence: bulk`, a no-reply sender, or Exchange's
      bulk complaint level. Those become hints on it (`bulk_headers_on_reply`), so a person who answers a campaign
      from a CRM tool lands in the queue. A list's **distribution** (`List-Id`, `List-Post`, `Precedence: list`) still
-     makes it list mail, flagged `reply to our mail` (decision to confirm), and the spam checks always apply. Every
+     makes it list mail, flagged `reply to our mail` (decision to confirm), and the scam checks still judge it (on
+     what it adds). Every
      verdict on a reply carries the hint `replies_to_site_mail`, and a reply to a campaign email opens a ticket
      linked to that campaign either way.
    - **Bulk complaint level.** Exchange's BCL (`X-Microsoft-Antispam: BCL:n`) at or above `bulk_bcl_threshold` (7,
      Exchange Online's own default) makes a message list or bulk mail (a weak signal); it is shown with the
-     authentication results.
+     authentication results, and mail it made bulk says so on its card.
    - **Automatic replies** (`autoreply.py`): `Auto-Submitted` (not `no`), `X-Autoreply`, `X-Autorespond` and the
      other responder headers, `Precedence: auto_reply`, and the automatic-reply subject prefixes in about twenty
      languages. Exchange's rule markers (`X-MS-Exchange-Inbox-Rules-Loop`, `X-MS-Exchange-Generated-Message-Source`)
@@ -126,13 +330,31 @@ its thread lands on the person's ticket.
      came through a list or a bulk sender, asks for no automatic reply, or has no return path), and also a message
      whose own text looks automated (an absence, a left-the-organisation notice, a system acknowledgement, a receipt)
      or that claims the site's address without proof, since a responder that marks nothing would answer an
-     acknowledgement with another. `shadow.automatic_reply_allowed` is the gate any later acknowledgement or
-     notification must pass: false in shadow mode, for automated mail, for a message on a ticket that is automated or
+     acknowledgement with another. `shadow.automatic_reply_allowed` is the gate the acknowledgement passes
+     ([Replies and notifications](#replies-and-notifications)): false in shadow mode, for automated mail, for a message on a ticket that is automated or
      spam, and for such messages.
 4. **Threading** (`matching.py`), first match wins: `In-Reply-To`/`References` naming a message of a ticket (a
    reply to a campaign email instead opens a ticket linked to the campaign); the subject token `[I2G-#1234]`
-   (also without brackets) **only if the sender is a participant** of that ticket (anyone can type a number); the
-   Graph `conversationId`, again only for a participant. Merged tickets are followed.
+   (also without brackets) **only from a participant** of that ticket (anyone can type a number): the person the
+   message speaks for (a web form's, below) or the sender, so whoever wrote on a ticket or was copied answers it
+   under its number, whatever Reply-To they add (an assistant, a team mailbox, their other address), except, for
+   someone new, a sender that wrote for two or more other people who are not on that ticket (named under another
+   name than its own: a web form; or under another name than it writes under now: a form writing under each
+   submitter's name; its own other addresses, nameless or under its name, never count) or a relay there (an
+   address that wrote on the ticket for someone under another name, or under another name than it writes under now)
+   that is not the requester: a form's next submission under a form ticket's number opens its own ticket, which
+   notes the mention, also under the number of a ticket the form's nameless submission opened (the form is its
+   requester). The requester naming another address of hers, under the name the ticket knows her by, always joins,
+   and her own addresses are never a relay there. A member's addresses count only once verified (anyone can add an
+   address to their account; until its code is entered it may be someone else's): the member link, threading and
+   the quote alike. The Graph `conversationId`,
+   again only for a participant, never for a relay, and for a message that speaks for someone else only as that
+   person. Names compare by their words, whatever their case, order and punctuation: one name's words among the
+   other's are the same person ("Stone, Rhea", "Rhea Stone (Home)", "Rhea Stone"), a one-word name only as the
+   other's first ("Rhea" is Rhea Stone, an assistant "Kim" is not Kai Kim), and a name for something of a person's only
+   as itself ("Riley Chen's Office" and "Office of Riley Chen" are not Riley Chen). Merged tickets are followed. A person's
+   message on a waiting or closed ticket moves it with the reason "the requester replied" when it is the
+   requester's (from any of their addresses), else "a participant wrote".
 5. **Rules** (`store.py`):
    - Automated mail joins the ticket it threads to as a collapsed entry and changes nothing on it. Otherwise it
      opens a ticket closed at once (spam: status Spam), low priority, hidden. It never reopens a ticket.
@@ -146,6 +368,26 @@ its thread lands on the person's ticket.
      is stored once.
    - The site's own mail keeps no body or attachment (it may hold sign-in codes).
    - Mail imported more than `backfill_age_hours` (24) after it arrived opens tickets marked as backfilled.
+   - **Web forms and other relays** (`ingest/routing/people.py`). A person's message whose Reply-To names someone
+     who is neither its sender, nor one of the site's own addresses, nor an address it was sent To (a person asking
+     for replies to their team), nor a mailing list's own address opens a ticket for that person
+     (the first such one), also when the form copies them (Cc): they are the requester (replies go to them, as from
+     any mail program, and their form text is quoted under a reply), every Reply-To address and the form's own
+     participants. One form's submissions never join each other's tickets (also a nameless one, or one from a form
+     that names each submitter). A Reply-To is unauthenticated, so it gets no acknowledgement, and neither does an
+     address that has written for someone else (a form's own address). A form sending from a no-reply address with
+     such a Reply-To is a person's message, never answered automatically (otherwise a no-reply sender is bulk mail).
+     A Reply-To naming the sender's other address under the same name (work and home) is the same person: the ticket
+     keeps the member it belongs to. A mailing list's own address (its List-Post; without one, the address its
+     List-Id names, `name@domain` for `<name.domain>` as Mailman, Google Groups, Sympa and LISTSERV write it, else an
+     address the list mail is sent To that it comes from or asks replies to, else a Reply-To on the List-Id's domain
+     named like it and not on the poster's own domain, `faculty-list@lists.example.edu` for
+     `<faculty.lists.example.edu>`; never a poster's own Reply-To, her other address or a colleague's) is never a
+     participant; list mail speaks for its poster: the sender, or when the list rewrote it (Mailman's munged From,
+     Google Groups) X-Original-From, else the Reply-To or Cc address that is not the list.
+     Moving list mail or a relayed message to the queue gives the ticket to that person, with their name and member
+     (list mail is never taken for the sender's other address),
+     listed as a participant (the timeline says so).
 
 **Ticket numbers** come from the PostgreSQL sequence `helpdesk_ticket_number_seq` (created by `helpdesk/0001`,
 never below 1001): unique under concurrent creation; a rolled-back number is skipped. SQLite (local development)
@@ -158,9 +400,10 @@ takes the highest number plus one. Display: `I2G-#1234`.
 | Listed-message metadata | `core.InboundMessage` | `inbound_retention_days` (90) after processing, or after recording while it waits (`EMAIL_MONITORING`) |
 | Unverified contact hints copied from a left-the-organisation notice (name, email and US-only `+1` phone) | `mail.BouncedAddress` | Available for review for `left_org_hint_retention_days` (90) after processing. Expired details are hidden immediately and cleared by the next address-counting run. Deleting the source row clears the copy immediately. |
 | Message text (personal sign-in links and token-shaped runs scrubbed) and sanitized HTML, capped at 256 KB / 1 MB | `helpdesk.TicketMessage` | 730 days after the ticket closed |
-| Attachments (10 MB per file, 25 MB per message; blocked types never) | `helpdesk.TicketAttachment.content` (PostgreSQL, not S3: the production media bucket serves public URLs) | 365 days after the ticket closed |
+| Attachments (10 MB per file, 25 MB per message; blocked types never; text files with personal sign-in links replaced, other files as received; a saved `.eml` message only as a summary on its message) | `helpdesk.TicketAttachment.content` (PostgreSQL, not S3: the production media bucket serves public URLs) | 365 days after the ticket closed |
 | Bodies of automated mail / of spam | | 90 / 30 days after arrival |
 | Tickets (number, subject, requester, dates, audit trail) | `helpdesk.Ticket`, `TicketEvent` | 1,095 days after closing |
+| Replies and acknowledgements sent (text as written, recipients, delivery state) | `helpdesk.TicketMessage` (`kind=reply`) | Like the ticket's other message bodies |
 
 The inbound queue row also keeps what the import made of a message (`result`): its ticket and, for a reply to the
 site's mail, the email it answers (`site_mail`), how that was found (`site_match`: `message_id` or
@@ -180,11 +423,18 @@ helpdesk is internal: only staff with the Helpdesk app see it, and no note to OI
 
 ## Permissions
 
-The **Helpdesk** app grant (`Member.admin_apps` contains `helpdesk`, or I2G Master) gives everything in the
-helpdesk: the queue, ticket pages, notes, assignment, merge, spam, Ingest Problems and Settings. Every custom view
-(ticket notes, attachment downloads) checks the grant itself (403 without it). Tickets are created only from
-mail; only an I2G Master can delete one by hand, behind the typed confirmation (otherwise only retention deletes).
-Opening the linked member or campaign needs the Members or Mail app.
+The **Helpdesk** app grant (`Member.admin_apps` contains `helpdesk`, or I2G Master) gives the helpdesk: the queue,
+ticket pages, notes, replies, assignment, merge, spam, Ingest Problems, assignment groups, categories, response
+templates, the SLA targets (to see) and Settings, except what decides what the helpdesk sends and its service
+levels: shadow mode, the acknowledgement switch and text, the notification switch and the SLA targets are changed
+only by an I2G Master (others see them read-only, with the reason; the form does not take them from anyone else).
+Every custom view (ticket notes, replies, attachment downloads) checks the grant itself (403 without it). Tickets
+are created only from mail; only an I2G Master can delete one by hand, behind the typed confirmation (otherwise only
+retention deletes). Opening the linked member or campaign needs the Members or Mail app. The queue's **Export
+selected data** action (every admin list has it) exports the selected tickets' columns for the same staff.
+Assignment groups, categories, response templates and SLA targets save without the typed confirmation (list toggles
+included), unlike most admin pages: they are everyday setup, and a group or category that tickets use cannot be
+deleted (it is switched off). Settings, ticket deletion, merge and mark-as-spam keep the typed confirmation.
 
 ## Settings
 
@@ -194,7 +444,11 @@ intake's own controls ([Intake controls](#intake-controls)).
 | Field | Default | Meaning |
 |---|---|---|
 | `enabled` | on | Read the Inbox and import its mail. Off: the helpdesk neither reads nor imports; switched back on, the intake continues from its checkpoint, so mail that arrived meanwhile (and is still in the Inbox) becomes tickets then. |
-| `shadow_mode` | on (read-only) | Nothing is ever sent. This release has no sending code; the switch is shown, not editable. |
+| `shadow_mode` | on | On: nothing is ever sent. Off: replies from the ticket page, and the acknowledgement and notifications below when they are on. Only an I2G Master changes it. |
+| `send_acknowledgement`, `acknowledgement_text` | off, a short thank-you naming `{ticket}` | Email the requester when their message opens a new ticket ([Replies and notifications](#replies-and-notifications)). Only an I2G Master changes them. |
+| `notify_assignment` | on | Email staff a ticket is assigned to (or their group's members). Only an I2G Master changes it. |
+| `auto_close_resolved_days` | 7 | Resolved tickets close by themselves after this many days (0: never); the timeline reads "Resolved → Closed (closed automatically: resolved more than N days ago)", with no actor. |
+| `sla_warning_percent` | 75 | A running SLA clock is shown (and filtered) as at risk once this share of its time is used. |
 | `pause_while_campaign_sending` | on | Wait while a campaign is sending. |
 | `ingest_batch_size`, `ingest_max_seconds`, `max_attempts` | 100, 60, 5 | Budget of one run; attempts before a message is listed under Ingest Problems. |
 | `message_max_bytes`, `attachment_max_bytes` | 25 MB, 10 MB | Most of one message read (also capped by `GRAPH_INBOX_MESSAGE_MAX_BYTES`); largest attachment stored. |
@@ -223,7 +477,8 @@ controls on the card, so they are not edited beside them.
 
 The **intake card** sits above the Helpdesk → Settings form. It shows the intake's state (running, paused, waiting
 for the first scan, last scan failed, no recent successful scan, switched off, or not active with the reason), the
-last and next scan, the checkpoint, the interval and how many messages wait to be imported, and has four controls.
+last and next scan (no next scan while switched off, not active or paused), the checkpoint, the interval and how
+many messages wait to be imported, and has four controls.
 Each needs the Helpdesk app, is a POST form with CSRF (`/admin/helpdesk/helpdesksettings/intake/`, `action=scan`,
 `pause`, `resume`, `rescan&since=YYYY-MM-DDTHH:MM`, or `lookback&lookback_hours=N`), and changes the intake only:
 bounce processing has its own card on Email Monitoring, and its Pause, Rescan since and lookback never change the
@@ -259,6 +514,12 @@ saves every column and would overwrite a running scan's lease.
    on PostgreSQL, the ticket number sequence), `helpdesk.0002_intake_state` (the intake's state table) and
    `helpdesk.0003_reply_detection_settings` (`bulk_bcl_threshold` and `reply_match_window_days`, with database
    defaults for the rolling deploy). No data migration: messages imported before the release keep their verdicts.
+   `helpdesk.0004_servicedesk` adds the ServiceNow-style fields (impact, urgency, assignment group, SLA clock,
+   resolution, reply delivery state), the Assignment Group, SLA Target and Response Template tables and the new
+   settings, all with database defaults for the rolling deploy, and seeds the four SLA targets. A ticket's category
+   and group (and a category's default group) are protected: one in use is switched off, not deleted. Existing
+   tickets keep their priority, start at impact and urgency 2, and have no SLA clock. Shadow mode stays as it was
+   saved (on).
 2. The background worker (`itg-background-worker`) and `BACKGROUND_JOBS_ENABLED` are required: the scan and the
    import are background jobs. Nothing happens without them.
 3. The Microsoft Graph mailbox scope must grant **read** on the sending mailbox, as for bounce processing. No new
@@ -269,17 +530,80 @@ saves every column and would overwrite a running scan's lease.
    opens backfilled tickets). Use **Rescan since** on the intake card for older mail.
 5. To stop reading and importing without a deploy, use **Pause intake** on the intake card (it keeps the
    checkpoint), or switch off **enabled** in Helpdesk → Settings.
+6. Before switching shadow mode off: create the assignment groups (and their members), set the categories' default
+   groups, review the SLA targets and write the response templates; make sure `BACKEND_URL` is the admin's public
+   address (the notification links use it) and that email delivery works (Notification Delivery). Sending uses the
+   site's normal email configuration (Graph or SES) on the transactional lane; no new permission is needed.
 
 ## Limitations and follow-ups
 
-- **No sending** (by design in shadow mode): replies, acknowledgements, notifications, SLA timers and canned
-  responses are phase H2; the `shadow` module holds the switch any sending code must check first.
+- **SLA in calendar time only**: no business-hours schedules or holidays, and no breach warning emails (the queue's
+  SLA column, the SLA Breached view and the timeline show them).
+- **Replies are plain text** (rendered into the branded layout) with no attachments; answers written in Outlook are
+  still not seen by the site, so they neither show on the ticket nor stop the response SLA (move the ticket out of New
+  instead). The reply form cannot resolve a ticket (resolve it on the page with its code).
+- **A dismissed ingest problem is not deleted**: it stays under Dismissed and Everything until retention
+  (`inbound_retention_days`) removes it with the rest of the queue.
+- **Scam checks are rules**: a proven sender (DMARC, composite authentication, or Exchange's internal marker) or an
+  answer on a person's ticket is not made spam on its words alone; it becomes a person's message flagged suspicious,
+  unless a phishing signal keeps it spam (with the reasons on the card). Exchange's own spam verdict (SCL) hides
+  new mail (check **Automated & Spam**), never an answer on a person's ticket. The internal marker is trusted as Exchange documents it (it
+  strips organisation headers from outside mail); it was checked against simulated headers only, so confirm it with
+  a real message from a campus colleague.
+- **Whom a message is for is read from its headers**: a web form must name its person in Reply-To (one that writes
+  the address only in its text opens a ticket for the form's own address, and a form that never names anyone is
+  taken for one person, so its submissions may join one ticket by their shared conversation, and a nameless
+  submission under a form ticket's number joins it, though it is not quoted to the requester; a form's submission
+  for someone new joins a ticket under its number only while the form has written for fewer than two people off
+  that ticket and is no relay there: its very first submissions, which are then offered as a Cc there, so a reply
+  copying one may quote another's text); a person writing with
+  Reply-To their other address, or who once asked for replies to go to someone else, gets no acknowledgement; an
+  answer without the ticket's number threads by its conversation only from the requester or someone who never wrote
+  on the ticket for someone else; someone who opened a ticket for another person (an assistant's boss) and names a
+  new person in Reply-To under its number opens a ticket for that person, and so does a requester who has named two
+  or more other people (her assistants) on other tickets when she names one of them under her own ticket's number,
+  or an address of hers without a name or under another form of it ("O. Exec"): such an answer that Exchange rates
+  spam is filed as spam, and the new ticket's mention says the message "is not from a participant" of the ticket
+  although its sender is that ticket's requester;
+  a mailing list that hides its poster
+  cannot be answered from the helpdesk, and one whose List-Id names neither an address it uses nor its domain,
+  without List-Post, is known only when it sends from or asks replies to the address it was sent To. A form that has
+  written for one person
+  only is not yet known to write for several, so after its first nameless submission joined that person's ticket
+  it is offered as a Cc there. When the requester is a Reply-To person (an assistant's boss, a team mailbox, a
+  nameless other address), a reply quotes their own latest message, not a later one the opener wrote without
+  Reply-To.
+- **No requester portal** or watch list: requesters interact by email only.
+- **Some times use Django's own format**: the ticket page's Resolved at, First message at and Last activity at,
+  and the queue's Last activity column, read "Nov. 20, 2026, 6:45 p.m." beside the helpdesk's "Nov 20, 2026 18:45"
+  (same time zone).
 - **Mail deleted or moved out of the Inbox before a scan is missed**; only the Inbox is read. With immutable ids
   off (`EMAIL_GRAPH_IMMUTABLE_IDS`), a message moved in Outlook between its listing and its import is skipped as
   gone (Ingest Problems).
 - **A very dense Inbox stalls the intake's catch-up** as it does bounce processing's: it lists with the same bounds
   ([Email monitoring, Limitations](email-monitoring.md#limitations)).
 - **Inline images are not shown** in the message (they are listed as attachments).
+- **Sign-in links are removed from text only**: message text and HTML, forwarded and saved (`.eml`) messages, and
+  text files. A PDF, Office document, image, archive or Outlook `.msg` file is stored as received, so a personal
+  sign-in link inside one reaches whoever downloads it. A text file in UTF-16 without a byte order mark that declares
+  no charset (or a wrong one), or a UTF-32 file without a mark, is not read as what it is, so a link inside it stays
+  too. A link written without `https://` or `www.` (such as `i2g.ucmerced.edu/login-link#token=…`) is not read as a
+  link, so its token stays. A Mimecast link to the site in a plain-text message stays as text: only an HTML link to
+  one is unlinked. A word glued without a space after a removed link, across inline formatting
+  (`…token=abc</span><b>Thanks</b>`), goes with the token, and so does one glued with `:` after another site's
+  `token=` value (a signed value continues with `:`). In HTML only inline formatting is read across: a link that a
+  line break (`<br>`) or a block element splits is judged piece by piece, and the `[redacted]` rule never joins an
+  ordinary link's pieces. Another long public id in an ordinary link (60 or more characters in one segment or
+  value, outside Microsoft Forms) is still shown as `[redacted]`, which breaks that link. An attached message in a
+  transfer encoding other than 7bit, 8bit, binary, base64 or quoted-printable (uuencode) is read as its text came.
+  In a reply's HTML part, Chinese, Japanese or Korean text glued without a space right after a link's `/`, `=`,
+  `#`, `(` or `_` is read as part of the address (`/wiki/加利福尼亚…`), so `请访问https://i2g.ucmerced.edu/了解更多`
+  links all of it; after any other character of the link it stays text. A personal link written in a shape a
+  browser still follows but no mail program writes on its own is not recognised, so its token stays: dot segments
+  (`/./l/<token>`, `/x/../l/`), an `href` without a host, an invisible character (a zero-width space, a soft hyphen)
+  inside it, JSON's `\/` for `/`, more than three Safe Links layers, or the site's host with a final dot. Words glued
+  without a space right after a link that Safe Links or Proofpoint wrapped around a personal link go with it (the
+  wrapper's own parameters run on to the end of that run of text).
 - **Replies are recognised only to mail the telemetry still holds** (180 days) and, for mail sent without a
   Message-ID, only from the address mailed with the same subject, or by a message of a person's ticket they name; a
   reply to older mail, or from another address of the person, is classified on its own headers. So is a first answer

@@ -1,7 +1,8 @@
 {% comment %}
 Helpdesk → Settings: the intake card, above the settings form and outside it (each control is its own POST form).
 The intake is the helpdesk's own scan of the Inbox; bounce processing has its own card on Email Monitoring, and
-neither card's controls change the other. The level always shows an icon and a label, never color alone.
+neither card's controls change the other. The level always shows an icon and a label, never color alone. Switched
+off, not active or paused, no scan reads the Inbox, so the card shows no next-scan time.
 {% endcomment %}
 {% with intake=helpdesk_intake %}{% if intake %}
 <section id="helpdesk-intake" class="i2g-helpdesk-intake i2g-helpdesk-intake--{{ intake.level }}" aria-labelledby="helpdesk-intake-heading">
@@ -18,7 +19,7 @@ neither card's controls change the other. The level always shows an icon and a l
     <div><dt>Last scan</dt><dd>{% if intake.scan_running %}running now (started {{ intake.state.last_run_started_at|date:"H:i" }}){% elif intake.state.last_run_finished_at %}{{ intake.state.last_run_finished_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
     <div><dt>Last successful scan</dt><dd>{% if intake.state.last_success_at %}{{ intake.state.last_success_at|date:"M j, H:i" }}{% else %}never{% endif %}</dd></div>
     <div><dt>Checkpoint</dt><dd>{% if intake.state.checkpoint_at %}{{ intake.state.checkpoint_at|date:"M j, H:i" }}{% else %}–{% endif %}</dd></div>
-    <div><dt>Next scan</dt><dd>{% if intake.next_scan_at %}{{ intake.next_scan_at|date:"M j, H:i" }}{% else %}not queued{% endif %}{% if intake.state.next_run_after %} (Microsoft asked to wait until {{ intake.state.next_run_after|date:"H:i" }}){% endif %}</dd></div>
+    <div><dt>Next scan</dt><dd>{% if intake.level == "off" %}– (switched off){% elif intake.level == "inactive" %}– (not active){% elif intake.level == "paused" %}– (paused){% else %}{% if intake.next_scan_at %}{{ intake.next_scan_at|date:"M j, H:i" }}{% else %}not queued{% endif %}{% if intake.state.next_run_after %} (Microsoft asked to wait until {{ intake.state.next_run_after|date:"H:i" }}){% endif %}{% endif %}</dd></div>
     <div><dt>Interval</dt><dd>every {{ intake.every }}{% if intake.catch_up %}; every {{ intake.catch_up }} while catching up{% endif %}</dd></div>
     <div><dt>Waiting to be imported</dt><dd>{{ intake.waiting }} message{{ intake.waiting|pluralize }}</dd></div>
   </dl>
@@ -32,7 +33,7 @@ neither card's controls change the other. The level always shows an icon and a l
     <p class="i2g-helpdesk-alert" role="alert"><span class="material-symbols-outlined" aria-hidden="true">warning</span>No scan has succeeded recently. Check that the background worker (itg-background-worker) is running.</p>
   {% endif %}
   {% if intake.stats %}
-    <p class="i2g-helpdesk-muted">Last scan: {{ intake.stats.listed|default:0 }} message{{ intake.stats.listed|default:0|pluralize }} listed, {{ intake.stats.recorded|default:0 }} new recorded for import (the rest were recorded before).</p>
+    <p class="i2g-helpdesk-muted">Last scan: {{ intake.stats.listed|default:0 }} message{{ intake.stats.listed|default:0|pluralize }} listed, {{ intake.stats.recorded|default:0 }} new recorded for import{% if intake.stats.recorded|default:0 < intake.stats.listed|default:0 %} (the rest were recorded before){% endif %}.</p>
   {% endif %}
   {% if intake.mailbox %}
   <div class="i2g-helpdesk-actions">

@@ -112,7 +112,10 @@ Record each decision with its date and where it was approved; ticket numbers →
 - The Microsoft Graph permissions the site runs with, and the InfoSec approval behind them.
 - Bounce reports never change members or subscriptions automatically; every change is a staff action.
 - A section grant gives full control of that section of the admin.
-- The helpdesk starts in shadow mode (it records tickets and sends nothing).
+- The helpdesk starts in shadow mode (it records tickets and sends nothing). Switching it off in Helpdesk → Settings
+  (an I2G Master only) lets staff reply from the ticket page and enables the acknowledgement / assignment
+  notifications switched on there; switching it back on stops every queued helpdesk email before it goes out. A reply
+  that fails or is not confirmed shows on its ticket's timeline and puts the ticket back In progress and unread.
 - Retention periods: email records 180 days, bounce reports 365 days.
 
 ## 9. Routine checks

@@ -53,6 +53,8 @@ class ChangeConfirmationPageMixin:
             **self.admin_site.each_context(request),
             "title": f"Confirm {action_label} {self.opts.verbose_name}",
             "action_label": action_label,
+            # "You are about to change ...": the verb, not the "Changing" of the title.
+            "action_verb": {"add": "add", "change": "change", "delete": "delete"}.get(pending["action"], "modify"),
             "action_type": pending["action"],
             "model_name": self.opts.verbose_name,
             "object_repr": pending["object_repr"],
