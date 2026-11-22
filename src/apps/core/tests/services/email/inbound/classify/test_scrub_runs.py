@@ -111,6 +111,15 @@ class EmailSignInLinkTests(SimpleTestCase):
                 )
                 self.assertEqual(scrubbed(markup), f'<p><a href="{REMOVED}">Sign in</a> or {REMOVED}, ok</p>')
 
+    def test_what_follows_it_stays_markup_and_words_alike(self):
+        # "&" goes on with the link only before a parameter's name ("&gt;" is none), and the code is digits.
+        code_last = EMAIL_SIGN_IN.split("&event=")[0]
+        html = f"<p>Sign in &lt;{escape(EMAIL_SIGN_IN)}&gt; today, or {escape(escape(EMAIL_SIGN_IN))} end</p>"
+        for scrubbed in (scrub_personal_links, scrub_links):
+            with self.subTest(scrubbed.__name__):
+                self.assertEqual(scrubbed(f"Use {code_last}.Thanks, Pat"), f"Use {REMOVED}.Thanks, Pat")
+                self.assertEqual(scrubbed(html), f"<p>Sign in &lt;{REMOVED}&gt; today, or {REMOVED} end</p>")
+
 
 class ScrubLinksTests(SimpleTestCase):
     def test_the_same_words_stay_in_text_and_in_serialized_html(self):

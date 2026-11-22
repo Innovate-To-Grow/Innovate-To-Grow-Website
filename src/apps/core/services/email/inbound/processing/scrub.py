@@ -50,11 +50,12 @@ _TOKEN_PARAM_RE = re.compile(r"(?i)[?#&;][a-z_]{0,32}token=")
 # Where a personal link's token ends: past the characters a token holds (signed ".<base64>:<time>:<signature>",
 # URL-safe base64, another site's token value, a ":" only with more of them after it), but before a final "." (a
 # sentence's). A lookahead, so markers that overlap (one inside another's value) are all found and the furthest wins.
-# The email sign-in link holds its code among parameters ``urlencode`` wrote ("&amp;" in HTML): all of them go (a
-# final "?" too is a sentence's).
+# The email sign-in link holds its code among parameters as ``urlencode`` writes them ("&amp;" in HTML; "&" only before
+# a name, so "&gt;" is none): all of them go, the code its digits (".Thanks" glued on stays), not a sentence's ".".
+_PAIR = r"(?:code=\d*|[a-z_]+=[a-z0-9_.~%+-]*)"
 _PATH_ENDS = (
     r"/(?:login-link|magic-login|ticket-login|impersonate-login|unsubscribe-login)/?"
-    r"|/email-auth-link/?(?:[?#](?:[a-z0-9_.~%+=@?#-]|&(?:amp;)?)*(?<![.&?]))?"
+    r"|/email-auth-link/?(?:[?#]" + _PAIR + r"(?:&(?:amp;)*" + _PAIR + r")*(?<!\.))?"
     r"|/(?:un|re)subscribe/[a-z0-9_.:-]+(?<!\.)/?"
 )
 _TOKEN_END_RE = re.compile(

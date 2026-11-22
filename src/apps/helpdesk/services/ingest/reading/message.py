@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup, CData, NavigableString
 
 from apps.core.services.email.telemetry import text
 
@@ -50,6 +50,7 @@ _EDGE, _BREAK = "\x00", "\x01"
 _SPACES_RE = re.compile(r"[ \t\n\r\f]+")  # HTML's white space: a no-break space is text
 _EDGES_RE = re.compile(r"[ \x00]*\x00[ \x00]*")
 _BLANK_LINES_RE = re.compile(r"\n{3,}")
+_TEXT_TYPES = (NavigableString, CData)  # what get_text reads: no comment, script, style or template
 
 
 def text_codec(charset: str) -> str:
@@ -114,20 +115,27 @@ class ParsedMessage:
 def html_to_text(html: str, limit: int = HTML_TO_TEXT_MAX_CHARS) -> str:
     """The text of ``html`` laid out as a mail program shows it: a line for each block (a paragraph, a list item, a
     table row, …) and each <br>, a row's cells side by side, and inline formatting and links read on with the line
-    (so a link that <span>s split reads whole); at most one empty line in a row."""
+    (so a link that <span>s split reads whole); at most one empty line in a row. One walk over the parsed tree, which
+    it never edits: each edit looks its element up among its siblings, so 30,000 paragraphs took seconds."""
     if not html:
         return ""
     soup = BeautifulSoup(html[:limit].replace(_EDGE, "").replace(_BREAK, ""), "html.parser")
-    for pre in soup.find_all("pre"):  # its line breaks are the text's own
-        for string in pre.find_all(string=lambda found: type(found) is NavigableString):
-            string.replace_with(string.replace("\n", _BREAK))
-    for element in soup.find_all(["br", *_BLOCKS, *_CELLS]):
-        if element.name == "br":
-            element.replace_with(_BREAK)
-        elif element.name in _CELLS:
-            element.insert_after(" ")
+    pieces, stack = [], [(soup, False, False)]  # (node, its end, inside <pre>: its line breaks are the text's own)
+    while stack:
+        node, closing, pre = stack.pop()
+        if closing:
+            pieces.append(" " if node.name in _CELLS else _EDGE)
+        elif isinstance(node, NavigableString):
+            if type(node) in _TEXT_TYPES:
+                pieces.append(node.replace("\n", _BREAK) if pre else str(node))
+        elif node.name == "br":
+            pieces.append(_BREAK)
         else:
-            element.insert_before(_EDGE)
-            element.insert_after(_EDGE)
-    laid_out = _EDGES_RE.sub("\n", _SPACES_RE.sub(" ", soup.get_text())).replace(_BREAK, "\n")
+            if node.name in _BLOCKS:
+                pieces.append(_EDGE)
+            if node.name in _BLOCKS or node.name in _CELLS:
+                stack.append((node, True, pre))
+            inner = pre or node.name == "pre"
+            stack.extend((child, False, inner) for child in reversed(node.contents))
+    laid_out = _EDGES_RE.sub("\n", _SPACES_RE.sub(" ", "".join(pieces))).replace(_BREAK, "\n")
     return _BLANK_LINES_RE.sub("\n\n", "\n".join(line.strip() for line in laid_out.split("\n"))).strip()

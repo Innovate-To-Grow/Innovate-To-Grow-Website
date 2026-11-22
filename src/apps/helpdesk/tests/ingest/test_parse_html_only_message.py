@@ -1,5 +1,6 @@
 import base64
 import quopri
+import time
 from email.message import EmailMessage
 from email.policy import SMTP
 
@@ -78,6 +79,14 @@ class BodyTests(SimpleTestCase):
             "I am out of the office until Monday.\nGmail line\n\nafter a blank line\nand a break\nkept as\nwritten\n"
             "Name Pat\nTeam A\nSee https://example.org/a/b now",
         )
+
+    def test_html_is_laid_out_in_time_however_many_paragraphs_it_holds(self):
+        # Laid out by editing the parsed tree, 30,000 paragraphs took 13 s and a crafted message minutes (quadratic).
+        start = time.perf_counter()
+        laid_out = html_to_text("<p>a</p>" * 30000 + "<br>" * 30000)
+
+        self.assertLess(time.perf_counter() - start, 8)
+        self.assertEqual(laid_out.count("a"), 30000)
 
     def test_nul_characters_are_dropped_so_the_message_can_be_stored(self):
         # PostgreSQL text cannot hold NUL; a UTF-16 part labelled as plain text decodes to a NUL after every letter.

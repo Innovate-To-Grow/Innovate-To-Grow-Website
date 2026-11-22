@@ -601,7 +601,7 @@ saves every column and would overwrite a running scan's lease.
   links all of it; after any other character of the link it stays text. A personal link written in a shape a
   browser still follows but no mail program writes on its own is not recognised, so its token stays: dot segments
   (`/./l/<token>`, `/x/../l/`), an `href` without a host, an invisible character (a zero-width space, a soft hyphen)
-  inside it, JSON's `\/` for `/`, more than three Safe Links layers, or the site's host with a final dot. Words glued
+  inside it, JSON's `\u002f` for `/` (its `\/` is read), more than three Safe Links layers, or the site's host with a final dot. Words glued
   without a space right after a link that Safe Links or Proofpoint wrapped around a personal link go with it (the
   wrapper's own parameters run on to the end of that run of text).
 - **Replies are recognised only to mail the telemetry still holds** (180 days) and, for mail sent without a
