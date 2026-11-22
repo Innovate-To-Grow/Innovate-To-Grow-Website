@@ -85,6 +85,15 @@ class AutoCloseTests(TestCase):
         self.assertEqual(ticket.status, Status.OPEN)
         self.assertFalse(ticket.events.exists())
 
+    def test_recent_resolution_is_left_open_for_the_full_grace_period(self):
+        ticket = resolved(10)
+
+        def resolve_again():
+            Ticket.objects.filter(pk=ticket.pk).update(resolved_at=timezone.now())
+            return False
+
+        self.assertEqual(automation.auto_close_resolved(should_stop=resolve_again), 0)
+
     def test_a_stop_request_ends_it_before_the_next_ticket(self):
         resolved(10)
         resolved(9)

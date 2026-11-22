@@ -59,7 +59,22 @@ def requesters_of(ticket: Ticket) -> set[str]:
     addresses = {ticket.requester_email.lower()}
     if ticket.requester_member_id:
         member_addresses = ContactEmail.objects.filter(member_id=ticket.requester_member_id, verified=True)
-        addresses |= {address.lower() for address in member_addresses.values_list("email_address", flat=True)}
+        verified = {address.lower() for address in member_addresses.values_list("email_address", flat=True)}
+        if addresses & verified:
+            return addresses | verified
+        # Intake can link a member by the verified sender of their same-name Reply-To.
+        # Older tickets could instead have been linked by an unverified contact.
+        opening = (
+            ticket.messages.filter(kind__in=TicketMessage.INBOUND_KINDS).order_by("occurred_at", "created_at").first()
+        )
+        if (
+            opening
+            and opening.from_address.lower() in verified
+            and opening.on_behalf_of.lower() == ticket.requester_email.lower()
+            and opening.on_behalf_of
+            and people.same_person(opening.from_name, opening.on_behalf_name)
+        ):
+            addresses |= verified
     return addresses - {""}
 
 

@@ -112,12 +112,14 @@ class QueueReplyTests(TestCase):
         self.assertEqual((job.dedupe_key, job.payload), (f"reply:{message.pk}", {"message_id": str(message.pk)}))
         self.assertFalse(job.can_retry_after_claim)
 
-    def test_the_job_is_enqueued_only_once_the_transaction_commits(self):
-        with self.captureOnCommitCallbacks(execute=False) as callbacks:
-            outbound.queue_reply(self.ticket, actor=self.agent, body="Hello")
-
-        self.assertFalse(BackgroundJob.objects.exists())
-        self.assertEqual(len(callbacks), 1)
+    def test_job_insert_failure_rolls_back_the_reply_and_status_change(self):
+        with patch.object(jobs, "enqueue_reply", side_effect=RuntimeError("queue unavailable")):
+            with self.assertRaisesMessage(RuntimeError, "queue unavailable"):
+                self.reply(status=Status.PENDING_CUSTOMER)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.status, Status.NEW)
+        self.assertFalse(self.ticket.messages.filter(kind=TicketMessage.Kind.REPLY).exists())
+        self.assertFalse(self.ticket.events.filter(kind=Kind.REPLY).exists())
 
     def test_a_status_chosen_with_the_reply_is_set_at_once_and_is_no_response_until_it_is_sent(self):
         message = self.reply(status=Status.PENDING_CUSTOMER)

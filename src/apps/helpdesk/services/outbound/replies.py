@@ -136,15 +136,14 @@ def queue_reply(ticket: Ticket, *, actor, body: str, cc: str = "", status: str =
     """Store a reply to the requester and queue its sending; ``status`` (optional) is set on the ticket with it."""
     from ..tickets import changes
 
-    refusal = can_reply(ticket, HelpdeskSettings.load())
-    if refusal:
-        raise ReplyRefused(refusal)
     text = _text(body)
-    requester = ticket.requester_email.lower()
-    cc_list = [address for address in parse_cc(cc, ticket) if address != requester]
     now = timezone.now()
     with transaction.atomic():
         current = Ticket.objects.select_for_update().get(pk=ticket.pk)
+        refusal = can_reply(current, HelpdeskSettings.load())
+        if refusal:
+            raise ReplyRefused(refusal)
+        cc_list = [address for address in parse_cc(cc, current) if address != current.requester_email.lower()]
         repeated = TicketMessage.objects.filter(
             ticket=current, kind=Kind.REPLY, automatic=False, author=actor, body_text=text
         ).filter(
@@ -174,5 +173,5 @@ def queue_reply(ticket: Ticket, *, actor, body: str, cc: str = "", status: str =
         if status and status != current.status:
             # The reply's own move out of New is no response yet: sending it is (``jobs``).
             changes.update_ticket(current, actor=actor, status=status, first_response=False)
-        transaction.on_commit(lambda: jobs.enqueue_reply(message))
+        jobs.enqueue_reply(message, last_inbound(current))
     return message

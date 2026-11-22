@@ -8,6 +8,7 @@
 
 from datetime import timedelta
 
+from django.db import transaction
 from django.utils import timezone
 
 from ...models import HelpdeskSettings, Ticket
@@ -28,13 +29,13 @@ def auto_close_resolved(*, now=None, should_stop=None) -> int:
     for ticket in list(due.order_by("resolved_at")[:AUTO_CLOSE_BATCH]):
         if should_stop is not None and should_stop():
             break
-        # ``update_ticket`` locks and judges the row again: a ticket reopened meanwhile is left alone.
-        fresh = Ticket.objects.filter(pk=ticket.pk, status=Ticket.Status.RESOLVED).first()
-        reason = f"closed automatically: resolved more than {days} day{'s' if days != 1 else ''} ago"
-        if fresh is not None and "status" in update_ticket(
-            fresh, actor=None, status=Ticket.Status.CLOSED, reason=reason
-        ):
-            closed += 1
+        with transaction.atomic():
+            fresh = due.select_for_update().filter(pk=ticket.pk).first()
+            reason = f"closed automatically: resolved more than {days} day{'s' if days != 1 else ''} ago"
+            if fresh is not None and "status" in update_ticket(
+                fresh, actor=None, status=Ticket.Status.CLOSED, reason=reason
+            ):
+                closed += 1
     return closed
 
 

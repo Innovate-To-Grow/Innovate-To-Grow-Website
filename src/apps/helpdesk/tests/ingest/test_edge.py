@@ -45,6 +45,8 @@ class EdgeTests(TestCase):
         answer = corpus.message(sender="Victor <victor@example.net>", message_id="<v2@x>", subject="RE: Hi")
 
         self.assertIsNone(victor.requester_member)
+        # Simulate a historical link created before identity matching required verification.
+        Ticket.objects.filter(pk=victor.pk).update(requester_member=eve)
         self.assertNotEqual(receive(hers, reader=self.reader).pk, victor.pk)  # Eve is no participant of his ticket
         self.assertEqual(own.requester_member, eve)
         self.assertNotEqual(receive(answer, conversation="AAQk-eve").pk, own.pk)  # nor is he of hers

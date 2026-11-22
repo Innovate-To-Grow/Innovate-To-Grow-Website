@@ -96,6 +96,12 @@ class NotifyStaffJobTests(JobTestCase):
         self.assertIn("\n\nSubject: Judging\n", email.text_body)
         self.assertNotIn("I2G-#1006", email.text_body)
 
+    def test_reassignment_to_a_large_group_creates_a_new_job(self):
+        recipients = [f"group-member-{number}@example.org" for number in range(20)]
+        first = self.notice(reason="group", recipients=recipients)
+        second = self.notice(reason="group", recipients=recipients)
+        self.assertNotEqual(first.pk, second.pk)
+
     def test_a_group_notice_names_the_group(self):
         group = AssignmentGroup.objects.create(name="Events")
         group.members.add(self.agent)

@@ -112,6 +112,22 @@ class UnpostedListTests(TestCase):
         ticket.refresh_from_db()
         return ticket
 
+    def test_historical_rewritten_from_remains_blocked_after_moving_to_queue(self):
+        from importlib import import_module
+
+        from django.apps import apps
+        from django.db import connection
+
+        raw = corpus.message(sender=f"Ira via Faculty <{ANNOUNCE}>", to=ANNOUNCE, headers=UNPOSTED)
+        ticket = receive(raw)
+        ticket.messages.update(list_address="", on_behalf_of="", on_behalf_name="")
+        migration = import_module("apps.helpdesk.migrations.0006_guard_legacy_list_senders")
+        migration.guard_legacy_list_senders(apps, connection.schema_editor())
+        self.assertEqual(tickets.move_to_queue([ticket], actor=self.agent), 1)
+        ticket.refresh_from_db()
+        with self.assertRaisesMessage(ReplyRefused, "is a mailing list"):
+            outbound.queue_reply(ticket, actor=self.agent, body="Following up")
+
     def test_list_mail_rewriting_its_poster_belongs_to_the_poster(self):
         munged = f"Ira Moss via Faculty Announce <{ANNOUNCE}>"
         found = {

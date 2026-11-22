@@ -12,7 +12,6 @@ address and ``ACK_DAILY_CAP`` in all; and its text fills in no link the sender c
 
 from datetime import timedelta
 
-from django.db import transaction
 from django.utils import timezone
 
 from apps.core.services.background_jobs import jobs_enabled
@@ -74,5 +73,5 @@ def queue_acknowledgement(ticket: Ticket, message: TicketMessage, settings: Help
         delivery_status=TicketMessage.Delivery.QUEUED,
     )
     events.record(ticket, TicketEvent.Kind.ACKNOWLEDGED, to=address)
-    transaction.on_commit(lambda: jobs.enqueue_reply(ack))
+    jobs.enqueue_reply(ack)
     return ack

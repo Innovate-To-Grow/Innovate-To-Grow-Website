@@ -13,6 +13,7 @@ progress; the reason is on the timeline.
 """
 
 import logging
+from hashlib import sha256
 
 from django.db import transaction
 from django.utils import timezone
@@ -60,13 +61,13 @@ def register_outbound() -> None:
     )
 
 
-def enqueue_reply(message: TicketMessage):
+def enqueue_reply(message: TicketMessage, quoted: TicketMessage | None = None):
     from apps.core.services.background_jobs import enqueue_job
 
     job, _created = enqueue_job(
         kind=REPLY_JOB_KIND,
         dedupe_key=f"reply:{message.pk}",
-        payload={"message_id": str(message.pk)},
+        payload={"message_id": str(message.pk), **({"quoted_id": str(quoted.pk)} if quoted else {})},
         can_retry_after_claim=False,
     )
     return job
@@ -81,7 +82,7 @@ def enqueue_notice(ticket: Ticket, *, recipients: list[str], reason: str, actor_
     key = f"notify:{ticket.pk}:{reason}:{','.join(sorted(recipients))}:{timezone.now().isoformat()}"
     job, _created = enqueue_job(
         kind=NOTIFY_JOB_KIND,
-        dedupe_key=key[:255],
+        dedupe_key=f"notify:{sha256(key.encode()).hexdigest()}",
         payload={"ticket_id": str(ticket.pk), "recipients": recipients, "reason": reason, "actor": actor_name},
         can_retry_after_claim=False,
     )
@@ -155,7 +156,13 @@ def send_reply_job(job) -> None:
     if message.automatic and not settings.send_acknowledgement:
         _failed(message, "Not sent: the acknowledgement was switched off before it went out.")
         return
-    quoted = None if message.automatic else replies.last_inbound(ticket)
+    recipients = {address.lower() for address in (*message.to_addresses, *message.cc_addresses)}
+    if recipients & replies.ticket_lists(ticket):
+        _failed(message, "Not sent: a recipient is a mailing list.")
+        return
+    quoted = None
+    if not message.automatic and job.payload.get("quoted_id"):
+        quoted = ticket.messages.filter(pk=job.payload["quoted_id"], kind=TicketMessage.Kind.CUSTOMER).first()
     mailbox = replies.reply_mailbox(ticket)
     reply_to = (mailbox,) if mailbox and mailbox.lower() != str(message.from_address).lower() else ()
     email = EmailMessage(

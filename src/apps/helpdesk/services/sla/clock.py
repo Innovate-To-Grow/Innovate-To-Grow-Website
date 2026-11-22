@@ -80,21 +80,23 @@ def responded_values(ticket: Ticket, now: datetime) -> dict:
 
 def status_values(ticket: Ticket, status: str, now: datetime) -> dict:
     """Stop or start the resolution clock for a move from ``ticket.status`` to ``status``."""
-    if ticket.sla_started_at is None or ticket.resolution_due_at is None:
+    if ticket.sla_started_at is None:
         return {}
     running, will_run = ticket.sla_paused_at is None, status in RUNNING_STATUSES
     if running and not will_run:
         values = {"sla_paused_at": now}
-        if now > ticket.resolution_due_at:
+        if ticket.resolution_due_at is not None and now > ticket.resolution_due_at:
             values["resolution_breached"] = True
         return values
     if not running and will_run:
         standing = _standing_seconds(ticket, now)
-        return {
+        values = {
             "sla_paused_at": None,
             "sla_paused_seconds": ticket.sla_paused_seconds + standing,
-            "resolution_due_at": ticket.resolution_due_at + timedelta(seconds=standing),
         }
+        if ticket.resolution_due_at is not None:
+            values["resolution_due_at"] = ticket.resolution_due_at + timedelta(seconds=standing)
+        return values
     return {}
 
 

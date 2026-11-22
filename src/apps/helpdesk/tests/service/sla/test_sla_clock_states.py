@@ -31,6 +31,16 @@ class StatusValuesTests(TestCase):
     def test_no_clock_never_pauses(self):
         self.assertEqual(sla.status_values(ticket(), Status.PENDING_CUSTOMER, NOW), {})
 
+    def test_inactive_target_tracks_hold_before_active_priority_is_selected(self):
+        waiting = ticket(sla_started_at=NOW - 12 * HOUR)
+        pause = sla.status_values(waiting, Status.PENDING_CUSTOMER, NOW - 10 * HOUR)
+        self.assertEqual(pause, {"sla_paused_at": NOW - 10 * HOUR})
+        waiting.sla_paused_at = pause["sla_paused_at"]
+        self.assertFalse(sla.priority_values(waiting, Ticket.Priority.URGENT, NOW)["resolution_breached"])
+        self.assertEqual(
+            sla.status_values(waiting, Status.OPEN, NOW), {"sla_paused_at": None, "sla_paused_seconds": 36000}
+        )
+
     def test_waiting_for_the_requester_or_resolving_pauses(self):
         for status in (Status.PENDING_CUSTOMER, Status.RESOLVED, Status.CLOSED):
             with self.subTest(status):

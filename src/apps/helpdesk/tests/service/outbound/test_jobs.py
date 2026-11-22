@@ -79,6 +79,13 @@ class SendReplyJobTests(JobTestCase):
     def test_sends_with_the_subject_token_and_ticket_header_and_marks_it_sent(self):
         message, job = self.queue(cc="kim@example.org")
 
+        TicketMessage.objects.create(
+            ticket=self.ticket,
+            kind=TicketMessage.Kind.CUSTOMER,
+            from_address=self.inbound.from_address,
+            occurred_at=message.occurred_at,
+            body_text="Private follow-up",
+        )
         deliver = self.run_job(job)
 
         email = deliver.call_args.args[0]
@@ -86,6 +93,8 @@ class SendReplyJobTests(JobTestCase):
         self.assertEqual((email.to, email.cc), (("pat@example.org",), ("kim@example.org",)))
         self.assertEqual(email.headers, {"X-I2G-Ticket": self.ticket.display_number})
         self.assertEqual(email.reply_to, ())  # no inbound mailbox known: answers go to the From address
+        self.assertNotIn("Private follow-up", email.html_body)
+        self.assertNotIn("Private follow-up", email.text_body)
         self.assertIn("Yes, please register.", email.text_body)
         self.assertIn(compose.footer(self.ticket), email.text_body)
         self.assertIn("Can I judge this year?", email.html_body)  # the requester's message, quoted
@@ -95,6 +104,13 @@ class SendReplyJobTests(JobTestCase):
         self.assertIsNotNone(message.delivered_at)
         job.refresh_from_db()
         self.assertIsNotNone(job.provider_call_started_at)
+
+    def test_queued_reply_stops_if_a_recipient_is_identified_as_a_list(self):
+        message, job = self.queue(cc="group@example.org")
+        self.ticket.messages.filter(pk=self.inbound.pk).update(list_address="group@example.org")
+        self.run_job(job).assert_not_called()
+        message.refresh_from_db()
+        self.assertEqual(message.delivery_status, Delivery.FAILED)
 
     def test_an_acknowledgement_carries_the_automatic_headers_and_quotes_nothing(self):
         ack = TicketMessage.objects.create(
