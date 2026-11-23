@@ -7,7 +7,8 @@ from apps.projects.services.ai_search.candidates import SCOPE_PAST, find_ai_sear
 from apps.projects.services.ai_search.prompt import _SYSTEM_TEXT, _build_prompt, _parse_ids
 from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services.agents import run_tool_free_agent
-from apps.system_intelligence.services.bedrock import BedrockError, normalize_bedrock_model_id
+from apps.system_intelligence.services.agents.providers import PUBLIC_ROLE, resolve_route
+from apps.system_intelligence.services.bedrock import BedrockError
 from apps.system_intelligence.services.public_assistant import estimate_prompt_input_tokens
 
 DEFAULT_AI_SEARCH_LIMIT = 10
@@ -93,7 +94,8 @@ def run_past_project_ai_search(
     if prepared is None:
         return {"project_ids": [], "usage": {"inputTokens": 0, "outputTokens": 0, "totalTokens": 0}}
 
-    normalized_model_id = normalize_bedrock_model_id(config.public_model_id)
+    route = resolve_route(config, PUBLIC_ROLE)
+    normalized_model_id = route.model_id
     if not normalized_model_id:
         raise BedrockError("No valid public assistant model is configured.")
 
@@ -112,6 +114,7 @@ def run_past_project_ai_search(
             max_tokens=max_tokens,
             temperature=config.public_assistant_temperature,
             agent_name="past_project_ai_search",
+            provider=route.provider,
         )
     except Exception as exc:  # noqa: BLE001
         if not _is_temperature_error(exc):
@@ -126,6 +129,7 @@ def run_past_project_ai_search(
                 temperature=config.public_assistant_temperature,
                 include_temperature=False,
                 agent_name="past_project_ai_search",
+                provider=route.provider,
             )
         except Exception as retry_exc:  # noqa: BLE001
             raise BedrockError(f"Past project AI search error: {retry_exc}") from retry_exc

@@ -89,7 +89,7 @@ def prepare_conversation_context(
     if current_message.role != "user":
         return PreparedContext([], {}, "The latest message must be a user message.")
 
-    context_window = estimate_context_window(model_id)
+    context_window = estimate_context_window(model_id, getattr(chat_config, "default_provider", None))
     compact_threshold = math.floor(context_window * COMPACT_TRIGGER_RATIO)
     hard_limit = math.floor(context_window * HARD_LIMIT_RATIO)
     system_tokens = estimate_text_tokens((chat_config.system_prompt or "") + APPROVAL_INSTRUCTION)

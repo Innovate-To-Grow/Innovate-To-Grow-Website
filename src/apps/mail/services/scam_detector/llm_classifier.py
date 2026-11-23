@@ -1,6 +1,7 @@
-"""Optional AI second opinion for borderline scam emails (Amazon Bedrock / Claude).
+"""Optional AI second opinion for borderline scam emails.
 
-Reuses the project's Bedrock client. Designed to be best-effort: any failure
+Calls System Intelligence's default provider and model: Amazon Bedrock through the project's Bedrock client, or an
+API-key provider (OpenAI-compatible or Anthropic format) through the tool-free agent. Designed to be best-effort: any failure
 (unconfigured AWS or System Intelligence, API error, unparseable output) returns
 ``None`` so the caller falls back to the deterministic rule result. Never raises.
 ``assess_email`` never calls it for Sent mail.
@@ -15,6 +16,9 @@ from typing import Any
 
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.services.agents import run_tool_free_agent
+from apps.system_intelligence.services.agents.invocation.errors import is_temperature_deprecated_error
+from apps.system_intelligence.services.agents.providers import resolve_route, route_problem
 from apps.system_intelligence.services.bedrock import invoke_bedrock
 
 logger = logging.getLogger(__name__)
@@ -33,7 +37,7 @@ _SYSTEM_PROMPT = (
 
 def llm_review(msg: dict[str, Any]) -> dict[str, Any] | None:
     """Return a normalized AI verdict dict, or None to fall back to the rules."""
-    if not AWSCredentialConfig.load().is_configured:
+    if route_problem(resolve_route(SystemIntelligenceConfig.load()), aws_config=AWSCredentialConfig.load()):
         return None
 
     try:
@@ -71,12 +75,34 @@ def _call_bedrock(prompt: str) -> str:
     chat_config.system_prompt = _SYSTEM_PROMPT
     chat_config.max_tokens = 512
     chat_config.temperature = 0.0
+    route = resolve_route(base)
+    if not route.is_bedrock:
+        return _call_provider(route, prompt)
     response = invoke_bedrock(
         [{"role": "user", "content": prompt}],
         chat_config=chat_config,
         aws_config=AWSCredentialConfig.load(),
     )
     return response.get("text", "") if isinstance(response, dict) else ""
+
+
+def _call_provider(route, prompt: str) -> str:
+    call = {
+        "system_text": _SYSTEM_PROMPT,
+        "input_data": prompt,
+        "aws_config": AWSCredentialConfig.load(),
+        "model_id": route.model_id,
+        "max_tokens": 512,
+        "temperature": 0.0,
+        "agent_name": "mail_scam_review",
+        "provider": route.provider,
+    }
+    try:
+        return run_tool_free_agent(**call).text
+    except Exception as exc:
+        if not is_temperature_deprecated_error(exc):
+            raise
+    return run_tool_free_agent(**call, include_temperature=False).text
 
 
 def _parse_json(text: str) -> dict[str, Any] | None:

@@ -11,7 +11,7 @@ from ..definition.agent_builder import (
     build_agent_tools as build_agent_tools,  # agents/__init__ and tests import it from here
 )
 from ..definition.constants import MAX_LLM_CALLS
-from ..definition.litellm import bedrock_litellm_credentials, build_litellm_model
+from ..definition.litellm import build_litellm_model, litellm_call_args
 from .events import StreamState, normalize_agent_stream_event, usage_event
 
 
@@ -31,6 +31,7 @@ async def run_agent_invocation(
     user_id: str,
     include_temperature: bool,
     mode: str = "normal",
+    provider=None,
 ):
     agent = build_agent_callable()(
         chat_config=chat_config,
@@ -38,6 +39,7 @@ async def run_agent_invocation(
         model_id=model_id,
         include_temperature=include_temperature,
         mode=mode,
+        provider=provider,
     )
     input_items = normalize_input_messages([*previous_messages, {"role": "user", "content": user_message}])
     state = StreamState()
@@ -94,7 +96,9 @@ def run_tool_free_agent(
     temperature: float | None,
     include_temperature: bool = True,
     agent_name: str = "system_intelligence_tool_free",
+    provider=None,
 ) -> AgentTextResult:
+    """One tool-free model call. *provider* ``None`` calls Bedrock with *aws_config*; otherwise that provider."""
     return asyncio.run(
         run_tool_free_agent_async(
             system_text=system_text,
@@ -105,6 +109,7 @@ def run_tool_free_agent(
             temperature=temperature,
             include_temperature=include_temperature,
             agent_name=agent_name,
+            provider=provider,
         )
     )
 
@@ -119,10 +124,11 @@ async def run_tool_free_agent_async(
     temperature: float | None,
     include_temperature: bool = True,
     agent_name: str = "system_intelligence_tool_free",
+    provider=None,
 ) -> AgentTextResult:
     from agents import Agent
 
-    model = build_litellm_model(aws_config=aws_config, model_id=model_id)
+    model = build_litellm_model(aws_config=aws_config, model_id=model_id, provider=provider)
     agent = Agent(
         name=agent_name,
         instructions=system_text,
@@ -131,8 +137,9 @@ async def run_tool_free_agent_async(
             max_tokens=max_tokens,
             temperature=temperature,
             include_temperature=include_temperature,
-            extra_args=bedrock_litellm_credentials(aws_config),
+            extra_args=litellm_call_args(aws_config, provider),
             model_id=model_id,
+            provider=provider,
         ),
         tools=[],
     )

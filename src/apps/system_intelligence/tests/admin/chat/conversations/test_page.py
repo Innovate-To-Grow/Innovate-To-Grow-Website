@@ -1,6 +1,7 @@
 from django.test import override_settings
 from django.urls import NoReverseMatch, reverse
 
+from apps.system_intelligence.models import LLMProviderConfig
 from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
 
 
@@ -47,6 +48,25 @@ class SystemIntelligenceAdminPageTests(SystemIntelligenceAdminBase):
         self.assertContains(response, "Plan Mode")
         self.assertContains(response, 'data-si-command="retry"')
         self.assertContains(response, 'data-si-command="compact"')
+
+    def test_model_pill_names_the_provider(self):
+        provider = LLMProviderConfig.objects.create(name="DeepSeek", preset="deepseek")
+        self.chat_config.default_provider = provider
+        self.chat_config.default_model_id = "deepseek-chat"
+        self.chat_config.save()
+        response = self.client.get(reverse("admin:system_intelligence"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["selected_model_label"], "DeepSeek · deepseek-chat")
+        self.assertEqual(response.context["selected_model_id"], "deepseek-chat")
+        self.assertContains(response, "DeepSeek · deepseek-chat")
+
+    def test_model_pill_without_a_model_says_so(self):
+        self.chat_config.default_provider = LLMProviderConfig.objects.create(name="DeepSeek", preset="deepseek")
+        self.chat_config.default_model_id = ""
+        self.chat_config.save()
+        response = self.client.get(reverse("admin:system_intelligence"))
+        self.assertEqual(response.context["selected_model_label"], "No model selected")
+        self.assertContains(response, "No model selected")
 
     def test_debug_page_route_is_removed(self):
         with self.assertRaises(NoReverseMatch):
