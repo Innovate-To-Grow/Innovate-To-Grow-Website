@@ -11,12 +11,14 @@ def chat_list_view(request):
     """Render the primary System Intelligence chat UI."""
     config = SystemIntelligenceConfig.load()
     model_id = (config.default_model_id or "").strip()
+    provider = config.default_provider
+    label = f"{provider.name} · {model_id}" if provider is not None and model_id else model_id
     context = {
         **admin.site.each_context(request),
         "title": "System Intelligence",
         "chat_config": _chat_config(),
         "selected_model_id": model_id,
-        "selected_model_label": model_id or "No model selected",
+        "selected_model_label": label or "No model selected",
     }
     return TemplateResponse(request, "admin/system_intelligence/system_intelligence_chat.html", context)
 

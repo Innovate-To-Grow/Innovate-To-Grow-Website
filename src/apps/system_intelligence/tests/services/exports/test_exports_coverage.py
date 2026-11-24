@@ -77,7 +77,7 @@ class CreateExportOrderingTests(TestCase):
     def _read_first_data_column(self, export, column_index):
         from openpyxl import load_workbook
 
-        workbook = load_workbook(export.file.path, read_only=True)
+        workbook = load_workbook(export.private_file.path, read_only=True)
         sheet = workbook.active
         rows = list(sheet.iter_rows(values_only=True))
         header = rows[0]

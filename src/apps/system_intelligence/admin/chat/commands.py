@@ -13,8 +13,9 @@ from apps.system_intelligence.services.agents.context_manager import (
     RECENT_TARGET_TURNS,
     ensure_context_summary,
 )
+from apps.system_intelligence.services.agents.providers import resolve_route, route_problem
 
-from ..stream.send import build_stream_response, persist_user_message
+from ..stream.send import build_stream_response, conversation_turn_refusal, persist_user_message
 
 COMPACT_MIN_CANDIDATES = 2
 TITLE_MAX_LENGTH = 200
@@ -28,6 +29,9 @@ def chat_command_view(request, conversation_id):
         convo = ChatConversation.objects.get(id=conversation_id, created_by=request.user)
     except ChatConversation.DoesNotExist:
         return JsonResponse({"error": "Conversation not found"}, status=404)
+    refused = conversation_turn_refusal(request.user, convo)
+    if refused is not None:
+        return refused
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, AttributeError):
@@ -77,8 +81,9 @@ def _handle_compact(request, convo, _args):
 
     chat_config = SystemIntelligenceConfig.load()
     aws_config = AWSCredentialConfig.load()
-    if not aws_config.is_configured:
-        return JsonResponse({"error": "AWS credentials are not configured."}, status=400)
+    problem = route_problem(resolve_route(chat_config), aws_config=aws_config)
+    if problem:
+        return JsonResponse({"error": problem}, status=400)
     summary_text, meta = ensure_context_summary(
         convo,
         candidates,

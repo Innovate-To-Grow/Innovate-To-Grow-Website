@@ -115,7 +115,7 @@ async def _async_event_stream(request, convo, messages, chat_config, aws_config,
         if state.stopped:
             return
     except Exception as exc:
-        yield _stream_exception(convo.id, exc, aws_config)
+        yield _stream_exception(convo.id, exc, aws_config, getattr(chat_config, "default_provider", None))
         return
 
     assistant = await sync_to_async(_create_assistant_message, thread_sensitive=True)(

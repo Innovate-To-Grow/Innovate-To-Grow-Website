@@ -1,6 +1,20 @@
-from django.test import SimpleTestCase
+import json
 
+from agents.tool_context import ToolContext
+from asgiref.sync import async_to_sync
+from django.test import SimpleTestCase, TransactionTestCase
+from django.urls import reverse
+
+from apps.event.tests.helpers import make_admin, make_member
+from apps.system_intelligence.models import (
+    ChatConversation,
+    ChatMessage,
+)
+from apps.system_intelligence.services import actions
+from apps.system_intelligence.services.actions.engine.tool_access import DYNAMIC_TOOLS, STATIC_TOOL_GRANTS, TOOL_DENIED
+from apps.system_intelligence.services.agents.definition.agent_builder import build_agent_tools
 from apps.system_intelligence.services.agents.definition.constants import EXPORT_TOOL_NAMES, WRITE_TOOL_NAMES
+from apps.system_intelligence.services.query_tools import TOOL_REGISTRY, execute_tool
 from apps.system_intelligence.services.tools.framework.registry import get_agent_tool_callables
 
 READ_TOOL_NAMES = frozenset(
@@ -72,6 +86,11 @@ class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
         self.assertFalse(READ_TOOL_NAMES & EXPORT_TOOL_NAMES)
         self.assertFalse(WRITE_TOOL_NAMES & EXPORT_TOOL_NAMES)
 
+    def test_all_agent_and_legacy_tools_have_an_access_policy(self):
+        agent_tools = {tool.__name__ for tool in get_agent_tool_callables()}
+        self.assertEqual(agent_tools, STATIC_TOOL_GRANTS.keys() | DYNAMIC_TOOLS)
+        self.assertLessEqual(TOOL_REGISTRY.keys(), agent_tools)
+
     def test_plan_mode_strips_all_write_tools(self):
         plan_tools = {tool.__name__ for tool in get_agent_tool_callables(include_writes=False)}
         self.assertFalse(plan_tools & WRITE_TOOL_NAMES)
@@ -82,3 +101,63 @@ class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
         }
         self.assertFalse(read_only_tools & WRITE_TOOL_NAMES)
         self.assertFalse(read_only_tools & EXPORT_TOOL_NAMES)
+
+
+class AssistantToolAuthorizationTests(TransactionTestCase):
+    def setUp(self):
+        self.user = make_admin()
+        self.conversation = ChatConversation.objects.create(created_by=self.user)
+        tokens = actions.set_action_context(str(self.conversation.pk), str(self.user.pk))
+        self.addCleanup(actions.reset_action_context, tokens)
+        self.tools = {tool.name: tool for tool in build_agent_tools()}
+
+    def invoke(self, name, **params):
+        arguments = json.dumps(params)
+        context = ToolContext(context=None, tool_name=name, tool_call_id="test-call", tool_arguments=arguments)
+        return async_to_sync(self.tools[name].on_invoke_tool)(context, arguments)
+
+    def test_any_admin_may_use_every_app_tool_and_usage_is_tracked(self):
+        self.assertIn("Count:", self.invoke("count_members")["result"])
+        result = self.invoke("search_records", app_label="cms", model_name="NewsFeedSource")["result"]
+        self.assertNotEqual(result, TOOL_DENIED)
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.required_tool_apps, ["authn", "cms"])
+
+    def test_a_model_tool_naming_an_unknown_model_is_denied(self):
+        self.assertEqual(self.invoke("search_records", app_label="nope", model_name="Missing"), {"result": TOOL_DENIED})
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.required_tool_apps, [])
+
+    def test_legacy_dispatch_requires_an_explicit_admin_actor(self):
+        call = {"name": "search_semesters", "input": {}}
+        self.assertEqual(execute_tool(call), TOOL_DENIED)
+        self.assertEqual(execute_tool(call, user=make_member(email="member@example.com")), TOOL_DENIED)
+        self.assertNotEqual(execute_tool(call, user=self.user), TOOL_DENIED)
+
+    def test_legacy_dispatch_rechecks_the_actor_on_every_call(self):
+        call = {"name": "count_members", "input": {}}
+        self.assertIn("Count:", execute_tool(call, user=self.user))
+        type(self.user).objects.filter(pk=self.user.pk).update(is_staff=False, is_superuser=False)
+        self.assertEqual(execute_tool(call, user=self.user), TOOL_DENIED)
+
+    def test_recorded_tool_apps_never_lock_an_admin_out_of_their_chat(self):
+        self.invoke("count_members")
+        self.client.force_login(self.user)
+        detail = reverse("admin:system_intelligence_detail", args=[self.conversation.pk])
+        self.assertEqual(self.client.get(detail).status_code, 200)
+        delete = reverse("admin:system_intelligence_delete", args=[self.conversation.pk])
+        self.assertEqual(self.client.post(delete).status_code, 200)
+
+    def test_historical_chat_is_visible_but_cannot_send_or_retry(self):
+        self.conversation.required_tool_apps = None
+        self.conversation.save(update_fields=["required_tool_apps"])
+        ChatMessage.objects.create(conversation=self.conversation, role="assistant", content="Archived answer")
+        self.client.force_login(self.user)
+        detail = reverse("admin:system_intelligence_detail", args=[self.conversation.pk])
+        response = self.client.get(detail)
+        self.assertContains(response, "Archived answer")
+        self.assertTrue(response.json()["read_only"])
+        for action, body in (("send", {"message": "Hello"}), ("command", {"command": "retry"})):
+            url = reverse(f"admin:system_intelligence_{action}", args=[self.conversation.pk])
+            self.assertEqual(self.client.post(url, body, content_type="application/json").status_code, 409)
+        self.assertEqual(self.conversation.messages.count(), 1)

@@ -32,6 +32,8 @@ A single IAM credential pair in AWS Secrets Manager powers SES, SMS (End User Me
 | `default_region` | Shared AWS region for SES, SMS, and Bedrock |
 | `sms_from_number` | SMS origination number for OTP SMS (optional override; auto-detected from End User Messaging when blank) |
 
+**Bedrock model discovery.** System Intelligence groups models by Bedrock's `providerName` metadata. The shared IAM credential uses `bedrock:ListFoundationModels` for on-demand text models and `bedrock:ListInferenceProfiles` for active system-defined inference profiles. When a profile references a foundation model absent from the list, `bedrock:GetFoundationModel` on the referenced model supplies its metadata. If the metadata is unavailable, the profile appears under **Other**. The catalog is cached for 10 minutes.
+
 **Required infra change for Smart rate (delivery-rate discovery).** Smart rate reads the account's sending limits with this same credential. It needs `ses:GetAccount`, which gives the SES rate and 24-hour quota and whether sending is paused. It also needs `sms-voice:DescribePhoneNumbers` (already required, below), `sms-voice:DescribeSenderIds` and `sms-voice:DescribeSpendLimits`, which give the number's message parts per second and the monthly spend limit. The credential's IAM policy lives outside this repository: `aws/cicd/identity-stack.json` grants the ECS task role only the Secrets Manager and Amplify actions, so grant these four read-only actions to the IAM user behind `credentials_secret_arn` (`ses:GetSendQuota` is an optional fallback for the SES read). Until `ses:GetAccount` is granted, Smart rate bounds SES by the provider limit that migration `core.0036` seeded from the active email config's campaign send rate, or by the 1 recipient/sec sandbox fallback when that rate was 0. That seeded value is stored as the **Provider rate limit**, flagged as carried over, so the first limit AWS reports for the account replaces it (an operator limit staff enter later applies as usual). Whether the IAM user already has any of these actions is not visible from the repository [CONFIRM LIVE]. See [Delivery rates](../integrations/limits/delivery-rates.md#provider-limit-reads-discovery-and-the-iam-they-need).
 
 ## Email delivery (AWS SES, SMTP, Microsoft Graph, or the Gmail API)
@@ -184,6 +186,25 @@ try again. A cached list or message never takes a slot.
 | Record writes (admin assistant) | Single-record writes through `core`'s `safe_orm`, proposed by the assistant and applied only when the conversation's owner approves (`src/apps/system_intelligence/services/actions/`). Readable but never written (`DENIED_WRITE_MODEL_LABELS`): contact emails and phones, the email and phone verification challenges, admin invitations, the RSA sign-in key, the CLI audit log and background jobs; Django's auto-created many-to-many tables are never written either. Neither read nor written (`DENIED_MODEL_LABELS`): the CLI's authorization codes and access tokens, and the assistant's exports. Member writes (`db/member_guard.py`): any Admin may change, deactivate or delete any member through the assistant, another Admin included, but never writes `is_staff` or `is_superuser` (refused at proposal by `safe_orm` and again at approval: "Admin status is changed only on the member's page in the admin, not through the assistant."), and a delete or an update that sets `is_active` to false follows the Admin lockout rules (never the approver's own Admin account, never the last active Admin), checked at proposal and again on the locked row at approval. A refused approval fails the request and shows the reason in the chat panel. |
 
 Known Claude models with fixed sampling (including Fable 5) omit `temperature` in both Converse and agent calls. Older models retain the configured value. The admin connectivity test also omits optional sampling settings and reads text after any reasoning blocks. See [Anthropic sampling limits](https://platform.claude.com/docs/en/about-claude/models/extended-thinking-models).
+
+## Other AI providers (System Intelligence)
+
+Besides Bedrock, System Intelligence can call any **OpenAI-compatible Chat Completions** API (OpenAI, DeepSeek, Kimi / Moonshot AI, a gateway) or any **Anthropic Messages**-format API (Anthropic, and the Anthropic-format endpoints DeepSeek and Kimi offer). All calls go through LiteLLM (`openai/<model>` or `anthropic/<model>` with an explicit base URL and key).
+
+| Concern | Implementation |
+|---------|---------------|
+| Provider rows | `LLMProviderConfig` (`src/apps/system_intelligence/models/llm_provider.py`), admin under System Intelligence → AI Providers. Any Admin may add, change, key, test or delete a provider, and choose which provider a role uses. |
+| Which provider a feature uses | `SystemIntelligenceConfig.default_provider` (admin assistant, context summaries, mail scam review) and `public_assistant_provider` (public chat, past-project AI search, only when the Public Assistant Model is set). Blank = Bedrock. |
+| Presets | `services/agents/providers/presets.py`: OpenAI, DeepSeek (OpenAI and Anthropic format), Kimi global / China (OpenAI format), Kimi (Anthropic format), Anthropic. **Custom endpoint** takes any https base URL that resolves only to public addresses (checked at save and before each call). Custom endpoints never follow HTTP redirects. |
+| API keys | Credential store secret `itg/backend/system-intelligence/llm-api-key` (`SystemIntelligenceLlmApiKeySecret` in `aws/cicd/identity-stack.json`): one version per installed key, pinned by the provider row. Installed and removed on the provider's own admin pages; never in the database, `.env` or `os.environ`. Changing a provider's endpoint unpins its key and disables it. After about 100 installs Secrets Manager may delete older unlabelled versions; reinstall a provider's key if its pin stops resolving. |
+| Runtime | `services/agents/providers/` (routing, LiteLLM arguments, temperature and context-window facts, fixed-text error messages) |
+
+Operational notes:
+
+- **Rollout:** deploy the identity stack (new secret, grant and resource policy) before installing a key in production, and confirm ECS tasks have outbound HTTPS to the provider hosts (Bedrock traffic does not prove this).
+- **Data handling:** a provider receives everything its role sends — staff chats and tool results (default), inbox mail content for the scam review (default), visitor questions (public). Keep a role on Bedrock if its data must stay in AWS.
+- **Usage dashboard:** the CloudWatch panel shows Bedrock traffic only. Token budgets and the audit log (`AssistantMessageLog.model_id` is `<preset>/<model>` for provider calls) cover every provider.
+- **Token usage:** OpenAI-format calls request streamed usage (`stream_options.include_usage`); when a provider returns none, the public features fall back to estimates.
 
 ## AWS S3 / Cloudflare R2
 

@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.test import TestCase
 
-from apps.event.tests.helpers import make_event, make_member, make_registration, make_ticket
+from apps.event.tests.helpers import make_admin, make_event, make_member, make_registration, make_ticket
 from apps.system_intelligence.services.query_tools.tool_modules.dispatch.executor import execute_tool
 from apps.system_intelligence.services.query_tools.tool_modules.domains.events import (
     get_event_registrations,
@@ -14,7 +14,8 @@ from apps.system_intelligence.services.query_tools.tool_modules.domains.members 
 
 class ExecuteToolDispatchTests(TestCase):
     def test_dispatches_to_registered_tool(self):
-        result = execute_tool({"name": "count_members", "toolUseId": "t1", "input": {}})
+        user = make_admin()
+        result = execute_tool({"name": "count_members", "toolUseId": "t1", "input": {}}, user=user)
         self.assertIn("Count:", result)
 
     def test_unknown_tool_returns_error_message(self):
@@ -31,10 +32,11 @@ class ExecuteToolDispatchTests(TestCase):
 
     @patch(
         "apps.system_intelligence.services.query_tools.tool_modules.dispatch.executor.TOOL_REGISTRY",
-        {"boom": lambda p: 1 / 0},
+        {"count_members": lambda params: 1 / 0},
     )
     def test_exception_returns_tool_error(self):
-        result = execute_tool({"name": "boom", "toolUseId": "t1", "input": {}})
+        user = make_admin()
+        result = execute_tool({"name": "count_members", "toolUseId": "t1", "input": {}}, user=user)
         self.assertIn("Tool error:", result)
 
 

@@ -65,6 +65,7 @@ variable; see [Microsoft Graph email → Optional: Message Trace](../integration
 | Variable | Purpose | Required in prod |
 |----------|---------|-----------------|
 | `AWS_STORAGE_BUCKET_NAME` | S3 bucket for static/media files | Yes |
+| `AWS_PRIVATE_EXPORT_BUCKET_NAME` | Dedicated private S3 bucket for System Intelligence exports. Provision with `aws/ecs/private-exports.yaml` before deploying. | Yes |
 | `AWS_S3_REGION_NAME` | S3 region | Yes |
 | ECS task role | Temporary S3 credentials provided by AWS | Yes; no static access key needed |
 | `AWS_S3_ENDPOINT_URL` | Custom S3 endpoint (for R2 compatibility) | No |

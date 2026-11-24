@@ -13,7 +13,6 @@ from apps.core.services.db_tools.safe_orm.constants import (
 )
 from apps.system_intelligence.services.query_tools.tool_modules.domains.helpers import MAX_ROWS
 
-PREVIEW_TTL_SECONDS = 600
 COMPARISON_MAX_BLOCKS = 8
 COMPARISON_MAX_FIELDS = 8
 COMPARISON_TEXT_LIMIT = 900
@@ -39,7 +38,6 @@ __all__ = [
     "DENIED_READ_APP_LABELS",
     "DENIED_WRITE_APP_LABELS",
     "MAX_SAFE_ROWS",
-    "PREVIEW_TTL_SECONDS",
     "SAFE_LOOKUPS",
     "SENSITIVE_FIELD_RE",
 ]

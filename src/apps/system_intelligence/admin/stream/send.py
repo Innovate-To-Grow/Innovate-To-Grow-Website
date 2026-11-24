@@ -2,6 +2,7 @@
 
 import json
 
+from django.core.exceptions import PermissionDenied
 from django.core.handlers.asgi import ASGIRequest
 from django.http import JsonResponse, StreamingHttpResponse
 
@@ -11,6 +12,7 @@ from apps.system_intelligence.models import (
     ChatMessage,
     SystemIntelligenceConfig,
 )
+from apps.system_intelligence.services.actions.engine.tool_access import has_chat_grants
 
 from .async_events import _async_event_stream
 from .sync_events import _event_stream
@@ -26,6 +28,9 @@ def chat_send_view(request, conversation_id):
         convo = ChatConversation.objects.get(id=conversation_id, created_by=request.user)
     except ChatConversation.DoesNotExist:
         return JsonResponse({"error": "Conversation not found"}, status=404)
+    refused = conversation_turn_refusal(request.user, convo)
+    if refused is not None:
+        return refused
     try:
         user_content = json.loads(request.body).get("message", "").strip()
     except (json.JSONDecodeError, AttributeError):
@@ -40,6 +45,14 @@ def chat_send_view(request, conversation_id):
 
     persist_user_message(convo, user_content)
     return build_stream_response(request, convo)
+
+
+def conversation_turn_refusal(user, convo):
+    if convo.required_tool_apps is None:
+        return JsonResponse({"error": "This conversation is archived. Start a new chat to continue."}, status=409)
+    if not has_chat_grants(user, convo.required_tool_apps):
+        raise PermissionDenied("You do not have access to this conversation.")
+    return None
 
 
 def persist_user_message(convo, user_content):

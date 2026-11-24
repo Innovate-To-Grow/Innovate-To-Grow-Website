@@ -1,6 +1,6 @@
 from django.db import models, transaction
 
-from .config_agent import AdminAgentConfigFields
+from .config_agent import PROVIDER_FIELDS, AdminAgentConfigFields
 from .config_texts import (
     PUBLIC_ASSISTANT_SYSTEM_PROMPT,
     PUBLIC_ASSISTANT_UNAVAILABLE_MESSAGE,
@@ -23,7 +23,7 @@ def default_starter_questions():
 
 
 class SystemIntelligenceConfig(AdminAgentConfigFields):
-    """System Intelligence configuration for Amazon Bedrock."""
+    """System Intelligence configuration: models, providers, prompts and public-assistant limits."""
 
     # ------------------------------------------------------------------
     # Public, visitor-facing assistant (separate, tool-free, read-only)
@@ -38,7 +38,7 @@ class SystemIntelligenceConfig(AdminAgentConfigFields):
         blank=True,
         default="",
         verbose_name="Public Assistant Model",
-        help_text="Bedrock model/inference profile ID for the public assistant. Falls back to the Default AI Model.",
+        help_text="Public assistant model (Bedrock ID or provider model name). Blank uses the Default AI Model.",
     )
     public_assistant_system_prompt = models.TextField(
         blank=True,
@@ -179,7 +179,7 @@ class SystemIntelligenceConfig(AdminAgentConfigFields):
     def load(cls):
         """Load only an explicitly active configuration."""
         try:
-            return cls.objects.get(is_active=True)
+            return cls.objects.select_related(*PROVIDER_FIELDS).get(is_active=True)
         except cls.DoesNotExist:
             # Keep a model-shaped object for display code, but remove provider
             # model IDs so every invocation path fails closed.

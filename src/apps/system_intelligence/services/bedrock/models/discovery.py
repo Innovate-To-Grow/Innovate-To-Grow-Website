@@ -4,39 +4,38 @@ logger = logging.getLogger(__name__)
 
 
 def fetch_foundation_models(mgmt):
-    models = {}
     try:
         response = mgmt.list_foundation_models(byOutputModality="TEXT", byInferenceType="ON_DEMAND")
-        for model in response.get("modelSummaries", []):
-            provider = model.get("providerName", "Other")
-            models.setdefault(provider, []).append((model["modelId"], model.get("modelName", model["modelId"])))
+        return {model["modelId"]: model for model in response.get("modelSummaries", [])}
     except Exception:
         logger.warning("list_foundation_models failed")
-    return models
+        return {}
 
 
-def profile_base_model_ids(profiles_by_provider):
-    profile_base_ids = set()
-    for models in profiles_by_provider.values():
-        for pid, _ in models:
-            parts = pid.split(".", 1)
-            if len(parts) == 2 and len(parts[0]) <= 3:
-                profile_base_ids.add(parts[1])
-    return profile_base_ids
+def fetch_inference_profiles(mgmt):
+    try:
+        for page in mgmt.get_paginator("list_inference_profiles").paginate(typeEquals="SYSTEM_DEFINED"):
+            for profile in page.get("inferenceProfileSummaries", []):
+                if profile.get("type") == "SYSTEM_DEFINED" and profile.get("status") == "ACTIVE":
+                    yield profile
+    except Exception:
+        logger.warning("list_inference_profiles failed")
 
 
-def provider_from_id(model_id):
-    mapping = {
-        "anthropic": "Anthropic",
-        "amazon": "Amazon",
-        "meta": "Meta",
-        "mistral": "Mistral",
-        "cohere": "Cohere",
-        "ai21": "AI21 Labs",
-        "stability": "Stability AI",
-    }
-    clean = model_id
-    parts = model_id.split(".", 1)
-    if len(parts) == 2 and len(parts[0]) <= 3:
-        clean = parts[1]
-    return mapping.get(clean.split(".")[0].lower(), clean.split(".")[0].title())
+def resolve_profile_model(mgmt, profile, model_metadata):
+    for model in profile.get("models", []):
+        model_arn = model.get("modelArn", "")
+        _, _, model_id = model_arn.partition(":foundation-model/")
+        if model_id:
+            if model_id not in model_metadata:
+                model_metadata[model_id] = _fetch_foundation_model(mgmt, model_arn)
+            return model_id, model_metadata[model_id]
+    return "", {}
+
+
+def _fetch_foundation_model(mgmt, model_arn):
+    try:
+        return mgmt.get_foundation_model(modelIdentifier=model_arn).get("modelDetails", {})
+    except Exception:
+        logger.warning("get_foundation_model failed for %s", model_arn)
+        return {}

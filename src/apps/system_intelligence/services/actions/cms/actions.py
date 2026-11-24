@@ -7,9 +7,9 @@ from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services.query_tools.tool_modules.domains.helpers import _truncate
 
 from ..comparison import build_cms_comparison, build_diff
-from ..engine.context import current_conversation, current_user_id
+from ..engine.context import current_conversation, current_user, current_user_id
 from ..engine.exceptions import ActionRequestError
-from ..orm import assert_snapshot_unchanged
+from ..orm import assert_snapshot_unchanged, check_model_permission
 from ..requests.serialization import proposal_tool_response
 from .helpers import (
     assign_cms_page_fields,
@@ -18,7 +18,7 @@ from .helpers import (
     serialize_cms_page,
     validate_cms_page_payload,
 )
-from .preview import clear_cms_cache, create_cms_blocks, store_cms_preview
+from .preview import clear_cms_cache, create_cms_blocks
 
 
 def get_cms_page_detail(page_id: str | None = None, slug: str | None = None, route: str | None = None) -> str:
@@ -41,12 +41,12 @@ def propose_cms_page_update(
     blocks: list[dict[str, Any]] | None = None,
     summary: str | None = None,
 ) -> dict[str, Any]:
-    """Create a pending CMS page update action and cached preview."""
+    """Create a pending CMS page update action and authenticated preview."""
     conversation = current_conversation()
+    check_model_permission(current_user(), CMSPage, "view")
     page = find_cms_page(page_id=page_id, slug=slug, route=route)
     before = serialize_cms_page(page) if page else {}
     proposed = build_cms_page_proposal(page, page_fields or {}, blocks)
-    preview_token, preview_url, expires_at = store_cms_preview(proposed)
     comparison = build_cms_comparison(before, proposed)
     action = SystemIntelligenceActionRequest.objects.create(
         conversation=conversation,
@@ -62,9 +62,6 @@ def propose_cms_page_update(
         before_snapshot=before,
         after_snapshot=proposed,
         diff=build_diff(before, proposed),
-        preview_token=preview_token,
-        preview_url=preview_url,
-        preview_expires_at=expires_at,
     )
     return proposal_tool_response(action, "CMS page change is ready for review. Open the preview before approving.")
 

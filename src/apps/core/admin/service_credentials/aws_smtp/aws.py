@@ -110,7 +110,15 @@ class AWSCredentialConfigAdmin(TestSendViewsMixin, BaseModelAdmin):
 
         from apps.system_intelligence.models import SystemIntelligenceConfig
 
-        model_id = SystemIntelligenceConfig.load().default_model_id
+        si_config = SystemIntelligenceConfig.load()
+        model_id = si_config.default_model_id
+        if si_config.default_provider_id:
+            messages.info(
+                request,
+                "System Intelligence's default model is served by another AI provider, not Bedrock. "
+                "Test it from System Intelligence → AI Providers.",
+            )
+            return HttpResponseRedirect(change_url)
         if not model_id:
             messages.error(request, "Cannot test: no default AI model selected in System Intelligence Config.")
             return HttpResponseRedirect(change_url)
