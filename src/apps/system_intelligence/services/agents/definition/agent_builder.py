@@ -1,7 +1,12 @@
+import json
 from typing import Any
+
+from asgiref.sync import sync_to_async
+from django.core.exceptions import PermissionDenied
 
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.services.actions.engine.tool_access import TOOL_DENIED, authorize_tool
 from apps.system_intelligence.services.bedrock.clients.parameters import supports_temperature
 
 from .constants import AGENT_NAME, APPROVAL_INSTRUCTION, PLAN_MODE_INSTRUCTION, READ_ONLY_AGENT_DEBUG_INSTRUCTION
@@ -55,9 +60,23 @@ def build_agent_tools(*, include_writes: bool = True, include_exports: bool = Tr
         # params (run_custom_query/search_records filters, propose_* fields, export_*
         # filters). Pydantic renders those with ``additionalProperties: true``, which the
         # Agents SDK strict JSON-schema validator rejects with a UserError at construction.
-        function_tool(tool, strict_mode=False)
+        _guard_tool(function_tool(tool, strict_mode=False))
         for tool in get_agent_tool_callables(include_writes=include_writes, include_exports=include_exports)
     ]
+
+
+def _guard_tool(tool):
+    invoke = tool.on_invoke_tool
+
+    async def invoke_authorized(context, arguments):
+        try:
+            await sync_to_async(authorize_tool)(tool.name, json.loads(arguments or "{}"))
+        except (PermissionDenied, ValueError):
+            return {"result": TOOL_DENIED}
+        return await invoke(context, arguments)
+
+    tool.on_invoke_tool = invoke_authorized
+    return tool
 
 
 def build_model_settings(

@@ -16,7 +16,7 @@ from apps.system_intelligence.services.agents.context_manager import (
     ensure_context_summary,
 )
 
-from ..stream.send import build_stream_response, persist_user_message
+from ..stream.send import build_stream_response, conversation_turn_refusal, persist_user_message
 
 COMPACT_MIN_CANDIDATES = 2
 TITLE_MAX_LENGTH = 200
@@ -33,6 +33,9 @@ def chat_command_view(request, conversation_id):
         convo = ChatConversation.objects.get(id=conversation_id, created_by=request.user)
     except ChatConversation.DoesNotExist:
         return JsonResponse({"error": "Conversation not found"}, status=404)
+    refused = conversation_turn_refusal(request.user, convo)
+    if refused is not None:
+        return refused
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, AttributeError):

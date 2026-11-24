@@ -3,15 +3,24 @@
 from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 
+from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services.actions.comparison import block_key
+from apps.system_intelligence.services.actions.engine.tool_access import has_chat_grants
 
 
 def _get_user_action_request(request, action_id):
     try:
-        return SystemIntelligenceActionRequest.objects.get(id=action_id, conversation__created_by=request.user)
+        action = SystemIntelligenceActionRequest.objects.select_related("conversation").get(
+            id=action_id, conversation__created_by=request.user
+        )
     except SystemIntelligenceActionRequest.DoesNotExist:
         raise PermissionDenied("Action request not found.")
+    if not user_can_access_app(request.user, action.target_app_label) or not has_chat_grants(
+        request.user, action.conversation.required_tool_apps
+    ):
+        raise PermissionDenied("Action request not found.")
+    return action
 
 
 def _cms_preview_page(action):

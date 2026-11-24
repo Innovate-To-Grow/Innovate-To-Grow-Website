@@ -11,6 +11,7 @@ from django.test import TestCase
 
 from apps.cms.models import NewsFeedSource
 from apps.cms.models.content.news.sync_log import NewsSyncLog
+from apps.event.tests.helpers import make_admin
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.actions.engine.exceptions import ActionRequestError
 
@@ -19,6 +20,11 @@ from apps.system_intelligence.services.actions.engine.exceptions import ActionRe
 # records/__init__.py
 # ---------------------------------------------------------------------------
 class RecordsReadToolTests(TestCase):
+    def setUp(self):
+        user = make_admin(apps=["system_intelligence", "cms"])
+        tokens = actions.set_action_context(None, str(user.pk))
+        self.addCleanup(actions.reset_action_context, tokens)
+
     def test_list_database_models_includes_allowed_excludes_denied(self):
         # The full model list exceeds the truncation limit, so assert on the
         # rendered text rather than re-parsing the (truncated) JSON.

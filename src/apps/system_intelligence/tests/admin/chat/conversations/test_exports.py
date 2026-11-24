@@ -26,6 +26,7 @@ class ExportDownloadViewTests(SystemIntelligenceAdminBase):
         )
         self.assertIn("attachment", response["Content-Disposition"])
         self.assertIn(self.export.filename, response["Content-Disposition"])
+        self.assertIn("no-store", response["Cache-Control"])
 
     def test_other_admin_cannot_download_someone_elses_export(self):
         other = make_superuser(email="other@example.com")
@@ -35,7 +36,7 @@ class ExportDownloadViewTests(SystemIntelligenceAdminBase):
         self.assertEqual(response.status_code, 404)
 
     def test_missing_file_returns_410(self):
-        SystemIntelligenceExport.objects.filter(pk=self.export.pk).update(file="")
+        SystemIntelligenceExport.objects.filter(pk=self.export.pk).update(private_file="")
         url = reverse("admin:system_intelligence_export_download", args=[self.export.id])
         response = self.client.get(url)
         self.assertEqual(response.status_code, 410)

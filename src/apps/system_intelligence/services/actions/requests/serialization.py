@@ -1,5 +1,7 @@
 from typing import Any
 
+from django.urls import reverse
+
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
 from ..comparison import action_comparison
@@ -34,7 +36,11 @@ def serialize_action_request(action: SystemIntelligenceActionRequest) -> dict[st
         },
         "diff": action.diff or [],
         "comparison": action_comparison(action, payload),
-        "preview_url": action.preview_url,
+        "preview_url": (
+            reverse("admin:system_intelligence_action_preview", args=[action.pk])
+            if action.action_type == SystemIntelligenceActionRequest.ACTION_CMS_PAGE_UPDATE
+            else ""
+        ),
         "created_at": action.created_at.isoformat() if action.created_at else "",
         "reviewed_at": action.reviewed_at.isoformat() if action.reviewed_at else "",
         "applied_at": action.applied_at.isoformat() if action.applied_at else "",

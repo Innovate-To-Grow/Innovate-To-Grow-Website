@@ -1,11 +1,14 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.test import RequestFactory, TestCase, override_settings
+from django.db import connections
+from django.test import Client, RequestFactory, TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.urls import reverse
 
-from apps.event.tests.helpers import make_superuser
+from apps.event.tests.helpers import make_admin, make_superuser
 from apps.system_intelligence.admin.config.config_admin import SystemIntelligenceConfigAdmin
 from apps.system_intelligence.models import (
     SystemIntelligenceConfig,
@@ -53,14 +56,26 @@ class SystemIntelligenceConfigAdminTests(TestCase):
 
     def test_activate_this_config_marks_active_and_redirects(self):
         config = SystemIntelligenceConfig.objects.create(name="ToActivate", is_active=False)
-        request = self._request()
-        response = self.admin.activate_this_config(request, str(config.pk))
+        url = reverse("admin:system_intelligence_systemintelligenceconfig_activate_this_config", args=[config.pk])
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.admin_user)
+        self.assertContains(client.get(url), "Activate ToActivate")
+        self.assertFalse(SystemIntelligenceConfig.objects.get(pk=config.pk).is_active)
+        self.assertEqual(client.post(url).status_code, 403)
+        response = client.post(url, {"csrfmiddlewaretoken": client.cookies["csrftoken"].value})
         config.refresh_from_db()
         self.assertTrue(config.is_active)
         self.assertEqual(response.status_code, 302)
         self.assertIn(str(config.pk), response.url)
-        message_text = [m.message for m in request._messages]
-        self.assertTrue(any("active System Intelligence config" in m for m in message_text))
+
+    def test_activation_requires_system_intelligence_access(self):
+        config = SystemIntelligenceConfig.objects.create(name="Restricted", is_active=False)
+        url = reverse("admin:system_intelligence_systemintelligenceconfig_activate_this_config", args=[config.pk])
+        self.client.force_login(make_admin(apps=["cms"]))
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(self.client.post(url).status_code, 403)
+        config.refresh_from_db()
+        self.assertFalse(config.is_active)
 
     def test_has_delete_permission_blocks_active_config(self):
         active = SystemIntelligenceConfig.objects.create(name="Active", is_active=True)
@@ -119,3 +134,27 @@ class SystemIntelligenceConfigAdminTests(TestCase):
         self.assertEqual(saved.status_code, 302, getattr(saved, "context", None) and saved.context["errors"])
         config.refresh_from_db()
         self.assertEqual(config.public_assistant_global_token_limit, 750_000)
+
+
+class ConfigActivationConcurrencyTests(TransactionTestCase):
+    @skipUnlessDBFeature("has_select_for_update")
+    def test_concurrent_activation_preserves_one_active_configuration(self):
+        user = make_superuser()
+        configs = [SystemIntelligenceConfig.objects.create(name=name, is_active=False) for name in ("First", "Second")]
+        barrier = Barrier(len(configs), timeout=10)
+
+        def activate(config):
+            try:
+                client = Client()
+                client.force_login(user)
+                url = reverse(
+                    "admin:system_intelligence_systemintelligenceconfig_activate_this_config", args=[config.pk]
+                )
+                barrier.wait()
+                return client.post(url).status_code
+            finally:
+                connections.close_all()
+
+        with ThreadPoolExecutor(max_workers=len(configs)) as workers:
+            self.assertEqual(list(workers.map(activate, configs)), [302, 302])
+        self.assertEqual(SystemIntelligenceConfig.objects.filter(is_active=True).count(), 1)

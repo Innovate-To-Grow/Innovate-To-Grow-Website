@@ -202,6 +202,14 @@ Served from S3 via `django-storages`:
 | `/static/` | Collected static files (admin CSS, CKEditor assets) |
 | `/media/` | User uploads (CMS assets, profile images) |
 
+### System Intelligence export cutover
+
+1. Deploy the `aws/ecs/private-exports.yaml` stack in the backend region with the intended bucket name and ECS task role. Set `AWS_PRIVATE_EXPORT_BUCKET_NAME` in backend deployment config and confirm the background worker is enabled.
+2. Block public and CDN reads for `media/system_intelligence_exports/*` in the old asset bucket, while retaining authenticated legacy reads for the backend and read/delete access for the migration operator. Invalidate any cached copies of that prefix. Run the application deployment after these checks and allow ten minutes for any cached pre-deploy System Intelligence CMS preview tokens to expire.
+3. Run `python manage.py system_intelligence_exports` with production settings for a read-only inventory. Run it with `--apply` to migrate in place. Rerun on interruption. Resolve any missing sources or checksum mismatches before continuing.
+4. Check representative existing download links with permitted owners, denied staff, and anonymous clients. Also verify that direct unsigned access to the private bucket and old media prefix is denied. Run the command with `--retire` only after those checks pass. Review unreferenced legacy objects separately and retire approved orphaned keys under the storage retention policy.
+5. Schedule `python manage.py system_intelligence_exports --queue-private-orphans` daily. It queues orphan files older than 24 hours and the background worker processes their deletion. Monitor failed `system_intelligence.delete_export` jobs and retry them after resolving storage failures.
+
 `src/Dockerfile` collects the static files into the image at build time (`/app/static`), and `deploy-backend.yml` copies them out of the release image and syncs them to S3 (`--size-only`) before the rollout. `src/docker/runtime/entrypoint.sh` also runs `collectstatic` at every Web container start, because its fallback checks `staticfiles/`, which the image never contains; under the production settings that pass writes to the bucket's `static/` prefix, and if it fails it logs `collectstatic failed (non-fatal)` and the container still starts.
 
 ## Related pages
