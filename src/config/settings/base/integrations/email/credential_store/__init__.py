@@ -24,6 +24,7 @@ CREDENTIAL_STORE_LOCAL_DIR = BASE_DIR / "data" / "credential-store"
 CREDENTIAL_STORE_SECRETS = {
     "microsoft_graph_certificate_key": "itg/backend/microsoft-graph/certificate-key",
     "gmail_api_service_account_key": "itg/backend/gmail-api/service-account-key",
+    "system_intelligence_llm_api_key": "itg/backend/system-intelligence/llm-api-key",
 }
 
 # A new version gets this label instead of AWSCURRENT, so storing a key never changes which version Secrets Manager

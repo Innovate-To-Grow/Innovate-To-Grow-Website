@@ -28,7 +28,15 @@ projects = [
     "system_intelligence.services.public_assistant",
     "system_intelligence.services.usage_log",
 ]
-mail = ["core", "authn", "cms", "event", "system_intelligence.models", "system_intelligence.services.bedrock"]
+mail = [
+    "core",
+    "authn",
+    "cms",
+    "event",
+    "system_intelligence.models",
+    "system_intelligence.services.agents",
+    "system_intelligence.services.bedrock",
+]
 # The helpdesk sits above mail (it reads campaigns and the scam checks); mail never imports it.
 helpdesk = ["core", "authn", "event", "mail"]
 system_intelligence = ["core", "authn", "cms", "event", "mail", "projects"]

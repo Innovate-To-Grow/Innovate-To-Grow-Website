@@ -210,6 +210,15 @@ Served from S3 via `django-storages`:
 4. Check representative existing download links with permitted owners, denied staff, and anonymous clients. Also verify that direct unsigned access to the private bucket and old media prefix is denied. Run the command with `--retire` only after those checks pass. Review unreferenced legacy objects separately and retire approved orphaned keys under the storage retention policy.
 5. Schedule `python manage.py system_intelligence_exports --queue-private-orphans` daily. It queues orphan files older than 24 hours and the background worker processes their deletion. Monitor failed `system_intelligence.delete_export` jobs and retry them after resolving storage failures.
 
+### System Intelligence AI providers (DeepSeek, Kimi, OpenAI, Anthropic)
+
+Bedrock-only sites need nothing: every role keeps using Bedrock until a provider is selected. Before the I2G Master installs a provider key in production:
+
+1. Deploy `aws/cicd/identity-stack.json` so `itg/backend/system-intelligence/llm-api-key` (`SystemIntelligenceLlmApiKeySecret`), its `ecsTaskRole` grant and its resource policy exist. Until then, installing a key fails with a credential-store error and nothing is stored.
+2. Confirm the ECS tasks have outbound HTTPS to the provider hosts (for example `api.deepseek.com`, `api.moonshot.ai`, `api.openai.com`, `api.anthropic.com`); working Bedrock calls do not prove it.
+3. In Django admin → System Intelligence → AI Providers: add the provider, run **Install API key**, run **Test connection**, then enable it. Select it as the Default and/or Public Assistant AI Provider in the System Intelligence Config, with that provider's model name.
+4. Decide per role what data may leave AWS: the default role sends staff chats, tool results and the inbox scam review's mail content; the public role sends visitor questions. Keep a role on Bedrock (blank provider) where that is not acceptable.
+
 `src/Dockerfile` collects the static files into the image at build time (`/app/static`), and `deploy-backend.yml` copies them out of the release image and syncs them to S3 (`--size-only`) before the rollout. `src/docker/runtime/entrypoint.sh` also runs `collectstatic` at every Web container start, because its fallback checks `staticfiles/`, which the image never contains; under the production settings that pass writes to the bucket's `static/` prefix, and if it fails it logs `collectstatic failed (non-fatal)` and the container still starts.
 
 ## Related pages

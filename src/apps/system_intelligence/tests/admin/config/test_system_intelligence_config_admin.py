@@ -1,16 +1,19 @@
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
+from django.contrib.messages import get_messages
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.db import connections
+from django.db import IntegrityError, connections
 from django.test import Client, RequestFactory, TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.urls import reverse
 
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.system_intelligence.admin.config.config_admin import SystemIntelligenceConfigAdmin
 from apps.system_intelligence.models import (
+    LLMProviderConfig,
     SystemIntelligenceConfig,
 )
 from apps.system_intelligence.tests.admin.config.test_model_admin import BEDROCK, GROUPED, USAGE_FIELD, USAGE_LABEL
@@ -54,6 +57,13 @@ class SystemIntelligenceConfigAdminTests(TestCase):
         with patch(BEDROCK, side_effect=RuntimeError("boom")):
             self.assertEqual(self.admin.default_model_display(obj), "some-id")
 
+    def test_default_model_display_names_the_provider_without_reading_bedrock(self):
+        provider = LLMProviderConfig.objects.create(name="DeepSeek", preset=LLMProviderConfig.Preset.DEEPSEEK)
+        obj = SystemIntelligenceConfig(name="A", default_provider=provider, default_model_id="deepseek-chat")
+        with patch(BEDROCK) as catalog:
+            self.assertEqual(self.admin.default_model_display(obj), "DeepSeek · deepseek-chat")
+        catalog.assert_not_called()
+
     def test_activate_this_config_marks_active_and_redirects(self):
         config = SystemIntelligenceConfig.objects.create(name="ToActivate", is_active=False)
         url = reverse("admin:system_intelligence_systemintelligenceconfig_activate_this_config", args=[config.pk])
@@ -76,6 +86,25 @@ class SystemIntelligenceConfigAdminTests(TestCase):
         self.assertEqual(self.client.post(url).status_code, 403)
         config.refresh_from_db()
         self.assertFalse(config.is_active)
+
+    def test_activation_rejects_other_methods_and_unknown_configs(self):
+        config = SystemIntelligenceConfig.objects.create(name="Other", is_active=False)
+        url = reverse("admin:system_intelligence_systemintelligenceconfig_activate_this_config", args=[config.pk])
+        self.client.force_login(self.admin_user)
+        self.assertEqual(self.client.put(url).status_code, 405)
+        self.assertEqual(self.client.get(url.replace(str(config.pk), str(uuid.uuid4()))).status_code, 404)
+
+    def test_activation_race_reports_an_error(self):
+        config = SystemIntelligenceConfig.objects.create(name="Racing", is_active=False)
+        url = reverse("admin:system_intelligence_systemintelligenceconfig_activate_this_config", args=[config.pk])
+        self.client.force_login(self.admin_user)
+        with patch.object(SystemIntelligenceConfig, "save", side_effect=IntegrityError("race")):
+            response = self.client.post(url)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(
+            [str(m) for m in get_messages(response.wsgi_request)],
+            ["Another configuration was activated at the same time. Try again."],
+        )
 
     def test_has_delete_permission_blocks_active_config(self):
         active = SystemIntelligenceConfig.objects.create(name="Active", is_active=True)

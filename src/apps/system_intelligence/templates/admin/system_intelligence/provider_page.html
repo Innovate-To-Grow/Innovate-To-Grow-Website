@@ -1,0 +1,14 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p>
+    {{ provider.name }} &middot; {{ provider.get_preset_display }} &middot; {{ provider.effective_base_url }}
+    &middot; key: {% if provider.key_configured %}ends …{{ provider.key_hint }}{% else %}not installed{% endif %}
+  </p>
+  <form method="post" autocomplete="off">
+    {% csrf_token %}
+    {{ form.as_div }}
+    <button type="submit" class="button">{{ submit_label }}</button>
+    <a href="{{ change_url }}">Cancel</a>
+  </form>
+{% endblock %}

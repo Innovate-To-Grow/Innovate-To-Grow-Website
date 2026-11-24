@@ -1,5 +1,5 @@
-"""Static checks for the private-key secrets (Microsoft Graph certificate key, Gmail API service-account key) and their
-narrow grants in the identity stack."""
+"""Static checks for the private-key secrets (Microsoft Graph certificate key, Gmail API service-account key, System
+Intelligence AI provider API keys) and their narrow grants in the identity stack."""
 
 import ast
 import json
@@ -123,6 +123,13 @@ class GmailApiKeySecretTests(KeySecretChecks, unittest.TestCase):
     store_name = "gmail_api_service_account_key"
     grant = "ApplicationGmailApiKey"
     resource_policy = "GmailApiKeySecretPolicy"
+
+
+class SystemIntelligenceLlmApiKeySecretTests(KeySecretChecks, unittest.TestCase):
+    secret = "SystemIntelligenceLlmApiKeySecret"
+    store_name = "system_intelligence_llm_api_key"
+    grant = "ApplicationSystemIntelligenceLlmApiKey"
+    resource_policy = "SystemIntelligenceLlmApiKeySecretPolicy"
 
 
 class StackWideSecretTests(unittest.TestCase):

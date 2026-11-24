@@ -56,7 +56,7 @@ def _event_stream(request, convo, messages, chat_config, aws_config, model_id, *
             if chunk["payload"]:
                 yield chunk["payload"]
     except Exception as exc:
-        yield _stream_exception(convo.id, exc, aws_config)
+        yield _stream_exception(convo.id, exc, aws_config, getattr(chat_config, "default_provider", None))
         return
 
     assistant = _create_assistant_message(

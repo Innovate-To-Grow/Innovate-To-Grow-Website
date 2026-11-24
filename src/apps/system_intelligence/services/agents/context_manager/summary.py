@@ -145,6 +145,7 @@ async def summarize_context_async(
         max_tokens=SUMMARY_TARGET_TOKENS,
         temperature=chat_config.temperature,
         agent_name=SUMMARY_AGENT_NAME,
+        provider=getattr(chat_config, "default_provider", None),
     )
     summary = result.text.strip()
     if not summary:

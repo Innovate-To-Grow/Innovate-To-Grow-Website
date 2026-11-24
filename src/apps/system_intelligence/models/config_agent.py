@@ -1,10 +1,15 @@
-"""The first fields of ``SystemIntelligenceConfig``: the config's name and active flag, and the admin agent's
-Bedrock model settings. An abstract base, so the model keeps its fields in the same order: Django orders fields by
+"""The first fields of ``SystemIntelligenceConfig``: the config's name and active flag, the admin agent's model
+settings, and which AI provider each role uses (blank = Amazon Bedrock). An abstract base, so the model keeps its fields in the same order: Django orders fields by
 creation, and these are created before the model's own."""
 
 from django.db import models
 
 from apps.core.models import ProjectControlModel
+
+DEFAULT_ROLE = "default"
+PUBLIC_ROLE = "public"
+PROVIDER_FIELDS = ("default_provider", "public_assistant_provider")
+BEDROCK_HELP = "Blank uses Amazon Bedrock with the active AWS Credential Config."
 
 
 class AdminAgentConfigFields(ProjectControlModel):
@@ -19,12 +24,21 @@ class AdminAgentConfigFields(ProjectControlModel):
         verbose_name="Active",
         help_text="Only one config can be active. Activating this will deactivate others.",
     )
+    default_provider = models.ForeignKey(
+        "system_intelligence.LLMProviderConfig",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="Default AI Provider",
+        help_text=f"Provider of the Default AI Model (admin assistant, context summaries, scam review). {BEDROCK_HELP}",
+    )
     default_model_id = models.CharField(
         max_length=256,
         blank=True,
         default="us.anthropic.claude-sonnet-4-20250514-v1:0",
         verbose_name="Default AI Model",
-        help_text="Site-wide default Bedrock model or inference profile ID.",
+        help_text="Site-wide default model: a Bedrock model or inference profile ID, or the provider's model name.",
     )
     system_prompt = models.TextField(
         blank=True,
@@ -48,5 +62,22 @@ class AdminAgentConfigFields(ProjectControlModel):
         help_text="Sampling temperature (0.0 = deterministic, 1.0 = creative).",
     )
 
+    public_assistant_provider = models.ForeignKey(
+        "system_intelligence.LLMProviderConfig",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="+",
+        verbose_name="Public Assistant AI Provider",
+        help_text="Provider of the Public Assistant Model (public chat and past-project AI search); used only when "
+        f"that model is set, otherwise the default provider and model are used. {BEDROCK_HELP}",
+    )
+
     class Meta:
         abstract = True
+
+    def route_for(self, role: str = DEFAULT_ROLE):
+        """The ``(provider, model_id)`` pair one role calls; ``provider`` is ``None`` for Amazon Bedrock."""
+        if role == PUBLIC_ROLE and (self.public_assistant_model_id or "").strip():
+            return self.public_assistant_provider, self.public_assistant_model_id
+        return self.default_provider, self.default_model_id

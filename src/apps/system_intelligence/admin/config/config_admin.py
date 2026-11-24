@@ -17,6 +17,7 @@ from unfold.decorators import action, display
 
 from apps.core.admin.common.base import BaseModelAdmin
 from apps.system_intelligence.models import SystemIntelligenceConfig
+from apps.system_intelligence.models.config_agent import PROVIDER_FIELDS
 from apps.system_intelligence.services.public_assistant import global_budget_usage
 
 from .forms import SystemIntelligenceConfigForm
@@ -38,6 +39,7 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
     )
     list_filter = ("is_active", "public_assistant_enabled")
     search_fields = ("name",)
+    list_select_related = ("default_provider",)
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config"]
     fieldsets = (
@@ -45,9 +47,9 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         (
             _("Model Settings"),
             {
-                "fields": ("default_model_id", "temperature", "max_tokens"),
-                "description": "Amazon Bedrock model and generation parameters. "
-                "Model choices are fetched using the active AWS Credential Config.",
+                "fields": ("default_provider", "default_model_id", "temperature", "max_tokens"),
+                "description": "Default provider (blank = Amazon Bedrock via the active AWS Credential Config; "
+                "other providers are managed under AI Providers), model and generation parameters.",
             },
         ),
         (_("System Prompt"), {"fields": ("system_prompt",)}),
@@ -58,6 +60,7 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
                 "never reaches the admin assistant, tools, or private data.",
                 "fields": (
                     "public_assistant_enabled",
+                    "public_assistant_provider",
                     "public_assistant_model_id",
                     "public_assistant_system_prompt",
                     "public_assistant_welcome_message",
@@ -126,6 +129,8 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
     def default_model_display(self, obj):
         if not obj.default_model_id:
             return "—"
+        if obj.default_provider_id:
+            return f"{obj.default_provider.name} · {obj.default_model_id}"
         try:
             from apps.system_intelligence.services.bedrock import get_available_models
 
@@ -174,6 +179,11 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
             return HttpResponseRedirect(change_url)
         messages.success(request, f'"{obj.name}" is now the active System Intelligence config.')
         return HttpResponseRedirect(change_url)
+
+    def get_readonly_fields(self, request, obj=None):
+        """Which provider a role calls decides where staff chats and inbox mail are sent: I2G Master only."""
+        fields = super().get_readonly_fields(request, obj)
+        return fields if request.user.is_superuser else (*fields, *PROVIDER_FIELDS)
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:
