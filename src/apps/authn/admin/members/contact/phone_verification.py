@@ -18,7 +18,6 @@ import re
 from django import forms
 from django.contrib import messages
 from django.contrib.admin.utils import quote, unquote
-from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import Http404
 from django.shortcuts import redirect, render
@@ -133,9 +132,6 @@ class StaffPhoneCodeMixin:
         contact = self.get_object(request, unquote(object_id))
         if contact is None:
             raise Http404("Contact phone not found.")
-        # ``admin_view`` only checks is_staff: this is the app grant plus the privileged-account guard.
-        if not self.has_change_permission(request, contact):
-            raise PermissionDenied
         change_url = reverse("admin:authn_contactphone_change", args=[quote(contact.pk)])
         if contact.member_id is None:
             messages.error(request, "This number belongs to no member, so there is no account to verify it for.")

@@ -15,7 +15,7 @@ class CMSLivePreviewSyncCacheTest(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = make_admin(apps=["cms"], email="cms-cache@example.com")
+        self.staff = make_admin(email="cms-cache@example.com")
         self.page = CMSPage.objects.create(
             slug="live-preview-test",
             route="/live-preview-test",

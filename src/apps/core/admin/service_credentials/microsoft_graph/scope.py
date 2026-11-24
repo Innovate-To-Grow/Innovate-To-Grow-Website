@@ -70,7 +70,7 @@ class MailboxScopeFormSet(BaseInlineFormSet):
 
 
 class MicrosoftGraphMailboxScopeInline(AppAccessInlineMixin, TabularInline):
-    """Editable by staff granted the Core app, like the config itself (``AppAccessInlineMixin``)."""
+    """Editable by every Admin, like the config itself (``AppAccessInlineMixin``)."""
 
     model = MicrosoftGraphMailboxScope
     form = MailboxScopeInlineForm

@@ -1,14 +1,17 @@
 """The access check in the admin: the "Run access check" page, the read-only evidence list, the evidence fields on the
-Graph config (all Core app, like the rest of the config), and the access-check card on the certificate panel."""
+Graph config (every Admin, like the rest of the config), and the access-check card on the certificate panel."""
+
+from unittest.mock import patch
 
 from django.contrib.messages import get_messages
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.core.admin.service_credentials.microsoft_graph.config import MicrosoftGraphProviderConfigAdmin
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.access_check.runner import NO_DENY_MAILBOX
 from apps.core.tests.services.graph_access.helpers import DENY, EXTRA_ROLES, ProbeFixtureMixin, Verdict
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin, make_member, make_superuser
 
 PREFIX = "admin:core_microsoftgraphproviderconfig"
 EVIDENCE = "admin:core_microsoftgraphaccesscheck"
@@ -24,8 +27,13 @@ class AccessCheckAdminFixture(ProbeFixtureMixin, TestCase):
         self.run_url = reverse(f"{PREFIX}_run_access_check", args=[self.config.pk])
         self.change_url = reverse(f"{PREFIX}_change", args=[self.config.pk])
 
-    def login_staff(self, *apps):
-        self.client.force_login(make_admin(apps=list(apps), email=f"staff-{'-'.join(apps) or 'none'}@example.com"))
+    def login_other_admin(self):
+        """Sign in as a second Admin (not the fixture's): every Admin has the same controls."""
+        self.client.force_login(make_admin(email="other-admin@example.com"))
+
+    def login_member(self):
+        """Sign in as a member who is not an Admin."""
+        self.client.force_login(make_member(email="member@example.com"))
 
     def card(self, page) -> str:
         """The access check card: it closes the certificate panel, so it runs up to the panel's end."""
@@ -84,8 +92,8 @@ class RunAccessCheckPageTests(AccessCheckAdminFixture):
         self.assertEqual(self.probe.calls, [])
         self.assertFalse(MicrosoftGraphAccessCheck.objects.exists())
 
-    def test_core_staff_run_it_like_a_superuser(self):
-        staff = make_admin(apps=["core"], email="core@example.com")
+    def test_any_admin_runs_it(self):
+        staff = make_admin(email="other-admin@example.com")
         self.client.force_login(staff)
 
         self.assertEqual(self.client.get(self.run_url).status_code, 200)
@@ -95,16 +103,22 @@ class RunAccessCheckPageTests(AccessCheckAdminFixture):
         self.assertRedirects(response, reverse(f"{EVIDENCE}_change", args=[check.pk]))
         self.assertEqual((check.run_by, check.verdict), (staff, Verdict.COMPLIANT))
 
-    def test_staff_without_the_core_app_may_not_open_or_run_it(self):
-        for apps in (("mail",), ("cms", "event"), ()):
-            with self.subTest(apps=apps):
-                self.login_staff(*apps)
-                self.assertEqual(self.client.get(self.run_url).status_code, 403)
-                self.assertEqual(self.client.post(self.run_url).status_code, 403)
+    def test_members_who_are_not_admins_may_not_open_or_run_it(self):
+        self.login_member()
+        for response in (self.client.get(self.run_url), self.client.post(self.run_url)):
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/admin/login/", response["Location"])
         self.client.logout()
         self.assertEqual(self.client.post(self.run_url).status_code, 302)
         self.assertEqual(self.probe.calls, [])
         self.assertFalse(MicrosoftGraphAccessCheck.objects.exists())
+
+    def test_it_follows_the_change_permission(self):
+        with patch.object(MicrosoftGraphProviderConfigAdmin, "has_change_permission", return_value=False):
+            response = self.client.post(self.run_url)
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.probe.calls, [])
 
     def test_an_unknown_config_is_a_404(self):
         url = reverse(f"{PREFIX}_run_access_check", args=["00000000-0000-0000-0000-000000000000"])
@@ -118,9 +132,9 @@ class EvidenceListTests(AccessCheckAdminFixture):
         self.client.post(self.run_url)
         self.check = MicrosoftGraphAccessCheck.objects.get()
 
-    def test_core_staff_can_read_the_evidence_but_nobody_can_change_or_delete_it(self):
+    def test_admins_can_read_the_evidence_but_nobody_can_change_or_delete_it(self):
         detail = reverse(f"{EVIDENCE}_change", args=[self.check.pk])
-        for login in (lambda: self.client.force_login(self.superuser), lambda: self.login_staff("core")):
+        for login in (lambda: self.client.force_login(self.superuser), self.login_other_admin):
             login()
             with self.subTest(user=self.client.session.get("_auth_user_id")):
                 self.assertContains(self.client.get(reverse(f"{EVIDENCE}_changelist")), DENY)
@@ -131,10 +145,13 @@ class EvidenceListTests(AccessCheckAdminFixture):
                 self.assertEqual(self.client.post(delete, {"post": "yes"}).status_code, 403)
         self.assertEqual(MicrosoftGraphAccessCheck.objects.get(), self.check)
 
-    def test_mail_only_staff_cannot_see_the_evidence(self):
-        self.login_staff("mail")
+    def test_members_who_are_not_admins_cannot_see_the_evidence(self):
+        self.login_member()
 
-        self.assertEqual(self.client.get(reverse(f"{EVIDENCE}_changelist")).status_code, 403)
+        response = self.client.get(reverse(f"{EVIDENCE}_changelist"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
 
     def test_the_results_table_escapes_what_it_shows(self):
         self.check.results = [{**self.check.results[0], "note": "<script>alert(1)</script>"}]

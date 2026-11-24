@@ -1,4 +1,4 @@
-"""The Graph permission check in the admin: the "Check permissions" button of a Graph config (Core app) and its card.
+"""The Graph permission check in the admin: the "Check permissions" button of a Graph config and its card.
 
 A run requests a fresh token and, when the Message Trace role is in it or Message Trace is on, makes one read-only
 trace request; it sends no mail and needs no deny mailbox. It is a POST (CSRF-protected by the admin site, like the
@@ -19,15 +19,13 @@ from apps.core.models import MicrosoftGraphPermissionCheck
 from apps.core.models.base.service_credentials.microsoft_graph import MESSAGE_TRACE_ROLE
 from apps.core.services.email.graph.access_check import permissions
 from apps.core.services.email.graph.credential.expiry import local_time_text
-from apps.core.utils.access import user_can_access_app
 
 from .panel import BADGE_CLASSES, CHANGE_URL_NAME, URL_NAME_PREFIX
 
 PERMISSIONS_URL_NAME = f"{URL_NAME_PREFIX}_check_permissions"
 CARD_ANCHOR = "graph-permissions"
 COOLDOWN = datetime.timedelta(seconds=30)
-CORE_APP_ONLY = "Checking the Microsoft Graph permissions needs the Core app."
-CORE_APP_NEEDED = "Checking the permissions needs the Core app, which this account is not granted."
+NOT_ALLOWED = "You do not have permission to check the Microsoft Graph permissions."
 COOLING_DOWN = "The permissions were checked moments ago; wait {seconds} seconds before checking again."
 Trace = MicrosoftGraphPermissionCheck.TraceResult
 TRACE_TONES = {Trace.AVAILABLE: "success", Trace.NOT_GRANTED: "warning", Trace.THROTTLED: "warning"}
@@ -53,7 +51,7 @@ class GraphPermissionCheckViewMixin:
 
     def check_permissions_view(self, request, object_id):
         if not self.has_change_permission(request):
-            raise PermissionDenied(CORE_APP_ONLY)
+            raise PermissionDenied(NOT_ALLOWED)
         if request.method != "POST":
             return HttpResponseNotAllowed(["POST"])
         config = self._config(request, object_id)
@@ -79,13 +77,13 @@ def cooldown_seconds(config, *, now=None) -> int:
     return math.ceil(left) if left > 0 else 0
 
 
-def permissions_card(request, config) -> dict:
+def permissions_card(config) -> dict:
     """Template context for ``permissions_card.html``: the latest permission check of *config* and its control."""
-    card = {"caveat": permissions.CAVEAT, "anchor": CARD_ANCHOR}
-    if user_can_access_app(request.user, "core"):
-        card["check_url"] = reverse(f"admin:{PERMISSIONS_URL_NAME}", args=[config.pk])
-    else:
-        card["core_app_needed"] = CORE_APP_NEEDED
+    card = {
+        "caveat": permissions.CAVEAT,
+        "anchor": CARD_ANCHOR,
+        "check_url": reverse(f"admin:{PERMISSIONS_URL_NAME}", args=[config.pk]),
+    }
     check = config.permission_checks.order_by("-created_at").first()
     if check is None:
         return card

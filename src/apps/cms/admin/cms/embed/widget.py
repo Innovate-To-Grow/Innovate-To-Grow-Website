@@ -132,7 +132,7 @@ class CMSEmbedWidgetAdmin(BaseModelAdmin):
 
     # noinspection PyMethodMayBeStatic
     def app_routes_view(self, request):
-        # ``admin_view`` only enforces is_staff, so re-check per-app access here.
+        # Custom URLs re-check the ModelAdmin's permission hook.
         if not self.has_view_permission(request):
             raise PermissionDenied("You do not have permission to access embed widgets.")
         return JsonResponse({"routes": list(EMBEDDABLE_APP_ROUTES)})

@@ -62,7 +62,7 @@ def send_admin_invitation_email(*, invitation, request=None):
         },
     )
 
-    # The acceptance URL creates a staff account for whoever holds it, so no copy may stay in Sent Items.
+    # The acceptance URL creates an Admin account for whoever holds it, so no copy may stay in Sent Items.
     source_id = getattr(invitation, "pk", None)  # telemetry only: never let it stop the invitation
     with email_tracking(
         category="invitation", source_type="authn.admininvitation" if source_id else "", source_id=source_id

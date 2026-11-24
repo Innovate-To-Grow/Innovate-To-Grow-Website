@@ -113,8 +113,9 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
         return self.opts.verbose_name
 
     def _confirm_action_view(self, request):
-        # See _confirm_change_view: gate the bulk-action confirmation on per-app
-        # access (execution re-checks via response_action / the action itself).
+        # See _confirm_change_view: gate the bulk-action confirmation on the
+        # model admin's view permission (execution re-checks via
+        # response_action / the action itself).
         if not self.has_view_permission(request):
             raise PermissionDenied
         session_key = self._session_action_key()

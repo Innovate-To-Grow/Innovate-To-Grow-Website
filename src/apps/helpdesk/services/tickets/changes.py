@@ -22,7 +22,7 @@ def _name(member) -> str:
 
 
 def helpdesk_staff():
-    """Active staff who may work tickets (the Helpdesk grant, or I2G Master), for the assignee choices."""
+    """Active Admins (every Admin may work tickets), for the assignee choices."""
     from apps.authn.models import Member
 
     members = Member.objects.filter(is_active=True, is_staff=True).order_by("first_name", "last_name")

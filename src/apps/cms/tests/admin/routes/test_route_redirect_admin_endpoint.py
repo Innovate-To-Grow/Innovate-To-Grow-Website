@@ -1,6 +1,8 @@
 from unittest.mock import Mock, patch
 
+from django.contrib import admin
 from django.contrib.admin.sites import AdminSite
+from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
@@ -44,22 +46,24 @@ class RouteRedirectAdminEndpointTests(TestCase):
         self.assertTrue(response.json()["has_conflict"])
         self.assertIn("application_route", {item["code"] for item in response.json()["conflicts"]})
 
-    def test_conflict_endpoint_requires_cms_app_access(self):
-        other_staff = Member.objects.create_user(
-            password="testpass123",
-            is_staff=True,
-            first_name="Other",
-            last_name="Staff",
-            admin_apps=[],
-        )
-        self.client.force_login(other_staff)
+    def test_conflict_endpoint_is_for_admins_only(self):
+        member = Member.objects.create_user(password="testpass123", first_name="Regular", last_name="Member")
+        self.client.force_login(member)
 
         response = self.client.get(
             reverse("admin:cms_routeredirect_conflict_check"),
             {"source_path": "/legacy", "destination_path": "/endpoint-target"},
         )
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
+
+    def test_conflict_view_refuses_a_non_admin_even_when_called_directly(self):
+        request = RequestFactory().get("/", {"source_path": "/legacy", "destination_path": "/endpoint-target"})
+        request.user = Member.objects.create_user(password="testpass123", first_name="Direct", last_name="Member")
+
+        with self.assertRaises(PermissionDenied):
+            admin.site._registry[RouteRedirect].conflict_check_view(request)
 
 
 class CMSPageRenameAdminTests(TestCase):

@@ -84,7 +84,7 @@ def receive(raw: bytes, *, reader: FakeReader | None = None, **values) -> Ticket
 
 
 def helpdesk_staff(email="agent@example.com", **kwargs):
-    return make_admin(apps=["helpdesk"], email=email, first_name="Avery", last_name="Agent", **kwargs)
+    return make_admin(email=email, first_name="Avery", last_name="Agent", **kwargs)
 
 
 __all__ = ["FakeReader", "graph_reader", "helpdesk_staff", "ingest", "make_admin", "make_superuser", "queue", "receive"]

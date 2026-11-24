@@ -3,8 +3,7 @@
 How to write, test and send a broadcast email ("blast"), and how to tell afterwards what happened to it.
 [Back to the handbook](README.md).
 
-**Needs:** the Mail section (**Broadcast Delivery** in the sidebar; `mail` in the access list). Actions on the
-Bounced addresses page that change a member also need the Members section (`authn`).
+Every task in this chapter is open to every Admin.
 
 ## 3.1 Before you start
 
@@ -33,7 +32,7 @@ hours. Its time estimate counts only the per-minute rate, so the real send usual
 |---|---|
 | **All subscribers (subscribed email addresses only)** | Active members, at their subscribed addresses only. With **Send to: Primary email only**, a member whose primary is unsubscribed gets nothing. **Use this for newsletters.** |
 | **All active members (subscribed or not)** | Every active member, including people who unsubscribed. Only for messages every member must receive. |
-| **Staff Members** | Active staff accounts. |
+| **Staff Members** | Active Admin accounts. |
 | **Selected Members** | The members you pick. |
 | **Manual Emails** | The addresses you type, one per line, all of them. An address that belongs to an active member gets that member's name and sign-in link; any other address gets an empty name and a link to the sign-in page. |
 | **Event Registrants**, **Event Ticket Type**, **Checked-In Attendees**, **No-Shows (Not Checked In)** | People registered for the event you pick (or for one ticket type, or who did or did not check in), at the address they registered with. |
@@ -241,8 +240,7 @@ has got), the next scan, the interval (every 10 minutes), and what the last scan
   the i2g@ Inbox: Outlook, the admin's inbox page (3.8) and the helpdesk carry on.
 
 The helpdesk reads the same Inbox with its own scan, every 2 minutes (every 30 seconds while it catches up), and
-has its own controls on the **Intake: reading the Inbox** card at the top of **Helpdesk → Settings** (needs the
-Helpdesk section):
+has its own controls on the **Intake: reading the Inbox** card at the top of **Helpdesk → Settings**:
 
 - **Scan now**, and **Pause intake** / **Resume intake**. While paused, the helpdesk neither reads the Inbox nor
   imports mail; resuming continues from its checkpoint, so mail that arrived meanwhile (and is still in the Inbox)
@@ -286,7 +284,7 @@ again**:
   means the default of 72). It has no effect once the mailbox has a checkpoint; use **Rescan since** instead.
 
 Both change bounce processing only; the helpdesk has its own (3.5). Both changes are recorded in the admin log
-(**Site Settings → Admin Log**, for staff who have that section).
+(**Site Settings → Admin Log**).
 
 ## 3.7 Bounced addresses
 
@@ -342,8 +340,8 @@ an ambiguous match, an unresolved permanent hold or a complaint blocks the workf
 
 **Left-the-organisation notices.** When someone's automatic reply to one of our emails says they no longer work
 there, the address shows **left the organisation 1** in its counts. Open the address to see when it came, the
-name, email address or phone number the notice suggests as a contact, flagged for **manual review**, and, if you
-hold the Helpdesk app, a link to the notice itself. Phone hints support US ten-digit / `+1` formats only and are
+name, email address or phone number the notice suggests as a contact, flagged for **manual review**, and a link to
+the notice itself. Phone hints support US ten-digit / `+1` formats only and are
 shown normalized as `+1`; international numbers are ignored. These details come from the notice's text and are not
 verified. The hints disappear from details, the replacement form, the filter and exports 90 days after processing,
 or sooner if the source is deleted. The notice count and dates remain. Ordinary vacations and lunch breaks are
@@ -355,20 +353,21 @@ type the new address: confirm it with the member or their organisation first, si
 
 Open an address (or use a row's **Actions** menu). Each action shows a confirmation page first.
 
-| Action | What it does | Undo | Needs |
-|---|---|---|---|
-| **Dismiss** | Removes the address from the open list; nothing else changes. | **Reopen** | Mail |
-| **Suppress address** | For an address that belongs to no member: every campaign skips it. | **Clear suppression** | Mail |
-| **Mark undeliverable** | Every campaign skips this member's address. Sign-in codes, tickets and notifications still go. | **Clear suppression** | Mail + Members |
-| **Unsubscribe this address** | Turns off newsletters for this address only. | Re-subscribe on the member page | Mail + Members |
-| **Use another address as primary** | A verified address you pick becomes the primary. | Make the old address primary again once it is verified | Mail + Members |
-| **Replace email** | Adds the new address to the member, then marks the old one undeliverable or deletes it. Sends nothing. | Partly | Mail + Members |
-| **Delete this email address** | Removes the address. You type the address to confirm. | No | Mail + Members |
-| **Deactivate account** | The member can no longer sign in; their registrations and history stay. | Activate on the Members page | Mail + Members |
-| **Delete account** | Deletes the member and everything that belongs to them, including registrations and check-ins. You type their primary address. Prefer **Deactivate**. | No | I2G Master only |
+| Action | What it does | Undo |
+|---|---|---|
+| **Dismiss** | Removes the address from the open list; nothing else changes. | **Reopen** |
+| **Suppress address** | For an address that belongs to no member: every campaign skips it. | **Clear suppression** |
+| **Mark undeliverable** | Every campaign skips this member's address. Sign-in codes, tickets and notifications still go. | **Clear suppression** |
+| **Unsubscribe this address** | Turns off newsletters for this address only. | Re-subscribe on the member page |
+| **Use another address as primary** | A verified address you pick becomes the primary. | Make the old address primary again once it is verified |
+| **Replace email** | Adds the new address to the member, then marks the old one undeliverable or deletes it. Sends nothing. | Partly |
+| **Delete this email address** | Removes the address. You type the address to confirm. | No |
+| **Deactivate account** | The member can no longer sign in; their registrations and history stay. | Activate on the Members page |
+| **Delete account** | Deletes the member and everything that belongs to them, including registrations and check-ins. You type their primary address. Prefer **Deactivate**. | No |
 
-Changes to a staff or superuser account need the I2G Master. An address that is a member's only address, or their
-last verified way to sign in, cannot be deleted.
+An address that is a member's only address, or their last verified way to sign in, cannot be deleted. **Deactivate
+account** and **Delete account** follow the lockout rules of chapter 2 (2.3): never your own Admin account, never the
+last active Admin. Every other action works on any member, another Admin included.
 
 **Bulk:** tick rows (up to 500) and choose **Dismiss**, **Reopen**, **Suppress address**, **Mark undeliverable**,
 **Clear suppression** or **Unsubscribe this address**. The next page lists every address with "will change" or the

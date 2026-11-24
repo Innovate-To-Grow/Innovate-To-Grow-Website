@@ -1,8 +1,7 @@
 """Mail → Delivery Rates: the Smart rate switch, the manual rate and the provider limits of every delivery channel.
 
-Staff with the Mail app (the access Notification Delivery checks) edit all channels with one "Save delivery
-rates". They can lower a documented limit, never raise it above its ``DELIVERY_RATES`` value. Every save and action
-is a POST with CSRF and leaves an admin history line such as "sms_send: Smart rate on→off; manual 1→2".
+Admins edit all channels with one "Save delivery rates". They can lower a documented limit, never raise it above its
+``DELIVERY_RATES`` value. Every save and action is a POST with CSRF and leaves an admin history line such as "sms_send: Smart rate on→off; manual 1→2".
 """
 
 from django.contrib import admin, messages

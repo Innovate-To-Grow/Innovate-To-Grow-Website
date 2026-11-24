@@ -1,22 +1,21 @@
-"""Sent mail of the sending mailbox (the Graph mailbox, or the Gmail account the site sends as) is readable by staff
-granted the Mail app, like a superuser: the Sent folder, the site's own messages in any folder, and replies to them.
+"""Sent mail of the sending mailbox (the Graph mailbox, or the Gmail account the site sends as) is readable by every
+Admin: the Sent folder, the site's own messages in any folder, and replies to them. A member who is not an Admin
+reaches none of it, and nothing is fetched or sent for them.
 
-Every inbox view needs the Mail app first, so ``helpers.sent_mail_restricted`` only matters to someone without it,
-for whom Sent mail stays hidden. The site's tagged credential mail is still left out of Sent for every reader
+The site's tagged credential mail is still left out of Sent for every reader
 (``services/inbox/test_gmail_credential_copies`` and ``apps.mail.services.inbox.reading.messages``).
 """
 
 from unittest.mock import patch
 
-from django.contrib.auth.models import AnonymousUser
 from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
 from apps.core.models import EmailServiceConfig
-from apps.event.tests.helpers import make_admin, make_superuser
-from apps.mail.admin.inbox import helpers
+from apps.event.tests.helpers import make_admin
 from apps.mail.services.inbox import InboxListing
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 
 SERVICES = "apps.mail.admin.inbox.services"
 CODE = "482913"
@@ -58,15 +57,13 @@ def _summary(**overrides):
 
 
 class SentAccessTestCase(TestCase):
-    """A superuser, a Mail-only staff member, a Core-only staff member, and the Graph inbox backend switched on."""
+    """An Admin, a member who is not one, and an active sending configuration."""
 
     def setUp(self):
         cache.clear()
-        self.superuser = make_superuser()
-        self.mail_staff = make_admin(apps=["mail"], email="mail-only@example.com")
-        self.core_staff = make_admin(apps=["core"], email="core-only@example.com")
+        self.admin_user = make_admin(email="admin@example.com")
+        self.member = make_member(email="member-only@example.com")
         EmailServiceConfig.objects.create(name="Mail", is_active=True, from_email="i2g@ucmerced.edu", from_name="I2G")
-        self.graph_active = self.patch("graph_inbox_active", return_value=True)
         self.fetch = self.patch("fetch_inbox_message", return_value=_message())
         self.send_reply = self.patch("send_reply", return_value="")
 
@@ -87,110 +84,65 @@ class SentFolderListTests(SentAccessTestCase):
         # The list shows every inbox account by default (``list_all_inbox_messages``).
         self.list_messages = self.patch("list_all_inbox_messages", return_value=InboxListing(messages=[_summary()]))
 
-    def fragment(self, user):
-        self.client.force_login(user)
-        return self.client.get(self.url("mail_inbox_fragment", folder="SENT") + "&refresh=1")
+    def fragment_url(self):
+        return self.url("mail_inbox_fragment", folder="SENT") + "&refresh=1"
 
-    def test_mail_staff_get_the_sent_folder_like_a_superuser(self):
-        for user in (self.superuser, self.mail_staff):
-            with self.subTest(superuser=user.is_superuser):
-                self.list_messages.reset_mock()
+    def test_an_admin_gets_the_sent_folder(self):
+        self.client.force_login(self.admin_user)
 
-                response = self.fragment(user)
+        response = self.client.get(self.fragment_url())
 
-                self.list_messages.assert_called_once_with(limit=30, force_refresh=True, folder="SENT")
-                self.assertContains(response, 'data-inbox-folder="SENT"')
-        self.graph_active.assert_not_called()
+        self.list_messages.assert_called_once_with(limit=30, force_refresh=True, folder="SENT")
+        self.assertContains(response, 'data-inbox-folder="SENT"')
 
-    def test_mail_staff_see_own_mail_in_full(self):
+    def test_an_admin_sees_own_mail_in_full(self):
         self.list_messages.return_value = InboxListing(
             messages=[_summary(subject=f"Your code {CODE}", from_own_mailbox=True)]
         )
+        self.client.force_login(self.admin_user)
 
-        response = self.fragment(self.mail_staff)
+        self.assertContains(self.client.get(self.fragment_url()), f"Your code {CODE}")
 
-        self.assertContains(response, f"Your code {CODE}")
-        self.assertNotContains(response, helpers.OWN_MAIL_SUBJECT)
+    def test_a_member_cannot_open_the_inbox(self):
+        assert_refused_to_member(self, self.fragment_url(), self.member)
 
-    def test_staff_without_the_mail_app_cannot_open_the_inbox(self):
-        response = self.fragment(self.core_staff)
-
-        self.assertEqual(response.status_code, 403)
         self.list_messages.assert_not_called()
 
 
-class SentMailRestrictedTests(SentAccessTestCase):
-    """The rule itself, for someone who reaches it without the Mail app (every inbox view refuses them first)."""
-
-    def test_only_a_reader_without_the_mail_app_is_restricted(self):
-        self.assertFalse(helpers.sent_mail_restricted(self.superuser))
-        self.assertFalse(helpers.sent_mail_restricted(self.mail_staff))
-        self.assertTrue(helpers.sent_mail_restricted(self.core_staff))
-        self.assertTrue(helpers.sent_mail_restricted(AnonymousUser()))
-
-    def test_an_unresolvable_backend_keeps_sent_mail_hidden_from_them(self):
-        self.graph_active.side_effect = RuntimeError("boom")
-
-        with self.assertLogs("apps.mail.admin.inbox", "ERROR"):
-            self.assertTrue(helpers.sent_mail_restricted(self.core_staff))
-        self.assertFalse(helpers.sent_mail_restricted(self.mail_staff))
-
-    def test_their_list_keeps_rows_of_own_mail_without_subject_or_opening_text(self):
-        own = _summary(uid="OWN", subject=f"Your code {CODE}", snippet=f"Sign in: {CODE}", from_own_mailbox=True)
-        inbound = _summary(uid="IN", subject="Question about Demo Day")
-
-        hidden, shown = helpers.hide_own_mail([own, inbound])
-
-        self.assertEqual((hidden["subject"], hidden["snippet"]), (helpers.OWN_MAIL_SUBJECT, ""))
-        self.assertEqual(shown["subject"], "Question about Demo Day")
-
-
 class SentMessageDetailTests(SentAccessTestCase):
-    def get(self, user, name, folder):
-        self.client.force_login(user)
-        return self.client.get(self.url(name, _message()["uid"], folder=folder))
+    def test_an_admin_opens_sent_mail(self):
+        self.client.force_login(self.admin_user)
+        for folder in ("SENT", "INBOX"):
+            for name in ("mail_inbox_detail", "mail_inbox_detail_fragment"):
+                with self.subTest(name, folder=folder):
+                    response = self.client.get(self.url(name, _message()["uid"], folder=folder))
+                    self.assertContains(response, "Spring newsletter")
 
-    def test_mail_staff_open_sent_mail_like_a_superuser(self):
-        for user in (self.superuser, self.mail_staff):
-            for folder in ("SENT", "INBOX"):
-                for name in ("mail_inbox_detail", "mail_inbox_detail_fragment"):
-                    with self.subTest(name, folder=folder, superuser=user.is_superuser):
-                        self.assertContains(self.get(user, name, folder), "Spring newsletter")
-
-    def test_staff_without_the_mail_app_cannot_open_it_and_nothing_is_fetched(self):
+    def test_a_member_cannot_open_it_and_nothing_is_fetched(self):
         for name in ("mail_inbox_detail", "mail_inbox_detail_fragment"):
             with self.subTest(name):
-                response = self.get(self.core_staff, name, "SENT")
-
-                self.assertEqual(response.status_code, 403)
-                self.assertNotContains(response, CODE, status_code=403)
+                assert_refused_to_member(self, self.url(name, _message()["uid"], folder="SENT"), self.member)
         self.fetch.assert_not_called()
 
 
 class SentMessageReplyTests(SentAccessTestCase):
-    """A reply quotes the original, so replying to Sent mail needs what opening it needs: the Mail app."""
+    def test_an_admin_replies_to_sent_mail(self):
+        self.client.force_login(self.admin_user)
+        uid = _message()["uid"]
 
-    def test_mail_staff_reply_to_sent_mail_like_a_superuser(self):
-        for user in (self.superuser, self.mail_staff):
-            with self.subTest(superuser=user.is_superuser):
-                self.send_reply.reset_mock()
-                self.client.force_login(user)
-                uid = _message()["uid"]
+        fragment = self.client.get(self.url("mail_inbox_reply_fragment", uid))
+        answer = self.client.post(
+            self.url("mail_inbox_reply_fragment", uid), {"reply_body": "Hi", "to_email": "member@example.com"}
+        )
 
-                fragment = self.client.get(self.url("mail_inbox_reply_fragment", uid))
-                answer = self.client.post(
-                    self.url("mail_inbox_reply_fragment", uid), {"reply_body": "Hi", "to_email": "member@example.com"}
-                )
+        self.assertContains(fragment, "Re: Spring newsletter")
+        self.assertEqual(answer.json(), {"ok": True, "message": "Reply sent to member@example.com."})
+        self.send_reply.assert_called_once()
 
-                self.assertContains(fragment, "Re: Spring newsletter")
-                self.assertEqual(answer.json(), {"ok": True, "message": "Reply sent to member@example.com."})
-                self.send_reply.assert_called_once()
-
-    def test_staff_without_the_mail_app_cannot_reply(self):
-        self.client.force_login(self.core_staff)
+    def test_a_member_cannot_reply(self):
         uid = _message()["uid"]
         post = {"reply_body": "Forwarding this", "to_email": "outsider@example.com"}
 
-        self.assertEqual(self.client.get(self.url("mail_inbox_reply", uid)).status_code, 403)
-        self.assertEqual(self.client.post(self.url("mail_inbox_reply_fragment", uid), post).status_code, 403)
+        assert_refused_to_member(self, self.url("mail_inbox_reply", uid), self.member)
+        assert_refused_to_member(self, self.url("mail_inbox_reply_fragment", uid), self.member, "post", data=post)
         self.send_reply.assert_not_called()

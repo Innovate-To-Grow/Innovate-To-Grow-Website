@@ -2,7 +2,7 @@ from django.contrib import admin as django_admin
 from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
-from apps.event.tests.helpers import make_member, make_superuser
+from apps.event.tests.helpers import make_admin, make_member, make_superuser
 from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog
 
 
@@ -48,8 +48,25 @@ class UsageLogAdminTests(TestCase):
         request = self.factory.get("/")
         request.user = self.superuser
         self.assertFalse(inline.has_add_permission(request, self.convo))
+        self.assertFalse(inline.has_change_permission(request, self.convo))
+        self.assertFalse(inline.has_delete_permission(request, self.convo))
         self.assertEqual(inline.max_num, 0)
         self.assertFalse(inline.can_delete)
+
+    def test_inline_is_visible_to_every_admin_and_no_one_else(self):
+        inline = self.convo_admin.inlines[0](AssistantConversationLog, django_admin.site)
+        request = self.factory.get("/")
+        request.user = make_admin(email="another-admin@example.com")
+        self.assertTrue(inline.has_view_permission(request, self.convo))
+        request.user = self.member
+        self.assertFalse(inline.has_view_permission(request, self.convo))
+
+    def test_any_admin_sees_the_message_inline(self):
+        self.client.force_login(make_admin(email="another-admin@example.com"))
+        response = self.client.get(f"/admin/system_intelligence/assistantconversationlog/{self.convo.pk}/change/")
+        self.assertEqual(response.status_code, 200)
+        # The inline's own management form: it used to need Django's per-model view permission.
+        self.assertContains(response, 'name="messages-TOTAL_FORMS"')
 
     # ---- display helpers --------------------------------------------------
     def test_conversation_display_helpers(self):

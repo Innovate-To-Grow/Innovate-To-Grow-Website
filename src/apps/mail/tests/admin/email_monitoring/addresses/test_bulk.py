@@ -6,6 +6,7 @@ from django.utils import timezone
 
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import BounceAggregationState, BouncedAddress, BouncedAddressAction, EmailCampaign
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 from apps.mail.tests.admin.email_monitoring.addresses.test_addresses_actions_admin import (
     BULK,
     LIST,
@@ -19,7 +20,7 @@ from apps.mail.tests.services.bounced_addresses.helpers import make_bounce, make
 class BulkTests(TestCase):
     def setUp(self):
         cache.clear()
-        self.client.force_login(make_admin(apps=["mail"], email="mailstaff@example.org"))
+        self.client.force_login(make_admin(email="admin-bulk@example.org"))
         make_person("member@example.org")
         self.member_row = make_row("member@example.org")
         self.list_row = make_row("list@example.org")
@@ -95,16 +96,14 @@ class RebuildTests(TestCase):
         entry = LogEntry.objects.get(object_id=str(state.pk))
         self.assertIn("Bounced addresses: rebuilt the counts from the stored records (1 counted)", entry.change_message)
 
-    def test_only_an_i2g_master_may_rebuild(self):
+    def test_every_admin_may_rebuild_and_a_member_may_not(self):
         make_row("kept@example.org", hard_count=7)
-        self.client.force_login(make_admin(apps=["mail", "authn"], email="mailstaff@example.org"))
+        self.client.force_login(make_admin(email="any-admin@example.org"))
 
-        listing = self.client.get(reverse(LIST))
-        for data in ({}, {"step": "apply"}):
-            with self.subTest(data=data):
-                self.assertEqual(self.client.post(reverse(REBUILD), data).status_code, 403)
+        self.assertContains(self.client.get(reverse(LIST)), reverse(REBUILD))
+        self.assertContains(self.client.post(reverse(REBUILD)), "Reports already purged cannot be counted again")
+        assert_refused_to_member(self, reverse(REBUILD), make_member(), "post", data={"step": "apply"})
 
-        self.assertNotContains(listing, reverse(REBUILD))
         self.assertEqual(BouncedAddress.objects.get(address="kept@example.org").hard_count, 7)
         self.assertFalse(BouncedAddressAction.objects.filter(action="rebuild").exists())
 

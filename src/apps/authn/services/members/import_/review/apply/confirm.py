@@ -4,8 +4,9 @@ The batch row is locked first, so a double click, a second tab or a browser resu
 applied. The members the review read are locked in primary-key order (the self-service contact services lock the
 member row too, so a member editing their addresses waits instead of racing). Then every row is analysed again from
 freshly read records. If any row's records changed since the review (its fingerprint differs), or a choice is no longer
-allowed, nothing is applied: those rows go back to review with their choices reset. A row that fails to write rolls
-everything back, and the batch stays in review with the reason in ``last_error``.
+allowed, nothing is applied: those rows go back to review with their choices reset. The ticked deactivations are
+checked together against the Admin lockout rules. A row that fails to write rolls everything back, and the batch stays
+in review with the reason in ``last_error``.
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ from ..plan.actions import SKIP
 from ..staging.batches import activity_event, forget_password, to_stored
 from ..staging.selection import selection_problems, tick_items
 from .execute import RowWriteError, log_batch
-from .rows import RowOutcome, lock_members, run_import
+from .rows import RowOutcome, deactivation_refusal, lock_members, run_import
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +67,7 @@ def changed_rows(stored_rows, fresh) -> list[int]:
 
 
 def apply_batch(batch_id, *, user, version: int, ctx: Context) -> ApplyResult:
-    """Apply a batch for ``user`` (who may change it: the view checks). See the module docstring."""
+    """Apply a batch for ``user`` (an Admin: the view checks). See the module docstring."""
     try:
         with transaction.atomic():
             batch = MemberImportBatch.objects.select_for_update().get(pk=batch_id)
@@ -114,9 +115,10 @@ def _apply_locked(batch: MemberImportBatch, user, ctx: Context) -> ApplyResult:
     if changed:
         raise _Stale(fresh, changed)
     selections = {row.row_number: (row.choice, row.ticks) for row in stored}
-    problems = selection_problems(fresh, selections, snapshot)
-    if problems:
-        return ApplyResult("refused", problems[0])
+    problem = next(iter(selection_problems(fresh, selections, snapshot)), "")
+    problem = problem or deactivation_refusal(fresh, selections, snapshot, members, user)
+    if problem:
+        return ApplyResult("refused", problem)
     password_hash = batch.default_password_hash or make_password(generate_random_password())
     outcomes = run_import(
         fresh,

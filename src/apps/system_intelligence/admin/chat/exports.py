@@ -1,7 +1,5 @@
-from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, JsonResponse
 
-from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import SystemIntelligenceExport
 
 XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -14,9 +12,6 @@ def export_download_view(request, export_id):
     even if a download URL leaks (the URL space is unguessable but treat it as
     capability + auth, not capability alone).
     """
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
     try:
         export = SystemIntelligenceExport.objects.get(id=export_id, created_by=request.user)
     except SystemIntelligenceExport.DoesNotExist:

@@ -34,17 +34,15 @@ class OrmRecordsTests(TestCase):
             orm_records.check_model_permission(member, NewsFeedSource, "view")
         self.assertIn("Staff authentication is required", str(cm.exception))
 
-    def test_check_model_permission_allows_staff_granted_target_app(self):
-        # NewsFeedSource lives in the cms app; staff granted "cms" may act on it.
-        admin = make_admin(apps=["cms"], email="cms-orm@example.com")
+    def test_check_model_permission_allows_any_admin(self):
+        admin = make_admin(email="cms-orm@example.com")
         orm_records.check_model_permission(admin, NewsFeedSource, "change")
 
-    def test_check_model_permission_denies_staff_without_target_app(self):
-        # Staff granted a different app is denied for cms models.
-        admin = make_admin(apps=["event"], email="event-orm@example.com")
+    def test_check_model_permission_denies_an_inactive_admin(self):
+        admin = make_admin(email="inactive-orm@example.com", is_active=False)
         with self.assertRaises(PermissionDenied) as cm:
             orm_records.check_model_permission(admin, NewsFeedSource, "change")
-        self.assertIn("do not have permission", str(cm.exception))
+        self.assertIn("Staff authentication is required", str(cm.exception))
 
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 """``core.InboundMessage`` seen from the helpdesk: the Helpdesk → Ingest problems page.
 
-A proxy (no table of its own), so the page belongs to the ``helpdesk`` app and its admin grant, not to ``core``'s.
+A proxy (no table of its own), so the page belongs to the ``helpdesk`` app's admin section, not to ``core``'s.
 """
 
 from apps.core.models import InboundMessage

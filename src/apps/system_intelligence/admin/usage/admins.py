@@ -5,14 +5,14 @@ from django.utils.html import format_html, format_html_join
 from unfold.admin import TabularInline
 from unfold.decorators import display
 
-from apps.core.admin import ReadOnlyModelAdmin
+from apps.core.admin import AppAccessInlineMixin, ReadOnlyModelAdmin
 from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog
 
 from .formatting import _SOURCE_COLORS, _STATUS_COLORS, _transcript_turn
 
 
-class AssistantMessageLogInline(TabularInline):
-    """Read-only per-turn detail inside a conversation."""
+class AssistantMessageLogInline(AppAccessInlineMixin, TabularInline):
+    """Read-only per-turn detail inside a conversation: every Admin sees it (``AppAccessInlineMixin``), nobody edits."""
 
     model = AssistantMessageLog
     fields = ("prompt_short", "reply", "status", "token_total", "created_at")
@@ -23,6 +23,12 @@ class AssistantMessageLogInline(TabularInline):
     show_change_link = True
 
     def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
         return False
 
     @admin.display(description="Prompt")

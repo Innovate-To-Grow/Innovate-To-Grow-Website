@@ -21,13 +21,13 @@ SMS_IDENTITY = "us-west-2:+12065550000"
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class DeliveryRatesTestCase(TestCase):
-    """A staff member with only the Mail app, SES as the email provider and an SMS number on the AWS config."""
+    """An Admin, SES as the email provider and an SMS number on the AWS config."""
 
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
         self.clock = FakeClock(NOW).install(self)
-        self.staff = make_admin(apps=["mail"], email="mailstaff@example.com")
+        self.staff = make_admin(email="mailstaff@example.com")
         self.client.force_login(self.staff)
         self.email_config = EmailServiceConfig.objects.create(
             name="Production Mail", is_active=True, provider="ses", from_email="admin@example.com", from_name="I2G"

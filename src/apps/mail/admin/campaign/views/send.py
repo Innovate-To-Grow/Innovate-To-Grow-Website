@@ -33,9 +33,8 @@ class CampaignSendMixin:
 
     def send_campaign_confirm_view(self, request, object_id):
         """Final confirmation before sending."""
-        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-        # per-app access itself. State-changing flow (kicks off the background
-        # send) — require change access.
+        # A plain Admin check, in case the URL is ever mounted without ``admin_view``. State-changing flow
+        # (kicks off the background send).
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to send this campaign.")
         obj = EmailCampaign.objects.get(pk=object_id)

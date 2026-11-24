@@ -164,7 +164,7 @@ delivered, never proof; a later report still confirms a failure.
 
 ### Message Trace delivery status
 
-Opt-in and **off by default**: the Graph configuration's **Message Trace Delivery Status** toggle (Core app). It needs
+Opt-in and **off by default**: the Graph configuration's **Message Trace Delivery Status** toggle (under Site Settings). It needs
 the tenant-wide `ExchangeMessageTrace.Read.All` application permission, beyond the current InfoSec approval; see
 [Microsoft Graph email → Optional: Message Trace](microsoft-graph-email.md#optional-message-trace-delivery-status)
 for the setup order. While it is off the card shows the setup steps.
@@ -194,7 +194,7 @@ for the setup order. While it is off the card shows the setup steps.
   the backoff still holds. **Check permissions** (`action=permissions`) runs the
   [permission check](microsoft-graph-email.md#check-permissions) of the active Graph configuration: one fresh
   token, its roles, and at most one read-only trace request; it sends no mail, never records go-live evidence,
-  shares the Core page's 30-second cooldown and needs only the Mail app. An "available" result ends a
+  shares the Core page's 30-second cooldown and needs an Admin, like every page here. An "available" result ends a
   "not permitted" wait. The card shows its latest result ("Message Trace: available / not granted / service
   principal missing…", with the time).
 
@@ -257,7 +257,7 @@ is still kept on the email.
 ### Reading older mail again
 
 The **Bounce processing** card on the overview has a folded section, **Read older mail again**, with two controls.
-Both need the Mail app, are POST forms with CSRF, start no scan, and leave an admin history line (Site Settings →
+Both need an Admin, are POST forms with CSRF, start no scan, and leave an admin history line (Site Settings →
 Admin Log, on the mailbox's "Bounce processing for …" state) plus a log line (`email_bounce_state action=…`). Like
 **Pause**, they change bounce processing only: the helpdesk's intake reads the same Inbox from its own checkpoint
 and has the same controls on its own card (Helpdesk → Settings; see the [helpdesk](helpdesk.md#intake-controls)).
@@ -336,7 +336,7 @@ consults confirmed Graph failures, signed SES permanent bounces and complaints a
   exist or that its mailbox is disabled, bound to the final recipient and original Message-ID, or an SES permanent bounce or complaint,
   arriving after the dismissal. Temporary failures, rejections (spam, relay, policy), delays and unknown failures
   never reopen anything, and neither does an unmatched report or a left-the-organisation notice.
-- **Rebuild counts…** (I2G Master only) first classifies every stored Graph report again with the current rules (so a
+- **Rebuild counts…** (any Admin) first classifies every stored Graph report again with the current rules (so a
   change to the rules reaches the reports already received), then starts every count again from the records still
   stored (review state, suppressions and the history stay). Left-the-organisation notices are kept as counted: a notice
   is never classified again, and the inbound queue keeps only 90 days. Counts of purged reports cannot be rebuilt; the
@@ -349,13 +349,13 @@ consults confirmed Graph failures, signed SES permanent bounces and complaints a
 - **Columns:** counts by category (Graph), by type (SES) and of left-the-organisation notices, first and last report
   (or notice), the latest report's **category**
   with what it means, the last code and reason with the remote server, the member
-  (linked for staff who also hold the Members app) with Active / Inactive / Staff badges, the address's **role**
+  (linked to their Members admin page) with Active / Inactive / Admin badges, the address's **role**
   (primary, secondary, other, unlinked contact, not a contact, or **ambiguous** when one address is saved in several
   letter cases), verified / subscribed / suppression flags, campaigns, review status and a text-only suggestion.
 - **Filters:** status tabs (Open by default), type (including "Has a left-the-organisation notice" and
   "Left-the-organisation contact for manual review"), **category** (has a report of that category; for a missing address,
   a temporary failure and an unknown failure, also the SES permanent, transient and undetermined bounces), role,
-  member (has a member, none, active, inactive, staff),
+  member (has a member, none, active, inactive, **Member is an Admin**: URL value `staff`, kept),
   suppressed, evidence (matched to the site's mail, which every counted notice is, or unmatched reports only),
   suggestion, campaign, last-report date
   range and a search on the address or member name; sortable
@@ -365,10 +365,9 @@ consults confirmed Graph failures, signed SES permanent bounces and complaints a
   SES subtype and diagnostic before changing a contact.
 - **One address** shows the Graph reports still stored, the SES events, its left-the-organisation notices (how many,
   the latest, the unverified name, address and US-only `+1` phone the latest one names, what it says that address is,
-  and a link to the notice's helpdesk ticket for staff who hold the Helpdesk app, while those bounded hints remain),
+  and a link to the notice's helpdesk ticket, while those bounded hints remain),
   the campaigns, the member card (name,
-  status, registrations; their other addresses with their flags, and their phones, only for staff who also hold the
-  Members app, as on the Member admin), every action with why it is unavailable, and the history.
+  status, registrations; their other addresses with their flags, and their phones, as on the Member admin), every action with why it is unavailable, and the history.
 - **Suggestions** reflect staff review priorities. An active staff suppression clears the suggestion.
 
   | Suggestion | When |
@@ -417,19 +416,22 @@ shown. Each applied action writes a `mail.BouncedAddressAction` row (actor, memb
 before and after, note and details; it survives the member's deletion) and an admin history line on the member (or
 on the address when it belongs to no member).
 
-| Action | Effect | Undo | Confirmation | Needs |
-|---|---|---|---|---|
-| Dismiss (reason required) | Leaves the open queue; nothing else changes | Reopen | page | Mail |
-| Suppress address (no member) | Every campaign skips it | Clear suppression | page | Mail |
-| Mark undeliverable (a member's address) | Every campaign skips it; sign-in codes, tickets and notifications still go | Clear suppression | page | Mail + Members, and the member is manageable |
-| Unsubscribe this address | `subscribe` off for this address only | Re-subscribe on the member page | page | Mail + Members |
-| Use another address as primary | `make_contact_email_primary` on a verified address the admin picks; the old primary becomes secondary | Swap back once verified | page | Mail + Members |
-| Replace email | Adds the new address (valid, unused in any letter case, not an address with a pending admin invitation; primary only when attested verified, which needs an I2G Master on a staff account), then marks the old one undeliverable or deletes it. Sends nothing | Partly | page; typed old address when it is deleted | Mail + Members |
-| Delete this email address | `delete_contact_email` after the rules below | No | typed address | Mail + Members (an unlinked contact: I2G Master) |
-| Deactivate account | `is_active` off and an unfinished sign-up ended (as the Member admin does); never your own account | Activate on the Members page | page | Mail + Members |
-| Delete account | Hard delete of the member: the page lists the cascade (`get_deleted_objects`: event registrations, check-ins, contact emails, login links, …) and recommends Deactivate; never your own account; refused when other records protect it | No | typed primary address | **I2G Master** (the cascade reaches apps other staff may not hold; no other admin page deletes a member with a primary email) |
+Every action is open to every Admin, on any member, another Admin's account included.
 
-"Manageable" is `user_can_manage_member`: only an I2G Master changes a staff or superuser account. Typed
+| Action | Effect | Undo | Confirmation |
+|---|---|---|---|
+| Dismiss (reason required) | Leaves the open queue; nothing else changes | Reopen | page |
+| Suppress address (no member) | Every campaign skips it | Clear suppression | page |
+| Mark undeliverable (a member's address) | Every campaign skips it; sign-in codes, tickets and notifications still go | Clear suppression | page |
+| Unsubscribe this address | `subscribe` off for this address only | Re-subscribe on the member page | page |
+| Use another address as primary | `make_contact_email_primary` on a verified address the admin picks; the old primary becomes secondary | Swap back once verified | page |
+| Replace email | Adds the new address (valid, unused in any letter case, not an address with a pending admin invitation; primary only when attested verified), then marks the old one undeliverable or deletes it. Sends nothing | Partly | page; typed old address when it is deleted |
+| Delete this email address | `delete_contact_email` after the rules below (an unlinked contact too) | No | typed address |
+| Deactivate account | `is_active` off and an unfinished sign-up ended (as the Member admin does); never your own Admin account, never the last active Admin (`admin_removal_refusal`) | Activate on the Members page | page |
+| Delete account | Hard delete of the member: the page lists the cascade (`get_deleted_objects`: event registrations, check-ins, contact emails, login links, …) and recommends Deactivate; never your own Admin account, never the last active Admin (`admin_removal_refusal`); refused when the Members admin does not allow deleting it or other records protect it | No | typed primary address |
+
+The lockout rules are checked on the address page, on the confirmation page and again inside the apply's transaction
+(with the member locked). Typed
 confirmations follow `ADMIN_REQUIRE_CONFIRMATION` (on in production). Deleting an address is refused when it is the
 member's only address, the primary without another verified address (otherwise the admin picks the new primary), the
 member's last verified sign-in contact (email or phone), or an ambiguous address; an ambiguous address allows no
@@ -632,9 +634,8 @@ form saves every column and would overwrite a running scan's lease.
    Do not treat that image as enforcing the 90-day hint policy. Returning to the current image clears those untracked
    hints on the next address-counting maintenance run; reversing `mail.0030` clears them before removing its columns.
 
-Access: every page, the Amazon SES tab and its JSON included, requires the **Mail** app (`Member.admin_apps`, or
-superuser); the controls are POST with CSRF. Bounced-address actions that change a contact email or a member also need
-the **Members** (`authn`) app and a manageable member (see the actions table). The telemetry tables and the four
+Access: every page, the Amazon SES tab and its JSON included, requires an Admin; the controls are POST with CSRF.
+The telemetry tables and the four
 Bounced addresses tables are denied to the CLI and the assistant (`safe_orm` `DENIED_MODEL_LABELS`) for reads and
 writes. Staff suppressions and reviewed clears use the guarded Bounced addresses actions.
 

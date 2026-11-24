@@ -14,13 +14,7 @@ from ....services.members.import_.review.staging.batches import (
 )
 from .context import review_sections
 from .forms import ImportConfirmForm
-from .rights import (
-    Status,
-    _require_access,
-    _require_edit,
-    batch_context,
-    can_edit,
-)
+from .rights import Status, _require_access, batch_context
 from .summary_lines import confirm_lines, risky_lines
 from .views import _page, _url
 
@@ -32,12 +26,6 @@ def confirm_view(admin_obj, request, batch_id):
         mark_expired(batch)
     if batch.status != Status.REVIEW:
         return HttpResponseRedirect(_url("result", batch))
-    _require_edit(admin_obj, request, batch)
-    if batch.created_by_id is None:
-        messages.error(
-            request, "The admin who uploaded this import no longer exists, so it can't be applied. Discard it."
-        )
-        return HttpResponseRedirect(_url("review", batch))
     require_text = getattr(settings, "ADMIN_REQUIRE_CONFIRMATION", True)
     sections = review_sections(batch)
     if sections["problems"]:
@@ -93,7 +81,6 @@ def result_view(admin_obj, request, batch_id):
         f"Member import: {batch.file_name}",
         batch=batch,
         rows=rows,
-        editable=can_edit(request, batch),
         counts=(batch.summary or {}).get("outcomes", {}),
         risky=risky_lines((batch.summary or {}).get("risky", {})),
         primary_changed=bool((batch.summary or {}).get("risky", {}).get("primary_changes")),
@@ -105,7 +92,6 @@ def discard_view(admin_obj, request, batch_id):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
     batch = get_object_or_404(MemberImportBatch, pk=batch_id)
-    _require_edit(admin_obj, request, batch)
     discard_batch(batch, request.user)
     messages.info(request, f"The import of {batch.file_name} was discarded. Nothing was written.")
     return HttpResponseRedirect(_url("excel"))

@@ -25,7 +25,7 @@ class GmailApiProviderConfig(GmailApiProviderStatusMixin, ProjectControlModel):
     The site impersonates only the accounts on the subject allow-list (``GmailApiSubject``), and always sends From
     the impersonated account. The service-account key lives in the credential store (AWS Secrets Manager in
     production); this row keeps only a pointer to the pinned stored version and the key's public facts. Keys are
-    installed and removed on their own admin pages, by staff granted the Core app.
+    installed and removed on their own admin pages, by Admins.
     """
 
     class CredentialMail(models.TextChoices):

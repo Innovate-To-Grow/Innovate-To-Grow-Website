@@ -1,13 +1,13 @@
-"""Risky changes (R1–R9): opt-in ticks, off by default, some of which can't be ticked at all.
+"""Risky changes (R1–R7, R9): opt-in ticks, off by default, some of which can't be ticked at all.
 
-Without a tick an import never deletes a contact, re-subscribes or un-verifies one, or changes Active or Staff; with
-the tick the change is made. An item that may not be ticked says why: the address the row matched on, the member's
-only verified sign-in contact, or an account only an I2G Master may change. The safe direction (TRUE verifies, FALSE
-unsubscribes) needs no tick, and contacts added to an existing member start unverified.
+Without a tick an import never deletes a contact, re-subscribes or un-verifies one, or changes Active; with the tick
+the change is made. An item that may not be ticked says why: the address the row matched on, or the member's only
+verified sign-in contact. An Admin account is no exception: any Admin may tick these on it. The safe direction (TRUE
+verifies, FALSE unsubscribes) needs no tick, and contacts added to an existing member start unverified.
 """
 
 from apps.authn.models import ContactEmail
-from apps.authn.services.members.import_.review.analysis.risky import MATCHED, PRIVILEGED
+from apps.authn.services.members.import_.review.analysis.risky import MATCHED
 from apps.authn.tests.services.members.import_.helpers import ImportTestCase, row
 
 LAST_ADA = "It is the only verified sign-in contact of Ada Lovelace"
@@ -100,13 +100,13 @@ class BlankSecondaryTests(RiskyTestCase):
         self.assertEqual(items[f"R1:{self.work.pk}"]["reason"], LAST_ADA)
         self.assertTrue(items[f"R1:{self.home.pk}"]["enabled"])
 
-    def test_a_privileged_member_needs_an_i2g_master(self):
-        sam = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
+    def test_an_admin_account_is_offered_like_any_other(self):
+        sam = self.member("Sam", "Admin", "sam@example.com", is_staff=True)
         extra = self.email(sam, "sam.work@example.com")
-        cells_row = row("sam@example.com", First_Name="Sam", Last_Name="Staff")
+        cells_row = row("sam@example.com", First_Name="Sam", Last_Name="Admin")
 
-        not_master = self.items(self.analyse_one(cells_row), sam)
-        master = self.items(self.analyse_one(cells_row, is_master=True), sam)
+        items = self.items(self.analyse_one(cells_row), sam)
 
-        self.assertEqual(not_master[f"R1:{extra.pk}"]["reason"], PRIVILEGED)
-        self.assertTrue(master[f"R1:{extra.pk}"]["enabled"])
+        self.assertItem(
+            items[f"R1:{extra.pk}"], "Remove secondary sam.work@example.com (the Secondary Email cell is blank)"
+        )

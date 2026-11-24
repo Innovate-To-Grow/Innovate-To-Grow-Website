@@ -1,61 +1,65 @@
-from apps.authn.models import ContactEmail
-from apps.authn.services.members.import_.review.analysis.choices import NEEDS_NAMES, NO_CHANGE_PERMISSION, PRIVILEGED
-from apps.authn.tests.services.members.import_.conflicts.test_conflicts import not_privileged, options
+"""Rows that name an Admin account, and rows whose address several members hold (C3).
+
+An Admin account is matched and updated like any other member (C2, "a staff or superuser account", is retired): any
+Admin may change any member. The import still never changes Admin access, whatever the sheet's Admin or Staff column
+says, and the confirm page lists every change to an Admin account.
+"""
+
+from apps.authn.models import ContactEmail, Member
+from apps.authn.services.members.import_.review.analysis.choices import NEEDS_NAMES, NO_CHANGE_PERMISSION
+from apps.authn.tests.services.members.import_.conflicts.test_conflicts import options
 from apps.authn.tests.services.members.import_.helpers import ImportTestCase, row
 
 
-class PrivilegedTargetTests(ImportTestCase):
+class AdminTargetTests(ImportTestCase):
+    ADMIN_HEADERS = ["Primary Email", "First Name", "Last Name", "Admin"]
+
     def setUp(self):
         super().setUp()
-        self.sam = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
-        self.staff_row = row("sam@example.com", First_Name="Sam", Last_Name="Staff", Organization="Staff Corp")
+        self.sam = self.member("Sam", "Admin", "sam@example.com", is_staff=True)
+        self.admin_row = row("sam@example.com", First_Name="Sam", Last_Name="Admin", Organization="Admin Corp")
 
-    def test_a_staff_account_offers_only_skip(self):
-        analysis = self.analyse_one(self.staff_row, can_manage=not_privileged)
+    def test_an_admin_account_gets_a_ready_row(self):
+        analysis = self.analyse_one(self.admin_row)
 
-        self.assertEqual(
-            (analysis.status, analysis.conflict, analysis.default), ("needs_decision", "privileged_target", "skip")
-        )
-        self.assertEqual(
-            analysis.options,
-            [
-                {
-                    "value": "skip",
-                    "label": "Skip this row",
-                    "hint": PRIVILEGED,
-                    "enabled": True,
-                    "reason": "",
-                    "suggested": False,
-                }
-            ],
-        )
-        self.assertEqual(
-            analysis.facts["why"],
-            f"You do not have permission to update Sam Staff (member {self.sam.pk}) (only an I2G Master may change "
-            "staff and superuser accounts).",
-        )
+        self.assertEqual((analysis.status, analysis.conflict, analysis.default), ("ready_update", "", "update"))
 
-    def test_a_superuser_account_too(self):
-        self.member("Root", "User", "root@example.com", is_staff=True, is_superuser=True)
+    def test_the_row_updates_the_admin_and_lists_the_change(self):
+        (outcome,) = self.apply([self.admin_row])
 
-        analysis = self.analyse_one(
-            row("root@example.com", First_Name="Root", Last_Name="User"), can_manage=not_privileged
-        )
-
-        self.assertEqual(analysis.conflict, "privileged_target")
-
-    def test_an_i2g_master_gets_a_ready_row(self):
-        analysis = self.analyse_one(self.staff_row, is_master=True)
-
-        self.assertEqual((analysis.status, analysis.conflict), ("ready_update", ""))
-
-    def test_the_skipped_row_changes_nothing(self):
-        (outcome,) = self.apply([self.staff_row], can_manage=not_privileged)
-
-        self.assertEqual(outcome.outcome, "skipped")
-        self.assertIn("You do not have permission to update Sam Staff", outcome.reason)
+        self.assertEqual(outcome.outcome, "updated")
         self.sam.refresh_from_db()
-        self.assertIsNone(self.sam.organization)
+        self.assertEqual(self.sam.organization, "Admin Corp")
+        self.assertEqual(
+            outcome.listed["privileged_changes"],
+            [f"Sam Admin (member {self.sam.pk}): Organization: '' → 'Admin Corp'"],
+        )
+
+    def test_an_ordinary_members_changes_are_not_listed_as_admin_changes(self):
+        (outcome,) = self.apply([row("ada@example.com", Organization="Engines")])
+
+        self.assertEqual(outcome.outcome, "updated")
+        self.assertNotIn("privileged_changes", outcome.listed)
+
+    def test_the_staff_column_never_changes_admin_access(self):
+        demote = row("sam@example.com", First_Name="Sam", Last_Name="Admin", Staff="No")
+        promote = row("ada@example.com", Staff="Yes")
+
+        analyses = self.analyse([demote, promote])
+        outcomes = self.apply([demote, promote], {2: ("update", [f"R8:{self.sam.pk}"]), 3: ("update", [])})
+
+        self.assertEqual([a.risky for a in analyses], [{}, {}])
+        self.assertEqual([o.outcome for o in outcomes], ["no_change", "no_change"])
+        self.sam.refresh_from_db()
+        self.ada.refresh_from_db()
+        self.assertEqual((self.sam.is_staff, self.sam.is_superuser), (True, True))
+        self.assertEqual((self.ada.is_staff, self.ada.is_superuser), (False, False))
+
+    def test_an_admin_column_is_ignored_too(self):
+        (outcome,) = self.apply([["ada@example.com", "Ada", "Lovelace", "Yes"]], headers=self.ADMIN_HEADERS)
+
+        self.assertEqual(outcome.outcome, "no_change")
+        self.assertFalse(Member.objects.get(pk=self.ada.pk).is_staff)
 
 
 class AmbiguousAddressTests(ImportTestCase):
@@ -114,16 +118,17 @@ class AmbiguousAddressTests(ImportTestCase):
         self.assertEqual({options(unnamed)[value]["reason"] for value in values}, {NEEDS_NAMES})
 
     def test_using_a_member_needs_permission(self):
-        sam = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
+        sam = self.member("Sam", "Admin", "sam@example.com", is_staff=True)
         self.email(self.ada, "shared@example.com")
         self.email(sam, "Shared@example.com")
 
         refused = self.analyse_one(row("shared@example.com"), can_update=False)
-        not_master = self.analyse_one(row("shared@example.com"), can_manage=not_privileged)
+        allowed = self.analyse_one(row("shared@example.com"))
 
         self.assertEqual({item["reason"] for item in refused.options[:2]}, {NO_CHANGE_PERMISSION})
-        self.assertEqual(options(not_master)[f"use_member:{sam.pk}"]["reason"], PRIVILEGED)
-        self.assertTrue(options(not_master)[f"use_member:{self.ada.pk}"]["enabled"])
+        # An Admin account is offered like any other member.
+        self.assertTrue(options(allowed)[f"use_member:{sam.pk}"]["enabled"])
+        self.assertTrue(options(allowed)[f"use_member:{self.ada.pk}"]["enabled"])
 
     def test_no_member_is_picked_silently_and_a_choice_updates_only_that_member(self):
         self.email(self.ada, "shared@example.com")

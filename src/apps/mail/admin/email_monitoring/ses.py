@@ -2,8 +2,8 @@
 account suppression list. This tab is what the Delivery Dashboard was, and this module also answers that page's old
 addresses.
 
-Like every Email Monitoring view it requires the Mail app (``admin_view`` only checks ``is_staff``). The page and its
-JSON read AWS when they are requested, as the Delivery Dashboard did; the other tabs never call AWS.
+Like every Email Monitoring view it requires an Admin. The page and its JSON read AWS when they are requested, as the
+Delivery Dashboard did; the other tabs never call AWS.
 
 - ``/admin/mail/delivery-dashboard/`` redirects here with its query string (``?days=``): temporary (302), so the old
   path stays free and nothing caches it. It only ever answered GET.

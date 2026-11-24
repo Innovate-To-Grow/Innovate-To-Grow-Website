@@ -86,7 +86,7 @@ class FakeGraphTransport:
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
 class GraphSettingsTestCase(TestCase):
-    """A superuser, an active SES sender with AWS credentials (still needed for SMS) and a retained SMTP config."""
+    """An Admin, an active SES sender with AWS credentials (still needed for SMS) and a retained SMTP config."""
 
     def setUp(self):
         clear_access_token_cache()

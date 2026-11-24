@@ -1,8 +1,8 @@
 """Broadcast Delivery → Email Sending Method, end to end as production is set up for Microsoft Graph.
 
 Email sends through AWS SES from an address outside the Graph scope, the Graph config is scoped to the Exchange
-mailbox, the token claims what OIT granted (Mail.ReadWrite + Mail.Send), and the go-live gate is on. A superuser
-runs the access check, then any Mail admin can send a test through Graph and switch email to it, with no exception
+mailbox, the token claims what OIT granted (Mail.ReadWrite + Mail.Send), and the go-live gate is on. An Admin
+runs the access check, then any Admin can send a test through Graph and switch email to it, with no exception
 reference. Microsoft is faked at the transport, so every Graph request goes through the site's real code.
 """
 

@@ -7,14 +7,14 @@ from django.template.response import TemplateResponse
 from django.urls import path, reverse
 from unfold.admin import TabularInline
 
-from apps.core.admin import BaseModelAdmin
+from apps.core.admin import AppAccessInlineMixin, BaseModelAdmin
 
 from ..models import Project, Semester
 from ..services.catalog.csv_import import import_projects_from_csv
 from ..signals import _clear_project_caches
 
 
-class ProjectInline(TabularInline):
+class ProjectInline(AppAccessInlineMixin, TabularInline):
     model = Project
     extra = 0
     fields = ("team_number", "team_name", "project_title", "organization", "class_code")
@@ -70,9 +70,7 @@ class SemesterAdmin(BaseModelAdmin):
         return custom_urls + super().get_urls()
 
     def publish_all_view(self, request):
-        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-        # per-app access itself — otherwise a staff member without the projects app
-        # could publish every semester here.
+        # Custom URL: re-check the ModelAdmin's permission hook before publishing every semester.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to publish semesters.")
         if request.method == "POST":
@@ -87,9 +85,7 @@ class SemesterAdmin(BaseModelAdmin):
         return redirect(reverse("admin:projects_semester_changelist"))
 
     def import_csv_view(self, request):
-        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-        # per-app access itself — otherwise a staff member without the projects app
-        # could import projects or read the import form here.
+        # Custom URL: re-check the ModelAdmin's permission hook before importing projects.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to import projects.")
         if request.method == "POST":

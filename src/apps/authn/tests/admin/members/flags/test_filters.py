@@ -121,7 +121,16 @@ class MemberFilterTests(FilterFixture):
             with self.subTest(title=title):
                 self.assertContains(response, title)
         self.assertContains(response, "Unfinished sign-up")
+        self.assertContains(response, "Account type")
         self.assertIn("account_active", response.context["cl"].list_display)
+        self.assertIn("is_admin", response.context["cl"].list_display)
+        self.assertNotIn("is_staff", response.context["cl"].list_display)
+
+    def test_account_type(self):
+        admins = self.names(MEMBERS, "account_type=admin")
+        self.assertEqual(admins, {"Ada Master", "Sam Staff"})
+        self.assertFalse(admins & self.names(MEMBERS, "account_type=member"))
+        self.assertIn("Ivan Inactive", self.names(MEMBERS, "account_type=member"))
 
 
 class ContactFilterTests(FilterFixture):

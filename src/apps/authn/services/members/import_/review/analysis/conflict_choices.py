@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from ..plan.actions import SKIP
-from .choices import NEEDS_NAMES, PRIVILEGED, OptionContext, option, skip_option
+from .choices import NEEDS_NAMES, OptionContext, option, skip_option
 
 
 def options_for(conflict: str, facts: dict, oc: OptionContext) -> list[dict]:
@@ -18,10 +17,6 @@ def _duplicate(facts, oc):
         option("use_row", "Use this row", reason=reason, hint=f"Apply this row: {solo}" if solo else ""),
         skip_option("Skip this row; another row of the group may be used."),
     ]
-
-
-def _privileged(facts, oc):
-    return [option(SKIP, "Skip this row", hint=PRIVILEGED)]
 
 
 def _ambiguous(facts, oc):
@@ -153,7 +148,6 @@ def _skip_mode(facts, oc):
 
 _BUILDERS = {
     "duplicate_in_sheet": _duplicate,
-    "privileged_target": _privileged,
     "ambiguous_address": _ambiguous,
     "uuid_email_mismatch": _mismatch,
     "uuid_not_found": _uuid_not_found,

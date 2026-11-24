@@ -1,4 +1,4 @@
-from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff, make_superuser
+from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff
 from apps.core.tests.gmail_api_helpers import make_config
 
 DENIED = "{access} access is not allowed for core.{model}."
@@ -7,15 +7,14 @@ COLLECTION = "/admin-api/records/core/{model}/"
 
 class GmailApiDenylistTests(CliApiTestCase):
     """The Gmail API config (key pointer and facts) and its subject allow-list are unreachable through /admin-api/,
-    even for superusers: they are managed on the superuser-only admin pages."""
+    even for an Admin: they are managed on their own admin pages."""
 
     def setUp(self):
         super().setUp()
         config = make_config()
         self.targets = {"GmailApiProviderConfig": config.pk, "GmailApiSubject": config.subjects.get().pk}
         self.actors = {
-            "staff": self.auth(issue_token(make_staff(email="gmail-staff@example.com"))[1]),
-            "superuser": self.auth(issue_token(make_superuser(email="gmail-admin@example.com"))[1]),
+            "admin": self.auth(issue_token(make_staff(email="gmail-staff@example.com"))[1]),
         }
 
     def assert_denied(self, response, access, model):

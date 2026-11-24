@@ -6,7 +6,6 @@ from apps.authn.tests.services.members.import_.conflicts.test_conflicts import (
     NAME_DIFFERS,
     SKIP_MODE,
     UUID_HEADERS,
-    not_privileged,
     options,
     uuid_row,
 )
@@ -18,15 +17,11 @@ class PrecedenceTests(ImportTestCase):
         super().setUp()
         self.work = self.email(self.ada, "ada.work@example.com", verified=True)
 
-    def test_rows_with_c2_to_c5_are_never_grouped_as_repeats(self):
+    def test_rows_with_c3_to_c5_are_never_grouped_as_repeats(self):
         bob = self.member("Bob", "Babbage", "bob@example.com")
-        self.member("Sam", "Staff", "sam@example.com", is_staff=True)
         self.email(bob, "shared@example.com")
         ContactEmail.objects.create(member=None, email_address="Shared@example.com")
-        staff = {"First_Name": "Sam", "Last_Name": "Staff"}
         rows = [
-            uuid_row("sam@example.com", None, **staff),
-            uuid_row("sam@example.com", None, Organization="Staff Corp", **staff),
             uuid_row("shared@example.com", None),
             uuid_row("shared@example.com", None, Organization="X"),
             uuid_row("bob@example.com", self.ada.pk),
@@ -35,14 +30,11 @@ class PrecedenceTests(ImportTestCase):
             uuid_row("ada@example.com", uuid.uuid4(), Organization="X"),
         ]
 
-        analyses = self.analyse(rows, UUID_HEADERS, can_manage=not_privileged)
+        analyses = self.analyse(rows, UUID_HEADERS)
 
         self.assertEqual(
             [a.conflict for a in analyses],
-            ["privileged_target"] * 2
-            + ["ambiguous_address"] * 2
-            + ["uuid_email_mismatch"] * 2
-            + ["uuid_not_found"] * 2,
+            ["ambiguous_address"] * 2 + ["uuid_email_mismatch"] * 2 + ["uuid_not_found"] * 2,
         )
         self.assertEqual({tuple(a.facts["group"]) for a in analyses}, {()})
 
@@ -103,14 +95,13 @@ class PrecedenceTests(ImportTestCase):
 
         self.assertEqual(analysis.conflict, "address_not_primary")
 
-    def test_permission_comes_before_the_name_and_the_role(self):
-        sam = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
-        self.email(sam, "sam.work@example.com")
+    def test_two_rows_naming_one_admin_are_a_repeat_like_any_other(self):
+        self.member("Sam", "Admin", "sam@example.com", is_staff=True)
+        sam = {"First_Name": "Sam", "Last_Name": "Admin"}
 
-        for cells_row in (row("sam@example.com"), row("sam.work@example.com", First_Name="Sam", Last_Name="Staff")):
-            with self.subTest(primary=cells_row[0]):
-                analysis = self.analyse_one(cells_row, can_manage=not_privileged, mode=SKIP_EXISTING)
-                self.assertEqual(analysis.conflict, "privileged_target")
+        first, second = self.analyse([row("sam@example.com", **sam), row("sam@example.com", Organization="X", **sam)])
+
+        self.assertEqual((first.conflict, second.conflict), ("duplicate_in_sheet", "duplicate_in_sheet"))
 
 
 class DuplicateInSheetTests(ImportTestCase):

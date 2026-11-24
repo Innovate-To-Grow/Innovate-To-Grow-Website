@@ -11,20 +11,23 @@ from apps.authn.services.members.import_.review import (
     run_import,
 )
 from apps.authn.services.members.import_.review.apply.execute import RowWriteError, log_batch, log_member_changes
-from apps.authn.tests.services.members.import_.apply.test_apply import ApplyTestCase, not_privileged
+from apps.authn.tests.services.members.import_.apply.test_apply import ApplyTestCase
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, read, row
 
 
 class PermissionAtApplyTests(ApplyTestCase):
-    def test_a_member_who_became_staff_goes_back_to_review_for_a_non_master(self):
-        batch = self.stage([row("ada@example.com", Organization="Engines")], self.admin, can_manage=not_privileged)
-        Member.objects.filter(pk=self.ada.pk).update(is_staff=True)
+    def test_a_member_made_an_admin_after_the_review_goes_back_to_review(self):
+        """Not for a permission (any Admin may update an Admin): the record the review showed changed."""
+        batch = self.stage([row("ada@example.com", Organization="Engines")], self.admin)
+        self.ada.is_staff = True
+        self.ada.save()
 
-        result = self.confirm(batch, can_manage=not_privileged)
+        result = self.confirm(batch)
 
         self.assertEqual((result.status, result.rows), ("stale", [2]))
         stored = batch.rows.get()
-        self.assertEqual((stored.conflict, stored.choice), ("privileged_target", "skip"))
+        self.assertEqual((stored.status, stored.conflict, stored.choice), ("ready_update", "", "skip"))
+        self.assertTrue(stored.changed_since_review)
         self.ada.refresh_from_db()
         self.assertIsNone(self.ada.organization)
 

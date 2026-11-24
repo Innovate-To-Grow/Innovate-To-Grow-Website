@@ -5,7 +5,7 @@ from .subjects import normalize_subject
 
 # Also shown on Email Sending Method, so it names the page the button is on rather than "this page".
 RUN_THE_CHECK = (
-    "an admin with the Core app runs the access check (Run access check on the Gmail API configuration's page, or "
+    "an admin runs the access check (Run access check on the Gmail API configuration's page, or "
     "manage.py verify_gmail_access from a shell)"
 )
 

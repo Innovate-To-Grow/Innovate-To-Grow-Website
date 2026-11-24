@@ -33,31 +33,31 @@ def _confirm_change_data(client, confirmation_word, *, token=None):
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
-class ConfirmViewPerAppAccessTest(TestCase):
-    """The confirm-change/confirm-action custom admin URLs are wrapped only in
-    admin_view (is_staff); they must re-check per-app access so a staff member
-    without the model's app cannot reach the confirmation diff."""
+class ConfirmViewAccessTest(TestCase):
+    """The confirm-change/confirm-action custom admin URLs are wrapped in admin_view: a member who is not an Admin is
+    sent to the admin sign-in, any Admin reaches them."""
 
-    def setUp(self):
-        self.outsider = _make_staff(email="outsider@example.com")
-        self.outsider.admin_apps = ["event"]  # NOT cms
-        self.outsider.save(update_fields=["admin_apps"])
-        self.client.login(username="outsider@example.com", password="testpass123")
+    def _login(self, *, is_staff):
+        member = User.objects.create_user(password="testpass123", is_staff=is_staff)
+        ContactEmail.objects.create(member=member, email_address="outsider@example.com", email_type="primary")
+        self.client.force_login(member)
 
-    def test_non_app_staff_gets_403_on_confirm_change(self):
-        url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        self.assertEqual(self.client.get(url).status_code, 403)
+    def test_a_member_who_is_not_an_admin_is_sent_to_the_sign_in(self):
+        self._login(is_staff=False)
+        for name in ("confirm_change", "confirm_action"):
+            with self.subTest(name):
+                response = self.client.get(reverse(f"admin:cms_cmsembedallowedhost_{name}"))
+                self.assertEqual(response.status_code, 302)
+                self.assertIn("/admin/login/", response["Location"])
 
-    def test_non_app_staff_gets_403_on_confirm_action(self):
-        url = reverse("admin:cms_cmsembedallowedhost_confirm_action")
-        self.assertEqual(self.client.get(url).status_code, 403)
-
-    def test_app_staff_is_not_forbidden(self):
-        self.outsider.admin_apps = ["cms"]
-        self.outsider.save(update_fields=["admin_apps"])
-        url = reverse("admin:cms_cmsembedallowedhost_confirm_change")
-        # No pending change in session -> redirects to changelist, not a 403.
-        self.assertNotEqual(self.client.get(url).status_code, 403)
+    def test_an_admin_is_not_forbidden(self):
+        self._login(is_staff=True)
+        for name in ("confirm_change", "confirm_action"):
+            with self.subTest(name):
+                # No pending change in session -> redirects to the changelist, not a 403.
+                response = self.client.get(reverse(f"admin:cms_cmsembedallowedhost_{name}"))
+                self.assertNotEqual(response.status_code, 403)
+                self.assertNotIn("/admin/login/", response.get("Location", ""))
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)

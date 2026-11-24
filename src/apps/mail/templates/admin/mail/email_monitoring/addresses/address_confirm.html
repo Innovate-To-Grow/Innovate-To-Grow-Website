@@ -9,7 +9,7 @@
     <div><dt>What happens</dt><dd>{{ spec.effect }}</dd></div>
     <div><dt>Can it be undone?</dt><dd>{{ spec.reversible }}</dd></div>
     <div><dt>Role of the address</dt><dd>{{ target.role.label }}</dd></div>
-    <div><dt>Member</dt><dd>{% if target.member %}{{ target.member.get_full_name|default:target.member.pk }} · {% if target.member.is_active %}active{% else %}inactive{% endif %}{% if target.member.is_superuser %} · I2G Master{% elif target.member.is_staff %} · staff{% endif %}{% elif target.owners %}{{ target.owners|length }} members{% else %}none{% endif %}</dd></div>
+    <div><dt>Member</dt><dd>{% if target.member %}{{ target.member.get_full_name|default:target.member.pk }} · {% if target.member.is_active %}active{% else %}inactive{% endif %}{% if target.member.is_staff %} · Admin{% endif %}{% elif target.owners %}{{ target.owners|length }} members{% else %}none{% endif %}</dd></div>
     {% if target.contact %}<div><dt>This contact email</dt><dd>{{ target.contact.get_email_type_display }} · {% if target.contact.verified %}verified{% else %}unverified{% endif %} · {% if target.contact.subscribe %}subscribed{% else %}unsubscribed{% endif %}</dd></div>{% endif %}
     <div><dt>Reports</dt><dd>{% include "admin/mail/email_monitoring/address_parts/_address_counts.html" %}</dd></div>
   </dl>
@@ -58,9 +58,9 @@
     <legend>Add it as</legend>
     <label class="i2g-monitor-check"><input type="radio" name="new_role" value="secondary" {% if secondary_taken %}disabled{% elif values.new_role == "secondary" or not values.new_role %}checked{% endif %}> Secondary{% if secondary_taken %} (the member already has one){% endif %}</label>
     <label class="i2g-monitor-check"><input type="radio" name="new_role" value="other" {% if values.new_role == "other" or secondary_taken and not values.new_role %}checked{% endif %}> Other</label>
-    <label class="i2g-monitor-check"><input type="radio" name="new_role" value="primary" {% if values.new_role == "primary" %}checked{% endif %} {% if not attest_allowed %}disabled{% endif %}> Primary (must be verified; the current primary becomes the secondary)</label>
+    <label class="i2g-monitor-check"><input type="radio" name="new_role" value="primary" {% if values.new_role == "primary" %}checked{% endif %}> Primary (must be verified; the current primary becomes the secondary)</label>
   </fieldset>
-  <label class="i2g-monitor-check"><input type="checkbox" name="attest_verified" value="1" {% if values.attest_verified %}checked{% endif %} {% if not attest_allowed %}disabled{% endif %}> The member confirmed this address (mark it verified){% if not attest_allowed %} — only an I2G Master may do this on a staff or superuser account{% endif %}</label>
+  <label class="i2g-monitor-check"><input type="checkbox" name="attest_verified" value="1" {% if values.attest_verified %}checked{% endif %}> The member confirmed this address (mark it verified)</label>
   <label class="i2g-monitor-check"><input type="checkbox" name="subscribe" value="1" {% if values.subscribe or not values.new_address and subscribe_default %}checked{% endif %}> Subscribe the new address to newsletters (the old address is {% if subscribe_default %}subscribed{% else %}unsubscribed{% endif %})</label>
   <fieldset class="i2g-monitor-fieldset">
     <legend>The old address ({{ target.contact.email_address }})</legend>

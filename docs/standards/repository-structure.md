@@ -107,9 +107,9 @@ and for the registration hooks.
 is visible from an editor without opening the docs.
 
 Extracting `background_jobs` or `db_tools` into their own apps would need new Django app labels. That
-is deferred: `apps/core/utils/access.py` and `Member.admin_apps` store app labels **in the
-database** (a `JSONField` per admin user), so a new label needs a data migration to backfill existing
-admins' grants, or they silently lose access.
+is deferred: a new label moves migration history, content types and admin-log references, for little gain.
+(Admin access no longer depends on app labels: the per-app `Member.admin_apps` grants were retired, and every
+Admin has every app.)
 
 ### Splitting a module inside an app
 

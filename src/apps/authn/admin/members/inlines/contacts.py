@@ -5,7 +5,6 @@ from django.db import transaction
 from unfold.admin import TabularInline
 
 from apps.core.admin import AppAccessInlineMixin
-from apps.core.utils.access import user_can_manage_member
 
 from ....models import ContactEmail, ContactPhone, Member
 from ..contact.phone_verification import ContactPhoneAdminForm, sms_sign_in_status
@@ -29,34 +28,6 @@ PRIMARY_EMAIL_INLINE_PROMOTION_ERROR = (
 PRIMARY_EMAIL_INLINE_UNVERIFIED_ERROR = (
     "A member's first primary email must be marked verified. An unverified primary email cannot be used to sign in."
 )
-
-
-class StaffPermissionInlineMixin(AppAccessInlineMixin):
-    """Grant inline permissions per-app, matching BaseModelAdmin.
-
-    These inlines belong to the Member admin, so access is gated on the ``authn`` app
-    grant (see apps.core.utils.access.user_can_access_app) rather than bare ``is_staff``.
-
-    ``obj`` here is the *parent* Member, so it also carries the privileged-account check: a verified
-    contact row is a working sign-in factor for its owner, so only an I2G Master (or the account
-    holder) may add or change contacts on a staff/superuser account.
-    """
-
-    def _may_write(self, request, obj):
-        if not self._has_app_access(request):
-            return False
-        if obj is None:
-            return True  # Add view: there is no target account to protect yet.
-        return user_can_manage_member(request.user, obj)
-
-    def has_add_permission(self, request, obj=None):
-        return self._may_write(request, obj)
-
-    def has_change_permission(self, request, obj=None):
-        return self._may_write(request, obj)
-
-    def has_delete_permission(self, request, obj=None):
-        return self._may_write(request, obj)
 
 
 def _check_new_email_row(form, member_has_primary) -> None:
@@ -135,7 +106,7 @@ class ContactEmailInlineForm(forms.ModelForm):
         help_texts = EMAIL_HELP_TEXTS
 
 
-class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
+class ContactEmailInline(AppAccessInlineMixin, UUIDInlineMixin, TabularInline):
     """Inline admin for contact email records.
 
     The primary is switched with "Make primary…" on a verified row (or "Switch primary email" at the top of the page),
@@ -157,7 +128,7 @@ class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInl
         return primary_switch_cell(obj, enabled=self.may_switch_primary)
 
     def get_formset(self, request, obj=None, **kwargs):
-        self.may_switch_primary = obj is not None and self._may_write(request, obj)
+        self.may_switch_primary = obj is not None
         formset_class = super().get_formset(request, obj, **kwargs)
         original_clean = formset_class.clean
 
@@ -169,7 +140,7 @@ class ContactEmailInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInl
         return formset_class
 
 
-class ContactPhoneInline(StaffPermissionInlineMixin, UUIDInlineMixin, TabularInline):
+class ContactPhoneInline(AppAccessInlineMixin, UUIDInlineMixin, TabularInline):
     """Inline admin for contact phone records.
 
     ``verified`` can be switched off here but never on: only an SMS code verifies a number, and a changed number

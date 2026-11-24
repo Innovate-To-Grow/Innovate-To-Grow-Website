@@ -1,4 +1,4 @@
-"""Email Monitoring → Bounced addresses: who may open it, the list (counting, tabs, filters, sorting, row menus),
+"""Email Monitoring → Bounced addresses: who may open it (Admins), the list (counting, tabs, filters, sorting, row menus),
 one address's page, and the spreadsheet export."""
 
 from django.core.cache import cache
@@ -7,6 +7,7 @@ from django.urls import reverse
 
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import BouncedAddress
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 from apps.mail.tests.services.bounced_addresses.helpers import (
     make_row,
 )
@@ -37,24 +38,23 @@ class AccessTests(TestCase):
                 self.assertEqual(response.status_code, 302)
                 self.assertIn("/login/", response["Location"])
 
-    def test_staff_without_the_mail_app_are_refused_everywhere(self):
-        self.client.force_login(make_admin(apps=["authn", "cms"]))
+    def test_members_who_are_not_admins_are_refused_everywhere(self):
+        member = make_member()
 
         for url in self.get_urls():
             with self.subTest(url=url):
-                self.assertEqual(self.client.get(url).status_code, 403)
+                assert_refused_to_member(self, url, member)
         for url in self.post_urls():
             with self.subTest(url=url):
-                self.assertEqual(self.client.post(url, {"step": "apply", "note": "x"}).status_code, 403)
+                assert_refused_to_member(self, url, member, "post", data={"step": "apply", "note": "x"})
         self.row.refresh_from_db()
         self.assertEqual(self.row.status, BouncedAddress.Status.OPEN)
 
-    def test_mail_staff_and_superusers_may_open_every_page(self):
-        for user in (make_admin(apps=["mail"], email="m@example.org"), make_superuser()):
-            self.client.force_login(user)
-            for url in self.get_urls():
-                with self.subTest(user=user.pk, url=url):
-                    self.assertEqual(self.client.get(url).status_code, 200)
+    def test_every_admin_may_open_every_page(self):
+        self.client.force_login(make_admin(email="m@example.org"))
+        for url in self.get_urls():
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 200)
 
     def test_the_action_views_only_take_post_with_a_csrf_token(self):
         user = make_superuser()

@@ -2,7 +2,8 @@
 
 The apply re-reads every record the review read. A row whose records changed goes back to review with its choice
 reset; a stale or refused apply writes nothing; a row that fails to write rolls the whole import back and leaves the
-reason on the batch. Permissions are checked again with the actor's rights at apply time.
+reason on the batch. The change permission and the Admin lockout rules are checked again at apply time, for the Admin
+who applies.
 """
 
 from datetime import timedelta
@@ -20,14 +21,10 @@ from apps.authn.services.members.import_.review import (
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row
 
 
-def not_privileged(member) -> bool:
-    return not (member.is_staff or member.is_superuser)
-
-
 class ApplyTestCase(ImportTestCase):
     def setUp(self):
         super().setUp()
-        self.admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
+        self.admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Admin")
 
     def choose(self, batch, posted):
         batch.refresh_from_db()

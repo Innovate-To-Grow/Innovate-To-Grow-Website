@@ -2,11 +2,20 @@
 
 from datetime import timedelta
 
-from django.test import TestCase, override_settings
+from django.contrib.admin.sites import AdminSite
+from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.event.tests.helpers import make_event, make_member, make_registration, make_superuser, make_ticket
+from apps.authn.models import Member
+from apps.event.tests.helpers import (
+    make_admin,
+    make_event,
+    make_member,
+    make_registration,
+    make_superuser,
+    make_ticket,
+)
 from apps.mail.admin.campaign.admin.login_link import LoginLinkTokenAdmin
 from apps.mail.models import EmailCampaign, LoginLinkToken
 
@@ -41,6 +50,19 @@ class LoginLinkTokenAdminTests(TestCase):
         self.assertContains(response, "Revoked 1 login link(s).")
         self.link.refresh_from_db()
         self.assertTrue(self.link.is_expired)
+
+    def test_every_admin_may_revoke_and_a_member_may_not(self):
+        admin_user = make_admin(email="revoker@example.com")
+        # The project's admin rule, not Django's is_superuser-based model permissions.
+        Member.objects.filter(pk=admin_user.pk).update(is_superuser=False)
+        admin_user.refresh_from_db()
+        member = make_admin(email="not-revoker@example.com", is_staff=False)
+        model_admin = LoginLinkTokenAdmin(LoginLinkToken, AdminSite())
+
+        for user, allowed in ((admin_user, True), (member, False)):
+            request = RequestFactory().post("/")
+            request.user = user
+            self.assertIs(model_admin.has_revoke_permission(request), allowed)
 
     def test_status_badge_states(self):
         admin = LoginLinkTokenAdmin(LoginLinkToken, None)

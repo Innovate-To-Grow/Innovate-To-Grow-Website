@@ -1,3 +1,5 @@
+from django.contrib.auth import get_user_model
+
 from apps.authn.forms.invitation import AcceptInvitationForm
 from apps.authn.models import ContactEmail
 from apps.authn.models.members.admin_invitation import AdminInvitation
@@ -5,7 +7,7 @@ from apps.authn.tests.admin.invitations.test_invitation import Member, _AcceptIn
 
 
 class AcceptInvitationViewTests(_AcceptInvitationViewCase):
-    def test_post_existing_member_upgrades_to_staff(self):
+    def test_post_existing_member_becomes_an_admin(self):
         existing = Member.objects.create_user(
             password="StrongPass123!",
             is_staff=False,
@@ -27,34 +29,8 @@ class AcceptInvitationViewTests(_AcceptInvitationViewCase):
         self.assertEqual(response.status_code, 200)
         existing.refresh_from_db()
         self.assertTrue(existing.is_staff)
-        self.assertEqual(existing.admin_apps, [])
-
-    def test_post_existing_inactive_verified_member_upgrades_and_activates(self):
-        existing = Member.objects.create_user(
-            password="StrongPass123!",
-            is_active=False,
-            is_staff=False,
-        )
-        ContactEmail.objects.create(
-            member=existing, email_address="invite@example.com", email_type="primary", verified=True
-        )
-        invitation = self._create_invitation(email="invite@example.com")
-
-        response = self.client.post(
-            f"/authn/invite/{invitation.token}/",
-            {
-                "email": "invite@example.com",
-                "first_name": "Ignored",
-                "last_name": "Ignored",
-                "password1": "StrongPass123!",
-                "password2": "StrongPass123!",
-            },
-        )
-
-        self.assertEqual(response.status_code, 200)
-        existing.refresh_from_db()
-        self.assertTrue(existing.is_staff)
-        self.assertTrue(existing.is_active)
+        # The upgrade is a partial save of is_staff; the mirror must reach the database too.
+        self.assertTrue(get_user_model().objects.filter(pk=existing.pk, is_superuser=True).exists())
 
     def test_post_claims_existing_unclaimed_contact_email(self):
         ContactEmail.objects.create(

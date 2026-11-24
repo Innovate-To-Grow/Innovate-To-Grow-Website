@@ -30,18 +30,59 @@ In Django admin → Members & Auth → Members:
   on other pages search the same way. See [Member and contact admin search](django-admin.md#member-and-contact-admin-search)
 - Filters (`src/apps/authn/admin/members/shared/filters.py`): **Account active** (yes / no / unfinished sign-up), **Primary
   email** (verified / unverified / none), **Unverified emails**, **Newsletter (All subscribers)** (subscribed at the
-  primary / at another address only / nowhere), **Phone** (verified / unverified only / none), staff status, date
-  joined. Contact Emails: **Verified (sign-in)** (incl. unverified emails and unverified primaries), **Subscribed
-  (newsletters)**, email type, **Member account** (active / inactive / staff or I2G Master / unlinked), with an
-  **Account active** column; Contact Phones: **Member account** too
+  primary / at another address only / nowhere), **Phone** (verified / unverified only / none), **Account type**
+  (Admin / Regular member; `?account_type=admin|member`), date joined; the list has an **Admin** column. Contact
+  Emails: **Verified (sign-in)** (incl. unverified emails and unverified primaries), **Subscribed (newsletters)**,
+  email type, **Member account** (active / inactive / Admin / unlinked; the URL value for Admin stays
+  `?account=staff`), with an **Account active** column; Contact Phones: **Member account** too
 - **Switch primary email** on the member page (and **Make primary…** on each verified Contact Emails row): see
   [Switching the primary email](#switching-the-primary-email)
 - Inline contact emails and phones
 - Import/export members via Excel (openpyxl)
 
-Admin access is per Django app: staff granted an app in `admin_apps` have full control of that app's records and
-configuration, like a superuser (who has every app). Only the Member privilege fields stay with superusers:
-`is_staff` and `admin_apps` are edited by superusers only, and superuser status is not editable in the admin at all.
+### Account types: Admin and regular member
+
+There are two kinds of account. An **Admin** is an active member with `Member.is_staff`; everyone else is a regular
+member. Only an Admin can sign in to the admin, and every Admin has the same, complete permissions: every app, every
+record and every setting, and every other account, another Admin's included (their password, emails, phones, flags,
+Switch primary email, Verify by SMS code, delete). There are no per-app grants and no higher tier: the
+`Member.admin_apps` grants and the "I2G Master" (superuser) tier were retired, and every Admin has what the I2G
+Master had. `is_superuser` is kept only as a mirror of `is_staff` (`Member.save()` sets it, so Django's stock
+permission checks agree) and is never edited in the admin; project code decides with
+`apps.core.utils.access.user_is_admin` (authenticated, active, `is_staff`). `user_can_access_app(user, app_label)`
+keeps its signature and means the same thing.
+
+On the member page the **Admin access** fieldset holds one switch, **Admin** ("Can sign in to the admin site and
+manage everything in it. All Admins have the same permissions."). The add form has no Admin switch.
+
+**Lockout rules** (`apps.authn.services.members.admins.admin_removal_refusal`, action delete / deactivate / demote).
+They are the only limits on what one Admin may do to another, and every path that removes an Admin applies them:
+
+- nobody deletes, deactivates or removes Admin access from **their own** Admin account; another Admin must do it;
+- the **last active Admin** is never deleted, deactivated or demoted ("the site must keep at least one active
+  Admin").
+
+**Deactivating an account removes its Admin access** (every path: the member page, **Deactivate selected
+members**, Email Monitoring, an import, the AI assistant), and an inactive account cannot be given Admin access. So
+reactivating an account always gives back a regular member: grant Admin again on the member's page if it is still
+wanted. Migration `authn.0024` applied the same rule once to every account that was already inactive.
+
+Where they apply: on your own member page **Admin** and **Account active** are read-only, with a note; the change
+form refuses unticking either (an error on the field) when a rule would be broken; the delete page sends you back to
+the member page with the reason before any typed confirmation, and the delete itself re-checks inside its
+transaction; **Delete selected members** and **Deactivate selected members** check the whole selection at once and
+change nobody if it breaks a rule. The same rules apply to Email Monitoring's **Deactivate account** and **Delete
+account**, a member import's deactivation tick, an AI assistant delete or deactivation, and an Admin deleting their
+own account from the account page (the API answers 400: "You cannot delete your own Admin account. Ask another
+Admin to do it.").
+
+**What stays refused for every Admin:**
+
+- **Login as Member** never impersonates an Admin account ("Admin accounts cannot be impersonated."); the button
+  shows only on a regular member's page.
+- The member import never grants or removes Admin access: its **Admin** column (**Staff** in older exports) is
+  recognised and ignored. Admin access changes only on the member's own page, or through an Admin invitation.
+- The `i2g-admin` CLI and the AI assistant never write `is_staff` or `is_superuser`.
 
 ### Contact information
 
@@ -61,7 +102,7 @@ Three independent flags; none changes another, and none is changed by a bounce r
 | Flag | Belongs to | Read by | Not read by |
 |---|---|---|---|
 | **Account active** (`Member.is_active`) | The account | Every sign-in path; the All subscribers, All active members and Staff audiences (email), All members and Staff (SMS) | Selected Members, Manual Emails and event audiences, which include inactive members (the SMS Subscribers audience does too: unchanged, a known inconsistency) |
-| **Verified** (`ContactEmail.verified`, `ContactPhone.verified`) | One address / number | Sign-in (email code and password with any verified address; admin codes with a staff member's verified primary; SMS sign-in with a verified number); only a verified address can become primary; the recovery-contact count | No email audience |
+| **Verified** (`ContactEmail.verified`, `ContactPhone.verified`) | One address / number | Sign-in (email code and password with any verified address; admin codes with an Admin's verified primary; SMS sign-in with a verified number); only a verified address can become primary; the recovery-contact count | No email audience |
 | **Subscribed** (`ContactEmail.subscribe`) | One address | The All subscribers audience only ("primary only" uses the primary's flag) | All active members, Staff, Selected Members and event audiences; transactional mail |
 
 To stop campaign mail to one bad address, use Email Monitoring → Bounced addresses → **Mark undeliverable** (every
@@ -95,9 +136,8 @@ campaigns. The POST (CSRF, the typed word `switch` while `ADMIN_REQUIRE_CONFIRMA
 address, inside the switch's transaction (`switch_primary_email(..., actor=..., via=...)`), so a switch is never
 committed without its History; the application log gets ids only. The Contact Emails action **Make selected email primary** uses the same
 service and history. Subscriptions, verification and sessions never change, and nothing is sent; the page warns when
-the switch changes who receives "primary only" campaigns. Permission: the `authn` app plus `user_can_manage_member`
-(on a staff or superuser account, the I2G Master or the account holder); the button and links are hidden from
-anyone else, and the view re-checks both.
+the switch changes who receives "primary only" campaigns. Permission: any Admin, on any member's page (another
+Admin's included); the page is served through the admin, so anyone else is sent to the admin sign-in.
 
 ### Phone numbers and SMS sign-in
 
@@ -122,16 +162,26 @@ A number becomes verified only with a code; there is no tick for it:
   call to them at a contact you already trust), **Send code**, ask them to read it to you, and enter it. The code goes
   to that number only, is valid for 10 minutes, allows 5 tries and follows the same per-number limits as every code.
   Both steps are written to the admin history. A member who can sign in with their email should verify the number
-  themselves on their account page instead.
-- Staff with the Members app may do this for regular members; a staff or superuser account's number needs an I2G
-  Master.
+  themselves on their account page instead. Any Admin may do this for any member, another Admin included.
 
 ### Admin invitations
 
-`AdminInvitation` allows existing staff to invite new admin users:
-1. Staff creates an invitation with the invitee's email
+`AdminInvitation` lets any Admin invite a new Admin:
+1. An Admin creates an invitation with the invitee's email
 2. System sends an invitation email with a token
-3. Invitee follows the link to set up their admin account
+3. Invitee follows the link to set up their account, which is a full Admin (there is nothing to choose per app)
+
+An invitation to the address of an existing, active, verified member makes that member an Admin. It never
+reactivates a deactivated account: the link answers "Ask an Admin to reactivate the account, then open this
+invitation link again", and the invitation stays pending. The release that retired the per-app grants cancelled
+every invitation still pending (each was approved as "staff with no apps", and would now have created a full
+Admin); send a new one where it is still wanted.
+
+An invitation speaks for the Admin who sent it. Its link creates an Admin, so its change page shows the link only to
+that Admin (to copy it when the email fails; every other Admin sees "Shown only to the Admin who sent it.", and a
+failed **Resend** by another Admin does not print it), and it stops working as soon as its sender is no longer an
+active Admin (demoted, deactivated or deleted, by any path): opening it then cancels it. A removed Admin therefore
+cannot come back through an invitation they prepared.
 
 ## Email campaigns
 
@@ -150,13 +200,12 @@ their go-live checks), and has:
 
 - **Send test**: a test email through that method, to an address you enter, without switching to it. The test
   page's **Send through** row moves between methods; one that is not ready cannot be sent through.
-- **Use for email**: switch all site email to that method (Mail app staff; the change is in the admin history).
+- **Use for email**: switch all site email to that method (the change is in the admin history).
   Microsoft Graph can send only from a mailbox in its scope: when the From email is outside it but the Graph
   **Sender Mailbox** is an address in it, the card says so and the switch also changes the From email to that
   mailbox (switching back later keeps it; change it on Edit Notification Delivery).
-- **Configure**: where that method is set up, when you have the access it needs (SES on Edit Notification
-  Delivery; SMTP on its Service Credentials tab, or Edit Notification Delivery without the Core app; Microsoft
-  Graph and the Gmail API with the Core app).
+- **Configure**: where that method is set up (SES on Edit Notification Delivery; SMTP on its Service Credentials
+  tab; Microsoft Graph and the Gmail API on their configuration pages under **Site Settings**).
 
 **Edit Notification Delivery** sets the sender name and email address and the active configuration. Under
 **Email Sender**, **Provider** is the same switch as **Use for email**.
@@ -172,19 +221,19 @@ their go-live checks), and has:
   certificate's SHA-1 thumbprint and expiry, and the **mailbox scope** (the
   mailboxes Graph may use and each one's permission level: send, read, or
   both). This page only selects Graph; the configuration, its scope and its
-  certificate are managed on the Graph configuration's admin page (Core app,
-  linked from the panel for staff who have it), and must be in place before
+  certificate are managed on the Graph configuration's admin page (under
+  **Site Settings**, linked from the panel), and must be in place before
   Graph can be selected. In production Graph can be selected only after an
-  admin with the Core app has run the access check with the current certificate and it
+  Admin has run the access check with the current certificate and it
   matched the approval (the panel's **Go-live evidence** line says what is
   missing; see [Validate the access restriction](../integrations/messaging/microsoft-graph-email.md#validate-the-access-restriction)).
   Graph authenticates with a certificate only; an
-  admin with the Core app installs it there, and its private key is kept in the credential
+  Admin installs it there, and its private key is kept in the credential
   store, never in the database. The sender mailbox
   defaults to the From email; both must be in the scope with send permission.
   With read permission, **Mail → Inbox** reads that mailbox through Graph
-  alongside the Gmail access accounts ([Universal inbox](#universal-inbox-mail--inbox)); its **Sent** folder (and any message
-  from the site's own address) is then shown to staff with the Mail app only, and Sent
+  alongside the Gmail access accounts ([Universal inbox](#universal-inbox-mail--inbox)); every Admin can open its
+  **Sent** folder (the site's tagged credential mail is left out of it for every reader), and Sent
   mail is never sent to the AI scam review. Opening an Inbox message whose
   rule score is in the medium band still sends its sender, subject,
   authentication results and the first 4,000 characters of its body to
@@ -204,14 +253,13 @@ their go-live checks), and has:
   ID, service account, numeric client ID, project, when the key was installed
   and the access check last passed, and the **account allow-list** (the Google
   accounts the site may send as). There are no credential fields here: the key
-  and the list are managed on the configuration's own page (Core app). The
+  and the list are managed on the configuration's own page (under **Site Settings**). The
   From email must be on the list, and email can switch to the Gmail API (or
   change its From address there) only after the access check passed for the
   installed key. Gmail keeps a copy of everything it sends in the account's Sent
   folder: mail with sign-in codes or login links is tagged and never shown from
-  that folder by **Mail → Inbox** or **Import from Gmail**, and the inbox's **Sent** folder is
-  shown to staff with the Mail app only while the Gmail import account is one the site sends
-  as. Rates and daily limits are on **Mail → Delivery Rates**. Setup:
+  that folder by **Mail → Inbox** or **Import from Gmail**; every Admin can open the
+  inbox's **Sent** folder. Rates and daily limits are on **Mail → Delivery Rates**. Setup:
   [Gmail API email](../integrations/messaging/gmail-api-email.md).
 - AWS settings remain available for SMS even when email uses SMTP, Microsoft
   Graph or the Gmail API. Changing the email provider does not switch the SMS provider.
@@ -247,7 +295,7 @@ campaigns, inbox replies, and the **Send Test Email** action (which tests the me
 | `checked_in` | Registrants who checked in to an event |
 | `not_checked_in` | Registrants who did not check in |
 | `all_members` | **All active members (subscribed or not)**: every active member, including people who unsubscribed, at the primary address (members without one get nothing) or, with **Send to: all emails**, at every saved address |
-| `staff` | Staff users only (active members marked as staff, addressed like All active members) |
+| `staff` | **Staff Members**: Admins only (active members with Admin access, addressed like All active members; the stored value stays `staff`) |
 
 Audience resolution is handled by `src/apps/mail/services/audience/` (`resolvers.py`). The recipient list is resolved
 once, when sending starts (with the background worker, when the campaign is queued), so an address unsubscribed after
@@ -395,7 +443,7 @@ group (`services/campaign/duplicate.py`).
 
 ### Delivery rates
 
-**Mail → Delivery Operations → Delivery Rates** (`/admin/mail/settings/rates/`, staff with the Mail app) sets how
+**Mail → Delivery Operations → Delivery Rates** (`/admin/mail/settings/rates/`) sets how
 fast the site sends and reads, with one card per channel: the four email providers (the one selected under
 Notification Delivery first, the others under **Not in use** but still editable), AWS SMS, and inbox reading
 (Microsoft Graph, Gmail IMAP). One **Save delivery rates** saves every card. Each card has:
@@ -526,8 +574,8 @@ What staff need to know before texting people (full detail: [AWS SMS](../integra
 - **Links** (`{{login_link}}`, `{{ticket_link}}`, `{{event_link}}`) and **ticket texts for phone-only
   registrants** are **off** until the sending number's 10DLC or toll-free registration is confirmed to allow
   embedded links. While they are off, a message with a link placeholder cannot be saved or sent. One-tap
-  **personal sign-in links** are a separate switch that only the I2G Master can turn on; even then a link signs a
-  member in only when it is texted to that member's own verified phone. Turning personal sign-in links (or links in
+  **personal sign-in links** are a separate switch, off by default, that any Admin can turn on; even then a link
+  signs a member in only when it is texted to that member's own verified phone, and never signs in an Admin. Turning personal sign-in links (or links in
   SMS) **off revokes every personal link already texted, for good**: turning it back on does not bring them back,
   and whoever opens one lands on the normal sign-in page. SMS Settings says how many would be revoked before you
   save, and **SMS link revocations** records who turned them off, when, and how many links it revoked.

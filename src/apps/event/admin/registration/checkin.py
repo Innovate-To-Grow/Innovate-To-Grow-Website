@@ -87,8 +87,7 @@ class CheckInAdmin(BaseModelAdmin):
         return custom + urls
 
     def scanner_view(self, request, object_id):
-        # ``admin_view`` only enforces is_staff; re-check per-app access so a
-        # staff member without the event app cannot open the scanner console.
+        # Custom URL: re-check the ModelAdmin's permission hook before opening the console.
         if not self.has_view_permission(request):
             raise PermissionDenied("You do not have permission to open the check-in console.")
         try:
@@ -117,8 +116,7 @@ class CheckInAdmin(BaseModelAdmin):
         return TemplateResponse(request, "admin/event/checkin/scanner.html", context)
 
     def export_view(self, request, object_id):
-        # ``admin_view`` only enforces is_staff; re-check per-app access so a
-        # staff member without the event app cannot export check-in PII.
+        # Custom URL: re-check the ModelAdmin's permission hook before exporting check-in PII.
         if not self.has_view_permission(request):
             raise PermissionDenied("You do not have permission to export check-in data.")
         try:
