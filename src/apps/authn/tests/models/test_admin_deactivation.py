@@ -51,3 +51,42 @@ class DeactivationRemovesAdminTests(TestCase):
         member.save(update_fields=["first_name"])
 
         self.assertEqual(self._stored(member), {"is_active": True, "is_staff": True, "is_superuser": True})
+
+
+class StaleInactiveAdminTests(TestCase):
+    """An older release deactivated without removing Admin; reactivating such a row never restores Admin."""
+
+    def _stale(self):
+        member = _admin()
+        Member.objects.filter(pk=member.pk).update(is_active=False)  # what the older release wrote
+        return Member.objects.get(pk=member.pk)
+
+    def _stored(self, member):
+        return Member.objects.values("is_active", "is_staff", "is_superuser").get(pk=member.pk)
+
+    def test_reactivating_by_full_or_partial_save_does_not_restore_admin(self):
+        for update_fields in (None, ["is_active"]):
+            with self.subTest(update_fields=update_fields):
+                member = self._stale()
+                member.is_active = True
+                member.save(update_fields=update_fields)
+
+                self.assertEqual(self._stored(member), {"is_active": True, "is_staff": False, "is_superuser": False})
+
+    def test_an_unrelated_partial_save_writes_the_demotion_before_a_later_reactivation(self):
+        member = self._stale()
+        member.first_name = "Renamed"
+        member.save(update_fields=["first_name"])
+        member.is_active = True
+        member.save(update_fields=["is_active"])
+
+        self.assertEqual(self._stored(member), {"is_active": True, "is_staff": False, "is_superuser": False})
+
+    def test_granting_admin_while_reactivating_a_regular_member_still_works(self):
+        member = Member.objects.create_user(password="StrongPass123!", is_active=False)
+        member = Member.objects.get(pk=member.pk)
+        member.is_active = True
+        member.is_staff = True
+        member.save()
+
+        self.assertEqual(self._stored(member), {"is_active": True, "is_staff": True, "is_superuser": True})

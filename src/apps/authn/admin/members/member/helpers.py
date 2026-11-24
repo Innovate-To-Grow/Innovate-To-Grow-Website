@@ -46,7 +46,10 @@ def normalize_inline_uuid_none_values(request):
 
 
 def activate_members(admin_obj, request, queryset):
-    updated = queryset.update(is_active=True, registration_pending=False)
+    with transaction.atomic():
+        # Reactivating never brings back Admin: only an older release leaves an inactive account with it.
+        queryset.filter(is_active=False, is_staff=True).update(is_staff=False, is_superuser=False)
+        updated = queryset.update(is_active=True, registration_pending=False)
     admin_obj.message_user(request, f"{updated} member(s) activated.")
 
 

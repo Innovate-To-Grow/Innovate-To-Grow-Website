@@ -50,10 +50,12 @@ class Member(AbstractUser, ProjectControlModel):
             extra.add("registration_pending")
         # A deactivated account is never an Admin, so reactivating it later (an import, the assistant, an Admin's
         # bulk action) never brings back a full Admin unasked: Admin access is granted again on the member's page.
+        # That includes a row an older release deactivated without removing Admin (``from_db`` notes it).
         # Writing ``is_active`` writes the demotion too; it only ever removes access, so it is safe from a partial load.
-        if not self.is_active and self.is_staff:
+        stale = getattr(self, "_stored_inactive_admin", False)
+        if self.is_staff and (not self.is_active or stale):
             self.is_staff = False
-            if update_fields is not None and "is_active" in update_fields:
+            if update_fields is not None and ("is_active" in update_fields or stale):
                 extra.update({"is_staff", "is_superuser"})
         # ``is_superuser`` follows ``is_staff``. A partial save writes the mirror only when it writes ``is_staff``,
         # so saving an unrelated column never writes a value derived from a stale in-memory ``is_staff``.
@@ -64,6 +66,14 @@ class Member(AbstractUser, ProjectControlModel):
         if update_fields is not None and extra:
             kwargs["update_fields"] = {*update_fields, *extra}
         super().save(*args, **kwargs)
+        self._stored_inactive_admin = False
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        stored = instance.__dict__  # loaded columns only; a deferred one is absent
+        instance._stored_inactive_admin = not stored.get("is_active", True) and bool(stored.get("is_staff"))
+        return instance
 
     def get_username(self):
         """Return UUID as a string so templates and admin can handle it."""

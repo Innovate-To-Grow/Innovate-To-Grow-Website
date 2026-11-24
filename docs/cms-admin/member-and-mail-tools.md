@@ -65,7 +65,9 @@ They are the only limits on what one Admin may do to another, and every path tha
 **Deactivating an account removes its Admin access** (every path: the member page, **Deactivate selected
 members**, Email Monitoring, an import, the AI assistant), and an inactive account cannot be given Admin access. So
 reactivating an account always gives back a regular member: grant Admin again on the member's page if it is still
-wanted. Migration `authn.0024` applied the same rule once to every account that was already inactive.
+wanted. Migration `authn.0024` applied the same rule once to every account that was already inactive, and an
+account an older release deactivated during the deploy window (it did not remove Admin then) loses Admin when it is
+reactivated, by **Activate selected members** or any other path.
 
 Where they apply: on your own member page **Admin** and **Account active** are read-only, with a note; the change
 form refuses unticking either (an error on the field) when a rule would be broken; the delete page sends you back to
@@ -79,7 +81,8 @@ Admin to do it.").
 **What stays refused for every Admin:**
 
 - **Login as Member** never impersonates an Admin account ("Admin accounts cannot be impersonated."); the button
-  shows only on a regular member's page.
+  shows only on a regular member's page. The one-time link is checked again when it is opened: it answers "Invalid
+  impersonation link." if the member has since become an Admin or the Admin who issued it no longer is one.
 - The member import never grants or removes Admin access: its **Admin** column (**Staff** in older exports) is
   recognised and ignored. Admin access changes only on the member's own page, or through an Admin invitation.
 - The `i2g-admin` CLI and the AI assistant never write `is_staff` or `is_superuser`.

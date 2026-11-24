@@ -709,7 +709,7 @@ Token-based paths for email-originated actions:
 
 `/mail/login-link/` validates the token (validity frozen at send time; one-time by default, reusable per campaign/event opt-in) and returns JWT access/refresh tokens plus `redirect_to`.
 
-`/authn/impersonate-login/` accepts `{ "token": "..." }`. It conditionally marks an unused, unexpired token as used before issuing JWTs. Exactly one request can win a concurrent exchange; later requests receive an already-used or expired `400` response.
+`/authn/impersonate-login/` accepts `{ "token": "..." }`. It conditionally marks an unused, unexpired token as used before issuing JWTs. Exactly one request can win a concurrent exchange; later requests receive an already-used or expired `400` response. The winning request then re-checks both accounts: if the target has since become an Admin, or the issuing Admin is no longer an active Admin, the spent token answers `400` "Invalid impersonation link." and no JWTs are issued.
 
 **Removed endpoints.** `POST /authn/unsubscribe-login/` (the exchange behind the old `/unsubscribe-login#token=X` email links) and `POST /authn/subscribe/` (an anonymous newsletter sign-up with a 30/minute per-IP throttle, which the SPA no longer called) no longer exist and return `404`. Newsletter opt-out is the backend page behind the [one-click unsubscribe link](#one-click-unsubscribe-and-resubscribe), plus the per-address flags on `/account`; the SPA keeps `/unsubscribe-login` only as a redirect to `/account` that drops the old token and calls nothing.
 

@@ -39,6 +39,15 @@ class BulkLockoutTests(_DeleteCase):
         stored = Member.objects.values("is_active", "is_staff", "is_superuser").get(pk=self.other_admin.pk)
         self.assertEqual(stored, {"is_active": False, "is_staff": False, "is_superuser": False})
 
+    def test_activating_an_inactive_row_that_still_has_admin_does_not_restore_admin(self):
+        # Only an older release leaves an inactive account with Admin (it deactivated without removing it).
+        Member.objects.filter(pk=self.other_admin.pk).update(is_active=False)
+
+        self.changelist_action("activate_members", [self.other_admin])
+
+        stored = Member.objects.values("is_active", "is_staff", "is_superuser").get(pk=self.other_admin.pk)
+        self.assertEqual(stored, {"is_active": True, "is_staff": False, "is_superuser": False})
+
     def test_the_last_active_admin_is_not_deactivated(self):
         Member.objects.filter(pk=self.other_admin.pk).update(is_active=False)
         request = self.direct_request(self.regular)
