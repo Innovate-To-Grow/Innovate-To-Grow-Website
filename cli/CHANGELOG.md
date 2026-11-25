@@ -20,8 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Default `csv` output neutralizes spreadsheet-formula prefixes.
-- The `apps` command filters results through the signed-in account's
-  `admin_apps` grants; superusers retain full visibility.
+- The `apps` command prints every app the server returns; it no longer calls
+  `whoami` or filters rows client-side (the server lists only what the signed-in
+  Admin may use).
+- `whoami` no longer reports `admin_apps`: there is a single Admin role, with no
+  per-app grants. `is_superuser` is deprecated and always equals `is_staff`; it
+  is kept so earlier clients that read it keep listing every app.
 - Typer 0.18.0 and Click 8.3.3 are pinned as the tested callback-compatible
   pair used by the 0.2 command layout.
 - The package is split into focused subpackages — `config/` (constants,

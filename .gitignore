@@ -282,3 +282,4 @@ archive/page/service_account.json
 
 # AWS SAM build output
 /.aws-sam/
+/src/private_exports/

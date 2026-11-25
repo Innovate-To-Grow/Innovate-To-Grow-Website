@@ -12,7 +12,6 @@ from .reading.connection import (
     InboxError,
     _open_inbox,
 )
-from .reading.graph_backend import graph_inbox_active
 from .reading.listing import InboxListing, list_all_inbox_messages, list_inbox_messages
 from .reading.messages import fetch_inbox_message
 from .sending.reply import render_reply_html, send_reply
@@ -34,7 +33,6 @@ __all__ = [
     "connectable_accounts",
     "default_identity_for",
     "fetch_inbox_message",
-    "graph_inbox_active",
     "list_all_inbox_messages",
     "list_inbox_messages",
     "readable_accounts",

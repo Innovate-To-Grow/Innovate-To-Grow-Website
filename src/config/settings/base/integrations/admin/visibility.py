@@ -2,7 +2,7 @@
 
 from urllib.parse import parse_qs
 
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_is_admin
 
 from .tabs import SERVICE_CREDENTIAL_MODELS
 
@@ -12,14 +12,9 @@ _SENDING_METHOD_PATH = "/admin/mail/sending-method/"
 _HELPDESK_TICKETS_PATH = "/admin/helpdesk/ticket/"
 
 
-def _can(app_label):
-    """Sidebar visibility callback: show only if the member can access ``app_label``."""
-    return lambda request: user_can_access_app(request.user, app_label)
-
-
-def _can_any(*app_labels):
-    """Sidebar visibility callback: show if the member can access any of ``app_labels``."""
-    return lambda request: any(user_can_access_app(request.user, label) for label in app_labels)
+def _is_admin(request):
+    """Sidebar visibility callback: every entry is shown to every Admin (and nobody else reaches the admin)."""
+    return user_is_admin(request.user)
 
 
 def _can_open_legacy_viewer(request):
@@ -27,7 +22,7 @@ def _can_open_legacy_viewer(request):
     # legacy_access service (it loads models before the app registry is ready).
     from django.conf import settings
 
-    return getattr(settings, "LEGACY_VIEW_ENABLED", False) is True and user_can_access_app(request.user, "core")
+    return getattr(settings, "LEGACY_VIEW_ENABLED", False) is True and user_is_admin(request.user)
 
 
 def _is_system_intelligence_chat(request):
@@ -77,11 +72,11 @@ def _helpdesk_view_item(title, query, name):
     return {
         "title": title,
         "link": f"{_HELPDESK_TICKETS_PATH}{query}",
-        "permission": _can("helpdesk"),
+        "permission": _is_admin,
         "active": _helpdesk_queue_view(name),
     }
 
 
 def _helpdesk_link(title, model):
     """The sidebar entry of one helpdesk admin page."""
-    return {"title": title, "link": f"/admin/helpdesk/{model}/", "permission": _can("helpdesk")}
+    return {"title": title, "link": f"/admin/helpdesk/{model}/", "permission": _is_admin}

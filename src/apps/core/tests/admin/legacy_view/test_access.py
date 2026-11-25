@@ -15,7 +15,7 @@ from apps.core.legacy_view.access import (
 from apps.core.legacy_view.gateway.views import legacy_access_exchange_gateway, legacy_proxy_view
 from apps.core.models import LegacyAccessGrant
 from apps.core.views.legacy_access import legacy_access_exchange_view
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin, make_member
 
 _MISSING = object()
 
@@ -47,7 +47,7 @@ urlpatterns = [
 
 class _LegacyAccessAdminCase(TestCase):
     def setUp(self):
-        self.user = make_admin(apps=["core"], email="legacy-core@example.com")
+        self.user = make_admin(email="legacy-admin@example.com")
         self.client.force_login(self.user)
         self.launch_url = reverse("admin:core_legacy_view_launch")
         self.exchange_url = reverse("legacy_exchange")
@@ -79,16 +79,18 @@ class _LegacyAccessAdminCase(TestCase):
     LEGACY_VIEWER_URL="https://d111111abcdef8.cloudfront.net",
 )
 class LegacyAccessAdminTests(_LegacyAccessAdminCase):
-    def test_admin_route_requires_login_and_core_access(self):
+    def test_admin_route_requires_an_admin(self):
         self.client.logout()
         response = self.client.get(self.launch_url)
         self.assertEqual(response.status_code, 302)
         self.assertIn("/admin/login/", response["Location"])
 
-        self.client.force_login(make_admin(apps=["cms"], email="legacy-denied@example.com"))
-        self.assertEqual(self.client.get(self.launch_url).status_code, 403)
+        self.client.force_login(make_member(email="legacy-member@example.com"))
+        response = self.client.get(self.launch_url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
 
-        self.client.force_login(make_superuser(email="legacy-master@example.com"))
+        self.client.force_login(make_admin(email="legacy-other-admin@example.com"))
         self.assertEqual(self.client.get(self.launch_url).status_code, 200)
 
     def test_launch_form_is_csrf_protected_and_opens_a_new_tab(self):

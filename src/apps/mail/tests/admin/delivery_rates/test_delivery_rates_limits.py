@@ -56,7 +56,7 @@ class InternalDomainTests(DeliveryRatesTestCase):
 
     FIELD = "gmail_api_send-internal_domain"
 
-    def test_mail_staff_cannot_name_a_domain_outside_the_allow_list(self):
+    def test_an_admin_cannot_name_a_domain_outside_the_allow_list(self):
         make_config(subjects=("i2g@g.ucmerced.edu",), active=False)
 
         response = self.client.post(self.url, self.post_data(**{self.FIELD: "gmail.com"}))
@@ -66,7 +66,7 @@ class InternalDomainTests(DeliveryRatesTestCase):
         self.assertIn("(g.ucmerced.edu, ucmerced.edu)", errors[0])
         self.assertEqual(self.policy(Channel.GMAIL_API_SEND).internal_domain, "")
 
-    def test_mail_staff_can_name_the_workspace_domain_of_an_allow_listed_account_and_clear_it(self):
+    def test_an_admin_can_name_the_workspace_domain_of_an_allow_listed_account_and_clear_it(self):
         make_config(subjects=("i2g@g.ucmerced.edu",), active=False)
 
         self.client.post(self.url, self.post_data(**{self.FIELD: "ucmerced.edu"}))

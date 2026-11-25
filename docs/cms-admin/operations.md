@@ -48,6 +48,15 @@ Migration `event.0008_event_date_range_and_registration_status` uses an expand/c
 
 After the new revision is fully deployed and every old task has drained, add a follow-up migration that backfills `end_date IS NULL` rows from `date`, materializes the `event_end_date_gte_start_date` check constraint, makes `end_date` physically `NOT NULL`, and drops the physical `is_live` column. Normalize invalid phone settings again before the contract step as a defensive check. Do not combine that contract step into the first rolling deployment.
 
+#### Admin role rollout cleanup
+
+`authn.0025_retire_member_admin_apps` retires `Member.admin_apps` the same way: the field is gone from Django's state,
+but its physical column stays, with a database default of `[]`, so tasks of the previous release can still read and
+write it during the rolling deploy and after an image rollback. **Follow-up (tracked):** once no task of a release
+before the single Admin role can run, add a contract migration in `authn` that adds the field back to the state and
+then removes it (as `event.0012` does for `is_live`), dropping the column. Do not combine it with the first
+deployment. The release steps are in [Production → Single Admin role release](../deployment/production.md#single-admin-role-release).
+
 ## Service configuration
 
 ### Seeding skeleton configs
@@ -74,11 +83,11 @@ Configuration models are available in Django admin:
 |-------|------------|---------|
 | `AWSCredentialConfig` | Site Settings | Shared AWS Secrets Manager reference, region, SMS origination number, and OTP template for SES, SMS, and Bedrock |
 | `EmailServiceConfig` | Mail → Notification Delivery | Sender identity and the selected email provider (AWS SES, SMTP, Microsoft Graph or the Gmail API), switched with **Use for email** under Broadcast Delivery → **Email Sending Method** or **Provider** on the edit page |
-| `DeliveryRatePolicy` | Mail → Delivery Rates | One row per delivery channel (email providers, SMS, inbox reading): the Smart rate switch, the manual rate and the provider limits, seeded from `DELIVERY_RATES`; staff with the Mail app can lower a documented limit, never raise it |
-| `SMTPProviderConfig` | Mail → Notification Delivery, or Site Settings → Service Credentials → SMTP (Core app) | SMTP host, port, TLS/SSL, optional authentication, and timeout |
-| `MicrosoftGraphProviderConfig` | Site Settings → Service Credentials → Microsoft Graph (`/admin/core/microsoftgraphproviderconfig/`, Core app; shown read-only under Mail → Notification Delivery) | Entra tenant ID, client ID and optional sender mailbox for Microsoft Graph (its rate is on Mail → Delivery Rates), plus the installed certificates (`MicrosoftGraphCertificate`: public data and the pinned credential-store version; the private key is in AWS Secrets Manager in production, never the database); its **mailbox scope** (mailboxes and permission levels, `MicrosoftGraphMailboxScope`) is edited on the same page (the Service Credentials tab bar also lists **Graph Access Checks**, the access-check history); certificates are installed, rolled back and removed there by staff with the Core app, who also run the access check |
-| `GmailApiProviderConfig` | Site Settings → Service Credentials → Gmail API (`/admin/core/gmailapiproviderconfig/`, Core app; shown read-only under Mail → Notification Delivery) | The Gmail API service account's public facts (key ID, service account, numeric client ID, project) and the pinned credential-store version of its key (the key is in AWS Secrets Manager in production, never the database), the **account allow-list** (`GmailApiSubject`, edited on the same page), the access-check evidence, and what to do with mail that carries a sign-in code or link. Install key, Remove key and Run access check are on the same page ([Gmail API email](../integrations/messaging/gmail-api-email.md)) |
-| `MicrosoftGraphAccessCheck` | Site Settings → Service Credentials → Graph Access Checks (`/admin/core/microsoftgraphaccesscheck/`, Core app, read-only; also linked from the Graph certificate panel) | One row per Microsoft Graph access check (**Run access check** or `verify_graph_access`): the certificate, the deny mailbox, every probe line, the token's roles and the verdict. Production's go-live gate reads the latest one for the current certificate. A Graph configuration with recorded checks cannot be deleted |
+| `DeliveryRatePolicy` | Mail → Delivery Rates | One row per delivery channel (email providers, SMS, inbox reading): the Smart rate switch, the manual rate and the provider limits, seeded from `DELIVERY_RATES`; an Admin can lower a documented limit, never raise it |
+| `SMTPProviderConfig` | Mail → Notification Delivery, or Site Settings → Service Credentials → SMTP | SMTP host, port, TLS/SSL, optional authentication, and timeout |
+| `MicrosoftGraphProviderConfig` | Site Settings → Service Credentials → Microsoft Graph (`/admin/core/microsoftgraphproviderconfig/`; shown read-only under Mail → Notification Delivery) | Entra tenant ID, client ID and optional sender mailbox for Microsoft Graph (its rate is on Mail → Delivery Rates), plus the installed certificates (`MicrosoftGraphCertificate`: public data and the pinned credential-store version; the private key is in AWS Secrets Manager in production, never the database); its **mailbox scope** (mailboxes and permission levels, `MicrosoftGraphMailboxScope`) is edited on the same page (the Service Credentials tab bar also lists **Graph Access Checks**, the access-check history); certificates are installed, rolled back and removed there by an Admin, who also runs the access check |
+| `GmailApiProviderConfig` | Site Settings → Service Credentials → Gmail API (`/admin/core/gmailapiproviderconfig/`; shown read-only under Mail → Notification Delivery) | The Gmail API service account's public facts (key ID, service account, numeric client ID, project) and the pinned credential-store version of its key (the key is in AWS Secrets Manager in production, never the database), the **account allow-list** (`GmailApiSubject`, edited on the same page), the access-check evidence, and what to do with mail that carries a sign-in code or link. Install key, Remove key and Run access check are on the same page ([Gmail API email](../integrations/messaging/gmail-api-email.md)) |
+| `MicrosoftGraphAccessCheck` | Site Settings → Service Credentials → Graph Access Checks (`/admin/core/microsoftgraphaccesscheck/`, read-only; also linked from the Graph certificate panel) | One row per Microsoft Graph access check (**Run access check** or `verify_graph_access`): the certificate, the deny mailbox, every probe line, the token's roles and the verdict. Production's go-live gate reads the latest one for the current certificate. A Graph configuration with recorded checks cannot be deleted |
 | `GoogleCredentialConfig` | Site Settings | Google service-account JSON |
 | `GmailAccessAccount` | Site Settings → Service Credentials → Gmail IMAP (Template Import) | Gmail IMAP import account (not the Gmail API sender) |
 | `MemberSheetSyncConfig` | Members & Auth | Member-to-Sheets selection |
@@ -372,7 +381,11 @@ Projects are imported via CSV in the Semester admin page. The CSV service (`src/
 
 ## Member operations
 
-### Superuser creation
+### Admin creation
+
+`createsuperuser` (Django's name, kept) creates an **Admin**; there is no separate superuser tier. Every Admin has
+every permission ([account types](member-and-mail-tools.md#account-types-admin-and-regular-member)). In a running
+site, prefer an Admin invitation.
 
 ```bash
 cd src && python manage.py createsuperuser
@@ -412,7 +425,7 @@ member data until you confirm.
 | Code | When | Choices |
 |---|---|---|
 | C1 | The same person is in several rows (one member, or one new address) | Use one of the rows; skip the others |
-| C2 | The member is a staff or superuser account and you are not an I2G Master | Skip |
+| C2 | Retired (staff and superuser accounts are ordinary rows now); a stored row that still carries it is listed under "Analysed under a rule that no longer applies; it is checked again when you confirm" | Skip |
 | C3 | The address exists more than once, differing only in letter case | Use one of the members; skip. Merge the duplicates under Contact Emails |
 | C4 | The Member UUID and the Primary Email name different members | Use the UUID's member (the address is not moved), use the address's member, or skip |
 | C5 | The Member UUID matches nobody (deleted member, typo, a staging export) | Match by email instead, or skip |
@@ -424,22 +437,22 @@ member data until you confirm.
 **Risky changes** are never made unless you tick them, one tick per change: removing a secondary email (the Secondary
 cell is blank, or names another address), removing a phone number (blank cell, or a new number), re-subscribing an
 address or number (only with the person's consent), marking an email address unverified, **marking one verified** (a
-verified address is a working sign-in: email codes), deactivating or reactivating a member, and staff status (I2G
-Master only). There is no tick to verify or un-verify a phone number (see Phone Verified below). A tick is disabled for
-the address the row was matched on, for a member's last verified sign-in contact, and on staff and superuser accounts
-unless you are an I2G Master. A self-service sign-up the person never finished can't be activated or verified by an
-import: only the person can finish it. Confirm lists every risky change and every change to a staff or superuser
-account.
+verified address is a working sign-in: email codes), and deactivating or reactivating a member. There is no
+tick to verify or un-verify a phone number (see Phone Verified below). A tick is disabled for the address the row was
+matched on, for a member's last verified sign-in contact, and for a deactivation of your own Admin account or of the
+last active Admin. A self-service sign-up the person never finished can't be activated or verified by an import:
+only the person can finish it. Confirm lists every risky change and every change to an Admin account. An import
+never grants or removes Admin access: the Admin column (Staff in older exports) is ignored.
 
 **Always:**
 - A blank cell, or a missing column, keeps the stored value. Nothing is deleted, re-subscribed or un-verified without
-  its tick, and Active and Staff never change without theirs.
+  its tick, Active never changes without its tick, and Admin access never changes.
 - The Primary/Secondary Verified and the Subscribed cells apply only to the contact the cell names, and only when the
   member owns it: FALSE unsubscribes; verifying, un-verifying and re-subscribing need their ticks.
 - The **Phone Verified** column is ignored: an import never verifies or un-verifies a phone number. Every number it
   adds, for a new or an existing member, is saved unverified, and a stored number keeps its status. A verified number
-  is a sign-in factor, so only the member's own one-time code (sent by SMS) verifies it; there is no override, for
-  an I2G Master either. Export to Excel still writes the column: the review lists it under "Not imported", and the
+  is a sign-in factor, so only the member's own one-time code (sent by SMS) verifies it; there is no override.
+  Export to Excel still writes the column: the review lists it under "Not imported", and the
   review, confirm and result pages say it was ignored. The download template no longer has it.
 - A new address or number on an existing member starts unverified; a new secondary becomes the secondary and the old
   one becomes "other"; a new number is added next to the old ones. A contact email that belongs to no member is
@@ -450,10 +463,9 @@ account.
   Malformed addresses, non-US phone numbers and unreadable dates are reported and ignored.
 - The apply is all or nothing. If a member or contact the review showed changed in the meantime, nothing is written
   and those rows go back to the review, marked "Changed since you reviewed it".
-- Only the admin who uploaded an import, or an I2G Master, can change, apply or discard it; other admins with the
-  Members app see it read-only. An import always runs with the uploader's rights: an I2G Master who applies someone
-  else's import doesn't widen it to staff or superuser accounts. An import whose uploader was deleted can only be
-  discarded.
+- Any Admin can change, apply or discard an import, whoever uploaded it (an import whose uploader was deleted
+  included). The apply runs for the Admin who applies it: a deactivation of their own Admin account goes back to the
+  review.
 
 **History and retention** (Members → Member Imports, read-only, no export): an import that is not applied is deleted
 24 hours after the upload. An applied import keeps its sheet values and change details for 30 days and its record (who
@@ -541,7 +553,7 @@ make visitors load a URL.
 
 ## Request limits
 
-**Site Settings → Request Limits** (`/admin/core/request-limits/`; superusers and staff with the Core app) shows and
+**Site Settings → Request Limits** (`/admin/core/request-limits/`; every Admin) shows and
 edits every request-limit scope: its priority tier, the Smart limit switch, the manual limit and, under *Advanced*,
 the period, Smart floor, fixed and enabled switches and the ceilings. Every save is an admin log entry.
 

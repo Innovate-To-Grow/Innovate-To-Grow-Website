@@ -150,7 +150,7 @@ class AssignAndReadTests(QueueCase):
 
     def test_assign_to_me_leaves_the_tickets_of_a_group_without_me(self):
         events = AssignmentGroup.objects.create(name="Events")
-        events.members.add(make_admin(apps=["helpdesk"], email="kim@example.com"))
+        events.members.add(make_admin(email="kim@example.com"))
         technical = AssignmentGroup.objects.create(name="Technical")
         technical.members.add(self.agent)
         theirs = new_ticket(subject="theirs", assignment_group=events)

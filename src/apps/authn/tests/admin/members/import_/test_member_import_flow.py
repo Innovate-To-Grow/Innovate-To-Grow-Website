@@ -17,7 +17,7 @@ from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTes
 class Row5FlowTests(ImportTestCase):
     def setUp(self):
         super().setUp()
-        self.admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
+        self.admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Admin")
         self.client.force_login(self.admin)
         self.neil = self.member("Neil", "Parkhi", "neil@home.example")
         self.work = self.email(self.neil, "neil.r.parkhi@spiritaero.example", verified=True, subscribe=True)
@@ -132,3 +132,32 @@ class Row5FlowTests(ImportTestCase):
         self.assertContains(response, "Type &quot;import&quot; to confirm.")
         batch.refresh_from_db()
         self.assertEqual(batch.status, "review")
+
+
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
+class StagedBeforeTheSingleAdminRoleTests(ImportTestCase):
+    """A batch staged by the release before: a C2 row, an R8 tick and a slice with ``is_superuser`` still load."""
+
+    def test_the_review_shows_the_retired_row_and_the_apply_reviews_it_again(self):
+        admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Admin")
+        self.client.force_login(admin)
+        batch = self.stage([row("ada@example.com", Organization="Acme", Staff="Yes")], admin)
+        stored = batch.rows.get()
+        r8 = {"id": f"R8:{self.ada.pk}", "code": "R8", "label": "Grant staff status", "enabled": True, "reason": ""}
+        stored.status, stored.conflict, stored.choice, stored.ticks = "needs_decision", "privileged_target", "skip", []
+        stored.analysis = {**stored.analysis, "options": [stored.analysis["options"][-1]], "default": "skip"}
+        stored.risky = {str(self.ada.pk): [r8]}
+        stored.candidates["members"][str(self.ada.pk)]["is_superuser"] = False
+        stored.save()
+        review = reverse("admin:authn_member_import_review", args=[batch.pk])
+
+        page = self.client.get(review)
+        confirm = self.client.post(reverse("admin:authn_member_import_confirm", args=[batch.pk]), {"version": 0})
+
+        self.assertContains(page, "Analysed under a rule that no longer applies", count=2)
+        self.assertNotContains(page, "Grant staff status")
+        self.assertRedirects(confirm, review)
+        stored.refresh_from_db()
+        self.assertEqual((stored.status, stored.conflict, stored.changed_since_review), ("ready_update", "", True))
+        self.ada.refresh_from_db()
+        self.assertEqual((self.ada.organization, self.ada.is_staff), (None, False))

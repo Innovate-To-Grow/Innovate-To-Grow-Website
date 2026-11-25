@@ -695,7 +695,7 @@ unverified phone is always allowed.
 
 ### `POST /authn/delete-account/{request-code,verify-code,confirm}/`
 
-Authenticated three-step email challenge. `verify-code` mints a one-time `verification_token`; `confirm` consumes it before permanently deleting the member account. An account without a verified primary email must add and verify one before deletion.
+Authenticated three-step email challenge. `verify-code` mints a one-time `verification_token`; `confirm` consumes it before permanently deleting the member account. An account without a verified primary email must add and verify one before deletion. An active Admin cannot delete their own account this way: each step answers `400` with `detail` "You cannot delete your own Admin account. Ask another Admin to do it." (a list on `request-code` and `verify-code`, a string on `confirm`), no code is sent, and `confirm` re-checks under a row lock before it spends the token.
 
 ## Auto-login endpoints
 
@@ -703,13 +703,13 @@ Token-based paths for email-originated actions:
 
 | Endpoint | Token source | Service |
 |----------|-------------|---------|
-| `POST /authn/impersonate-login/` | Five-minute admin-issued impersonation token | `src/apps/authn/views/auth/session/impersonate_login.py` |
+| `POST /authn/impersonate-login/` | Five-minute admin-issued impersonation token (**Login as Member**; never issued for an Admin account) | `src/apps/authn/views/auth/session/impersonate_login.py` |
 | `POST /mail/login-link/` | Login link in campaign and ticket emails (`LoginLinkToken`) | `src/apps/mail/views/login_link.py` |
 | `POST /mail/magic-login/` | Legacy alias of `/mail/login-link/` for already-sent emails | `src/apps/mail/views/login_link.py` |
 
 `/mail/login-link/` validates the token (validity frozen at send time; one-time by default, reusable per campaign/event opt-in) and returns JWT access/refresh tokens plus `redirect_to`.
 
-`/authn/impersonate-login/` accepts `{ "token": "..." }`. It conditionally marks an unused, unexpired token as used before issuing JWTs. Exactly one request can win a concurrent exchange; later requests receive an already-used or expired `400` response.
+`/authn/impersonate-login/` accepts `{ "token": "..." }`. It conditionally marks an unused, unexpired token as used before issuing JWTs. Exactly one request can win a concurrent exchange; later requests receive an already-used or expired `400` response. The winning request then re-checks both accounts: if the target has since become an Admin, or the issuing Admin is no longer an active Admin, the spent token answers `400` "Invalid impersonation link." and no JWTs are issued.
 
 **Removed endpoints.** `POST /authn/unsubscribe-login/` (the exchange behind the old `/unsubscribe-login#token=X` email links) and `POST /authn/subscribe/` (an anonymous newsletter sign-up with a 30/minute per-IP throttle, which the SPA no longer called) no longer exist and return `404`. Newsletter opt-out is the backend page behind the [one-click unsubscribe link](#one-click-unsubscribe-and-resubscribe), plus the per-address flags on `/account`; the SPA keeps `/unsubscribe-login` only as a redirect to `/account` that drops the old token and calls nothing.
 
@@ -727,7 +727,7 @@ The `expired` and `already_used` rejections also carry `redirect_to`: the link's
 
 ### `GET|POST /authn/invite/{token}/`
 
-Server-rendered invitation form. A valid pending token either upgrades an existing verified member or collects profile/password fields and creates the staff account. Invalid or expired tokens return the invitation error page.
+Server-rendered invitation form. A valid pending token either makes an existing active, verified member an Admin or collects profile/password fields and creates the Admin account (always a full Admin: every Admin has every permission). It never reactivates a deactivated account: for an inactive member's address, `GET` and `POST` answer `403` with a page asking the person to have an Admin reactivate the account first, and the invitation stays pending. Invalid or expired tokens return the invitation error page, and so does a pending token whose sender is no longer an active Admin (demoted, deactivated or deleted); opening it cancels that invitation.
 
 ## Mail system
 

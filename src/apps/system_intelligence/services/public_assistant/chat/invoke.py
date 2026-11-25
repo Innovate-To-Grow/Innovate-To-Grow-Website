@@ -10,7 +10,8 @@ import logging
 
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.services.agents import run_tool_free_agent
-from apps.system_intelligence.services.bedrock import BedrockError, normalize_bedrock_model_id
+from apps.system_intelligence.services.agents.providers import PUBLIC_ROLE, resolve_route
+from apps.system_intelligence.services.bedrock import BedrockError
 
 from .context import build_public_context
 from .estimates import _estimate_usage
@@ -38,12 +39,13 @@ def _is_temperature_error(exc: Exception) -> bool:
 
 
 def answer_public_question(*, message, history, config, context=None) -> dict:
-    """Answer a public question with a tool-free Agents SDK Bedrock call.
+    """Answer a public question with a tool-free Agents SDK call to the public role's provider (Bedrock or other).
 
     Returns ``{"text": str, "usage": {"inputTokens", "outputTokens", "totalTokens"}}``.
     Raises ``BedrockError`` if the model id is invalid or the call fails.
     """
-    normalized_model_id = normalize_bedrock_model_id(config.public_model_id)
+    route = resolve_route(config, PUBLIC_ROLE)
+    normalized_model_id = route.model_id
     if not normalized_model_id:
         raise BedrockError("No valid public assistant model is configured.")
 
@@ -63,6 +65,7 @@ def answer_public_question(*, message, history, config, context=None) -> dict:
             max_tokens=config.public_assistant_max_response_tokens,
             temperature=config.public_assistant_temperature,
             agent_name="system_intelligence_public_assistant",
+            provider=route.provider,
         )
     except Exception as exc:  # noqa: BLE001 - re-raised as BedrockError below
         if _is_temperature_error(exc):
@@ -76,6 +79,7 @@ def answer_public_question(*, message, history, config, context=None) -> dict:
                     temperature=config.public_assistant_temperature,
                     include_temperature=False,
                     agent_name="system_intelligence_public_assistant",
+                    provider=route.provider,
                 )
             except Exception as retry_exc:  # noqa: BLE001
                 logger.exception("Public assistant agent call failed on retry")

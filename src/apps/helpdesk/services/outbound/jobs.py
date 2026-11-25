@@ -32,7 +32,7 @@ Delivery = TicketMessage.Delivery
 Kind = TicketEvent.Kind
 SHADOW_ON_ERROR = "Not sent: shadow mode was switched on before it went out."
 FAILED_ERROR = (
-    "Could not be sent: the mail service refused it, or every attempt failed. An I2G Master can see the details in "
+    "Could not be sent: the mail service refused it, or every attempt failed. An Admin can see the details in "
     "Email Monitoring."
 )
 UNCERTAIN_ERROR = (

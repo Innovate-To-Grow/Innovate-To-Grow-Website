@@ -18,7 +18,7 @@ class TicketFormTests(TestCase):
     def setUp(self):
         cache.clear()
         self.agent = helpdesk_staff()
-        self.other = make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee")
+        self.other = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
         self.client.force_login(self.agent)
         self.ticket = new_ticket(status=Status.OPEN)
         self.url = reverse("admin:helpdesk_ticket_change", args=[self.ticket.pk])

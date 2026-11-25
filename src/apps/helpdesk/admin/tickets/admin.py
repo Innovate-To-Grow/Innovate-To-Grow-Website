@@ -9,7 +9,7 @@ clocks, the timeline, the reply form (only while shadow mode is off) and the int
 status is read-only, and the Status list has no "Merged": only a merge makes one. Merging and marking spam do need a
 typed confirmation. A merge into automated mail or spam is refused before that confirmation (and again by the service
 when it runs), and the "Automated & spam" view, where every ticket is one, offers no merge. Tickets are created only
-from mail, and deleted only by retention or an I2G Master (behind the typed confirmation).
+from mail, and deleted only by retention or by an Admin behind the typed confirmation.
 """
 
 from django.contrib import admin, messages
@@ -167,9 +167,6 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
     def has_add_permission(self, request):
         return False  # tickets come from mail
 
-    def has_delete_permission(self, request, obj=None):
-        return bool(getattr(request.user, "is_superuser", False)) and super().has_delete_permission(request, obj)
-
     def has_change_permission(self, request, obj=None):
         # A merged ticket is read-only (its messages and mail are on the ticket it was merged into).
         if obj is not None and obj.status == Ticket.Status.MERGED:
@@ -189,8 +186,8 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
 
     def _should_skip_confirmation(self, request):
         # Saving the ticket page needs no typed confirmation (it would be noise on every status change). Deleting a
-        # ticket (I2G Master only; its messages, files and audit trail go with it) and the merge and spam actions
-        # keep theirs, so the skip is limited to the change view.
+        # ticket (its messages, files and audit trail go with it) and the merge and spam actions keep theirs, so the
+        # skip is limited to the change view.
         match = getattr(request, "resolver_match", None)
         if request.method == "POST" and getattr(match, "url_name", "") == f"{self.opts.app_label}_ticket_change":
             return True

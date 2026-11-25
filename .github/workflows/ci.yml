@@ -335,6 +335,7 @@ jobs:
           FRONTEND_URL: https://i2g.example.com
           DB_HOST: db.example.com
           AWS_STORAGE_BUCKET_NAME: itg-ci-static
+          AWS_PRIVATE_EXPORT_BUCKET_NAME: itg-ci-private-exports
           CSRF_TRUSTED_ORIGINS: https://i2g.example.com
           CORS_ALLOWED_ORIGINS: https://i2g.example.com
         run: |

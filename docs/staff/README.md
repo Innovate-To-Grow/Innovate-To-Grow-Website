@@ -24,9 +24,10 @@ is needed. For how the system is built, see the [System overview](../architectur
 
 - Signing in to the admin, and what to do when a code does not arrive.
 - The sidebar: **Content Management System**, **Events**, **Projects**, **Members & Authentication**, **Broadcast
-  Delivery**, **System Intelligence**, **Site Settings**, **CLI Admin**. You see only the sections you were given.
-- Access: each staff account is granted sections ("apps"); the **I2G Master** account has all of them. Who to ask
-  for access.
+  Delivery**, **System Intelligence**, **Site Settings**, **CLI Admin**. Every Admin sees every section.
+- Access: there are two kinds of account, **Admin** and regular member. Every Admin can do everything in the admin,
+  including changing other Admin accounts; you cannot remove your own Admin access, and the last active Admin is
+  kept. Who to ask for an Admin account.
 - The confirmation step: before a change is saved the admin lists what will change and asks you to type a word.
 - **History** on every record, and **Site Settings → Admin Log**.
 - Personal data: exports, downloads and screenshots.
@@ -100,7 +101,7 @@ Collected from the chapters as questions come in.
 | Subscribed | Set per address and per phone number. For an email address: whether it receives newsletters (the **All subscribers** audience, the only one that reads it); the unsubscribe link in a newsletter turns it off for every address of that member. For a phone number: whether it receives SMS sent to subscribers. |
 | Account active / inactive | The account's own flag (**Account active** on the member page), not a flag of an address. An inactive member cannot sign in and is left out of the **All subscribers**, **All active members** and **Staff Members** email audiences (the other audiences do not check: see chapter 3). Their addresses and history stay as they are. A bounced address is handled in **Bounced addresses** (**Mark undeliverable**), not by deactivating the account (chapter 2). |
 | Unfinished sign-up | Someone started creating an account and never finished. |
-| Staff / I2G Master | A staff account can open the admin, limited to the sections it was granted. The I2G Master account (superuser) can do everything, including changing other staff accounts. |
+| Admin | An account that can open the admin (**Admin** on the member page). Every Admin can do everything there, including changing other Admin accounts. Nobody can delete, deactivate or remove Admin access from their own account, and the last active Admin cannot be removed. Everyone else is a regular member. |
 | Campaign, blast | An email sent from **Broadcast Email** to an audience. |
 | Audience | Who a campaign goes to, for example **All subscribers** or **Event Registrants**. |
 | Login link | `{{login_link}}` in a campaign: a personal link that signs that recipient in. Treat it like a password. |
@@ -112,7 +113,6 @@ Collected from the chapters as questions come in.
 
 - **Bold** text is a label you will see on screen: a menu, tab, button or field.
 - "Sidebar → Section → Tab" gives the path to a page.
-- **Needs:** says which section access a task requires.
 - "Coming soon" boxes describe changes that are built but not live yet. Their details may still change.
 
 ## Keeping this handbook current

@@ -14,7 +14,7 @@ from ..reading.message import ParsedMessage
 from ..reading.sanitize import sanitize_html
 from ..routing import people
 from ..routing.classify import Classified
-from ..routing.matching import requesters_of
+from ..routing.participants import requesters_of
 
 Status = Ticket.Status
 OWN_MAIL_NOTE = "Sent from the site's own address: its content is not stored (it may hold sign-in codes)."

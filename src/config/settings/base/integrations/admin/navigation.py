@@ -2,11 +2,10 @@
 
 from .visibility import (
     _SENDING_METHOD_PATH,
-    _can,
-    _can_any,
     _can_open_legacy_viewer,
     _helpdesk_link,
     _helpdesk_view_item,
+    _is_admin,
     _is_email_sending_method,
     _is_mail_delivery_operations,
     _is_service_credentials,
@@ -18,76 +17,76 @@ SIDEBAR = {
     "navigation": [
         {
             "title": "Content Management System",
-            "permission": _can("cms"),
+            "permission": _is_admin,
             "items": [
-                {"title": "Page Content", "link": "/admin/cms/cmspage/", "permission": _can("cms")},
+                {"title": "Page Content", "link": "/admin/cms/cmspage/", "permission": _is_admin},
                 {
                     "title": "Route Redirects",
                     "link": "/admin/cms/routeredirect/",
-                    "permission": _can("cms"),
+                    "permission": _is_admin,
                 },
-                {"title": "News Management", "link": "/admin/cms/newsarticle/", "permission": _can("cms")},
-                {"title": "Page Analytics", "link": "/admin/cms/pageview/", "permission": _can("cms")},
+                {"title": "News Management", "link": "/admin/cms/newsarticle/", "permission": _is_admin},
+                {"title": "Page Analytics", "link": "/admin/cms/pageview/", "permission": _is_admin},
             ],
         },
         {
             "title": "Events",
-            "permission": _can("event"),
+            "permission": _is_admin,
             "items": [
-                {"title": "Events & Registrations", "link": "/admin/event/event/", "permission": _can("event")},
+                {"title": "Events & Registrations", "link": "/admin/event/event/", "permission": _is_admin},
                 {
                     "title": "Current Projects & Schedule",
                     "link": "/admin/event/currentprojectschedule/",
-                    "permission": _can("event"),
+                    "permission": _is_admin,
                 },
             ],
         },
         {
             "title": "Projects",
-            "permission": _can("projects"),
+            "permission": _is_admin,
             "items": [
-                {"title": "Projects", "link": "/admin/projects/project/", "permission": _can("projects")},
+                {"title": "Projects", "link": "/admin/projects/project/", "permission": _is_admin},
                 {
                     "title": "Project Resources",
                     "link": "/admin/projects/pastprojectssheetconfig/",
-                    "permission": _can("projects"),
+                    "permission": _is_admin,
                 },
             ],
         },
         {
             "title": "Members & Authentication",
-            "permission": _can("authn"),
+            "permission": _is_admin,
             "items": [
-                {"title": "Members", "link": "/admin/authn/member/", "permission": _can("authn")},
-                {"title": "Emails & Phones", "link": "/admin/authn/contactemail/", "permission": _can("authn")},
+                {"title": "Members", "link": "/admin/authn/member/", "permission": _is_admin},
+                {"title": "Emails & Phones", "link": "/admin/authn/contactemail/", "permission": _is_admin},
                 {
                     "title": "Admin Invitations",
                     "link": "/admin/authn/admininvitation/",
-                    "permission": _can("authn"),
+                    "permission": _is_admin,
                 },
             ],
         },
         {
             "title": "Broadcast Delivery",
-            "permission": _can("mail"),
+            "permission": _is_admin,
             "items": [
                 {
                     "title": "Delivery Operations",
                     "link": "/admin/mail/email-monitoring/",
-                    "permission": _can("mail"),
+                    "permission": _is_admin,
                     "active": _is_mail_delivery_operations,
                 },
                 {
                     "title": "Email Sending Method",
                     "link": _SENDING_METHOD_PATH,
-                    "permission": _can("mail"),
+                    "permission": _is_admin,
                     "active": _is_email_sending_method,
                 },
-                {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/", "permission": _can("mail")},
+                {"title": "Broadcast Campaigns", "link": "/admin/mail/emailcampaign/", "permission": _is_admin},
                 {
                     "title": "Inbox",
                     "link": "/admin/mail/inbox/",
-                    "permission": _can("mail"),
+                    "permission": _is_admin,
                     # Unread mail across every connected inbox account, from the background poller.
                     "badge": "apps.mail.admin.inbox.badge.inbox_unread_badge",
                 },
@@ -95,7 +94,7 @@ SIDEBAR = {
         },
         {
             "title": "Helpdesk",
-            "permission": _can("helpdesk"),
+            "permission": _is_admin,
             "items": [
                 _helpdesk_view_item("Queue", "", "queue"),
                 _helpdesk_view_item("My Tickets", "?assignee=me", "mine"),
@@ -113,53 +112,53 @@ SIDEBAR = {
         },
         {
             "title": "System Intelligence",
-            "permission": _can("system_intelligence"),
+            "permission": _is_admin,
             "items": [
                 {
                     "title": "Chat",
                     "link": "/admin/system-intelligence/",
-                    "permission": _can("system_intelligence"),
+                    "permission": _is_admin,
                     "active": _is_system_intelligence_chat,
                 },
                 {
                     "title": "Assistant Tools",
                     "link": "/admin/system_intelligence/systemintelligenceconfig/",
-                    "permission": _can("system_intelligence"),
+                    "permission": _is_admin,
                 },
             ],
         },
         {
             "title": "Site Settings",
-            "permission": _can_any("core", "admin"),
+            "permission": _is_admin,
             "items": [
                 {
                     "title": "Site Maintenance Control",
                     "link": "/admin/core/sitemaintenancecontrol/",
-                    "permission": _can("core"),
+                    "permission": _is_admin,
                 },
                 {
                     "title": "Service Credentials",
                     "link": "/admin/core/awscredentialconfig/",
-                    "permission": _can("core"),
+                    "permission": _is_admin,
                     "active": _is_service_credentials,
                 },
-                {"title": "Request Limits", "link": "/admin/core/request-limits/", "permission": _can("core")},
+                {"title": "Request Limits", "link": "/admin/core/request-limits/", "permission": _is_admin},
                 {
                     "title": "Legacy Viewer",
                     "link": "/admin/legacy-view/",
                     "permission": _can_open_legacy_viewer,
                 },
-                {"title": "Admin Log", "link": "/admin/admin/logentry/", "permission": _can("admin")},
+                {"title": "Admin Log", "link": "/admin/admin/logentry/", "permission": _is_admin},
             ],
         },
         {
             "title": "CLI Admin",
-            "permission": _can("cli_admin"),
+            "permission": _is_admin,
             "items": [
                 {
                     "title": "CLI Access & Audit",
                     "link": "/admin/cli_admin/cliaccesstoken/",
-                    "permission": _can("cli_admin"),
+                    "permission": _is_admin,
                 },
             ],
         },

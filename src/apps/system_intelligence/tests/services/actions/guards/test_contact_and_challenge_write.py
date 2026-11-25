@@ -24,11 +24,11 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
     def test_a_phone_cannot_be_moved_or_verified_through_the_assistant(self):
         unverified = ContactPhone.objects.create(member=self.member, phone_number="2095550124", region="1-US")
         proposals = (
-            (str(self.phone.pk), {"member_id": str(self.master.pk)}),  # Onto the I2G Master's account.
-            (str(self.phone.pk), {"member_id": str(self.staffer.pk)}),
+            (str(self.phone.pk), {"member_id": str(self.other_admin.pk)}),  # Onto another Admin's account.
+            (str(self.phone.pk), {"member_id": str(self.admin.pk)}),
             (str(unverified.pk), {"verified": True}),  # #732: only a code verifies a number.
         )
-        with acting_as(self.staffer):
+        with acting_as(self.admin):
             for pk, changes in proposals:
                 with self.subTest(changes=changes), self.assertRaises(actions.ActionRequestError) as error:
                     actions.propose_db_update("authn", "ContactPhone", pk, changes)
@@ -41,22 +41,22 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
         )
 
     def test_a_contact_email_cannot_be_created_or_moved(self):
-        # Both payloads are valid records: before, they applied, giving the staffer a verified sign-in address.
+        # Both payloads are valid records: before, they applied, giving the Admin a verified sign-in address.
         email = ContactEmail.objects.get(member=self.member)
-        with acting_as(self.staffer):
+        with acting_as(self.admin):
             with self.assertRaises(actions.ActionRequestError) as moved:
                 actions.propose_db_update(
                     "authn",
                     "ContactEmail",
                     str(email.pk),
-                    {"member_id": str(self.staffer.pk), "email_type": "secondary"},
+                    {"member_id": str(self.admin.pk), "email_type": "secondary"},
                 )
             with self.assertRaises(actions.ActionRequestError) as created:
                 actions.propose_db_create(
                     "authn",
                     "ContactEmail",
                     {
-                        "member_id": str(self.staffer.pk),
+                        "member_id": str(self.admin.pk),
                         "email_address": "added@example.com",
                         "email_type": "secondary",
                         "verified": True,
@@ -70,10 +70,10 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
         self.assertFalse(ContactEmail.objects.filter(email_address="added@example.com").exists())
 
     def test_a_stored_contact_write_is_refused_at_approval(self):
-        action = self.stored_action(self.staffer, self.phone, {"member_id": str(self.master.pk)})
+        action = self.stored_action(self.admin, self.phone, {"member_id": str(self.other_admin.pk)})
 
         with self.assertRaises(actions.ActionRequestError):
-            actions.approve_action_request(action.pk, self.staffer)
+            actions.approve_action_request(action.pk, self.admin)
 
         action.refresh_from_db()
         self.phone.refresh_from_db()
@@ -91,7 +91,7 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
             status="expired",
             expires_at=timezone.now() - timedelta(days=1),
         )
-        with acting_as(self.staffer), self.assertRaises(actions.ActionRequestError) as error:
+        with acting_as(self.admin), self.assertRaises(actions.ActionRequestError) as error:
             actions.propose_db_update(
                 "authn",
                 "PhoneVerificationChallenge",
@@ -104,14 +104,14 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
         self.assertEqual(challenge.status, "expired")
 
     def test_an_admin_invitation_cannot_be_created_or_redirected(self):
-        # Accepting one makes the member who owns its address staff: the admin lets only the I2G Master write them.
+        # Accepting one makes the member who owns its address an Admin: invitations are sent only from the admin.
         invitation = AdminInvitation.objects.create(
             email="invitee@example.com",
             token=AdminInvitation.generate_token(),
-            invited_by=self.master,
+            invited_by=self.other_admin,
             expires_at=timezone.now() + timedelta(days=3),
         )
-        with acting_as(self.staffer):
+        with acting_as(self.admin):
             with self.assertRaises(actions.ActionRequestError) as redirected:
                 actions.propose_db_update(
                     "authn", "AdminInvitation", str(invitation.pk), {"email": "member@example.com"}
@@ -130,13 +130,13 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
         self.assertEqual(AdminInvitation.objects.count(), 1)
 
     def test_contact_rows_stay_readable(self):
-        with acting_as(self.staffer):
+        with acting_as(self.admin):
             record = json.loads(actions.get_record("authn", "ContactPhone", str(self.phone.pk)))
 
         self.assertEqual(record["phone_number"], "2095550123")
 
     def test_the_schema_offers_no_writable_contact_field(self):
-        with acting_as(self.staffer):
+        with acting_as(self.admin):
             phone = json.loads(actions.get_model_schema("authn", "ContactPhone"))
             member = json.loads(actions.get_model_schema("authn", "Member"))
 
@@ -146,10 +146,10 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
 
     def test_the_rsa_sign_in_key_cannot_be_replaced_or_switched_off(self):
         # A written public half no longer matches the stored private key: password sign-in (site and admin) breaks
-        # until an I2G Master makes a new key. The admin makes keys read-only once created.
+        # until an Admin makes a new key. The admin makes keys read-only once created.
         key = RSAKeypair.objects.create(name="site-signing", is_active=True)
         public_key = key.public_key_pem
-        with acting_as(self.staffer):
+        with acting_as(self.admin):
             for changes in (
                 {"public_key_pem": "-----BEGIN PUBLIC KEY-----\nAAAA\n-----END PUBLIC KEY-----"},
                 {"is_active": False},
@@ -166,10 +166,8 @@ class ContactAndChallengeWriteTests(AuthnWriteGuardTestCase):
     def test_group_membership_cannot_be_written_through_its_table(self):
         # Member.groups is never writable; its auto-created table must not be either.
         group = Group.objects.create(name="Editors")
-        with acting_as(self.staffer), self.assertRaises(actions.ActionRequestError) as error:
-            actions.propose_db_create(
-                "authn", "Member_groups", {"member_id": str(self.staffer.pk), "group_id": group.pk}
-            )
+        with acting_as(self.admin), self.assertRaises(actions.ActionRequestError) as error:
+            actions.propose_db_create("authn", "Member_groups", {"member_id": str(self.admin.pk), "group_id": group.pk})
 
         self.assertEqual(str(error.exception), WRITE_REFUSED.format("Member_groups"))
-        self.assertFalse(self.staffer.groups.exists())
+        self.assertFalse(self.admin.groups.exists())

@@ -3,12 +3,13 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.core.models import BackgroundJob, InboundMessage
+from apps.event.tests.helpers import make_member
 from apps.helpdesk.tests.admin.test_admin_ticket_page import TicketPageTestCase
 
 from ...models import HelpdeskSettings
 from ...services.ingest.pipeline import jobs
 from .. import corpus
-from ..helpers import FakeReader, helpdesk_staff, make_admin, make_superuser, queue, receive
+from ..helpers import FakeReader, helpdesk_staff, queue, receive
 
 
 class AttachmentDownloadTests(TicketPageTestCase):
@@ -49,13 +50,15 @@ class AttachmentDownloadTests(TicketPageTestCase):
         self.assertIsNone(blocked.content)
         self.assertEqual(response.status_code, 404)
 
-    def test_an_attachment_is_served_only_through_its_own_ticket_and_with_the_grant(self):
+    def test_an_attachment_is_served_only_through_its_own_ticket_and_to_admins(self):
         other = receive(corpus.message(message_id="<other@x>", sender="kim@example.org"), reader=self.reader)
         url = self.download_url(self.attachment("report.pdf"), ticket=other)
 
         self.assertEqual(self.client.get(url).status_code, 404)
-        self.client.force_login(make_admin(apps=["mail"], email="mailer@example.com"))
-        self.assertEqual(self.client.get(self.download_url(self.attachment("report.pdf"))).status_code, 403)
+        self.client.force_login(make_member(email="member@example.com"))
+        response = self.client.get(self.download_url(self.attachment("report.pdf")))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
 
 
 class IngestProblemTests(TestCase):
@@ -125,21 +128,7 @@ class SettingsAdminTests(TestCase):
         # Unchecked checkboxes are left out of a real POST.
         return {name: value for name, value in data.items() if value not in (False, None)}, form
 
-    def test_a_helpdesk_agent_cannot_switch_sending_on_or_rewrite_the_acknowledgement(self):
-        settings = HelpdeskSettings.objects.create()
-        data, form = self._settings_form_data(settings)
-        for name in ("shadow_mode", "send_acknowledgement", "acknowledgement_text", "notify_assignment"):
-            self.assertNotIn(name, form.fields)
-        data.update(send_acknowledgement="on", acknowledgement_text="Click https://evil.example")
-
-        self.client.post(reverse("admin:helpdesk_helpdesksettings_change", args=[settings.pk]), data)
-
-        settings.refresh_from_db()
-        self.assertEqual((settings.shadow_mode, settings.send_acknowledgement), (True, False))
-        self.assertNotIn("evil", settings.acknowledgement_text)
-
-    def test_shadow_mode_can_be_switched_off_and_on_and_saving_wakes_the_ingest(self):
-        self.client.force_login(make_superuser(email="master@example.com"))
+    def test_any_admin_switches_shadow_mode_off_and_on_and_saving_wakes_the_ingest(self):
         settings = HelpdeskSettings.objects.create()
         queue(corpus.message(), reader=FakeReader())
         data, form = self._settings_form_data(settings)

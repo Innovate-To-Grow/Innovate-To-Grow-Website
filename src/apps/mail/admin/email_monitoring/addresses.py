@@ -1,9 +1,8 @@
 """Email Monitoring → Bounced addresses: the list (filters, status tabs, bulk selection, export) and one address's
 page (its reports, its member, its actions and their history).
 
-Every view requires the Mail app (``admin_view`` only checks ``is_staff``). Loading the list first counts a bounded
-batch of new reports (``aggregate.run``); it never changes a member, a contact email or a subscription. Members are
-linked for staff who also hold the Members (``authn``) app.
+Every view requires an Admin. Loading the list first counts a bounded batch of new reports (``aggregate.run``); it
+never changes a member, a contact email or a subscription. Members link to their Members admin page.
 """
 
 import logging
@@ -18,7 +17,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.models import EmailBounce
-from apps.core.utils.access import user_can_access_app
 from apps.mail.models import BouncedAddress, BouncedAddressCampaign, EmailCampaign
 from apps.mail.services.email_monitoring.addresses import aggregate, listing
 from apps.mail.services.email_monitoring.addresses.actions.guards import availability
@@ -38,8 +36,8 @@ REPORTS_SHOWN = 200
 logger = logging.getLogger(__name__)
 
 
-def _member_link(request, member) -> str:
-    if member is None or not user_can_access_app(request.user, "authn"):
+def _member_link(member) -> str:
+    if member is None:
         return ""
     return reverse("admin:authn_member_change", args=[member.pk])
 
@@ -82,8 +80,8 @@ def _entry(request, row, match: AddressMatch, campaigns: dict) -> dict:
         "row": row,
         "match": match,
         "member": member,
-        "member_link": _member_link(request, member),
-        "owners": [{"member": owner, "link": _member_link(request, owner)} for owner in match.owners],
+        "member_link": _member_link(member),
+        "owners": [{"member": owner, "link": _member_link(owner)} for owner in match.owners],
         "contact": match.contact,
         "campaigns": campaigns.get(row.pk, {"count": 0, "last": None}),
         "quick": quick,
@@ -135,7 +133,6 @@ def address_list_view(request):
         counted=counted,
         suppressed_total=BouncedAddress.objects.filter(suppressed_at__isnull=False).count(),
         evidence_choices=[(key, label) for key, (label, _q) in listing.EVIDENCE.items()],
-        can_rebuild=bool(request.user.is_superuser),
     )
     return TemplateResponse(request, f"{TEMPLATES}/addresses/addresses.html", context)
 

@@ -8,16 +8,15 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
-from django.utils.module_loading import import_string
 
 from apps.core.models import BackgroundJob
 from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
-from apps.core.services.background_jobs import PermanentJobError, TransientJobError, registered_job_kinds
+from apps.core.services.background_jobs import PermanentJobError, TransientJobError
 from apps.core.services.email import DeliveryResult
 
 from ....models import HelpdeskSettings, Ticket, TicketEvent, TicketMessage
 from ....services import outbound
-from ....services.outbound import compose, jobs, notifications
+from ....services.outbound import compose, jobs
 from ...helpers import helpdesk_staff
 from ...helpers.service import Status, new_ticket, sending_settings
 
@@ -62,17 +61,6 @@ class JobTestCase(TestCase):
         with patch(DELIVER, side_effect=side_effect) as deliver:
             jobs.send_reply_job(job)
         return deliver
-
-
-class RegistrationTests(TestCase):
-    def test_both_kinds_are_registered_with_their_handlers(self):
-        kinds = registered_job_kinds()
-
-        self.assertEqual(kinds[jobs.REPLY_JOB_KIND].handler, "apps.helpdesk.services.outbound.jobs.send_reply_job")
-        self.assertEqual(
-            kinds[jobs.NOTIFY_JOB_KIND].handler, "apps.helpdesk.services.outbound.notifications.notify_staff_job"
-        )
-        self.assertIs(import_string(kinds[jobs.NOTIFY_JOB_KIND].handler), notifications.notify_staff_job)
 
 
 class SendReplyJobTests(JobTestCase):

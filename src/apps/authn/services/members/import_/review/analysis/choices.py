@@ -13,12 +13,10 @@ from ..lookup.records import Snapshot
 from ..plan.actions import SKIP
 
 NO_CHANGE_PERMISSION = "You do not have permission to change members"
-PRIVILEGED = "Only an I2G Master may change staff and superuser accounts"
 NEEDS_NAMES = "A new member needs a first and a last name; fill them in the sheet"
 # The bulk choices of each conflict: only those an admin may set for a whole group without looking at each row.
 BULK_CHOICES = {
     "duplicate_in_sheet": ("use_first", SKIP),
-    "privileged_target": (),
     "ambiguous_address": (SKIP,),
     "uuid_email_mismatch": (SKIP,),
     "uuid_not_found": ("ignore_uuid", SKIP),
@@ -65,12 +63,7 @@ class OptionContext:
 
     def update_reason(self, member_id) -> str:
         """Why the actor may not update ``member_id`` (``""`` when they may)."""
-        if not self.ctx.can_update:
-            return NO_CHANGE_PERMISSION
-        member = self.snapshot.objects.get(member_id) or self.member(member_id)
-        if member is not None and not self.ctx.can_manage(member):
-            return PRIVILEGED
-        return ""
+        return "" if self.ctx.can_update else NO_CHANGE_PERMISSION
 
     @property
     def has_names(self) -> bool:

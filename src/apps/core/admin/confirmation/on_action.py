@@ -2,6 +2,7 @@
 
 import uuid
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin import helpers
 from django.core.exceptions import PermissionDenied
@@ -33,8 +34,6 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
 
     def action_confirmation_off(self, request) -> bool:
         """Confirmation off for this admin or the site (never by ``_popup``: Django offers no actions in a popup)."""
-        from django.conf import settings
-
         return not self.require_confirmation or not getattr(settings, "ADMIN_REQUIRE_CONFIRMATION", True)
 
     def response_action(self, request, queryset):
@@ -121,8 +120,9 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
         return self.opts.verbose_name
 
     def _confirm_action_view(self, request):
-        # See _confirm_change_view: gate the bulk-action confirmation on per-app
-        # access (execution re-checks via response_action / the action itself).
+        # See _confirm_change_view: gate the bulk-action confirmation on the
+        # model admin's view permission (execution re-checks via
+        # response_action / the action itself).
         if not self.has_view_permission(request):
             raise PermissionDenied
         session_key = self._session_action_key()

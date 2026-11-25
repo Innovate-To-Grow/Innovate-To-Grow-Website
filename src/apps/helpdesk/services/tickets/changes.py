@@ -4,7 +4,7 @@ a member of the assignment group (``membership_problem``), and reopening clears 
 from django.db import transaction
 from django.utils import timezone
 
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_is_admin
 
 from ...models import Ticket, TicketEvent
 from .. import sla
@@ -40,25 +40,20 @@ def _name(member) -> str:
 
 
 def helpdesk_staff():
-    """Active staff who may work tickets (the Helpdesk grant, or I2G Master), for the assignee choices."""
+    """Active Admins (every Admin may work tickets), for the assignee choices."""
     from apps.authn.models import Member
 
-    members = Member.objects.filter(is_active=True, is_staff=True).order_by("first_name", "last_name")
-    return [member for member in members if user_can_access_app(member, "helpdesk")]
+    return list(Member.objects.filter(is_active=True, is_staff=True).order_by("first_name", "last_name"))
 
 
 def eligible_members(group) -> list:
-    """The group's members who may hold its tickets: active staff who still have the Helpdesk app."""
-    return [
-        member
-        for member in group.members.all()
-        if member.is_active and member.is_staff and user_can_access_app(member, "helpdesk")
-    ]
+    """The group's members who may hold its tickets: those who are still active Admins."""
+    return [member for member in group.members.all() if user_is_admin(member)]
 
 
 def membership_problem(group, assignee) -> str:
     """Why ``assignee`` cannot hold a ticket of ``group`` ("" when they can): a group with members who may work
-    tickets has its tickets assigned within them (one whose members all lost the Helpdesk app is open to all staff)."""
+    tickets has its tickets assigned within them (one with no active Admin left among its members is open to every Admin)."""
     if group is None or assignee is None:
         return ""
     eligible = {member.pk for member in eligible_members(group)}

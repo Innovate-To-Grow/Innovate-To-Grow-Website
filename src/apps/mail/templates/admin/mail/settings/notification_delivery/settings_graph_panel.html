@@ -1,4 +1,4 @@
-{# The active Microsoft Graph config, read-only: it is managed on its own admin page, which needs the Core app. #}
+{# The active Microsoft Graph config, read-only: it is managed on its own admin page. #}
 <h3 class="mb-2 text-sm font-semibold text-font-important-light dark:text-font-important-dark">Microsoft Graph Provider</h3>
 <p class="mb-4 text-xs text-base-500 dark:text-base-400">
     Sends (and, with read permission, reads the admin inbox) through Outlook / Exchange Online with an Entra app.
@@ -51,8 +51,4 @@
 {% if graph_saved %}
     <div class="mt-4">{% include "admin/core/microsoftgraphproviderconfig/certificate_panel.html" %}</div>
 {% endif %}
-{% if graph_admin_url %}
-    <a href="{{ graph_admin_url }}" class="mt-2 inline-block text-sm text-primary-600 hover:underline">Manage the Microsoft Graph configuration (mailbox scope and certificate)</a>
-{% else %}
-    <p class="mt-2 text-xs text-base-500 dark:text-base-400">Changing the Microsoft Graph configuration, its certificate or running its access check needs the Core app.</p>
-{% endif %}
+<a href="{{ graph_admin_url }}" class="mt-2 inline-block text-sm text-primary-600 hover:underline">Manage the Microsoft Graph configuration (mailbox scope and certificate)</a>

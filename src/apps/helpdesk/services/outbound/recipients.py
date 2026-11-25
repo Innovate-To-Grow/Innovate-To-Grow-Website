@@ -4,7 +4,7 @@ copies (a relay that wrote for someone else, a no-reply address, a mailing list:
 from apps.core.services.email.inbound.classification.rules import NOREPLY_RE
 
 from ...models import Ticket, TicketMessage
-from ..ingest.routing.matching import requesters_of
+from ..ingest.routing.participants import requesters_of
 from ..ingest.routing.people import same_person
 
 INBOUND = TicketMessage.INBOUND_KINDS

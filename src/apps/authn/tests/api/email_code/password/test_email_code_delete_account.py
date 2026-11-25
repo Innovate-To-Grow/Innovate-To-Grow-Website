@@ -106,3 +106,47 @@ class EmailCodeDeleteAccountTests(APITestCase):
         )
         self.assertEqual(confirm_response.status_code, 400)
         self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
+
+    def _verified_token(self):
+        self.client.post("/authn/delete-account/request-code/", {}, format="json")
+        response = self.client.post("/authn/delete-account/verify-code/", {"code": "654321"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        return response.data["verification_token"]
+
+    def test_an_admin_cannot_request_a_deletion_code(self, _mock_code, mock_send):
+        Member.objects.create_user(password="OtherPass123!", is_active=True, is_staff=True)  # not the last Admin
+        self.member.is_staff = True
+        self.member.save()
+
+        response = self.client.post("/authn/delete-account/request-code/", {}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("your own Admin account", str(response.data["detail"]))
+        mock_send.assert_not_called()
+
+    def test_an_admin_cannot_verify_a_deletion_code(self, _mock_code, _mock_send):
+        self.client.post("/authn/delete-account/request-code/", {}, format="json")
+        self.member.is_staff = True
+        self.member.save()
+
+        response = self.client.post("/authn/delete-account/verify-code/", {"code": "654321"}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("your own Admin account", str(response.data["detail"]))
+
+    def test_a_member_made_admin_after_verifying_cannot_confirm(self, _mock_code, _mock_send):
+        token = self._verified_token()
+        # The request's user object is stale; the confirm step re-reads the account.
+        Member.objects.filter(pk=self.member.pk).update(is_staff=True, is_superuser=True)
+
+        response = self.client.post("/authn/delete-account/confirm/", {"verification_token": token}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("your own Admin account", str(response.data["detail"]))
+        self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
+
+        # The token was not spent: once the account is a regular member again, it still deletes.
+        Member.objects.filter(pk=self.member.pk).update(is_staff=False, is_superuser=False)
+        response = self.client.post("/authn/delete-account/confirm/", {"verification_token": token}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Member.objects.filter(pk=self.member.pk).exists())

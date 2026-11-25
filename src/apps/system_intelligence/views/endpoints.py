@@ -10,7 +10,7 @@ from apps.authn.security import SoftJWTAuthentication
 from apps.core.models import AWSCredentialConfig
 from apps.system_intelligence.models import AssistantMessageLog, SystemIntelligenceConfig
 from apps.system_intelligence.serializers import PublicAssistantChatSerializer
-from apps.system_intelligence.services.bedrock import normalize_bedrock_model_id
+from apps.system_intelligence.services.agents.providers import PUBLIC_ROLE, resolve_route, route_problem
 from apps.system_intelligence.services.public_assistant import (
     VISITOR_FIELD,
     client_ip,
@@ -98,6 +98,7 @@ class PublicAssistantChatView(APIView):
         # The actor (visitor / member / shared legacy bucket) keys every limit. ip_hash is
         # recorded in the audit log only; it keys no limit. Both are resolved up front so
         # every terminal branch can audit and answer with them.
+        route = resolve_route(config, PUBLIC_ROLE)
         turn = _ChatTurn(
             config=config,
             actor=resolve_chat_actor(request),
@@ -106,11 +107,11 @@ class PublicAssistantChatView(APIView):
             # history[-0:] is the whole list, so handle a zero limit explicitly.
             history=history[-history_limit:] if history_limit else [],
             ip_hash=hash_ip(client_ip(request) or ""),
-            model_id=normalize_bedrock_model_id(config.public_model_id) or "",
+            model_id=route.log_model_id,
         )
 
-        # 3. AWS / model not configured -> graceful unavailable.
-        if not AWSCredentialConfig.load().is_configured or not turn.model_id:
+        # 3. Provider (AWS / API key) or model not configured -> graceful unavailable.
+        if route_problem(route, aws_config=AWSCredentialConfig.load()):
             turn.log(AssistantMessageLog.STATUS_UNAVAILABLE)
             return _unavailable_response(config, turn.actor)
 

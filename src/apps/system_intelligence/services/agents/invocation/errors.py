@@ -8,9 +8,15 @@ class SystemIntelligenceAgentError(Exception):
 
 
 def format_system_intelligence_error(
-    error: BaseException | str, *, aws_config: AWSCredentialConfig | None = None
+    error: BaseException | str, *, aws_config: AWSCredentialConfig | None = None, provider=None
 ) -> str:
-    """Return a stable admin-facing error message for provider/runtime failures."""
+    """Return a stable admin-facing error message for provider/runtime failures.
+
+    For an API-key *provider* the text is always a fixed template (provider errors can echo request details)."""
+    if provider is not None:
+        from ..providers.error_messages import provider_error_message
+
+        return provider_error_message(error, f'The AI provider "{provider.name}"')
     message = exception_chain_message(error)
     if is_bedrock_connectivity_error(message):
         region = (
@@ -62,5 +68,8 @@ def is_temperature_deprecated_error(exc: Exception) -> bool:
             "unsupported",
             "unsupportedparamserror",
             "only temperature=",
+            "invalid temperature",
+            "is allowed for this model",
+            "only the default",
         )
     )

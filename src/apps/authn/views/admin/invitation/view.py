@@ -9,7 +9,7 @@ from django.views import View
 from apps.authn.forms.invitation import AcceptInvitationForm
 from apps.core.services.request_limits.view_limits import view_rate
 
-from .membership import InvitationEmailConflict, InvitationMembershipMixin
+from .membership import InvitationEmailConflict, InvitationInactiveMember, InvitationMembershipMixin
 
 # Attempts per invitation and period: the live "view-invitation" request-limit policy (10 per hour by default).
 INVITATION_RATE_POLICY = "view-invitation"
@@ -24,6 +24,16 @@ def _get_unfold_context(request):
     return {}
 
 
+def _inactive_account(request, invitation):
+    """The address belongs to a deactivated account: an invitation does not reactivate it (it stays pending)."""
+    return render(
+        request,
+        "authn/invitation/inactive_account.html",
+        {"email": invitation.email, **_get_unfold_context(request)},
+        status=403,
+    )
+
+
 class AcceptInvitationView(InvitationMembershipMixin, View):
     """Standalone Django view for accepting admin invitations."""
 
@@ -35,8 +45,10 @@ class AcceptInvitationView(InvitationMembershipMixin, View):
             return render(request, "authn/invitation/invalid.html", _get_unfold_context(request), status=400)
 
         existing = self._get_verified_member(invitation)
+        if existing and not existing.is_active:
+            return _inactive_account(request, invitation)
         if existing:
-            # Render a page that POSTs the upgrade; do NOT grant staff here. This used to run
+            # Render a page that POSTs the upgrade; do NOT grant Admin here. This used to run
             # _upgrade_member on the GET, so a mail-gateway link scanner or a browser prefetch
             # silently granted is_staff + is_active and burned the invitation — a privileged write on
             # an unauthenticated, CSRF-exempt request.
@@ -77,7 +89,10 @@ class AcceptInvitationView(InvitationMembershipMixin, View):
         existing = self._get_verified_member(invitation)
         if existing:
             # The GET only offers the button; the privilege grant happens here, behind CSRF.
-            self._upgrade_member(existing, invitation)
+            try:
+                self._upgrade_member(existing, invitation)
+            except InvitationInactiveMember:
+                return _inactive_account(request, invitation)
             return render(
                 request,
                 "authn/invitation/already_registered.html",

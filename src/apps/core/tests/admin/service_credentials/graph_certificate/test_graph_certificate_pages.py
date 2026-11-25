@@ -11,7 +11,7 @@ from apps.core.admin.service_credentials.microsoft_graph.config import Microsoft
 from apps.core.models import EmailServiceConfig, MicrosoftGraphCertificate
 from apps.core.tests.graph_helpers import create_graph_config, make_certificate
 from apps.core.tests.services.graph_credential.helpers import stored_versions
-from apps.event.tests.helpers import make_admin
+from apps.event.tests.helpers import make_admin, make_member
 
 from .graph_certificate_pages import SENDER, CertificatePagesMixin
 
@@ -27,13 +27,8 @@ class AccessTests(CertificatePagesMixin, TestCase):
         self.current, _key = self.install_existing()
         self.install_existing(key_index=1)  # the first one becomes previous, so every action applies
 
-    def test_superuser_can_open_every_certificate_page(self):
-        for name in (*ACTIONS, "download_certificate"):
-            with self.subTest(name):
-                self.assertEqual(self.client.get(self.url(name)).status_code, 200)
-
-    def test_core_staff_can_open_every_certificate_page_like_a_superuser(self):
-        self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
+    def test_any_admin_can_open_every_certificate_page(self):
+        self.client.force_login(make_admin(email="other-admin@example.com"))
 
         for name in (*ACTIONS, "download_certificate"):
             with self.subTest(name):
@@ -45,22 +40,31 @@ class AccessTests(CertificatePagesMixin, TestCase):
         for name in (*ACTIONS, "run_access_check"):
             self.assertContains(page, self.url(name))
 
-    def test_mail_only_and_other_staff_cannot_reach_any_certificate_page(self):
+    def test_members_who_are_not_admins_cannot_reach_any_certificate_page(self):
         before = list(MicrosoftGraphCertificate.objects.values_list("pk", "state"))
         versions = stored_versions()
         self.script()
-        for apps in (["mail"], ["cms"], []):
-            self.client.force_login(make_admin(apps=apps, email=f"staff-{'-'.join(apps) or 'none'}@example.com"))
-            for name in (*ACTIONS, "download_certificate"):
-                with self.subTest(apps=apps, name=name):
-                    self.assertEqual(self.client.get(self.url(name)).status_code, 403)
-                    self.assertEqual(self.client.post(self.url(name), self.pem_data()).status_code, 403)
+        self.client.force_login(make_member(email="member@example.com"))
+        for name in (*ACTIONS, "download_certificate"):
+            with self.subTest(name=name):
+                for response in (self.client.get(self.url(name)), self.client.post(self.url(name), self.pem_data())):
+                    self.assertEqual(response.status_code, 302)
+                    self.assertIn("/admin/login/", response["Location"])
         self.assertEqual(list(MicrosoftGraphCertificate.objects.values_list("pk", "state")), before)
         self.assertEqual(stored_versions(), versions)
         self.assertEqual(self.fake.requests, [])
 
+    def test_rollback_and_remove_respect_the_change_permission(self):
+        before = list(MicrosoftGraphCertificate.objects.values_list("pk", "state"))
+        with patch.object(MicrosoftGraphProviderConfigAdmin, "has_change_permission", return_value=False):
+            for name in ("rollback_certificate", "remove_certificates"):
+                with self.subTest(name):
+                    response = self.client.post(self.url(name), {})
+                    self.assertEqual(response.status_code, 403)
+        self.assertEqual(list(MicrosoftGraphCertificate.objects.values_list("pk", "state")), before)
+
     def test_install_respects_change_permission_for_the_selected_config(self):
-        self.client.force_login(make_admin(apps=["core"], email="core-denied@example.com"))
+        self.client.force_login(make_admin(email="other-admin@example.com"))
         before = list(MicrosoftGraphCertificate.objects.values_list("pk", "state"))
         versions = stored_versions()
         self.script()
@@ -86,7 +90,7 @@ class AccessTests(CertificatePagesMixin, TestCase):
                 self.assertEqual(response.status_code, 302)
                 self.assertIn("/login/", response["Location"])
 
-    def test_superuser_sees_every_action_on_the_change_page(self):
+    def test_an_admin_sees_every_action_on_the_change_page(self):
         page = self.client.get(self.change_url)
 
         for name in (*ACTIONS, "download_certificate"):
@@ -98,11 +102,11 @@ class AccessTests(CertificatePagesMixin, TestCase):
         self.assertEqual(self.client.get(url).status_code, 404)
 
 
-class CoreStaffInstallTests(CertificatePagesMixin, TestCase):
+class AdminInstallTests(CertificatePagesMixin, TestCase):
     client_class = APIClient
 
-    def test_core_staff_install_and_replace_a_standby_certificate_without_activating_or_sending(self):
-        actor = make_admin(apps=["core"], email="core-install@example.com")
+    def test_any_admin_installs_and_replaces_a_standby_certificate_without_activating_or_sending(self):
+        actor = make_admin(email="other-admin@example.com")
         self.client.force_login(actor)
         standby = create_graph_config(name="Standby", is_active=False, certificate=False, scope=(SENDER,))
         email_settings = list(EmailServiceConfig.objects.values())

@@ -14,7 +14,7 @@ from apps.core.legacy_view.access import (
 from apps.core.legacy_view.access.sessions import _discard_viewer_session, create_viewer_session
 from apps.core.models import LegacyAccessGrant
 from apps.core.tests.admin.legacy_view.test_legacy_viewer_session_validation import _LegacyViewerSessionValidationCase
-from apps.event.tests.helpers import make_admin
+from apps.event.tests.helpers import make_admin, make_member
 
 
 @override_settings(LEGACY_VIEW_ENABLED=True)
@@ -30,11 +30,11 @@ class LegacyViewerSessionValidationTests(_LegacyViewerSessionValidationCase):
         with patch("apps.core.legacy_view.access.sessions._session_store", side_effect=RuntimeError("db down")):
             self.assertIsNone(_discard_viewer_session("any-session-key-0123456789"))
 
-    def test_grant_requires_core_access(self):
+    def test_grant_requires_an_admin(self):
         request = self._launch_request()
-        request.user = make_admin(apps=["cms"], email="legacy-cms@example.com")
+        request.user = make_member(email="legacy-member@example.com")
 
-        with self.assertRaisesMessage(LegacyViewerAccessDenied, "Core admin access is required."):
+        with self.assertRaisesMessage(LegacyViewerAccessDenied, "Admin access is required."):
             issue_legacy_access_grant(request)
         self.assertFalse(LegacyAccessGrant.objects.exists())
 
@@ -47,7 +47,7 @@ class LegacyViewerSessionValidationTests(_LegacyViewerSessionValidationCase):
 
     def test_grant_requires_session_belonging_to_requesting_user(self):
         other_client = Client()
-        other_client.force_login(make_admin(apps=["core"], email="legacy-thief@example.com"))
+        other_client.force_login(make_admin(email="legacy-thief@example.com"))
         request = self._launch_request()
         request.session = other_client.session
 
@@ -72,10 +72,10 @@ class LegacyViewerSessionValidationTests(_LegacyViewerSessionValidationCase):
             with self.subTest(code=repr(code)[:20]), self.assertRaises(LegacyViewerAccessDenied):
                 exchange_legacy_access_code(code)
 
-    def test_exchange_after_core_access_revoked_consumes_code_but_denies(self):
+    def test_exchange_after_admin_access_revoked_consumes_code_but_denies(self):
         code = issue_legacy_access_grant(self._launch_request()).code
-        self.user.admin_apps = ["cms"]
-        self.user.save(update_fields=["admin_apps"])
+        self.user.is_staff = False
+        self.user.save(update_fields=["is_staff"])
 
         with self.assertRaisesMessage(LegacyViewerAccessDenied, "no longer valid"):
             exchange_legacy_access_code(code)

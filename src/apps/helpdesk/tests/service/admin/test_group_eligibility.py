@@ -1,8 +1,8 @@
-"""Who counts as a member of an assignment group (``tickets.eligible_members``): active staff who still have the
-Helpdesk app (an I2G Master always has it). Someone who lost the grant, or whose account is switched off, stays
-listed in the group until removed by hand, but no longer holds its tickets:
+"""Who counts as a member of an assignment group (``tickets.eligible_members``): active Admins. Someone who is no
+longer an Admin, or whose account is switched off, stays listed in the group until removed by hand, but no longer
+holds its tickets:
 
-- a group whose only members are such people does not hold back an assignment (it is open to all staff, as a group
+- a group whose only members are such people does not hold back an assignment (it is open to every Admin, as a group
   without members is), on the ticket page and in the services;
 - a group with one eligible member still refuses an assignee from outside it;
 - the ticket page's script narrows "Assigned to" to the eligible members only.
@@ -11,20 +11,22 @@ listed in the group until removed by hand, but no longer holds its tickets:
 from django.core.cache import cache
 from django.test import TestCase
 
+from apps.event.tests.helpers import make_member
+
 from ....models import AssignmentGroup
 from ....services import tickets
-from ...helpers import helpdesk_staff, make_admin, make_superuser
+from ...helpers import helpdesk_staff, make_admin
 from ...helpers.service import Status, new_ticket
 from ..page.support import PageCase
 
 
 def people():
-    """An agent, a colleague, a master, someone who lost the Helpdesk app, and someone whose account is off."""
+    """Two colleagues, someone who is no longer an Admin (a regular member now), and an Admin whose account is off."""
     return {
-        "kim": make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee"),
-        "master": make_superuser(email="master@example.com"),
-        "former": make_admin(apps=["mail"], email="fran@example.com", first_name="Fran", last_name="Former"),
-        "away": make_admin(apps=["helpdesk"], email="ali@example.com", first_name="Ali", is_active=False),
+        "kim": make_admin(email="kim@example.com", first_name="Kim", last_name="Lee"),
+        "lee": make_admin(email="lee@example.com", first_name="Lee", last_name="Park"),
+        "former": make_member(email="fran@example.com", first_name="Fran", last_name="Former"),
+        "away": make_admin(email="ali@example.com", first_name="Ali", is_active=False),
     }
 
 
@@ -35,12 +37,12 @@ class EligibleMembersTests(TestCase):
         self.people = people()
         self.group = AssignmentGroup.objects.create(name="Events")
 
-    def test_only_active_staff_with_the_helpdesk_app_count(self):
+    def test_only_active_admins_count(self):
         self.group.members.add(self.agent, *self.people.values())
 
         eligible = {member.pk for member in tickets.eligible_members(self.group)}
 
-        self.assertEqual(eligible, {self.agent.pk, self.people["kim"].pk, self.people["master"].pk})
+        self.assertEqual(eligible, {self.agent.pk, self.people["kim"].pk, self.people["lee"].pk})
 
     def test_a_group_left_with_nobody_eligible_takes_any_assignee(self):
         for left in ("former", "away"):
@@ -73,7 +75,7 @@ class TicketPageEligibilityTests(PageCase):
         self.group = AssignmentGroup.objects.create(name="Events")
         self.ticket = new_ticket(status=Status.OPEN)
 
-    def test_the_page_assigns_within_a_group_whose_members_all_lost_the_grant(self):
+    def test_the_page_assigns_within_a_group_whose_members_are_no_longer_admins(self):
         self.group.members.set([self.people["former"], self.people["away"]])
 
         response = self.save(self.ticket, assignment_group=self.group, assignee=self.agent)
@@ -99,5 +101,5 @@ class TicketPageEligibilityTests(PageCase):
         data = self.page(self.ticket).context["helpdesk_form_data"]
 
         groups = {group: set(members) for group, members in data["groups"].items()}
-        kim, master = str(self.people["kim"].pk), str(self.people["master"].pk)
-        self.assertEqual(groups, {str(self.group.pk): {str(self.agent.pk), kim, master}, str(lapsed.pk): set()})
+        kim, lee = str(self.people["kim"].pk), str(self.people["lee"].pk)
+        self.assertEqual(groups, {str(self.group.pk): {str(self.agent.pk), kim, lee}, str(lapsed.pk): set()})

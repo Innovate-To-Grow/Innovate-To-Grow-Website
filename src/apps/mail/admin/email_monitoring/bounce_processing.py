@@ -3,7 +3,7 @@
 
 "Check permissions" is the Core Graph config page's check (``access_check.permissions.run_and_record``) with its
 30-second cooldown per config: one fresh token and its roles, and at most one read-only trace request. It sends no
-mail and never records go-live evidence, so the Mail app is enough to run it.
+mail and never records go-live evidence.
 """
 
 from django.contrib import messages

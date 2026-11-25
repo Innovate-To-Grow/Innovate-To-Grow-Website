@@ -122,7 +122,7 @@ from the cycle check. They still count for boundaries.
 | `authn` | `core` |
 | `event` | `core`, `authn` |
 | `cms` | `core`, `authn`, `event` |
-| `mail` | `core`, `authn`, `cms`, `event`; from `system_intelligence` only `models` and `services.bedrock` |
+| `mail` | `core`, `authn`, `cms`, `event`; from `system_intelligence` only `models`, `services.agents` and `services.bedrock` |
 | `helpdesk` | `core`, `authn`, `event`, `mail` (it sits above `mail`; `mail` never imports it) |
 | `projects` | `core`, `authn`; from `system_intelligence` only `models`, `services.agents`, `services.bedrock`, `services.public_assistant`, `services.usage_log` |
 | `system_intelligence` | `core`, `authn`, `cms`, `event`, `mail`, `projects` (its admin assistant reads every app) |

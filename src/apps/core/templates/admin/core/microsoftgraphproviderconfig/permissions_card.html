@@ -1,5 +1,5 @@
 {# The latest Graph permission check (microsoft_graph.permissions.permissions_card): the token's roles, what they allow, #}
-{# the Message Trace probe and the "Check permissions" button (Core app). It is never go-live evidence. #}
+{# the Message Trace probe and the "Check permissions" button. It is never go-live evidence. #}
 <div id="{{ card.anchor }}" class="mt-4 border-t border-base-200 pt-4 dark:border-base-700">
     <h4 class="mb-1 text-xs font-semibold uppercase text-base-500 dark:text-base-400">Permissions</h4>
     <p class="mb-3 text-xs text-base-500 dark:text-base-400">
@@ -62,14 +62,10 @@
         <p class="text-sm text-base-500 dark:text-base-400">The permissions have not been checked with this configuration.</p>
     {% endif %}
     <p class="mt-3 text-xs text-base-500 dark:text-base-400">{{ card.caveat }}</p>
-    {% if card.check_url %}
-        <form method="post" action="{{ card.check_url }}" class="mt-3">
-            {% csrf_token %}
-            <button type="submit" id="graph-check-permissions" class="inline-flex items-center gap-1 rounded-md border border-base-300 px-3 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
-                <span class="material-symbols-outlined !text-[18px]">key</span>Check permissions
-            </button>
-        </form>
-    {% elif card.core_app_needed %}
-        <p id="graph-permissions-core-app-needed" class="mt-3 text-sm text-yellow-700 dark:text-yellow-400">{{ card.core_app_needed }}</p>
-    {% endif %}
+    <form method="post" action="{{ card.check_url }}" class="mt-3">
+        {% csrf_token %}
+        <button type="submit" id="graph-check-permissions" class="inline-flex items-center gap-1 rounded-md border border-base-300 px-3 py-2 text-sm font-medium hover:bg-base-50 dark:border-base-600 dark:hover:bg-base-900">
+            <span class="material-symbols-outlined !text-[18px]">key</span>Check permissions
+        </button>
+    </form>
 </div>

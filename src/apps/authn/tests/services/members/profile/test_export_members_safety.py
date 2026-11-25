@@ -40,3 +40,18 @@ class ExportMembersFormulaSafetyTest(TestCase):
         # The injected name is preserved as quoted literal text.
         values = {cell.value for row in worksheet.iter_rows() for cell in row}
         self.assertIn('\'=HYPERLINK("https://attacker.example","click")', values)
+
+
+class ExportMembersAdminColumnTest(TestCase):
+    def test_the_account_type_column_is_called_admin(self):
+        """The column was "Staff"; the import still recognises both headers and ignores the column."""
+        Member.objects.create_user(password="StrongPass123!", first_name="Ada", last_name="Admin", is_staff=True)
+        Member.objects.create_user(password="StrongPass123!", first_name="Reg", last_name="Ular")
+
+        worksheet = load_workbook(BytesIO(export_members_to_excel(Member.objects.order_by("first_name")))).active
+        header, *rows = [[cell.value for cell in row] for row in worksheet.iter_rows()]
+
+        self.assertIn("Admin", header)
+        self.assertNotIn("Staff", header)
+        column = header.index("Admin")
+        self.assertEqual([row[column] for row in rows], ["Yes", "No"])

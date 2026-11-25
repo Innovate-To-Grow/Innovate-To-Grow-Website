@@ -123,6 +123,22 @@ class AWSBedrockTestActionTest(TestCase):
         self.assertIn("no default AI model selected", _messages(request)[0])
 
     @patch("boto3.client")
+    def test_skips_with_info_when_default_provider_is_set(self, mock_client):
+        from apps.system_intelligence.models import LLMProviderConfig
+
+        provider = LLMProviderConfig.objects.create(name="DeepSeek", preset="deepseek")
+        obj = AWSCredentialConfig.objects.create(name="Cfg", is_active=True, access_key_id="K", secret_access_key="S")
+        SystemIntelligenceConfig.objects.create(
+            name="SI", is_active=True, default_provider=provider, default_model_id="deepseek-chat"
+        )
+        request = _request(self.user)
+        response = self.admin.test_bedrock_api(request, str(obj.pk))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual([m.level_tag for m in request._messages], ["info"])
+        self.assertIn("served by another AI provider, not Bedrock", _messages(request)[0])
+        mock_client.assert_not_called()
+
+    @patch("boto3.client")
     def test_success_message(self, mock_client):
         runtime = MagicMock()
         runtime.converse.return_value = {"output": {"message": {"content": [{"text": " OK "}]}}}

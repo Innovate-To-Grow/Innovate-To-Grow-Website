@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from apps.authn.models import Member
 
@@ -26,12 +25,15 @@ _PROFILE_LIMITS = {
 
 @dataclass
 class Context:
-    """Who the analysis is for: the upload's mode and the actor's rights."""
+    """Who the analysis is for: the upload's mode, whether the actor may change members, and the actor.
+
+    ``actor`` is the Admin the analysis is for (the uploader at upload, the Admin applying at the apply), so the
+    lockout rules can refuse a deactivation of their own Admin account; ``None`` for a script.
+    """
 
     mode: str = UPDATE_EXISTING
-    is_master: bool = False
     can_update: bool = True
-    can_manage: Callable[[object], bool] = field(default=lambda member: True)
+    actor: object = None
 
 
 @dataclass
@@ -102,9 +104,6 @@ def _resolve_new(values: dict, record) -> Resolution:
 
 def _resolve_existing(values, snapshot: Snapshot, ctx: Context, base: dict, record, *, by_uuid: bool) -> Resolution:
     target = snapshot.member(base["target"])
-    member = snapshot.objects.get(target.id) or target
-    if not ctx.can_manage(member):
-        return Resolution(NEEDS_DECISION, "privileged_target", **base)
     if not by_uuid and not names_match(values, target):
         return Resolution(NEEDS_DECISION, "name_differs", **base)
     if base["record"] and record.type != "primary":
@@ -137,7 +136,6 @@ def suggested_action(resolution: Resolution, values: dict, ctx: Context) -> tupl
     reasons = {
         "name_differs": "The sheet's name differs from the member's; decide on this row alone",
         "exists_but_skip_mode": skipped,
-        "privileged_target": "Only an I2G Master may change staff and superuser accounts",
     }
     return None, reasons.get(resolution.conflict, "This row needs its own decision")
 

@@ -56,8 +56,8 @@ class SortTests(QueueCase):
         )
 
     def test_subject_requester_and_assignee_sort(self):
-        kim = make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee")
-        bo = make_admin(apps=["helpdesk"], email="bo@example.com", first_name="Bo", last_name="Zane")
+        kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
+        bo = make_admin(email="bo@example.com", first_name="Bo", last_name="Zane")
         new_ticket(subject="b", requester_name="adam", requester_email="zz@example.org", assignee=kim)
         new_ticket(subject="c", requester_name="", requester_email="bob@example.org", assignee=self.agent)  # Avery
         new_ticket(subject="a", requester_name="carl", requester_email="aa@example.org", assignee=bo)

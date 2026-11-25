@@ -16,6 +16,7 @@ class ChatConversation(ProjectControlModel):
         default=True,
         help_text="True until the title has been explicitly set, either by the user or by the first-turn auto-rename.",
     )
+    required_tool_apps = models.JSONField(default=list, null=True, editable=False)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

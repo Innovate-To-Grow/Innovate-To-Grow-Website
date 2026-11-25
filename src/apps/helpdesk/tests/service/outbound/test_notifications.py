@@ -1,5 +1,5 @@
 """Assignment notifications: to the new assignee (never the member who made the change), or to the group's members
-when a group is assigned with nobody in it; only to active staff with the Helpdesk grant; never in shadow mode or with
+when a group is assigned with nobody in it; only to active Admins; never in shadow mode or with
 ``notify_assignment`` off. Queued as ``helpdesk.notify_staff`` when the change commits; the timeline records a notice
 only once the job sent it (``test_job_state_and_notices``)."""
 
@@ -7,6 +7,7 @@ from django.core.cache import cache
 from django.test import TestCase
 
 from apps.core.models import BackgroundJob
+from apps.event.tests.helpers import make_member
 
 from ....models import AssignmentGroup, HelpdeskSettings, TicketEvent
 from ....services import tickets
@@ -22,7 +23,7 @@ class AssignmentNotificationTests(TestCase):
         cache.clear()
         self.settings = sending_settings()
         self.lead = helpdesk_staff("lead@example.com")
-        self.agent = make_admin(apps=["helpdesk"], email="agent2@example.com", first_name="Kim", last_name="Lee")
+        self.agent = make_admin(email="agent2@example.com", first_name="Kim", last_name="Lee")
         self.ticket = new_ticket()
 
     def update(self, **changes):
@@ -60,8 +61,8 @@ class AssignmentNotificationTests(TestCase):
 
         self.assertEqual(len(self.notices()), 1)
 
-    def test_an_assignee_without_the_grant_or_inactive_is_not_emailed(self):
-        outsider = make_admin(apps=["event"], email="events@example.com")
+    def test_an_assignee_who_is_not_an_admin_or_inactive_is_not_emailed(self):
+        outsider = make_member(email="member@example.com")
         self.update(assignee=outsider)
         self.agent.is_active = False
         self.agent.save(update_fields=["is_active"])
@@ -70,8 +71,8 @@ class AssignmentNotificationTests(TestCase):
         self.assertEqual(self.notices(), [])
 
     def test_a_group_with_nobody_assigned_notifies_its_members_but_the_actor(self):
-        third = make_admin(apps=["helpdesk"], email="third@example.com")
-        outsider = make_admin(apps=["event"], email="events@example.com")
+        third = make_admin(email="third@example.com")
+        outsider = make_member(email="member@example.com")
         group = AssignmentGroup.objects.create(name="Events")
         group.members.add(self.lead, self.agent, third, outsider)
 
@@ -84,7 +85,7 @@ class AssignmentNotificationTests(TestCase):
 
     def test_a_group_assigned_together_with_an_assignee_notifies_only_the_assignee(self):
         group = AssignmentGroup.objects.create(name="Events")
-        group.members.add(self.agent, make_admin(apps=["helpdesk"], email="third@example.com"))
+        group.members.add(self.agent, make_admin(email="third@example.com"))
 
         self.update(assignment_group=group, assignee=self.agent)
 
@@ -95,7 +96,7 @@ class AssignmentNotificationTests(TestCase):
         self.update(assignee=self.agent)
         group = AssignmentGroup.objects.create(name="Events")
         # The assignee is one of the group's members (a group they are not in is refused: membership rule).
-        group.members.add(self.agent, make_admin(apps=["helpdesk"], email="third@example.com"))
+        group.members.add(self.agent, make_admin(email="third@example.com"))
 
         self.update(assignment_group=group)
 

@@ -1,9 +1,9 @@
-"""Helpdesk → SLA Targets (``admin.intake.sla_targets``): policy an I2G Master sets.
+"""Helpdesk → SLA Targets (``admin.intake.sla_targets``): every Admin sees and sets them.
 
-Helpdesk staff see the list, in order of severity, and each target read-only; a change or an add from them is
-refused (403). A superuser changes a target, and adds one only while a priority has no row, choosing among the
-missing priorities. A first response may not be due after the resolution (``SLATarget.clean``). A saved target shows
-its priority's label read-only, not a choice; durations read in days, hours and minutes."""
+The list is in order of severity. An Admin changes a target, and adds one only while a priority has no row, choosing
+among the missing priorities; a member who is not an Admin is sent to the sign-in and changes nothing. A first
+response may not be due after the resolution (``SLATarget.clean``). A saved target shows its priority's label
+read-only, not a choice; durations read in days, hours and minutes."""
 
 from django.contrib import admin
 from django.core.cache import cache
@@ -11,9 +11,11 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.urls import reverse
 
+from apps.event.tests.helpers import make_member
+
 from ....admin.intake.sla_targets import _duration
 from ....models import SLATarget
-from ...helpers import helpdesk_staff, make_superuser
+from ...helpers import helpdesk_staff
 
 LATE_RESPONSE = "The first response cannot be due after the resolution."
 ADD = "admin:helpdesk_slatarget_add"
@@ -45,12 +47,12 @@ class _TargetCase(TestCase):
         self.assertEqual((self.high.response_minutes, self.high.resolution_minutes), (240, 2880))
 
 
-class HelpdeskStaffTests(_TargetCase):
+class AdminTests(_TargetCase):
     def setUp(self):
         super().setUp()
         self.client.force_login(helpdesk_staff())
 
-    def test_the_list_is_in_order_of_severity_without_editable_boxes(self):
+    def test_the_list_is_in_order_of_severity(self):
         response = self.client.get(reverse("admin:helpdesk_slatarget_changelist"))
 
         rows = response.context["cl"].result_list
@@ -67,37 +69,9 @@ class HelpdeskStaffTests(_TargetCase):
                 ("4 – Low", "3 d", "10 d"),
             ],
         )
-        self.assertIsNone(response.context["cl"].formset)
+        self.assertIsNotNone(response.context["cl"].formset)  # the Active boxes
 
-    def test_a_target_is_shown_read_only(self):
-        page = self.client.get(self.url)
-
-        self.assertEqual(page.status_code, 200)
-        self.assertEqual(dict(page.context["adminform"].form.fields), {})
-        self.assertEqual(readonly(page)["priority_label"], "2 – High")
-        self.assertNotContains(page, 'name="_save"')
-
-    def test_a_change_or_an_add_is_refused(self):
-        changed = self.post()
-        listed = self.client.post(
-            reverse("admin:helpdesk_slatarget_changelist"),
-            {"_save": "Save", "form-TOTAL_FORMS": "0", "form-INITIAL_FORMS": "0"},
-        )
-        SLATarget.objects.filter(priority="low").delete()  # even while a priority has no target
-        add_page = self.client.get(reverse(ADD))
-        added = self.post(url=reverse(ADD), priority="low")
-
-        self.assertEqual([changed.status_code, listed.status_code, add_page.status_code, added.status_code], [403] * 4)
-        self.assertTargetUnchanged()
-        self.assertFalse(SLATarget.objects.filter(priority="low").exists())
-
-
-class MasterTests(_TargetCase):
-    def setUp(self):
-        super().setUp()
-        self.client.force_login(make_superuser(email="master@example.com"))
-
-    def test_a_master_changes_a_target_whose_priority_stays_read_only(self):
+    def test_an_admin_changes_a_target_whose_priority_stays_read_only(self):
         page = self.client.get(self.url)
         response = self.post(priority="urgent")  # the priority is no field once saved: a posted one is ignored
 
@@ -145,6 +119,18 @@ class MasterTests(_TargetCase):
         response = self.post(url=reverse(ADD), priority="low", response="600", resolution="599")
 
         self.assertEqual(response.context["adminform"].form.errors["response_minutes"], [LATE_RESPONSE])
+        self.assertFalse(SLATarget.objects.filter(priority="low").exists())
+
+
+class NotAnAdminTests(_TargetCase):
+    def test_a_member_who_is_not_an_admin_changes_and_adds_nothing(self):
+        self.client.force_login(make_member(email="member@example.com"))
+        SLATarget.objects.filter(priority="low").delete()
+
+        for response in (self.post(), self.client.get(reverse(ADD)), self.post(url=reverse(ADD), priority="low")):
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/login/", response["Location"])
+        self.assertTargetUnchanged()
         self.assertFalse(SLATarget.objects.filter(priority="low").exists())
 
 

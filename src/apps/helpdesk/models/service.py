@@ -72,7 +72,7 @@ class AssignmentGroup(ProjectControlModel):
         settings.AUTH_USER_MODEL,
         blank=True,
         related_name="helpdesk_groups",
-        help_text="Staff who work this group's tickets (they need the Helpdesk app). They are notified when a ticket "
+        help_text="Staff who work this group's tickets (they must be active Admins). They are notified when a ticket "
         "is assigned to the group with nobody in it, while sending is on.",
     )
     manager = models.ForeignKey(

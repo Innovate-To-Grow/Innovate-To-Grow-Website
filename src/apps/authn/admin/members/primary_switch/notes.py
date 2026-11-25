@@ -3,7 +3,7 @@
 What reads the primary (checked against the sign-in and audience code):
 
 - Email-code and password sign-in accept any **verified** address of the member, whatever its type.
-- Admin sign-in codes go only to a staff member's verified **primary**; password-change and account-deletion codes go
+- Admin sign-in codes go only to an Admin's verified **primary**; password-change and account-deletion codes go
   to the verified primary, while a forgotten-password code goes to the verified address or phone the member types.
 - "Primary email only" campaigns mail the primary: All subscribers only while it is subscribed; All active members,
   Staff and Selected members whatever its setting. "All emails" campaigns are not affected.
@@ -44,7 +44,7 @@ def _sign_in(request, member, previous, target) -> list[str]:
     ]
     if member.is_staff:
         lost = f", and {previous.email_address} no longer receives them" if previous is not None else ""
-        notes.append(f"Admin sign-in codes go only to a staff member's verified primary: from now on to {new}{lost}.")
+        notes.append(f"Admin sign-in codes go only to an Admin's verified primary: from now on to {new}{lost}.")
         if member.pk == request.user.pk:
             notes.append(
                 f"This is your own account: your next admin sign-in code goes to {new}. Check you can read it."

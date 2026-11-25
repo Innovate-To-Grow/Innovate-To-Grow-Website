@@ -2,7 +2,7 @@ from django.core.exceptions import PermissionDenied
 
 from apps.authn.models import Member
 from apps.cms.models import CMSPage, NewsFeedSource
-from apps.event.tests.helpers import make_admin
+from apps.event.tests.helpers import make_admin, make_member
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 from apps.system_intelligence.services import actions
 
@@ -82,29 +82,27 @@ class SystemIntelligenceDBActionTests(SystemIntelligenceActionBase):
         self.assertEqual(source.name, "Changed elsewhere")
 
     def test_permission_denied_on_approve_keeps_action_pending(self):
-        # A staff member granted a different app (no "cms" access) cannot approve
-        # an action that mutates a cms model -- per-app access is required.
+        # Only an Admin may approve: a regular member is refused and the action stays pending.
         source = NewsFeedSource.objects.create(
             name="UC Merced", source_key="ucm", feed_url="https://example.com/feed.xml", is_active=True
         )
         response = actions.propose_db_update("cms", "NewsFeedSource", str(source.pk), {"name": "Approved"})
-        other_app_user = make_admin(apps=["event"], email="event-staff@example.com")
+        regular_member = make_member(email="regular-member@example.com")
         with self.assertRaises(PermissionDenied):
-            actions.approve_action_request(response["action_request"]["id"], other_app_user)
+            actions.approve_action_request(response["action_request"]["id"], regular_member)
         action = SystemIntelligenceActionRequest.objects.get(id=response["action_request"]["id"])
         self.assertEqual(action.status, SystemIntelligenceActionRequest.STATUS_PENDING)
         source.refresh_from_db()
         self.assertEqual(source.name, "UC Merced")
 
-    def test_approve_succeeds_for_staff_granted_target_app(self):
-        # A staff member granted the target model's app ("cms") may approve a
-        # cms action even without superuser -- per-app access grants full CRUD.
+    def test_approve_succeeds_for_any_admin(self):
+        # Any Admin, not only the one who asked, may approve an action on any app's model.
         source = NewsFeedSource.objects.create(
             name="UC Merced", source_key="ucm", feed_url="https://example.com/feed.xml", is_active=True
         )
         response = actions.propose_db_update("cms", "NewsFeedSource", str(source.pk), {"name": "Approved"})
-        cms_user = make_admin(apps=["cms"], email="cms-staff@example.com")
-        action = actions.approve_action_request(response["action_request"]["id"], cms_user)
+        another_admin = make_admin(email="another-admin@example.com")
+        action = actions.approve_action_request(response["action_request"]["id"], another_admin)
         self.assertEqual(action.status, SystemIntelligenceActionRequest.STATUS_APPLIED)
         source.refresh_from_db()
         self.assertEqual(source.name, "Approved")

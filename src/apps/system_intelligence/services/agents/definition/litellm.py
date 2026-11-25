@@ -10,11 +10,18 @@ from ..invocation.errors import SystemIntelligenceAgentError
 logger = logging.getLogger("apps.system_intelligence.services.agents.litellm")
 
 
-def build_litellm_model(*, aws_config: AWSCredentialConfig, model_id: str):
+def build_litellm_model(*, aws_config: AWSCredentialConfig, model_id: str, provider=None):
+    """The LiteLLM model for one call: Bedrock when *provider* is ``None``, else the API-key provider."""
     configure_litellm_bedrock_transport()
     configure_agents_tracing()
     from agents.extensions.models.litellm_model import LitellmModel
 
+    if provider is not None:
+        from ..providers.http_clients import no_redirect_model
+        from ..providers.litellm_args import provider_model_kwargs
+
+        kwargs = provider_model_kwargs(provider, model_id)
+        return no_redirect_model(provider, **kwargs) if provider.is_custom else LitellmModel(**kwargs)
     if not aws_config.is_configured:
         raise SystemIntelligenceAgentError(
             "AWS credentials are not configured. Add an active AWS Credential Config first."
@@ -27,6 +34,15 @@ def to_litellm_bedrock_model(model_id: str) -> str:
     if not normalized_model_id:
         raise SystemIntelligenceAgentError("A Bedrock model ID is required for System Intelligence.")
     return f"bedrock/{normalized_model_id}"
+
+
+def litellm_call_args(aws_config: AWSCredentialConfig, provider=None) -> dict:
+    """Per-call ``litellm.acompletion`` arguments: Bedrock's AWS keys, or an API-key provider's timeout."""
+    if provider is not None:
+        from ..providers.litellm_args import provider_call_args
+
+        return provider_call_args(provider)
+    return bedrock_litellm_credentials(aws_config)
 
 
 def bedrock_litellm_credentials(aws_config: AWSCredentialConfig) -> dict[str, str]:

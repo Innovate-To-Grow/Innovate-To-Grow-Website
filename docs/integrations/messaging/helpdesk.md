@@ -30,8 +30,8 @@ the H2 phase is built as described below (replies, acknowledgement, notification
 | **SLA Breached** | Tickets whose first response or resolution is overdue (flagged, or past due and not flagged yet). |
 | **Automated & Spam** | Automated mail and spam (all statuses). Use **Not automated: move to the queue** (here, or beside **Save** on the ticket's page) when a person's message landed here: it becomes a person's unread ticket, classified as a person's, New when nobody answered it yet (else In progress), its requester's messages shown as theirs (quoted under a reply; one the scam checks made spam is flagged suspicious instead; their automatic replies stay automated) and, for list mail or a web form, the person who wrote it as requester (a form's person, a list's poster); moved from its page, it counts as read (you are looking at it; on a page opened before someone else moved it, the button says "… was moved to the queue already (by <name>); your changes were saved." and the page's edits are saved), with an SLA clock (a new one from the move for automated mail, whose impact and urgency go from 3 × 3 to 2 × 2; a ticket marked spam by mistake gets its paused clock back). A reply to the site's mail that came through a mailing list is list mail here, flagged **reply to our mail**: read it, and move it to the queue if a person wrote it. There is no merge here: nothing is merged into automated mail or spam. |
 | **Ingest Problems** | Messages that could not be imported (after the last attempt) or were gone from the mailbox, with **Retry** and **Dismiss (handled)**: a message that can never be imported (deleted in Outlook first) leaves the default view with an admin-history line, keeps its status and error, and stays under the **Dismissed** and **Everything** filters until retention; Retry clears the dismissal. Retry writes an admin-history line for each message it queued again ("Retried: queued again for import.", plus "Its dismissal was cleared." when it had one); both actions say why they left the other selected rows as they were. The **Classification** filter names classifications as the list does ("Automatic reply", "Human (or uncertain)"). |
-| **Categories**, **Assignment Groups**, **SLA Targets**, **Response Templates** | Ticket categories (each may name a default group); the teams that work tickets; the response and resolution targets per priority (only an I2G Master changes them); canned replies. One that tickets still use is switched off, not deleted (its delete page lists what uses it). |
-| **Settings** | The helpdesk's limits, retention periods and switches (shadow mode, acknowledgement and notifications: only an I2G Master changes those; auto-close), under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
+| **Categories**, **Assignment Groups**, **SLA Targets**, **Response Templates** | Ticket categories (each may name a default group); the teams that work tickets; the response and resolution targets per priority; canned replies. One that tickets still use is switched off, not deleted (its delete page lists what uses it). |
+| **Settings** | The helpdesk's limits, retention periods and switches (shadow mode, acknowledgement and notifications, auto-close), under the **intake card** (how the helpdesk reads the Inbox: [Intake controls](#intake-controls)). |
 
 The list filters (**Mail**: people / automated & spam / everything; **Status**: open (new, in progress, on hold) /
 resolved & closed / one status / any; **Assignee**; **Assignment group**: my groups / no group / one group, an
@@ -59,7 +59,7 @@ Automated mail and spam are reopened only with **Not automated: move to the queu
 the page first, then moves the ticket and comes back to its page; no typed confirmation); a merged ticket's page is
 read-only, takes no notes (they go on the ticket it was merged into), and a save started before the merge is
 refused with the reason. On a page opened fresh, a value the browser restores on Back is reset to the saved one. Linked tickets show both ways (related / follow-up, merged into / merged in). Groups, categories and
-members are set up on their own pages, not from the ticket. Notes are seen only by staff with the Helpdesk app and
+members are set up on their own pages, not from the ticket. Notes are seen only by Admins and
 are never sent. Opening a ticket marks it read.
 
 - Message HTML was sanitized when it was imported and is shown in a sandboxed frame without scripts; images are
@@ -139,7 +139,7 @@ a merged ticket is not sent (it was written for that ticket): the target's timel
 | Number `INC0010001` | `I2G-#1234` | Also the subject token that threads mail back to the ticket. |
 | State | Status: New, In progress, On hold – awaiting requester, On hold – awaiting internal, Resolved, Closed (and Merged, Spam) | A requester's reply puts "awaiting requester" back to In progress and reopens a ticket closed less than `reopen_window_days` ago. The scam checks never hide such an answer as spam on its words alone (they judge only what it adds: [How a message becomes a ticket](#how-a-message-becomes-a-ticket)). |
 | Impact × Urgency → Priority | Impact 1–3 × Urgency 1–3 → 1 Critical, 2 High, 3 Moderate, 4 Low (`services/sla/priority.py`) | ServiceNow's "5 – Planning" (3 × 3) is Low. A person's new ticket starts at 2 × 2 (Moderate), automated mail at 3 × 3 (Low). The stored values (`urgent`, `high`, `normal`, `low`) are unchanged. |
-| Assignment group / Assigned to | **Assignment Groups** (members, manager) and the assignee | A category's **default group** is set on a ticket given that category while it has no group, when that group is active and the ticket's assignee (if any) is one of its members (assignment rule). With a group that has members who still have the Helpdesk app, the assignee must be one of them: on the page, in bulk and by the rule alike (a group whose members all lost the app is open to all staff). |
+| Assignment group / Assigned to | **Assignment Groups** (members, manager) and the assignee | A category's **default group** is set on a ticket given that category while it has no group, when that group is active and the ticket's assignee (if any) is one of its members (assignment rule). With a group that has members who are still active Admins, the assignee must be one of them: on the page, in bulk and by the rule alike (a group with no active Admin left among its members is open to every Admin). |
 | Work notes / Additional comments | Internal notes / replies to the requester | Replies only while shadow mode is off. |
 | SLA definitions | **SLA Targets**, one per priority | See [SLA](#sla). |
 | Close code / close notes | Resolution code / resolution notes | A code is required to resolve or close a ticket (bulk **Resolve…** asks for one; bulk **Close** closes resolved tickets only), and a resolved or closed ticket keeps it. Reopening clears the code and notes, so resolving again asks for a new code. |
@@ -153,7 +153,7 @@ calendar time (no business hours). Seeded by `helpdesk.0004`: Critical 1 h / 8 h
 5 days, Low 3 days / 10 days. A target switched off means no due times for new tickets of that priority (their clock
 starts, so a later change to a priority with an active target sets them; clocks already
 running keep their due times); targets cannot be deleted, the first response cannot be due after the resolution,
-and only an I2G Master changes them (a desk cannot loosen its own targets; Helpdesk staff see them).
+and every Admin sees and changes them.
 
 - The clock starts when the ticket's first message arrived. Automated mail, backfilled mail (imported more than
   `backfill_age_hours` late) and tickets from before this release have no clock.
@@ -176,8 +176,8 @@ and only an I2G Master changes them (a desk cannot loosen its own targets; Helpd
 ### Replies and notifications
 
 Everything here needs **shadow mode off** (Helpdesk → Settings; every change of it is in the admin history and the log
-line `helpdesk_shadow_mode`). Only an **I2G Master** can change shadow mode, the acknowledgement switch and text, and
-the notification switch; other Helpdesk staff see them read-only. Sending code lives only in `services/outbound/`; a test pins that no other helpdesk
+line `helpdesk_shadow_mode`). Every Admin can change shadow mode, the acknowledgement switch and text, and the
+notification switch. Sending code lives only in `services/outbound/`; a test pins that no other helpdesk
 module imports a sending API, and that each job checks shadow mode before it sends.
 
 - **Replies.** The reply form on the ticket page sends to the requester (for mail a web form relays, the person
@@ -204,7 +204,7 @@ module imports a sending API, and that each job checks shadow mode before it sen
   sent again within 10 minutes is refused (a double submit). Microsoft Graph cannot send `In-Reply-To`/`References`,
   so the subject token is what threads the answer back (accepted only from a participant, as before). The reply is
   stored on the ticket and sent by the background job `helpdesk.send_reply` (transactional lane, paced by the
-  delivery-rate limiter); the timeline shows it Queued, then Sent, Failed (a fixed text; an I2G Master sees the
+  delivery-rate limiter); the timeline shows it Queued, then Sent, Failed (a fixed text; an Admin sees the
   provider's error in Email Monitoring) or Not confirmed (the mail service did not confirm it: check Outlook's Sent
   Items before writing again). A refusal the provider reports as temporary is retried later; a send that may have
   gone out is never retried, so a reply is never sent twice. A reply that does not go out puts its ticket back In
@@ -225,7 +225,7 @@ module imports a sending API, and that each job checks shadow mode before it sen
   moved to automated mail meanwhile, and (for the acknowledgement) that it is still switched on.
 - **Assignment notifications** (`notify_assignment`, on). Assigning a person's ticket to someone else emails them;
   assigning it to an active group with nobody assigned emails the group's members. Never to the member who made the
-  change, only to active staff with the Helpdesk app, never for automated mail, spam or a merged ticket. The job
+  change, only to active Admins, never for automated mail, spam or a merged ticket. The job
   checks all of that again when it runs (the switch, shadow mode, the ticket, and that each recipient is still its
   assignee or a member of its group); the timeline says "Assignment notice emailed" once it went out. The email
   names the ticket (number, subject without links, host names, ticket numbers or reply prefixes, requester,
@@ -418,20 +418,20 @@ model and `core.inboundmessage` are in `safe_orm`'s `DENIED_MODEL_LABELS`: the A
 neither read nor write them.
 
 **Storing message bodies and attachments is new** for this site (the admin inbox reads them on demand only). The
-helpdesk is internal: only staff with the Helpdesk app see it, and no note to OIT or InfoSec is needed (decided
-2026-11-11, plan question H6). The retention periods are proposals pending a UC records policy (plan question S5).
+helpdesk is internal: only Admins see it, and no note to OIT or InfoSec is needed (decided 2026-11-11, plan
+question H6, when only staff granted the Helpdesk app saw it; every Admin has seen it since the single Admin role).
+The retention periods are proposals pending a UC records policy (plan question S5).
 
 ## Permissions
 
-The **Helpdesk** app grant (`Member.admin_apps` contains `helpdesk`, or I2G Master) gives the helpdesk: the queue,
-ticket pages, notes, replies, assignment, merge, spam, Ingest Problems, assignment groups, categories, response
-templates, the SLA targets (to see) and Settings, except what decides what the helpdesk sends and its service
-levels: shadow mode, the acknowledgement switch and text, the notification switch and the SLA targets are changed
-only by an I2G Master (others see them read-only, with the reason; the form does not take them from anyone else).
-Every custom view (ticket notes, replies, attachment downloads) checks the grant itself (403 without it). Tickets
-are created only from mail; only an I2G Master can delete one by hand, behind the typed confirmation (otherwise only
-retention deletes). Opening the linked member or campaign needs the Members or Mail app. The queue's **Export
-selected data** action (every admin list has it) exports the selected tickets' columns for the same staff.
+Every Admin has the whole helpdesk: the queue, ticket pages, notes, replies, assignment, merge, spam, Ingest
+Problems, assignment groups, categories, response templates, the SLA targets and Settings, including what decides
+what the helpdesk sends (shadow mode, the acknowledgement switch and text, the notification switch). Every active
+Admin can be chosen as an assignee or a group member. The custom views (ticket notes, replies, attachment downloads,
+intake controls) are served through the admin, so anyone who is not an Admin is sent to the admin sign-in. Tickets
+are created only from mail; any Admin can delete one by hand (one ticket or a selection), behind the typed
+confirmation (otherwise only retention deletes). The queue's **Export selected data** action (every admin list has
+it) exports the selected tickets' columns.
 Assignment groups, categories, response templates and SLA targets save without the typed confirmation (list toggles
 included), unlike most admin pages: they are everyday setup, and a group or category that tickets use cannot be
 deleted (it is switched off). Settings, ticket deletion, merge and mark-as-spam keep the typed confirmation.
@@ -444,9 +444,9 @@ intake's own controls ([Intake controls](#intake-controls)).
 | Field | Default | Meaning |
 |---|---|---|
 | `enabled` | on | Read the Inbox and import its mail. Off: the helpdesk neither reads nor imports; switched back on, the intake continues from its checkpoint, so mail that arrived meanwhile (and is still in the Inbox) becomes tickets then. |
-| `shadow_mode` | on | On: nothing is ever sent. Off: replies from the ticket page, and the acknowledgement and notifications below when they are on. Only an I2G Master changes it. |
-| `send_acknowledgement`, `acknowledgement_text` | off, a short thank-you naming `{ticket}` | Email the requester when their message opens a new ticket ([Replies and notifications](#replies-and-notifications)). Only an I2G Master changes them. |
-| `notify_assignment` | on | Email staff a ticket is assigned to (or their group's members). Only an I2G Master changes it. |
+| `shadow_mode` | on | On: nothing is ever sent. Off: replies from the ticket page, and the acknowledgement and notifications below when they are on. |
+| `send_acknowledgement`, `acknowledgement_text` | off, a short thank-you naming `{ticket}` | Email the requester when their message opens a new ticket ([Replies and notifications](#replies-and-notifications)). |
+| `notify_assignment` | on | Email staff a ticket is assigned to (or their group's members). |
 | `auto_close_resolved_days` | 7 | Resolved tickets close by themselves after this many days (0: never); the timeline reads "Resolved → Closed (closed automatically: resolved more than N days ago)", with no actor. |
 | `sla_warning_percent` | 75 | A running SLA clock is shown (and filtered) as at risk once this share of its time is used. |
 | `pause_while_campaign_sending` | on | Wait while a campaign is sending. |
@@ -479,7 +479,7 @@ The **intake card** sits above the Helpdesk → Settings form. It shows the inta
 for the first scan, last scan failed, no recent successful scan, switched off, or not active with the reason), the
 last and next scan (no next scan while switched off, not active or paused), the checkpoint, the interval and how
 many messages wait to be imported, and has four controls.
-Each needs the Helpdesk app, is a POST form with CSRF (`/admin/helpdesk/helpdesksettings/intake/`, `action=scan`,
+Each needs an Admin, is a POST form with CSRF (`/admin/helpdesk/helpdesksettings/intake/`, `action=scan`,
 `pause`, `resume`, `rescan&since=YYYY-MM-DDTHH:MM`, or `lookback&lookback_hours=N`), and changes the intake only:
 bounce processing has its own card on Email Monitoring, and its Pause, Rescan since and lookback never change the
 intake. Every change leaves an admin history line (Site Settings → Admin Log, on "Helpdesk intake for …") and a log

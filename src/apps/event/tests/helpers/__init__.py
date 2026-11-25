@@ -52,14 +52,13 @@ def make_superuser(email="admin@example.com"):
     return user
 
 
-def make_admin(*, apps, email="appadmin@example.com", **kwargs):
-    """Create an app-scoped staff member (is_staff=True, not a superuser) granted ``apps``.
+def make_admin(*, email="appadmin@example.com", **kwargs):
+    """Create an Admin (an active staff member) with a verified primary email.
 
-    Use for testing per-app admin/CLI access (see apps.core.utils.access.user_can_access_app).
-    ``apps`` is a list of app labels, e.g. ["cms", "event"].
+    Every Admin has every permission, so there is nothing to grant per app.
     """
     kwargs.setdefault("is_staff", True)
-    member = Member.objects.create_user(password="testpass123", admin_apps=list(apps), **kwargs)
+    member = Member.objects.create_user(password="testpass123", **kwargs)
     ContactEmail.objects.create(member=member, email_address=email, email_type="primary", verified=True)
     return member
 

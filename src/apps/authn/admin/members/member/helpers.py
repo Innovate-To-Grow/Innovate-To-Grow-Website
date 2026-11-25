@@ -1,6 +1,10 @@
-from django.core.exceptions import PermissionDenied
+from django.contrib import messages
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect
 from django.urls import reverse
+
+from ....services.members.admins import DEACTIVATE, admin_removal_refusal
+from .lockout import admins_in
 
 
 def get_primary_email_display(member):
@@ -41,42 +45,26 @@ def normalize_inline_uuid_none_values(request):
             post_data._mutable = original_mutable
 
 
-def _drop_protected_members(admin_obj, request, queryset):
-    """Exclude members the requester may not manage, and report how many were skipped.
-
-    ``is_active`` is not in ``superuser_only_fields``, so without this a non-superuser staffer could
-    deactivate the I2G Master and lock them out of the admin entirely.
-    """
-    protected = [member.pk for member in queryset if not admin_obj.can_manage_target(request, member)]
-    if not protected:
-        return queryset, 0
-    return queryset.exclude(pk__in=protected), len(protected)
-
-
 def activate_members(admin_obj, request, queryset):
-    allowed, skipped = _drop_protected_members(admin_obj, request, queryset)
-    updated = allowed.update(is_active=True, registration_pending=False)
+    with transaction.atomic():
+        # Reactivating never brings back Admin: only an older release leaves an inactive account with it.
+        queryset.filter(is_active=False, is_staff=True).update(is_staff=False, is_superuser=False)
+        updated = queryset.update(is_active=True, registration_pending=False)
     admin_obj.message_user(request, f"{updated} member(s) activated.")
-    if skipped:
-        admin_obj.message_user(
-            request,
-            f"{skipped} privileged account(s) skipped — only an I2G Master may change those.",
-            level="warning",
-        )
 
 
 def deactivate_members(admin_obj, request, queryset):
-    allowed, skipped = _drop_protected_members(admin_obj, request, queryset)
-    # An explicit admin deactivation also ends any unfinished self-service signup, so the
-    # email-code flow can't activate the account afterwards.
-    updated = allowed.update(is_active=False, registration_pending=False)
+    with transaction.atomic():
+        # The whole selection or nothing: never your own Admin account, never the last active Admin.
+        refusal = admin_removal_refusal(request.user, admins_in(queryset), action=DEACTIVATE)
+        if refusal:
+            admin_obj.message_user(request, f"{refusal} No member was deactivated.", level=messages.ERROR)
+            return
+        # An explicit admin deactivation also ends any unfinished self-service signup, so the
+        # email-code flow can't activate the account afterwards, and removes Admin access (as Member.save() does):
+        # a deactivated account is never an Admin.
+        updated = queryset.update(is_active=False, registration_pending=False, is_staff=False, is_superuser=False)
     admin_obj.message_user(request, f"{updated} member(s) deactivated.")
-    if skipped:
-        admin_obj.message_user(
-            request,
-            f"{skipped} privileged account(s) skipped — only an I2G Master may change those.",
-            level="warning",
-        )
 
 
 def build_excel_response(content, filename):
@@ -114,9 +102,6 @@ def export_members_vcard_response(queryset):
 def download_template_view(admin_obj, request):
     from ....services.members.import_ import generate_template_excel
 
-    if not admin_obj.has_view_permission(request):
-        raise PermissionDenied("You do not have permission to access member tooling.")
-
     try:
         content = generate_template_excel()
         return build_excel_response(content, "member_import_template.xlsx")
@@ -126,8 +111,4 @@ def download_template_view(admin_obj, request):
 
 
 def export_excel_view(admin_obj, request):
-    # Member records are PII; ``admin_view`` only checks is_staff, so re-check
-    # per-app access before exporting the whole member list.
-    if not admin_obj.has_view_permission(request):
-        raise PermissionDenied("You do not have permission to export members.")
     return export_members_response(admin_obj.get_queryset(request))

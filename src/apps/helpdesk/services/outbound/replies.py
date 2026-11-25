@@ -22,7 +22,7 @@ from apps.core.utils.security import is_plain_address
 
 from ...models import HelpdeskSettings, IntakeState, Ticket, TicketEvent, TicketMessage
 from ..ingest.pipeline.messages import MAX_PARTICIPANTS
-from ..ingest.routing.matching import requesters_of
+from ..ingest.routing.participants import requesters_of
 from ..ingest.routing.scam import own_words
 from ..tickets import events, shadow
 from ..tickets.scrub import scrub_sign_in_links
@@ -66,7 +66,9 @@ def reply_mailbox(ticket: Ticket) -> str:
 def can_reply(ticket: Ticket, settings: HelpdeskSettings | None = None) -> str:
     """Why staff cannot reply to ``ticket`` now ("" when they can)."""
     if not shadow.sending_allowed(settings):
-        return "Shadow mode is on: nothing is sent from the helpdesk. An I2G Master can switch it off in Helpdesk → Settings."
+        return (
+            "Shadow mode is on: nothing is sent from the helpdesk. An Admin can switch it off in Helpdesk → Settings."
+        )
     if ticket.status == Ticket.Status.MERGED:
         return "This ticket was merged: reply on the ticket it was merged into."
     if ticket.is_automated_or_spam:

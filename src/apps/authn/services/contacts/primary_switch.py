@@ -94,7 +94,6 @@ def fingerprint(member, emails) -> str:
         str(member.pk),
         member.is_active,
         member.is_staff,
-        member.is_superuser,
         [(str(e.pk), e.email_address, e.email_type, e.verified, e.subscribe) for e in emails],
     ]
     return hashlib.sha256(json.dumps(parts).encode("utf-8")).hexdigest()[:40]

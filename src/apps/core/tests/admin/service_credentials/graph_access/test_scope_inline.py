@@ -25,8 +25,8 @@ class ScopeInlineTests(GuardFixture):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Please correct the duplicate data for mailbox")
 
-    def test_core_staff_can_see_and_edit_the_scope(self):
-        self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
+    def test_any_admin_can_see_and_edit_the_scope(self):
+        self.client.force_login(make_admin(email="other-admin@example.com"))
 
         page = self.client.get(change_url(self.config))
         self.assertContains(page, 'name="mailbox_scopes-TOTAL_FORMS"')
@@ -35,7 +35,7 @@ class ScopeInlineTests(GuardFixture):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(self.config.mailbox_scopes.filter(mailbox="alias@contoso.com").exists())
 
-    def test_core_staff_are_held_to_the_same_guard(self):
-        self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
+    def test_any_admin_is_held_to_the_same_guard(self):
+        self.client.force_login(make_admin(email="other-admin@example.com"))
 
         self.assert_refused(self.post(self.config, change_data(self.config) | {"mailbox_scopes-0-DELETE": "on"}))

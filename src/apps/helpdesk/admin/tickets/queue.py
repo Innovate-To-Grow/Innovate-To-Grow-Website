@@ -102,7 +102,7 @@ class TicketQueueMixin:
         form = super().get_form(request, obj, change, **kwargs)
         assignee = form.base_fields.get("assignee")
         if assignee is not None:
-            # Staff who may work tickets, and whoever holds this one now (so the page still saves after a grant ends).
+            # Admins, and whoever holds this ticket now (so the page still saves after they stop being one).
             allowed = {member.pk for member in tickets.helpdesk_staff()}
             if obj is not None and obj.assignee_id:
                 allowed.add(obj.assignee_id)

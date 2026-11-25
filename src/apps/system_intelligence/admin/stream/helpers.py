@@ -8,6 +8,7 @@ from apps.system_intelligence.services.agents.invocation.errors import (
     exception_chain_message,
     is_bedrock_connectivity_error,
 )
+from apps.system_intelligence.services.agents.providers.error_messages import describe_provider_error
 
 logger = logging.getLogger(__name__)
 
@@ -78,12 +79,13 @@ def _handle_stream_event(event, aws_config, full_text, tool_calls, action_ids, a
 _GENERIC_STREAM_ERROR = "The assistant could not complete this turn. See server logs for details."
 
 
-def _stream_exception(conversation_id, exc, aws_config):
+def _stream_exception(conversation_id, exc, aws_config, provider=None):
     """Build a user-facing SSE error from a controlled string template.
 
     The exception text is logged but never copied into the response. For
     recognised Bedrock connectivity failures we substitute a regex-validated
-    region from aws_config. Anything else gets a generic message.
+    region from aws_config. An API-key *provider*'s failures get its fixed
+    provider messages. Anything else gets a generic message.
     """
     chain = exception_chain_message(exc)
     if is_bedrock_connectivity_error(chain):
@@ -101,6 +103,8 @@ def _stream_exception(conversation_id, exc, aws_config):
     else:
         logger.exception("Stream error for conversation %s", conversation_id)
         message = _GENERIC_STREAM_ERROR
+        if provider is not None:
+            message = describe_provider_error(exc, f'The AI provider "{provider.name}"') or message
     return _sse("error", {"error": message})
 
 

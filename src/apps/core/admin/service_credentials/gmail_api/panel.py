@@ -2,14 +2,13 @@
 
 It shows public facts only: the key id, service account, numeric client ID, project, where the key is stored and
 when it was installed and checked, plus the allow-list with each account's verification. The key is never read to
-build it. Key actions and the access check need the Core app, so their links are offered to staff granted it (and
-superusers); the views enforce the same rule.
+build it. The links to the key actions and the access check are offered wherever the panel has actions (every
+viewer is an Admin); the views check permission to change the config themselves.
 """
 
 from django.urls import reverse
 
 from apps.core.services.email.graph.credential.expiry import local_time_text
-from apps.core.utils.access import user_can_access_app
 
 from ..microsoft_graph.panel import STORE_NAMES
 
@@ -28,10 +27,9 @@ def store_name(reference: str) -> str:
 
 
 def key_panel(request, config, *, actions: bool = True) -> dict | None:
-    """The panel's context for a saved config, or None for an unsaved one."""
+    """The panel's context for a saved config, or None for an unsaved one (``request`` is kept for callers)."""
     if config._state.adding:
         return None
-    can_manage = actions and user_can_access_app(request.user, "core")
     installed = config.key_configured
     subjects = [
         {"subject": row.subject, "verified": config.subject_verified(row.subject), "verified_at": row.verified_at}
@@ -43,9 +41,9 @@ def key_panel(request, config, *, actions: bool = True) -> dict | None:
         "check_current": config.access_check_current,
         "installed_at": local_time_text(config.key_installed_at) if config.key_installed_at else "",
         "checked_at": local_time_text(config.access_checked_at) if config.access_checked_at else "",
-        "install_url": reverse(f"admin:{INSTALL_URL_NAME}", args=[config.pk]) if can_manage else "",
-        "remove_url": reverse(f"admin:{REMOVE_URL_NAME}", args=[config.pk]) if can_manage and installed else "",
-        "access_check_url": reverse(f"admin:{ACCESS_CHECK_URL_NAME}", args=[config.pk]) if can_manage else "",
+        "install_url": reverse(f"admin:{INSTALL_URL_NAME}", args=[config.pk]) if actions else "",
+        "remove_url": reverse(f"admin:{REMOVE_URL_NAME}", args=[config.pk]) if actions and installed else "",
+        "access_check_url": reverse(f"admin:{ACCESS_CHECK_URL_NAME}", args=[config.pk]) if actions else "",
     }
     if installed:
         panel.update(

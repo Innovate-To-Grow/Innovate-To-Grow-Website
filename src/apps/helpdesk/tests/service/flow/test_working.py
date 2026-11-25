@@ -95,7 +95,7 @@ class AssignTests(TestCase):
         self.agent = helpdesk_staff()
 
     def test_how_many_changed_and_how_many_were_left_as_they_were(self):
-        kim = make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee")
+        kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
         theirs = AssignmentGroup.objects.create(name="Technical")
         theirs.members.add(kim)
         mine = AssignmentGroup.objects.create(name="Events")

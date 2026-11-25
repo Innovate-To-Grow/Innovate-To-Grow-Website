@@ -1,10 +1,13 @@
+"""Members → Import: who may use a batch. Any Admin may save its choices, apply it or discard it, whoever uploaded it
+(an Admin who uploaded one may have left); a member who is no longer an Admin is sent to the admin login."""
+
 from django.test import override_settings
 from django.urls import reverse
 
-from apps.authn.models import ContactEmail, Member, MemberImportBatch
+from apps.authn.models import ContactEmail, MemberImportBatch
 from apps.authn.services.members.import_.review import apply_batch
 from apps.authn.services.members.import_.review.analysis import Context
-from apps.authn.tests.admin.members.import_.test_member_import_apply import _staff
+from apps.authn.tests.admin.members.import_.test_member_import_apply import _admin
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row, upload
 
 
@@ -12,8 +15,8 @@ from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTes
 class OwnershipAndPermissionTests(ImportTestCase):
     def setUp(self):
         super().setUp()
-        self.owner = _staff("Owner")
-        self.other = _staff("Other")
+        self.owner = _admin("Owner")
+        self.other = _admin("Other")
         self.client.force_login(self.owner)
         response = self.client.post(
             reverse("admin:authn_member_import_excel"),
@@ -22,63 +25,80 @@ class OwnershipAndPermissionTests(ImportTestCase):
         self.assertEqual(response.status_code, 302)
         self.batch = MemberImportBatch.objects.get()
 
-    def test_another_authn_admin_sees_the_batch_read_only(self):
+    def confirm(self):
+        return self.client.post(
+            reverse("admin:authn_member_import_confirm", args=[self.batch.pk]),
+            {"confirmation_text": "import", "version": self.batch.choices_version},
+        )
+
+    def test_another_admin_may_change_and_apply_the_batch(self):
         self.client.force_login(self.other)
         review = reverse("admin:authn_member_import_review", args=[self.batch.pk])
 
         page = self.client.get(review)
-
-        self.assertEqual(page.status_code, 200)
-        self.assertContains(page, "You can look at it; only they or an I2G Master can change it.")
-        self.assertNotContains(page, "Continue to confirm")
-        self.assertEqual(self.client.post(review, {"version": 0, "action": "save"}).status_code, 403)
-        confirm = reverse("admin:authn_member_import_confirm", args=[self.batch.pk])
-        self.assertEqual(self.client.post(confirm, {"confirmation_text": "import", "version": 0}).status_code, 403)
-        discard = reverse("admin:authn_member_import_discard", args=[self.batch.pk])
-        self.assertEqual(self.client.post(discard).status_code, 403)
+        saved = self.client.post(review, {"version": 0, "ready-2": "update", "action": "save"})
         self.batch.refresh_from_db()
-        self.assertEqual(self.batch.status, "review")
+        applied = self.confirm()
 
-    def test_an_i2g_master_may_apply_someone_elses_batch(self):
-        master = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
-        self.client.force_login(master)
+        self.assertContains(page, "Continue to confirm")
+        self.assertContains(page, "Discard this import")
+        self.assertRedirects(saved, review, fetch_redirect_response=False)
+        self.assertRedirects(applied, reverse("admin:authn_member_import_result", args=[self.batch.pk]))
+        self.ada.refresh_from_db()
+        self.assertEqual(self.ada.organization, "Acme")
+        self.batch.refresh_from_db()
+        self.assertEqual((self.batch.status, self.batch.applied_by), ("applied", self.other))
 
-        self.client.post(
-            reverse("admin:authn_member_import_confirm", args=[self.batch.pk]),
-            {"confirmation_text": "import", "version": 0},
-        )
+    def test_another_admin_may_discard_the_batch(self):
+        self.client.force_login(self.other)
 
+        response = self.client.post(reverse("admin:authn_member_import_discard", args=[self.batch.pk]))
+
+        self.assertRedirects(response, reverse("admin:authn_member_import_excel"))
+        self.batch.refresh_from_db()
+        self.assertEqual(self.batch.status, "discarded")
+
+    def test_the_upload_page_lists_every_admins_imports_in_review(self):
+        self.client.force_login(self.other)
+
+        page = self.client.get(reverse("admin:authn_member_import_excel"))
+
+        self.assertContains(page, reverse("admin:authn_member_import_review", args=[self.batch.pk]))
+
+    def test_an_import_whose_uploader_was_deleted_can_still_be_applied(self):
+        self.owner.delete()
+        self.client.force_login(self.other)
+        self.batch.refresh_from_db()
+
+        response = self.confirm()
+
+        self.assertRedirects(response, reverse("admin:authn_member_import_result", args=[self.batch.pk]))
         self.ada.refresh_from_db()
         self.assertEqual(self.ada.organization, "Acme")
 
-    def test_a_grant_revoked_before_the_apply_gets_403_and_writes_nothing(self):
-        self.owner.admin_apps = ["event"]
-        self.owner.save(update_fields=["admin_apps"])
+    def test_a_member_who_is_no_longer_an_admin_is_sent_to_the_login_and_writes_nothing(self):
+        self.owner.is_staff = False
+        self.owner.save()
 
-        response = self.client.post(
-            reverse("admin:authn_member_import_confirm", args=[self.batch.pk]),
-            {"confirmation_text": "import", "version": 0},
-        )
+        response = self.confirm()
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("admin:login"), response["Location"])
         self.ada.refresh_from_db()
         self.assertIsNone(self.ada.organization)
 
-    def test_a_member_made_staff_after_the_review_is_not_changed_by_a_non_master(self):
-        Member.objects.filter(pk=self.ada.pk).update(is_staff=True)
+    def test_a_member_made_an_admin_after_the_review_goes_back_to_the_review(self):
+        """Any Admin may update an Admin, but the record the review showed changed: the row is reviewed again."""
+        self.ada.is_staff = True
+        self.ada.save()
 
-        response = self.client.post(
-            reverse("admin:authn_member_import_confirm", args=[self.batch.pk]),
-            {"confirmation_text": "import", "version": 0},
-        )
+        response = self.confirm()
 
         self.assertRedirects(response, reverse("admin:authn_member_import_review", args=[self.batch.pk]))
         self.ada.refresh_from_db()
         self.assertIsNone(self.ada.organization)
         staged = self.batch.rows.get()
-        self.assertEqual(
-            (staged.conflict, staged.choice, staged.changed_since_review), ("privileged_target", "skip", True)
-        )
+        self.assertEqual((staged.conflict, staged.choice, staged.changed_since_review), ("", "skip", True))
 
     def test_the_uploader_may_discard(self):
         response = self.client.post(reverse("admin:authn_member_import_discard", args=[self.batch.pk]))
@@ -96,9 +116,9 @@ class OwnershipAndPermissionTests(ImportTestCase):
 
 class HistoryAdminTests(ImportTestCase):
     def test_the_history_is_read_only_and_offers_no_export(self):
-        master = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
-        self.client.force_login(master)
-        batch = self.stage([row("new@example.com", First_Name="New", Last_Name="Person")], master)
+        admin = _admin("History")
+        self.client.force_login(admin)
+        batch = self.stage([row("new@example.com", First_Name="New", Last_Name="Person")], admin)
 
         listing = self.client.get(reverse("admin:authn_memberimportbatch_changelist"))
         detail = self.client.get(reverse("admin:authn_memberimportbatch_change", args=[batch.pk]))
@@ -107,6 +127,7 @@ class HistoryAdminTests(ImportTestCase):
         self.assertContains(listing, "Open the review")
         self.assertNotContains(listing, "export_data")
         self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "Member import rows")  # every Admin sees the staged rows inline
         self.assertNotContains(detail, 'name="_save"')
         self.assertEqual(self.client.get(reverse("admin:authn_memberimportbatch_add")).status_code, 403)
         self.assertEqual(

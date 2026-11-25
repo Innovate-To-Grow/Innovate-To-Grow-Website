@@ -1,14 +1,17 @@
 """The state handler of ``helpdesk.send_reply`` (a failed job marks the reply failed, an uncertain one marks it not
-confirmed, each with a fixed text and a timeline entry), and ``helpdesk.notify_staff`` (``notifications``): what a
-notice says, and that the timeline records it once it went out. No provider is reached: the email facade's
-``deliver_email`` is patched."""
+confirmed, each with a fixed text and a timeline entry), ``helpdesk.notify_staff`` (``notifications``): what a
+notice says, and that the timeline records it once it went out, and the registration of both kinds. No provider is
+reached: the email facade's ``deliver_email`` is patched."""
 
 import uuid
 from unittest.mock import patch
 
+from django.test import TestCase
+from django.utils.module_loading import import_string
+
 from apps.core.models import BackgroundJob
 from apps.core.services.aws.provider_outcomes import ProviderDeliveryError
-from apps.core.services.background_jobs import TransientJobError
+from apps.core.services.background_jobs import TransientJobError, registered_job_kinds
 
 from ....models import AssignmentGroup, HelpdeskSettings, Ticket, TicketEvent, TicketMessage
 from ....services.outbound import compose, jobs, notifications
@@ -31,7 +34,7 @@ class ReplyJobStateTests(JobTestCase):
         message = self.finish(BackgroundJob.Status.FAILED)
 
         self.assertEqual((message.delivery_status, message.delivery_error), (Delivery.FAILED, jobs.FAILED_ERROR))
-        self.assertIn("An I2G Master can see the details in Email Monitoring.", message.delivery_error)
+        self.assertIn("An Admin can see the details in Email Monitoring.", message.delivery_error)
         failed = self.ticket.events.get(kind=Kind.REPLY_FAILED)
         self.assertEqual(failed.data, {"what": "reply", "error": jobs.FAILED_ERROR})
 
@@ -133,3 +136,14 @@ class NotifyStaffJobTests(JobTestCase):
             self.send(self.notice(), side_effect=ProviderDeliveryError("down", outcome="transient"))
 
         self.assertFalse(self.ticket.events.filter(kind=Kind.NOTIFIED).exists())
+
+
+class RegistrationTests(TestCase):
+    def test_both_kinds_are_registered_with_their_handlers(self):
+        kinds = registered_job_kinds()
+
+        self.assertEqual(kinds[jobs.REPLY_JOB_KIND].handler, "apps.helpdesk.services.outbound.jobs.send_reply_job")
+        self.assertEqual(
+            kinds[jobs.NOTIFY_JOB_KIND].handler, "apps.helpdesk.services.outbound.notifications.notify_staff_job"
+        )
+        self.assertIs(import_string(kinds[jobs.NOTIFY_JOB_KIND].handler), notifications.notify_staff_job)

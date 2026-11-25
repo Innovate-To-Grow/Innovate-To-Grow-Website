@@ -29,14 +29,13 @@ class MemberPageEntryPointTests(SwitchFixture):
         self.assertContains(response, "Verify first")
         self.assertNotContains(response, f"?to={self.unverified.pk}")
 
-    def test_a_helper_sees_neither_on_another_staff_account(self):
+    def test_a_helper_sees_both_on_another_admins_account(self):
         self.client.force_login(self.helper)
 
         response = self.client.get(change_url(self.staffer))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertNotContains(response, switch_url(self.staffer))
-        self.assertNotContains(response, "Make primary…")
+        self.assertContains(response, f'href="{switch_url(self.staffer)}"')
+        self.assertContains(response, f"{switch_url(self.staffer)}?to={self.staffer_backup.pk}")
 
     def test_a_helper_sees_both_on_a_regular_member(self):
         self.client.force_login(self.helper)
@@ -73,7 +72,5 @@ class MemberPageEntryPointTests(SwitchFixture):
             actions = model_admin.get_actions_detail(request, str(self.jane.pk))
 
         self.assertEqual([item.action_name for item in actions], ["authn_member_switch_primary_email"])
-        # One small query: no profile image, no prefetched contacts.
-        self.assertEqual(len(queries), 1, [query["sql"] for query in queries])
-        self.assertNotIn("profile_image", queries[0]["sql"])
-        self.assertEqual(model_admin.get_actions_detail(request, "not-a-member-id"), [])
+        # Every Admin may switch any member's primary, so the button needs no query at all.
+        self.assertEqual(len(queries), 0, [query["sql"] for query in queries])

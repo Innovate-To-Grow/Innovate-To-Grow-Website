@@ -5,8 +5,9 @@ from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_superuser
 from apps.mail.models import SmsConfig, SmsLinkRevocation, SmsLinkToken
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 from apps.mail.tests.admin.sms.settings.test_link_revocation_admin import Reason, SwitchTestCase, Via, issue
 
 from ....services.sms.policy.policy_helpers import sms_settings
@@ -43,9 +44,8 @@ class RevocationRecordsAdminTests(SwitchTestCase):
         self.assertNotContains(detail, 'name="_save"')
         self.assertEqual(self.client.get(reverse("admin:mail_smslinkrevocation_add")).status_code, 403)
 
-    def test_only_mail_staff_see_them(self):
-        self.client.force_login(make_admin(apps=["cms"], email="cms@example.com"))
-        self.assertEqual(self.client.get(reverse("admin:mail_smslinkrevocation_changelist")).status_code, 403)
+    def test_only_admins_see_them(self):
+        assert_refused_to_member(self, reverse("admin:mail_smslinkrevocation_changelist"), make_member())
 
     def test_sms_links_shows_revoked_links_including_one_stored_after_the_sweep(self):
         sms_settings(personal_links_enabled=False)

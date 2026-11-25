@@ -12,8 +12,17 @@ Member = get_user_model()
 
 class _AcceptInvitationViewCase(TestCase):
     # noinspection PyMethodMayBeStatic
+    def _inviter(self):
+        inviter = getattr(self, "_sender", None)
+        if inviter is None:
+            inviter = self._sender = Member.objects.create_user(
+                password="StrongPass123!", first_name="Sending", last_name="Admin", is_staff=True, is_active=True
+            )
+        return inviter
+
     def _create_invitation(self, email="invite@example.com", role=AdminInvitation.Role.ADMIN, **kwargs):
         defaults = {
+            "invited_by": self._inviter(),
             "email": email,
             "token": AdminInvitation.generate_token(),
             "role": role,
@@ -55,7 +64,7 @@ class AcceptInvitationViewTests(_AcceptInvitationViewCase):
         self.assertEqual(response.status_code, 400)
 
     def test_get_existing_verified_member_only_offers_the_upgrade(self):
-        """A GET must not grant staff: the link is emailed, so gateway scanners and browser
+        """A GET must not grant Admin: the link is emailed, so gateway scanners and browser
         prefetches follow it, and the request carries no CSRF protection."""
         invitation = self._create_invitation(email="existing@example.com")
         member = self._existing_verified_member()
@@ -79,9 +88,9 @@ class AcceptInvitationViewTests(_AcceptInvitationViewCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "existing@example.com")
         member.refresh_from_db()
+        # The existing account becomes a full Admin (the superuser column mirrors staff).
         self.assertTrue(member.is_staff)
-        # Upgrading an existing member to staff must not auto-grant any apps.
-        self.assertEqual(member.admin_apps, [])
+        self.assertTrue(member.is_superuser)
         invitation.refresh_from_db()
         self.assertEqual(invitation.status, AdminInvitation.Status.ACCEPTED)
 
@@ -160,7 +169,7 @@ class AcceptInvitationViewTests(_AcceptInvitationViewCase):
         self.assertEqual(response.status_code, 400)
         cache_mock.set.assert_not_called()
 
-    def test_post_creates_staff_member(self):
+    def test_post_creates_an_admin(self):
         invitation = self._create_invitation()
         response = self.client.post(
             f"/authn/invite/{invitation.token}/",
@@ -174,8 +183,7 @@ class AcceptInvitationViewTests(_AcceptInvitationViewCase):
         )
         self.assertEqual(response.status_code, 200)
         member = ContactEmail.objects.get(email_address="invite@example.com").member
+        member.refresh_from_db()
         self.assertTrue(member.is_staff)
         self.assertTrue(member.is_active)
-        # No app grant is handed out at acceptance time; the I2G Master grants
-        # apps later via the Member admin (see apps.core.utils.access).
-        self.assertEqual(member.admin_apps, [])
+        self.assertTrue(member.is_superuser)

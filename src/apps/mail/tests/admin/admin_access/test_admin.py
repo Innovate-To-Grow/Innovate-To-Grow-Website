@@ -1,4 +1,4 @@
-"""Email campaign admin: Gmail import, per-app access, and redirects."""
+"""Email campaign admin: Gmail import, admin access, and redirects."""
 
 from unittest.mock import patch
 
@@ -134,43 +134,25 @@ class EmailCampaignAdminImportTest(TestCase):
         self.assertContains(response, self.campaign.subject)
 
 
-class MailAdminPerAppAccessTest(TestCase):
-    """End-to-end per-app gate via the Django admin test client.
+class MailAdminAccessTest(TestCase):
+    """End-to-end admin access via the Django admin test client: every Admin reaches the mail and the other apps'
+    changelists; a signed-in member who is not an Admin is sent to the admin login."""
 
-    A staff member with ``mail`` in ``admin_apps`` may reach mail changelists but
-    is denied changelists in apps they were not granted; superusers reach both.
-    """
-
-    def test_mail_staff_can_view_mail_changelist(self):
-        make_admin(apps=["mail"], email="mail-only@example.com")
-        self.client.login(username="mail-only@example.com", password="testpass123")
-
-        response = self.client.get(reverse("admin:mail_emailcampaign_changelist"))
-
-        self.assertEqual(response.status_code, 200)
-
-    def test_mail_staff_denied_non_mail_changelist(self):
-        make_admin(apps=["mail"], email="mail-only2@example.com")
-        self.client.login(username="mail-only2@example.com", password="testpass123")
-
-        response = self.client.get(reverse("admin:event_event_changelist"))
-
-        self.assertEqual(response.status_code, 403)
-
-    def test_other_app_staff_denied_mail_changelist(self):
-        make_admin(apps=["cms"], email="cms-only@example.com")
-        self.client.login(username="cms-only@example.com", password="testpass123")
-
-        response = self.client.get(reverse("admin:mail_emailcampaign_changelist"))
-
-        self.assertEqual(response.status_code, 403)
-
-    def test_superuser_can_view_both_changelists(self):
-        make_superuser(email="su-peraccess@example.com")
-        self.client.login(username="su-peraccess@example.com", password="testpass123")
+    def test_an_admin_opens_mail_and_other_app_changelists(self):
+        make_admin(email="admin-access@example.com")
+        self.client.login(username="admin-access@example.com", password="testpass123")
 
         mail_response = self.client.get(reverse("admin:mail_emailcampaign_changelist"))
         event_response = self.client.get(reverse("admin:event_event_changelist"))
 
         self.assertEqual(mail_response.status_code, 200)
         self.assertEqual(event_response.status_code, 200)
+
+    def test_a_member_who_is_not_an_admin_is_sent_to_the_login(self):
+        make_admin(email="member-access@example.com", is_staff=False)
+        self.client.login(username="member-access@example.com", password="testpass123")
+
+        response = self.client.get(reverse("admin:mail_emailcampaign_changelist"))
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response["Location"].startswith(reverse("admin:login")))

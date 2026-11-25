@@ -8,8 +8,10 @@ from apps.system_intelligence.admin.actions.lookup import (
 )
 from apps.system_intelligence.models import (
     ChatMessage,
+    LLMProviderConfig,
     SystemIntelligenceActionRequest,
 )
+from apps.system_intelligence.services.agents.providers.routing import NO_AWS
 from apps.system_intelligence.tests.admin.base import SystemIntelligenceAdminBase
 
 
@@ -99,34 +101,47 @@ class ChatCommandViewGuardTests(SystemIntelligenceAdminBase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.json()["error"], "Invalid JSON body")
 
-    def test_compact_returns_400_when_aws_not_configured(self):
-        # Line 81: enough older messages but AWS credentials are missing.
+    def _compact_without_aws(self):
         for index in range(30):
             ChatMessage.objects.create(
-                conversation=self.conversation,
-                role="user" if index % 2 == 0 else "assistant",
-                content=f"message {index}",
+                conversation=self.conversation, role="user" if index % 2 == 0 else "assistant", content=f"m {index}"
             )
-
-        class _Unconfigured:
-            is_configured = False
-
+        unconfigured = type("_Unconfigured", (), {"is_configured": False})()
         with (
+            patch("apps.system_intelligence.admin.chat.commands.AWSCredentialConfig.load", return_value=unconfigured),
             patch(
-                "apps.system_intelligence.admin.chat.commands.AWSCredentialConfig.load",
-                return_value=_Unconfigured(),
-            ),
-            patch("apps.system_intelligence.admin.chat.commands.ensure_context_summary") as summarize,
+                "apps.system_intelligence.admin.chat.commands.ensure_context_summary", return_value=("s", {})
+            ) as summarize,
         ):
             response = self.client.post(
-                self._url(),
-                data=json.dumps({"command": "compact"}),
-                content_type="application/json",
+                self._url(), data=json.dumps({"command": "compact"}), content_type="application/json"
             )
+        return response, summarize
 
+    def test_compact_returns_400_when_aws_not_configured(self):
+        # Enough older messages, Bedrock route, but AWS credentials are missing.
+        response, summarize = self._compact_without_aws()
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["error"], "AWS credentials are not configured.")
+        self.assertEqual(response.json()["error"], NO_AWS)
         summarize.assert_not_called()
+
+    def test_compact_returns_400_when_the_provider_is_disabled(self):
+        self.chat_config.default_provider = LLMProviderConfig.objects.create(name="DeepSeek", preset="deepseek")
+        self.chat_config.save()
+        response, summarize = self._compact_without_aws()
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["error"], 'The AI provider "DeepSeek" is disabled.')
+        summarize.assert_not_called()
+
+    def test_compact_with_a_ready_provider_does_not_need_aws(self):
+        self.chat_config.default_provider = LLMProviderConfig.objects.create(
+            name="DeepSeek", preset="deepseek", is_enabled=True, key_secret_ref="memory:k", key_version_id="v1"
+        )
+        self.chat_config.save()
+        response, summarize = self._compact_without_aws()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["compacted"])
+        summarize.assert_called_once()
 
     def test_retry_with_only_assistant_messages_returns_400(self):
         # Lines 118-123: every trailing assistant turn is removed, leaving no

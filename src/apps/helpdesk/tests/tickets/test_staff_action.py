@@ -2,12 +2,13 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
+from apps.event.tests.helpers import make_member
 from apps.helpdesk.tests.tickets.test_tickets import Kind, Status, new_ticket
 
 from ...models import AssignmentGroup, TicketCategory, TicketMessage
 from ...services import tickets
 from .. import corpus
-from ..helpers import FakeReader, helpdesk_staff, make_admin, make_superuser, receive
+from ..helpers import FakeReader, helpdesk_staff, make_admin, receive
 
 
 class StaffActionTests(TestCase):
@@ -80,7 +81,7 @@ class StaffActionTests(TestCase):
 
     def test_assigning_outside_a_group_with_members_is_refused_and_counted(self):
         group = AssignmentGroup.objects.create(name="Events")
-        group.members.add(make_admin(apps=["helpdesk"], email="member@example.com"))
+        group.members.add(make_admin(email="member@example.com"))
         grouped = new_ticket(assignment_group=group)
 
         self.assertEqual(tickets.assign([self.ticket, grouped], self.agent, actor=self.agent), (1, 1))
@@ -130,8 +131,9 @@ class StaffActionTests(TestCase):
         self.assertIsNone(tickets.merge([first], actor=self.agent))
         self.assertIsNone(tickets.merge([first, second], actor=self.agent))
 
-    def test_only_staff_with_the_helpdesk_grant_can_be_assigned(self):
-        master = make_superuser(email="master@example.com")
-        make_admin(apps=["mail"], email="mailer@example.com")
+    def test_every_active_admin_and_nobody_else_can_be_assigned(self):
+        colleague = make_admin(email="colleague@example.com")
+        make_admin(email="inactive@example.com", is_active=False)
+        make_member(email="member@example.com")
 
-        self.assertEqual({member.pk for member in tickets.helpdesk_staff()}, {self.agent.pk, master.pk})
+        self.assertEqual({member.pk for member in tickets.helpdesk_staff()}, {self.agent.pk, colleague.pk})

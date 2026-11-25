@@ -139,9 +139,8 @@
     replyArea.appendChild(banner);
   }
 
-  // A 403 fragment explains why (Sent mail needs the Mail app), so it is shown like any other fragment.
   function fragmentText(r) {
-    if (!r.ok && r.status !== 403) throw new Error();
+    if (!r.ok) throw new Error();
     return r.text();
   }
 

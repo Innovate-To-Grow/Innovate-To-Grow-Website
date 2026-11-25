@@ -157,7 +157,7 @@ class AdminSidebarNavigationTest(SimpleTestCase):
             self.assertIn(model, tab["models"])
 
     def test_the_gmail_api_tab_is_shown_like_the_other_service_credentials(self):
-        # The Gmail API config needs the Core app like its neighbours, so its tab has no extra permission.
+        # The Gmail API config is open to every Admin like its neighbours, so its tab has no extra permission.
         tab = next(tab for tab in settings.UNFOLD["TABS"] if "core.awscredentialconfig" in tab["models"])
         [gmail_api] = [item for item in tab["items"] if item["title"] == "Gmail API"]
         [graph] = [item for item in tab["items"] if item["title"] == "Microsoft Graph"]

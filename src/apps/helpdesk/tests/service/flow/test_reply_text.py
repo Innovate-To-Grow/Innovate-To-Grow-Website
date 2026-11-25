@@ -80,7 +80,7 @@ class ReplyTextTests(TestCase):
 
     def test_ten_minutes_later_another_author_or_another_text_is_no_double(self):
         first = self.reply()
-        self.reply(actor=make_admin(apps=["helpdesk"], email="kim@example.com"))
+        self.reply(actor=make_admin(email="kim@example.com"))
         self.reply("Hello Pat, the showcase starts at 11.")
         TicketMessage.objects.filter(pk=first.pk).update(
             delivery_status=Delivery.SENT, occurred_at=timezone.now() - timedelta(minutes=11)

@@ -16,9 +16,14 @@
       );
       remove.setAttribute("aria-label", `Delete ${conversation.title}`);
       remove.title = "Delete";
-      actions.append(rename, remove);
+      if (!conversation.restricted) actions.append(rename);
+      actions.append(remove);
+      const title = conversation.restricted
+        ? document.createElement("span")
+        : app.button("si-conversation-title", conversation.title, () => app.selectConversation(conversation.id));
+      if (conversation.restricted) title.textContent = conversation.title;
       row.append(
-        app.button("si-conversation-title", conversation.title, () => app.selectConversation(conversation.id)),
+        title,
         actions,
       );
       app.els.list.append(row);

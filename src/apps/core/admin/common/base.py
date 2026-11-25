@@ -5,7 +5,7 @@ Base admin classes for consistent admin interface across the project.
 from django.db.models.constants import LOOKUP_SEP
 from unfold.admin import ModelAdmin
 
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_is_admin
 
 from ..confirmation.post_data import SENSITIVE_FIELD_RE
 from ..mixins import ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin
@@ -20,9 +20,10 @@ class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin,
     - Common readonly fields for ProjectControlModel
     - Timestamp readonly fields
     - Standard list display configuration
-    - Per-Django-app access control (see apps.core.utils.access.user_can_access_app):
-      a staff member may manage this model only if their ``admin_apps`` includes
-      this model's app label; superusers (I2G Master) are always granted.
+    - Admin access control (see apps.core.utils.access.user_is_admin): every
+      Admin (an active staff member) may view, add, change and delete every
+      model; nobody else may. Django's per-model codename permissions are not
+      consulted.
     """
 
     # Common readonly fields for ProjectControlModel
@@ -32,7 +33,8 @@ class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin,
     list_per_page = 50
 
     def _has_app_access(self, request) -> bool:
-        return user_can_access_app(request.user, self.opts.app_label)
+        """Whether the request's user is an Admin (the name is kept for subclasses that call it)."""
+        return user_is_admin(request.user)
 
     def has_module_permission(self, request):
         return self._has_app_access(request)
@@ -74,16 +76,17 @@ class BaseModelAdmin(ConfirmOnSaveMixin, DataExportMixin, TimestampedAdminMixin,
 
 
 class AppAccessInlineMixin:
-    """Per-app access for inlines — the inline counterpart of ``BaseModelAdmin``'s rule.
+    """Admin access for inlines — the inline counterpart of ``BaseModelAdmin``'s rule.
 
-    Django's stock inline permissions need per-model codenames (``event.change_eventagendaitem``) that staff
-    here do not carry; a staff member holds an app label in ``Member.admin_apps`` instead
-    (see ``apps.core.utils.access.user_can_access_app``). Inlines that follow their own app's access rule
-    mix this in; ones that need more (an ownership check on the parent) override the write methods.
+    Django's stock inline permissions ask for per-model codenames (``event.change_eventagendaitem``); this mixin
+    makes an inline follow the project's rule instead: every Admin may view, add, change and delete it
+    (see ``apps.core.utils.access.user_is_admin``). Inlines that need more (an ownership check on the parent, a
+    safety rail) override the write methods.
     """
 
     def _has_app_access(self, request) -> bool:
-        return user_can_access_app(request.user, self.opts.app_label)
+        """Whether the request's user is an Admin (the name is kept for subclasses that call it)."""
+        return user_is_admin(request.user)
 
     def has_view_permission(self, request, obj=None):
         return self._has_app_access(request)

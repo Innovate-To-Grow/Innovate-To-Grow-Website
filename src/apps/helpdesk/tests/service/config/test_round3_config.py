@@ -4,8 +4,7 @@
   {requester name} or { subject } would be sent as typed, so it is refused there and in a response template, while
   braces around ordinary words stay text;
 - a response template saved without touching its body (a browser posts it with CRLF line ends) records no body change;
-- SLA Targets: Helpdesk staff see a target's durations with the reason only an I2G Master changes them; the list has
-  no Created at column; the add page for the last missing priority offers no "Save and add another"."""
+- SLA Targets: an Admin sees a target's durations on the list; the list has no Created at column; the add page for the last missing priority offers no "Save and add another"."""
 
 from django.contrib import admin
 from django.contrib.admin.models import LogEntry
@@ -13,11 +12,10 @@ from django.core.cache import cache
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
-from ....admin.intake.sla_targets import MASTER_ONLY
 from ....models import HelpdeskSettings, ResponseTemplate, SLATarget
 from ....services.outbound.compose import unknown_placeholders
-from ...helpers import helpdesk_staff, make_superuser
-from .test_sla_targets import ADD, readonly
+from ...helpers import helpdesk_staff
+from .test_sla_targets import ADD
 
 ACK_USE = "Use {ticket} (and {requester_name} or {subject}, which lose any link)."
 TEMPLATE_USE = "Use {ticket}, {requester_name}, {subject} or {agent_name}."
@@ -31,7 +29,7 @@ class PlaceholderTests(TestCase):
     def acknowledgement_errors(self, text) -> list[str]:
         row = HelpdeskSettings.objects.create()
         request = RequestFactory().post("/")
-        request.user = make_superuser(email="master@example.com")
+        request.user = helpdesk_staff()
         form_class = admin.site._registry[HelpdeskSettings].get_form(request, row, change=True)
         return form_class({"acknowledgement_text": text}, instance=row).errors.get("acknowledgement_text", [])
 
@@ -85,26 +83,16 @@ class SLATargetPageTests(TestCase):
         cache.clear()
         self.changelist = reverse("admin:helpdesk_slatarget_changelist")
 
-    def test_staff_see_the_durations_and_why_only_a_master_changes_them(self):
-        self.client.force_login(helpdesk_staff())
-        high = SLATarget.objects.get(priority="high")
-
-        page = self.client.get(reverse("admin:helpdesk_slatarget_change", args=[high.pk]))
-
-        shown = readonly(page)
-        self.assertEqual((shown["response_display"], shown["resolution_display"]), ("4 h", "2 d"))
-        self.assertContains(page, MASTER_ONLY)
-
     def test_the_list_has_no_created_at_column(self):
-        for user in (helpdesk_staff(), make_superuser(email="master@example.com")):
-            with self.subTest(superuser=user.is_superuser):
-                self.client.force_login(user)
-                columns = self.client.get(self.changelist).context["cl"].list_display
-                self.assertNotIn("created_at", columns)
-                self.assertIn("priority_label", columns)
+        self.client.force_login(helpdesk_staff())
+
+        columns = self.client.get(self.changelist).context["cl"].list_display
+
+        self.assertNotIn("created_at", columns)
+        self.assertIn("priority_label", columns)
 
     def test_the_last_missing_priority_offers_no_save_and_add_another(self):
-        self.client.force_login(make_superuser(email="master@example.com"))
+        self.client.force_login(helpdesk_staff())
         SLATarget.objects.filter(priority__in=["urgent", "normal"]).delete()
 
         two_missing = self.client.get(reverse(ADD))

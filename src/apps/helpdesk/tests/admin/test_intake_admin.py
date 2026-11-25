@@ -1,5 +1,5 @@
 """Helpdesk → Settings → the intake card: its controls (Scan now, Pause / Resume, Rescan since, first-scan lookback)
-through the admin. Access (the Helpdesk grant), POST with CSRF, validation in the site's time zone, the lease and pause
+through the admin. Access (every Admin), POST with CSRF, validation in the site's time zone, the lease and pause
 rules, the messages and the admin history, and the decoupling both ways: the intake's controls never change bounce
 processing, and the Email Monitoring card's never change the intake. Microsoft Graph is never contacted."""
 
@@ -49,7 +49,7 @@ def to_minute(value):
 
 @override_settings(TIME_ZONE="America/Los_Angeles")
 class IntakeAdminTestCase(TestCase):
-    """Signed in with the Helpdesk grant; Graph sends from and may read ``SITE``. The intake's checkpoint is ten
+    """Signed in as an Admin; Graph sends from and may read ``SITE``. The intake's checkpoint is ten
     minutes ago; bounce processing's (its own row) an hour ago."""
 
     def setUp(self):

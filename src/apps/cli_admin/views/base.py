@@ -11,7 +11,6 @@ from apps.core.services.db_tools.safe_orm import ActionRequestError
 from ..auth.authentication import CliTokenAuthentication
 from ..auth.permissions import IsActiveStaff
 from ..services.crud import StaleSnapshotError
-from ..services.resolve import CliAppAccessDenied
 
 
 def _error_detail(exc):
@@ -23,7 +22,7 @@ def _error_detail(exc):
 class AdminAPIView(APIView):
     """Base for the /admin-api/ resource views.
 
-    Pins CLI bearer auth + the active-staff gate (so the global SimpleJWT default
+    Pins CLI bearer auth + the Admin gate (active staff) (so the global SimpleJWT default
     never applies here) and maps the shared safe-ORM exceptions to HTTP statuses.
     """
 
@@ -37,11 +36,6 @@ class AdminAPIView(APIView):
             return Response(
                 {"error": "conflict", "detail": "Database integrity error."}, status=status.HTTP_409_CONFLICT
             )
-        if isinstance(exc, CliAppAccessDenied):
-            # Per-app access denial: the model is reachable but not granted to this
-            # actor. 403 (vs. the denylist's 400), checked before the generic branch
-            # below since CliAppAccessDenied subclasses ActionRequestError.
-            return Response({"error": "forbidden", "detail": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         if isinstance(exc, (ActionRequestError, DjangoValidationError)):
             return Response({"error": "bad_request", "detail": _error_detail(exc)}, status=status.HTTP_400_BAD_REQUEST)
         if isinstance(exc, (Http404, ObjectDoesNotExist)):

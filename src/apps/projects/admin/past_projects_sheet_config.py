@@ -84,9 +84,7 @@ class PastProjectsSheetConfigAdmin(BaseModelAdmin):
         return custom_urls + super().get_urls()
 
     def pull_view(self, request):
-        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-        # per-app access itself — otherwise a staff member without the projects app
-        # could trigger a privileged Google Sheet sync here.
+        # Custom URL: re-check the ModelAdmin's permission hook before a Google Sheet sync.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to sync past projects.")
         changelist_url = reverse("admin:projects_pastprojectssheetconfig_changelist")
@@ -102,9 +100,7 @@ class PastProjectsSheetConfigAdmin(BaseModelAdmin):
         return redirect(changelist_url)
 
     def save_sync_settings_view(self, request):
-        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-        # per-app access itself — otherwise a staff member without the projects app
-        # could change the auto-sync configuration here.
+        # Custom URL: re-check the ModelAdmin's permission hook before changing auto-sync.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to change sync settings.")
         changelist_url = reverse("admin:projects_pastprojectssheetconfig_changelist")

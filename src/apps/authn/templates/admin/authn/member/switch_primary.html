@@ -16,7 +16,7 @@
 <div class="max-w-4xl mx-auto py-8 px-4 text-sm text-font-default-light dark:text-font-default-dark">
     <h1 class="text-2xl font-bold mb-2">Switch primary email</h1>
     <p class="text-font-subtle-light dark:text-font-subtle-dark mb-6">
-        {{ member }} &middot; {% if member.is_active %}account active{% else %}account inactive{% endif %}{% if member.is_superuser %} &middot; I2G Master{% elif member.is_staff %} &middot; staff{% endif %}
+        {{ member }} &middot; {% if member.is_active %}account active{% else %}account inactive{% endif %}{% if member.is_staff %} &middot; Admin{% endif %}
     </p>
 
     {% if target %}

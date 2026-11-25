@@ -2,9 +2,9 @@
 
 - A category's default group and a response template's category are chosen among active ones, plus the one the row
   already has (so an unrelated save keeps a group or category switched off since); an inactive one is not chosen anew.
-- A group's members and manager are chosen among staff with the Helpdesk app, plus whoever the group already has:
-  someone who lost the app stays listed, marked "(no Helpdesk access)", so saving the group keeps them. Anyone else
-  without the app is refused.
+- A group's members and manager are chosen among active Admins, plus whoever the group already has: someone who is
+  no longer one (their account was switched off) stays listed, marked "(not an active Admin)", so saving the group
+  keeps them. Anyone else who is not an Admin is refused.
 - None of these fields offers the related-object buttons (add, change, delete, view): groups, categories and members
   are set up on their own pages. A form asked for other fields only is built without them."""
 
@@ -13,8 +13,10 @@ from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
+from apps.event.tests.helpers import make_member
+
 from ....models import AssignmentGroup, ResponseTemplate, TicketCategory
-from ...helpers import helpdesk_staff, make_admin, make_superuser
+from ...helpers import helpdesk_staff, make_admin
 
 RELATED_FLAGS = ("can_add_related", "can_change_related", "can_delete_related", "can_view_related")
 
@@ -116,10 +118,10 @@ class ActiveChoiceTests(_ChoicesCase):
 class GroupPeopleTests(_ChoicesCase):
     def setUp(self):
         super().setUp()
-        self.master = make_superuser(email="master@example.com")
-        # Still in the group (and its manager), without the Helpdesk app: it was taken away, or never given.
-        self.former = make_admin(apps=["mail"], email="fran@example.com", first_name="Fran", last_name="Former")
-        self.outsider = make_admin(apps=["mail"], email="oli@example.com", first_name="Oli", last_name="Outsider")
+        self.colleague = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
+        # Still in the group (and its manager), but no longer an active Admin: their account was switched off.
+        self.former = make_admin(email="fran@example.com", first_name="Fran", last_name="Former", is_active=False)
+        self.outsider = make_member(email="oli@example.com", first_name="Oli", last_name="Outsider")
         self.group = AssignmentGroup.objects.create(name="Events", manager=self.former)
         self.group.members.add(self.agent, self.former)
         self.url = reverse("admin:helpdesk_assignmentgroup_change", args=[self.group.pk])
@@ -136,22 +138,22 @@ class GroupPeopleTests(_ChoicesCase):
             **values,
         }
 
-    def test_helpdesk_staff_and_the_groups_own_people_are_offered_and_marked(self):
+    def test_admins_and_the_groups_own_people_are_offered_and_marked(self):
         page, form = self.page("assignmentgroup", self.group)
 
         for name in ("members", "manager"):
             with self.subTest(name):
                 field = form.fields[name]
-                self.assertEqual(set(field.queryset), {self.agent, self.master, self.former})
+                self.assertEqual(set(field.queryset), {self.agent, self.colleague, self.former})
                 self.assertEqual(field.label_from_instance(self.agent), "Avery Agent")
-                self.assertEqual(field.label_from_instance(self.former), "Fran Former (no Helpdesk access)")
-        self.assertContains(page, "Fran Former (no Helpdesk access)")
+                self.assertEqual(field.label_from_instance(self.former), "Fran Former (not an active Admin)")
+        self.assertContains(page, "Fran Former (not an active Admin)")
         self.assertNotContains(page, "Oli Outsider")
 
-    def test_a_new_group_offers_helpdesk_staff_only(self):
+    def test_a_new_group_offers_active_admins_only(self):
         _page, form = self.page("assignmentgroup")
 
-        self.assertEqual(set(form.fields["manager"].queryset), {self.agent, self.master})
+        self.assertEqual(set(form.fields["manager"].queryset), {self.agent, self.colleague})
 
     def test_saving_the_group_keeps_them(self):
         response = self.client.post(self.url, self.data())
@@ -161,7 +163,7 @@ class GroupPeopleTests(_ChoicesCase):
         self.assertEqual(set(self.group.members.all()), {self.agent, self.former})
         self.assertEqual((self.group.manager, self.group.description), (self.former, "Showcase questions"))
 
-    def test_someone_else_without_the_helpdesk_app_is_refused(self):
+    def test_someone_else_who_is_not_an_admin_is_refused(self):
         as_member = self.client.post(self.url, self.data(self.agent, self.former, self.outsider))
         as_manager = self.client.post(self.url, self.data(manager=str(self.outsider.pk)))
 

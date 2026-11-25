@@ -1,8 +1,8 @@
 """Emailing staff when a ticket is assigned to them, or to their group with nobody in it (ServiceNow's assignment
 notifications). Only while sending is allowed (shadow mode off) and ``notify_assignment`` is on; only for a person's
-ticket (not automated mail, spam or a merged ticket); never to the member who made the change; only to active staff
-who still have the Helpdesk app; never for an inactive group. Queued when the change commits, and judged again by
-the job when it runs (``notify_staff_job``): the timeline records the notice once it went out.
+ticket (not automated mail, spam or a merged ticket); never to the member who made the change; only to active
+Admins; never for an inactive group. Queued when the change commits, and judged again by the job when it runs
+(``notify_staff_job``): the timeline records the notice once it went out.
 
 A notice carries the ticket's number, subject (``compose.clean_subject``: no links, ticket numbers or reply prefixes),
 requester, priority and admin link, never the requester's message, and asks not to be answered: an answer would reach
@@ -12,7 +12,7 @@ the helpdesk mailbox as a ticket.
 from django.db import transaction
 
 from apps.core.services.background_jobs.delivery import provider_call_guard, provider_job_error
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_is_admin
 from apps.core.utils.security import is_plain_address
 
 from ...models import HelpdeskSettings, Ticket, TicketEvent
@@ -21,7 +21,7 @@ from . import compose, jobs
 
 
 def _address(member) -> str:
-    if member is None or not member.is_active or not user_can_access_app(member, "helpdesk"):
+    if member is None or not user_is_admin(member):
         return ""
     address = member.get_primary_email()
     return address if is_plain_address(address) else ""
@@ -80,7 +80,7 @@ def notify_staff_job(job) -> None:
     if not _due(ticket, HelpdeskSettings.load()):
         return
     reason = job.payload.get("reason")
-    # Still the people it was meant for (the assignment may have changed, a grant ended, the group been switched off).
+    # Still the people it was meant for (the assignment may have changed, an account stopped being an Admin, the group been switched off).
     still = set(_intended(ticket, reason))
     recipients = tuple(address for address in job.payload.get("recipients") or () if address in still)
     if not recipients:

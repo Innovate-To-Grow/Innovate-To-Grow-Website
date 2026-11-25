@@ -1,15 +1,17 @@
 from rest_framework.permissions import BasePermission
 
+from apps.core.utils.access import user_is_admin
+
 
 class IsActiveStaff(BasePermission):
-    """Allow only authenticated, active staff members.
+    """Allow only Admins (authenticated, active staff members).
 
-    There are no per-model Django permission checks on /admin-api/: staff status
-    is the gate, backed by the shared hard denylist.
+    There are no per-model Django permission checks on /admin-api/: every Admin
+    may use every model, so being an Admin is the gate, backed by the shared hard
+    denylist.
     """
 
-    message = "Active staff status is required."
+    message = "An active Admin account is required."
 
     def has_permission(self, request, view):
-        user = request.user
-        return bool(user and user.is_authenticated and user.is_active and user.is_staff)
+        return user_is_admin(request.user)

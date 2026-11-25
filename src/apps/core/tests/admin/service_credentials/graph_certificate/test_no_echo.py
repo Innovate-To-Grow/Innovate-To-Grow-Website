@@ -109,9 +109,9 @@ class NoEchoTests(CertificatePagesMixin, TestCase):
         self.assertIsNotNone(self.config.current_certificate)
         self.assert_clean(readable, *key_slices(data["private_key_text"]))
 
-    def test_a_core_staff_install_keeps_the_key_and_password_out_of_readable_state(self):
+    def test_another_admins_install_keeps_the_key_and_password_out_of_readable_state(self):
         self.client = APIClient()
-        self.client.force_login(make_admin(apps=["core"], email="core-no-echo@example.com"))
+        self.client.force_login(make_admin(email="other-admin-no-echo@example.com"))
         data = self.encrypted_pem_data()
 
         readable = self.submit(self.url("install_certificate"), data)

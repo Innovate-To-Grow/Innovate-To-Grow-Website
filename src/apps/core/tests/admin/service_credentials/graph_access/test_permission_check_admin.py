@@ -1,20 +1,22 @@
-""" "Check permissions" on the Graph config page: POST only, the Core app, the 30-second cooldown, the card it fills,
+""" "Check permissions" on the Graph config page: POST only, every Admin, the 30-second cooldown, the card it fills,
 and the warning when Message Trace is switched on while the token lacks its role."""
 
 from datetime import timedelta
+from unittest.mock import patch
 
 from django.contrib.admin.models import LogEntry
 from django.contrib.messages import get_messages
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
+from apps.core.admin.service_credentials.microsoft_graph.config import MicrosoftGraphProviderConfigAdmin
 from apps.core.admin.service_credentials.microsoft_graph.permissions import NO_CHECK_YET
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphPermissionCheck, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.access_check import permissions
 from apps.core.services.email.graph.transport import HttpResponse
 from apps.core.tests.admin.service_credentials.graph_config.test_graph_provider_guard import change_data
 from apps.core.tests.services.graph.tracing import TRACE_ROLE, TraceSetupMixin, token_response, token_with_roles
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin, make_member, make_superuser
 
 PREFIX = "admin:core_microsoftgraphproviderconfig"
 OIT_ROLES = ("Mail.ReadWrite", "Mail.Send")
@@ -57,16 +59,24 @@ class PermissionCheckAdminTests(TraceSetupMixin, TestCase):
         self.assertTrue(LogEntry.objects.filter(object_id=str(self.config.pk)).exists())
         self.assertFalse(MicrosoftGraphAccessCheck.objects.exists())
 
-    def test_core_staff_may_check_but_others_may_not(self):
-        self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
-        self.assertEqual(self.client.post(self.url).status_code, 302)
+    def test_any_admin_may_check_but_nobody_else(self):
+        self.client.force_login(make_admin(email="other-admin@example.com"))
+        response = self.client.post(self.url)
+        self.assertRedirects(response, f"{self.change_url}#graph-permissions", fetch_redirect_response=False)
         MicrosoftGraphPermissionCheck.objects.all().delete()
-        for apps in (("mail",), ()):
-            with self.subTest(apps=apps):
-                self.client.force_login(make_admin(apps=list(apps), email=f"s-{'-'.join(apps) or 'none'}@example.com"))
-                self.assertEqual(self.client.post(self.url).status_code, 403)
+        self.client.force_login(make_member(email="member@example.com"))
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
         self.client.logout()
         self.assertEqual(self.client.post(self.url).status_code, 302)
+        self.assertFalse(MicrosoftGraphPermissionCheck.objects.exists())
+
+    def test_it_follows_the_change_permission(self):
+        with patch.object(MicrosoftGraphProviderConfigAdmin, "has_change_permission", return_value=False):
+            response = self.client.post(self.url)
+
+        self.assertEqual(response.status_code, 403)
         self.assertFalse(MicrosoftGraphPermissionCheck.objects.exists())
 
     def test_a_second_check_within_thirty_seconds_is_refused(self):

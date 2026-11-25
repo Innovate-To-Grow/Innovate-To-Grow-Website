@@ -61,7 +61,7 @@ class StalePageTests(PageCase):
     def test_its_move_button_says_who_moved_it_meanwhile_and_that_the_edits_were_saved(self):
         ticket, events = automated(), TicketCategory.objects.create(name="Events")
         shown = self.shown(ticket)
-        blake = make_admin(apps=["helpdesk"], email="blake@example.com", first_name="Blake", last_name="Agent")
+        blake = make_admin(email="blake@example.com", first_name="Blake", last_name="Agent")
         tickets.move_to_queue([ticket], actor=blake)
 
         response = self.client.post(change_url(ticket), {**shown, "category": str(events.pk), BUTTON: ""})

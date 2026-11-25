@@ -1,8 +1,8 @@
 """Helpdesk → Assignment Groups, Categories and Response Templates: how tickets are worked, ServiceNow style (SLA
 targets are in ``sla_targets``).
 
-Names are unique whatever their case. Group members and managers are chosen among staff who have the Helpdesk app;
-someone who lost it stays listed (marked) until removed by hand, so an unrelated save never drops them. A category's
+Names are unique whatever their case. Group members and managers are chosen among active Admins;
+someone who is no longer one stays listed (marked) until removed by hand, so an unrelated save never drops them. A category's
 default group and a template's category are chosen among active ones. A group or category that tickets still use is
 switched off, not deleted (the delete page lists what uses it). Groups, categories and members are set up here, not
 from a ticket's page, so the related-object buttons are not offered.
@@ -110,7 +110,7 @@ class AssignmentGroupAdmin(InUseMixin, BaseModelAdmin):
             if field is not None:
                 field.queryset = people
                 field.label_from_instance = lambda member: (
-                    str(member) if member.pk in staff else f"{member} (no Helpdesk access)"
+                    str(member) if member.pk in staff else f"{member} (not an active Admin)"
                 )
         no_related_buttons(form, "manager", "members")
         return form

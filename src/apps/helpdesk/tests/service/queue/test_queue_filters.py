@@ -101,8 +101,8 @@ class GroupFilterTests(QueueCase):
 
 class ColumnTests(QueueCase):
     def test_the_list_shows_who_has_the_ticket_and_not_when_it_was_created(self):
-        kim = make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee")
-        nameless = make_admin(apps=["helpdesk"], email="nameless@example.com", first_name="", last_name="")
+        kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
+        nameless = make_admin(email="nameless@example.com", first_name="", last_name="")
         assigned = new_ticket(subject="assigned", assignee=kim)
         unnamed = new_ticket(subject="unnamed", assignee=nameless)
         unassigned = new_ticket(subject="unassigned")

@@ -7,33 +7,32 @@ from django.test import SimpleTestCase
 
 from apps.system_intelligence.services.bedrock.models.catalog import (
     MODEL_CACHE_KEY,
-    fetch_inference_profiles,
     fetch_models_from_aws,
     get_available_model_ids,
     get_available_models,
     is_available_bedrock_model_id,
     normalize_bedrock_model_id,
 )
-from apps.system_intelligence.services.bedrock.models.discovery import (
-    fetch_foundation_models,
-    profile_base_model_ids,
-    provider_from_id,
-)
+from apps.system_intelligence.services.bedrock.models.discovery import fetch_foundation_models
+
+
+def inference_profile(profile_id, model_arn, **overrides):
+    return {
+        "type": "SYSTEM_DEFINED",
+        "status": "ACTIVE",
+        "inferenceProfileId": profile_id,
+        "models": [{"modelArn": model_arn}],
+        **overrides,
+    }
 
 
 class FetchFoundationModelsTest(SimpleTestCase):
-    def test_groups_models_by_provider(self):
+    def test_indexes_on_demand_text_models_by_id(self):
         mgmt = MagicMock()
-        mgmt.list_foundation_models.return_value = {
-            "modelSummaries": [
-                {"modelId": "anthropic.claude", "providerName": "Anthropic", "modelName": "Claude"},
-                {"modelId": "amazon.titan"},  # missing provider/name -> defaults
-            ]
-        }
-        result = fetch_foundation_models(mgmt)
-        self.assertEqual(result["Anthropic"], [("anthropic.claude", "Claude")])
-        # Missing providerName defaults to "Other"; missing modelName defaults to modelId.
-        self.assertEqual(result["Other"], [("amazon.titan", "amazon.titan")])
+        model = {"modelId": "future.model", "providerName": "Future AI", "modelName": "Future Model"}
+        mgmt.list_foundation_models.return_value = {"modelSummaries": [model]}
+        self.assertEqual(fetch_foundation_models(mgmt), {"future.model": model})
+        mgmt.list_foundation_models.assert_called_once_with(byOutputModality="TEXT", byInferenceType="ON_DEMAND")
 
     def test_swallows_aws_failure(self):
         mgmt = MagicMock()
@@ -42,29 +41,6 @@ class FetchFoundationModelsTest(SimpleTestCase):
             result = fetch_foundation_models(mgmt)
         self.assertEqual(result, {})
         warn.assert_called_once_with("list_foundation_models failed")
-
-
-class ProfileBaseModelIdsTest(SimpleTestCase):
-    def test_extracts_base_ids_from_short_prefix(self):
-        profiles = {"Anthropic": [("us.anthropic.claude-v2", "Claude")]}
-        # "us" prefix (<=3 chars) -> base id is the remainder.
-        self.assertEqual(profile_base_model_ids(profiles), {"anthropic.claude-v2"})
-
-    def test_ignores_long_prefixes(self):
-        profiles = {"P": [("anthropic.claude", "Claude")]}
-        # "anthropic" prefix is >3 chars, so no base id is extracted.
-        self.assertEqual(profile_base_model_ids(profiles), set())
-
-
-class ProviderFromIdTest(SimpleTestCase):
-    def test_known_provider_with_region_prefix(self):
-        self.assertEqual(provider_from_id("us.anthropic.claude-v2"), "Anthropic")
-
-    def test_known_provider_without_prefix(self):
-        self.assertEqual(provider_from_id("amazon.titan"), "Amazon")
-
-    def test_unknown_provider_titlecased(self):
-        self.assertEqual(provider_from_id("acme.model"), "Acme")
 
 
 class NormalizeModelIdTest(SimpleTestCase):
@@ -78,89 +54,91 @@ class NormalizeModelIdTest(SimpleTestCase):
         self.assertEqual(normalize_bedrock_model_id(None), "")
 
 
-class FetchInferenceProfilesTest(SimpleTestCase):
-    def test_collects_system_defined_profiles(self):
-        mgmt = MagicMock()
-        paginator = MagicMock()
-        paginator.paginate.return_value = [
-            {
-                "inferenceProfileSummaries": [
-                    {
-                        "type": "SYSTEM_DEFINED",
-                        "inferenceProfileId": "us.anthropic.claude-v2",
-                        "inferenceProfileName": "Claude",
-                    },
-                    {"type": "APPLICATION", "inferenceProfileId": "skip.me"},
-                ]
-            }
-        ]
-        mgmt.get_paginator.return_value = paginator
-        result = fetch_inference_profiles(mgmt)
-        self.assertEqual(result["Anthropic"], [("us.anthropic.claude-v2", "Claude")])
-
-    def test_swallows_paginator_failure(self):
-        mgmt = MagicMock()
-        mgmt.get_paginator.side_effect = RuntimeError("no access")
-        with patch("apps.system_intelligence.services.bedrock.models.catalog.logger.warning") as warn:
-            result = fetch_inference_profiles(mgmt)
-        self.assertEqual(result, {})
-        warn.assert_called_once()
-
-
 class FetchModelsFromAwsTest(SimpleTestCase):
-    def test_empty_when_no_providers(self):
-        with (
-            patch("apps.system_intelligence.services.bedrock.models.catalog.get_management_client"),
-            patch("apps.system_intelligence.services.bedrock.models.catalog.fetch_inference_profiles", return_value={}),
-            patch("apps.system_intelligence.services.bedrock.models.catalog.fetch_foundation_models", return_value={}),
-        ):
-            self.assertEqual(fetch_models_from_aws(), [])
+    def setUp(self):
+        self.mgmt = MagicMock()
+        self.mgmt.list_foundation_models.return_value = {"modelSummaries": []}
+        self.paginate = self.mgmt.get_paginator.return_value.paginate
+        self.paginate.return_value = []
+        self.enterContext(
+            patch(
+                "apps.system_intelligence.services.bedrock.models.catalog.get_management_client", return_value=self.mgmt
+            )
+        )
 
-    def test_merges_profiles_and_foundation_models(self):
-        profiles = {"Anthropic": [("us.anthropic.claude-v2", "Claude Profile")]}
-        # foundation model with the same base id should be skipped; a new one added.
-        fms = {
-            "Anthropic": [
-                ("anthropic.claude-v2", "Claude FM"),  # base id already in profiles -> skipped
-                ("anthropic.claude-haiku", "Haiku"),  # new -> kept
+    def test_empty_when_no_providers(self):
+        self.assertEqual(fetch_models_from_aws(), [])
+
+    def test_uses_aws_provider_for_global_profile_and_deduplicates_base_model(self):
+        self.mgmt.list_foundation_models.return_value = {
+            "modelSummaries": [
+                {"modelId": "future.model", "providerName": "Future AI", "modelName": "Base Model"},
+                {"modelId": "future.other", "providerName": "Future AI", "modelName": "Another Model"},
             ]
         }
-        with (
-            patch("apps.system_intelligence.services.bedrock.models.catalog.get_management_client"),
-            patch(
-                "apps.system_intelligence.services.bedrock.models.catalog.fetch_inference_profiles",
-                return_value=profiles,
-            ),
-            patch(
-                "apps.system_intelligence.services.bedrock.models.catalog.fetch_foundation_models",
-                return_value=fms,
-            ),
-        ):
-            grouped = fetch_models_from_aws()
-        self.assertEqual(len(grouped), 1)
-        provider, models = grouped[0]
-        self.assertEqual(provider, "Anthropic")
-        model_ids = {mid for mid, _ in models}
-        self.assertIn("us.anthropic.claude-v2", model_ids)
-        self.assertIn("anthropic.claude-haiku", model_ids)
-        self.assertNotIn("anthropic.claude-v2", model_ids)  # skipped as base of profile
+        model_arn = "arn:aws:bedrock:us-west-2::foundation-model/future.model"
+        self.paginate.return_value = [
+            {"inferenceProfileSummaries": [inference_profile("application-profile", model_arn, type="APPLICATION")]},
+            {
+                "inferenceProfileSummaries": [
+                    inference_profile("inactive-profile", model_arn, status="INACTIVE"),
+                    inference_profile("global.future.model", model_arn, inferenceProfileName="Global Model"),
+                ]
+            },
+        ]
+        self.assertEqual(
+            fetch_models_from_aws(),
+            [("Future AI", [("future.other", "Another Model"), ("global.future.model", "Global Model")])],
+        )
+        self.paginate.assert_called_once_with(typeEquals="SYSTEM_DEFINED")
+        self.mgmt.get_foundation_model.assert_not_called()
 
-    def test_skips_provider_with_no_models(self):
-        # Provider exists only in foundation models but all are filtered out
-        # (cannot happen via dedupe here) — instead test an empty provider list.
-        with (
-            patch("apps.system_intelligence.services.bedrock.models.catalog.get_management_client"),
-            patch(
-                "apps.system_intelligence.services.bedrock.models.catalog.fetch_inference_profiles",
-                return_value={"Empty": []},
-            ),
-            patch(
-                "apps.system_intelligence.services.bedrock.models.catalog.fetch_foundation_models",
-                return_value={"Empty": []},
-            ),
-        ):
-            grouped = fetch_models_from_aws()
-        self.assertEqual(grouped, [])
+    def test_fetches_profile_only_model_details_once_across_pages(self):
+        primary_arn = "arn:aws:bedrock:us-west-2::foundation-model/newvendor.model:0"
+        secondary_arn = "arn:aws:bedrock:us-east-2::foundation-model/newvendor.model:0"
+        self.paginate.return_value = [
+            {
+                "inferenceProfileSummaries": [
+                    inference_profile("global.newvendor.model", primary_arn, inferenceProfileName="Global")
+                ]
+            },
+            {
+                "inferenceProfileSummaries": [
+                    inference_profile("us.newvendor.model", secondary_arn, inferenceProfileName="US")
+                ]
+            },
+        ]
+        self.mgmt.get_foundation_model.return_value = {
+            "modelDetails": {"providerName": "New Vendor", "outputModalities": ["TEXT"]}
+        }
+        self.assertEqual(
+            fetch_models_from_aws(),
+            [("New Vendor", [("global.newvendor.model", "Global"), ("us.newvendor.model", "US")])],
+        )
+        self.mgmt.get_foundation_model.assert_called_once_with(modelIdentifier=primary_arn)
+
+    def test_excludes_known_non_text_profile(self):
+        model_arn = "arn:aws:bedrock:us-west-2::foundation-model/future.image"
+        self.paginate.return_value = [
+            {"inferenceProfileSummaries": [inference_profile("global.future.image", model_arn)]}
+        ]
+        self.mgmt.get_foundation_model.return_value = {"modelDetails": {"outputModalities": ["IMAGE"]}}
+        self.assertEqual(fetch_models_from_aws(), [])
+
+    def test_falls_back_to_other_when_profile_details_unavailable(self):
+        model_arn = "arn:aws:bedrock:us-west-2::foundation-model/future.model"
+        self.paginate.return_value = [
+            {"inferenceProfileSummaries": [inference_profile("global.future.model", model_arn)]}
+        ]
+        self.mgmt.get_foundation_model.side_effect = RuntimeError("no access")
+        with self.assertLogs("apps.system_intelligence.services.bedrock.models.discovery", level="WARNING"):
+            self.assertEqual(fetch_models_from_aws(), [("Other", [("global.future.model", "global.future.model")])])
+
+    def test_keeps_foundation_models_when_profiles_unavailable(self):
+        self.mgmt.list_foundation_models.return_value = {"modelSummaries": [{"modelId": "future.model"}]}
+        self.paginate.side_effect = RuntimeError("no access")
+        with self.assertLogs("apps.system_intelligence.services.bedrock.models.discovery", level="WARNING"):
+            self.assertEqual(fetch_models_from_aws(), [("Other", [("future.model", "future.model")])])
 
 
 class GetAvailableModelsCacheTest(SimpleTestCase):

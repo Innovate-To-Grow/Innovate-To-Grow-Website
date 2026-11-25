@@ -1,16 +1,17 @@
-"""The ticket page's reply form (offered only while sending is allowed), the reply view (queues the reply, needs the
-Helpdesk grant), the response-template prefill, and the SLA displays."""
+"""The ticket page's reply form (offered only while sending is allowed), the reply view (queues the reply, Admins
+only), the response-template prefill, and the SLA displays."""
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.core.models import BackgroundJob
+from apps.event.tests.helpers import make_member
 
 from ....models import ResponseTemplate, Ticket, TicketCategory, TicketMessage
 from ....services.outbound import jobs
 from ... import corpus
-from ...helpers import FakeReader, helpdesk_staff, make_admin, receive
+from ...helpers import FakeReader, helpdesk_staff, receive
 from ...helpers.service import Status, sending_settings
 
 
@@ -148,13 +149,14 @@ class ReplyViewTests(ReplyPageTestCase):
 
         self.assertFalse(self.replies().exists())
 
-    def test_the_helpdesk_grant_is_required(self):
+    def test_only_an_admin_may_reply(self):
         sending_settings()
-        self.client.force_login(make_admin(apps=["mail"], email="mailer@example.com"))
+        self.client.force_login(make_member(email="member@example.com"))
 
         response = self.post()
 
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
         self.assertFalse(self.replies().exists())
 
     def test_only_a_post_and_only_for_a_ticket_that_exists(self):

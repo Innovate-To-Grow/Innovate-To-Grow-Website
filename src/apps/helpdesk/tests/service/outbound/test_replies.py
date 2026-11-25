@@ -28,7 +28,7 @@ class CanReplyTests(TestCase):
                 "shadow mode",
                 new_ticket(),
                 HelpdeskSettings(shadow_mode=True),
-                "Shadow mode is on: nothing is sent from the helpdesk. An I2G Master can switch it off in Helpdesk → "
+                "Shadow mode is on: nothing is sent from the helpdesk. An Admin can switch it off in Helpdesk → "
                 "Settings.",
             ),
             ("merged", new_ticket(status=Status.MERGED), self.settings, "This ticket was merged"),

@@ -1,4 +1,4 @@
-"""Helpdesk → Settings, the form an I2G Master saves (``admin.intake.sending.SettingsForm``): the settings carry the
+"""Helpdesk → Settings, the form an Admin saves (``admin.intake.sending.SettingsForm``): the settings carry the
 labels of ``LABELS``; the acknowledgement text is stored with LF line ends (a browser posts a textarea with CRLF) and
 may use only the known placeholders ({ticket}, and {requester_name} or {subject}, which lose any link)."""
 
@@ -11,7 +11,7 @@ from django.urls import reverse
 from ....admin.intake.sending import LABELS
 from ....models import HelpdeskSettings
 from ....models.settings import DEFAULT_ACKNOWLEDGEMENT
-from ...helpers import make_superuser
+from ...helpers import helpdesk_staff
 
 USE = "Use {ticket} (and {requester_name} or {subject}, which lose any link)."
 CHANGE_SESSION_KEY = "_admin_pending_change_helpdesk_helpdesksettings"
@@ -21,8 +21,8 @@ CHANGE_SESSION_KEY = "_admin_pending_change_helpdesk_helpdesksettings"
 class SettingsFormTests(TestCase):
     def setUp(self):
         cache.clear()
-        self.master = make_superuser(email="master@example.com")
-        self.client.force_login(self.master)
+        self.admin = helpdesk_staff()
+        self.client.force_login(self.admin)
         self.row = HelpdeskSettings.objects.create()
         self.url = reverse("admin:helpdesk_helpdesksettings_change", args=[self.row.pk])
 
@@ -37,7 +37,7 @@ class SettingsFormTests(TestCase):
 
     def bound_form(self, data):
         request = RequestFactory().post(self.url)
-        request.user = self.master
+        request.user = self.admin
         return admin.site._registry[HelpdeskSettings].get_form(request, self.row, change=True)(data, instance=self.row)
 
     def test_the_settings_carry_their_labels(self):

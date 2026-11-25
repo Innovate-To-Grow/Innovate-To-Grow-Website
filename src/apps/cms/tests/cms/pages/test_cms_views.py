@@ -117,9 +117,8 @@ class CMSPagePreviewModeTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = make_admin(apps=["cms"], email="cms-preview@example.com")
+        self.staff = make_admin(email="cms-preview@example.com")
         self.regular = User.objects.create_user(password="pass")
-        self.non_cms_staff = make_admin(apps=["event"], email="event-preview@example.com")
 
     def test_preview_mode_shows_draft_for_staff(self):
         _make_page("draft-preview", "/draft-preview", status="draft")
@@ -143,13 +142,6 @@ class CMSPagePreviewModeTests(TestCase):
         _make_page("regular-preview", "/regular-preview", status="draft")
         self.client.force_authenticate(self.regular)
         resp = self.client.get("/cms/pages/regular-preview/?preview=true")
-        self.assertEqual(resp.status_code, 404)
-
-    def test_preview_mode_ignored_for_non_cms_staff(self):
-        """Staff scoped to a different app cannot see drafts via preview mode."""
-        _make_page("noncms-preview", "/noncms-preview", status="draft")
-        self.client.force_authenticate(self.non_cms_staff)
-        resp = self.client.get("/cms/pages/noncms-preview/?preview=true")
         self.assertEqual(resp.status_code, 404)
 
     def test_preview_mode_does_not_cache(self):

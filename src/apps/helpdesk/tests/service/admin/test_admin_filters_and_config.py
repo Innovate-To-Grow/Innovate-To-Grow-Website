@@ -9,10 +9,12 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.event.tests.helpers import make_member
+
 from ....admin.intake.sla_targets import _duration
 from ....admin.tickets.filters import _DefaultChoiceFilter
 from ....models import AssignmentGroup, ResponseTemplate, SLATarget, Ticket
-from ...helpers import helpdesk_staff, make_admin, make_superuser
+from ...helpers import helpdesk_staff
 from ...helpers.service import Status, clocked_ticket, new_ticket
 
 HOUR = timedelta(hours=1)
@@ -90,7 +92,7 @@ class ConfigAdminTests(TestCase):
     def test_assignment_groups_list_and_add(self):
         group = AssignmentGroup.objects.create(name="Events", description="Showcase questions")
         group.members.add(self.agent)
-        make_admin(apps=["event"], email="events@example.com")
+        make_member(email="member@example.com")
 
         listing = self.client.get(reverse("admin:helpdesk_assignmentgroup_changelist"))
         add = self.client.get(reverse("admin:helpdesk_assignmentgroup_add"))
@@ -99,7 +101,7 @@ class ConfigAdminTests(TestCase):
         self.assertEqual(listing.context["cl"].result_list[0].member_total, 1)
         self.assertEqual(add.status_code, 200)
         members = add.context["adminform"].form.fields["members"].queryset
-        self.assertEqual(list(members), [self.agent])  # only staff with the Helpdesk app
+        self.assertEqual(list(members), [self.agent])  # only active Admins
 
     def test_sla_targets_list_change_and_cannot_be_deleted(self):
         target = SLATarget.objects.get(priority="urgent")
@@ -118,7 +120,6 @@ class ConfigAdminTests(TestCase):
 
     def test_a_new_sla_target_picks_its_priority_from_the_list(self):
         SLATarget.objects.filter(priority="low").delete()
-        self.client.force_login(make_superuser(email="master@example.com"))  # targets are an I2G Master's
 
         add = self.client.get(reverse("admin:helpdesk_slatarget_add"))
         response = self.client.post(

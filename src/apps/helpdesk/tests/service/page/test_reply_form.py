@@ -18,7 +18,7 @@ from .support import PageCase, change_url
 
 BODY = "The showcase starts at 10."
 BAD_CC = '"bad@" in Cc is not a plain email address (use name@example.com, separated by commas).'
-SHADOW = "Shadow mode is on: nothing is sent from the helpdesk. An I2G Master can switch it off in Helpdesk → Settings."
+SHADOW = "Shadow mode is on: nothing is sent from the helpdesk. An Admin can switch it off in Helpdesk → Settings."
 
 
 @override_settings(BACKGROUND_JOBS_ENABLED=True)
@@ -114,7 +114,7 @@ class ReplyFormTests(PageCase):
         self.assertEqual(self.json_script(page, "helpdesk-reply-templates"), offered)
 
     def test_the_form_helpers_handed_to_the_script(self):
-        kim = make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee")
+        kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
         events = AssignmentGroup.objects.create(name="Events")
         events.members.add(kim, self.agent)
         nobody = AssignmentGroup.objects.create(name="Nobody yet", is_active=False)

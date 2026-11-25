@@ -1,8 +1,7 @@
 from apps.authn.models import ContactEmail, Member
-from apps.authn.services.members.import_.review.analysis.choices import NEEDS_NAMES, NO_CHANGE_PERMISSION, PRIVILEGED
+from apps.authn.services.members.import_.review.analysis.choices import NEEDS_NAMES, NO_CHANGE_PERMISSION
 from apps.authn.tests.services.members.import_.conflicts.test_conflicts_matched import (
     UUID_HEADERS,
-    not_privileged,
     options,
     uuid_row,
 )
@@ -63,15 +62,16 @@ class UnlinkedAddressTests(ImportTestCase):
         self.assertTrue(all(item["enabled"] for item in analysis.options))
 
     def test_attaching_needs_permission(self):
-        sam = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
+        sam = self.member("Sam", "Admin", "sam@example.com", is_staff=True)
         cells_row = row("loose@example.com", Secondary_Email="sam@example.com", **self.lin)
 
         refused = self.analyse_one(cells_row, can_update=False)
-        not_master = self.analyse_one(cells_row, can_manage=not_privileged)
+        allowed = self.analyse_one(cells_row)
 
         self.assertEqual(options(refused)[f"attach_to:{sam.pk}"]["reason"], NO_CHANGE_PERMISSION)
         self.assertTrue(options(refused)[self.claim]["enabled"])
-        self.assertEqual(options(not_master)[f"attach_to:{sam.pk}"]["reason"], PRIVILEGED)
+        # An Admin account is offered like any other member.
+        self.assertTrue(options(allowed)[f"attach_to:{sam.pk}"]["enabled"])
 
     def test_a_member_uuid_offers_its_member_and_blocks_a_new_member(self):
         """C8 also when the Member UUID names a member: "attach to" it is offered, "create a new member" is not."""

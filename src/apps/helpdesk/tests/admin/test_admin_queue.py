@@ -1,4 +1,4 @@
-"""Helpdesk → Queue: who may open it (the Helpdesk grant), the default view (people's open tickets; automated mail
+"""Helpdesk → Queue: who may open it (every Admin), the default view (people's open tickets; automated mail
 hidden), the filters and search, the bulk actions (merge and spam behind a typed confirmation), and the sidebar."""
 
 from django.contrib.admin import helpers
@@ -7,11 +7,12 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from apps.event.tests.helpers import make_member
 from config.settings.base.integrations.admin import navigation
 
 from ...models import Ticket, TicketEvent
 from ...services.tickets import numbering
-from ..helpers import helpdesk_staff, make_admin, make_superuser
+from ..helpers import helpdesk_staff, make_admin
 
 Status = Ticket.Status
 CHANGELIST = "admin:helpdesk_ticket_changelist"
@@ -48,8 +49,8 @@ class QueueTestCase(TestCase):
 
 
 class AccessTests(QueueTestCase):
-    def test_staff_without_the_helpdesk_grant_get_403_everywhere(self):
-        self.client.force_login(make_admin(apps=["mail"], email="mailer@example.com"))
+    def test_members_who_are_not_admins_are_sent_to_the_login_page_everywhere(self):
+        self.client.force_login(make_member(email="member@example.com"))
         urls = [
             reverse(CHANGELIST),
             reverse("admin:helpdesk_ticket_change", args=[self.open.pk]),
@@ -59,27 +60,28 @@ class AccessTests(QueueTestCase):
         ]
         for url in urls:
             with self.subTest(url):
-                self.assertEqual(self.client.get(url).status_code, 403)
+                response = self.client.get(url)
+                self.assertEqual(response.status_code, 302)
+                self.assertIn("/login/", response["Location"])
         note = self.client.post(reverse("admin:helpdesk_ticket_note", args=[self.open.pk]), {"body": "x"})
-        self.assertEqual(note.status_code, 403)
+        self.assertIn("/login/", note["Location"])
         self.assertFalse(self.open.messages.exists())
 
-    def test_the_grant_shows_the_helpdesk_and_superusers_always_see_it(self):
+    def test_every_admin_opens_the_queue(self):
         self.assertEqual(self.client.get(reverse(CHANGELIST)).status_code, 200)
-        self.client.force_login(make_superuser(email="master@example.com"))
+        self.client.force_login(make_admin(email="other-admin@example.com"))
         self.assertEqual(self.client.get(reverse(CHANGELIST)).status_code, 200)
 
-    def test_tickets_are_never_added_by_hand_and_deleted_only_by_a_master(self):
+    def test_tickets_are_never_added_by_hand_and_any_admin_may_delete_one(self):
         self.assertEqual(self.client.get(reverse("admin:helpdesk_ticket_add")).status_code, 403)
         delete = reverse("admin:helpdesk_ticket_delete", args=[self.open.pk])
-        self.assertEqual(self.client.get(delete).status_code, 403)
-        self.client.force_login(make_superuser(email="master@example.com"))
         self.assertEqual(self.client.get(delete).status_code, 200)
+        response = self.client.get(reverse(CHANGELIST))
+        self.assertIn("delete_selected", dict(response.context["action_form"].fields["action"].choices))
 
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
     def test_deleting_a_ticket_still_needs_the_typed_confirmation(self):
         # Only the ticket page's save skips it: a delete takes the messages, files and audit trail with it.
-        self.client.force_login(make_superuser(email="master@example.com"))
 
         response = self.client.post(reverse("admin:helpdesk_ticket_delete", args=[self.open.pk]), {"post": "yes"})
 
@@ -147,12 +149,8 @@ class ListTests(QueueTestCase):
 
 class _ActionCase(QueueTestCase):
     def act(self, action, *tickets, follow=False):
-        data = {
-            "action": action,
-            "index": "0",
-            "select_across": "0",
-            helpers.ACTION_CHECKBOX_NAME: [str(item.pk) for item in tickets],
-        }
+        data = {"action": action, "index": "0", "select_across": "0"}
+        data[helpers.ACTION_CHECKBOX_NAME] = [str(item.pk) for item in tickets]
         # The changelist form posts back to the view it shows (its filters in the query string): here, everything.
         return self.client.post(f"{reverse(CHANGELIST)}?mail=all&status=any", data, follow=follow)
 
@@ -190,10 +188,10 @@ class SidebarTests(TestCase):
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?mail=all&status=any"), ["Queue"])
         self.assertEqual(self.active_items("/admin/helpdesk/ingestrecord/"), [])
 
-    def test_the_section_needs_the_helpdesk_grant(self):
+    def test_the_section_is_shown_to_admins_only(self):
         section = next(item for item in navigation.SIDEBAR["navigation"] if item["title"] == "Helpdesk")
         request = RequestFactory().get("/admin/")
-        request.user = make_admin(apps=["mail"], email="mailer@example.com")
+        request.user = make_member(email="member@example.com")
         self.assertFalse(section["permission"](request))
         request.user = helpdesk_staff()
         self.assertTrue(section["permission"](request))

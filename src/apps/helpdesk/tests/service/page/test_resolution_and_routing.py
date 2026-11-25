@@ -13,7 +13,7 @@ from unfold.widgets import UnfoldAdminTextareaWidget
 
 from ....models import AssignmentGroup, Ticket, TicketCategory
 from ....services import tickets
-from ...helpers import make_admin, make_superuser
+from ...helpers import make_admin
 from ...helpers.service import Status, new_ticket
 from .support import PageCase
 
@@ -36,7 +36,7 @@ class ResolutionTests(PageCase):
     def test_a_ticket_resolved_while_the_page_was_open_stays_resolved_with_its_code(self):
         ticket = new_ticket(status=Status.OPEN)
         shown = self.shown(ticket)  # In progress, no code
-        tickets.resolve([ticket], actor=make_admin(apps=["helpdesk"], email="kim@example.com"), code="solved")
+        tickets.resolve([ticket], actor=make_admin(email="kim@example.com"), code="solved")
 
         self.assertEqual(self.save(ticket, shown, urgency="1").status_code, 302)
 
@@ -103,7 +103,7 @@ class RoutingTests(PageCase):
 
     def test_the_page_says_who_is_not_a_member(self):
         group = AssignmentGroup.objects.create(name="Events")
-        group.members.add(make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee"))
+        group.members.add(make_admin(email="kim@example.com", first_name="Kim", last_name="Lee"))
 
         response = self.save(new_ticket(status=Status.OPEN), assignment_group=group, assignee=self.agent)
 
@@ -131,8 +131,6 @@ class RoutingTests(PageCase):
         self.assertEqual(Ticket.objects.get(pk=ticket.pk).assignment_group, retired)
 
     def test_no_related_object_buttons_beside_category_group_and_assignee(self):
-        self.client.force_login(make_superuser(email="master@example.com"))  # who may add, change or delete any of them
-
         response = self.page(new_ticket(category=TicketCategory.objects.create(name="Registration")))
 
         form = self.form(response)

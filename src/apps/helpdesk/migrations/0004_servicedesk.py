@@ -105,7 +105,7 @@ class Migration(migrations.Migration):
             field=models.TextField(
                 db_default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nInnovate to Grow, UC Merced",
                 default="Hello,\n\nThank you for contacting Innovate to Grow. We have received your message and opened ticket {ticket}. A member of our team will get back to you soon.\n\nInnovate to Grow, UC Merced",
-                help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link removed). Only an I2G Master can change it.",
+                help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link removed).",
             ),
         ),
         migrations.AddField(
@@ -136,7 +136,7 @@ class Migration(migrations.Migration):
             field=models.BooleanField(
                 db_default=False,
                 default=False,
-                help_text="Email the requester when their message opens a new ticket: only when its sender passed DMARC, never for automated mail, spam, backfilled mail, or a message that asks for no automatic reply; at most one per address a day and 200 a day in all. Needs shadow mode off. Only an I2G Master can change it.",
+                help_text="Email the requester when their message opens a new ticket: only when its sender passed DMARC, never for automated mail, spam, backfilled mail, or a message that asks for no automatic reply; at most one per address a day and 200 a day in all. Needs shadow mode off.",
             ),
         ),
         migrations.AddField(
@@ -412,7 +412,7 @@ class Migration(migrations.Migration):
                     "members",
                     models.ManyToManyField(
                         blank=True,
-                        help_text="Staff who work this group's tickets (they need the Helpdesk app). They are notified when a ticket is assigned to the group with nobody in it, while sending is on.",
+                        help_text="Staff who work this group's tickets (they must be active Admins). They are notified when a ticket is assigned to the group with nobody in it, while sending is on.",
                         related_name="helpdesk_groups",
                         to=settings.AUTH_USER_MODEL,
                     ),

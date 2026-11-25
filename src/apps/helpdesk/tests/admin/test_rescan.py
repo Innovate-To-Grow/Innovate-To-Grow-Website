@@ -103,7 +103,7 @@ class DecouplingTests(IntakeAdminTestCase):
 
     def setUp(self):
         super().setUp()
-        self.client.force_login(make_admin(apps=["mail"], email="mailer@example.com"))
+        self.client.force_login(make_admin(email="mailer@example.com"))
         self.bounce_url = reverse("admin:mail_email_monitoring_bounce_processing")
 
     def test_the_bounce_cards_controls_never_change_the_intake(self):

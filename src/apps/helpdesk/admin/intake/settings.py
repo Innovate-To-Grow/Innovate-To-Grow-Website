@@ -2,9 +2,8 @@
 groups and Response templates are in ``service_desk``, SLA targets in ``sla_targets``).
 
 Shadow mode is a switch here: on (the default), nothing is sent; off, staff reply from the ticket page and the
-acknowledgement and assignment notifications are sent when switched on. Only an I2G Master (superuser) can change
-these sending switches and the acknowledgement's text (``sending``); others see them read-only, with the reason. Every
-change is in the admin history and the log. Above the form sits the intake card (its controls are in ``intake``).
+acknowledgement and assignment notifications are sent when switched on (their labels and the acknowledgement text's
+checks are in ``sending``). Every Admin changes them. Every change is in the admin history and the log. Above the form sits the intake card (its controls are in ``intake``).
 Saving the settings switched on restarts the intake and wakes the ingest, so mail that arrived while the helpdesk was
 off is read and imported.
 """

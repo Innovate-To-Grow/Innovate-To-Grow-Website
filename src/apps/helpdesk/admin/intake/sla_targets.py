@@ -1,7 +1,6 @@
 """Helpdesk → SLA Targets: one row per priority, in order of severity, with the first-response and resolution times.
 
-Targets are policy (ServiceNow keeps SLA definitions to its administrators): Helpdesk staff see them, only an I2G
-Master changes them, so a desk cannot loosen its own targets. A target is switched off rather than deleted (a missing
+Every Admin sees and changes them. A target is switched off rather than deleted (a missing
 row and an inactive one both mean "no SLA" for new tickets of that priority), and a priority's row is created only
 when it has none (the migration creates all four). A change applies to new tickets and to priority changes, not to
 clocks already running.
@@ -20,11 +19,6 @@ MINUTES_HELP = (
     "In minutes (60 = 1 hour, 1440 = 1 day); calendar time, not business hours. A change applies to new tickets and to "
     "priority changes, not to clocks already running."
 )
-MASTER_ONLY = "Only an I2G Master changes SLA targets: a desk cannot loosen its own targets."
-
-
-def _is_master(request) -> bool:
-    return bool(getattr(request.user, "is_superuser", False))
 
 
 def _duration(minutes: int) -> str:
@@ -51,15 +45,10 @@ class SLATargetAdmin(BaseModelAdmin):
         return [name for name in super().get_list_display(request) if name != "created_at"]
 
     def get_fieldsets(self, request, obj=None):
-        if not _is_master(request):
-            fields = ("priority_label", "response_display", "resolution_display", "is_active")
-            return ((None, {"description": MASTER_ONLY, "fields": fields}),)
         first = "priority_label" if obj is not None else "priority"
         return ((None, {"fields": (first, "response_minutes", "resolution_minutes", "is_active")}),)
 
     def get_readonly_fields(self, request, obj=None):
-        if not _is_master(request):
-            return ("priority_label", "response_display", "resolution_display", "is_active")
         return ("priority_label",) if obj is not None else ()
 
     def formfield_for_dbfield(self, db_field, request, **kwargs):
@@ -91,10 +80,7 @@ class SLATargetAdmin(BaseModelAdmin):
         return _duration(obj.resolution_minutes)
 
     def has_add_permission(self, request):
-        return bool(_missing()) and _is_master(request) and super().has_add_permission(request)
-
-    def has_change_permission(self, request, obj=None):
-        return _is_master(request) and super().has_change_permission(request, obj)
+        return bool(_missing()) and super().has_add_permission(request)
 
     def has_delete_permission(self, request, obj=None):
         return False  # switch a target off instead: a missing row and an inactive one both mean "no SLA"

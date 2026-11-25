@@ -3,11 +3,16 @@
 import logging
 
 from django.contrib import admin, messages
-from django.http import HttpResponseRedirect
+from django.contrib.admin.utils import unquote
+from django.db import IntegrityError
+from django.http import Http404, HttpResponseNotAllowed, HttpResponseRedirect
+from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.decorators import method_decorator
 from django.utils.html import format_html, format_html_join
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.csrf import csrf_protect
 from unfold.decorators import action, display
 
 from apps.core.admin.common.base import BaseModelAdmin
@@ -33,6 +38,7 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
     )
     list_filter = ("is_active", "public_assistant_enabled")
     search_fields = ("name",)
+    list_select_related = ("default_provider",)
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config"]
     fieldsets = (
@@ -40,9 +46,9 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
         (
             _("Model Settings"),
             {
-                "fields": ("default_model_id", "temperature", "max_tokens"),
-                "description": "Amazon Bedrock model and generation parameters. "
-                "Model choices are fetched using the active AWS Credential Config.",
+                "fields": ("default_provider", "default_model_id", "temperature", "max_tokens"),
+                "description": "Default provider (blank = Amazon Bedrock via the active AWS Credential Config; "
+                "other providers are managed under AI Providers), model and generation parameters.",
             },
         ),
         (_("System Prompt"), {"fields": ("system_prompt",)}),
@@ -53,6 +59,7 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
                 "never reaches the admin assistant, tools, or private data.",
                 "fields": (
                     "public_assistant_enabled",
+                    "public_assistant_provider",
                     "public_assistant_model_id",
                     "public_assistant_system_prompt",
                     "public_assistant_welcome_message",
@@ -121,6 +128,8 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
     def default_model_display(self, obj):
         if not obj.default_model_id:
             return "—"
+        if obj.default_provider_id:
+            return f"{obj.default_provider.name} · {obj.default_model_id}"
         try:
             from apps.system_intelligence.services.bedrock import get_available_models
 
@@ -141,15 +150,34 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
             )
         return obj.default_model_id
 
-    @action(description="Activate this config", url_path="activate", icon="check_circle")
+    @action(description="Activate this config", url_path="activate", icon="check_circle", permissions=["change"])
+    @method_decorator(csrf_protect)
     def activate_this_config(self, request, object_id):
-        obj = SystemIntelligenceConfig.objects.get(pk=object_id)
+        if request.method not in {"GET", "POST"}:
+            return HttpResponseNotAllowed(["GET", "POST"])
+        obj = self.get_object(request, unquote(str(object_id)))
+        if obj is None:
+            raise Http404("Configuration not found.")
+        change_url = reverse("admin:system_intelligence_systemintelligenceconfig_change", args=[obj.pk])
+        if request.method == "GET":
+            return TemplateResponse(
+                request,
+                "admin/system_intelligence/confirm_activation.html",
+                {
+                    **self.admin_site.each_context(request),
+                    "title": "Activate System Intelligence configuration",
+                    "configuration": obj,
+                    "change_url": change_url,
+                },
+            )
         obj.is_active = True
-        obj.save()
+        try:
+            obj.save(update_fields=["is_active", "updated_at"])
+        except IntegrityError:
+            messages.error(request, "Another configuration was activated at the same time. Try again.")
+            return HttpResponseRedirect(change_url)
         messages.success(request, f'"{obj.name}" is now the active System Intelligence config.')
-        return HttpResponseRedirect(
-            reverse("admin:system_intelligence_systemintelligenceconfig_change", args=[object_id])
-        )
+        return HttpResponseRedirect(change_url)
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:

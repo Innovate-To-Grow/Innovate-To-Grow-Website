@@ -75,7 +75,7 @@ class CMSPageView(APIView):
     rate_limit_scope = "public-read"
 
     permission_classes = [AllowAny]
-    # ``?preview=true`` shows a draft to a member with cms access, so a valid token is honoured; a stale one is anonymous.
+    # ``?preview=true`` shows a draft to an Admin, so a valid token is honoured; a stale one is anonymous.
     authentication_classes = [SoftJWTAuthentication]
 
     # noinspection PyMethodMayBeStatic

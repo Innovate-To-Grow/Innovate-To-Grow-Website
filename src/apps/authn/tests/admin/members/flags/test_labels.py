@@ -20,9 +20,7 @@ class AccountActiveLabelTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.master = Member.objects.create_superuser(password="StrongPass123!", first_name="Ada", last_name="Master")
-        cls.helper = Member.objects.create_user(
-            first_name="Hal", last_name="Helper", is_active=True, is_staff=True, admin_apps=["authn"]
-        )
+        cls.helper = Member.objects.create_user(first_name="Hal", last_name="Helper", is_active=True, is_staff=True)
         cls.staffer = Member.objects.create_user(first_name="Sam", last_name="Staff", is_active=True, is_staff=True)
         cls.jane = Member.objects.create_user(first_name="Jane", last_name="Doe", is_active=True)
         ContactEmail.objects.create(member=cls.jane, email_address="jane@example.com", verified=True)
@@ -51,20 +49,31 @@ class AccountActiveLabelTests(TestCase):
             str(name): options for name, options in model_admin.get_fieldsets(response.wsgi_request, self.jane)
         }
         self.assertEqual(fieldsets["Account"]["fields"], ("is_active", "registration_pending"))
-        self.assertNotIn("is_active", fieldsets["Permissions"]["fields"])
+        self.assertEqual(fieldsets["Admin access"]["fields"], ("is_staff",))
         self.assertContains(response, "Account active")
         self.assertContains(response, "Unfinished sign-up")
         self.assertContains(response, "Mark undeliverable")
 
-    def test_the_read_only_flag_on_a_staff_account_is_labelled_too(self):
+    def test_the_read_only_flags_on_your_own_page_are_labelled_too(self):
+        self.client.force_login(self.helper)
+
+        response = self.client.get(reverse("admin:authn_member_change", args=[self.helper.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("is_active", response.context["adminform"].readonly_fields)
+        self.assertIn("is_staff", response.context["adminform"].readonly_fields)
+        self.assertContains(response, "Account active")
+        self.assertContains(response, "not the tool for a bounced address")
+        self.assertContains(response, "All Admins have the same permissions.")
+
+    def test_another_admins_flags_are_editable(self):
         self.client.force_login(self.helper)
 
         response = self.client.get(reverse("admin:authn_member_change", args=[self.staffer.pk]))
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("is_active", response.context["adminform"].readonly_fields)
-        self.assertContains(response, "Account active")
-        self.assertContains(response, "not the tool for a bounced address")
+        self.assertNotIn("is_active", response.context["adminform"].readonly_fields)
+        self.assertContains(response, 'name="is_active"')
+        self.assertContains(response, 'name="is_staff"')
 
     def test_the_add_page_says_account_active(self):
         self.assertContains(self.client.get(reverse("admin:authn_member_add")), "Account active")

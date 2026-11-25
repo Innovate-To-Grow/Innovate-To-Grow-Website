@@ -1,8 +1,8 @@
 """The helpdesk's admin-editable settings (one row; ``load()`` returns the defaults while none is saved).
 
-Every limit and retention period is a field with a documented default (docs/integrations/messaging/helpdesk.md), so staff
-with the Helpdesk grant can tune them without a deploy. ``shadow_mode`` is on by default: nothing is sent (no replies,
-acknowledgements or notifications) until an I2G Master switches it off here; the mailbox is only ever read.
+Every limit and retention period is a field with a documented default (docs/integrations/messaging/helpdesk.md), so any
+Admin can tune them without a deploy. ``shadow_mode`` is on by default: nothing is sent (no replies, acknowledgements
+or notifications) until an Admin switches it off here; the mailbox is only ever read.
 """
 
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -50,13 +50,13 @@ class HelpdeskSettings(ProjectControlModel):
         db_default=False,
         help_text="Email the requester when their message opens a new ticket: only when its sender passed DMARC, never "
         "for automated mail, spam, backfilled mail, or a message that asks for no automatic reply; at most one per "
-        "address a day and 200 a day in all. Needs shadow mode off. Only an I2G Master can change it.",
+        "address a day and 200 a day in all. Needs shadow mode off.",
     )
     acknowledgement_text = models.TextField(
         default=DEFAULT_ACKNOWLEDGEMENT,
         db_default=DEFAULT_ACKNOWLEDGEMENT,
         help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link "
-        "removed). Only an I2G Master can change it.",
+        "removed).",
     )
     notify_assignment = models.BooleanField(
         default=True,

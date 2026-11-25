@@ -26,7 +26,7 @@ MOVE = (
 class SLAPanelTests(PageCase):
     def test_a_refused_save_shows_the_clocks_of_the_saved_ticket(self):
         group = AssignmentGroup.objects.create(name="Events")
-        group.members.add(make_admin(apps=["helpdesk"], email="kim@example.com"))
+        group.members.add(make_admin(email="kim@example.com"))
         ticket = clocked_ticket()  # New: both clocks run
 
         response = self.save(

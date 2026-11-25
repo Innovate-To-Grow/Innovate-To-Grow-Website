@@ -75,13 +75,13 @@ def stop_content_block(current_block, tool_use_input_buf):
     return {"text": current_block.get("text", "")}
 
 
-def stream_tool_results(content_blocks, round_num):
+def stream_tool_results(content_blocks, round_num, *, user=None):
     for block in content_blocks:
         if "toolUse" not in block:
             continue
         tool_info = block["toolUse"]
         logger.info("Stream tool call round %d: %s", round_num, tool_info.get("name"))
-        result_text = execute_tool(tool_info)
+        result_text = execute_tool(tool_info, user=user)
         yield (
             {
                 "type": "tool_call",

@@ -29,7 +29,7 @@ def issue(member):
 
 
 def links_on(**values):
-    """The settings form with links in SMS and personal sign-in links on, as the I2G Master posts it."""
+    """The settings form with links in SMS and personal sign-in links on, as an Admin posts it."""
     return settings_form(links_enabled="on", personal_links_enabled="on", **values)
 
 
@@ -50,7 +50,7 @@ class SwitchTestCase(TestCase):
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False, FRONTEND_URL="https://i2g.example.edu")
 class SwitchOffInTheAdminTests(SwitchTestCase):
-    def test_the_i2g_master_turning_personal_links_off_revokes_them_and_is_told_how_many(self):
+    def test_an_admin_turning_personal_links_off_revokes_them_and_is_told_how_many(self):
         admin = make_superuser()
         self.client.force_login(admin)
 
@@ -69,15 +69,15 @@ class SwitchOffInTheAdminTests(SwitchTestCase):
         self.assert_revoked()
         self.assertEqual(SmsLinkRevocation.objects.count(), 1)
 
-    def test_mail_staff_turning_links_in_sms_off_revokes_them_too(self):
-        staff = make_admin(apps=["mail"], email="mail@example.com")
+    def test_turning_links_in_sms_off_revokes_them_too(self):
+        staff = make_admin(email="mail@example.com")
         self.client.force_login(staff)
 
-        self.client.post(self.change_url, settings_form())
+        self.client.post(self.change_url, settings_form(personal_links_enabled="on"))
 
         config = SmsConfig.load()
         self.assertFalse(config.links_enabled)
-        self.assertTrue(config.personal_links_enabled)  # read only for them, unchanged
+        self.assertTrue(config.personal_links_enabled)
         revocation = SmsLinkRevocation.objects.get()
         self.assertEqual((revocation.reason, revocation.actor, revocation.revoked_count), (Reason.LINKS_OFF, staff, 1))
         self.assertIn("mail@example.com", revocation.actor_label)

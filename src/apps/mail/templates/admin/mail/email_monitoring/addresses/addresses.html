@@ -23,12 +23,10 @@
     <a class="i2g-monitor-button" href="{% url 'admin:mail_email_monitoring_addresses_export' %}{% if filter_query %}?{{ filter_query }}&amp;{% else %}?{% endif %}sort={{ listing.sort }}&amp;dir={% if listing.descending %}desc{% else %}asc{% endif %}">
       <span class="material-symbols-outlined" aria-hidden="true">download</span>Export these rows (.xlsx)
     </a>
-    {% if can_rebuild %}
     <form method="post" action="{% url 'admin:mail_email_monitoring_addresses_rebuild' %}">
       {% csrf_token %}
       <button type="submit" class="i2g-monitor-button"><span class="material-symbols-outlined" aria-hidden="true">restart_alt</span>Rebuild counts…</button>
     </form>
-    {% endif %}
   </div>
 </section>
 

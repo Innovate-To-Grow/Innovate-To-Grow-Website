@@ -1,7 +1,7 @@
 """Assignment notices end to end: never queued for automated mail, spam or a merged ticket, nor for an inactive
 group. When the job runs it judges everything again (the notify switch, shadow mode, the ticket, and whether each
-recipient is still one it is meant for: the current assignee, or a member of the current active group who has the
-Helpdesk grant), and the timeline records a notice only once it went out. An outsider's link never reaches a notice.
+recipient is still one it is meant for: the current assignee, or a member of the current active group who is still an
+active Admin), and the timeline records a notice only once it went out. An outsider's link never reaches a notice.
 No provider is reached: the email facade's ``deliver_email`` is patched."""
 
 from unittest.mock import patch
@@ -32,7 +32,7 @@ class NoticeFlowTests(TestCase):
         cache.clear()
         sending_settings()
         self.lead = helpdesk_staff("lead@example.com")
-        self.kim = make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee")
+        self.kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
         self.ticket = new_ticket(subject="Judging")
 
     def update(self, ticket=None, **changes):
@@ -103,7 +103,7 @@ class NoticeFlowTests(TestCase):
         self.assertEqual(self.notified(), [])
 
     def test_a_notice_goes_only_to_the_assignee_it_is_still_meant_for(self):
-        sam = make_admin(apps=["helpdesk"], email="sam@example.com", first_name="Sam", last_name="Diaz")
+        sam = make_admin(email="sam@example.com", first_name="Sam", last_name="Diaz")
         self.update(assignee=self.kim)
         self.update(assignee=sam)  # reassigned before the first notice went out
 
@@ -112,21 +112,21 @@ class NoticeFlowTests(TestCase):
         self.assertEqual([email.to for email in emails], [("sam@example.com",)])
         self.assertEqual(self.notified(), [{"reason": "assigned", "count": 1}])
 
-    def test_an_assignee_who_lost_the_helpdesk_grant_gets_nothing(self):
+    def test_an_assignee_who_is_no_longer_an_admin_gets_nothing(self):
         self.update(assignee=self.kim)
-        Member.objects.filter(pk=self.kim.pk).update(admin_apps=["event"])
+        Member.objects.filter(pk=self.kim.pk).update(is_staff=False)
 
         self.assertEqual(self.send(self.claim_queued()), [])
         self.assertEqual(self.notified(), [])
 
-    def test_a_group_notice_skips_members_who_left_the_group_or_lost_the_grant(self):
-        third = make_admin(apps=["helpdesk"], email="third@example.com")
-        gone = make_admin(apps=["helpdesk"], email="gone@example.com")
+    def test_a_group_notice_skips_members_who_left_the_group_or_are_no_longer_admins(self):
+        third = make_admin(email="third@example.com")
+        gone = make_admin(email="gone@example.com")
         group = AssignmentGroup.objects.create(name="Events")
         group.members.add(self.kim, third, gone)
         self.update(assignment_group=group)
         group.members.remove(gone)
-        Member.objects.filter(pk=third.pk).update(admin_apps=[])
+        Member.objects.filter(pk=third.pk).update(is_active=False)
 
         (email,) = self.send(self.claim_queued())
 

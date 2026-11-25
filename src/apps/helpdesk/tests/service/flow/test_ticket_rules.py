@@ -37,7 +37,7 @@ class _RuleCase(TestCase):
     def setUp(self):
         cache.clear()
         self.agent = helpdesk_staff()
-        self.kim = make_admin(apps=["helpdesk"], email="kim@example.com", first_name="Kim", last_name="Lee")
+        self.kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
         self.events = AssignmentGroup.objects.create(name="Events")
         self.events.members.add(self.kim)
 

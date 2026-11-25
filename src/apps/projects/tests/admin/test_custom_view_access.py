@@ -1,82 +1,84 @@
-"""Per-app access gating for the projects app's custom admin views.
+"""Access to the projects app's custom admin views.
 
-``admin_site.admin_view`` only enforces is_staff/is_active — Django never runs the
-per-app permission model (apps.core.utils.access.user_can_access_app) for these standalone
-URLs. Each custom view therefore re-checks ``has_change_permission`` at entry. These
-tests exercise the real URLs through the test client: a staff member without the
-``projects`` grant gets HTTP 403 (Django renders PermissionDenied as a 403 response),
-while a superuser is allowed through.
+Each URL is wrapped in ``admin_site.admin_view``, so a regular member is redirected to the admin login before the view
+runs and nothing happens. Each view also re-checks the ModelAdmin's ``has_change_permission`` itself (defence in depth),
+which is exercised by calling the view directly with a non-Admin request. Every Admin is allowed through.
 """
 
 from unittest.mock import patch
 
+from django.contrib import admin
 from django.core.cache import cache
-from django.test import TestCase
+from django.core.exceptions import PermissionDenied
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from apps.event.tests.helpers import make_admin, make_superuser
-from apps.projects.models import PastProjectsSheetConfig
+from apps.event.tests.helpers import make_admin, make_member
+from apps.projects.models import PastProjectsSheetConfig, Semester
 from apps.projects.services.sheet_sync import PastProjectSyncStats
 
 _SYNC_PATH = "apps.projects.admin.past_projects_sheet_config.sync_past_projects"
 
 
-class ProjectsCustomAdminViewAccessTest(TestCase):
-    """A grant-less staff member must be 403'd on every custom projects admin URL."""
+class ProjectsCustomAdminViewNonAdminTest(TestCase):
+    """A regular member is redirected to the login page on every custom projects admin URL."""
 
     def setUp(self):
         cache.clear()
-        # Staff member with NO admin_apps grant — must not reach any projects view.
-        make_admin(apps=[], email="nogrant@example.com")
-        self.client.login(username="nogrant@example.com", password="testpass123")
+        make_member(email="plain@example.com")
+        self.client.login(username="plain@example.com", password="testpass123")
 
     def tearDown(self):
         cache.clear()
 
-    def test_pull_view_denied(self):
-        url = reverse("admin:projects_pastprojectssheetconfig_pull")
-        self.assertEqual(self.client.post(url).status_code, 403)
+    def assertSentToLogin(self, response):
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
 
-    def test_save_sync_settings_view_denied_get(self):
-        url = reverse("admin:projects_pastprojectssheetconfig_save_sync_settings")
-        self.assertEqual(self.client.get(url).status_code, 403)
+    def test_every_custom_url_redirects_to_the_login(self):
+        cases = [
+            ("get", "admin:projects_pastprojectssheetconfig_save_sync_settings", {}),
+            ("post", "admin:projects_pastprojectssheetconfig_save_sync_settings", {"sync_interval_minutes": "60"}),
+            ("get", "admin:projects_publish_all", {}),
+            ("post", "admin:projects_publish_all", {"confirmation_text": "publish all"}),
+            ("get", "admin:projects_import_csv", {}),
+            ("post", "admin:projects_import_csv", {"dry_run": "1"}),
+        ]
+        for method, name, data in cases:
+            with self.subTest(method=method, url=name):
+                self.assertSentToLogin(getattr(self.client, method)(reverse(name), data))
 
-    def test_save_sync_settings_view_denied_post(self):
-        url = reverse("admin:projects_pastprojectssheetconfig_save_sync_settings")
-        self.assertEqual(self.client.post(url, {"sync_interval_minutes": "60"}).status_code, 403)
-
-    def test_publish_all_view_denied_get(self):
-        url = reverse("admin:projects_publish_all")
-        self.assertEqual(self.client.get(url).status_code, 403)
-
-    def test_publish_all_view_denied_post(self):
-        url = reverse("admin:projects_publish_all")
-        self.assertEqual(self.client.post(url, {"confirmation_text": "publish all"}).status_code, 403)
-
-    def test_import_csv_view_denied_get(self):
-        # GET renders the import form — it must be 403'd too, not just the POST.
-        url = reverse("admin:projects_import_csv")
-        self.assertEqual(self.client.get(url).status_code, 403)
-
-    def test_import_csv_view_denied_post(self):
-        url = reverse("admin:projects_import_csv")
-        self.assertEqual(self.client.post(url, {"dry_run": "1"}).status_code, 403)
-
-    def test_pull_view_denied_before_side_effect(self):
-        # The guard must fire before any sync runs even when a config exists.
+    def test_pull_view_redirects_before_any_side_effect(self):
         PastProjectsSheetConfig.objects.create(name="Prod", is_active=True)
-        url = reverse("admin:projects_pastprojectssheetconfig_pull")
+        Semester.objects.create(year=2025, season=1, is_published=False)
         with patch(_SYNC_PATH) as mock_sync:
-            self.assertEqual(self.client.post(url).status_code, 403)
+            self.assertSentToLogin(self.client.post(reverse("admin:projects_pastprojectssheetconfig_pull")))
         mock_sync.assert_not_called()
+        self.client.post(reverse("admin:projects_publish_all"), {"confirmation_text": "publish all"})
+        self.assertFalse(Semester.objects.filter(is_published=True).exists())
+
+    def test_the_views_refuse_a_non_admin_even_when_called_directly(self):
+        request = RequestFactory().post("/")
+        request.user = make_member(email="direct@example.com")
+        config_admin = admin.site._registry[PastProjectsSheetConfig]
+        semester_admin = admin.site._registry[Semester]
+        views = [
+            config_admin.pull_view,
+            config_admin.save_sync_settings_view,
+            semester_admin.publish_all_view,
+            semester_admin.import_csv_view,
+        ]
+        for view in views:
+            with self.subTest(view=view.__name__), self.assertRaises(PermissionDenied):
+                view(request)
 
 
-class ProjectsGrantedStaffCustomAdminViewAccessTest(TestCase):
-    """A staff member WITH the projects grant is allowed through every custom view."""
+class ProjectsAdminCustomAdminViewAccessTest(TestCase):
+    """Any Admin is allowed through every custom view."""
 
     def setUp(self):
         cache.clear()
-        make_admin(apps=["projects"], email="projadmin@example.com")
+        make_admin(email="projadmin@example.com")
         self.client.login(username="projadmin@example.com", password="testpass123")
 
     def tearDown(self):
@@ -85,48 +87,31 @@ class ProjectsGrantedStaffCustomAdminViewAccessTest(TestCase):
     def test_pull_view_allowed(self):
         PastProjectsSheetConfig.objects.create(name="Prod", is_active=True)
         url = reverse("admin:projects_pastprojectssheetconfig_pull")
-        with patch(
-            _SYNC_PATH,
-            return_value=PastProjectSyncStats(
-                rows_read=1,
-                projects_created=1,
-                projects_updated=0,
-                projects_deleted=0,
-                semesters_touched=1,
-                rows_skipped=0,
-            ),
-        ):
-            self.assertNotEqual(self.client.post(url).status_code, 403)
+        stats = PastProjectSyncStats(
+            rows_read=1,
+            projects_created=1,
+            projects_updated=0,
+            projects_deleted=0,
+            semesters_touched=1,
+            rows_skipped=0,
+        )
+        with patch(_SYNC_PATH, return_value=stats) as mock_sync:
+            response = self.client.post(url)
+        self.assertRedirects(response, reverse("admin:projects_pastprojectssheetconfig_changelist"))
+        mock_sync.assert_called_once()
 
     def test_save_sync_settings_view_allowed(self):
         PastProjectsSheetConfig.objects.create(name="Prod", is_active=True)
         url = reverse("admin:projects_pastprojectssheetconfig_save_sync_settings")
-        self.assertNotEqual(self.client.post(url, {"sync_interval_minutes": "60"}).status_code, 403)
+        self.client.post(url, {"sync_interval_minutes": "60"})
+        self.assertEqual(PastProjectsSheetConfig.objects.get().sync_interval_minutes, 60)
 
     def test_publish_all_view_allowed(self):
+        Semester.objects.create(year=2025, season=1, is_published=False)
         url = reverse("admin:projects_publish_all")
-        self.assertNotEqual(self.client.post(url, {"confirmation_text": "publish all"}).status_code, 403)
+        self.client.post(url, {"confirmation_text": "publish all"})
+        self.assertTrue(Semester.objects.get().is_published)
 
     def test_import_csv_view_allowed(self):
         url = reverse("admin:projects_import_csv")
-        self.assertNotEqual(self.client.get(url).status_code, 403)
-
-
-class ProjectsSuperuserCustomAdminViewAccessTest(TestCase):
-    """The I2G Master (superuser) bypasses the per-app list and is allowed through."""
-
-    def setUp(self):
-        cache.clear()
-        make_superuser(email="master@example.com")
-        self.client.login(username="master@example.com", password="testpass123")
-
-    def tearDown(self):
-        cache.clear()
-
-    def test_publish_all_view_allowed(self):
-        url = reverse("admin:projects_publish_all")
-        self.assertNotEqual(self.client.post(url, {"confirmation_text": "publish all"}).status_code, 403)
-
-    def test_import_csv_view_allowed(self):
-        url = reverse("admin:projects_import_csv")
-        self.assertNotEqual(self.client.get(url).status_code, 403)
+        self.assertEqual(self.client.get(url).status_code, 200)
