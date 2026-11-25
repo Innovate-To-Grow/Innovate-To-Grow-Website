@@ -61,6 +61,10 @@ class SafetyTests(TestCase):
 
     def test_is_field_denied_branches(self):
         self.assertTrue(is_field_denied(Member._meta.get_field("is_staff"), write=True))  # denied name
+        # is_staff is full Admin power and is_superuser mirrors it: neither is readable or writable here.
+        for name in ("is_staff", "is_superuser"):
+            self.assertTrue(is_field_denied(Member._meta.get_field(name), write=False))
+            self.assertTrue(is_field_denied(Member._meta.get_field(name), write=True))
         self.assertTrue(is_field_denied(Member._meta.get_field("password"), write=True))  # sensitive regex
         self.assertTrue(is_field_denied(Semester._meta.get_field("id"), write=True))  # pk on write
         self.assertTrue(is_field_denied(Semester._meta.get_field("updated_at"), write=True))  # auto_now

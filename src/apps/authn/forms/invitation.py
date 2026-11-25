@@ -1,5 +1,5 @@
 """
-Form for accepting an admin invitation and creating a staff/superuser account.
+Form for accepting an admin invitation and creating an Admin account.
 """
 
 from django import forms

@@ -77,11 +77,11 @@ synchronization is configured.
 
 Returns the short-lived cached editor payload to the live-preview iframe.
 Reading an existing cached payload is anonymous. When the cache is empty, only
-a user with CMS app access may fall back to the current database page;
+an Admin (an active `is_staff` session) may fall back to the current database page;
 anonymous cache misses return 404, so draft database content is not exposed.
 
-`POST` to the same endpoint replaces the cached editor payload and requires CMS
-app access.
+`POST` to the same endpoint replaces the cached editor payload and requires an
+Admin session (otherwise 403 "Admin access is required.").
 
 ### `GET /cms/preview/{token}/`
 

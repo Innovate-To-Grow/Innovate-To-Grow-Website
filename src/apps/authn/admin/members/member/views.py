@@ -49,12 +49,9 @@ class MemberAdminViewsMixin:
         """Stream a member's stored profile image so the change form never inlines it.
 
         ``profile_image`` holds a base64 ``data:`` URI in a TextField; rendering it inside an
-        ``<img src>`` made the change page grow with the image and truncate mid-form. Like every other
-        custom admin URL here, ``admin_site.admin_view`` only enforces ``is_staff``, so re-check
-        per-app access.
+        ``<img src>`` made the change page grow with the image and truncate mid-form. Like every custom
+        admin URL here it is wrapped in ``admin_site.admin_view``, which admits active Admins only.
         """
-        if not self.has_view_permission(request):
-            raise PermissionDenied("You do not have permission to view members.")
         member = self.get_object(request, unquote(str(object_id)))
         if member is None or not member.profile_image:
             raise Http404("This member has no profile image.")
@@ -73,14 +70,8 @@ class MemberAdminViewsMixin:
         return response
 
     def impersonate_view(self, request, object_id):
-        # ``admin_site.admin_view`` only enforces is_staff, so this custom URL must
-        # re-check authorization itself (Django never runs the per-app model
-        # permissions for a standalone admin view). Require authn-app access, and
-        # never let a non-superuser account be impersonated into a privileged one:
-        # impersonation is an end-user support tool, and minting a token for a
-        # staff/superuser account would be a privilege-escalation vector.
-        if not self.has_change_permission(request):
-            raise PermissionDenied("You do not have permission to impersonate members.")
+        # ``admin_site.admin_view`` admits active Admins only. Impersonation is an end-user
+        # support tool: an Admin account is never impersonated, by any Admin.
         # POST-only: minting a token is a state change, and on GET Django performs no CSRF check,
         # so a cross-site navigation could make an admin issue (and burn) impersonation credentials.
         if request.method != "POST":
@@ -90,8 +81,8 @@ class MemberAdminViewsMixin:
         member = self.get_object(request, unquote(str(object_id)))
         if member is None:
             raise Http404("No member matches the given query.")
-        if member.is_staff or member.is_superuser:
-            raise PermissionDenied("Staff and superuser accounts cannot be impersonated.")
+        if member.is_staff:
+            raise PermissionDenied("Admin accounts cannot be impersonated.")
         token = ImpersonationToken.generate_token()
         ImpersonationToken.objects.create(token=token, member=member, created_by=request.user)
         logger.info("Administrator %s began impersonating member %s", request.user.id, member.id)

@@ -18,8 +18,10 @@ class WhoAmIView(AdminAPIView):
                 "email": member.get_primary_email(),
                 "is_staff": member.is_staff,
                 "is_active": member.is_active,
-                "is_superuser": member.is_superuser,
-                "admin_apps": list(member.admin_apps or []),
+                # Deprecated compatibility key: there is one Admin role, so it always equals is_staff. CLI clients
+                # released since 2026-08-05 show every app only when it is true. Computed, not read from the
+                # mirrored column.
+                "is_superuser": bool(member.is_staff),
                 "token_expires_at": token.expires_at.isoformat(),
             }
         )

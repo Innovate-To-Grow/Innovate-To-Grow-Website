@@ -119,7 +119,6 @@ class MemberChangeFormClearImageTests(TestCase):
             clear_name: "on",
             "is_active": "on",
             "is_staff": "",
-            "is_superuser": "",
             "groups": [],
             "user_permissions": [],
             "last_login": "",

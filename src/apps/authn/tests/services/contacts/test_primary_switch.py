@@ -125,7 +125,6 @@ class SwitchPrimaryEmailTests(TestCase):
         seen = fingerprint(self.jane, member_emails(self.jane))
         variants = [
             {"is_staff": True},
-            {"is_superuser": True},
             {"is_active": False},
         ]
         for change in variants:

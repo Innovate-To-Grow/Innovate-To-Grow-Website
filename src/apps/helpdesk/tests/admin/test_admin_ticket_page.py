@@ -6,6 +6,8 @@ from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from apps.event.tests.helpers import make_member
+
 from ...models import Ticket, TicketAttachment, TicketEvent, TicketMessage
 from .. import corpus
 from ..helpers import FakeReader, helpdesk_staff, make_admin, receive
@@ -110,8 +112,8 @@ class SaveTests(TicketPageTestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.participants, ["pat@example.org", "new@example.org"])
 
-    def test_an_assignee_who_lost_the_grant_still_lets_the_page_save(self):
-        former = make_admin(apps=["mail"], email="former@example.com")
+    def test_an_assignee_who_is_no_longer_an_admin_still_lets_the_page_save(self):
+        former = make_member(email="former@example.com")
         Ticket.objects.filter(pk=self.ticket.pk).update(assignee=former, requester_name="")
 
         page = self.client.get(self.url)
@@ -124,8 +126,9 @@ class SaveTests(TicketPageTestCase):
         self.ticket.refresh_from_db()
         self.assertEqual((self.ticket.status, self.ticket.assignee), (Status.OPEN, former))
 
-    def test_only_helpdesk_staff_can_be_chosen_as_assignee(self):
-        outsider = make_admin(apps=["mail"], email="mailer@example.com")
+    def test_only_admins_can_be_chosen_as_assignee(self):
+        outsider = make_member(email="member@example.com")
+        colleague = make_admin(email="colleague@example.com")
 
         response = self.client.post(
             self.url, {"status": Status.OPEN, "priority": "normal", "category": "", "assignee": str(outsider.pk)}
@@ -133,6 +136,12 @@ class SaveTests(TicketPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("assignee", response.context["adminform"].form.errors)
+        response = self.client.post(
+            self.url, {"status": Status.OPEN, "priority": "normal", "category": "", "assignee": str(colleague.pk)}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.assignee, colleague)
 
 
 class NoteTests(TicketPageTestCase):

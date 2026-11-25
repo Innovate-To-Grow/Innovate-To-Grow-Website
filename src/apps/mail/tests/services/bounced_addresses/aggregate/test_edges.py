@@ -118,7 +118,7 @@ class DisplayEdgeTests(TestCase):
 class RefusalEdgeTests(TestCase):
     def setUp(self):
         cache.clear()
-        self.master = make_superuser()
+        self.admin_user = make_superuser()
 
     def test_a_refusal_from_make_contact_email_primary_is_shown(self):
         member = make_person("old@example.org")
@@ -129,7 +129,7 @@ class RefusalEdgeTests(TestCase):
         with patch(target, side_effect=AuthChallengeInvalid("Contact email not found.")):
             for action in (Action.MAKE_PRIMARY, Action.DELETE_EMAIL):
                 with self.subTest(action=action), self.assertRaises(ActionRefused):
-                    apply(self.master, row, action, new_primary=str(verified.pk), confirm="old@example.org")
+                    apply(self.admin_user, row, action, new_primary=str(verified.pk), confirm="old@example.org")
 
     def test_an_account_protected_by_other_records_is_not_deleted(self):
         member = make_person("kept@example.org")
@@ -140,7 +140,7 @@ class RefusalEdgeTests(TestCase):
             "apps.mail.services.email_monitoring.addresses.actions.handlers.deletion_summary", return_value=protected
         ):
             with self.assertRaisesMessage(ActionRefused, "deactivate it instead"):
-                apply(self.master, row, Action.DELETE_ACCOUNT, confirm="kept@example.org")
+                apply(self.admin_user, row, Action.DELETE_ACCOUNT, confirm="kept@example.org")
 
         member.refresh_from_db()
         self.assertTrue(member.is_active)
@@ -163,6 +163,6 @@ class RefusalEdgeTests(TestCase):
             with self.subTest(exc=type(exc).__name__):
                 with patch.dict(actions.APPLY, {Action.UNSUBSCRIBE: conflicting(exc)}):
                     with self.assertRaisesMessage(ActionRefused, message):
-                        apply(self.master, row, Action.UNSUBSCRIBE)
+                        apply(self.admin_user, row, Action.UNSUBSCRIBE)
                 row.refresh_from_db()
                 self.assertEqual(row.status, BouncedAddress.Status.OPEN)

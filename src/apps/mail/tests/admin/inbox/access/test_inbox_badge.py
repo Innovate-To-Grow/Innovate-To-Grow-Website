@@ -1,4 +1,4 @@
-"""The sidebar badge of Mail -> Inbox: the poller's unread count, for staff who may open the inbox only."""
+"""The sidebar badge of Mail -> Inbox: the poller's unread count, for Admins only."""
 
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 from django.utils import timezone
 
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin
 from apps.mail.admin.inbox.badge import inbox_unread_badge
 from apps.mail.models import InboxAccountState
 from apps.mail.tests.services.inbox.accounts.helpers import UniversalInboxMixin, gmail_account
@@ -27,7 +27,7 @@ class InboxUnreadBadgeTests(UniversalInboxMixin, TestCase):
             snapshot_at=timezone.now(),
             unread_count=7,
         )
-        self.mail_staff = make_admin(apps=["mail"], email="mail@example.com")
+        self.admin_user = make_admin(email="mail@example.com")
 
     def badge(self, user):
         request = RequestFactory().get("/admin/")
@@ -38,14 +38,13 @@ class InboxUnreadBadgeTests(UniversalInboxMixin, TestCase):
         InboxAccountState.objects.filter(pk=self.state.pk).update(unread_count=count)
         cache.clear()
 
-    def test_mail_staff_see_the_unread_count(self):
-        self.assertEqual(self.badge(self.mail_staff), "7")
-        self.assertEqual(self.badge(make_superuser()), "7")
+    def test_admins_see_the_unread_count(self):
+        self.assertEqual(self.badge(self.admin_user), "7")
 
     def test_anyone_else_sees_nothing(self):
-        other_staff = make_admin(apps=["event"], email="event@example.com")
+        member = make_admin(email="member@example.com", is_staff=False)
 
-        for user in (other_staff, AnonymousUser()):
+        for user in (member, AnonymousUser()):
             with self.subTest(user=user), patch(UNREAD_TOTAL) as unread_total:
                 self.assertEqual(self.badge(user), "")
                 unread_total.assert_not_called()
@@ -56,18 +55,18 @@ class InboxUnreadBadgeTests(UniversalInboxMixin, TestCase):
     def test_no_unread_mail_shows_no_badge(self):
         self.set_unread(0)
 
-        self.assertEqual(self.badge(self.mail_staff), "")
+        self.assertEqual(self.badge(self.admin_user), "")
 
     def test_more_than_99_is_capped(self):
         for count, shown in ((99, "99"), (100, "99+"), (2500, "99+")):
             with self.subTest(count=count):
                 self.set_unread(count)
 
-                self.assertEqual(self.badge(self.mail_staff), shown)
+                self.assertEqual(self.badge(self.admin_user), shown)
 
     def test_a_counting_failure_shows_no_badge(self):
         with (
             patch(UNREAD_TOTAL, side_effect=RuntimeError("boom")),
             self.assertLogs("apps.mail.admin.inbox.badge", "ERROR"),
         ):
-            self.assertEqual(self.badge(self.mail_staff), "")
+            self.assertEqual(self.badge(self.admin_user), "")

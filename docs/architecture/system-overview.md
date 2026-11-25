@@ -48,11 +48,11 @@ The I2G platform supports the School of Engineering's Innovate to Grow program a
 |---|---|---|
 | Public website | The pages people see. A single-page React application; every piece of data comes from the backend | Visitors, members |
 | Backend | One Django application: the API behind the website, the admin console, sign-in, campaigns, the scheduled work | Everyone, through the website or the admin |
-| Admin console (`/admin/`) | Forms and dashboards for staff, organised by section in a sidebar | Staff with admin access |
+| Admin console (`/admin/`) | Forms and dashboards for staff, organised by section in a sidebar | Admins |
 | Background worker | A separate container that works through the job queue in the database: one job per campaign recipient, bounce scans every 10 minutes, Google Sheet syncs, hourly clean-ups | Nobody directly; staff see its results |
 | Database | PostgreSQL. Holds all records, the job queue and most settings | The backend only |
 | File storage | Amazon S3. Holds uploaded images and files, and the admin's static files | The backend; every uploaded file is public to anyone who has its link |
-| `i2g-admin` CLI | Terminal access to records for developers, with the same per-section access as the admin; credentials, tokens and a few other sensitive tables are never available through it | Developers |
+| `i2g-admin` CLI | Terminal access to records for developers who are Admins; credentials, tokens and a few other sensitive tables are never available through it | Developers |
 | Archive site | A small separate site that serves the event pages of past years | Visitors |
 
 How a request travels from a browser to the database is described in [Request flow](request-flow.md), and the code
@@ -130,17 +130,34 @@ in [Microsoft Graph email](../integrations/messaging/microsoft-graph-email.md).
 
 ## How the admin works
 
-- **Access by section.** Each staff account is granted the sections ("apps") it may use, for example members
-  (`authn`), campaigns and delivery (`mail`), events (`event`), website content (`cms`), projects (`projects`) and
-  site settings and credentials (`core`). Within a granted section a staff member can view and change everything.
-  The **I2G Master** account (superuser) has every section, and only it can grant access, change staff accounts,
-  or make a few destructive changes.
+- **Two kinds of account.** An account is either an **Admin** or a regular member. An Admin is an active member
+  with `is_staff`; only Admins can sign in to the admin. Every Admin has the same, complete permissions: every
+  section of the sidebar (members, campaigns and delivery, events, website content, projects, site settings and
+  credentials, the helpdesk, the AI assistant), every record in it, and every other account, other Admins included
+  (their emails, phones, password and flags). There are no per-section grants and no higher tier; the former
+  "I2G Master" (superuser) tier and the per-app grants (`Member.admin_apps`) were retired, and every Admin now has
+  what the I2G Master had. `is_superuser` is only a mirror of `is_staff` that `Member.save()` keeps in step;
+  project code decides on `is_staff` (`apps.core.utils.access.user_is_admin`).
+- **Lockout rules.** Two rules apply to every Admin, on every path that removes an Admin (the member page and its
+  bulk actions, delete, Email Monitoring, the member import's deactivation tick, the AI assistant, the account
+  page's own deletion): nobody deletes, deactivates or removes Admin access from **their own** Admin account
+  (another Admin must do it), and the **last active Admin** is never deleted, deactivated or demoted
+  (`apps.authn.services.members.admins`). These are the only limits on what one Admin may do to another.
+- **Rollout.** Migration `authn.0024_single_admin_role` made every active staff account a full Admin, took Admin
+  from inactive accounts and cancelled the pending admin invitations; `authn.0025` keeps the retired `admin_apps`
+  column until a later contract release ([Production → Single Admin role
+  release](../deployment/production.md#single-admin-role-release)).
+- **What stays refused for everyone.** **Login as Member** never impersonates an Admin account. The member import
+  never grants or removes Admin access: Admin access changes only on the member's own page (or through an Admin
+  invitation, which always makes a full Admin). The CLI and the AI assistant never write `is_staff` or
+  `is_superuser`.
 - **Confirmation.** Saving a change, a bulk action and most risky operations show a summary first and ask you to
   type a confirmation word (sending a campaign asks for the campaign's name).
 - **History.** Changes saved on a record's page, deletions and a few settings pages are recorded with who and when:
   on each record's **History** page and in **Site Settings → Admin Log**. Most bulk actions run from a list, the
   member import and replies from the inbox page are not recorded there; a campaign records who sent it.
-- **The CLI** (`i2g-admin`) signs in through the admin and applies the same section grants.
+- **The CLI** (`i2g-admin`) signs in through the admin; any Admin may use it, and a denylist keeps identity,
+  credential and token tables out of its reach.
 
 The day-to-day tasks are described for staff in the [staff handbook](../staff/README.md).
 

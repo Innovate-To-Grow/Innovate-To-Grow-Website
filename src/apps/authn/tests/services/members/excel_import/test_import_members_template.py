@@ -151,7 +151,7 @@ class ParsingHelperTests(TestCase):
                 "last_name": " Lovelace ",
                 "secondary_email": "alt@example.com",
                 "is_active": "yes",
-                "is_staff": "no",
+                "admin": "yes",
                 "when_started": "2024-01-15",
                 "phone_number": "+12095551234",
             },
@@ -160,7 +160,7 @@ class ParsingHelperTests(TestCase):
         self.assertEqual(row["primary_email"], "Main@Example.com")
         self.assertEqual(row["first_name"], "Ada")
         self.assertTrue(row["is_active"])
-        self.assertFalse(row["is_staff"])
+        self.assertNotIn("admin", row)  # the Admin column is never read
         self.assertEqual(row["phone_number"], "+12095551234")
 
     def test_parse_row_minimal_defaults(self):
@@ -168,6 +168,5 @@ class ParsingHelperTests(TestCase):
         self.assertIsNone(row["primary_email"])
         self.assertEqual(row["first_name"], "")
         self.assertIsNone(row["is_active"])
-        self.assertIsNone(row["is_staff"])
         self.assertIsNone(row["phone_number"])
         self.assertEqual(row["notes"], [])

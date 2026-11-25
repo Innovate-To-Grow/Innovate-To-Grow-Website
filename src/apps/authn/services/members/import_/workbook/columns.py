@@ -25,7 +25,9 @@ HEADER_MAP = {
     "last updated": "last_updated",
     "last_updated": "last_updated",
     "active": "is_active",
-    "staff": "is_staff",
+    # Export to Excel writes an Admin column (older exports: Staff). Recognised, never read: see ADMIN_IGNORED.
+    "admin": "admin",
+    "staff": "admin",
     "primary expired": "primary_expired",
     "primary_expired": "primary_expired",
     "primary email": "primary_email",
@@ -66,10 +68,14 @@ PHONE_VERIFIED_IGNORED = (
     "unverified and stored numbers keep their status; members verify their own numbers with a one-time code sent by "
     "SMS."
 )
+ADMIN_IGNORED = (
+    "Admin column ignored: an import never grants or removes Admin access. Change it on the member's own page."
+)
 # Columns a sheet may have (Export to Excel writes them) that the import recognises but never reads, by key, with
 # the note shown once per file. A verified phone number is a sign-in factor, so only the member's own one-time code
-# may produce one: a sheet cell is no proof that the number is theirs.
-IGNORED_COLUMNS = {"phone_verified": PHONE_VERIFIED_IGNORED}
+# may produce one: a sheet cell is no proof that the number is theirs. Admin access is a sign-in to the admin, so a
+# sheet never grants or removes it.
+IGNORED_COLUMNS = {"phone_verified": PHONE_VERIFIED_IGNORED, "admin": ADMIN_IGNORED}
 # Columns that old sheets and the template carry for information only, and the ignored ones: recognised, listed,
 # never imported.
 INFORMATIONAL_KEYS = frozenset(
@@ -80,7 +86,6 @@ IMPORTED_KEYS = frozenset(HEADER_MAP.values()) - INFORMATIONAL_KEYS
 # The TRUE/FALSE columns, by the key ``normalize_header`` maps them to, with the header an admin sees.
 FLAG_COLUMNS = {
     "is_active": "Active",
-    "is_staff": "Staff",
     "primary_verified": "Primary Verified",
     "primary_subscribed": "Primary Subscribed",
     "secondary_verified": "Secondary Verified",

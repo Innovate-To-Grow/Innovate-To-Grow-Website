@@ -2,7 +2,7 @@
 
 A row resolves in this order: its Member UUID (when the sheet has one), then its Primary Email cell, looked up in every
 role (a member's primary, secondary or "other" address, or a contact email with no member), then a new member. Each
-row ends as ``invalid`` (cannot import), ``needs_decision`` (one conflict, C1–C9, shown in the precedence of
+row ends as ``invalid`` (cannot import), ``needs_decision`` (one conflict, C1 or C3–C9, shown in the precedence of
 ``describe.PRECEDENCE``), ``ready_create``, ``ready_update`` or ``no_change``. A row that needs a decision is skipped
 until an admin chooses otherwise. The review is the plan: the apply re-runs this analysis on freshly read records and
 applies nothing if any row's records changed (``fingerprint``).
@@ -34,7 +34,7 @@ from .resolution import (
 )
 from .risky import risky_items
 
-_BEFORE_C1 = frozenset({"privileged_target", "ambiguous_address", "uuid_email_mismatch", "uuid_not_found"})
+_BEFORE_C1 = frozenset({"ambiguous_address", "uuid_email_mismatch", "uuid_not_found"})
 
 
 @dataclass
@@ -148,7 +148,7 @@ def _risky(analysis: RowAnalysis, dropped: dict, snapshot: Snapshot, ctx: Contex
     for target in update_targets(analysis):
         member = snapshot.member(target)
         owned = [c.id for c in snapshot.email_records(dropped.get("primary_email")) if c.member == target]
-        found = risky_items(dropped, member, snapshot, matched=owned[0] if owned else None, is_master=ctx.is_master)
+        found = risky_items(dropped, member, snapshot, matched=owned[0] if owned else None, actor=ctx.actor)
         if found:
             items[target] = found
     return items

@@ -5,7 +5,7 @@ the apply, which re-plans from freshly read records (the fingerprint check makes
 
 An update writes, in this order: the profile fields the row changes; the Primary Email cell's flags (on that address
 only, and only when the member owns it); a promotion, when chosen; the Secondary Email cell; the Phone Number cell;
-the Active and Staff cells, when ticked; and last, the ticked removals. A new member is created as before: the
+the Active cell, when ticked (the Admin or Staff column is never read); and last, the ticked removals. A new member is created as before: the
 sheet's flags are trusted for a brand-new member's own email addresses. Its phone number is always saved unverified:
 the Phone Verified column is ignored, because only the member's own one-time code may verify a number.
 """

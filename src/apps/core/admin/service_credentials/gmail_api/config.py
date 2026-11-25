@@ -1,7 +1,7 @@
-"""The Gmail API provider config in the admin: change form, account allow-list and key pages (Core app).
+"""The Gmail API provider config in the admin: change form, account allow-list and key pages.
 
 Everything here defines the Gmail credential or how far it reaches (which Workspace users the site may impersonate);
-like the Core app's other pages, staff granted the Core app manage it. The config holds no secret: the key is
+like every other admin page, Admins manage it. The config holds no secret: the key is
 installed and removed on its own pages (``GmailApiKeyViewsMixin``), never through this form.
 """
 

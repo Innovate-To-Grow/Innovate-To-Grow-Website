@@ -19,20 +19,17 @@ logger = logging.getLogger("apps.authn.admin.members.invitation")  # its log nam
 
 @admin.register(AdminInvitation)
 class AdminInvitationAdmin(BaseModelAdmin):
-    """Superuser-only: accepting an invitation grants ``is_staff``.
+    """Admin invitations: any Admin may invite, and accepting an invitation creates an Admin account.
 
-    ``BaseModelAdmin`` gates on the ``authn`` app grant alone, so any admin with it could mint an
-    invitation, read the token straight off the readonly "Details" fieldset, and accept it themselves —
-    self-granting staff access. Granting staff is documented as an I2G Master responsibility
-    (see MemberAdmin.superuser_only_fields), so restrict writes to superusers. View access stays with
-    the app grant so support staff can still see invitation status.
+    The invitation link is a bearer secret that creates an Admin, so its change page shows it only to the Admin who
+    sent it (to copy when the email fails); an invitation stops working once its sender is no longer an Admin.
     """
 
     list_display = ["email", "role", "status_badge", "invited_by", "created_at", "expires_at"]
     list_filter = ["status", "role"]
     search_fields = ["email"]
     readonly_fields = [
-        "token",
+        "invitation_link",
         "status",
         "invited_by",
         "accepted_by",
@@ -43,26 +40,12 @@ class AdminInvitationAdmin(BaseModelAdmin):
     ]
     actions = ["resend_invitations", "cancel_invitations"]
 
-    def has_add_permission(self, request):
-        return bool(request.user.is_superuser) and super().has_add_permission(request)
-
-    def has_change_permission(self, request, obj=None):
-        return bool(request.user.is_superuser) and super().has_change_permission(request, obj)
-
-    def has_delete_permission(self, request, obj=None):
-        return bool(request.user.is_superuser) and super().has_delete_permission(request, obj)
-
     def get_fieldsets(self, request, obj=None):
         if obj is None:
             return [
                 (None, {"fields": ("email", "role", "message")}),
             ]
-        # The token is a bearer credential — accepting the invitation exchanges it for an is_staff
-        # account — so it renders only for superusers. View access itself stays: non-superusers
-        # still see the rest of the page.
-        detail_fields = ("invited_by", "accepted_by", "expires_at", "accepted_at")
-        if getattr(request, "user", None) is not None and request.user.is_superuser:
-            detail_fields = ("token", *detail_fields)
+        detail_fields = ("invitation_link", "invited_by", "accepted_by", "expires_at", "accepted_at")
         return [
             (None, {"fields": ("email", "role", "status", "message")}),
             ("Details", {"fields": detail_fields}),
@@ -77,6 +60,23 @@ class AdminInvitationAdmin(BaseModelAdmin):
                 if field not in readonly:
                     readonly.append(field)
         return readonly
+
+    def get_object(self, request, object_id, from_field=None):
+        obj = super().get_object(request, object_id, from_field)
+        if obj is not None:
+            obj._viewing_request = request  # per request: the admin instance is shared between requests
+        return obj
+
+    @admin.display(description="Invitation link")
+    def invitation_link(self, obj):
+        request = getattr(obj, "_viewing_request", None)
+        if request is None:
+            return "-"
+        if obj.invited_by_id != request.user.pk:
+            return "Shown only to the Admin who sent it."
+        if not obj.is_valid:
+            return "No longer valid."
+        return obj.get_acceptance_url(request)
 
     @admin.display(description="Status")
     def status_badge(self, obj):
@@ -126,12 +126,12 @@ class AdminInvitationAdmin(BaseModelAdmin):
         except Exception:
             logger.exception("Failed to send admin invitation email for %s", invitation.email)
             created_text = "created, but " if created else ""
+            if invitation.invited_by_id == request.user.pk:
+                fallback = f"Copy the invitation link manually: {invitation.get_acceptance_url(request)}"
+            else:
+                fallback = "Its link is shown only to the Admin who sent it."
             messages.error(
-                request,
-                (
-                    f"Invitation {created_text}email could not be sent to {invitation.email}. "
-                    f"Copy the invitation link manually: {invitation.get_acceptance_url(request)}"
-                ),
+                request, f"Invitation {created_text}email could not be sent to {invitation.email}. {fallback}"
             )
             return False
 

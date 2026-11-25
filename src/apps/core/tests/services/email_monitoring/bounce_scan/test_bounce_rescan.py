@@ -33,7 +33,7 @@ class StateTestCase(TestCase):
     def setUp(self):
         cache.clear()
         self.now = timezone.now().replace(microsecond=0)
-        self.staff = make_admin(apps=["mail"])
+        self.staff = make_admin()
         self.checkpoint = self.now - timedelta(minutes=5)
         state.state_for(SENDER)
         EmailMonitorState.objects.filter(mailbox=SENDER).update(checkpoint_at=self.checkpoint)

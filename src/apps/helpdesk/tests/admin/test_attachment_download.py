@@ -3,12 +3,13 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.core.models import BackgroundJob, InboundMessage
+from apps.event.tests.helpers import make_member
 from apps.helpdesk.tests.admin.test_admin_ticket_page import TicketPageTestCase
 
 from ...models import HelpdeskSettings
 from ...services.ingest.pipeline import jobs
 from .. import corpus
-from ..helpers import FakeReader, helpdesk_staff, make_admin, queue, receive
+from ..helpers import FakeReader, helpdesk_staff, queue, receive
 
 
 class AttachmentDownloadTests(TicketPageTestCase):
@@ -49,13 +50,15 @@ class AttachmentDownloadTests(TicketPageTestCase):
         self.assertIsNone(blocked.content)
         self.assertEqual(response.status_code, 404)
 
-    def test_an_attachment_is_served_only_through_its_own_ticket_and_with_the_grant(self):
+    def test_an_attachment_is_served_only_through_its_own_ticket_and_to_admins(self):
         other = receive(corpus.message(message_id="<other@x>", sender="kim@example.org"), reader=self.reader)
         url = self.download_url(self.attachment("report.pdf"), ticket=other)
 
         self.assertEqual(self.client.get(url).status_code, 404)
-        self.client.force_login(make_admin(apps=["mail"], email="mailer@example.com"))
-        self.assertEqual(self.client.get(self.download_url(self.attachment("report.pdf"))).status_code, 403)
+        self.client.force_login(make_member(email="member@example.com"))
+        response = self.client.get(self.download_url(self.attachment("report.pdf")))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
 
 
 class IngestProblemTests(TestCase):

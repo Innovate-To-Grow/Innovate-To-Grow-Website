@@ -5,8 +5,8 @@ from decimal import Decimal
 from django.utils.html import escape
 
 from apps.core.models.base.delivery_rates import MANUAL_RATE_HELP, SMART_RATE_HELP
-from apps.event.tests.helpers import make_admin
 from apps.mail.admin.settings.rates.forms import MANUAL_RATE_NOTE
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 
 from .delivery_rates_helpers import READ_AT, Channel, DeliveryRatesTestCase
 
@@ -47,8 +47,8 @@ OPTIONAL = set().union(*CHANNEL_FIELDS.values())
 
 
 class AccessTests(DeliveryRatesTestCase):
-    def test_staff_without_the_mail_app_are_refused_everywhere(self):
-        self.client.force_login(make_admin(apps=["event"], email="nomail@example.com"))
+    def test_members_who_are_not_admins_are_refused_everywhere(self):
+        member = make_member()
         before = self.policy(Channel.SMS_SEND).manual_rate
 
         for method, url, data in (
@@ -58,10 +58,10 @@ class AccessTests(DeliveryRatesTestCase):
             ("post", "/admin/mail/settings/rates/graph_send/reset/", None),
         ):
             with self.subTest(method=method, url=url):
-                self.assertEqual(getattr(self.client, method)(url, data or {}).status_code, 403)
+                assert_refused_to_member(self, url, member, method, data=data or {})
         self.assertEqual(self.policy(Channel.SMS_SEND).manual_rate, before)
 
-    def test_mail_staff_who_are_not_superusers_open_the_page(self):
+    def test_an_admin_opens_the_page(self):
         response = self.client.get(self.url)
 
         self.assertEqual(response.status_code, 200)

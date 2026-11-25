@@ -1,4 +1,4 @@
-"""Helpdesk admin: the ticket queue and ticket page, Ingest problems, Categories and Settings (the Helpdesk grant)."""
+"""Helpdesk admin: the ticket queue and ticket page, Ingest problems, Categories and Settings (every Admin)."""
 
 from .intake.problems import IngestRecordAdmin
 from .intake.settings import HelpdeskSettingsAdmin, TicketCategoryAdmin

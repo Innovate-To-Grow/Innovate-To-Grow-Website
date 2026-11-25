@@ -17,7 +17,6 @@ from unfold.decorators import action, display
 
 from apps.core.admin.common.base import BaseModelAdmin
 from apps.system_intelligence.models import SystemIntelligenceConfig
-from apps.system_intelligence.models.config_agent import PROVIDER_FIELDS
 from apps.system_intelligence.services.public_assistant import global_budget_usage
 
 from .config_fieldsets import CONFIG_FIELDSETS
@@ -142,11 +141,6 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
             return HttpResponseRedirect(change_url)
         messages.success(request, f'"{obj.name}" is now the active System Intelligence config.')
         return HttpResponseRedirect(change_url)
-
-    def get_readonly_fields(self, request, obj=None):
-        """Which provider a role calls decides where staff chats and inbox mail are sent: I2G Master only."""
-        fields = super().get_readonly_fields(request, obj)
-        return fields if request.user.is_superuser else (*fields, *PROVIDER_FIELDS)
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:

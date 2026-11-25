@@ -9,16 +9,15 @@ from apps.authn.tests.admin.members.security.phone.test_phone_verification_admin
 )
 
 
-class AuthnStaffMoveTests(AdminPhoneTestCase):
-    """The reported path: a staffer who is not the I2G Master, with only the Members (authn) grant."""
+class AdminMovesANumberTests(AdminPhoneTestCase):
+    """The reported path, by an Admin made with ``is_staff`` only (not ``create_superuser``)."""
 
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         super().setUp()
         self.staffer = Member.objects.create_user(password=None, first_name="Staff", last_name="Er", is_active=True)
         self.staffer.is_staff = True
-        self.staffer.admin_apps = ["authn"]
-        self.staffer.save(update_fields=["is_staff", "admin_apps"])
+        self.staffer.save(update_fields=["is_staff"])
         self.client.force_login(self.staffer)
 
     def test_a_verified_number_moved_between_two_members_starts_unverified(self):

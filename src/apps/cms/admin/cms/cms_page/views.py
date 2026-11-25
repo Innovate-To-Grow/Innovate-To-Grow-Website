@@ -52,8 +52,8 @@ class CMSPageEditorViewsMixin:
         return super().add_view(request, form_url, {**(extra_context or {}), **build_editor_context()})
 
     def preview_store_view(self, request):
-        # ``admin_view`` only enforces is_staff, so re-check per-app access here:
-        # storing a preview mutates server-side state, so require change access.
+        # Custom URLs re-check the ModelAdmin's permission hooks; storing a preview
+        # mutates server-side state, so it requires change access.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to preview CMS pages.")
         return preview_store_response(request)
@@ -74,8 +74,7 @@ class CMSPageEditorViewsMixin:
         return assets_upload_response(request)
 
     def export_all_view(self, request):
-        # CMS page content export; ``admin_view`` only checks is_staff, so re-check
-        # per-app access before reading/exporting every page.
+        # CMS page content export: re-check view access before exporting every page.
         if not self.has_view_permission(request):
             raise PermissionDenied("You do not have permission to export CMS pages.")
         queryset = CMSPage.objects.prefetch_related("blocks").all()
@@ -85,8 +84,7 @@ class CMSPageEditorViewsMixin:
         return export_pages_response(queryset)
 
     def import_view(self, request):
-        # Importing pages creates/updates records; require per-app change access
-        # because ``admin_view`` only enforces is_staff.
+        # Importing pages creates/updates records, so it requires change access.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to import CMS pages.")
         return render_json_import(

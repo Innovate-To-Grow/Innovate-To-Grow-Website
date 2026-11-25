@@ -9,6 +9,7 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import ProjectControlModel
+from apps.core.utils.access import user_is_admin
 
 
 class AdminInvitation(ProjectControlModel):
@@ -59,7 +60,13 @@ class AdminInvitation(ProjectControlModel):
 
     @property
     def is_valid(self):
-        return self.status == self.Status.PENDING and not self.is_expired
+        # An invitation speaks for the Admin who sent it: once they are no longer an active Admin (demoted,
+        # deactivated or deleted, by any path), it can no longer create one.
+        return self.status == self.Status.PENDING and not self.is_expired and self.inviter_is_admin
+
+    @property
+    def inviter_is_admin(self):
+        return self.invited_by_id is not None and user_is_admin(self.invited_by)
 
     def mark_accepted(self, member):
         self.status = self.Status.ACCEPTED

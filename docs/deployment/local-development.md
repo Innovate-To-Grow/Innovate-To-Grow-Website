@@ -74,7 +74,7 @@ For a clean slate (destroys all data):
 python manage.py resetdb --force --confirm RESET_DB
 ```
 
-This drops the database, regenerates migrations, migrates, creates a default superuser and seeds the service configs and the archive CMS pages, menus and footer. Sign in as the superuser with `admin@localhost` / password `changeme` (set `DEV_ADMIN_EMAIL` and `DEV_ADMIN_PASSWORD` in `src/.env` to change them). Dev-only — it refuses to run unless `DEBUG` is on (or `--allow-production` is given).
+This drops the database, regenerates migrations, migrates, creates a default Admin and seeds the service configs and the archive CMS pages, menus and footer. Sign in as that Admin with `admin@localhost` / password `changeme` (set `DEV_ADMIN_EMAIL` and `DEV_ADMIN_PASSWORD` in `src/.env` to change them). Dev-only — it refuses to run unless `DEBUG` is on (or `--allow-production` is given).
 
 ## Frontend setup
 
@@ -155,7 +155,7 @@ cd pages && npm run lint && npx tsc --noEmit && npm test && npm run build
 ## Gotchas
 
 - **Settings flag**: Always pass `--settings=config.settings.environments.local` to `test` and `sync_news` commands. `runserver` and `migrate` pick it up from defaults.
-- **Superuser creation**: Uses email, not username. For non-interactive mode: `python manage.py createsuperuser --email admin@example.com`
+- **Admin creation** (`createsuperuser`, Django's name): creates an Admin; uses email, not username. For non-interactive mode: `python manage.py createsuperuser --email admin@example.com`
 - **Three React roots**: If you change auth behavior, test that the menu and footer roots also update correctly.
 - **Migration edits**: Never edit a migration that has been merged to `main`. Create a new migration instead.
 

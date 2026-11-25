@@ -3,7 +3,7 @@
 Both change only the bounce processor's state row, through ``apps.core.services.email.bounces.scanning.state``, which applies
 the bounds (``bounce_max_lookback_days``), the lease rule and the audit trail (an admin history line and a log line).
 Neither starts a scan: the next scheduled scan, or "Scan now", reads the Inbox. The view that dispatches to them has
-already required the Mail app; every message names what changed, or why nothing did.
+already required an Admin; every message names what changed, or why nothing did.
 """
 
 from django import forms

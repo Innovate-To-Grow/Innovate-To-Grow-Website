@@ -71,7 +71,7 @@ class CreateSuperuserInteractiveTests(TestCase):
         self.assertTrue(member.is_superuser)
         self.assertEqual(member.first_name, "Ada")
         self.assertEqual(member.last_name, "Lovelace")
-        self.assertIn("Superuser created", stdout.getvalue())
+        self.assertIn("Admin account created", stdout.getvalue())
 
     @patch("getpass.getpass")
     @patch("builtins.input")
@@ -113,9 +113,9 @@ class CreateSuperuserInteractiveTests(TestCase):
 
 class MemberManagerCreateSuperuserTests(TestCase):
     def test_create_superuser_requires_first_name(self):
-        with self.assertRaisesMessage(ValueError, "Superuser first name is required."):
+        with self.assertRaisesMessage(ValueError, "Admin first name is required."):
             Member.objects.create_superuser(password="StrongPass123!", last_name="User")
 
     def test_create_superuser_requires_last_name(self):
-        with self.assertRaisesMessage(ValueError, "Superuser last name is required."):
+        with self.assertRaisesMessage(ValueError, "Admin last name is required."):
             Member.objects.create_superuser(password="StrongPass123!", first_name="Admin")

@@ -1,5 +1,5 @@
 from apps.cli_admin.models import CliAuditLog
-from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff, make_superuser
+from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff
 from apps.core.models import MicrosoftGraphAccessCheck, MicrosoftGraphCertificate, MicrosoftGraphProviderConfig
 from apps.core.tests.graph_helpers import create_graph_config
 
@@ -15,7 +15,7 @@ DENIED = "{access} access is not allowed for core.{model}."
 
 class GraphDenylistTests(CliApiTestCase):
     """The Graph config, its installed certificates and its access checks are unreachable through /admin-api/, even
-    for superusers."""
+    for an Admin."""
 
     def setUp(self):
         super().setUp()
@@ -46,11 +46,8 @@ class GraphDenylistTests(CliApiTestCase):
                 f"{ACCESS_CHECK_COLLECTION}{self.access_check.pk}/",
             ),
         }
-        # Both actors hold the "core" app grant (superusers hold every grant), so a 400 below comes from the
-        # denylist and not from the per-app 403.
         self.actors = {
-            "staff": self.auth(issue_token(make_staff(email="graph-staff@example.com"))[1]),
-            "superuser": self.auth(issue_token(make_superuser(email="graph-admin@example.com"))[1]),
+            "admin": self.auth(issue_token(make_staff(email="graph-staff@example.com"))[1]),
         }
 
     def assert_denied(self, response, access, model):
@@ -124,7 +121,7 @@ class GraphDenylistTests(CliApiTestCase):
     def test_denied_writes_are_audited_as_failed(self):
         detail = self.targets["MicrosoftGraphCertificate"][1]
         response = self.client.patch(
-            detail, {"store_version_id": ATTACKER_VALUE}, format="json", **self.actors["staff"]
+            detail, {"store_version_id": ATTACKER_VALUE}, format="json", **self.actors["admin"]
         )
 
         self.assertEqual(response.status_code, 400)

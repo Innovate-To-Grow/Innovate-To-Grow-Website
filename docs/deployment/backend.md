@@ -207,12 +207,12 @@ Served from S3 via `django-storages`:
 1. Deploy the `aws/ecs/private-exports.yaml` stack in the backend region with the intended bucket name and ECS task role. Set `AWS_PRIVATE_EXPORT_BUCKET_NAME` in backend deployment config and confirm the background worker is enabled.
 2. Block public and CDN reads for `media/system_intelligence_exports/*` in the old asset bucket, while retaining authenticated legacy reads for the backend and read/delete access for the migration operator. Invalidate any cached copies of that prefix. Run the application deployment after these checks and allow ten minutes for any cached pre-deploy System Intelligence CMS preview tokens to expire.
 3. Run `python manage.py system_intelligence_exports` with production settings for a read-only inventory. Run it with `--apply` to migrate in place. Rerun on interruption. Resolve any missing sources or checksum mismatches before continuing.
-4. Check representative existing download links with permitted owners, denied staff, and anonymous clients. Also verify that direct unsigned access to the private bucket and old media prefix is denied. Run the command with `--retire` only after those checks pass. Review unreferenced legacy objects separately and retire approved orphaned keys under the storage retention policy.
+4. Check representative existing download links as the export's owner (allowed), as another Admin (denied: an export downloads only for the Admin who created it), and anonymously (denied). Also verify that direct unsigned access to the private bucket and old media prefix is denied. Run the command with `--retire` only after those checks pass. Review unreferenced legacy objects separately and retire approved orphaned keys under the storage retention policy.
 5. Schedule `python manage.py system_intelligence_exports --queue-private-orphans` daily. It queues orphan files older than 24 hours and the background worker processes their deletion. Monitor failed `system_intelligence.delete_export` jobs and retry them after resolving storage failures.
 
 ### System Intelligence AI providers (DeepSeek, Kimi, OpenAI, Anthropic)
 
-Bedrock-only sites need nothing: every role keeps using Bedrock until a provider is selected. Before the I2G Master installs a provider key in production:
+Bedrock-only sites need nothing: every role keeps using Bedrock until a provider is selected. Before an Admin installs a provider key in production:
 
 1. Deploy `aws/cicd/identity-stack.json` so `itg/backend/system-intelligence/llm-api-key` (`SystemIntelligenceLlmApiKeySecret`), its `ecsTaskRole` grant and its resource policy exist. Until then, installing a key fails with a credential-store error and nothing is stored.
 2. Confirm the ECS tasks have outbound HTTPS to the provider hosts (for example `api.deepseek.com`, `api.moonshot.ai`, `api.openai.com`, `api.anthropic.com`); working Bedrock calls do not prove it.

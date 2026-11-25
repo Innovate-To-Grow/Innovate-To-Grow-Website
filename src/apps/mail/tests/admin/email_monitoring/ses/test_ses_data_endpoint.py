@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.event.tests.helpers import make_admin, make_superuser
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 
 from .ses_helpers import PATCH_DASHBOARD, ses_payload
 
@@ -56,17 +57,17 @@ class SesAccessTests(TestCase):
                 self.assertEqual(response.status_code, 302)
                 self.assertIn("/login/", response["Location"])
 
-    def test_staff_without_the_mail_app_are_refused_before_aws_is_read(self, _dashboard):
-        self.client.force_login(make_admin(apps=["cms"]))
+    def test_members_who_are_not_admins_are_refused_before_aws_is_read(self, _dashboard):
+        member = make_member()
 
         for name in self.NAMES:
             with self.subTest(name=name):
-                self.assertEqual(self.client.get(reverse(name)).status_code, 403)
+                assert_refused_to_member(self, reverse(name), member)
 
-    def test_mail_staff_may_open_the_tab(self, dashboard):
+    def test_every_admin_may_open_the_tab(self, dashboard):
         dashboard.side_effect = None
         dashboard.return_value = ses_payload()
-        self.client.force_login(make_admin(apps=["mail"]))
+        self.client.force_login(make_admin())
 
         for name in self.NAMES:
             with self.subTest(name=name):

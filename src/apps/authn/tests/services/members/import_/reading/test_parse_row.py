@@ -75,19 +75,15 @@ class ParseRowTests(ImportTestCase):
         self.assertEqual((parsed["date_joined"], parsed["warnings"]), (None, []))
 
     def test_unrecognised_true_false_text_is_a_v5_warning_and_counts_as_blank(self):
-        parsed = parse_row(
-            2, {"primary_verified": "maybe", "is_active": "yes", "is_staff": "N/A", "phone_verified": ""}
-        )
+        parsed = parse_row(2, {"primary_verified": "maybe", "is_active": "yes", "admin": "N/A", "phone_verified": ""})
 
-        self.assertEqual((parsed["primary_verified"], parsed["is_active"], parsed["is_staff"]), (None, True, None))
-        # The Phone Verified column is ignored: not parsed, never a V5 warning.
+        self.assertEqual((parsed["primary_verified"], parsed["is_active"]), (None, True))
+        # The Phone Verified and Admin columns are ignored: not parsed, never a V5 warning.
         self.assertNotIn("phone_verified", parsed)
+        self.assertNotIn("admin", parsed)
         self.assertEqual(
             parsed["warnings"],
-            [
-                {"code": "V5", "text": "Staff cell 'N/A' is not TRUE or FALSE; it was ignored"},
-                {"code": "V5", "text": "Primary Verified cell 'maybe' is not TRUE or FALSE; it was ignored"},
-            ],
+            [{"code": "V5", "text": "Primary Verified cell 'maybe' is not TRUE or FALSE; it was ignored"}],
         )
 
     def test_true_false_cells(self):
@@ -104,7 +100,7 @@ class ParseRowTests(ImportTestCase):
                 "primary_email": " ada@example.com ",
                 "first_name": None,
                 "is_active": True,
-                "is_staff": False,
+                "admin": False,
                 "phone_number": 2095550101.0,
                 "when_started": datetime(2024, 1, 15, 9, 30),
                 "title": date(2024, 1, 15),
@@ -119,7 +115,6 @@ class ParseRowTests(ImportTestCase):
                 "primary_email": "ada@example.com",
                 "first_name": "",
                 "is_active": "TRUE",
-                "is_staff": "FALSE",
                 "phone_number": "2095550101",
                 "when_started": "2024-01-15 09:30",
                 "title": "2024-01-15",

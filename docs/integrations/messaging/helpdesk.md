@@ -31,7 +31,7 @@ name) narrow the queue.
 **The ticket page** edits status, priority, category and assignee (no typed confirmation; every change is in the
 ticket's timeline and the admin history), shows the timeline (messages, internal notes, field changes) and has
 the internal-note form. A merged ticket's status cannot be changed, and **Merged** is not in the Status list: only a
-merge makes a ticket merged. Notes are seen only by staff with the Helpdesk app and are never sent. Opening a ticket
+merge makes a ticket merged. Notes are seen only by Admins and are never sent. Opening a ticket
 marks it read.
 
 - Message HTML was sanitized when it was imported and is shown in a sandboxed frame without scripts; images are
@@ -175,16 +175,17 @@ model and `core.inboundmessage` are in `safe_orm`'s `DENIED_MODEL_LABELS`: the A
 neither read nor write them.
 
 **Storing message bodies and attachments is new** for this site (the admin inbox reads them on demand only). The
-helpdesk is internal: only staff with the Helpdesk app see it, and no note to OIT or InfoSec is needed (decided
-2026-11-11, plan question H6). The retention periods are proposals pending a UC records policy (plan question S5).
+helpdesk is internal: only Admins see it, and no note to OIT or InfoSec is needed (decided 2026-11-11, plan
+question H6, when only staff granted the Helpdesk app saw it; every Admin has seen it since the single Admin role).
+The retention periods are proposals pending a UC records policy (plan question S5).
 
 ## Permissions
 
-The **Helpdesk** app grant (`Member.admin_apps` contains `helpdesk`, or I2G Master) gives everything in the
-helpdesk: the queue, ticket pages, notes, assignment, merge, spam, Ingest Problems and Settings. Every custom view
-(ticket notes, attachment downloads) checks the grant itself (403 without it). Tickets are created only from
-mail; only an I2G Master can delete one by hand, behind the typed confirmation (otherwise only retention deletes).
-Opening the linked member or campaign needs the Members or Mail app.
+Every Admin has the whole helpdesk: the queue, ticket pages, notes, assignment, merge, spam, Ingest Problems and
+Settings, and every active Admin can be chosen as an assignee. The custom views (ticket notes, attachment downloads,
+intake controls) are served through the admin, so anyone who is not an Admin is sent to the admin sign-in. Tickets
+are created only from mail; any Admin can delete one by hand (one ticket or a selection), behind the typed
+confirmation (otherwise only retention deletes).
 
 ## Settings
 
@@ -224,7 +225,7 @@ controls on the card, so they are not edited beside them.
 The **intake card** sits above the Helpdesk → Settings form. It shows the intake's state (running, paused, waiting
 for the first scan, last scan failed, no recent successful scan, switched off, or not active with the reason), the
 last and next scan, the checkpoint, the interval and how many messages wait to be imported, and has four controls.
-Each needs the Helpdesk app, is a POST form with CSRF (`/admin/helpdesk/helpdesksettings/intake/`, `action=scan`,
+Each needs an Admin, is a POST form with CSRF (`/admin/helpdesk/helpdesksettings/intake/`, `action=scan`,
 `pause`, `resume`, `rescan&since=YYYY-MM-DDTHH:MM`, or `lookback&lookback_hours=N`), and changes the intake only:
 bounce processing has its own card on Email Monitoring, and its Pause, Rescan since and lookback never change the
 intake. Every change leaves an admin history line (Site Settings → Admin Log, on "Helpdesk intake for …") and a log

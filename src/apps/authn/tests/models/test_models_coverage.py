@@ -93,11 +93,11 @@ class ContactPhoneModelTests(TestCase):
 
 class MemberManagerTests(TestCase):
     def test_create_superuser_rejects_non_staff(self):
-        with self.assertRaisesMessage(ValueError, "Superuser must have is_staff=True."):
+        with self.assertRaisesMessage(ValueError, "An Admin must have is_staff=True."):
             Member.objects.create_superuser(password="StrongPass123!", first_name="A", last_name="B", is_staff=False)
 
     def test_create_superuser_rejects_non_superuser(self):
-        with self.assertRaisesMessage(ValueError, "Superuser must have is_superuser=True."):
+        with self.assertRaisesMessage(ValueError, "An Admin must have is_superuser=True."):
             Member.objects.create_superuser(
                 password="StrongPass123!", first_name="A", last_name="B", is_superuser=False
             )

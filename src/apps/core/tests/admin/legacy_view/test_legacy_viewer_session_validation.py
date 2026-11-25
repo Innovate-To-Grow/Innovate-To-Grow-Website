@@ -21,7 +21,7 @@ from apps.event.tests.helpers import make_admin
 
 class _LegacyViewerSessionValidationCase(TestCase):
     def setUp(self):
-        self.user = make_admin(apps=["core"], email="legacy-session@example.com")
+        self.user = make_admin(email="legacy-session@example.com")
         self.client.force_login(self.user)
         self.source_key = self.client.session.session_key
         self.source_expiry = Session.objects.get(session_key=self.source_key).expire_date
@@ -152,7 +152,7 @@ class LegacyViewerSessionValidationTests(_LegacyViewerSessionValidationCase):
         self.assert_denied_and_discarded(session_key, "no longer valid")
 
     def test_viewer_bound_to_another_users_session_is_denied(self):
-        other = make_admin(apps=["core"], email="legacy-other@example.com")
+        other = make_admin(email="legacy-other@example.com")
         session_key = self._forged_viewer_session(legacy_viewer_user_id=str(other.pk))
 
         self.assert_denied_and_discarded(session_key, "no longer valid")

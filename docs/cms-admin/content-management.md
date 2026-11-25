@@ -71,10 +71,10 @@ year in the editor. Each schedule pulls from **its own** Google Sheet — see
 
 The admin provides an iframe-based live preview:
 - `GET /cms/live-preview/{page_id}/` — anonymously returns the short-lived
-  editor payload only when it is already in cache; a user with CMS app access
+  editor payload only when it is already in cache; an Admin
   may fall back to the current database page when the cache is empty. Anonymous
   cache misses return 404 and never expose draft database content.
-- `POST /cms/live-preview/{page_id}/` — CMS-app staff only; replaces the
+- `POST /cms/live-preview/{page_id}/` — Admins only; replaces the
   short-lived cached editor payload.
 - Preview tokens can be generated for sharing draft previews with non-staff users
 

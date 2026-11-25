@@ -3,14 +3,14 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.cms.tests.cms.pages.test_cms_views import _make_page
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin, make_member
 
 
 class CMSLivePreviewTests(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = make_admin(apps=["cms"], email="cms-live@example.com")
+        self.staff = make_admin(email="cms-live@example.com")
         self.page = _make_page("live", "/live")
 
     def test_post_requires_staff(self):
@@ -19,26 +19,17 @@ class CMSLivePreviewTests(TestCase):
         )
         self.assertIn(resp.status_code, (401, 403))
 
-    def test_post_non_cms_staff_returns_403(self):
-        """Staff scoped to a different app cannot push live-preview data."""
-        other = make_admin(apps=["event"], email="event-live@example.com")
-        self.client.force_authenticate(other)
+    def test_post_by_a_regular_member_returns_403(self):
+        """A member who is not an Admin cannot push live-preview data."""
+        self.client.force_authenticate(make_member(email="member-live@example.com"))
         resp = self.client.post(
             f"/cms/live-preview/{self.page.pk}/",
             '{"title":"Other"}',
             content_type="application/json",
         )
         self.assertEqual(resp.status_code, 403)
-
-    def test_post_superuser_stores_data(self):
-        self.client.force_authenticate(make_superuser(email="master-live@example.com"))
-        resp = self.client.post(
-            f"/cms/live-preview/{self.page.pk}/",
-            '{"title":"Master"}',
-            content_type="application/json",
-        )
-        self.assertEqual(resp.status_code, 200)
-        self.assertTrue(resp.json()["ok"])
+        self.assertEqual(resp.json()["detail"], "Admin access is required.")
+        self.assertIsNone(cache.get(f"cms:live-preview:{self.page.pk}"))
 
     def test_post_staff_stores_data(self):
         self.client.force_authenticate(self.staff)

@@ -10,8 +10,8 @@ from .inline_helpers import Member
 
 @override_settings(ROOT_URLCONF="config.routing.urls")
 class MemberAdminInlineVisibilityTest(TestCase):
-    """Inline sections must render for any staff member granted the ``authn`` app
-    (not only superusers), and must be hidden from staff without that grant."""
+    """Inline sections render for every Admin (one made with ``is_staff`` only as well as a superuser), and the page
+    is closed to a member who is not an Admin."""
 
     # noinspection PyPep8Naming
     def setUp(self):
@@ -34,7 +34,6 @@ class MemberAdminInlineVisibilityTest(TestCase):
             password="staff123",
             is_staff=True,
             is_active=True,
-            admin_apps=["authn"],
         )
         ContactEmail.objects.create(
             member=self.staff_user,
@@ -75,30 +74,17 @@ class MemberAdminInlineVisibilityTest(TestCase):
         resp = self.client.get(self._change_url())
         self._assert_inlines_visible(resp)
 
-    def test_staff_user_with_authn_access_sees_inlines(self):
-        """A non-superuser staff member granted the ``authn`` app sees the inlines —
-        per-app access, not per-model Django permissions (apps.core.utils.access)."""
+    def test_admin_sees_inlines(self):
+        """An Admin made with ``is_staff`` only sees the inlines: no per-model Django permissions are needed."""
         self.client.force_login(self.staff_user)
         resp = self.client.get(self._change_url())
         self._assert_inlines_visible(resp)
 
-    def test_staff_user_without_authn_access_is_forbidden(self):
-        """A staff member without the ``authn`` grant cannot open the Member change page."""
-        other_app_staff = Member.objects.create_user(
-            password="staff123",
-            is_staff=True,
-            is_active=True,
-            admin_apps=["cms"],
-        )
-        ContactEmail.objects.create(
-            member=other_app_staff,
-            email_address="cmsonly@example.com",
-            email_type="primary",
-            verified=True,
-        )
-        self.client.force_login(other_app_staff)
+    def test_a_member_who_is_not_an_admin_is_sent_to_the_admin_login(self):
+        self.client.force_login(self.target_member)
         resp = self.client.get(self._change_url())
-        self.assertEqual(resp.status_code, 403)
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("/admin/login/", resp["Location"])
 
     # --- Full page composition ---------------------------------------------------------------
     #
@@ -125,7 +111,7 @@ class MemberAdminInlineVisibilityTest(TestCase):
         self.client.force_login(self.superuser)
         self._assert_change_page_composition(self.client.get(self._change_url()))
 
-    def test_change_page_composition_for_authn_staff(self):
+    def test_change_page_composition_for_admin(self):
         self.client.force_login(self.staff_user)
         self._assert_change_page_composition(self.client.get(self._change_url()))
 

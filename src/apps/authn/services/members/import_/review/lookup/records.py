@@ -61,7 +61,6 @@ class MemberRecord:
     title: str = ""
     is_active: bool = True
     is_staff: bool = False
-    is_superuser: bool = False
     registration_pending: bool = False
     emails: list[EmailRecord] = field(default_factory=list)
     phones: list[PhoneRecord] = field(default_factory=list)
@@ -82,8 +81,9 @@ class MemberRecord:
         return f"{self.full_name or 'Unnamed member'} (member {self.id})"
 
     @property
-    def privileged(self) -> bool:
-        return self.is_staff or self.is_superuser
+    def is_admin(self) -> bool:
+        """An Admin account (``is_staff``): a sign-in to the admin, so the confirm page lists every change to it."""
+        return self.is_staff
 
     @property
     def primary(self) -> EmailRecord | None:
@@ -109,7 +109,7 @@ class Snapshot:
     phones: dict[str, PhoneRecord] = field(default_factory=dict)
     members: dict[str, MemberRecord] = field(default_factory=dict)
     uuids: dict[str, str | None] = field(default_factory=dict)
-    # Live Member objects by id, for permission checks; never stored.
+    # Live Member objects by id (the lockout check of a deactivation, the apply's outcomes); never stored.
     objects: dict[str, Member] = field(default_factory=dict, repr=False)
 
     def email_records(self, address: str | None) -> list[EmailRecord]:

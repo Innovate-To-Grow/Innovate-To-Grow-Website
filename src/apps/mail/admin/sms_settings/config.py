@@ -119,13 +119,6 @@ class SmsConfigAdmin(BaseModelAdmin):
         if obj.revocation is not None:
             self.message_user(request, revocation_message(obj.revocation), messages.WARNING)
 
-    def get_readonly_fields(self, request, obj=None):
-        # One-tap sign-in links widen what a phone number can reach: only the I2G Master turns them on or off.
-        readonly = list(super().get_readonly_fields(request, obj))
-        if not request.user.is_superuser:
-            readonly.append("personal_links_enabled")
-        return readonly
-
     def has_add_permission(self, request):
         return False
 

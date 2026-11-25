@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import SmsConfig
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 
 from ....services.sms.policy.policy_helpers import QUIET_MOMENT, at
 
@@ -104,34 +105,28 @@ class SmsSettingsAdminTests(TestCase):
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False, FRONTEND_URL="https://i2g.example.edu")
 class PersonalLinksSwitchTests(TestCase):
-    def test_only_the_i2g_master_can_turn_personal_links_on(self):
-        make_admin(apps=["mail"], email="mail@example.com")
+    def test_every_admin_can_turn_personal_links_on(self):
+        make_admin(email="mail@example.com")
         self.client.login(username="mail@example.com", password="testpass123")
         change_url = reverse("admin:mail_smsconfig_change", args=[SmsConfig.load().pk])
-        page = self.client.get(change_url)
-        self.assertNotContains(page, 'name="personal_links_enabled"')
+        self.assertContains(self.client.get(change_url), 'name="personal_links_enabled"')
+
         response = self.client.post(change_url, settings_form(personal_links_enabled="on", links_enabled="on"))
+
         self.assertEqual(response.status_code, 302)
         config = SmsConfig.load()
         self.assertTrue(config.links_enabled)
-        self.assertFalse(config.personal_links_enabled)
-
-        make_superuser()
-        self.client.login(username="admin@example.com", password="testpass123")
-        self.assertContains(self.client.get(change_url), 'name="personal_links_enabled"')
-        self.client.post(change_url, settings_form(personal_links_enabled="on", links_enabled="on"))
-        self.assertTrue(SmsConfig.load().personal_links_enabled)
+        self.assertTrue(config.personal_links_enabled)
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False, FRONTEND_URL="https://i2g.example.edu")
 class SmsSettingsAccessTests(TestCase):
-    def test_only_mail_staff_reach_the_settings_and_the_qr_code(self):
-        make_admin(apps=["cms"], email="cms@example.com")
-        self.client.login(username="cms@example.com", password="testpass123")
-        self.assertEqual(self.client.get(reverse("admin:mail_smsconfig_register_qr", args=["svg"])).status_code, 403)
-        self.assertEqual(self.client.get(reverse("admin:mail_smsconfig_changelist")).status_code, 403)
-        self.assertEqual(self.client.post(reverse("admin:mail_smsoptout_sync")).status_code, 403)
+    def test_only_admins_reach_the_settings_and_the_qr_code(self):
+        member = make_member()
+        assert_refused_to_member(self, reverse("admin:mail_smsconfig_register_qr", args=["svg"]), member)
+        assert_refused_to_member(self, reverse("admin:mail_smsconfig_changelist"), member)
+        assert_refused_to_member(self, reverse("admin:mail_smsoptout_sync"), member, "post")
 
-        make_admin(apps=["mail"], email="mail@example.com")
+        make_admin(email="mail@example.com")
         self.client.login(username="mail@example.com", password="testpass123")
         self.assertEqual(self.client.get(reverse("admin:mail_smsconfig_register_qr", args=["svg"])).status_code, 200)

@@ -25,7 +25,7 @@ class PrivateExportStorageTests(TestCase):
     def setUp(self):
         self.legacy = InMemoryStorage()
         self.private = InMemoryStorage()
-        self.user = make_admin(apps=["system_intelligence", "authn"])
+        self.user = make_admin()
         self.chat = ChatConversation.objects.create(created_by=self.user)
         export = SystemIntelligenceExport(
             conversation=self.chat, created_by=self.user, filename="members.xlsx", model_label="authn.Member"
@@ -61,9 +61,9 @@ class PrivateExportStorageTests(TestCase):
         response = self.client.get(self.url)
         self.assertIn("no-store", response["Cache-Control"])
         self.assertEqual(b"".join(response.streaming_content), b"spreadsheet")
-        self.user.admin_apps = ["system_intelligence"]
-        self.user.save(update_fields=["admin_apps"])
-        self.assertEqual(self.client.get(self.url).status_code, 404)
+        self.user.is_staff = False
+        self.user.save(update_fields=["is_staff"])
+        self.assertEqual(self.client.get(self.url).status_code, 302)
 
     def test_retirement_needs_matching_private_file(self):
         self.assertEqual(migrate_export(self.export.pk, retire=True), "not_migrated")

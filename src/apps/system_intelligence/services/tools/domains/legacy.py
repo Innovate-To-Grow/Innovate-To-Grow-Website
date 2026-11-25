@@ -10,7 +10,7 @@ async def search_members(
     is_staff: bool | None = None,
     is_active: bool | None = None,
 ):
-    """Search members by name, email, organization, staff status, or active status."""
+    """Search members by name, email, organization, Admin status, or active status."""
     return await run_tool_async("search_members", locals())
 
 

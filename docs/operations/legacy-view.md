@@ -410,17 +410,17 @@ of these checks before changing public DNS or ingress:
 
 1. Anonymous CloudFront GET/HEAD and direct
    `https://api.i2g.ucmerced.edu/legacy-view/` access return no legacy content.
-2. A staff account without `core` permission receives 403 at
-   `/admin/legacy-view/`.
-3. A Core administrator launches the CloudFront page without a second login.
+2. A signed-in regular member (not an Admin) who opens `/admin/legacy-view/` is
+   sent to the admin sign-in and gets no viewer session.
+3. An Admin launches the CloudFront page without a second login.
 4. An invalid, expired, or reused exchange code fails; two concurrent exchanges
    of one code produce exactly one success.
 5. Historical pages, safe query-string navigation, static assets, Range reads,
    and reviewed GET APIs work.
 6. `/admin/`, `/membership/`, `/update/`, `/confirm/`, `/tracking_pixel/`, and
    every non-exchange write request never reach the legacy application.
-7. Logging out of Admin, removing `core`, or deactivating the account
-   invalidates the existing viewer session on its next request.
+7. Logging out of Admin, removing the account's Admin access, or deactivating the
+   account invalidates the existing viewer session on its next request.
 8. The browser receives only `i2g_legacy_viewer` for the CloudFront domain; the
    API `sessionid`, Authorization, CSRF cookie, and legacy `Set-Cookie` are not
    forwarded.

@@ -46,11 +46,11 @@ selection. There is no per-message routing or automatic failover.
 | Concern | Implementation |
 |---------|---------------|
 | Email settings | `EmailServiceConfig` (`src/apps/core/models/base/service_credentials/email/service.py`) — active sender identity and selected provider |
-| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates/`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates/`, staff with the Mail app); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read ([Delivery rates](../integrations/limits/delivery-rates.md)) |
+| Delivery rates | `DeliveryRatePolicy` per channel (`src/apps/core/models/base/delivery_rates/`), edited on **Mail → Delivery Rates** (`src/apps/mail/admin/settings/rates/`, any Admin); enforced by `src/apps/core/services/delivery_rates/` for every email, SMS and inbox read ([Delivery rates](../integrations/limits/delivery-rates.md)) |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | SMTP credentials | Active `SMTPProviderConfig` host, port, TLS/SSL, optional authentication, and timeout |
 | Microsoft Graph credentials | Active `MicrosoftGraphProviderConfig` (`src/apps/core/models/base/service_credentials/microsoft_graph/`) — Entra tenant ID, client ID and optional sender mailbox; its current certificate (`MicrosoftGraphCertificate`) pins the private key's version in the credential store (AWS Secrets Manager in production). Certificate authentication only |
-| Gmail API credentials | Active `GmailApiProviderConfig` (`src/apps/core/models/base/service_credentials/gmail_api/`) — the pinned version of the service-account key in the credential store (AWS Secrets Manager in production), its public facts, and the account allow-list (`GmailApiSubject`). Domain-wide delegation for gmail.send only; Core app |
+| Gmail API credentials | Active `GmailApiProviderConfig` (`src/apps/core/models/base/service_credentials/gmail_api/`) — the pinned version of the service-account key in the credential store (AWS Secrets Manager in production), its public facts, and the account allow-list (`GmailApiSubject`). Domain-wide delegation for gmail.send only; managed under Site Settings by any Admin |
 | Provider layer | `src/apps/core/services/email/` (SES in `ses.py`, SMTP in `smtp.py`, Microsoft Graph in `graph/`, the Gmail API in `gmail/`, the bounded HTTPS client both use in `transport.py`) |
 | Campaign sending | `src/apps/mail/services/campaign/send/` |
 | Auth challenge emails | `src/apps/authn/services/email/send_email/` |
@@ -64,7 +64,7 @@ codes, admin invitations, tickets, and campaign messages that contain the recipi
 so no copy stays in the mailbox's Sent Items (such a campaign message then has no
 `List-Unsubscribe` header, only the footer link).
 Tokens are cached in process memory only, never in the database or the shared cache.
-The private key is never in the database: an admin with the Core app installs the
+The private key is never in the database: an Admin installs the
 certificate on the Graph configuration's admin page, the key goes to the credential
 store (`apps.core.services.credential_store`; in production the Secrets Manager secret
 `itg/backend/microsoft-graph/certificate-key`, which the task role may write), and the
@@ -88,7 +88,7 @@ The Gmail API provider signs an RS256 service-account assertion for the From
 account (which must be on the config's account allow-list, checked before any key
 read or request), exchanges it at `oauth2.googleapis.com/token` for a gmail.send
 token kept in process memory only, and uploads the raw MIME to `messages.send`. Its
-key is installed by an admin with the Core app on the config's admin page and kept in
+key is installed by an Admin on the config's admin page and kept in
 the credential store (the Secrets Manager secret
 `itg/backend/gmail-api/service-account-key`, with the same narrow task-role grant and
 resource policy as the Graph key in `aws/cicd/identity-stack.json`). `verify_gmail_access` (or **Run access check**)
@@ -96,8 +96,7 @@ records the evidence switching email to it needs. Gmail keeps a Sent copy of
 everything, so mail with a credential carries a protected `X-I2G-Mail-Class:
 credential` header that the admin inbox's Sent view and the Gmail import filter
 out (only in Sent: the header is not authenticated, so received mail is listed as
-before), and the inbox's Sent folder is shown to staff with the Mail app only while
-the copies are kept. See [Gmail API email](../integrations/messaging/gmail-api-email.md).
+before); every Admin can open the inbox's Sent folder. See [Gmail API email](../integrations/messaging/gmail-api-email.md).
 
 Delivery fails closed unless the selected provider and sender are structurally
 configured. A failed or uncertain request is never retried through the other
@@ -184,7 +183,7 @@ try again. A cached list or message never takes a slot.
 | Public spend limits | Per-visitor/member and global token budgets in PostgreSQL, set on the same config; see [Assistant and AI search limits](../integrations/limits/assistant-limits.md) |
 | AWS credentials | Shared `AWSCredentialConfig` Secrets Manager reference + `default_region` |
 | Runtime | `src/apps/system_intelligence/services/bedrock/` |
-| Record writes (admin assistant) | Single-record writes through `core`'s `safe_orm`, proposed by the assistant and applied only when the conversation's owner approves (`src/apps/system_intelligence/services/actions/`). Readable but never written (`DENIED_WRITE_MODEL_LABELS`): contact emails and phones, the email and phone verification challenges, admin invitations, the RSA sign-in key, the CLI audit log and background jobs; Django's auto-created many-to-many tables are never written either. Neither read nor written (`DENIED_MODEL_LABELS`): the CLI's authorization codes and access tokens, and the assistant's exports. Member writes are stricter than `MemberAdmin`: through the assistant, only the I2G Master changes or deletes another staff or superuser account, or writes `MemberAdmin.superuser_only_fields` (`db/member_guard.py`). A refused approval fails the request and shows the reason in the chat panel. |
+| Record writes (admin assistant) | Single-record writes through `core`'s `safe_orm`, proposed by the assistant and applied only when the conversation's owner approves (`src/apps/system_intelligence/services/actions/`). Readable but never written (`DENIED_WRITE_MODEL_LABELS`): contact emails and phones, the email and phone verification challenges, admin invitations, the RSA sign-in key, the CLI audit log and background jobs; Django's auto-created many-to-many tables are never written either. Neither read nor written (`DENIED_MODEL_LABELS`): the CLI's authorization codes and access tokens, and the assistant's exports. Member writes (`db/member_guard.py`): any Admin may change, deactivate or delete any member through the assistant, another Admin included, but never writes `is_staff` or `is_superuser` (refused at proposal by `safe_orm` and again at approval: "Admin status is changed only on the member's page in the admin, not through the assistant."), and a delete or an update that sets `is_active` to false follows the Admin lockout rules (never the approver's own Admin account, never the last active Admin), checked at proposal and again on the locked row at approval. A refused approval fails the request and shows the reason in the chat panel. |
 
 Known Claude models with fixed sampling (including Fable 5) omit `temperature` in both Converse and agent calls. Older models retain the configured value. The admin connectivity test also omits optional sampling settings and reads text after any reasoning blocks. See [Anthropic sampling limits](https://platform.claude.com/docs/en/about-claude/models/extended-thinking-models).
 
@@ -194,7 +193,7 @@ Besides Bedrock, System Intelligence can call any **OpenAI-compatible Chat Compl
 
 | Concern | Implementation |
 |---------|---------------|
-| Provider rows | `LLMProviderConfig` (`src/apps/system_intelligence/models/llm_provider.py`), admin under System Intelligence → AI Providers. Only the I2G Master (superuser) may add, change, key, test or delete a provider, or choose which provider a role uses; other System Intelligence staff can view them. |
+| Provider rows | `LLMProviderConfig` (`src/apps/system_intelligence/models/llm_provider.py`), admin under System Intelligence → AI Providers. Any Admin may add, change, key, test or delete a provider, and choose which provider a role uses. |
 | Which provider a feature uses | `SystemIntelligenceConfig.default_provider` (admin assistant, context summaries, mail scam review) and `public_assistant_provider` (public chat, past-project AI search, only when the Public Assistant Model is set). Blank = Bedrock. |
 | Presets | `services/agents/providers/presets.py`: OpenAI, DeepSeek (OpenAI and Anthropic format), Kimi global / China (OpenAI format), Kimi (Anthropic format), Anthropic. **Custom endpoint** takes any https base URL that resolves only to public addresses (checked at save and before each call). Custom endpoints never follow HTTP redirects. |
 | API keys | Credential store secret `itg/backend/system-intelligence/llm-api-key` (`SystemIntelligenceLlmApiKeySecret` in `aws/cicd/identity-stack.json`): one version per installed key, pinned by the provider row. Installed and removed on the provider's own admin pages; never in the database, `.env` or `os.environ`. Changing a provider's endpoint unpins its key and disables it. After about 100 installs Secrets Manager may delete older unlabelled versions; reinstall a provider's key if its pin stops resolving. |

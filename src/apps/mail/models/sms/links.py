@@ -5,7 +5,7 @@ random, expiring token with one purpose. The URL carries nothing but the token (
 table keeps only its SHA-256 digest. Two kinds:
 
 - **personal** (``member`` set): signs that member in once and lands on ``redirect_path``; issued per recipient,
-  only when personal sign-in links are on, never to staff, and only to a phone that is the member's own verified
+  only when personal sign-in links are on, never to an Admin, and only to a phone that is the member's own verified
   account phone (``phone_digest``): opening it checks again that the member still has that phone. It carries the
   SMS Settings ``epoch`` it was issued in: turning personal sign-in links off moves the epoch on and revokes every
   outstanding one (``SmsLinkRevocation``), so a link from an earlier epoch never signs anyone in again;

@@ -1,6 +1,5 @@
 """Left-the-organisation notices on the Bounced addresses pages: the counts column and the list's filter, intro and
-suggestion; the address page's notice (the address it names, and the link to its helpdesk ticket only for staff with
-the Helpdesk app); and the Replace email page's hint, which fills in nothing."""
+suggestion; the address page's notice (the address it names, and the link to its helpdesk ticket); and the Replace email page's hint, which fills in nothing."""
 
 from datetime import timedelta
 from io import BytesIO
@@ -83,14 +82,12 @@ class NoticePagesTests(TestCase):
         self.assertContains(response, "May have left: an automatic reply says so.")
         self.assertEqual(response.context["notice_link"], self.ticket_link)
 
-    def test_the_ticket_link_needs_the_helpdesk_app(self):
-        self.client.force_login(make_admin(apps=["mail"]))
+    def test_every_admin_gets_the_ticket_link(self):
+        self.client.force_login(make_admin())
 
         response = self.client.get(reverse(DETAIL, args=[self.row.pk]))
 
-        self.assertContains(response, "Left-the-organisation notices")
-        self.assertNotContains(response, reverse("admin:helpdesk_ticket_changelist"))
-        self.assertEqual(response.context["notice_link"], "")
+        self.assertEqual(response.context["notice_link"], self.ticket_link)
 
     def test_an_address_without_notices_shows_no_notice_block(self):
         self.client.force_login(make_superuser())

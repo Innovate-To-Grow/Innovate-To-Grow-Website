@@ -7,7 +7,7 @@ timeline with the note form below the form. A merged ticket's status is read-onl
 "Merged": only a merge makes one. Merging and marking spam do need a typed confirmation. A merge into
 automated mail or spam is refused before that confirmation (and again by the service when it runs), and the
 "Automated & spam" view, where every ticket is one, offers no merge. Tickets are created only from mail, and deleted
-only by retention or an I2G Master (behind the typed confirmation). Nothing here sends anything.
+only by retention or by an Admin behind the typed confirmation. Nothing here sends anything.
 """
 
 from django.contrib import admin, messages
@@ -104,13 +104,10 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
     def has_add_permission(self, request):
         return False  # tickets come from mail
 
-    def has_delete_permission(self, request, obj=None):
-        return bool(getattr(request.user, "is_superuser", False)) and super().has_delete_permission(request, obj)
-
     def _should_skip_confirmation(self, request):
         # Saving the ticket page needs no typed confirmation (it would be noise on every status change). Deleting a
-        # ticket (I2G Master only; its messages, files and audit trail go with it) and the merge and spam actions
-        # keep theirs, so the skip is limited to the change view.
+        # ticket (its messages, files and audit trail go with it) and the merge and spam actions keep theirs, so the
+        # skip is limited to the change view.
         match = getattr(request, "resolver_match", None)
         if request.method == "POST" and getattr(match, "url_name", "") == f"{self.opts.app_label}_ticket_change":
             return True

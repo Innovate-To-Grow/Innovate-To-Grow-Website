@@ -5,7 +5,6 @@ from apps.core.models import (
     GmailApiProviderConfig,
     MicrosoftGraphProviderConfig,
 )
-from apps.core.utils.access import user_can_access_app
 
 Provider = EmailServiceConfig.Provider
 
@@ -20,16 +19,14 @@ def _details(config, aws_config, smtp_config) -> dict[str, str]:
     }
 
 
-def _configure_url(request, provider: str) -> str:
-    """Where this viewer sets the provider up, or "" when that needs access the viewer does not have."""
-    if provider == Provider.SES:
-        return reverse("admin:mail_settings_edit")
-    if provider == Provider.SMTP:
-        if user_can_access_app(request.user, "core"):
-            return reverse("admin:core_smtpproviderconfig_changelist")
-        return reverse("admin:mail_settings_edit")
-    if provider == Provider.GRAPH:
-        can_manage = user_can_access_app(request.user, "core")
-        return reverse("admin:core_microsoftgraphproviderconfig_changelist") if can_manage else ""
-    can_manage = user_can_access_app(request.user, "core")
-    return reverse("admin:core_gmailapiproviderconfig_changelist") if can_manage else ""
+CONFIGURE_URL_NAMES = {
+    Provider.SES: "admin:mail_settings_edit",
+    Provider.SMTP: "admin:core_smtpproviderconfig_changelist",
+    Provider.GRAPH: "admin:core_microsoftgraphproviderconfig_changelist",
+    Provider.GMAIL: "admin:core_gmailapiproviderconfig_changelist",
+}
+
+
+def _configure_url(provider: str) -> str:
+    """Where the provider is set up."""
+    return reverse(CONFIGURE_URL_NAMES[provider])

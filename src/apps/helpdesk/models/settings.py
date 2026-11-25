@@ -1,7 +1,7 @@
 """The helpdesk's admin-editable settings (one row; ``load()`` returns the defaults while none is saved).
 
-Every limit and retention period is a field with a documented default (docs/integrations/messaging/helpdesk.md), so staff
-with the Helpdesk grant can tune them without a deploy. ``shadow_mode`` is on and stays on in this release: the
+Every limit and retention period is a field with a documented default (docs/integrations/messaging/helpdesk.md), so any
+Admin can tune them without a deploy. ``shadow_mode`` is on and stays on in this release: the
 helpdesk has no sending code at all (no replies, acknowledgements or notifications, and no change to the mailbox).
 """
 

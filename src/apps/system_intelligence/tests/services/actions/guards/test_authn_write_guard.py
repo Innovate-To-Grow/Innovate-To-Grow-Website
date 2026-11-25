@@ -1,12 +1,12 @@
-"""The assistant's record writes can't move sign-in factors or cross the staff/superuser line.
+"""The assistant's record writes can't move sign-in factors, change Admin status or lock the site out.
 
-An approved DB action used to run ``full_clean()`` and ``save()`` with only the section grant checked. A staffer with the
-Members (authn) and System Intelligence grants, approving their own proposals, could keep a moved phone verified,
-verify a phone without a code, move a verified phone onto the I2G Master's account, forge a verified phone challenge,
-replace the RSA sign-in key, join a group through its table, and give themselves more admin sections (``admin_apps``).
+An approved DB action used to run ``full_clean()`` and ``save()`` with only the model permission checked. An Admin
+approving their own proposals could keep a moved phone verified, verify a phone without a code, move a verified phone
+onto another account, forge a verified phone challenge, replace the RSA sign-in key or join a group through its table.
 Now contact rows, verification challenges, invitations and the key are read-only to the assistant, many-to-many tables
-aren't writable, and member writes stay on the staff side of the line (``member_guard``, stricter than ``MemberAdmin``).
-Proposals are refused at once, and an action stored before these checks fails at approval with the reason.
+aren't writable, and Member writes follow ``member_guard``: Admin status changes only on the member's page, and the
+lockout rules (no deleting or deactivating your own Admin account or the last active Admin) apply. Proposals are refused
+at once, and an action stored before these checks fails at approval with the reason.
 """
 
 from contextlib import contextmanager
@@ -24,8 +24,6 @@ from apps.system_intelligence.services.actions.orm import serialize_model_instan
 
 Action = SystemIntelligenceActionRequest
 WRITE_REFUSED = "Write access is not allowed for authn.{}."
-TARGET_REFUSED = "Only an I2G Master may change or delete another staff or superuser account."
-SECTIONS_REFUSED = "Only an I2G Master may change admin_apps."
 
 
 @contextmanager
@@ -42,8 +40,8 @@ class AuthnWriteGuardTestCase(TestCase):
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
-        self.master = make_superuser(email="master@example.com")
-        self.staffer = make_admin(apps=["authn", "system_intelligence"], email="staffer@example.com")
+        self.other_admin = make_superuser(email="other-admin@example.com")
+        self.admin = make_admin(email="admin@example.com")
         self.member = make_member(email="member@example.com", first_name="Ada", last_name="Member")
         self.phone = ContactPhone.objects.create(
             member=self.member, phone_number="2095550123", region="1-US", verified=True

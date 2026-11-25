@@ -19,9 +19,8 @@ class CampaignGmailMixin:
         return HttpResponseRedirect(reverse("admin:mail_emailcampaign_import_gmail_html", args=[object_id]))
 
     def import_gmail_html_view(self, request, object_id):
-        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-        # per-app access itself. This stages a mutation of the campaign body —
-        # require change access.
+        # A plain Admin check, in case the URL is ever mounted without ``admin_view``. This stages a mutation
+        # of the campaign body.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to import Gmail HTML into this campaign.")
         obj = EmailCampaign.objects.get(pk=object_id)

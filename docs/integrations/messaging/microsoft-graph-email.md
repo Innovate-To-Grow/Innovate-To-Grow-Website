@@ -80,7 +80,7 @@ go-live.
    designated test mailbox (`Denied`), and to confirm whether the restriction is an Application Access Policy
    or RBAC for Applications.
 3. **Designated deny mailbox.** OIT / InfoSec name an existing mailbox unrelated to I2G for the denial test; an
-   admin with the Core app enters it as **Access Check Deny Mailbox**.
+   site Admin enters it as **Access Check Deny Mailbox**.
 4. **A passing access check** with the installed certificate against that mailbox, after OIT's changes have
    had time to apply (more than an hour for an access policy).
 5. **Certificate only.** Ask Cloud Systems to confirm that the app registration has no client secret and no
@@ -118,12 +118,13 @@ suppress it on [Bounced addresses](email-monitoring.md#bounced-addresses), and o
 |-----|------|
 | Cloud Systems (Entra / Exchange Online administrators) | Registers the app, adds and removes its certificates, grants its permissions and maintains the Exchange restriction |
 | AWS account administrator | Deploys the identity stack (the secret and its policies) and reviews CloudTrail |
-| Staff with the **Core** app on the site | Edit the Graph configuration and its mailbox scope; install, roll back and remove certificates; set the deny mailbox and the InfoSec exception reference; run the access check and see the recorded access checks |
-| Staff with the **Mail** app | Select the provider under Mail → Notification Delivery, where the Graph configuration is read-only |
+| Admins on the site | Edit the Graph configuration and its mailbox scope; install, roll back and remove certificates; set the deny mailbox and the InfoSec exception reference; run the access check and see the recorded access checks; select the provider under Mail → Notification Delivery, where the Graph configuration is read-only |
 
-Staff granted an app in `admin_apps` have full control of that app's configuration, like a superuser (who has every
-app). Only the Member privilege fields stay with superusers: `is_staff` and `admin_apps` are edited by superusers
-only, and superuser status is not editable in the admin at all.
+The site has two kinds of account, Admin and regular member, and every Admin has every permission in the admin:
+there is no narrower role for this configuration (the per-app grants and the "I2G Master" tier were retired; see
+[account types](../../cms-admin/member-and-mail-tools.md#account-types-admin-and-regular-member)). Admin access is
+granted on the member's page in the admin or by an Admin invitation; the member import, the `i2g-admin` CLI and the
+AI assistant never grant it.
 
 The sender mailbox must be an Exchange Online mailbox, user or shared. Graph cannot send as an on-premises
 mailbox or as an address that has no mailbox (`404`, see the [error reference](#error-reference)).
@@ -217,7 +218,7 @@ Policy nor RBAC for Applications limits it). It is beyond the current InfoSec ap
 `Mail.ReadWrite`, `Mail.Read`), so the order is fixed:
 
 1. **InfoSec** reviews the tenant-wide permission and approves it in writing.
-2. A Core admin records that review in **InfoSec Exception Reference** on the Graph configuration *before* OIT
+2. A site Admin records that review in **InfoSec Exception Reference** on the Graph configuration *before* OIT
    grants anything: once the token carries the role, the [access check](#validate-the-access-restriction) FAILs
    the extra role and the go-live evidence is withdrawn until the reference is recorded (it then WARNs and names
    it). Sending keeps working either way. The role is **not** added to `GRAPH_APPROVED_APPLICATION_ROLES` in code;
@@ -294,8 +295,8 @@ configuration:
 | **Client ID** | Application (client) ID of the Entra app registration (a GUID). |
 | **Sender Mailbox** | `i2g@ucmerced.edu`. Blank means the **From Email** address. The admin inbox reads this mailbox too. |
 | **Mailbox scope** (inline rows) | One row: mailbox `i2g@ucmerced.edu`, permission **Send and read (Mail.Send + Mail.Read)**. |
-| **Access Check Deny Mailbox** | Core app. The unrelated test mailbox OIT / InfoSec designated for the denial test ([Validate the access restriction](#validate-the-access-restriction)): a plain address, outside the scope, not the sender mailbox or **From Email**. |
-| **InfoSec Exception Reference** | Core app, and only after Graph permissions beyond the approved roles (`Mail.ReadWrite`, `Mail.Send`, `Mail.Read`) have been approved in writing: the reference of that review. Leave it blank otherwise. |
+| **Access Check Deny Mailbox** | The unrelated test mailbox OIT / InfoSec designated for the denial test ([Validate the access restriction](#validate-the-access-restriction)): a plain address, outside the scope, not the sender mailbox or **From Email**. |
+| **InfoSec Exception Reference** | Only after Graph permissions beyond the approved roles (`Mail.ReadWrite`, `Mail.Send`, `Mail.Read`) have been approved in writing: the reference of that review. Leave it blank otherwise. |
 
 Save, then use the panel above the form. It shows the **current certificate**: SHA-1 thumbprint (as Entra
 lists it), SHA-256 fingerprint, subject, serial, validity with an expiry badge (amber from
@@ -314,7 +315,7 @@ and app cannot change at all: select another provider first.
 
 ### 2. Install the certificate
 
-An admin with **Core** access chooses **Install certificate** on the saved configuration's panel.
+An Admin chooses **Install certificate** on the saved configuration's panel.
 Save a new configuration with **Save and continue editing** to reach this panel. It is a separate page,
 not the configuration form: nothing entered is kept in the session or cache, the key and password inputs are never shown again,
 and error reports hide them. It takes either:
@@ -357,8 +358,8 @@ is refused.
 
 The panel also offers **Roll back to previous** (after a fresh token test with the previous key), **Remove
 (emergency)** ([Emergency revocation](#emergency-revocation)) and **Download .cer** (the public certificate,
-for OIT). Staff with the **Core** app can install or replace a certificate, use all three, run the access check
-and edit the approval-evidence fields.
+for OIT). Every Admin can install or replace a certificate, use all three, run the access check and edit the
+approval-evidence fields.
 
 ### 3. Validate, then select Graph
 
@@ -373,8 +374,7 @@ and edit the approval-evidence fields.
    **Email Sender** on **Edit Notification Delivery**, which also sets **Active**, **From Name** and
    **From Email**, here `i2g@ucmerced.edu`.) The Graph panel shows the
    configuration read-only (with the certificate's SHA-1 thumbprint and expiry, the mailbox scope and the
-   latest access check); this page cannot change it. Staff with the **Core** app get a link to the
-   configuration page.
+   latest access check); this page cannot change it. It links to the configuration page.
 4. Do the [first live check](#first-live-check).
 
 - The **From Email** and the sending mailbox must both be in the scope with send permission; otherwise
@@ -417,7 +417,7 @@ and edit the approval-evidence fields.
 - Mailboxes are compared case-insensitively, and two rows for one mailbox are refused. Use the same form
   in the scope as in **Sender Mailbox**: an object ID (GUID) in one place and an address in the other do
   not match.
-- Staff with the **Core** app can edit the scope, like the rest of the configuration.
+- Every Admin can edit the scope, like the rest of the configuration.
 - Adding a mailbox here does not grant anything at Microsoft; the Exchange restriction must also include it.
   Adding a mailbox or permission beyond the approval needs a new InfoSec review.
 - The scope model is on the safe-ORM denylist, so the `i2g-admin` CLI and the AI assistant cannot read
@@ -478,7 +478,7 @@ AWS permissions (`aws/cicd/identity-stack.json`; deployment notes in
   means an account administrator changes the resource policy, which CloudTrail records.
 - **This is an exception** to the rule that the ECS task role has read-only access to application
   credentials ([Production](../../deployment/production.md#application-aws-credentials-and-background-jobs)):
-  the backend must write a version when a Core admin installs a certificate. It needs InfoSec sign-off
+  the backend must write a version when an Admin installs a certificate. It needs InfoSec sign-off
   ([Open items](#open-items-before-go-live)).
 
 What this means: code running as the backend can read the key, as it can every credential the backend
@@ -489,7 +489,7 @@ row pins is never used.
 
 The access check asks Microsoft directly, bypassing the site's own scope check, what the Entra app may do
 and compares it with the approved roles (`GRAPH_APPROVED_APPLICATION_ROLES`: what OIT granted, `Mail.ReadWrite` and
-`Mail.Send`) and the mailbox scope. An admin with the Core app
+`Mail.Send`) and the mailbox scope. An Admin
 runs it with **Run access check**, in the **Access check** section of the Graph configuration's page (production has
 no ECS Exec), or from a shell:
 
@@ -497,16 +497,12 @@ no ECS Exec), or from a shell:
 cd src && python manage.py verify_graph_access
 ```
 
-Running the check, **Access Check Deny Mailbox** and **InfoSec Exception Reference** need the Core app (superusers
-always have it). Staff without it, such as Mail-only staff on Mail → Notification Delivery, see a note in the card
-that the Core app is needed instead of the button, and the run page answers them with 403.
-
-Before the first run an admin with the Core app sets **Access Check Deny Mailbox**: an existing mailbox outside
+Before the first run an Admin sets **Access Check Deny Mailbox**: an existing mailbox outside
 the scope, designated by OIT / InfoSec for the denial test (a plain email address, not another name of a scoped
 mailbox). `--deny-mailbox <address>` tries another one, but only runs against the designated mailbox count
 as go-live evidence; `--no-send` skips the send probes and makes the run incomplete. Each run requests a
-fresh token with the current certificate and records one **Microsoft Graph Access Check** row (Core app,
-read-only): the certificate, the deny mailbox, every probe line, the token's roles and the verdict. No token,
+fresh token with the current certificate and records one **Microsoft Graph Access Check** row (under
+Site Settings, read-only): the certificate, the deny mailbox, every probe line, the token's roles and the verdict. No token,
 response body or message content is stored. The output starts with the time (UTC), the tenant and client
 ID, "certificate only" with the SHA-1 thumbprint and key version, the deny mailbox, the approved roles and
 any recorded exception.
@@ -528,8 +524,8 @@ How to read the result:
   I2G mailbox. If Exchange wrongly accepts one, it files no Sent Items copy and reaches only the I2G
   mailbox, and the line reads `ACCESS WAS GRANTED` with a note that a probe email was sent.
 - The token's `roles` are decoded without verifying the token (Microsoft supports decoding only for
-  debugging). Any role beyond the approved roles, such as `User.Read.All`, is a FAIL, unless an admin with the
-  Core app has recorded **InfoSec Exception Reference** (the reference of InfoSec's written review; the site
+  debugging). Any role beyond the approved roles, such as `User.Read.All`, is a FAIL, unless an Admin has
+  recorded **InfoSec Exception Reference** (the reference of InfoSec's written review; the site
   never fills it in), which turns it into a WARN that names the reference. No roles is a WARN: RBAC for
   Applications grants never appear in the token. Unreadable roles are INCONCLUSIVE.
 - A `403` for the deny mailbox counts only when the same kind of request succeeded for a scoped mailbox
@@ -578,8 +574,8 @@ then shows the evidence as missing until the check is run again.
 ## Check permissions
 
 A light, read-only check of what the current certificate's token may do, separate from the go-live evidence.
-**Check permissions** is on the Graph configuration's page (Core app; its card lists the result) and on Email
-Monitoring's delivery status card (Mail app); from a shell:
+**Check permissions** is on the Graph configuration's page (its card lists the result) and on Email
+Monitoring's delivery status card; from a shell:
 
 ```bash
 cd src && python manage.py verify_graph_access --permissions-only
@@ -625,10 +621,10 @@ any certificate Entra does not accept yet, so rotation needs no downtime when do
 1. **Laptop:** create a new key pair and certificate ([step 3](#3-create-the-key-pair-and-certificate)).
 2. **OIT:** send the new `.cer` and its SHA-1 thumbprint, and ask Cloud Systems to add it to the app. The
    old certificate keeps working.
-3. **Admin (Core access):** once OIT confirms, **Install certificate** with the new pair and the expected
+3. **Site Admin:** once OIT confirms, **Install certificate** with the new pair and the expected
    SHA-1 thumbprint. The site writes a new key version, tests it with Entra, and switches the pin; the
    replaced certificate is kept as previous.
-4. **Admin (Core access):** **Run access check** and send a test email. Evidence recorded for the old certificate
+4. **Site Admin:** **Run access check** and send a test email. Evidence recorded for the old certificate
    does not count for the new one.
 5. **OIT:** after a day without problems, ask Cloud Systems to remove the old certificate (by its SHA-1
    thumbprint). From then on **Roll back to previous** fails its token test, as it should.
@@ -711,7 +707,7 @@ Email** prove the credentials.
 - **No retry inside the provider.** One request is made per message. Retrying is left to the caller
   (see the [error reference](#error-reference)), and an uncertain outcome is never retried
   automatically.
-- **Admin access.** Staff granted the **Core** app can open the configuration, install, replace, roll back or
+- **Admin access.** Every site Admin can open the configuration, install, replace, roll back or
   remove its certificate and run the access check; **Mail → Notification Delivery** shows the configuration
   read-only. Changelist filters on secret-looking field names (`?private_key__regex=…`)
   are refused with `400` on every admin page. The configuration, its scope, its certificates and its access
@@ -727,7 +723,6 @@ Email** prove the credentials.
 | Credential store (Secrets Manager, local file, memory) and its system checks | `src/apps/core/services/credential_store/`, `src/apps/core/checks/` |
 | Mailbox scope enforcement | `src/apps/core/services/email/graph/identity/access.py` |
 | Reading the mailbox (`Mail.Read`) | `src/apps/core/services/email/graph/mailbox/__init__.py`, `src/apps/mail/services/inbox/reading/graph_backend.py` |
-| Sent mail access in the admin inbox | `src/apps/mail/admin/inbox/helpers.py` (`sent_mail_restricted`, `sent_mail_denied`) |
 | Access validation (probes, roles, verdict, evidence) | `src/apps/core/services/email/graph/access_check/`, `manage.py verify_graph_access` |
 | Recorded access checks and the go-live gate | `src/apps/core/models/base/service_credentials/microsoft_graph/access_check.py`, `EmailServiceConfig.validate_activation` |
 | Provider selection | `src/apps/core/services/email/sending/registry.py` |
@@ -749,7 +744,7 @@ as JSON. These are marked:
 - **Verification codes**, every purpose (`send_verification_email`: login, admin login, register, password
   reset and change, account deletion, contact and event-registration email checks), with the sign-in links
   they carry: the code or link signs in or authorises an account change.
-- **Admin invitations**: the acceptance URL creates a staff account for whoever holds it.
+- **Admin invitations**: the acceptance URL creates a full Admin account for whoever holds it.
 - **Ticket emails**: the ticket code is the check-in credential, and the member's login link signs in.
 - **Campaign messages that contain the recipient's login link** (`{{login_link}}` in the subject or body,
   for a recipient who is a member): the link signs in for `login_link_validity_days`, possibly more than
@@ -769,7 +764,7 @@ read. Through SES or SMTP the same message keeps both headers.
 
 Everything else stays MIME and keeps a Sent Items copy: campaign messages without a login link (one copy
 per recipient, with `List-Unsubscribe`), inbox replies, security and subscription notices, the test email and
-access-check probes. Staff with the **Mail** app can open Sent mail in **Mail → Inbox** (see
+access-check probes. Every Admin can open Sent mail in **Mail → Inbox** (see
 [Admin inbox](#admin-inbox)); the M365 admins should keep human Full Access to the mailbox to a minimum.
 Set a retention policy for the folder (the period is a records-policy decision) and watch the mailbox size:
 a full mailbox makes Graph answer `507`, and sending stops until space is freed.
@@ -788,18 +783,11 @@ sent From any scoped mailbox with send permission once the configuration has pas
   (`GET /v1.0/users/{mailbox}/mailFolders/{inbox|sentitems}/messages`) and opens a message as its original
   MIME (`GET /v1.0/users/{mailbox}/messages/{id}/$value`), so the scam detector still sees
   `Authentication-Results`, `Reply-To`, and `Return-Path`, and replies keep `In-Reply-To` / `References`.
-- **Sent mail is for staff with the Mail app**, the same staff who can open Mail → Inbox at all. Sent Items
-  holds what the site sends as MIME (campaigns, replies, notices, and anything sent before credential mail
-  went out as JSON); the site's credential mail (sign-in codes and links, admin invitations, tickets) goes out
-  as JSON with no Sent Items copy ([Sent Items](#sent-items-and-credential-mail)), so it is not there to read.
-  The check is kept as a second gate: a reader without the Mail app sees no **Sent** tab, a request for the
-  Sent folder shows the Inbox instead, and opening or replying to Sent mail answers `403`. A Graph message ID
-  is unique in the whole mailbox rather than per folder, so any message whose sender is the sending mailbox or
-  the **From Email** counts as Sent mail too, whichever folder the link names (a reply quotes the original, so
-  it is refused like opening it). For such a reader a message of that kind keeps its row, sender and date in
-  the Inbox list, but shows `(Sent from the site's own address: shown to staff with the Mail app only)` instead
-  of its subject and opening text. If the inbox backend cannot be resolved, Sent mail stays hidden from them.
-  The Gmail IMAP inbox is unchanged.
+- **Sent mail is readable by every Admin** (everyone who can open Mail → Inbox). Sent Items holds what the
+  site sends as MIME (campaigns, replies, notices, and anything sent before credential mail went out as JSON);
+  the site's credential mail (sign-in codes and links, admin invitations, tickets) goes out as JSON with no Sent
+  Items copy ([Sent Items](#sent-items-and-credential-mail)), so it is not there to read, and tagged credential
+  mail is left out of Sent for every reader. The Gmail IMAP inbox is unchanged.
 - **AI scam review (Amazon Bedrock).** Opening or previewing an Inbox message whose rule score falls in the
   medium band sends, for a second opinion, the sender's name and address, Reply-To, subject,
   `Authentication-Results` and the first 4,000 characters of the body (the text part, else the HTML) to
@@ -848,10 +836,10 @@ sent From any scoped mailbox with send permission once the configuration has pas
 | `Microsoft Graph certificate expiry warning: <n> days left; …` (WARNING, hourly) | Worker logs, from `GRAPH_CERTIFICATE_EXPIRY_WARNING_DAYS` (default 60) days before the active configuration's certificate expires | Rotate ([Rotate the certificate](#rotate-the-certificate)). |
 | Certificate expiry | The panel's expiry badge (amber at the warning, red at `GRAPH_CERTIFICATE_EXPIRY_CRITICAL_DAYS`, default 14); `verify_service_configs --strict` fails from the critical threshold while Graph is selected | Rotate before the critical threshold. |
 | Certificate changes | Admin history (`LogEntry`) of the Graph configuration: install, rollback and removal, with the actor, thumbprint, key version and reason | Review after any change. |
-| Access check | **Microsoft Graph Access Checks** in the admin (Core app); the panel's **Go-live evidence** line | Re-run after any Entra / Exchange change or certificate rotation. |
+| Access check | **Microsoft Graph Access Checks** in the admin (Site Settings); the panel's **Go-live evidence** line | Re-run after any Entra / Exchange change or certificate rotation. |
 | Permission check | The **Permissions** card on the Graph configuration's page (the latest run; earlier ones are kept but not listed); the summary on Mail → Notification Delivery and on Email Monitoring's delivery status card; log line `graph_permission_check token_ok=… roles=… trace=…` | Re-run after OIT changes a grant ([Check permissions](#check-permissions)). |
 | Message Trace sync | Email Monitoring → **Delivery status** card (state, last sync, backoff, last error) | "Waiting for permission": see [Check permissions](#check-permissions). |
-| Use of the key secret | CloudTrail for `itg/backend/microsoft-graph/certificate-key`: `GetSecretValue`, `PutSecretValue`, `UpdateSecretVersionStage`, resource-policy changes | Only `ecsTaskRole` sessions are expected: reads about hourly per process, writes only when a Core admin installs a certificate. |
+| Use of the key secret | CloudTrail for `itg/backend/microsoft-graph/certificate-key`: `GetSecretValue`, `PutSecretValue`, `UpdateSecretVersionStage`, resource-policy changes | Only `ecsTaskRole` sessions are expected: reads about hourly per process, writes only when an Admin installs a certificate. |
 | Sign-ins of the app | Entra → Enterprise applications → the app → **Sign-in logs** (service principal sign-ins) | Unexpected IPs or failures. |
 | Mailbox activity | Microsoft Purview audit log for `i2g@ucmerced.edu` (`Send`, `MailItemsAccessed`), run by the M365 admins | Investigations. |
 | Every send, its attempts and Microsoft's answers; bounce reports | **Broadcast Delivery → Delivery Operations**, which opens **Email Monitoring** ([Email monitoring](email-monitoring.md)) | Error categories, 429 incidents, failed recipients per campaign, the bounce processor's health. |
@@ -903,7 +891,7 @@ are done by different people: start both at once and do not wait for step 1 befo
    secrets**, by its SHA-1 thumbprint), or disable the enterprise application (**Properties** → **Enabled
    for users to sign in** = No). From then on Entra issues no new token with that key; this is the only step
    that stops whoever holds the key. Check that the app has no client secret or federated credential.
-2. **Site (admin with the Core app): stop using it, keep email working.** On the Graph configuration's page choose
+2. **Site (an Admin): stop using it, keep email working.** On the Graph configuration's page choose
    **Remove (emergency)**, type `REMOVE`, give the reason and tick **Also switch email delivery to AWS SES**.
    The current and previous certificates are marked removed, so every process refuses Graph at its next
    send without contacting AWS or Microsoft, and email moves to SES in the same step when SES is ready
@@ -1159,9 +1147,9 @@ After a new setup or a credential change:
    attached, that a subject or name with accented characters displays correctly, and that no copy is in
    Sent Items. Confirm the received message shows a sent date (the app does not write a `Date` header;
    Exchange is expected to add one).
-5. Open **Mail → Inbox** as a staff user with the Mail app. The **Sent** tab lists the test email and the
-   campaign without `{{login_link}}`, but never the sign-in code, the ticket or the login-link campaign. A staff
-   user without the Mail app cannot open Mail → Inbox.
+5. Open **Mail → Inbox** as an Admin. The **Sent** tab lists the test email and the campaign without
+   `{{login_link}}`, but never the sign-in code, the ticket or the login-link campaign. A signed-in regular
+   member (not an Admin) cannot open Mail → Inbox: the admin sends them to its sign-in page.
 6. In a non-production environment, install a throwaway certificate that is not registered on the app on an
    inactive configuration and confirm its Entra check reads not trusted (`AADSTS700027`).
 7. Confirm the small campaign completed without `429` responses.

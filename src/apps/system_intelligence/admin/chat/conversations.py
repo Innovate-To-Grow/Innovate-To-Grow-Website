@@ -11,9 +11,6 @@ from apps.system_intelligence.services.actions.engine.tool_access import has_cha
 
 def conversations_fragment(request):
     """Return JSON list of conversations for the current user."""
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
     conversations = ChatConversation.objects.filter(created_by=request.user).only(
         "id", "title", "updated_at", "mode", "required_tool_apps"
     )
@@ -34,9 +31,6 @@ def conversations_fragment(request):
 
 def new_conversation_view(request):
     """Create a new conversation and return its ID."""
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     convo = ChatConversation.objects.create(created_by=request.user)
@@ -45,16 +39,13 @@ def new_conversation_view(request):
 
 def chat_view(request, conversation_id):
     """Return JSON messages for a conversation."""
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
     try:
         convo = ChatConversation.objects.get(id=conversation_id, created_by=request.user)
     except ChatConversation.DoesNotExist:
         return JsonResponse({"error": "Conversation not found"}, status=404)
 
     if not has_chat_grants(request.user, convo.required_tool_apps):
-        raise PermissionDenied("Your current app grants do not cover this conversation.")
+        raise PermissionDenied("You do not have access to this conversation.")
     data = []
     for message in convo.messages.prefetch_related("action_requests").order_by("created_at"):
         data.append(
@@ -81,9 +72,6 @@ def chat_view(request, conversation_id):
 
 def chat_delete_view(request, conversation_id):
     """Delete a conversation."""
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     deleted, _ = ChatConversation.objects.filter(id=conversation_id, created_by=request.user).delete()
@@ -94,9 +82,6 @@ def chat_delete_view(request, conversation_id):
 
 def chat_rename_view(request, conversation_id):
     """Rename a conversation."""
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     try:
@@ -104,7 +89,7 @@ def chat_rename_view(request, conversation_id):
     except ChatConversation.DoesNotExist:
         return JsonResponse({"error": "Conversation not found"}, status=404)
     if not has_chat_grants(request.user, convo.required_tool_apps):
-        raise PermissionDenied("Your current app grants do not cover this conversation.")
+        raise PermissionDenied("You do not have access to this conversation.")
     try:
         body = json.loads(request.body)
         new_title = body.get("title", "").strip()

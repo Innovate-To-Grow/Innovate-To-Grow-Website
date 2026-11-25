@@ -1,4 +1,4 @@
-"""The AI provider admin: list and change pages, and saving (superuser).
+"""The AI provider admin: list and change pages, and saving (as an Admin).
 
 ``make_provider`` / ``action_url`` / ``post_data`` / ``ProviderAdminTestCase`` are shared with the other provider tests.
 """
@@ -9,7 +9,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.core.services.credential_store import memory
-from apps.event.tests.helpers import make_superuser
+from apps.event.tests.helpers import make_admin
 from apps.system_intelligence.admin.config.provider_admin import LLMProviderConfigAdmin
 from apps.system_intelligence.models import LLMProviderConfig
 from apps.system_intelligence.models.llm_provider import DISABLED_NEEDS_KEY
@@ -47,8 +47,8 @@ class ProviderAdminTestCase(TestCase):
         cache.clear()
         memory.reset()
         self.addCleanup(memory.reset)
-        self.superuser = make_superuser()
-        self.client.force_login(self.superuser)
+        self.admin_user = make_admin()
+        self.client.force_login(self.admin_user)
 
 
 def post_data(provider, **overrides):

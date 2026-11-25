@@ -11,8 +11,7 @@ class RegistrationInfoViewsMixin:
     def _member_info_view(self, request, pk):
         from apps.authn.models import Member
 
-        # ``admin_view`` only enforces is_staff; re-check per-app access so a
-        # staff member without the event app cannot read member PII.
+        # Custom URL: re-check the ModelAdmin's permission hook before returning member PII.
         if not self.has_view_permission(request):
             raise PermissionDenied("You do not have permission to view this information.")
         try:
@@ -39,8 +38,7 @@ class RegistrationInfoViewsMixin:
 
     # noinspection PyMethodMayBeStatic
     def _event_info_view(self, request, pk):
-        # ``admin_view`` only enforces is_staff; re-check per-app access so a
-        # staff member without the event app cannot read event details.
+        # Custom URL: re-check the ModelAdmin's permission hook before returning event details.
         if not self.has_view_permission(request):
             raise PermissionDenied("You do not have permission to view this information.")
         try:
