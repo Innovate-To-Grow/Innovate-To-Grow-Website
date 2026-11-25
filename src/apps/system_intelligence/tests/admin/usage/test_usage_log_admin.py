@@ -4,6 +4,7 @@ from django.utils import timezone
 
 from apps.event.tests.helpers import make_admin, make_member, make_superuser
 from apps.system_intelligence.models import AssistantConversationLog, AssistantMessageLog
+from apps.system_intelligence.tests.admin.base import rendered_badge
 
 
 class UsageLogAdminTests(TestCase):
@@ -71,15 +72,15 @@ class UsageLogAdminTests(TestCase):
     # ---- display helpers --------------------------------------------------
     def test_conversation_display_helpers(self):
         self.assertEqual(self.convo_admin.session_short(self.convo), "55555555")
-        self.assertEqual(self.convo_admin.source_badge(self.convo), ("Public Chat", "info"))
+        self.assertEqual(rendered_badge(self.convo_admin.source_badge, self.convo), ("Public Chat", "info"))
         empty = AssistantConversationLog.objects.create(
             source=AssistantConversationLog.SOURCE_AI_SEARCH, last_activity_at=timezone.now()
         )
         self.assertEqual(self.convo_admin.session_short(empty), "—")
-        self.assertEqual(self.convo_admin.source_badge(empty), ("AI Search", "primary"))
+        self.assertEqual(rendered_badge(self.convo_admin.source_badge, empty), ("AI Search", "primary"))
 
     def test_message_display_helpers(self):
-        self.assertEqual(self.message_admin.status_badge(self.message), ("OK", "success"))
+        self.assertEqual(rendered_badge(self.message_admin.status_badge, self.message), ("OK", "success"))
         self.assertEqual(self.message_admin.token_total(self.message), 15)
         self.assertTrue(self.message_admin.prompt_short(self.message).endswith("..."))
 

@@ -112,7 +112,7 @@ def _warn_global_budget_exhausted(feature: str, global_limit: int) -> None:
         logger.warning(
             "Assistant global token budget exhausted for %s (limit %s per %ss): its model calls are refused "
             "until its window ends or the Global Token Limit is raised in Django admin (System Intelligence > "
-            "Assistant Tools). The other feature has its own budget and is not affected.",
+            "Assistant Settings > Public Limits). The other feature has its own budget and is not affected.",
             GLOBAL_FEATURE_LABELS.get(feature, feature),
             global_limit,
             GLOBAL_WINDOW_SECONDS,

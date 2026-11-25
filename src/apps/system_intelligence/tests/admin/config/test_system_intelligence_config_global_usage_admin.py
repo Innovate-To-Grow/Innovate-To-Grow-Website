@@ -47,7 +47,7 @@ class SystemIntelligenceConfigGlobalUsageAdminTests(TestCase):
     def test_usage_sits_right_after_the_limit_and_is_read_only(self):
         request = RequestFactory().get("/admin/")
         request.user = self.admin_user
-        public_fields = list(dict(self.admin.fieldsets)["Public Assistant"]["fields"])
+        public_fields = list(dict(self.admin.fieldsets)["Public Limits"]["fields"])
 
         self.assertEqual(
             public_fields.index(USAGE_FIELD),
