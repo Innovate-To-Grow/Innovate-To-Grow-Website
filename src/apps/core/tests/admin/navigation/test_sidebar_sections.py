@@ -8,26 +8,34 @@ from apps.core.tests.admin.navigation.test_sidebar import DELIVERY_OPERATIONS_PA
 
 
 class AdminSidebarNavigationTest(SimpleTestCase):
-    def test_system_intelligence_admin_pages_are_grouped_under_assistant_tabs(self):
+    def test_system_intelligence_usage_pages_are_grouped_under_usage_tabs(self):
         tabs = settings.UNFOLD["TABS"]
-        model_tab = next(tab for tab in tabs if "system_intelligence.systemintelligenceconfig" in tab.get("models", []))
-        page_tab = next(tab for tab in tabs if tab.get("page") == "system_intelligence_assistant_tools")
+        model_tab = next(tab for tab in tabs if "system_intelligence.assistantconversationlog" in tab.get("models", []))
+        page_tab = next(tab for tab in tabs if tab.get("page") == "system_intelligence_usage")
 
         expected_items = [
-            {"title": "Assistant Settings", "link": "/admin/system_intelligence/systemintelligenceconfig/"},
             {"title": "Usage Dashboard", "link": "/admin/system-intelligence/usage/"},
             {"title": "Conversation Logs", "link": "/admin/system_intelligence/assistantconversationlog/"},
+            {"title": "Message Logs", "link": "/admin/system_intelligence/assistantmessagelog/"},
+            {"title": "Action Requests", "link": "/admin/system_intelligence/systemintelligenceactionrequest/"},
         ]
 
         self.assertEqual(
             model_tab["models"],
             [
-                "system_intelligence.systemintelligenceconfig",
                 "system_intelligence.assistantconversationlog",
+                "system_intelligence.assistantmessagelog",
+                "system_intelligence.systemintelligenceactionrequest",
             ],
         )
         self.assertEqual(model_tab["items"], expected_items)
         self.assertEqual(page_tab["items"], expected_items)
+
+    def test_system_intelligence_configuration_pages_are_not_tabbed(self):
+        tabbed_models = {model for tab in settings.UNFOLD["TABS"] for model in tab.get("models", [])}
+
+        self.assertNotIn("system_intelligence.systemintelligenceconfig", tabbed_models)
+        self.assertNotIn("system_intelligence.llmproviderconfig", tabbed_models)
 
     def test_members_navigation_includes_auth_entries(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]

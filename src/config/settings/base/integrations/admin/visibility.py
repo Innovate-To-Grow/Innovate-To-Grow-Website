@@ -28,11 +28,6 @@ def _can_open_legacy_viewer(request):
     return getattr(settings, "LEGACY_VIEW_ENABLED", False) is True and user_can_access_app(request.user, "core")
 
 
-def _is_system_intelligence_chat(request):
-    path = request.path
-    return path.startswith("/admin/system-intelligence/") and not path.startswith("/admin/system-intelligence/usage/")
-
-
 def _is_service_credentials(request):
     # One sidebar entry for the whole Service Credentials tab group, highlighted on every tab's pages.
     return any(request.path.startswith(f"/admin/{model.replace('.', '/')}/") for model in SERVICE_CREDENTIAL_MODELS)

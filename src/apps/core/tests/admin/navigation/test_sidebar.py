@@ -136,21 +136,44 @@ class AdminSidebarNavigationTest(SimpleTestCase):
             ],
         )
 
-    def test_system_intelligence_navigation_includes_chat_and_settings(self):
+    def test_system_intelligence_navigation_lists_chat_providers_settings_and_usage(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
         system_intelligence_section = next(
             section for section in navigation if section["title"] == "System Intelligence"
         )
-        items_by_title = {item["title"]: item for item in system_intelligence_section["items"]}
 
-        self.assertEqual(items_by_title["Chat"]["link"], "/admin/system-intelligence/")
         self.assertEqual(
-            items_by_title["Assistant Tools"]["link"],
-            "/admin/system_intelligence/systemintelligenceconfig/",
+            [(item["title"], item["link"]) for item in system_intelligence_section["items"]],
+            [
+                ("Chat", "/admin/system-intelligence/"),
+                ("AI Providers", "/admin/system_intelligence/llmproviderconfig/"),
+                ("Assistant Settings", "/admin/system_intelligence/systemintelligenceconfig/"),
+                ("Usage & Logs", "/admin/system-intelligence/usage/"),
+            ],
         )
-        self.assertNotIn("Assistant Settings", items_by_title)
-        self.assertNotIn("Usage Dashboard", items_by_title)
-        self.assertNotIn("Conversation Logs", items_by_title)
+
+    def test_system_intelligence_usage_entry_stays_active_across_its_tabs(self):
+        navigation = settings.UNFOLD["SIDEBAR"]["navigation"]
+        section = next(section for section in navigation if section["title"] == "System Intelligence")
+        usage = next(item for item in section["items"] if item["title"] == "Usage & Logs")
+        factory = RequestFactory()
+
+        for path in (
+            "/admin/system-intelligence/usage/",
+            "/admin/system-intelligence/usage/data/",
+            "/admin/system_intelligence/assistantconversationlog/",
+            "/admin/system_intelligence/assistantmessagelog/123/change/",
+            "/admin/system_intelligence/systemintelligenceactionrequest/",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(usage["active"](factory.get(path)))
+        for path in (
+            "/admin/system-intelligence/",
+            "/admin/system_intelligence/systemintelligenceconfig/",
+            "/admin/system_intelligence/llmproviderconfig/",
+        ):
+            with self.subTest(path=path):
+                self.assertFalse(usage["active"](factory.get(path)))
 
     def test_system_intelligence_chat_sidebar_active_state_is_exact(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]

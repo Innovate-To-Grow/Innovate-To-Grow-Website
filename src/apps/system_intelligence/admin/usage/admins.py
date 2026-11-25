@@ -94,9 +94,9 @@ class AssistantConversationLogAdmin(ReadOnlyModelAdmin):
             return "—"
         return str(obj.session_id)[:8]
 
-    @display(description="Source", label=True)
+    @display(description="Source", label=_SOURCE_COLORS)
     def source_badge(self, obj):
-        return obj.get_source_display(), _SOURCE_COLORS.get(obj.source, "info")
+        return obj.source, obj.get_source_display()
 
     @admin.display(description="Conversation")
     def conversation_transcript(self, obj):
@@ -123,9 +123,9 @@ class AssistantMessageLogAdmin(ReadOnlyModelAdmin):
     date_hierarchy = "created_at"
     ordering = ("-created_at",)
 
-    @display(description="Status", label=True)
+    @display(description="Status", label=_STATUS_COLORS)
     def status_badge(self, obj):
-        return obj.get_status_display(), _STATUS_COLORS.get(obj.status, "info")
+        return obj.status, obj.get_status_display()
 
     @admin.display(description="Tokens")
     def token_total(self, obj):

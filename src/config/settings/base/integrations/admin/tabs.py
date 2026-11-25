@@ -1,5 +1,7 @@
 """Unfold tab groups for related models and custom admin pages."""
 
+from .system_intelligence import SYSTEM_INTELLIGENCE_TABS
+
 _DELIVERY_RATES_PATH = "/admin/mail/settings/rates/"
 
 # Site Settings → Service Credentials: every provider credential, in the order Notification Delivery lists them.
@@ -172,23 +174,5 @@ TABS = [
             {"title": "Audit Log", "link": "/admin/cli_admin/cliauditlog/"},
         ],
     },
-    {
-        "models": [
-            "system_intelligence.systemintelligenceconfig",
-            "system_intelligence.assistantconversationlog",
-        ],
-        "items": [
-            {"title": "Assistant Settings", "link": "/admin/system_intelligence/systemintelligenceconfig/"},
-            {"title": "Usage Dashboard", "link": "/admin/system-intelligence/usage/"},
-            {"title": "Conversation Logs", "link": "/admin/system_intelligence/assistantconversationlog/"},
-        ],
-    },
-    {
-        "page": "system_intelligence_assistant_tools",
-        "items": [
-            {"title": "Assistant Settings", "link": "/admin/system_intelligence/systemintelligenceconfig/"},
-            {"title": "Usage Dashboard", "link": "/admin/system-intelligence/usage/"},
-            {"title": "Conversation Logs", "link": "/admin/system_intelligence/assistantconversationlog/"},
-        ],
-    },
+    *SYSTEM_INTELLIGENCE_TABS,
 ]

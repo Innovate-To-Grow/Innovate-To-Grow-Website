@@ -42,9 +42,9 @@ class LLMProviderConfigAdmin(ProviderKeyActionsMixin, BaseModelAdmin):
     def has_delete_permission(self, request, obj=None):
         return request.user.is_superuser and super().has_delete_permission(request, obj)
 
-    @display(description="Status", label=True)
+    @display(description="Status", label={"enabled": "success", "disabled": "danger"})
     def status_badge(self, obj):
-        return ("Enabled", "success") if obj.is_enabled else ("Disabled", "danger")
+        return ("enabled", "Enabled") if obj.is_enabled else ("disabled", "Disabled")
 
     @display(description="Endpoint")
     def endpoint_display(self, obj):
