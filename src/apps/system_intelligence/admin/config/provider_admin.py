@@ -31,9 +31,9 @@ class LLMProviderConfigAdmin(ProviderKeyActionsMixin, BaseModelAdmin):
     )
     readonly_fields = ("id", "created_at", "updated_at", "key_display", "key_installed_at")
 
-    @display(description="Status", label=True)
+    @display(description="Status", label={"enabled": "success", "disabled": "danger"})
     def status_badge(self, obj):
-        return ("Enabled", "success") if obj.is_enabled else ("Disabled", "danger")
+        return ("enabled", "Enabled") if obj.is_enabled else ("disabled", "Disabled")
 
     @display(description="Endpoint")
     def endpoint_display(self, obj):

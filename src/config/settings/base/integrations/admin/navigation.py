@@ -1,5 +1,6 @@
 """Unfold sidebar navigation. Its request-dependent visibility callbacks are in ``visibility``."""
 
+from .system_intelligence import SYSTEM_INTELLIGENCE_SECTION
 from .visibility import (
     _SENDING_METHOD_PATH,
     _can_open_legacy_viewer,
@@ -9,7 +10,6 @@ from .visibility import (
     _is_email_sending_method,
     _is_mail_delivery_operations,
     _is_service_credentials,
-    _is_system_intelligence_chat,
 )
 
 SIDEBAR = {
@@ -110,23 +110,7 @@ SIDEBAR = {
                 _helpdesk_link("Settings", "helpdesksettings"),
             ],
         },
-        {
-            "title": "System Intelligence",
-            "permission": _is_admin,
-            "items": [
-                {
-                    "title": "Chat",
-                    "link": "/admin/system-intelligence/",
-                    "permission": _is_admin,
-                    "active": _is_system_intelligence_chat,
-                },
-                {
-                    "title": "Assistant Tools",
-                    "link": "/admin/system_intelligence/systemintelligenceconfig/",
-                    "permission": _is_admin,
-                },
-            ],
-        },
+        SYSTEM_INTELLIGENCE_SECTION,
         {
             "title": "Site Settings",
             "permission": _is_admin,

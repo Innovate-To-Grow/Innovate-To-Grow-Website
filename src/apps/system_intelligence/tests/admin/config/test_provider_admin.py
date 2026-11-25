@@ -14,6 +14,7 @@ from apps.system_intelligence.admin.config.provider_admin import LLMProviderConf
 from apps.system_intelligence.models import LLMProviderConfig
 from apps.system_intelligence.models.llm_provider import DISABLED_NEEDS_KEY
 from apps.system_intelligence.services.agents.providers.keys import install_api_key
+from apps.system_intelligence.tests.admin.base import rendered_badge
 
 CHANGELIST_URL = "/admin/system_intelligence/llmproviderconfig/"
 RUN_PROBE = "apps.system_intelligence.services.agents.run_tool_free_agent"
@@ -70,8 +71,9 @@ class ProviderAdminDisplayTests(TestCase):
         self.admin = LLMProviderConfigAdmin(LLMProviderConfig, AdminSite())
 
     def test_status_badge(self):
-        self.assertEqual(self.admin.status_badge(LLMProviderConfig(is_enabled=True)), ("Enabled", "success"))
-        self.assertEqual(self.admin.status_badge(LLMProviderConfig(is_enabled=False)), ("Disabled", "danger"))
+        enabled, disabled = LLMProviderConfig(is_enabled=True), LLMProviderConfig(is_enabled=False)
+        self.assertEqual(rendered_badge(self.admin.status_badge, enabled), ("Enabled", "success"))
+        self.assertEqual(rendered_badge(self.admin.status_badge, disabled), ("Disabled", "danger"))
 
     def test_endpoint_display_for_presets_custom_and_unknown(self):
         self.assertEqual(self.admin.endpoint_display(LLMProviderConfig(preset="deepseek")), "https://api.deepseek.com")
