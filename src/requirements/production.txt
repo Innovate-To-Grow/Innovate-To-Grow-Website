@@ -2,7 +2,7 @@
 -r base.txt
 
 # Production servers
-gunicorn>=26.2.0
+gunicorn>=26.2.0,<27
 uvicorn[standard]>=0.54.0,<1.0
 
 # PostgreSQL adapter
