@@ -5,7 +5,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
 
 import {flush, installPollBackoff, jsonResponse, readRepoFile, templateMarkup} from '@/__tests__/core/adminStatic';
 
-const JS = 'src/apps/event/static/event/js/';
+const JS = 'src/apps/event/static/event/js/checkin/';
 const CONSOLE_SCRIPTS = ['checkin_shared.js', 'checkin_ticket_input.js', 'checkin_camera.js', 'checkin_console.js'];
 const SCAN_URL = '/event/check-in/c1/scan/';
 const STATUS_URL = '/event/check-in/c1/status/';

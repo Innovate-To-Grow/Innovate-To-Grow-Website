@@ -4,11 +4,13 @@ from django.contrib import admin
 from django.db import transaction
 from django.shortcuts import redirect
 from django.urls import path, reverse
+from unfold.decorators import display
 
 from apps.core.admin import BaseModelAdmin
 from apps.core.utils.access import user_can_access_app
 
 from ...models import Event, EventRegistration, Ticket
+from .changelist import SemesterListFilter, build_toolbar, clear_filters_url
 from .config import (
     ADD_FIELDSETS,
     ADD_READONLY_FIELDS,
@@ -33,22 +35,16 @@ class EventRegistrationAdmin(
     export_filename = "event_registrations"
 
     class Media:
-        js = ("event/js/registration_detail_panels.js",)
+        css = {"all": ("event/css/event_admin/registration_changelist.css",)}
+        js = (
+            "event/js/event_admin/registration_detail_panels.js",
+            "event/js/event_admin/registration_changelist_toolbar.js",
+        )
 
-    list_display = (
-        "ticket_code",
-        "attendee_first_name",
-        "attendee_last_name",
-        "attendee_email",
-        "attendee_secondary_email",
-        "attendee_phone",
-        "phone_verified",
-        "secondary_email_verified",
-        "ticket",
-        "event",
-        "created_at",
-    )
-    list_filter = ("event", "ticket")
+    # Five columns so the list fits a 1024px window without scrolling sideways: the attendee's secondary email,
+    # phone and verification flags are on the change form, in the export, and searchable.
+    list_display = ("ticket_code", "attendee", "event", "ticket", "created_at")
+    list_filter = (SemesterListFilter, "event", "ticket")
     search_fields = (
         "attendee_first_name",
         "attendee_last_name",
@@ -57,10 +53,16 @@ class EventRegistrationAdmin(
         "attendee_phone",
         "attendee_organization",
         "ticket_code",
+        "event__name",
     )
+    search_help_text = "Search name, email, phone, organization, ticket code or event"
     autocomplete_fields = ["member"]
     ordering = ("-created_at",)
     actions = ["resend_ticket_email", "revoke_login_links_action"]
+
+    @display(description="Attendee", ordering="attendee_last_name", header=True)
+    def attendee(self, obj):
+        return [obj.attendee_name or "-", obj.attendee_email]
 
     @admin.action(description="Revoke login links (invalidate ticket email and ticket text sign-in links)")
     def revoke_login_links_action(self, request, queryset):
@@ -98,15 +100,25 @@ class EventRegistrationAdmin(
         return custom + super().get_urls()
 
     def changelist_view(self, request, extra_context=None):
+        events = list(Event.objects.order_by("-date", "name").only("pk", "name", "date"))
         extra_context = {
             **(extra_context or {}),
             "send_all_ticket_emails_url": reverse("admin:event_eventregistration_send_all_ticket_emails"),
             "sheet_sync_events": [
                 {"name": event.name, "url": reverse("admin:event_event_sheet_sync", args=[event.pk])}
-                for event in Event.objects.order_by("-date", "name")
+                for event in events
             ],
+            "registration_toolbar": build_toolbar(request, events),
         }
-        return super().changelist_view(request, extra_context)
+        response = super().changelist_view(request, extra_context)
+        # The Clear link needs the ChangeList, which only exists once Django has built the response.
+        context = getattr(response, "context_data", None) or {}
+        if "cl" in context:
+            toolbar, cl = context["registration_toolbar"], context["cl"]
+            toolbar["clear_url"] = clear_filters_url(cl)
+            # A list filter set outside the toolbar (e.g. the ticket filter) still needs the Clear link.
+            toolbar["is_filtered"] = toolbar["is_filtered"] or cl.has_active_filters
+        return response
 
     def get_readonly_fields(self, request, obj=None):
         if obj is None:

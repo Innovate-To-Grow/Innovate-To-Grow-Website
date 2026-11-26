@@ -61,7 +61,7 @@ class EventAdminTest(_EventAdminCase):
         response = self.client.get("/admin/event/event/add/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Copy from existing Event")
-        self.assertContains(response, "event/js/event_admin.js")
+        self.assertContains(response, "event/js/event_admin/event_admin.js")
         self.assertContains(response, "event/css/event_admin/event_admin.css")
         self.assertContains(response, "Phone Number")
         self.assertContains(response, "Secondary Email")
