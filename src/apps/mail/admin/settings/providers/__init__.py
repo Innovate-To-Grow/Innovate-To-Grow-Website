@@ -117,14 +117,14 @@ def provider_cards(request, config, aws_config, smtp_config) -> list[dict]:
                 "switch_from_email": from_email if from_email != config.from_email else "",
                 "test_url": reverse("admin:mail_settings_test_email_provider", args=[provider]),
                 "use_url": reverse("admin:mail_settings_use_provider", args=[provider]),
-                "configure_url": _configure_url(request, provider),
+                "configure_url": _configure_url(provider),
             }
         )
     return cards
 
 
 def mail_sending_method_view(request):
-    """Which API sends all site email, and a test through each (Mail app, as Notification Delivery)."""
+    """Which API sends all site email, and a test through each (as Notification Delivery)."""
     _require_mail_access(request)
     config = EmailServiceConfig.load()
     context = {
@@ -147,7 +147,7 @@ def in_use_label(config: EmailServiceConfig) -> str:
 
 @require_POST
 def mail_settings_use_provider_view(request, provider):
-    """Switch email to *provider* (Mail app staff, as on the edit page), if switching to it is allowed."""
+    """Switch email to *provider* (as on the edit page), if switching to it is allowed."""
     _require_mail_access(request)
     provider = provider_or_404(provider)
     settings_url = reverse("admin:mail_sending_method")

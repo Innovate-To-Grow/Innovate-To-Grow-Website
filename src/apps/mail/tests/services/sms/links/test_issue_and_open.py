@@ -97,7 +97,7 @@ class IssueAndOpenTests(_IssueAndOpenCase):
         opened = links.open_link(token_of(url))
         self.assertEqual((opened.kind, opened.code, opened.redirect_to), ("rejected", "expired", "/account"))
 
-    def test_staff_inactive_and_unknown_links_are_refused_alike(self):
+    def test_inactive_and_unknown_links_are_refused_alike(self):
         url = links.issue_personal_link(
             purpose=links.Purpose.LOGIN, member=self.member, phone=PHONE, redirect_path="/account", validity_days=1
         )
@@ -108,7 +108,7 @@ class IssueAndOpenTests(_IssueAndOpenCase):
                 opened = links.open_link(token)
                 self.assertEqual((opened.kind, opened.code, opened.redirect_to), ("rejected", "invalid_link", ""))
 
-    def test_staff_never_get_a_personal_link_and_a_promoted_member_cannot_use_one(self):
+    def test_an_admin_never_gets_a_personal_link_and_a_promoted_member_cannot_use_one(self):
         with self.assertRaises(ValueError):
             links.issue_personal_link(
                 purpose=links.Purpose.LOGIN, member=make_superuser(), phone=PHONE, redirect_path="/", validity_days=1

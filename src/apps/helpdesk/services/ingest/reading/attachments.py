@@ -4,14 +4,21 @@ Attachments live in PostgreSQL (``TicketAttachment.content``), never on the publ
 kept for: blocked file types (executables and scripts, disk images, active content such as HTML or SVG, macro-enabled
 Office files, OneNote and CHM; an executable renamed to something harmless is caught by its content), files over the
 per-file cap, files past the per-message total, and everything of a message cut off at the read limit (it may be
-incomplete). Downloads are always ``Content-Disposition: attachment`` with ``X-Content-Type-Options: nosniff``, and
-``application/octet-stream`` unless the content is a raster image; archives are offered only after a warning.
+incomplete). A text file (declared ``text/*`` or named like one, and not a known binary format by its content) is
+stored with its personal sign-in links replaced by ``[sign-in link removed]``, otherwise byte for byte; every other
+file (PDF, Office documents, images, archives) is stored as received, so a link inside one is not removed. A saved
+message (``.eml``) is never stored: it is read like a forwarded one (``mime``). Downloads are always
+``Content-Disposition: attachment`` with ``X-Content-Type-Options: nosniff``, and ``application/octet-stream`` unless
+the content is a raster image; archives are offered only after a warning.
 """
 
+import codecs
 import hashlib
+import re
 
 from ....models import HelpdeskSettings, TicketAttachment
-from .message import ParsedAttachment
+from ...tickets.scrub import scrub_sign_in_links
+from .message import _PART_ERRORS, ParsedAttachment, text_codec
 
 # Leading bytes of the formats worth recognising (the declared type and the file name are the sender's claim).
 _SIGNATURES = (
@@ -31,6 +38,17 @@ _SIGNATURES = (
 RASTER_TYPES = frozenset({"image/png", "image/jpeg", "image/gif", "image/webp"})
 EXECUTABLE_TYPES = frozenset({"application/x-msdownload", "application/x-executable"})
 ARCHIVE_TYPES = frozenset({"application/zip", "application/vnd.rar", "application/x-7z-compressed", "application/gzip"})
+# Read as text also when sent as application/octet-stream (or as Excel, as Outlook sends a .csv).
+TEXT_EXTENSIONS = frozenset(
+    {
+        "txt", "text", "log", "csv", "tsv", "htm", "html", "xhtml", "xml", "svg", "json", "ics", "vcf", "md",
+        "markdown", "rtf", "yaml", "yml",
+    }
+)  # fmt: skip
+_UTF16_BOMS = ((codecs.BOM_UTF16_LE, "utf-16-le"), (codecs.BOM_UTF16_BE, "utf-16-be"))
+# Calendar and contact files fold long lines (RFC 5545 and 6350: a line break, then one space or tab).
+_FOLDED_TYPES = frozenset({"text/calendar", "text/vcard", "text/x-vcard"})
+_FOLD_RE = re.compile(r"\r?\n[ \t]")
 
 
 def sniff(data: bytes | None) -> str:
@@ -72,15 +90,19 @@ def prepare(items: list[ParsedAttachment], settings: HelpdeskSettings, *, trunca
         elif stored_total + item.size > message_cap:
             reason = "Not stored: the message's files together exceed the per-message limit; open it in Outlook."
         else:
-            content = item.data
+            # Staff download what is stored: a text file must not hand them the requester's sign-in link.
+            folded = item.content_type in _FOLDED_TYPES or extension(item.filename) in {"ics", "vcf"}
+            text_file = is_text_file(item, detected)
+            content = scrub_text_file(item.data, item.charset, folded=folded) if text_file else item.data
             stored_total += item.size
+        kept = item.data if content is None else content  # a stored file's size and hash are those of what is stored
         rows.append(
             {
                 "filename": item.filename[:255],
                 "declared_type": item.content_type[:127],
                 "detected_type": detected,
-                "size": item.size,
-                "sha256": hashlib.sha256(item.data).hexdigest() if item.data is not None else "",
+                "size": item.size if content is None else len(content),
+                "sha256": hashlib.sha256(kept).hexdigest() if kept is not None else "",
                 "is_inline": item.is_inline,
                 "content_id": item.content_id[:255],
                 "blocked": blocked,
@@ -89,6 +111,46 @@ def prepare(items: list[ParsedAttachment], settings: HelpdeskSettings, *, trunca
             }
         )
     return rows
+
+
+def is_text_file(item: ParsedAttachment, detected: str) -> bool:
+    """Declared ``text/*`` or named like a text file, unless its content is a known binary format (``detected``)."""
+    return not detected and (item.content_type.startswith("text/") or extension(item.filename) in TEXT_EXTENSIONS)
+
+
+def scrub_text_file(data: bytes, charset: str = "", *, folded: bool = False) -> bytes:
+    """A text file with its personal sign-in links replaced, read and written back with the same codec (``_codec``):
+    ``surrogateescape`` keeps the bytes it cannot read as they were, and a file without such a link is returned as
+    it came. A ``folded`` file (calendar, contact) is read unfolded, and written back so when a link went."""
+    codec = _codec(data, charset)
+    for errors in ("surrogateescape", "replace"):
+        try:
+            return _scrubbed(data, codec, errors, folded)
+        except _PART_ERRORS:
+            pass
+    return _scrubbed(data, "utf-8", "surrogateescape", folded)  # reads and writes back any bytes
+
+
+def _scrubbed(data: bytes, codec: str, errors: str, folded: bool) -> bytes:
+    text = data.decode(codec, errors)
+    text = _FOLD_RE.sub("", text) if folded else text
+    scrubbed = scrub_sign_in_links(text)
+    return data if scrubbed == text else scrubbed.encode(codec, errors)
+
+
+def _codec(data: bytes, charset: str) -> str:
+    """A UTF-16 byte order mark (then kept as the text's first character), else the declared charset, else UTF-8.
+    UTF-16 declared without a mark is big-endian by RFC 2781, but either order is sent: it is read, and written back
+    (adding no mark), in the order its text shows. Python's "utf-16" would read it little-endian and add a mark."""
+    marked = next((codec for mark, codec in _UTF16_BOMS if data.startswith(mark)), "")
+    codec = marked or text_codec(charset)
+    return _utf16_order(data) if codec == "utf-16" else codec
+
+
+def _utf16_order(data: bytes) -> str:
+    # Read in the wrong order, Latin text (a link, digits, punctuation) turns into CJK: in the right one its high
+    # bytes are NULs. Big-endian when it cannot be told.
+    return "utf-16-le" if data[1::2].count(0) > data[0::2].count(0) else "utf-16-be"
 
 
 def needs_warning(attachment: TicketAttachment, settings: HelpdeskSettings) -> bool:

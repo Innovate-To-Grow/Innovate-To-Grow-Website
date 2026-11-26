@@ -20,7 +20,7 @@ _COLUMNS = [
     ("Title", 20),
     ("Organization", 25),
     ("Active", 10),
-    ("Staff", 10),
+    ("Admin", 10),
     ("When Started", 18),
     ("Primary Email", 30),
     ("Primary Verified", 16),

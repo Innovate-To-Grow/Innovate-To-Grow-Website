@@ -10,6 +10,7 @@ from django.urls import reverse
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig, SMTPProviderConfig
 from apps.core.models.base.service_credentials.email import GMAIL_ACTIVATION_REQUIRED
 from apps.event.tests.helpers import make_admin, make_superuser
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 
 SEND_TEST = "apps.mail.admin.settings.admin.test_send._send_test_email"
 GRAPH_NOT_READY = (
@@ -87,22 +88,14 @@ class ProviderCardTests(EmailSendingMethodTestCase):
         self.assertTrue(ses["in_use"])
         self.assertEqual(ses["problem"], "Active AWS SES credentials are required before activation.")
 
-    def test_configure_links_need_the_access_that_manages_each_method(self):
-        superuser_cards = self.cards()
-        self.client.force_login(make_admin(apps=["mail"], email="mail-only@example.com"))
-        mail_staff_cards = self.cards()
+    def test_every_method_links_to_where_it_is_configured(self):
+        self.client.force_login(make_admin(email="any-admin@example.com"))
+        cards = self.cards()
 
-        self.assertEqual(superuser_cards["smtp"]["configure_url"], reverse("admin:core_smtpproviderconfig_changelist"))
-        self.assertEqual(
-            superuser_cards["graph"]["configure_url"], reverse("admin:core_microsoftgraphproviderconfig_changelist")
-        )
-        self.assertEqual(
-            superuser_cards["gmail"]["configure_url"], reverse("admin:core_gmailapiproviderconfig_changelist")
-        )
-        self.assertEqual(mail_staff_cards["ses"]["configure_url"], reverse("admin:mail_settings_edit"))
-        self.assertEqual(mail_staff_cards["smtp"]["configure_url"], reverse("admin:mail_settings_edit"))
-        self.assertEqual(mail_staff_cards["graph"]["configure_url"], "")
-        self.assertEqual(mail_staff_cards["gmail"]["configure_url"], "")
+        self.assertEqual(cards["ses"]["configure_url"], reverse("admin:mail_settings_edit"))
+        self.assertEqual(cards["smtp"]["configure_url"], reverse("admin:core_smtpproviderconfig_changelist"))
+        self.assertEqual(cards["graph"]["configure_url"], reverse("admin:core_microsoftgraphproviderconfig_changelist"))
+        self.assertEqual(cards["gmail"]["configure_url"], reverse("admin:core_gmailapiproviderconfig_changelist"))
 
     def test_without_a_saved_sender_config_every_method_asks_for_it_first(self):
         EmailServiceConfig.objects.all().delete()
@@ -146,7 +139,5 @@ class SendingMethodPageTests(EmailSendingMethodTestCase):
         self.assertContains(response, f'href="{self.settings_url}"')
         self.assertNotContains(response, 'id="email-sending-method"')
 
-    def test_the_page_needs_the_mail_app(self):
-        self.client.force_login(make_admin(apps=["cms"], email="cms-only@example.com"))
-
-        self.assertEqual(self.client.get(self.settings_url).status_code, 403)
+    def test_the_page_needs_an_admin(self):
+        assert_refused_to_member(self, self.settings_url, make_member())

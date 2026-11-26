@@ -6,11 +6,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.authn.models import ContactEmail
-from apps.cms.admin.news.feed_source import NewsFeedSourceAdmin
+from apps.cms.admin.news.feed_source import NewsFeedSourceAdmin, NewsSyncLogInline
 from apps.cms.admin.news.sync_log import NewsSyncLogAdmin
 from apps.cms.models import NewsFeedSource, NewsSyncLog
 from apps.cms.tests.news.site.test_admin import Member
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin, make_member
 
 
 class NewsFeedSourceAdminDisplayTests(TestCase):
@@ -131,7 +131,7 @@ class NewsSyncLogAdminDisplayTests(TestCase):
 
 
 class NewsSyncLogAdminDeletePermissionTests(TestCase):
-    """The read-only sync-log admin re-enables delete only for cms-app members."""
+    """The read-only sync-log admin re-enables delete for Admins only."""
 
     def setUp(self):
         self.admin = NewsSyncLogAdmin(NewsSyncLog, AdminSite())
@@ -142,17 +142,38 @@ class NewsSyncLogAdminDeletePermissionTests(TestCase):
         request.user = user
         return request
 
-    def test_delete_allowed_for_cms_staff(self):
-        user = make_admin(apps=["cms"], email="cms-log@example.com")
+    def test_delete_allowed_for_an_admin(self):
+        user = make_admin(email="cms-log@example.com")
         self.assertTrue(self.admin.has_delete_permission(self._request(user)))
 
-    def test_delete_denied_for_other_app_staff(self):
-        user = make_admin(apps=["event"], email="event-log@example.com")
+    def test_delete_denied_for_a_regular_member(self):
+        user = make_member(email="member-log@example.com")
         self.assertFalse(self.admin.has_delete_permission(self._request(user)))
 
-    def test_delete_allowed_for_superuser(self):
-        user = make_superuser(email="master-log@example.com")
-        self.assertTrue(self.admin.has_delete_permission(self._request(user)))
+
+class NewsSyncLogInlineAccessTests(TestCase):
+    """The feed source page's sync-log inline follows the Admin rule, read-only."""
+
+    def setUp(self):
+        self.inline = NewsSyncLogInline(NewsFeedSource, AdminSite())
+        self.factory = RequestFactory()
+
+    def _request(self, user):
+        request = self.factory.get("/admin/cms/newsfeedsource/")
+        request.user = user
+        return request
+
+    def test_an_admin_sees_the_inline_but_cannot_add_or_delete_rows(self):
+        request = self._request(make_admin(email="inline-log@example.com"))
+
+        self.assertTrue(self.inline.has_view_permission(request))
+        self.assertEqual(self.inline.get_max_num(request), 0)
+        self.assertFalse(self.inline.can_delete)
+
+    def test_a_regular_member_does_not_see_it(self):
+        request = self._request(make_member(email="inline-member@example.com"))
+
+        self.assertFalse(self.inline.has_view_permission(request))
 
 
 class NewsSyncLogAdminTest(TestCase):

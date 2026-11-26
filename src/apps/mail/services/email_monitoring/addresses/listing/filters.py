@@ -51,7 +51,7 @@ MEMBER_STATES = {
     "no": ("No member", Q(member__isnull=True)),
     "active": ("Member active", Q(member__is_active=True)),
     "inactive": ("Member inactive", Q(member__is_active=False)),
-    "staff": ("Member is staff", Q(member__is_staff=True) | Q(member__is_superuser=True)),
+    "staff": ("Member is an Admin", Q(member__is_staff=True)),
 }
 SUPPRESSED = {"yes": Q(suppressed_at__isnull=False), "no": Q(suppressed_at__isnull=True)}
 _SES_EVENTS = (

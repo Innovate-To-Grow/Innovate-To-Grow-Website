@@ -63,9 +63,9 @@ def personal_link_state() -> PersonalLinkState:
 
 
 def may_sign_in_by_sms(member) -> bool:
-    """A personal sign-in link is issued only to an active member who is not staff (a recycled or shared phone must
-    never open an admin account)."""
-    return bool(member and member.is_active and not member.is_staff and not member.is_superuser)
+    """A personal sign-in link is issued only to an active member who is not an Admin (a recycled or shared phone must
+    never open an Admin account)."""
+    return bool(member and member.is_active and not member.is_staff)
 
 
 def member_owns_phone(member, phone) -> bool:
@@ -104,7 +104,7 @@ def issue_personal_link(
     link instead. The link carries the epoch read with the switches, so if they go off before it is stored, it is
     dead on arrival."""
     if not may_text_personal_link(member, phone):
-        raise ValueError("Personal SMS sign-in links go only to a member's own verified phone, never to staff.")
+        raise ValueError("Personal SMS sign-in links go only to a member's own verified phone, never to an Admin.")
     state = personal_link_state()
     if not state.on:
         return None

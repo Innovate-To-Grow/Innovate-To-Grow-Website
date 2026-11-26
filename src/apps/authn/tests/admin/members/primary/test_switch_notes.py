@@ -43,7 +43,7 @@ class SwitchNotesTests(SwitchFixture):
         notes = self.notes(self.staffer, self.staffer_backup)
 
         self.assertIn(
-            "Admin sign-in codes go only to a staff member's verified primary: from now on to sam.home@example.com, and "
+            "Admin sign-in codes go only to an Admin's verified primary: from now on to sam.home@example.com, and "
             "sam@example.com no longer receives them.",
             notes["sign_in"],
         )
@@ -158,14 +158,13 @@ class ContactEmailsActionTests(SwitchFixture):
         self.assertTrue(any("jane.old@example.com is not verified" in text for text in texts(response)))
         self.assertFalse(LogEntry.objects.exists())
 
-    def test_the_owner_guard_still_applies(self):
+    def test_an_admin_may_switch_another_admins_primary_from_the_list(self):
         self.client.force_login(self.helper)
 
-        response = self.run_action(self.staffer_backup)
+        self.run_action(self.staffer_backup)
 
-        self.assertEqual(types(self.staffer)["sam@example.com"], "primary")
-        self.assertTrue(any("only an I2G Master may change those" in text for text in texts(response)))
-        self.assertFalse(LogEntry.objects.exists())
+        self.assertEqual(types(self.staffer)["sam.home@example.com"], "primary")
+        self.assertTrue(LogEntry.objects.filter(user=self.helper).exists())
 
     def test_the_list_shows_the_account_flag_next_to_the_address_flags(self):
         add_email(None, "nobody@example.com", "other")

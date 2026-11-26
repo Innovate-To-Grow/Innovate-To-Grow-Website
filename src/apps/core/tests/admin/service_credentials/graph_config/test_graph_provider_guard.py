@@ -1,5 +1,5 @@
 """The Graph config page cannot stop email that Microsoft Graph sends, nor move it to a config or Entra app that email
-could not switch to; scope rows are case-insensitive and editable by Core staff."""
+could not switch to; scope rows are case-insensitive and editable by every Admin."""
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings

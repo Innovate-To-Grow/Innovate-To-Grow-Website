@@ -14,7 +14,7 @@ from apps.system_intelligence.services.query_tools.tool_modules.domains.members 
 
 class ExecuteToolDispatchTests(TestCase):
     def test_dispatches_to_registered_tool(self):
-        user = make_admin(apps=["system_intelligence", "authn"])
+        user = make_admin()
         result = execute_tool({"name": "count_members", "toolUseId": "t1", "input": {}}, user=user)
         self.assertIn("Count:", result)
 
@@ -35,7 +35,7 @@ class ExecuteToolDispatchTests(TestCase):
         {"count_members": lambda params: 1 / 0},
     )
     def test_exception_returns_tool_error(self):
-        user = make_admin(apps=["system_intelligence", "authn"])
+        user = make_admin()
         result = execute_tool({"name": "count_members", "toolUseId": "t1", "input": {}}, user=user)
         self.assertIn("Tool error:", result)
 

@@ -14,7 +14,7 @@ from apps.core.tests.admin.service_credentials.graph_config.test_microsoft_graph
     form_data,
 )
 from apps.core.tests.graph_helpers import create_graph_config, install_test_certificate, private_key_lines
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin, make_member, make_superuser
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
@@ -152,19 +152,20 @@ class MicrosoftGraphProviderConfigAdminPagesTest(TestCase):
         self.assertFalse(MicrosoftGraphProviderConfig.objects.filter(pk=standby.pk).exists())
         self.assertFalse(MicrosoftGraphCertificate.objects.filter(config_id=standby.pk).exists())
 
-    def test_only_staff_granted_the_core_app_can_reach_the_config(self):
+    def test_only_admins_can_reach_the_config(self):
         urls = (self.changelist_url, self.add_url, self.change_url)
 
-        self.client.force_login(make_admin(apps=["cms"], email="cms-editor@example.com"))
+        self.client.force_login(make_member(email="member@example.com"))
         for url in urls:
-            with self.subTest(grant="cms", url=url):
-                self.assertEqual(self.client.get(url).status_code, 403)
+            with self.subTest(user="member", url=url):
+                self.assertEqual(self.client.get(url).status_code, 302)
         response = self.client.post(self.change_url, self.post_data(mailbox="attacker@example.com"))
-        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/admin/login/", response["Location"])
         self.config.refresh_from_db()
         self.assertEqual(self.config.mailbox, MAILBOX)
 
-        self.client.force_login(make_admin(apps=["core"], email="core-admin@example.com"))
+        self.client.force_login(make_admin(email="other-admin@example.com"))
         for url in urls:
-            with self.subTest(grant="core", url=url):
+            with self.subTest(user="admin", url=url):
                 self.assertEqual(self.client.get(url).status_code, 200)

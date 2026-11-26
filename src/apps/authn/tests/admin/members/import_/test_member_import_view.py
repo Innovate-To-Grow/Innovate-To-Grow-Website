@@ -25,7 +25,7 @@ class MemberImportPageTests(TestCase):
     def setUp(self):
         cache.clear()
         self.admin = Member.objects.create_superuser(
-            password="StrongPass123!", first_name="I2G", last_name="Master", is_active=True
+            password="StrongPass123!", first_name="I2G", last_name="Admin", is_active=True
         )
         self.client.force_login(self.admin)
         self.neil = Member.objects.create_user(

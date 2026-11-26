@@ -7,7 +7,7 @@ from .actions import UPDATE, Action, Op, RowPlan
 from .contact_flags import ContactState, claimed_subscribe, plan_flags
 from .contact_plans import plan_phone, plan_promote, plan_secondary
 from .creates import _flags
-from .fields import ACTIVE_NOT_TICKED, FIELD_LABELS, NAME_FIELDS, PENDING_NOTE, PROFILE_FIELDS, STAFF_IGNORED
+from .fields import ACTIVE_NOT_TICKED, FIELD_LABELS, NAME_FIELDS, PENDING_NOTE, PROFILE_FIELDS
 
 
 def _plan_update(values: dict, action: Action, snapshot: Snapshot, ticks: set[str]) -> RowPlan:
@@ -32,8 +32,8 @@ def _plan_update(values: dict, action: Action, snapshot: Snapshot, ticks: set[st
         plan.add(op, change)
         plan.listed[listed].append(label)
     _check_last_contact(plan, state, member)
-    if member.privileged and plan.writes:
-        # Spelled out on the confirm page: a staff or superuser account is a sign-in to the admin.
+    if member.is_admin and plan.writes:
+        # Spelled out on the confirm page: an Admin account is a sign-in to the admin. (The key predates the name.)
         plan.listed["privileged_changes"].append(f"{member.label}: {'; '.join(plan.changes)}")
     return plan
 
@@ -107,16 +107,6 @@ def _plan_status(plan: RowPlan, values: dict, member, ticks: set[str]) -> None:
         else:
             sheet, state = ("TRUE", "inactive") if active else ("FALSE", "active")
             plan.notes.append(ACTIVE_NOT_TICKED.format(sheet=sheet, state=state))
-    staff = values.get("is_staff")
-    if staff is not None and staff != member.is_staff:
-        if f"R8:{member.id}" in ticks:
-            plan.add(
-                Op("staff", ref=member.id, data={"value": staff}),
-                "Grants staff status" if staff else "Removes staff status",
-            )
-            plan.listed["staff_changes"].append(f"{member.label}: staff {'granted' if staff else 'removed'}")
-        else:
-            plan.notes.append(STAFF_IGNORED)
 
 
 def _check_last_contact(plan: RowPlan, state: ContactState, member) -> None:

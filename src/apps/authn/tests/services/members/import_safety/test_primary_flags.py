@@ -6,7 +6,7 @@ from django.core import mail
 from apps.authn.models import ContactEmail, ContactPhone, Member
 from apps.authn.services.members.export.excel import export_members_to_excel
 from apps.authn.services.members.import_ import import_members_from_excel
-from apps.authn.services.members.import_.workbook.parsing import PHONE_VERIFIED_IGNORED
+from apps.authn.services.members.import_.workbook.columns import ADMIN_IGNORED, PHONE_VERIFIED_IGNORED
 from apps.authn.tests.services.members.import_safety.test_import_members_safety import _ImportCase
 
 from ..import_sheets import FULL_HEADERS, build_sheet, full_row
@@ -132,7 +132,7 @@ class RoundTripTests(_ImportCase):
         )
         return emails, phones, members
 
-    def test_export_then_reimport_writes_nothing_and_reports_only_the_ignored_phone_verified_column(self):
+    def test_export_then_reimport_writes_nothing_and_reports_only_the_ignored_columns(self):
         # Ada: two secondaries (the export writes only one), a verified phone.
         self._email("one@example.com", verified=True)
         self._email("two@example.com", subscribe=True)
@@ -142,7 +142,7 @@ class RoundTripTests(_ImportCase):
         quiet = Member.objects.create_user(password="StrongPass123!", first_name="Quiet", last_name="One")
         self._email("quiet@example.com", email_type="primary", member=quiet, verified=False, subscribe=False)
         self._email("quiet-other@example.com", email_type="other", member=quiet, subscribe=False)
-        # An unfinished sign-up, and a staff member (the importer is not an I2G Master).
+        # An unfinished sign-up, and an Admin.
         pending = Member.objects.create_user(password="StrongPass123!", first_name="Pen", last_name="Ding")
         Member.objects.filter(pk=pending.pk).update(is_active=False, registration_pending=True)
         self._email("pending@example.com", email_type="primary", member=pending)
@@ -156,16 +156,15 @@ class RoundTripTests(_ImportCase):
         before = self._snapshot()
 
         with patch("apps.authn.services.sms.sns_verify._publish_sms") as sms:
-            result = import_members_from_excel(BytesIO(export), update_existing=True, allow_privilege_fields=False)
+            result = import_members_from_excel(BytesIO(export), update_existing=True)
 
         self.assertEqual(self._snapshot(), before)
-        # The staff member's row is skipped: without a permission check, only an I2G Master changes staff accounts.
-        self.assertEqual(result.updated_count, 3)
+        # The Admin's row is matched like any other (and changes nothing, Admin access included).
+        self.assertEqual(result.updated_count, 4)
         self.assertEqual(result.created_count, 0)
-        self.assertEqual(len(result.errors), 2)
+        self.assertEqual(len(result.errors), 1)
         self.assertTrue(any("Missing primary email" in error for error in result.errors))
-        self.assertTrue(any("You do not have permission to update Staff Er" in error for error in result.errors))
-        # The export writes a Phone Verified column; the import says once that it ignored it, and nothing else.
-        self.assertEqual(result.warnings, [PHONE_VERIFIED_IGNORED])
+        # The export writes Admin and Phone Verified columns; the import says once that it ignored each.
+        self.assertEqual(result.warnings, [PHONE_VERIFIED_IGNORED, ADMIN_IGNORED])
         self.assertEqual(mail.outbox, [])
         sms.assert_not_called()

@@ -1,8 +1,8 @@
 """Members → Import: what the apply guarantees, through the admin views.
 
 The review is the plan: if a record it read changed, nothing is applied and those rows go back to review; a double
-submit applies once; an outdated page can't confirm; a failing row writes nothing; only the uploader (or an I2G
-Master) may change or apply a batch.
+submit applies once; an outdated page can't confirm; a failing row writes nothing; any Admin may change or apply a
+batch, whoever uploaded it.
 """
 
 from unittest.mock import patch
@@ -17,21 +17,21 @@ from apps.authn.services.members.export.excel import export_members_to_excel
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row, upload
 
 
-def _staff(first, admin_apps=("authn",)):
-    member = Member.objects.create_user(
+def _admin(first):
+    """An Admin (an active member with ``is_staff``) named ``<first> Admin``."""
+    return Member.objects.create_user(
         password="StrongPass123!", first_name=first, last_name="Admin", is_staff=True, is_active=True
     )
-    member.admin_apps = list(admin_apps)
-    member.save(update_fields=["admin_apps"])
-    return member
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
 class ApplyGuaranteeTests(ImportTestCase):
     def setUp(self):
         super().setUp()
-        self.master = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
-        self.client.force_login(self.master)
+        self.admin_user = Member.objects.create_superuser(
+            password="StrongPass123!", first_name="I2G", last_name="Admin"
+        )
+        self.client.force_login(self.admin_user)
 
     def _upload(self, rows, headers=HEADERS):
         response = self.client.post(
@@ -146,7 +146,7 @@ class ApplyGuaranteeTests(ImportTestCase):
         phone_only = self.member("Phone", "Only")
         self.phone(phone_only, "2095550099", verified=True)
         Member.objects.filter(pk=self.ada.pk).update(organization="+Plus Corp")
-        export = export_members_to_excel(Member.objects.exclude(pk=self.master.pk).order_by("first_name"))
+        export = export_members_to_excel(Member.objects.exclude(pk=self.admin_user.pk).order_by("first_name"))
         before = (
             sorted(Member.objects.values_list("pk", "updated_at")),
             sorted(ContactEmail.objects.values_list("pk", "updated_at", "email_type", "verified", "subscribe")),

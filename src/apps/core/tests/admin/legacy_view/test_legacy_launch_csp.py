@@ -79,7 +79,7 @@ class LegacyProjectRoutingTests(TestCase):
 class LegacyConcurrentExchangeTests(TransactionTestCase):
     @skipUnless(connection.vendor == "postgresql", "Production concurrency semantics require PostgreSQL")
     def test_two_simultaneous_exchanges_have_exactly_one_winner(self):
-        user = make_admin(apps=["core"], email="legacy-concurrent@example.com")
+        user = make_admin(email="legacy-concurrent@example.com")
         client = Client()
         client.force_login(user)
         request = RequestFactory().post("/admin/legacy-view/")

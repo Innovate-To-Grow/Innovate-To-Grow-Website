@@ -40,7 +40,7 @@ _EVIDENCE = {
     # Imported / admin-created / phone-signup members get their first REGISTER code long after creation.
     "not_created_by_signup": _flag(Q(first_register_at__gt=F("member__created_at") + SIGNUP_WINDOW)),
     "logged_in_before": _flag(Q(member__last_login__lt=F("created_at"))),
-    "staff": _flag(Q(member__is_staff=True) | Q(member__is_superuser=True)),
+    "staff": _flag(Q(member__is_staff=True)),
 }
 REASONS = tuple(_EVIDENCE)
 

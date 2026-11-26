@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
 
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_is_admin
 
 from .config import legacy_view_is_enabled
 from .contracts import LEGACY_VIEWER_TTL_SECONDS, LegacyViewerAccessDenied, LegacyViewerSession
@@ -138,7 +138,7 @@ def require_legacy_viewer(request):
         raise LegacyViewerAccessDenied("The legacy viewer session is no longer valid.") from None
 
     source_expiry = datetime.fromtimestamp(source_expires_at, tz=UTC)
-    if not user_can_access_app(user, "core") or not source_session_is_valid(
+    if not user_is_admin(user) or not source_session_is_valid(
         user,
         source_session_key,
         source_expiry,

@@ -2,7 +2,7 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 
 from apps.core.models import ProjectControlModel
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_is_admin
 
 from .manager import MemberManager
 
@@ -14,16 +14,6 @@ class Member(AbstractUser, ProjectControlModel):
     REQUIRED_FIELDS = ["first_name", "last_name"]
 
     objects = MemberManager()
-
-    # Per-Django-app admin access. A staff member may manage every model in any app
-    # listed here (e.g. ["cms", "event"]). Superusers (I2G Master) ignore this list.
-    # See apps.core.utils.access.user_can_access_app — the single enforcement predicate.
-    admin_apps = models.JSONField(
-        default=list,
-        blank=True,
-        help_text='Django apps this admin may manage (e.g. ["cms", "event"]). Superusers ignore this.',
-        verbose_name="Admin apps",
-    )
 
     # Set only on members created by the self-service registration flows (email-code
     # and password /register) and cleared the first time the member becomes active.
@@ -38,19 +28,52 @@ class Member(AbstractUser, ProjectControlModel):
         verbose_name="Registration pending",
     )
 
-    def can_access_app(self, app_label: str) -> bool:
-        """Whether this member may manage records in the Django app ``app_label``."""
-        return user_can_access_app(self, app_label)
+    # Two kinds of account: Admins (``is_staff``) and regular members. Every Admin has every permission, so
+    # ``is_superuser`` is only a mirror of ``is_staff`` kept for Django's own machinery; the permission methods below
+    # answer from the Admin test, so a row whose mirror is stale (written by a bulk update) is still judged right.
+    def has_perm(self, perm, obj=None):
+        return user_is_admin(self)
+
+    def has_perms(self, perm_list, obj=None):
+        return user_is_admin(self)
+
+    def has_module_perms(self, app_label):
+        return user_is_admin(self)
 
     def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        extra = set()
         # Activation by any path (registration, admin form, invitation, import) ends the
         # pending state, so a later deactivation can't be undone through self-service.
         if self.is_active and self.registration_pending:
             self.registration_pending = False
-            update_fields = kwargs.get("update_fields")
-            if update_fields is not None:
-                kwargs["update_fields"] = {*update_fields, "registration_pending"}
+            extra.add("registration_pending")
+        # A deactivated account is never an Admin, so reactivating it later (an import, the assistant, an Admin's
+        # bulk action) never brings back a full Admin unasked: Admin access is granted again on the member's page.
+        # That includes a row an older release deactivated without removing Admin (``from_db`` notes it).
+        # Writing ``is_active`` writes the demotion too; it only ever removes access, so it is safe from a partial load.
+        stale = getattr(self, "_stored_inactive_admin", False)
+        if self.is_staff and (not self.is_active or stale):
+            self.is_staff = False
+            if update_fields is not None and ("is_active" in update_fields or stale):
+                extra.update({"is_staff", "is_superuser"})
+        # ``is_superuser`` follows ``is_staff``. A partial save writes the mirror only when it writes ``is_staff``,
+        # so saving an unrelated column never writes a value derived from a stale in-memory ``is_staff``.
+        if self.is_superuser != self.is_staff:
+            self.is_superuser = self.is_staff
+            if update_fields is not None and "is_staff" in update_fields:
+                extra.add("is_superuser")
+        if update_fields is not None and extra:
+            kwargs["update_fields"] = {*update_fields, *extra}
         super().save(*args, **kwargs)
+        self._stored_inactive_admin = False
+
+    @classmethod
+    def from_db(cls, db, field_names, values):
+        instance = super().from_db(db, field_names, values)
+        stored = instance.__dict__  # loaded columns only; a deferred one is absent
+        instance._stored_inactive_admin = not stored.get("is_active", True) and bool(stored.get("is_staff"))
+        return instance
 
     def get_username(self):
         """Return UUID as a string so templates and admin can handle it."""

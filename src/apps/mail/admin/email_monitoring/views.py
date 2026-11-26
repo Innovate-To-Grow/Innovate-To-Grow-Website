@@ -3,7 +3,7 @@ one campaign's monitoring, and the bounce processor's controls (scan now, pause,
 "Rescan since" and the first-scan lookback). The Bounced addresses tab is in ``addresses`` and ``address_actions``,
 the Amazon SES tab (the former Delivery Dashboard) in ``ses``.
 
-``admin_view`` only requires a staff login, so every view also requires the Mail app (``user_can_access_app``).
+Every view requires an Admin (``require_mail_access``, the same rule as ``admin_view``).
 Every page is read-only except the bounce-processing POST.
 """
 

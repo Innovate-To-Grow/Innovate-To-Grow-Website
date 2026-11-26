@@ -4,12 +4,11 @@ from django.contrib import admin
 from unfold.admin import TabularInline
 from unfold.decorators import display
 
-from apps.core.admin import ReadOnlyModelAdmin
-from apps.core.utils.access import user_can_access_app
+from apps.core.admin import AppAccessInlineMixin, ReadOnlyModelAdmin
 from apps.mail.models import SmsRecipientLog
 
 
-class SmsRecipientLogInline(TabularInline):
+class SmsRecipientLogInline(AppAccessInlineMixin, TabularInline):
     model = SmsRecipientLog
     fields = ("phone_number", "recipient_name", "status", "error_message", "provider", "sent_at")
     readonly_fields = fields
@@ -44,7 +43,7 @@ class SmsRecipientLogAdmin(ReadOnlyModelAdmin):
     )
 
     def has_delete_permission(self, request, obj=None):
-        return user_can_access_app(request.user, "mail")
+        return self._has_app_access(request)
 
     @display(description="Status", label=True)
     def status_badge(self, obj):

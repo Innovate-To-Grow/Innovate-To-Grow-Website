@@ -62,4 +62,4 @@ class LoginLinkTokenAdmin(ReadOnlyModelAdmin):
         self.message_user(request, f"Revoked {revoked} login link(s).", messages.SUCCESS)
 
     def has_revoke_permission(self, request):
-        return request.user.has_perm("mail.change_loginlinktoken")
+        return self._has_app_access(request)

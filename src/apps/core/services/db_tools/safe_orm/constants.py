@@ -4,6 +4,8 @@ SENSITIVE_FIELD_RE = re.compile(
     r"(password|secret|token|api[_-]?key|private|credential|session|hash|salt)",
     re.IGNORECASE,
 )
+# is_staff makes a member an Admin with every permission (is_superuser only mirrors it), so neither is ever read or
+# written through the assistant or the CLI: account elevation stays in the Members admin.
 DENIED_FIELD_NAMES = {
     "is_staff",
     "is_superuser",
@@ -22,7 +24,7 @@ DENIED_MODEL_LABELS = {
     "authn.memberimportbatch",
     "authn.memberimportrow",
     # The i2g-admin CLI's sign-in: the token exchange issues a bearer token for whichever member an authorization
-    # code names, so a written code is a CLI session as anyone, the I2G Master included. The CLI denies both tables
+    # code names, so a written code is a CLI session as anyone, any Admin included. The CLI denies both tables
     # for itself as well; the access tokens also match "token" in DENIED_MODEL_NAME_PARTS.
     "cli_admin.cliaccesstoken",
     "cli_admin.cliauthorizationcode",
@@ -45,11 +47,14 @@ DENIED_MODEL_LABELS = {
     "core.outboundemailattempt",
     # The inbound mail queue (metadata of every message the helpdesk's intake lists) and the helpdesk built on it:
     # mail content, the people who wrote it, staff decisions on it, and the intake's checkpoint and lease (a write
-    # would skip or re-import mail). Staff work them in Helpdesk (its own app grant).
+    # would skip or re-import mail). Staff work them in Helpdesk.
     "core.inboundmessage",
+    "helpdesk.assignmentgroup",
     "helpdesk.helpdesksettings",
     "helpdesk.ingestrecord",
     "helpdesk.intakestate",
+    "helpdesk.responsetemplate",
+    "helpdesk.slatarget",
     "helpdesk.ticket",
     "helpdesk.ticketattachment",
     "helpdesk.ticketcategory",
@@ -103,8 +108,9 @@ DENIED_MODEL_NAME_PARTS = ("credential", "config", "permission", "session", "log
 # its account, so they change only in the Members admin, under its owner guards and #732's code-only rule for phones.
 # Verification challenges are the proof of a one-time code: a pending admin sign-in code re-pointed to another member
 # signs in as them, and a phone challenge set to "verified" is a grant that event registration accepts. Accepting an
-# admin invitation makes its address's member staff, so only the I2G Master writes invitations (in the admin). The
-# active RSA key pair decrypts every password sign-in: a written public half breaks sign-in until a new key is made.
+# admin invitation makes its address's member an Admin (is_staff is full power), so invitations are written only in
+# the admin. The active RSA key pair decrypts every password sign-in: a written public half breaks sign-in until a new
+# key is made.
 # The CLI audit log is the trail of every CLI write. Background jobs run whatever kind and payload a row names (a
 # notification email to any address, a resent campaign or ticket), and retries go through the admin's Retry action
 # and its guards; nothing in the assistant queues a job. The admin keeps the key, the audit log and the jobs read-only

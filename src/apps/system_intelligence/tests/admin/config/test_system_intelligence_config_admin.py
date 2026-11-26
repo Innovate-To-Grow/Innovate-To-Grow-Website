@@ -10,12 +10,13 @@ from django.db import IntegrityError, connections
 from django.test import Client, RequestFactory, TestCase, TransactionTestCase, override_settings, skipUnlessDBFeature
 from django.urls import reverse
 
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_member, make_superuser
 from apps.system_intelligence.admin.config.config_admin import SystemIntelligenceConfigAdmin
 from apps.system_intelligence.models import (
     LLMProviderConfig,
     SystemIntelligenceConfig,
 )
+from apps.system_intelligence.tests.admin.base import rendered_badge
 from apps.system_intelligence.tests.admin.config.test_model_admin import BEDROCK, GROUPED, USAGE_FIELD, USAGE_LABEL
 
 
@@ -35,8 +36,8 @@ class SystemIntelligenceConfigAdminTests(TestCase):
     def test_status_badge_active_and_inactive(self):
         active = SystemIntelligenceConfig(name="A", is_active=True)
         inactive = SystemIntelligenceConfig(name="B", is_active=False)
-        self.assertEqual(self.admin.status_badge(active), ("Active", "success"))
-        self.assertEqual(self.admin.status_badge(inactive), ("Inactive", "danger"))
+        self.assertEqual(rendered_badge(self.admin.status_badge, active), ("Active", "success"))
+        self.assertEqual(rendered_badge(self.admin.status_badge, inactive), ("Inactive", "danger"))
 
     def test_default_model_display_empty(self):
         obj = SystemIntelligenceConfig(name="A", default_model_id="")
@@ -78,12 +79,13 @@ class SystemIntelligenceConfigAdminTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertIn(str(config.pk), response.url)
 
-    def test_activation_requires_system_intelligence_access(self):
+    def test_activation_requires_an_admin(self):
         config = SystemIntelligenceConfig.objects.create(name="Restricted", is_active=False)
         url = reverse("admin:system_intelligence_systemintelligenceconfig_activate_this_config", args=[config.pk])
-        self.client.force_login(make_admin(apps=["cms"]))
-        self.assertEqual(self.client.get(url).status_code, 403)
-        self.assertEqual(self.client.post(url).status_code, 403)
+        self.client.force_login(make_member(email="member@example.com"))
+        for response in (self.client.get(url), self.client.post(url)):
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/admin/login/", response["Location"])
         config.refresh_from_db()
         self.assertFalse(config.is_active)
 
@@ -123,13 +125,22 @@ class SystemIntelligenceConfigAdminTests(TestCase):
 
     def test_global_token_limit_sits_with_the_other_assistant_limits(self):
         fieldsets = dict(self.admin.fieldsets)
-        public_fields = list(fieldsets["Public Assistant"]["fields"])
+        public_fields = list(fieldsets["Public Limits"]["fields"])
 
         self.assertIn("public_assistant_global_token_limit", public_fields)
         self.assertEqual(
             public_fields.index("public_assistant_global_token_limit"),
             public_fields.index("public_assistant_ip_token_window_seconds") + 1,
         )
+
+    def test_change_form_is_split_into_tabs_that_keep_every_field_once(self):
+        names = [str(name) for name, _options in self.admin.fieldsets if name]
+        self.assertEqual(names, ["Admin Assistant", "Public Assistant", "Public Limits", "Audit Logging", "Info"])
+        self.assertTrue(all(options.get("classes") == ["tab"] for name, options in self.admin.fieldsets if name))
+        fields = [field for _name, options in self.admin.fieldsets for field in options["fields"]]
+        self.assertEqual(len(fields), len(set(fields)))
+        for field in ("default_provider", "system_prompt", "public_assistant_provider", "public_assistant_log_enabled"):
+            self.assertIn(field, fields)
 
     # Save directly: the confirm-on-save step is covered by apps.core's own tests.
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)

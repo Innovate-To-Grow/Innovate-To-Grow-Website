@@ -57,7 +57,8 @@ class RowPlan:
     notes: list[str] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
     # What the confirm and result pages spell out, by kind: "emails_deleted", "phones_deleted", "resubscribed",
-    # "unverified", "verified", "primary_changes", "active_changes", "staff_changes", "privileged_changes".
+    # "unverified", "verified", "primary_changes", "active_changes" and "privileged_changes" (changes to an Admin
+    # account). Applied batches keep these keys in their summary, so they never change.
     listed: dict = field(default_factory=lambda: defaultdict(list))
 
     @property

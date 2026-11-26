@@ -1,5 +1,5 @@
 """Email Monitoring → the Overview's delivery status card: Message Trace off (with its setup steps) or on, its "Sync
-delivery status now" and the read-only "Check permissions" (Mail app, POST only, the 30-second cooldown), and the
+delivery status now" and the read-only "Check permissions" (Admins, POST only, the 30-second cooldown), and the
 banner and chips that say "delivered" only with trace data."""
 
 from datetime import timedelta
@@ -18,6 +18,7 @@ from apps.core.models import (
 from apps.core.services.email.graph.tracing import DELIVERY_TRACE_JOB_KIND
 from apps.core.tests.services.graph.tracing import SENDER, TraceSetupMixin
 from apps.event.tests.helpers import make_admin, make_superuser
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 
 
 class _CardCase(TraceSetupMixin, TestCase):
@@ -126,19 +127,19 @@ class TraceOnTests(_CardCase):
 class AccessTests(_CardCase):
     message_trace = False
 
-    def test_both_actions_are_post_only_and_need_the_mail_app(self):
+    def test_both_actions_are_post_only_and_need_an_admin(self):
         for action in ("trace", "permissions"):
             with self.subTest(action=action):
                 self.assertEqual(self.client.get(self.url, {"action": action}).status_code, 405)
-        self.client.force_login(make_admin(apps=["cms"], email="cms@example.com"))
+        member = make_member()
         for action in ("trace", "permissions"):
             with self.subTest(action=action):
-                self.assertEqual(self.client.post(self.url, {"action": action}).status_code, 403)
+                assert_refused_to_member(self, self.url, member, "post", data={"action": action})
         self.assertFalse(MicrosoftGraphPermissionCheck.objects.exists())
         self.assertEqual(self.microsoft.requests, [])
 
-    def test_mail_staff_without_the_core_app_may_check_permissions(self):
-        staff = make_admin(apps=["mail"], email="mail@example.com")
+    def test_any_admin_may_check_permissions(self):
+        staff = make_admin(email="mail@example.com")
         self.client.force_login(staff)
 
         self.post("permissions")

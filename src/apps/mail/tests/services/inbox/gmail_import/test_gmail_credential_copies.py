@@ -1,18 +1,14 @@
 """Gmail keeps a Sent copy of everything it sends, credential mail included: the admin inbox's Sent view and the Gmail
-import never list, open, snippet or cache a message tagged ``X-I2G-Mail-Class: credential``, and Sent mail needs the
-Mail app while the Gmail account is one the site sends as. The tag is not authenticated, so received mail carrying
-it is still listed."""
+import never list, open, snippet or cache a message tagged ``X-I2G-Mail-Class: credential``. The tag is not
+authenticated, so received mail carrying it is still listed."""
 
 from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase
 
-from apps.core.models import EmailServiceConfig, GmailAccessAccount
-from apps.core.tests.gmail_api_helpers import make_config
+from apps.core.models import GmailAccessAccount
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
-from apps.event.tests.helpers import make_admin, make_superuser
-from apps.mail.admin.inbox.helpers import sent_mail_restricted
 from apps.mail.services.campaign.gmail_import import (
     GmailImportError,
     fetch_message_html_fragment,
@@ -21,7 +17,6 @@ from apps.mail.services.campaign.gmail_import import (
 from apps.mail.services.campaign.gmail_import.credential_mail import (
     WITHOUT_CREDENTIAL_MAIL,
     is_credential_mail,
-    sent_copies_kept,
 )
 from apps.mail.services.inbox import InboxError, fetch_inbox_message, list_inbox_messages
 from apps.mail.tests.services.inbox.gmail_import.test_imap_delivery_rate import (
@@ -110,23 +105,3 @@ class ImportFilterTests(CredentialCopyTestCase):
         self.assertFalse(is_credential_mail(other))
         self.assertFalse(is_credential_mail(object()))
         self.assertTrue(is_credential_mail(tagged()))
-
-
-class SentCopiesKeptTests(CredentialCopyTestCase):
-    def test_kept_while_email_sends_through_gmail_or_the_account_is_allow_listed(self):
-        self.assertFalse(sent_copies_kept())
-        make_config(subjects=("I2G@example.edu",), active=False)
-        self.assertTrue(sent_copies_kept())
-
-    def test_kept_while_gmail_is_the_provider(self):
-        EmailServiceConfig.objects.create(name="Mail", is_active=True, provider="gmail", from_email="x@example.edu")
-        self.assertTrue(sent_copies_kept())
-
-    def test_sent_mail_needs_the_mail_app_while_copies_are_kept(self):
-        mail_staff = make_admin(apps=["mail"], email="mail-only@example.com")
-        core_staff = make_admin(apps=["core"], email="core-only@example.com")
-        self.assertFalse(sent_mail_restricted(core_staff))
-        make_config(subjects=("i2g@example.edu",), active=False)
-        self.assertTrue(sent_mail_restricted(core_staff))
-        self.assertFalse(sent_mail_restricted(mail_staff))
-        self.assertFalse(sent_mail_restricted(make_superuser()))

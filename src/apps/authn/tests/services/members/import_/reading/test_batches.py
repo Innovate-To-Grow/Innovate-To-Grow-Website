@@ -20,7 +20,7 @@ UNVERIFIED = (
 class BatchTestCase(ImportTestCase):
     def setUp(self):
         super().setUp()
-        self.admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
+        self.admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Admin")
 
     def save(self, batch, posted=None, command="save", bulk=None, version=None):
         """``save_choices`` as the review page posts it (the current version unless given); ``batch`` is re-read."""
@@ -73,7 +73,7 @@ class CreateBatchTests(BatchTestCase):
         (event,) = batch.activity
         self.assertEqual(
             (event["action"], event["detail"], event["by"], event["by_name"]),
-            ("upload", "upload.xlsx: 3 rows", str(self.admin.pk), "I2G Master"),
+            ("upload", "upload.xlsx: 3 rows", str(self.admin.pk), "I2G Admin"),
         )
 
     def test_each_row_is_stored_with_its_analysis_and_default_choice(self):

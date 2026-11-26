@@ -13,7 +13,7 @@ from apps.authn.tests.services.members.import_.helpers import row
 class EndOfReviewTests(PurgeTestCase):
     def setUp(self):
         super().setUp()
-        self.admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
+        self.admin = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Admin")
 
     def test_discarding_clears_the_password_and_records_who(self):
         batch = self.stage([row("new@example.com")], self.admin, password="Default123!")

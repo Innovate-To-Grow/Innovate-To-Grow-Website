@@ -6,7 +6,7 @@ A terminal CLI for remote record management of the deployed backend, **without**
 - **Backend app**: `src/apps/cli_admin/`, mounted at `/admin-api/`.
 - **Audience**: staff/operators who need quick read/write access to records from a terminal, and engineers maintaining the admin API.
 
-Access requires the logged-in account be `is_active` **and** `is_staff`. There are **no per-model Django permission checks** — staff status is the gate, backed by a hard denylist. Writes apply immediately and are audit-logged.
+Access requires the logged-in account be an active **Admin** (`is_active` **and** `is_staff`; refused otherwise with "An active Admin account is required."). There are **no per-model or per-app permission checks**: every Admin sees the same apps and models, and only the hard denylist limits what is reachable. Writes apply immediately and are audit-logged. The CLI can never write `is_staff` or `is_superuser`, so it cannot grant or remove Admin access.
 
 ## How authentication works
 
@@ -181,8 +181,8 @@ All endpoints except the OAuth pair require `Authorization: Bearer <token>`. A S
 |---|---|---|
 | `GET` | `/admin-api/oauth/authorize/` | Session-auth authorize endpoint (PKCE) |
 | `POST` | `/admin-api/oauth/token/` | Code → bearer token exchange (no auth/cookies) |
-| `GET` | `/admin-api/whoami/` | Authenticated member + token expiry |
-| `GET` | `/admin-api/apps/` | App list (backs `apps`) |
+| `GET` | `/admin-api/whoami/` | Authenticated member + token expiry (`member_uuid`, `name`, `email`, `is_staff`, `is_active`, `is_superuser`, `token_expires_at`). It no longer returns `admin_apps`; `is_superuser` is a deprecated compatibility key that always equals `is_staff` |
+| `GET` | `/admin-api/apps/` | App list (backs `apps`; every Admin gets the full list the denylists leave) |
 | `GET` | `/admin-api/models/` | Readable/writable model list |
 | `GET` | `/admin-api/models/<app>/<model>/schema/` | Field schema (name, type, required, choices, plus verbose name, help text, default, FK target) |
 | `GET` `POST` | `/admin-api/records/<app>/<model>/` | List / create (`?count=1` returns just the count) |

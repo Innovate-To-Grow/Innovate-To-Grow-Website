@@ -99,3 +99,52 @@ class AdminInvitationAdminTests(TestCase):
         mock_send.assert_called_once_with(invitation=valid, request=request)
         expired.refresh_from_db()
         self.assertEqual(expired.status, AdminInvitation.Status.EXPIRED)
+
+
+@override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
+class AdminInvitationAccessTests(TestCase):
+    """Every Admin manages invitations; the link is shown to the Admin who sent it; a regular member never reaches the page."""
+
+    def setUp(self):
+        self.admin = Member.objects.create_user(
+            password="StrongPass123!", first_name="Any", last_name="Admin", is_active=True, is_staff=True
+        )
+        self.invitation = AdminInvitation.objects.create(
+            email="invitee@example.com",
+            token=AdminInvitation.generate_token(),
+            status=AdminInvitation.Status.PENDING,
+            expires_at=timezone.now() + timezone.timedelta(days=7),
+            invited_by=self.admin,
+        )
+        self.change_url = reverse("admin:authn_admininvitation_change", args=[self.invitation.pk])
+
+    def test_the_inviting_admin_sees_the_link_and_any_admin_may_add_change_and_delete(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(self.change_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.invitation.token)
+        self.assertEqual(self.client.get(reverse("admin:authn_admininvitation_add")).status_code, 200)
+
+        model_admin = AdminInvitationAdmin(AdminInvitation, AdminSite())
+        request = RequestFactory().get("/")
+        request.user = self.admin
+        self.assertTrue(model_admin.has_add_permission(request))
+        self.assertTrue(model_admin.has_change_permission(request, self.invitation))
+        self.assertTrue(model_admin.has_delete_permission(request, self.invitation))
+
+        response = self.client.post(
+            reverse("admin:authn_admininvitation_delete", args=[self.invitation.pk]), {"post": "yes"}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(AdminInvitation.objects.filter(pk=self.invitation.pk).exists())
+
+    def test_a_regular_member_is_sent_to_the_admin_login(self):
+        member = Member.objects.create_user(password="StrongPass123!", first_name="Reg", last_name="Ular")
+        self.client.force_login(member)
+
+        response = self.client.get(self.change_url)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
+        self.assertNotIn(self.invitation.token, response.content.decode())

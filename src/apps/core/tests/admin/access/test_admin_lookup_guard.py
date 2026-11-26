@@ -29,14 +29,13 @@ class SensitiveLookupTests(TestCase):
         )
         AWSCredentialConfig.objects.create(name="AWS", access_key_id="test-key", secret_access_key="test-secret")
 
-    def test_secret_lookups_are_refused_for_superusers_and_core_staff(self):
-        for user in (make_superuser(), make_admin(apps=["core"], email="core@example.com")):
-            self.client.force_login(user)
-            for prefix, probes in PROBES.items():
-                url = reverse(f"admin:{prefix}_changelist")
-                for probe in probes:
-                    with self.subTest(user=user.is_superuser, url=url, probe=probe):
-                        self.assertEqual(self.client.get(f"{url}?{probe}").status_code, 400)
+    def test_secret_lookups_are_refused_for_every_admin(self):
+        self.client.force_login(make_admin(email="admin@example.com"))
+        for prefix, probes in PROBES.items():
+            url = reverse(f"admin:{prefix}_changelist")
+            for probe in probes:
+                with self.subTest(url=url, probe=probe):
+                    self.assertEqual(self.client.get(f"{url}?{probe}").status_code, 400)
 
     def test_ordinary_filters_still_work(self):
         self.client.force_login(make_superuser())

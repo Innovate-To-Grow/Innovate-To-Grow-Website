@@ -1,5 +1,5 @@
 """Email Monitoring → Bounce processing → "Read older mail again": Rescan since and the first-scan lookback through the
-dashboard. Access (Mail app), POST with CSRF, validation in the site's time zone, the lease and pause rules, the
+dashboard. Access (Admins), POST with CSRF, validation in the site's time zone, the lease and pause rules, the
 messages and the admin history. No scan is queued or run, and Microsoft Graph is never contacted."""
 
 import re
@@ -20,6 +20,7 @@ from apps.core.services.email.bounces.scanning import state
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.services.email_monitoring.helpers import SENDER
 from apps.event.tests.helpers import make_admin, make_superuser
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 
 # The Rescan since button, disabled (the attribute sits between its class and its icon).
 DISABLED_RESCAN = (
@@ -46,13 +47,13 @@ def to_minute(value):
 
 @override_settings(TIME_ZONE="America/Los_Angeles")
 class BackfillTestCase(TestCase):
-    """Signed in as a Mail-app staff member; Graph sends from and may read ``SENDER``, checkpoint ten minutes ago."""
+    """Signed in as an Admin; Graph sends from and may read ``SENDER``, checkpoint ten minutes ago."""
 
     def setUp(self):
         cache.clear()
         create_graph_config(scope=(SENDER,), is_active=True, mailbox=SENDER)
         EmailServiceConfig.objects.create(name="Mail", is_active=True, provider="graph", from_email=SENDER)
-        self.staff = make_admin(apps=["mail"])
+        self.staff = make_admin()
         self.client.force_login(self.staff)
         self.url = reverse("admin:mail_email_monitoring_bounce_processing")
         self.overview = reverse("admin:mail_email_monitoring")
@@ -93,12 +94,12 @@ class AccessTests(BackfillTestCase):
             {"action": "lookback", "lookback_hours": "100"},
         )
 
-    def test_staff_without_the_mail_app_can_neither_rescan_nor_change_the_lookback(self):
-        self.client.force_login(make_admin(apps=["cms", "core"], email="cms@example.com"))
+    def test_members_who_are_not_admins_can_neither_rescan_nor_change_the_lookback(self):
+        member = make_member()
 
         for data in self.actions():
             with self.subTest(action=data["action"]):
-                self.assertEqual(self.client.post(self.url, data).status_code, 403)
+                assert_refused_to_member(self, self.url, member, "post", data=data)
         self.assertUnchanged()
 
     def test_anonymous_visitors_are_sent_to_the_login_page(self):
@@ -112,7 +113,7 @@ class AccessTests(BackfillTestCase):
                 self.assertIn("/login/", response["Location"])
         self.assertUnchanged()
 
-    def test_superusers_may_rescan(self):
+    def test_another_admin_may_rescan(self):
         self.client.force_login(make_superuser())
 
         self.post(action="rescan", since=posted(self.now - timedelta(days=1)))

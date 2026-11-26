@@ -68,8 +68,8 @@ class RollbackTests(CertificatePagesMixin, TestCase):
         self.assertEqual(self.config.current_certificate, self.first)
         self.assertEqual(self.config.previous_certificate, self.second)
 
-    def test_core_staff_roll_back_like_a_superuser(self):
-        self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
+    def test_any_admin_rolls_back(self):
+        self.client.force_login(make_admin(email="other-admin@example.com"))
 
         response = self.client.post(self.url("rollback_certificate"), follow=True)
 

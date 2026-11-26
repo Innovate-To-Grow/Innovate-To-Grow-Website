@@ -17,13 +17,10 @@ from .email_form import (
     ContactEmailAdminForm,
     _primary_identity_changed,
 )
-from .guards import PrivilegedOwnerAdminMixin
 
 
 @admin.register(ContactEmail)
-class ContactEmailAdmin(
-    ContactEmailActionsMixin, RankedSearchMixin, SignInWarningAdminMixin, PrivilegedOwnerAdminMixin, BaseModelAdmin
-):
+class ContactEmailAdmin(ContactEmailActionsMixin, RankedSearchMixin, SignInWarningAdminMixin, BaseModelAdmin):
     """Admin for ContactEmail model.
 
     Verified and Subscribed belong to the address; **Account active** is its member's account flag, shown next to them
@@ -140,8 +137,8 @@ class ContactEmailAdmin(
                 key=str,
             )
             list(Member.objects.select_for_update().filter(pk__in=member_ids).order_by("pk"))
-            # ``of=("self",)``: the owner guard later reads these rows with ``select_related("member")``, a LEFT JOIN
-            # (``member`` is nullable), and PostgreSQL refuses FOR UPDATE on the nullable side of an outer join. The
+            # ``of=("self",)``: should anything read these rows with ``select_related("member")`` (a LEFT JOIN, as
+            # ``member`` is nullable), PostgreSQL refuses FOR UPDATE on the nullable side of an outer join. The
             # members are already locked just above.
             locked = ContactEmail.objects.select_for_update(of=("self",)).filter(pk__in=selected_ids)
             if locked.filter(email_type="primary", member__isnull=False).exists():

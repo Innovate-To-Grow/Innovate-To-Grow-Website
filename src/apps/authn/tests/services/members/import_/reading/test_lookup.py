@@ -144,6 +144,15 @@ class RowSliceTests(ImportTestCase):
         self.assertEqual(rebuilt.uuids, snapshot.uuids)
         self.assertEqual(rebuilt.objects, {})
 
+    def test_a_slice_stored_by_an_older_release_still_loads(self):
+        """Slices stored before the single Admin role carry a member's ``is_superuser``; it is ignored."""
+        data = row_slice(load_snapshot([self.values]), self.values)
+        data["members"][str(self.ada.pk)]["is_superuser"] = True
+
+        rebuilt = snapshot_from_slice(data)
+
+        self.assertEqual(rebuilt.member(str(self.ada.pk)).label, f"Ada Lovelace (member {self.ada.pk})")
+
     def test_the_fingerprint_ignores_a_sign_in_but_not_a_changed_flag(self):
         before = self.current()
 
@@ -167,10 +176,10 @@ class MemberRecordTests(ImportTestCase):
         newer = EmailRecord("e2", "new@example.com", "primary", "m1", False, True, created="2025-01-01T00:00:00")
         record = MemberRecord(id="m1", emails=[newer, older])
 
-        self.assertEqual((record.pk, record.label, record.privileged), ("m1", "Unnamed member (member m1)", False))
+        self.assertEqual((record.pk, record.label, record.is_admin), ("m1", "Unnamed member (member m1)", False))
         self.assertEqual(record.primary, older)
         self.assertEqual(record.emails_of_type("primary"), [newer, older])
-        self.assertTrue(MemberRecord(id="m2", is_superuser=True).privileged)
+        self.assertTrue(MemberRecord(id="m2", is_staff=True).is_admin)
         self.assertIsNone(MemberRecord(id="m3").primary)
         self.assertEqual(
             MemberRecord(id="m4", first_name="Ada", middle_name="A.", last_name="King").full_name, "Ada A. King"

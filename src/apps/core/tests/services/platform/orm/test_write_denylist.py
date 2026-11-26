@@ -27,7 +27,7 @@ from apps.core.services.db_tools.safe_orm import (
     serialize_model_instance,
 )
 from apps.core.tests.services.platform.orm.test_safe_orm import Member
-from apps.event.tests.helpers import make_admin, make_member, make_superuser
+from apps.event.tests.helpers import make_admin, make_member
 from apps.mail.models import EmailCampaign
 from apps.projects.models import Semester
 from apps.system_intelligence.models import SystemIntelligenceExport
@@ -121,16 +121,11 @@ class RecordsTests(TestCase):
         self.assertFalse(clone._state.adding)
 
     def test_check_model_permission(self):
-        # Non-staff and staff-without-the-app are denied; superuser and staff granted
-        # the model's app ("projects") are allowed. See apps.core.utils.access.user_can_access_app.
-        with self.assertRaises(PermissionDenied):
-            check_model_permission(make_member(email="np@example.com"), Semester, "change")
-        with self.assertRaises(PermissionDenied):
-            check_model_permission(make_member(email="staff@example.com", is_staff=True), Semester, "change")
-        with self.assertRaises(PermissionDenied):
-            check_model_permission(make_admin(apps=["cms"], email="cms@example.com"), Semester, "change")
-        check_model_permission(make_admin(apps=["projects"], email="pa@example.com"), Semester, "change")
-        check_model_permission(make_superuser(email="su@example.com"), Semester, "change")
+        # Every Admin (an active staff member) is allowed; nobody else. See apps.core.utils.access.user_is_admin.
+        for user in (None, make_member(email="np@example.com"), make_admin(email="gone@example.com", is_active=False)):
+            with self.subTest(user=user), self.assertRaisesMessage(PermissionDenied, "Staff authentication"):
+                check_model_permission(user, Semester, "change")
+        check_model_permission(make_admin(email="pa@example.com"), Semester, "change")
 
     def test_assert_snapshot_unchanged(self):
         assert_snapshot_unchanged(None, {"a": 1}, "L")

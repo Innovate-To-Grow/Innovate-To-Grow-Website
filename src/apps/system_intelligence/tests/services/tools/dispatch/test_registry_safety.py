@@ -5,12 +5,10 @@ from asgiref.sync import async_to_sync
 from django.test import SimpleTestCase, TransactionTestCase
 from django.urls import reverse
 
-from apps.event.tests.helpers import make_admin
+from apps.event.tests.helpers import make_admin, make_member
 from apps.system_intelligence.models import (
     ChatConversation,
     ChatMessage,
-    SystemIntelligenceActionRequest,
-    SystemIntelligenceExport,
 )
 from apps.system_intelligence.services import actions
 from apps.system_intelligence.services.actions.engine.tool_access import DYNAMIC_TOOLS, STATIC_TOOL_GRANTS, TOOL_DENIED
@@ -107,7 +105,7 @@ class SystemIntelligenceToolRegistrySafetyTests(SimpleTestCase):
 
 class AssistantToolAuthorizationTests(TransactionTestCase):
     def setUp(self):
-        self.user = make_admin(apps=["system_intelligence", "authn"])
+        self.user = make_admin()
         self.conversation = ChatConversation.objects.create(created_by=self.user)
         tokens = actions.set_action_context(str(self.conversation.pk), str(self.user.pk))
         self.addCleanup(actions.reset_action_context, tokens)
@@ -118,39 +116,35 @@ class AssistantToolAuthorizationTests(TransactionTestCase):
         context = ToolContext(context=None, tool_name=name, tool_call_id="test-call", tool_arguments=arguments)
         return async_to_sync(self.tools[name].on_invoke_tool)(context, arguments)
 
-    def test_agent_tools_check_all_target_grants_and_track_allowed_usage(self):
-        for name, params in (
-            ("get_member_detail", {"member_id": str(self.user.pk)}),
-            ("search_records", {"app_label": "cms", "model_name": "NewsFeedSource"}),
-            ("propose_cms_page_update", {}),
-            ("export_news_to_excel", {}),
-        ):
-            with self.subTest(tool=name):
-                self.assertEqual(self.invoke(name, **params), {"result": TOOL_DENIED})
-        self.assertFalse(SystemIntelligenceExport.objects.exists())
-        self.assertFalse(SystemIntelligenceActionRequest.objects.exists())
+    def test_any_admin_may_use_every_app_tool_and_usage_is_tracked(self):
         self.assertIn("Count:", self.invoke("count_members")["result"])
+        result = self.invoke("search_records", app_label="cms", model_name="NewsFeedSource")["result"]
+        self.assertNotEqual(result, TOOL_DENIED)
         self.conversation.refresh_from_db()
-        self.assertEqual(self.conversation.required_tool_apps, ["authn"])
+        self.assertEqual(self.conversation.required_tool_apps, ["authn", "cms"])
 
-    def test_legacy_dispatch_requires_explicit_actor_and_target_grant(self):
+    def test_a_model_tool_naming_an_unknown_model_is_denied(self):
+        self.assertEqual(self.invoke("search_records", app_label="nope", model_name="Missing"), {"result": TOOL_DENIED})
+        self.conversation.refresh_from_db()
+        self.assertEqual(self.conversation.required_tool_apps, [])
+
+    def test_legacy_dispatch_requires_an_explicit_admin_actor(self):
         call = {"name": "search_semesters", "input": {}}
         self.assertEqual(execute_tool(call), TOOL_DENIED)
-        self.assertEqual(execute_tool(call, user=self.user), TOOL_DENIED)
+        self.assertEqual(execute_tool(call, user=make_member(email="member@example.com")), TOOL_DENIED)
+        self.assertNotEqual(execute_tool(call, user=self.user), TOOL_DENIED)
 
-    def test_legacy_dispatch_uses_current_grants_for_an_existing_actor(self):
+    def test_legacy_dispatch_rechecks_the_actor_on_every_call(self):
         call = {"name": "count_members", "input": {}}
         self.assertIn("Count:", execute_tool(call, user=self.user))
-        type(self.user).objects.filter(pk=self.user.pk).update(admin_apps=["system_intelligence"])
+        type(self.user).objects.filter(pk=self.user.pk).update(is_staff=False, is_superuser=False)
         self.assertEqual(execute_tool(call, user=self.user), TOOL_DENIED)
 
-    def test_revoked_grant_blocks_new_history_but_owner_can_delete(self):
+    def test_recorded_tool_apps_never_lock_an_admin_out_of_their_chat(self):
         self.invoke("count_members")
-        self.user.admin_apps = ["system_intelligence"]
-        self.user.save(update_fields=["admin_apps"])
         self.client.force_login(self.user)
         detail = reverse("admin:system_intelligence_detail", args=[self.conversation.pk])
-        self.assertEqual(self.client.get(detail).status_code, 403)
+        self.assertEqual(self.client.get(detail).status_code, 200)
         delete = reverse("admin:system_intelligence_delete", args=[self.conversation.pk])
         self.assertEqual(self.client.post(delete).status_code, 200)
 

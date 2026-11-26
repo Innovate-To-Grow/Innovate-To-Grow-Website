@@ -97,8 +97,7 @@ concurrent requests cannot overspend. A request locks its feature's global row
 first and then the actor row, always in that order.
 
 Both limits are fields of the active **System Intelligence Config** (Django
-admin → System Intelligence → Assistant Tools → Assistant Settings, "Public
-Assistant" section). A change applies to the next request; no deploy.
+admin → System Intelligence → Assistant Settings, "Public Limits" tab). A change applies to the next request; no deploy.
 
 | Admin field (model field) | Default | Bounds |
 |---------------------------|---------|--------|

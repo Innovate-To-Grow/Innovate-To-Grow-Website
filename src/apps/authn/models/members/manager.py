@@ -13,7 +13,7 @@ class MemberManager(BaseUserManager):
     def _normalize_required_name(value, field_name: str) -> str:
         normalized = str(value or "").strip()
         if not normalized:
-            raise ValueError(f"Superuser {field_name} is required.")
+            raise ValueError(f"Admin {field_name} is required.")
         return normalized
 
     def get_queryset(self):
@@ -31,13 +31,14 @@ class MemberManager(BaseUserManager):
         return self._create_user(password, **extra_fields)
 
     def create_superuser(self, password=None, **extra_fields):
+        """Create an Admin (Django's name for it is kept; ``is_superuser`` mirrors ``is_staff``)."""
         extra_fields.setdefault("is_staff", True)
         extra_fields.setdefault("is_superuser", True)
 
         if extra_fields.get("is_staff") is not True:
-            raise ValueError("Superuser must have is_staff=True.")
+            raise ValueError("An Admin must have is_staff=True.")
         if extra_fields.get("is_superuser") is not True:
-            raise ValueError("Superuser must have is_superuser=True.")
+            raise ValueError("An Admin must have is_superuser=True.")
 
         extra_fields["first_name"] = self._normalize_required_name(extra_fields.get("first_name"), "first name")
         extra_fields["last_name"] = self._normalize_required_name(extra_fields.get("last_name"), "last name")

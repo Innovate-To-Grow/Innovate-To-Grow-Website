@@ -105,7 +105,7 @@ def propose_db_delete(app_label: str, model_name: str, pk: str, summary: str | N
     model = resolve_model(app_label, model_name, write=True)
     check_model_permission(current_user(), model, "view")
     obj = get_object(model, pk)
-    check_member_write(current_user(), model, target=obj)
+    check_member_write(current_user(), model, target=obj, delete=True)
     before = serialize_model_instance(obj, write=True)
     cascade = collect_cascade_impact(obj)
     comparison = build_db_comparison(model, before, {}, mode="delete")

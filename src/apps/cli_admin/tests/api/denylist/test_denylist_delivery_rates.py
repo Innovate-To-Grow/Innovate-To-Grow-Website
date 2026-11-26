@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from django.utils import timezone
 
-from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff, make_superuser
+from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff
 from apps.core.models import DeliveryRateLimit, DeliveryRatePolicy, DeliveryRateState, DeliveryUsageBucket
 
 DENIED = "{access} access is not allowed for core.{model}."
@@ -11,7 +11,7 @@ COLLECTION = "/admin-api/records/core/{model}/"
 
 class DeliveryRateDenylistTests(CliApiTestCase):
     """The delivery-rate policy, its live state and usage, and the legacy rate slot are unreachable through
-    /admin-api/, even for superusers: rates are changed on Mail → Delivery Rates only."""
+    /admin-api/, even for an Admin: rates are changed on Mail → Delivery Rates only."""
 
     def setUp(self):
         super().setUp()
@@ -30,11 +30,8 @@ class DeliveryRateDenylistTests(CliApiTestCase):
             "DeliveryUsageBucket": self.bucket.pk,
             "DeliveryRateLimit": self.slot.pk,
         }
-        # Both actors hold the "core" app grant (superusers hold every grant), so a 400 below comes from the
-        # denylist and not from the per-app 403.
         self.actors = {
-            "staff": self.auth(issue_token(make_staff(email="rates-staff@example.com"))[1]),
-            "superuser": self.auth(issue_token(make_superuser(email="rates-admin@example.com"))[1]),
+            "admin": self.auth(issue_token(make_staff(email="rates-staff@example.com"))[1]),
         }
 
     def assert_denied(self, response, access, model):

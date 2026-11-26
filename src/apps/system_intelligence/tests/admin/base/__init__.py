@@ -23,3 +23,9 @@ class SystemIntelligenceAdminBase(TestCase):
             system_prompt="Use tools.",
         )
         self.conversation = ChatConversation.objects.create(created_by=self.admin_user)
+
+
+def rendered_badge(method, obj):
+    """The (text, color) Unfold shows for a ``@display(label={...})`` badge: one label, colored by its key."""
+    key, text = method(obj)
+    return text, method.label[key]

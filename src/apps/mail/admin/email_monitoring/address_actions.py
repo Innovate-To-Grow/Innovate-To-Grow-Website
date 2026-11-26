@@ -5,14 +5,13 @@ undone, the inputs, a typed confirmation where needed, and a fingerprint of the 
 ``step=apply`` applies it, only when the guards still pass and nothing changed since (otherwise nothing is applied
 and the page is shown again). Bulk applies one reversible address-level action to many rows the same way, row by row,
 skipping each row that fails a guard with its reason; it never offers a contact or account change. Every view
-requires the Mail app, and each action re-checks its own permissions.
+requires an Admin, and each action re-checks its own guards.
 """
 
 import uuid
 
 from django.conf import settings
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
@@ -124,11 +123,8 @@ def addresses_bulk_view(request):
 @require_POST
 def addresses_rebuild_view(request):
     """Classify the stored reports again with the current rules, then start counting again from the records still
-    stored (review state and suppression are kept). I2G Master only: the counts of reports already purged cannot be
-    rebuilt."""
+    stored (review state and suppression are kept). The counts of reports already purged cannot be rebuilt."""
     require_mail_access(request)
-    if not request.user.is_superuser:
-        raise PermissionDenied("Only an I2G Master may rebuild the bounced-address counts.")
     back = reverse("admin:mail_email_monitoring_addresses")
     if request.POST.get("step") != "apply":
         context = _context(request, "Rebuild bounced-address counts", None, "addresses")

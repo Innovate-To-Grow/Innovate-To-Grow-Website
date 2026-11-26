@@ -133,27 +133,26 @@ class StaffVerifyByCodeTests(AdminPhoneTestCase):
     def test_an_unknown_phone_is_404(self):
         self.assertEqual(self.client.get(_verify_url(self.member)).status_code, 404)
 
-    def test_staff_without_the_members_app_are_refused(self):
-        staffer = Member.objects.create_user(password=None, is_staff=True, is_active=True)
-        staffer.admin_apps = ["event"]
-        staffer.save(update_fields=["admin_apps"])
-        self.client.force_login(staffer)
+    def test_a_member_who_is_not_an_admin_is_sent_to_the_admin_login(self):
+        self.client.force_login(Member.objects.create_user(password=None, is_active=True))
 
-        self.assertEqual(self.client.get(_verify_url(self.phone)).status_code, 403)
-        self.assertEqual(self.client.post(_verify_url(self.phone), {"action": "send"}).status_code, 403)
+        for response in (
+            self.client.get(_verify_url(self.phone)),
+            self.client.post(_verify_url(self.phone), {"action": "send"}),
+        ):
+            self.assertEqual(response.status_code, 302)
+            self.assertIn("/admin/login/", response.url)
         self.publish.assert_not_called()
 
-    def test_only_an_i2g_master_may_verify_a_staff_accounts_number(self):
-        staff_owner = Member.objects.create_user(password=None, is_staff=True, is_active=True)
-        staff_phone = ContactPhone.objects.create(member=staff_owner, phone_number="2095550166", region="1-US")
-        staffer = Member.objects.create_user(password=None, is_staff=True, is_active=True)
-        staffer.admin_apps = ["authn"]
-        staffer.save(update_fields=["admin_apps"])
-        self.client.force_login(staffer)
+    def test_any_admin_may_verify_another_admins_number(self):
+        admin_owner = Member.objects.create_user(password=None, is_staff=True, is_active=True)
+        admin_phone = ContactPhone.objects.create(member=admin_owner, phone_number="2095550166", region="1-US")
+        self.client.force_login(Member.objects.create_user(password=None, is_staff=True, is_active=True))
 
-        self.assertEqual(self.client.post(_verify_url(staff_phone), {"action": "send"}).status_code, 403)
-        self.assertEqual(self.client.get(_verify_url(self.phone)).status_code, 200)
-        self.publish.assert_not_called()
+        response = self.client.post(_verify_url(admin_phone), {"action": "send"}, follow=True)
+
+        self.assertIn("Code sent to (209)555-0166", self.texts(response)[0])
+        self.assertEqual([call.kwargs["phone_number"] for call in self.publish.call_args_list], ["+12095550166"])
 
     def test_anonymous_visitors_are_sent_to_the_admin_login(self):
         self.client.logout()

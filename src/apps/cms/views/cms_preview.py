@@ -15,14 +15,9 @@ _LIVE_PREVIEW_TTL = 600  # 10 minutes
 
 
 class HasCMSAppAccess(BasePermission):
-    """Allow only members with admin access to the cms app.
+    """Allow only Admins (see apps.core.utils.access.user_can_access_app); everyone else is denied."""
 
-    Mirrors the per-app gate used everywhere else (see
-    apps.core.utils.access.user_can_access_app): superusers (I2G Master) and staff whose
-    ``admin_apps`` includes "cms" are granted; everyone else is denied.
-    """
-
-    message = "CMS app access is required."
+    message = "Admin access is required."
 
     def has_permission(self, request, view):
         return user_can_access_app(request.user, "cms")
@@ -47,9 +42,9 @@ class CMSPreviewFetchView(APIView):
 class CMSLivePreviewView(APIView):
     """Store and retrieve live-preview page data keyed by page UUID.
 
-    POST (cms-app only): admin JS pushes the current editor state here on every edit.
+    POST (Admins only): admin JS pushes the current editor state here on every edit.
     GET  (public cache): preview tab polls this endpoint to render the latest state.
-                       cms-app members may fall back to the current DB state.
+                       Admins may fall back to the current DB state.
     """
 
     rate_limit_scope = "staff-polling"

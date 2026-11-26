@@ -3,8 +3,8 @@
 Scan now, Pause / Resume, "Rescan since" and the first-scan lookback change only the intake's state row (through
 ``services.intake.state``, which applies the bounds of ``inbox_max_lookback_days``, the lease rule and the audit
 trail: an admin history line and a log line), never bounce processing's. Only Scan now starts a scan; the others take
-effect at the next scheduled scan. Each control is a POST with CSRF and needs the Helpdesk grant (``admin_view`` only
-requires a staff login); every message names what changed, or why nothing did.
+effect at the next scheduled scan. Each control is a POST with CSRF, served through ``admin_view`` (Admins only); every
+message names what changed, or why nothing did.
 """
 
 from django import forms
@@ -20,7 +20,6 @@ from apps.core.services.email.inbound import format_interval
 from ...services.ingest.pipeline import jobs as ingest_jobs
 from ...services.intake import jobs as intake_jobs
 from ...services.intake import state as intake_state
-from ..tickets.views import require_helpdesk_access
 
 # How a time is shown in a message: the site's time zone, to the minute, with the zone's abbreviation.
 WHEN = "M j, Y, H:i T"
@@ -70,7 +69,6 @@ def intake_view(request):
 
     A scan and a rescan need a mailbox the intake can read (the time a rescan sets is read by the next scan); the
     lookback, like pause and resume, needs only the mailbox."""
-    require_helpdesk_access(request)
     action = request.POST.get("action")
     reader, mailbox, problem = active_reader()
     if action == "scan" and reader is not None:

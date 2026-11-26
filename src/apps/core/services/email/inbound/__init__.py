@@ -19,7 +19,7 @@ from .processing.registry import (
     register_inbox_reader,
     registered_inbox_readers,
 )
-from .processing.scrub import LINK_PLACEHOLDER, is_sensitive_url, scrub_links, scrub_subject
+from .processing.scrub import LINK_PLACEHOLDER, is_sensitive_url, scrub_links, scrub_personal_links, scrub_subject
 
 __all__ = [
     "AUTOMATED",
@@ -42,5 +42,6 @@ __all__ = [
     "register_inbox_reader",
     "registered_inbox_readers",
     "scrub_links",
+    "scrub_personal_links",
     "scrub_subject",
 ]

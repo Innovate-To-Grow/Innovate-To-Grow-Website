@@ -10,12 +10,14 @@ from django.urls import reverse
 from django.utils.html import format_html
 from unfold.admin import TabularInline
 
-from apps.core.admin import ReadOnlyModelAdmin
+from apps.core.admin import AppAccessInlineMixin, ReadOnlyModelAdmin
 
 from ....models import MemberImportBatch, MemberImportRow
 
 
-class MemberImportRowInline(TabularInline):
+class MemberImportRowInline(AppAccessInlineMixin, TabularInline):
+    """Read-only: every Admin sees the rows (``AppAccessInlineMixin``), nobody adds, changes or deletes one."""
+
     model = MemberImportRow
     fields = ("row_number", "status", "conflict", "choice", "chosen_by", "chosen_at", "outcome", "result_member")
     readonly_fields = fields

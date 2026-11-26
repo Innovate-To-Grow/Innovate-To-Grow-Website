@@ -36,6 +36,11 @@ def is_model_denied(model: type[models.Model], *, write: bool) -> bool:
     # its parent; written directly, it skips the parent's field denies (``groups``).
     if write and (label in DENIED_WRITE_MODEL_LABELS or model._meta.auto_created):
         return True
+    # Read too when the model that owns the table is denied by name: it tells what that model holds (which member is
+    # in which helpdesk assignment group).
+    parent = model._meta.auto_created
+    if parent and parent._meta.label_lower in DENIED_MODEL_LABELS:
+        return True
     return any(part in model._meta.model_name for part in DENIED_MODEL_NAME_PARTS)
 
 

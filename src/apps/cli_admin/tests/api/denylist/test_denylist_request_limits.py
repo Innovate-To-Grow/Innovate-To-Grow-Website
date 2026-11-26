@@ -1,7 +1,7 @@
 from django.core.cache import cache
 from django.utils import timezone
 
-from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff, make_superuser
+from apps.cli_admin.tests.helpers import CliApiTestCase, issue_token, make_staff
 from apps.core.models import RequestLimitProcess, RequestRateLimitPolicy, RequestRateLimitState
 
 DENIED = "{access} access is not allowed for core.{model}."
@@ -10,7 +10,7 @@ COLLECTION = "/admin-api/records/core/{model}/"
 
 class RequestLimitDenylistTests(CliApiTestCase):
     """The request-limit policies, their Smart state and the process heartbeats are unreachable through /admin-api/,
-    even for superusers: limits are changed on Site Settings → Request Limits only, where every change is audited."""
+    even for an Admin: limits are changed on Site Settings → Request Limits only, where every change is audited."""
 
     def setUp(self):
         super().setUp()
@@ -24,11 +24,8 @@ class RequestLimitDenylistTests(CliApiTestCase):
             "RequestRateLimitState": self.state.pk,
             "RequestLimitProcess": self.process.pk,
         }
-        # Both actors hold the "core" app grant (superusers hold every grant), so a 400 below comes from the
-        # denylist and not from the per-app 403.
         self.actors = {
-            "staff": self.auth(issue_token(make_staff(email="limits-staff@example.com"))[1]),
-            "superuser": self.auth(issue_token(make_superuser(email="limits-admin@example.com"))[1]),
+            "admin": self.auth(issue_token(make_staff(email="limits-staff@example.com"))[1]),
         }
 
     def assert_denied(self, response, access, model):

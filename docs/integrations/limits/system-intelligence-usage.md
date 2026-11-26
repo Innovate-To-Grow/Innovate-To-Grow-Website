@@ -4,7 +4,7 @@ The usage dashboard surfaces Amazon Bedrock token/invocation consumption next to
 the site's own conversation logs, so an operator can watch assistant activity on
 a big screen at a glance.
 
-- Admin route: **System Intelligence → Usage Dashboard** (`/admin/system-intelligence/usage/`).
+- Admin route: **System Intelligence → Usage & Logs** (`/admin/system-intelligence/usage/`), whose tabs also hold the conversation logs, message logs and action requests.
 - The limits that bound public assistant and AI-search spend are described in
   [Assistant and AI search limits](assistant-limits.md); the dashboard does not show budget usage, which is on the System Intelligence config admin page next to the global limit.
 - JSON feed: `/admin/system-intelligence/usage/data/` (`?force=1` bypasses the cache).

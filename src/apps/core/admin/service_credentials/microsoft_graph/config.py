@@ -29,7 +29,7 @@ GRAPH_FORM_FIELDS = (
 )
 # A certificate is tested for one tenant and app, so these are read-only while one is installed.
 APPLICATION_FIELDS = ("tenant_id", "client_id")
-# What the go-live gate accepts as evidence: set by whoever runs the access check (the Core app).
+# What the go-live gate accepts as evidence: set by whoever runs the access check.
 EVIDENCE_FIELDS = ("access_check_deny_mailbox", "permission_exception_reference", "message_trace_enabled")
 NO_CERTIFICATE = "None installed"
 
@@ -142,7 +142,7 @@ class MicrosoftGraphProviderConfigAdmin(
         extra_context = dict(extra_context or {})
         if obj is not None:
             panel = certificate_panel(request, obj)
-            panel["permissions"] = permissions_card(request, obj)
+            panel["permissions"] = permissions_card(obj)
             extra_context["graph_certificate_panel"] = panel
         return super().change_view(request, object_id, form_url, extra_context)
 

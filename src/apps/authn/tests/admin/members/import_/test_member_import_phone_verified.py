@@ -11,7 +11,7 @@ from django.urls import reverse
 
 from apps.authn.admin.members.import_.context import review_sections
 from apps.authn.models import ContactPhone, Member, MemberImportBatch
-from apps.authn.services.members.import_.workbook.parsing import PHONE_VERIFIED_IGNORED
+from apps.authn.services.members.import_.workbook.columns import ADMIN_IGNORED, PHONE_VERIFIED_IGNORED
 from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTestCase, row, upload
 
 
@@ -19,8 +19,10 @@ from apps.authn.tests.services.members.import_.helpers import HEADERS, ImportTes
 class PhoneVerifiedPagesTests(ImportTestCase):
     def setUp(self):
         super().setUp()
-        self.master = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
-        self.client.force_login(self.master)
+        self.admin_user = Member.objects.create_superuser(
+            password="StrongPass123!", first_name="I2G", last_name="Admin"
+        )
+        self.client.force_login(self.admin_user)
         self.verified = self.phone(self.ada, "2095550101", verified=True)
         self.unverified = self.phone(self.ada, "2095550102", verified=False)
 
@@ -56,11 +58,12 @@ class PhoneVerifiedPagesTests(ImportTestCase):
     def test_review_confirm_and_result_pages_show_the_note_and_numbers_stay_as_they_were(self):
         batch = self._stage(self._rows())
 
-        self.assertEqual(batch.columns["notes"], [PHONE_VERIFIED_IGNORED])
+        # HEADERS also has the old Staff column, which the import ignores with its own note.
+        self.assertEqual(batch.columns["notes"], [PHONE_VERIFIED_IGNORED, ADMIN_IGNORED])
         self.assertIn("Phone Verified", batch.columns["informational"])
         review = self.client.get(reverse("admin:authn_member_import_review", args=[batch.pk]))
         self.assertContains(review, PHONE_VERIFIED_IGNORED, count=1)
-        self.assertContains(review, "Not imported: Phone Verified.")
+        self.assertContains(review, "Not imported: Phone Verified, Staff.")
         confirm = self.client.get(reverse("admin:authn_member_import_confirm", args=[batch.pk]))
         self.assertContains(confirm, PHONE_VERIFIED_IGNORED, count=1)
 
@@ -120,7 +123,7 @@ class PhoneVerifiedPagesTests(ImportTestCase):
         self.assertTrue(self.verified.verified)
 
     def test_without_the_column_no_page_shows_the_note(self):
-        headers = [header for header in HEADERS if header != "Phone Verified"]
+        headers = [header for header in HEADERS if header not in ("Phone Verified", "Staff")]
         cells = row("nina@example.com", First_Name="Nina", Last_Name="New", Phone_Number="2095550177")
         batch = self._stage([[cells[HEADERS.index(header)] for header in headers]], headers)
 

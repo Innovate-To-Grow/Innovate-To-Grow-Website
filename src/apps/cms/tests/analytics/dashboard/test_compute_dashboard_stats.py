@@ -70,9 +70,8 @@ class IPGeoLookupViewTests(TestCase):
     def setUp(self):
         cache.clear()
         self.factory = RequestFactory()
-        # The view now re-checks per-app access via ``request.user``; a raw
-        # RequestFactory request has no user, so attach a cms-granted one.
-        self.user = make_superuser(email="geo-lookup-master@example.com")
+        # The view is reached only through ``admin_view`` (Admins only); sign the raw request in as one.
+        self.user = make_superuser(email="geo-lookup-admin@example.com")
 
     def tearDown(self):
         cache.clear()

@@ -7,9 +7,8 @@ refused when anything changed after the page was shown, and a typed word while `
 It is recorded, in that same transaction, in the History of the member and of each address whose type changed, and
 the admin returns to the member page.
 
-Who: the Members (authn) app and ``user_can_manage_member``, so a staff or superuser account needs the I2G Master (or
-its own holder). Unfold wraps a detail-action URL only in ``admin_view`` (any staff, with Django's CSRF check), so the
-view checks both itself; the button and the row links are left out for anyone else.
+Who: any Admin, on any member (another Admin's account included). Unfold wraps a detail-action URL in ``admin_view``,
+which admits active Admins only and keeps Django's CSRF check.
 """
 
 from urllib.parse import urlencode
@@ -17,14 +16,11 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin.utils import quote, unquote
-from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import Http404, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
 from django.utils.html import format_html
 from unfold.decorators import action
-
-from apps.core.utils.access import user_can_manage_member
 
 from ....services.contacts.primary_switch import (
     PRIMARY,
@@ -44,7 +40,6 @@ TEMPLATE = "admin/authn/member/switch_primary.html"
 CONFIRM_WORD = "switch"
 VIA = "Switch primary email on the member page"
 VIA_CONTACT_EMAILS = "Make selected email primary in Contact Emails"
-PRIVILEGED = "Only an I2G Master may change the primary email of a staff or superuser account."
 TYPE_LABELS = {"primary": "Primary", "secondary": "Secondary", "other": "Other"}
 
 
@@ -101,43 +96,11 @@ class PrimarySwitchAdminMixin:
 
     actions_detail = [ACTION]
 
-    def may_switch_primary(self, request, member) -> bool:
-        return (
-            member is not None
-            and self.has_change_permission(request, member)
-            and user_can_manage_member(request.user, member)
-        )
-
-    def _button_owner(self, request, object_id):
-        """The member page's member, with only the fields the permission check reads.
-
-        ``get_object`` would load the whole row again (the multi-megabyte ``profile_image`` included) and prefetch
-        every contact, on every member page, just to decide whether to show the button.
-        """
-        queryset = self.get_queryset(request).prefetch_related(None).only("id", "is_staff", "is_superuser")
-        try:
-            return queryset.filter(pk=unquote(str(object_id))).first()
-        except (ValidationError, ValueError):
-            return None
-
-    def get_actions_detail(self, request, object_id):
-        actions = super().get_actions_detail(request, object_id)
-        member = self._button_owner(request, object_id) if object_id else None
-        if self.may_switch_primary(request, member):
-            return actions
-        return [item for item in actions if not item.action_name.endswith(f"_{ACTION}")]
-
     @action(description="Switch primary email", url_path="switch-primary", icon="swap_horiz")
     def switch_primary_email(self, request, object_id):
-        # The app check comes first, as in Django's change view: without the Members app, an unknown and a known
-        # member both answer 403.
-        if not self.has_change_permission(request):
-            raise PermissionDenied("You do not have permission to change members.")
         member = self.get_object(request, unquote(str(object_id)))
         if member is None:
             raise Http404("No member matches the given query.")
-        if not self.may_switch_primary(request, member):  # the same rule that shows the button
-            raise PermissionDenied(PRIVILEGED)
         if request.method == "POST":
             return self._apply_primary_switch(request, member)
         return self._primary_switch_page(request, member, str(request.GET.get("to") or ""))

@@ -127,7 +127,8 @@ def _apply_instruction_sheet(workbook):
         ("", "A new Secondary Email or Phone Number is added next to the member's existing ones, unverified"),
         ("", "A Phone Verified column (Export to Excel has one) is ignored: phone numbers are saved unverified"),
         ("", "Stored phone numbers keep their status; members verify their own numbers with a one-time code"),
-        ("", "Verifying/un-verifying an email, re-subscribing, (de)activating and staff changes need a review tick"),
+        ("", "Verifying/un-verifying an email, re-subscribing and (de)activating need a review tick"),
+        ("", "An Admin (or Staff) column is ignored: an import never grants or removes Admin access"),
         ("", "TRUE/FALSE columns accept TRUE, FALSE, Yes or No; any other text is ignored"),
         ("", "'Last Updated' and 'Primary Expired' are informational only"),
     ]

@@ -46,21 +46,18 @@ def history(obj) -> list[str]:
 
 
 class SwitchFixture(TestCase):
-    """The I2G Master, a staff helper with the Members app, a staff member without it, and Jane (a regular member)
-    with a verified primary, a verified secondary and an unverified, unsubscribed "other" address."""
+    """Three Admins (Ada, made with ``create_superuser``; Hal and Sam, made with ``is_staff`` only), Olga (a regular
+    member with no email address), and Jane (a regular member) with a verified primary, a verified secondary and an
+    unverified, unsubscribed "other" address."""
 
     @classmethod
     def setUpTestData(cls):
         cls.master = Member.objects.create_superuser(password="StrongPass123!", first_name="Ada", last_name="Master")
         add_email(cls.master, "master@example.com", "primary")
-        cls.helper = Member.objects.create_user(
-            first_name="Hal", last_name="Helper", is_active=True, is_staff=True, admin_apps=["authn"]
-        )
+        cls.helper = Member.objects.create_user(first_name="Hal", last_name="Helper", is_active=True, is_staff=True)
         cls.helper_primary = add_email(cls.helper, "hal@example.com", "primary", days_ago=9)
         cls.helper_backup = add_email(cls.helper, "hal.home@example.com", "secondary", days_ago=8)
-        cls.outsider = Member.objects.create_user(
-            first_name="Olga", last_name="Outsider", is_active=True, is_staff=True, admin_apps=["cms"]
-        )
+        cls.outsider = Member.objects.create_user(first_name="Olga", last_name="Outsider", is_active=True)
         cls.staffer = Member.objects.create_user(first_name="Sam", last_name="Staff", is_active=True, is_staff=True)
         cls.staffer_primary = add_email(cls.staffer, "sam@example.com", "primary", days_ago=9)
         cls.staffer_backup = add_email(cls.staffer, "sam.home@example.com", "secondary", days_ago=8)

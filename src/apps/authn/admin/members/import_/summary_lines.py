@@ -15,15 +15,17 @@ CHOICE_WORDS = {
 }
 
 
+# By the keys applied batches keep in their summary: a key never changes, only its title.
 LISTED_TITLES = {
-    "privileged_changes": "Changes to staff or superuser accounts",
+    "privileged_changes": "Changes to Admin accounts",
     "verified": "Email addresses marked verified (each becomes a sign-in factor)",
     "emails_deleted": "Contact emails deleted",
     "phones_deleted": "Phone numbers deleted",
     "resubscribed": "Re-subscribed",
     "unverified": "Email addresses marked unverified",
     "active_changes": "Members deactivated or reactivated",
-    "staff_changes": "Staff changes",
+    # Imports no longer change Admin access; kept for the result pages of imports applied before.
+    "staff_changes": "Admin access granted or removed",
     "primary_changes": "Primary email changes",
 }
 

@@ -47,7 +47,7 @@ class ExecuteToolTest(TestCase):
         from apps.projects.models import Semester
 
         Semester.objects.create(year=2025, season=1, is_published=True)
-        user = make_admin(apps=["system_intelligence", "projects"])
+        user = make_admin()
         result = execute_tool({"name": "search_semesters", "input": {"year": 2025}}, user=user)
         self.assertIn("2025", result)
 
@@ -61,7 +61,7 @@ class ExecuteToolTest(TestCase):
             "apps.system_intelligence.services.query_tools.tool_modules.dispatch.executor.TOOL_REGISTRY",
             {"search_projects": boom},
         ):
-            user = make_admin(apps=["system_intelligence", "projects"])
+            user = make_admin()
             result = execute_tool({"name": "search_projects", "input": {}}, user=user)
         self.assertIn("Tool error: kaboom", result)
 

@@ -11,7 +11,7 @@
         <span class="material-symbols-outlined text-5xl text-blue-500 mb-4">upgrade</span>
 
         {% if needs_confirmation %}
-            {# Granting staff access is a state change, so it must not happen on the GET: an email
+            {# Granting Admin access is a state change, so it must not happen on the GET: an email
                gateway's link scanner or a browser prefetch would silently grant it and burn the
                invitation. Require an explicit, CSRF-protected POST. #}
             <h2 class="text-lg font-semibold text-font-default-light dark:text-font-default-dark mb-2">

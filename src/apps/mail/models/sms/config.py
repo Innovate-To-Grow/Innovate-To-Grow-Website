@@ -93,10 +93,10 @@ class SmsConfig(SmsConfigRulesMixin, ProjectControlModel):
         default=False,
         verbose_name="Personal sign-in links",
         help_text="On: {{login_link}} and {{ticket_link}} sign a member in with one tap (single use, never for "
-        "staff, only when the text goes to the member's own verified phone). Off: they open the sign-in page and "
+        "an Admin, only when the text goes to the member's own verified phone). Off: they open the sign-in page and "
         "land on the same page after a code sign-in. Turning this off revokes every personal link already texted, "
         "for good: turning it back on does not bring them back. A recycled phone number could receive someone "
-        "else's personal link. Only the I2G Master can change this.",
+        "else's personal link.",
     )
     personal_links_epoch = models.PositiveIntegerField(
         default=1,

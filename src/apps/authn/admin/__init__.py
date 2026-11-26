@@ -2,7 +2,7 @@
 Authn app admin configuration.
 
 Registers all authn models with Django admin for user management:
-- members.member: the Member admin (its actions, custom views and privileged-account protection are mixins)
+- members.member: the Member admin (its actions, custom views and lockout rules are mixins)
 - members.contact: ContactEmail, ContactPhone admins; members.inlines: their rows on a member's page
 - members.import_: member import pages and the read-only history of imports
 - members.primary_switch: the Switch primary email page; members.shared: filters, search, labels, sign-in warning

@@ -3,11 +3,12 @@
 from django.contrib import admin
 from unfold.admin import TabularInline
 
+from apps.core.admin import AppAccessInlineMixin
 from apps.mail.models import RecipientLog
 from apps.mail.models.email.campaign_options import ALL_AUDIENCE_CHOICES
 
 
-class RecipientLogInline(TabularInline):
+class RecipientLogInline(AppAccessInlineMixin, TabularInline):
     model = RecipientLog
     fields = (
         "email_address",

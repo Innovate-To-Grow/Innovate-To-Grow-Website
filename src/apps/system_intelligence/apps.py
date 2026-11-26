@@ -7,6 +7,7 @@ class SystemIntelligenceConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
     name = "apps.system_intelligence"
     label = "system_intelligence"
+    verbose_name = "System Intelligence"
 
     def ready(self):
         from django.contrib import admin

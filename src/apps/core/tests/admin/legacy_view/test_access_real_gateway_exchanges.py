@@ -97,8 +97,8 @@ class LegacyAccessAdminTests(_LegacyAccessAdminCase):
         request = self._viewer_request(response)
         self.assertEqual(require_legacy_viewer(request).pk, self.user.pk)
 
-        self.user.admin_apps = []
-        self.user.save(update_fields=["admin_apps"])
+        self.user.is_staff = False
+        self.user.save(update_fields=["is_staff"])
         with self.assertRaises(LegacyViewerAccessDenied):
             require_legacy_viewer(self._viewer_request(response))
 

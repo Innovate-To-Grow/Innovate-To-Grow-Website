@@ -12,7 +12,7 @@
 │   │   ├── event/          # Registration, ticketing, schedule, check-in
 │   │   ├── projects/       # Past projects, semesters, sharing
 │   │   ├── mail/           # Campaigns, recipient logs, login links
-│   │   ├── helpdesk/       # Tickets from the i2g@ mailbox (shadow mode)
+│   │   ├── helpdesk/       # Tickets from the i2g@ mailbox (ServiceNow-style service desk)
 │   │   ├── system_intelligence/  # Admin AI assistant (agents, actions, exports)
 │   │   └── cli_admin/      # OAuth2 + PKCE CRUD API for the i2g-admin CLI
 │   ├── config/             # Django settings (base/, production/ overrides, environments/ entrypoints), routing/, deploy/ (ASGI/WSGI)
@@ -107,9 +107,9 @@ and for the registration hooks.
 is visible from an editor without opening the docs.
 
 Extracting `background_jobs` or `db_tools` into their own apps would need new Django app labels. That
-is deferred: `apps/core/utils/access.py` and `Member.admin_apps` store app labels **in the
-database** (a `JSONField` per admin user), so a new label needs a data migration to backfill existing
-admins' grants, or they silently lose access.
+is deferred: a new label moves migration history, content types and admin-log references, for little gain.
+(Admin access no longer depends on app labels: the per-app `Member.admin_apps` grants were retired, and every
+Admin has every app.)
 
 ### Splitting a module inside an app
 

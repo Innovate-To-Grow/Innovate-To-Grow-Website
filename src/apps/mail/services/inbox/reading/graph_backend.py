@@ -36,17 +36,6 @@ from .formatting import format_date, timestamp_of
 logger = logging.getLogger(__name__)
 
 
-def active_reader() -> GraphMailboxReader | None:
-    """A reader for the Graph sending mailbox when the scope grants read on it; otherwise None (use IMAP)."""
-    graph = MicrosoftGraphProviderConfig.load()
-    if not graph.is_configured:
-        return None
-    mailbox = graph.sender_mailbox(EmailServiceConfig.load().from_email)
-    if not graph.allows(mailbox, "read"):
-        return None
-    return GraphMailboxReader(graph, mailbox)
-
-
 def reader_for(mailbox: str) -> GraphMailboxReader:
     """A reader for one mailbox of the active Graph config's scope (``accounts``); raises ``InboxError`` when the
     scope no longer grants read on it."""
@@ -54,11 +43,6 @@ def reader_for(mailbox: str) -> GraphMailboxReader:
     if not graph.is_configured or not graph.allows(mailbox, "read"):
         raise InboxError("That mailbox is not available in the Inbox.")
     return GraphMailboxReader(graph, mailbox)
-
-
-def graph_inbox_active() -> bool:
-    """Whether Mail -> Inbox reads the Microsoft Graph mailbox (rather than the Gmail import account)."""
-    return active_reader() is not None
 
 
 def list_messages(reader: GraphMailboxReader, *, folder: str, limit: int) -> list[dict[str, Any]]:

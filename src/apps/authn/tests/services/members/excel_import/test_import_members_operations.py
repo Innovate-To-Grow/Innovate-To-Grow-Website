@@ -6,7 +6,7 @@ from django.test import TestCase
 from apps.authn.models import ContactEmail, ContactPhone
 from apps.authn.services.members.import_.review.apply.execute import execute_update
 from apps.authn.services.members.import_.review.lookup import load_snapshot
-from apps.authn.services.members.import_.review.plan import STAFF_IGNORED, plan_row
+from apps.authn.services.members.import_.review.plan import plan_row
 from apps.authn.services.members.import_.review.plan.actions import UPDATE, Action
 
 Member = get_user_model()
@@ -22,7 +22,6 @@ def _parsed(**overrides):
         "title": "",
         "organization": "",
         "is_active": None,
-        "is_staff": None,
         "date_joined": None,
         "primary_verified": None,
         "primary_subscribed": None,
@@ -56,30 +55,24 @@ class UpdateOneMemberTests(TestCase):
         )
 
     def test_updates_all_optional_fields(self):
-        parsed = _parsed(middle_name="Quincy", title="Engineer", organization="Acme", is_active=True, is_staff=True)
+        parsed = _parsed(middle_name="Quincy", title="Engineer", organization="Acme", is_active=True)
 
-        plan = update(self.member, parsed, ticks=[f"R8:{self.member.pk}"])
+        plan = update(self.member, parsed)
 
         self.member.refresh_from_db()
         self.assertEqual(
             (self.member.first_name, self.member.middle_name, self.member.title, self.member.organization),
             ("New", "Quincy", "Engineer", "Acme"),
         )
-        self.assertTrue(self.member.is_staff)
         self.assertEqual(plan.notes, [])
-        self.assertIn("Grants staff status", plan.changes)
 
-    def test_is_staff_is_ignored_without_its_tick(self):
-        """The Staff column is an I2G Master field; the export/re-import round trip must not grant it."""
-        plan = update(self.member, _parsed(is_staff=True))
+    def test_admin_access_is_never_changed_even_with_a_forged_tick(self):
+        """An Admin (or old Staff) cell is never read: the export/re-import round trip must not grant Admin."""
+        plan = update(self.member, _parsed(first_name="Old", admin=True, is_staff=True), ticks=[f"R8:{self.member.pk}"])
 
         self.member.refresh_from_db()
-        self.assertFalse(self.member.is_staff)
-        self.assertEqual(plan.notes, [STAFF_IGNORED])
-
-    def test_unchanged_staff_column_is_not_reported(self):
-        """An export carries Staff on every row; a value that changes nothing is not a note."""
-        self.assertEqual(update(self.member, _parsed(is_staff=False)).notes, [])
+        self.assertEqual((self.member.is_staff, self.member.is_superuser), (False, False))
+        self.assertEqual((plan.ops, plan.notes), ([], []))
 
     def test_only_the_changed_fields_are_written(self):
         """The instance is loaded before the rows run; a full save would undo an admin's change made meanwhile."""
