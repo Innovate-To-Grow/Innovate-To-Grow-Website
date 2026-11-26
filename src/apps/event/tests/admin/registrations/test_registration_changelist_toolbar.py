@@ -169,6 +169,11 @@ class RegistrationChangelistToolbarTest(TestCase):
         toolbar = response.context["registration_toolbar"]
         self.assertEqual(toolbar["hidden"], [("ticket__id__exact", str(ticket.pk)), ("o", "1")])
         self.assertContains(response, f'<input type="hidden" name="ticket__id__exact" value="{ticket.pk}">')
+        # The ticket filter is not on the toolbar, but Clear still shows; it drops the filter and keeps the ordering.
+        self.assertContains(response, 'class="i2g-reg-toolbar__clear" href="?o=1"')
+
+    def test_no_parameters_no_clear_link(self):
+        self.assertNotContains(self.client.get(URL), 'class="i2g-reg-toolbar__clear"')
 
     def test_clear_keeps_ordering_and_popup_and_drops_search_and_filters(self):
         ticket = self.registrations[self.fall_2026.pk].ticket

@@ -114,7 +114,10 @@ class EventRegistrationAdmin(
         # The Clear link needs the ChangeList, which only exists once Django has built the response.
         context = getattr(response, "context_data", None) or {}
         if "cl" in context:
-            context["registration_toolbar"]["clear_url"] = clear_filters_url(context["cl"])
+            toolbar, cl = context["registration_toolbar"], context["cl"]
+            toolbar["clear_url"] = clear_filters_url(cl)
+            # A list filter set outside the toolbar (e.g. the ticket filter) still needs the Clear link.
+            toolbar["is_filtered"] = toolbar["is_filtered"] or cl.has_active_filters
         return response
 
     def get_readonly_fields(self, request, obj=None):
