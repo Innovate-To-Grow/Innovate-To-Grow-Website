@@ -107,7 +107,7 @@ class RegistrationChangelistToolbarTest(TestCase):
         self.assertContains(response, '<option value="2025-fall">Fall 2025</option>')
         self.assertContains(response, f'<option value="{self.fall_2026.pk}">Innovate to Grow Fall 2026</option>')
         self.assertContains(response, "event/css/event_admin/registration_changelist.css")
-        self.assertContains(response, "event/js/registration_changelist_toolbar.js")
+        self.assertContains(response, "event/js/event_admin/registration_changelist_toolbar.js")
         self.assertNotContains(response, 'class="i2g-reg-toolbar__clear"')
 
     def test_filter_by_semester(self):

@@ -180,12 +180,12 @@ rules = ["R001"]
 reason = "Reads its configuration from document.currentScript.dataset while it runs (the data-* attributes of its own <script> tag in admin/login.html); its functions share that configuration and the reassigned request state (pendingRequestId, checkingStatus, statusRegion, loaded), which another script could reach only through a new global."
 
 [[exceptions]]
-paths = ["src/apps/event/static/event/js/checkin_change_summary.js"]
+paths = ["src/apps/event/static/event/js/checkin/checkin_change_summary.js"]
 rules = ["R001"]
 reason = "Live summary of the check-in change page: 23 functions share the state, poll gate, config and root element of one closure; this page has no script namespace, so a split needs a new global and a second script tag."
 
 [[exceptions]]
-paths = ["src/apps/event/static/event/js/checkin_console.js"]
+paths = ["src/apps/event/static/event/js/checkin/checkin_console.js"]
 rules = ["R001"]
 reason = "Check-in console orchestrator: its helpers already live in checkin_shared.js, checkin_ticket_input.js and checkin_camera.js (window.__checkinConsole); the 18 functions left share the state, elements, config and camera context built in this closure, so moving more out is new wiring in the event-day console, not a move."
 

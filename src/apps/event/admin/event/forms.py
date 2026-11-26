@@ -43,4 +43,4 @@ class EventAdminForm(forms.ModelForm):
 
     class Media:
         css = {"all": ("event/css/event_admin/event_admin.css",)}
-        js = ("event/js/event_admin.js",)
+        js = ("event/js/event_admin/event_admin.js",)

@@ -36,7 +36,10 @@ class EventRegistrationAdmin(
 
     class Media:
         css = {"all": ("event/css/event_admin/registration_changelist.css",)}
-        js = ("event/js/registration_detail_panels.js", "event/js/registration_changelist_toolbar.js")
+        js = (
+            "event/js/event_admin/registration_detail_panels.js",
+            "event/js/event_admin/registration_changelist_toolbar.js",
+        )
 
     # Five columns so the list fits a 1024px window without scrolling sideways: the attendee's secondary email,
     # phone and verification flags are on the change form, in the export, and searchable.
