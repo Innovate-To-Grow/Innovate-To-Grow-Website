@@ -1,0 +1,72 @@
+name: Sync documentation to Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'scripts/wiki/**'
+      - '.github/workflows/sync-docs-to-wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-documentation-wiki
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the latest main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # A queued or rerun job publishes the current main, even if its event is older.
+          ref: refs/heads/main
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22.22.2'
+          package-manager-cache: false
+
+      - name: Install the Markdown parser and test the generator
+        run: |
+          npm ci --prefix scripts/wiki --ignore-scripts
+          node --test scripts/wiki/sync.test.mjs
+
+      - name: Generate Wiki pages
+        run: |
+          repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          wiki_checkout="$RUNNER_TEMP/documentation-wiki"
+          git clone --depth=1 "$repo_url.wiki.git" "$wiki_checkout"
+          node scripts/wiki/sync.mjs "$wiki_checkout" "$repo_url"
+
+      - name: Publish to the Wiki
+        working-directory: ${{ runner.temp }}/documentation-wiki
+        env:
+          WIKI_TOKEN: ${{ github.token }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Wiki is already up to date."
+            exit 0
+          fi
+
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "Sync documentation from main"
+
+          auth="$(printf 'x-access-token:%s' "$WIKI_TOKEN" | base64 -w0)"
+          echo "::add-mask::$auth"
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0="http.$GITHUB_SERVER_URL/.extraheader"
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $auth"
+          GIT_TERMINAL_PROMPT=0 git push origin HEAD

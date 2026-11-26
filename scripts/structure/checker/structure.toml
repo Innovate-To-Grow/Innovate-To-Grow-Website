@@ -90,6 +90,11 @@ rules = ["R003-mixed"]
 reason = "GitHub reads dependabot.yml, actionlint.yaml, actions/ and workflows/ from this directory."
 
 [[exceptions]]
+paths = [".github/workflows"]
+rules = ["R002"]
+reason = "GitHub discovers workflows only in this directory. The Wiki publisher needs its own docs push trigger and Wiki write permissions."
+
+[[exceptions]]
 paths = ["src"]
 rules = ["R003-mixed"]
 reason = "Django project root and backend Docker build context (manage.py, Dockerfile, .dockerignore, requirements.txt)."
