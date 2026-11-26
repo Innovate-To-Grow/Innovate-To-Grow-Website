@@ -1,30 +1,46 @@
-"""Helpdesk → Settings (one row of admin-editable limits, retention periods and switches) and → Categories.
+"""Helpdesk → Settings: one row of admin-editable limits, retention periods and switches (Categories, Assignment
+groups and Response templates are in ``service_desk``, SLA targets in ``sla_targets``).
 
-Shadow mode is shown, never editable: this release has no sending code. Above the form sits the intake card (its
-controls are in ``intake``). Saving the settings switched on restarts the intake and wakes the ingest, so mail that
-arrived while the helpdesk was off is read and imported.
+Shadow mode is a switch here: on (the default), nothing is sent; off, staff reply from the ticket page and the
+acknowledgement and assignment notifications are sent when switched on (their labels and the acknowledgement text's
+checks are in ``sending``). Every Admin changes them. Every change is in the admin history and the log. Above the form sits the intake card (its controls are in ``intake``).
+Saving the settings switched on restarts the intake and wakes the ingest, so mail that arrived while the helpdesk was
+off is read and imported.
 """
 
-from django.contrib import admin
+import logging
+
+from django.contrib import admin, messages
+from django.core.exceptions import PermissionDenied
 from django.http import HttpResponseRedirect
 from django.urls import path, reverse
 
 from apps.core.admin import BaseModelAdmin
 
-from ...models import HelpdeskSettings, TicketCategory
+from ...models import HelpdeskSettings
 from ...services.ingest.pipeline import jobs
 from ...services.intake import jobs as intake_jobs
 from ...services.intake import status as intake_status
 from . import controls as intake
+from .sending import SendingFieldsMixin
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(HelpdeskSettings)
-class HelpdeskSettingsAdmin(BaseModelAdmin):
-    readonly_fields = ("shadow_mode",)
+class HelpdeskSettingsAdmin(SendingFieldsMixin, BaseModelAdmin):
     # The intake card (its own POST forms) sits above the settings form, outside it.
     change_form_outer_before_template = "admin/helpdesk/intake/card.html"
     fieldsets = (
         ("Switches", {"fields": ("enabled", "shadow_mode", "pause_while_campaign_sending")}),
+        (
+            "Sending and notifications",
+            {
+                "description": "Used only while shadow mode is off.",
+                "fields": ("send_acknowledgement", "acknowledgement_text", "notify_assignment"),
+            },
+        ),
+        ("SLA and automation", {"fields": ("sla_warning_percent", "auto_close_resolved_days")}),
         (
             "Import",
             {
@@ -88,6 +104,8 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
 
     def changelist_view(self, request, extra_context=None):
         """One row: the list goes straight to it (or to the add form while the defaults are not saved yet)."""
+        if not self.has_view_or_change_permission(request):
+            raise PermissionDenied
         current = HelpdeskSettings.objects.first()
         if current is not None:
             return HttpResponseRedirect(reverse("admin:helpdesk_helpdesksettings_change", args=[current.pk]))
@@ -96,17 +114,11 @@ class HelpdeskSettingsAdmin(BaseModelAdmin):
         return super().changelist_view(request, extra_context)
 
     def save_model(self, request, obj, form, change):
-        obj.shadow_mode = True
         super().save_model(request, obj, form, change)
+        if "shadow_mode" in form.changed_data:
+            state = "on (nothing is sent)" if obj.shadow_mode else "off (replies and notifications can be sent)"
+            logger.info("helpdesk_shadow_mode changed=%s by=%s", obj.shadow_mode, getattr(request.user, "pk", ""))
+            messages.warning(request, f"Shadow mode is now {state}.")
         if obj.enabled:
             jobs.ensure_scheduled()
             intake_jobs.ensure_scheduled()
-
-
-@admin.register(TicketCategory)
-class TicketCategoryAdmin(BaseModelAdmin):
-    require_confirmation = False
-    list_display = ("name", "is_active", "order")
-    list_editable = ("is_active", "order")
-    search_fields = ("name",)
-    ordering = ("order", "name")

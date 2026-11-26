@@ -118,24 +118,34 @@ class SettingsAdminTests(TestCase):
         )
         self.assertEqual(self.client.get(reverse("admin:helpdesk_helpdesksettings_add")).status_code, 403)
 
-    def test_shadow_mode_cannot_be_switched_off_and_saving_wakes_the_ingest(self):
-        settings = HelpdeskSettings.objects.create()
-        queue(corpus.message(), reader=FakeReader())
+    def _settings_form_data(self, settings):
         form = (
             self.client.get(reverse("admin:helpdesk_helpdesksettings_change", args=[settings.pk]))
             .context["adminform"]
             .form
         )
         data = {name: form[name].value() for name in form.fields}
-        data.update(enabled="on", pause_while_campaign_sending="on", shadow_mode="")
+        # Unchecked checkboxes are left out of a real POST.
+        return {name: value for name, value in data.items() if value not in (False, None)}, form
 
-        response = self.client.post(reverse("admin:helpdesk_helpdesksettings_change", args=[settings.pk]), data)
+    def test_any_admin_switches_shadow_mode_off_and_on_and_saving_wakes_the_ingest(self):
+        settings = HelpdeskSettings.objects.create()
+        queue(corpus.message(), reader=FakeReader())
+        data, form = self._settings_form_data(settings)
+        data.pop("shadow_mode", None)
+        url = reverse("admin:helpdesk_helpdesksettings_change", args=[settings.pk])
+
+        response = self.client.post(url, data)
 
         self.assertEqual(response.status_code, 302)
         settings.refresh_from_db()
-        self.assertTrue(settings.shadow_mode)
-        self.assertNotIn("shadow_mode", form.fields)
+        self.assertIn("shadow_mode", form.fields)
+        self.assertFalse(settings.shadow_mode)
         self.assertTrue(BackgroundJob.objects.filter(kind=jobs.INGEST_JOB_KIND).exists())
+
+        self.client.post(url, {**data, "shadow_mode": "on"})
+        settings.refresh_from_db()
+        self.assertTrue(settings.shadow_mode)
 
     def test_categories_are_listed_and_editable(self):
         response = self.client.post(

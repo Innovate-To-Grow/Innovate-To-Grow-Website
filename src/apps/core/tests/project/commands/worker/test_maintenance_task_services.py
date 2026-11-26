@@ -138,6 +138,7 @@ class MaintenanceTaskTests(_MaintenanceTaskCase):
             purge_expired_email_telemetry=RuntimeError("i"),
             ensure_helpdesk_intake_scheduled=RuntimeError("l"),
             ensure_helpdesk_ingest_scheduled=RuntimeError("j"),
+            run_helpdesk_automation=RuntimeError("m"),
             purge_expired_helpdesk=RuntimeError("k"),
             ensure_inbox_poll_scheduled=RuntimeError("m"),
         ):

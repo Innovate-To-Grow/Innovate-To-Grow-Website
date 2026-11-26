@@ -114,7 +114,10 @@ Record each decision with its date and where it was approved; ticket numbers →
 - Two kinds of account only: every Admin has full control of the admin, including other Admin accounts; nobody
   removes their own Admin account and the last active Admin stays (the per-section grants and the I2G Master tier
   were retired with the single Admin role release).
-- The helpdesk starts in shadow mode (it records tickets and sends nothing).
+- The helpdesk starts in shadow mode (it records tickets and sends nothing). Switching it off in Helpdesk → Settings
+  (any Admin) lets Admins reply from the ticket page and enables the acknowledgement / assignment notifications
+  switched on there; switching it back on stops every queued helpdesk email before it goes out. A reply that fails or
+  is not confirmed shows on its ticket's timeline and puts the ticket back In progress and unread.
 - Retention periods: email records 180 days, bounce reports 365 days.
 
 ## 9. Routine checks

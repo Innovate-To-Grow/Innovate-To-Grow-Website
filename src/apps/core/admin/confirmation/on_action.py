@@ -2,6 +2,7 @@
 
 import uuid
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.admin import helpers
 from django.core.exceptions import PermissionDenied
@@ -31,8 +32,12 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
         ]
         return custom + super().get_urls()
 
+    def action_confirmation_off(self, request) -> bool:
+        """Confirmation off for this admin or the site (never by ``_popup``: Django offers no actions in a popup)."""
+        return not self.require_confirmation or not getattr(settings, "ADMIN_REQUIRE_CONFIRMATION", True)
+
     def response_action(self, request, queryset):
-        if self._should_skip_confirmation(request):
+        if self.action_confirmation_off(request):
             return super().response_action(request, queryset)
 
         action_form = self._bound_action_form(request)
@@ -68,6 +73,8 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
             "queryset_pks": action_pks,
             "item_count": len(action_pks),
             "post_data": serialize_post_data(request.POST),
+            # The list as staff saw it (its filters and search): Cancel and the finished action go back there.
+            "return_url": request.get_full_path(),
         }
 
         confirm_url = reverse(f"admin:{self.opts.app_label}_{self.opts.model_name}_confirm_action")
@@ -148,9 +155,17 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
             "item_count": item_count,
             "confirmation_word": confirmation_word,
             "token": pending["token"],
-            "cancel_url": self._changelist_url(),
+            "cancel_url": self._action_return_url(pending),
         }
         return TemplateResponse(request, "admin/core/confirmation/confirm_action.html", context)
+
+    def _action_return_url(self, pending) -> str:
+        """The changelist the action was chosen on, with its filters; only ever this model's changelist."""
+        changelist = self._changelist_url()
+        url = str(pending.get("return_url") or "")
+        if url == changelist or url.startswith(f"{changelist}?"):
+            return url
+        return changelist
 
     def _execute_confirmed_action(self, request, pending):
         action_name = pending["action_name"]
@@ -182,4 +197,4 @@ class ConfirmActionMixin(ConfirmationBaseMixin):
         if isinstance(response, HttpResponseBase):
             return response
 
-        return HttpResponseRedirect(self._changelist_url())
+        return HttpResponseRedirect(self._action_return_url(pending))

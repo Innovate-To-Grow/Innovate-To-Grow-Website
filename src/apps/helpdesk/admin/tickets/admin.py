@@ -1,26 +1,36 @@
 """Helpdesk → Queue: the ticket list and the ticket page.
 
 The list opens on people's open tickets: automated mail and spam are hidden unless the Mail filter asks for them
-(the sidebar's "Automated & spam"). The ticket page edits status, priority, category and assignee (each change goes
-to the ticket's audit trail; no typed confirmation, which would be noise on every status change) and shows the
-timeline with the note form below the form. A merged ticket's status is read-only, and the Status list has no
-"Merged": only a merge makes one. Merging and marking spam do need a typed confirmation. A merge into
-automated mail or spam is refused before that confirmation (and again by the service when it runs), and the
-"Automated & spam" view, where every ticket is one, offers no merge. Tickets are created only from mail, and deleted
-only by retention or by an Admin behind the typed confirmation. Nothing here sends anything.
+(the sidebar's "Automated & spam"); "Not automated: move to the queue" brings one back, from the list or beside Save
+on its page. The ticket page works a ticket ServiceNow style: status, impact and urgency (the
+priority follows), category, assignment group and assignee, and the resolution code and notes (each change goes to
+the ticket's audit trail; no typed confirmation, which would be noise on every status change). It shows the SLA
+clocks, the timeline, the reply form (only while shadow mode is off) and the internal-note form. A merged ticket's
+status is read-only, and the Status list has no "Merged": only a merge makes one. Merging and marking spam do need a
+typed confirmation. A merge into automated mail or spam is refused before that confirmation (and again by the service
+when it runs), and the "Automated & spam" view, where every ticket is one, offers no merge. Tickets are created only
+from mail, and deleted only by retention or by an Admin behind the typed confirmation.
 """
 
 from django.contrib import admin, messages
-from django.contrib.admin import helpers
-from django.http import HttpResponseRedirect
+from django.contrib.admin.utils import unquote
+from django.core.exceptions import ValidationError
 
 from apps.core.admin import BaseModelAdmin
 
-from ...models import Ticket
-from ...services import tickets
+from ...models import AssignmentGroup, Ticket
+from ...services.tickets import shadow
 from .actions import TicketActionsMixin
-from .filters import AssigneeFilter, MailTypeFilter, StatusViewFilter, UnreadFilter
-from .page import TicketPageMixin
+from .filters import (
+    AssigneeFilter,
+    GroupFilter,
+    MailTypeFilter,
+    PriorityFilter,
+    SLAFilter,
+    StatusViewFilter,
+    UnreadFilter,
+)
+from .page import MOVE_HERE, TicketPageMixin
 from .queue import TicketQueueMixin
 
 
@@ -32,23 +42,36 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         "requester_column",
         "status_column",
         "priority_column",
+        "sla_column",
         "category",
-        "assignee",
+        "group_column",
+        "assignee_column",
         "last_activity_at",
         "message_count",
     )
     list_display_links = ("number_column", "subject_column")
-    list_filter = (MailTypeFilter, StatusViewFilter, AssigneeFilter, UnreadFilter, "priority", "category")
-    list_select_related = ("category", "assignee")
+    list_filter = (
+        MailTypeFilter,
+        StatusViewFilter,
+        AssigneeFilter,
+        GroupFilter,
+        SLAFilter,
+        UnreadFilter,
+        PriorityFilter,
+        "category",
+    )
+    list_select_related = ("category", "assignee", "assignment_group")
     search_fields = ("subject", "requester_email", "requester_name")
     search_help_text = "Number (1234 or I2G-#1234), subject, or the requester's address or name."
     ordering = ("-last_activity_at",)
     actions = (
         "assign_to_me",
         "unassign",
+        "resolve_tickets",
         "close_tickets",
         "reopen_tickets",
         "mark_read",
+        "mark_unread",
         "move_to_queue",
         "merge_tickets",
         "mark_spam",
@@ -56,32 +79,62 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
     actions_no_confirmation = (
         "assign_to_me",
         "unassign",
+        "resolve_tickets",
         "close_tickets",
         "reopen_tickets",
         "mark_read",
+        "mark_unread",
         "move_to_queue",
     )
+    actions_submit_line = (MOVE_HERE,)  # the ticket page's own "Not automated: move to the queue"
+    empty_value_display = "—"
     fieldsets = (
-        ("Ticket", {"fields": ("number_display", "subject", "status", "priority", "category", "assignee")}),
+        (
+            "Ticket",
+            {
+                "fields": (
+                    "number_display",
+                    "subject",
+                    "status",
+                    ("impact", "urgency"),
+                    "priority",
+                    "category",
+                    ("assignment_group", "assignee"),
+                    "links_display",
+                )
+            },
+        ),
+        ("SLA", {"fields": ("sla_response_display", "sla_resolution_display")}),
+        (
+            "Resolution",
+            {
+                "description": "A resolution code is needed to resolve or close the ticket; reopening clears it.",
+                "fields": ("resolution_code", "resolution_notes", "resolved_at"),
+            },
+        ),
         ("Requester", {"fields": ("requester_display", "requester_member", "participants_display")}),
         (
             "Mail",
             {
+                "classes": ("collapse",),
                 "fields": (
                     "classification_display",
                     "flags_display",
                     "campaign",
-                    "links_display",
                     "first_message_at",
                     "last_activity_at",
-                    "closed_at",
-                )
+                    "closed_display",
+                ),
             },
         ),
     )
     readonly_fields = (
         "number_display",
         "subject",
+        "priority",
+        "sla_response_display",
+        "sla_resolution_display",
+        "resolved_at",
         "requester_display",
         "requester_member",
         "participants_display",
@@ -91,18 +144,45 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         "links_display",
         "first_message_at",
         "last_activity_at",
-        "closed_at",
+        "closed_display",
     )
     change_form_outer_after_template = "admin/helpdesk/ticket/timeline.html"
     list_before_template = "admin/helpdesk/ticket/shadow_notice.html"
 
     class Media:
         css = {"all": ("helpdesk/css/helpdesk.css",)}
+        js = ("helpdesk/js/ticket-page.js", "helpdesk/js/ticket-form.js")
 
     # --- access ----------------------------------------------------------------------------------------------------
 
+    def changelist_view(self, request, extra_context=None):
+        if request.GET.get(GroupFilter.parameter_name) == "mine" and request.method == "GET":
+            if not AssignmentGroup.objects.filter(members=request.user).exists():
+                messages.info(
+                    request, "You are in no assignment group, so My Groups is empty: Helpdesk → Assignment Groups."
+                )
+        extra = {"helpdesk_shadow_mode": shadow.shadow_mode_on(), **(extra_context or {})}
+        return super().changelist_view(request, extra)
+
     def has_add_permission(self, request):
         return False  # tickets come from mail
+
+    def has_change_permission(self, request, obj=None):
+        # A merged ticket is read-only (its messages and mail are on the ticket it was merged into).
+        if obj is not None and obj.status == Ticket.Status.MERGED:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def get_actions_submit_line(self, request, object_id):
+        # The page's move to the queue only where it moves something: automated mail or spam that is not merged.
+        actions = super().get_actions_submit_line(request, object_id)
+        try:
+            ticket = Ticket.objects.only("status", "automated").filter(pk=unquote(str(object_id))).first()
+        except (ValidationError, ValueError):
+            ticket = None
+        if ticket is not None and ticket.is_automated_or_spam and self.has_change_permission(request, ticket):
+            return actions
+        return [item for item in actions if not item.action_name.endswith(f"_{MOVE_HERE}")]
 
     def _should_skip_confirmation(self, request):
         # Saving the ticket page needs no typed confirmation (it would be noise on every status change). Deleting a
@@ -112,30 +192,3 @@ class TicketAdmin(TicketQueueMixin, TicketPageMixin, TicketActionsMixin, BaseMod
         if request.method == "POST" and getattr(match, "url_name", "") == f"{self.opts.app_label}_ticket_change":
             return True
         return super()._should_skip_confirmation(request)
-
-    def get_action_confirmation_word(self, action_name):
-        return {"merge_tickets": "MERGE", "mark_spam": "SPAM"}.get(
-            action_name, super().get_action_confirmation_word(action_name)
-        )
-
-    def get_actions(self, request):
-        actions = super().get_actions(request)
-        if request.GET.get(MailTypeFilter.parameter_name) == "automated":
-            actions.pop("merge_tickets", None)  # every ticket listed is automated mail or spam: nothing to merge into
-        return actions
-
-    def response_action(self, request, queryset):
-        # A merge the service would refuse is refused here, before staff are asked to type the confirmation word.
-        refusal = self._merge_refusal(request, queryset)
-        if refusal:
-            messages.error(request, refusal)
-            return HttpResponseRedirect(request.get_full_path())
-        return super().response_action(request, queryset)
-
-    def _merge_refusal(self, request, queryset) -> str:
-        action_form = self._bound_action_form(request)
-        if action_form is None or not action_form.is_valid() or action_form.cleaned_data["action"] != "merge_tickets":
-            return ""
-        if not action_form.cleaned_data["select_across"]:
-            queryset = queryset.filter(pk__in=request.POST.getlist(helpers.ACTION_CHECKBOX_NAME))
-        return tickets.merge_refusal(list(queryset))

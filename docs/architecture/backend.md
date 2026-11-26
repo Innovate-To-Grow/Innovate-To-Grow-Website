@@ -12,7 +12,7 @@ The backend is a Django 5.2 application with Django REST Framework, rooted at `s
 | `event` | Event registration, ticketing, schedule, check-in | `Event`, `EventRegistration`, `Ticket`, `Question`, `CheckIn`, `CheckInRecord`, `CurrentProjectSchedule`, `EventScheduleSection`, `EventScheduleTrack`, `EventScheduleSlot` |
 | `projects` | Past project archives and sharing | `Semester`, `Project`, `PastProjectShare` |
 | `mail` | Email campaigns and delivery | `EmailCampaign`, `RecipientLog`, `LoginLinkToken` |
-| `helpdesk` | Tickets from the i2g@ mailbox (shadow mode: reads and records, sends nothing); its own Inbox scan (intake) fills `core`'s inbound queue, and its ingest drains it | `Ticket`, `TicketMessage`, `TicketAttachment`, `TicketEvent`, `TicketCategory`, `HelpdeskSettings`, `IntakeState` |
+| `helpdesk` | Tickets from the i2g@ mailbox, worked ServiceNow style (assignment groups, SLA clocks, resolution codes); its own Inbox scan (intake) fills `core`'s inbound queue, and its ingest drains it; replies, acknowledgements and assignment notifications go out through background jobs only while shadow mode is off | `Ticket`, `TicketMessage`, `TicketAttachment`, `TicketEvent`, `TicketCategory`, `AssignmentGroup`, `SLATarget`, `ResponseTemplate`, `HelpdeskSettings`, `IntakeState` |
 | `system_intelligence` | Admin AI assistant (agents, actions, exports), the public assistant and AI search, and the AI platform other apps use (Bedrock client, token budgets, usage log) | `SystemIntelligenceConfig`, `AssistantConversationLog`, `AssistantMessageLog`, `PublicAssistantTokenBudget` |
 | `cli_admin` | OAuth2 + PKCE CRUD API for the `i2g-admin` CLI, built on `core`'s read-only `safe_orm` | `CliAuthorizationCode`, `CliAccessToken`, `CliAuditLog` |
 

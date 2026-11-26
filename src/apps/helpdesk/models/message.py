@@ -1,10 +1,18 @@
-"""A ticket's messages (customer mail, automated mail, internal notes) and their attachments.
+"""A ticket's messages (customer mail, automated mail, internal notes, replies sent to the requester) and attachments.
+
+A reply (``Kind.REPLY``, ServiceNow's "additional comments") is written by staff on the ticket page, or is the
+automatic acknowledgement of a new ticket (``automatic``), and is sent by the background job ``helpdesk.send_reply``
+(``services.outbound``): ``delivery_status`` follows it from queued to sent, failed or not confirmed. A note (``Kind.NOTE``, the
+"work notes") is never sent.
 
 Bodies are stored in PostgreSQL: the text as received (scrubbed of personal sign-in links) and the HTML sanitized on
 the way in, shown only inside a sandboxed iframe. The raw MIME is never kept: the mailbox still holds the original.
 Attachments are stored in the database too (``content``), except blocked file types, files over the size cap, and
 anything of a message cut off at the read limit, which keep only their metadata and the reason.
 """
+
+from datetime import UTC
+from email.utils import parsedate_to_datetime
 
 from django.conf import settings
 from django.db import models
@@ -19,8 +27,18 @@ class TicketMessage(ProjectControlModel):
         CUSTOMER = "customer", "Customer message"
         AUTOMATED = "automated", "Automated message"
         NOTE = "note", "Internal note"
+        REPLY = "reply", "Reply to requester"
+
+    class Delivery(models.TextChoices):
+        NONE = "", "—"
+        QUEUED = "queued", "Queued"
+        SENT = "sent", "Sent"
+        FAILED = "failed", "Failed"
+        # The mail service did not confirm it: it may or may not have arrived (never sent again by itself).
+        UNCERTAIN = "uncertain", "Not confirmed"
 
     INBOUND_KINDS = (Kind.CUSTOMER, Kind.AUTOMATED)
+    SCAM_REASON = "scam: "
 
     ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name="messages")
     kind = models.CharField(max_length=12, choices=Kind.choices, db_index=True)
@@ -43,6 +61,11 @@ class TicketMessage(ProjectControlModel):
     to_addresses = models.JSONField(default=list, blank=True)
     cc_addresses = models.JSONField(default=list, blank=True)
     reply_to = models.CharField(max_length=254, blank=True, default="")
+    # Whom an inbound message speaks for when not its sender (a web form's Reply-To, a mailing list's poster), and the
+    # mailing list it came through: a list is never a requester (``services.ingest.routing.people``).
+    on_behalf_of = models.CharField(max_length=254, blank=True, default="", db_default="")
+    on_behalf_name = models.CharField(max_length=255, blank=True, default="", db_default="")
+    list_address = models.CharField(max_length=254, blank=True, default="", db_default="")
     subject = models.CharField(max_length=255, blank=True, default="")
     occurred_at = models.DateTimeField(
         db_index=True, help_text="When the mailbox received it (notes: when written); the Date header is not trusted."
@@ -63,6 +86,14 @@ class TicketMessage(ProjectControlModel):
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="helpdesk_notes"
     )
+    automatic = models.BooleanField(
+        default=False, db_default=False, help_text="Sent by the helpdesk itself (the acknowledgement of a new ticket)."
+    )
+    delivery_status = models.CharField(
+        max_length=12, choices=Delivery.choices, blank=True, default="", db_default="", db_index=True
+    )
+    delivery_error = models.CharField(max_length=255, blank=True, default="", db_default="")
+    delivered_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["occurred_at", "created_at"]
@@ -71,6 +102,26 @@ class TicketMessage(ProjectControlModel):
 
     def __str__(self):
         return f"{self.get_kind_display()} on {self.ticket_id}"
+
+    @property
+    def attached_list(self) -> list[dict]:
+        """The attached messages to show, each with its Date header read as a time (``sent``, shown like every other
+        time on the page), or None when it cannot be read (then the header is shown as written)."""
+        shown = []
+        for item in self.attached_messages or []:
+            try:
+                sent = parsedate_to_datetime(str(item.get("date") or "")) if item.get("date") else None
+            except (TypeError, ValueError, IndexError, OverflowError):
+                sent = None
+            shown.append({**item, "sent": sent.replace(tzinfo=sent.tzinfo or UTC) if sent else None})
+        return shown
+
+    @property
+    def scam_reasons(self) -> list[str]:
+        """Why the scam checks warned about it (kept among its signals), shown to staff."""
+        return [
+            str(item)[len(self.SCAM_REASON) :] for item in self.signals or [] if str(item).startswith(self.SCAM_REASON)
+        ]
 
 
 class TicketAttachment(ProjectControlModel):

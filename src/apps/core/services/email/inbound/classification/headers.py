@@ -24,6 +24,8 @@ MAX_MESSAGE_IDS = 50
 _LONG_LIMIT = 16 * LIMIT
 _LONG_HEADERS = ("references", "to", "cc", "authentication-results", "x-forefront-antispam-report")
 _MESSAGE_ID_RE = re.compile(r"<[^<>\s]{1,250}>")
+# RFC 5322 folding: a line break followed by white space (unfolding removes the line break, keeps the space).
+_FOLD_RE = re.compile(r"\r?\n(?=[ \t])")
 
 
 def parse(raw: bytes):
@@ -64,7 +66,9 @@ def addresses(value, limit: int = MAX_ADDRESSES) -> list[tuple[str, str]]:
     """``(display name, bare lower-case address)`` pairs of an address header, at most ``limit``, valid ones only."""
     pairs = []
     try:
-        parsed = getaddresses([str(value or "")[:_LONG_LIMIT]])
+        # Unfold first (RFC 5322 section 2.2.3): a long display name may be folded inside its quotes, which
+        # ``getaddresses`` would not read as one address.
+        parsed = getaddresses([_FOLD_RE.sub("", str(value or "")[:_LONG_LIMIT])])
     except (HeaderParseError, IndexError, TypeError, ValueError):
         return []
     for name, addr in parsed:
