@@ -1,4 +1,6 @@
 import datetime
+from types import SimpleNamespace
+from urllib.parse import parse_qs
 
 from django.core.cache import cache
 from django.test import SimpleTestCase, TestCase, override_settings
@@ -6,6 +8,7 @@ from django.test import SimpleTestCase, TestCase, override_settings
 from apps.event.admin.registration import EventRegistrationAdmin
 from apps.event.admin.registration.changelist import (
     SemesterListFilter,
+    clear_filters_url,
     semester_bounds,
     semester_choices,
     semester_label,
@@ -47,6 +50,18 @@ class SemesterHelpersTest(SimpleTestCase):
             semester_choices(dates),
             [("2026-fall", "Fall 2026"), ("2026-spring", "Spring 2026"), ("2025-fall", "Fall 2025")],
         )
+
+
+class ClearFiltersUrlTest(SimpleTestCase):
+    def test_drops_the_search_and_keeps_the_rest_of_clear_all_filters_qs(self):
+        cl = SimpleNamespace(clear_all_filters_qs="?_popup=1&_to_field=id&all=&o=2&q=Doe")
+        self.assertEqual(
+            parse_qs(clear_filters_url(cl).lstrip("?"), keep_blank_values=True),
+            {"_popup": ["1"], "_to_field": ["id"], "all": [""], "o": ["2"]},
+        )
+
+    def test_nothing_left(self):
+        self.assertEqual(clear_filters_url(SimpleNamespace(clear_all_filters_qs="?q=Doe")), "?")
 
 
 class RegistrationChangelistConfigTest(SimpleTestCase):
@@ -105,7 +120,11 @@ class RegistrationChangelistToolbarTest(TestCase):
         self.assertContains(response, 'name="event__id__exact"')
         self.assertContains(response, '<option value="2026-fall">Fall 2026</option>')
         self.assertContains(response, '<option value="2025-fall">Fall 2025</option>')
-        self.assertContains(response, f'<option value="{self.fall_2026.pk}">Innovate to Grow Fall 2026</option>')
+        self.assertContains(
+            response,
+            f'<option value="{self.fall_2026.pk}" title="Innovate to Grow Fall 2026">Innovate to Grow Fall 2026</option>',
+        )
+        self.assertContains(response, 'name="event__id__exact" title="All events"')
         self.assertContains(response, "event/css/event_admin/registration_changelist.css")
         self.assertContains(response, "event/js/event_admin/registration_changelist_toolbar.js")
         self.assertNotContains(response, 'class="i2g-reg-toolbar__clear"')
@@ -122,8 +141,11 @@ class RegistrationChangelistToolbarTest(TestCase):
 
         self.assertEqual(self._result_events(response), {"Innovate to Grow Fall 2026"})
         self.assertContains(
-            response, f'<option value="{self.fall_2026.pk}" selected>Innovate to Grow Fall 2026</option>'
+            response,
+            f'<option value="{self.fall_2026.pk}" title="Innovate to Grow Fall 2026" selected>'
+            "Innovate to Grow Fall 2026</option>",
         )
+        self.assertContains(response, 'name="event__id__exact" title="Innovate to Grow Fall 2026"')
 
     def test_search_by_event_name(self):
         response = self.client.get(URL, {"q": "Fall 2026"})
@@ -147,3 +169,27 @@ class RegistrationChangelistToolbarTest(TestCase):
         toolbar = response.context["registration_toolbar"]
         self.assertEqual(toolbar["hidden"], [("ticket__id__exact", str(ticket.pk)), ("o", "1")])
         self.assertContains(response, f'<input type="hidden" name="ticket__id__exact" value="{ticket.pk}">')
+
+    def test_clear_keeps_ordering_and_popup_and_drops_search_and_filters(self):
+        ticket = self.registrations[self.fall_2026.pk].ticket
+        response = self.client.get(
+            URL,
+            {
+                "q": "Doe",
+                "semester": "2026-fall",
+                "event__id__exact": str(self.fall_2026.pk),
+                "ticket__id__exact": str(ticket.pk),
+                "o": "2",
+                "_popup": "1",
+                "p": "1",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        clear_url = response.context["registration_toolbar"]["clear_url"]
+        self.assertEqual(parse_qs(clear_url.lstrip("?")), {"_popup": ["1"], "o": ["2"]})
+        # Same as Django's own "clear all filters" link, minus the search term.
+        expected = parse_qs(response.context["cl"].clear_all_filters_qs.lstrip("?"))
+        expected.pop("q")
+        self.assertEqual(parse_qs(clear_url.lstrip("?")), expected)
+        self.assertContains(response, f'class="i2g-reg-toolbar__clear" href="{clear_url.replace("&", "&amp;")}"')

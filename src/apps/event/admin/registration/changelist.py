@@ -7,6 +7,7 @@ behind the button. Events have no semester field: a semester is derived from the
 """
 
 import datetime
+from urllib.parse import parse_qsl, urlencode
 
 from django.contrib import admin
 from django.contrib.admin.views.main import ERROR_FLAG, PAGE_VAR, SEARCH_VAR
@@ -73,14 +74,28 @@ def build_toolbar(request, events):
     on page one, and so is a stale error flag.
     """
     handled = {SEARCH_VAR, SEMESTER_PARAM, EVENT_PARAM, PAGE_VAR, ERROR_FLAG}
+    event_choices = [(str(event.pk), event.name) for event in events]
+    event_selected = request.GET.get(EVENT_PARAM, "")
     return {
         "search_var": SEARCH_VAR,
         "semester_param": SEMESTER_PARAM,
         "semester_choices": semester_choices(event.date for event in events),
         "semester_selected": request.GET.get(SEMESTER_PARAM, ""),
         "event_param": EVENT_PARAM,
-        "event_choices": [(str(event.pk), event.name) for event in events],
-        "event_selected": request.GET.get(EVENT_PARAM, ""),
+        "event_choices": event_choices,
+        "event_selected": event_selected,
+        "event_selected_label": dict(event_choices).get(event_selected, "All events"),
         "hidden": [(name, value) for name, values in request.GET.lists() if name not in handled for value in values],
         "is_filtered": any(request.GET.get(name) for name in (SEARCH_VAR, SEMESTER_PARAM, EVENT_PARAM)),
     }
+
+
+def clear_filters_url(cl):
+    """The toolbar's "Clear" link: Django's ``cl.clear_all_filters_qs`` without the search term.
+
+    Django's own link drops every list filter (semester, event, ticket, ...) and the page number but keeps ordering,
+    ``_popup``, ``_to_field``, ``all`` and ``_facets``, and it keeps the search too. The toolbar's search box sits
+    beside the filters, so its Clear empties that as well.
+    """
+    params = parse_qsl(cl.clear_all_filters_qs.lstrip("?"), keep_blank_values=True)
+    return "?" + urlencode([(name, value) for name, value in params if name != SEARCH_VAR])

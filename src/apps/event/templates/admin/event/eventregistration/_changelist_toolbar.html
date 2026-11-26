@@ -32,14 +32,14 @@ Keeps Unfold's ids (toolbar, changelist-search, searchbar) and its "/" shortcut.
 
         <label class="i2g-reg-toolbar__field">
             <span class="i2g-reg-toolbar__label">Event</span>
-            <select name="{{ toolbar.event_param }}" class="i2g-reg-toolbar__select i2g-reg-toolbar__select--event" data-i2g-autosubmit>
+            <select name="{{ toolbar.event_param }}" title="{{ toolbar.event_selected_label }}" class="i2g-reg-toolbar__select i2g-reg-toolbar__select--event" data-i2g-autosubmit>
                 <option value="">All events</option>
-                {% for value, label in toolbar.event_choices %}<option value="{{ value }}"{% if value == toolbar.event_selected %} selected{% endif %}>{{ label }}</option>{% endfor %}
+                {% for value, label in toolbar.event_choices %}<option value="{{ value }}" title="{{ label }}"{% if value == toolbar.event_selected %} selected{% endif %}>{{ label }}</option>{% endfor %}
             </select>
         </label>
 
         {% for name, value in toolbar.hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
 
-        {% if toolbar.is_filtered %}<a class="i2g-reg-toolbar__clear" href="?">Clear</a>{% endif %}
+        {% if toolbar.is_filtered %}<a class="i2g-reg-toolbar__clear" href="{{ toolbar.clear_url|default:'?' }}">Clear</a>{% endif %}
     </form>
 </div>

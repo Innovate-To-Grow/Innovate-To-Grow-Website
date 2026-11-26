@@ -10,7 +10,7 @@ from apps.core.admin import BaseModelAdmin
 from apps.core.utils.access import user_can_access_app
 
 from ...models import Event, EventRegistration, Ticket
-from .changelist import SemesterListFilter, build_toolbar
+from .changelist import SemesterListFilter, build_toolbar, clear_filters_url
 from .config import (
     ADD_FIELDSETS,
     ADD_READONLY_FIELDS,
@@ -110,7 +110,12 @@ class EventRegistrationAdmin(
             ],
             "registration_toolbar": build_toolbar(request, events),
         }
-        return super().changelist_view(request, extra_context)
+        response = super().changelist_view(request, extra_context)
+        # The Clear link needs the ChangeList, which only exists once Django has built the response.
+        context = getattr(response, "context_data", None) or {}
+        if "cl" in context:
+            context["registration_toolbar"]["clear_url"] = clear_filters_url(context["cl"])
+        return response
 
     def get_readonly_fields(self, request, obj=None):
         if obj is None:
