@@ -12,11 +12,7 @@ from ..shared.sign_in_warning import lost_sign_in
 class ContactEmailActionsMixin:
     @admin.action(description="Make selected email primary")
     def make_primary(self, request, queryset):
-        # Apply the owner guard like the sibling actions: the primary address is where a member's
-        # admin login codes are sent, so swapping it is a write on the owner, not just the row.
-        allowed, skipped = self.manageable(request, queryset)
-        self._report_skipped(request, skipped)
-        if allowed.count() != 1:
+        if queryset.count() != 1:
             self.message_user(
                 request,
                 "Select exactly one email to make primary.",
@@ -24,7 +20,7 @@ class ContactEmailActionsMixin:
             )
             return
 
-        contact_email = allowed.select_related("member").first()
+        contact_email = queryset.select_related("member").first()
         if contact_email is None or contact_email.member is None:
             self.message_user(
                 request,
@@ -48,38 +44,22 @@ class ContactEmailActionsMixin:
         for level, text in outcome_messages(result):
             self.message_user(request, text, level=level)
 
-    def _report_skipped(self, request, skipped):
-        if skipped:
-            self.message_user(
-                request,
-                f"{skipped} email(s) on staff or superuser accounts skipped — only an I2G Master may change those.",
-                level=messages.WARNING,
-            )
-
     @admin.action(description="Mark selected emails as verified")
     def mark_verified(self, request, queryset):
-        # ``queryset.update`` bypasses save_model, so the owner guard has to be applied here too:
-        # marking an email on a staff account verified turns it into an admin-login factor.
-        allowed, skipped = self.manageable(request, queryset)
-        updated = allowed.update(verified=True)
+        updated = queryset.update(verified=True)
         self.message_user(request, f"{updated} email(s) marked as verified.")
-        self._report_skipped(request, skipped)
 
     @admin.action(description="Mark selected emails as unverified (stops sign-in with them, not mail)")
     def mark_unverified(self, request, queryset):
-        allowed, skipped = self.manageable(request, queryset)
-        with lost_sign_in(request, set(allowed.values_list("member_id", flat=True))):
-            updated = allowed.update(verified=False)
+        with lost_sign_in(request, set(queryset.values_list("member_id", flat=True))):
+            updated = queryset.update(verified=False)
         self.message_user(request, f"{updated} email(s) marked as unverified.")
-        self._report_skipped(request, skipped)
 
     @admin.action(description="Toggle subscription status")
     def toggle_subscribe(self, request, queryset):
-        allowed, skipped = self.manageable(request, queryset)
         count = 0
-        for email in allowed:
+        for email in queryset:
             email.subscribe = not email.subscribe
             email.save()
             count += 1
         self.message_user(request, f"Toggled subscription for {count} email(s).")
-        self._report_skipped(request, skipped)

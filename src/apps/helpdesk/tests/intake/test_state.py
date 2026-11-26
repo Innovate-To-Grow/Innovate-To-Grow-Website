@@ -39,7 +39,7 @@ class StateTests(IntakeTestCase):
         self.assertEqual((row().checkpoint_at, row().last_run_stats), (self.ago(days=1), {}))
 
     def test_pause_and_resume_are_recorded_once_each(self):
-        staff = make_admin(apps=["helpdesk"], email="agent@example.com")
+        staff = make_admin(email="agent@example.com")
 
         self.assertTrue(intake_state.set_paused(SITE, True, actor=staff))
         self.assertFalse(intake_state.set_paused(SITE, True, actor=staff))
@@ -51,7 +51,7 @@ class StateTests(IntakeTestCase):
         self.assertFalse(intake_state.is_paused(SITE))
 
     def test_the_lookback_is_bounded_audited_and_clamped_whatever_the_row_holds(self):
-        staff = make_admin(apps=["helpdesk"], email="agent@example.com")
+        staff = make_admin(email="agent@example.com")
         with monitoring_settings(inbox_max_lookback_days=10, inbox_initial_lookback_hours=72):
             self.assertEqual(intake_state.lookback_bounds(), (1, 240))
             with self.assertRaises(ValueError):
@@ -67,7 +67,7 @@ class StateTests(IntakeTestCase):
         self.assertEqual(LogEntry.objects.get().change_message, "First-scan lookback: default (72 h) → 200 h.")
 
     def test_a_rescan_moves_the_checkpoint_back_only_when_that_is_safe(self):
-        staff = make_admin(apps=["helpdesk"], email="agent@example.com")
+        staff = make_admin(email="agent@example.com")
         IntakeState.objects.create(mailbox=SITE, checkpoint_at=self.ago(minutes=10))
         with monitoring_settings(inbox_max_lookback_days=30):
             self.assertEqual(

@@ -14,10 +14,11 @@ from .post_data import deserialize_post_data
 
 class ChangeConfirmationPageMixin:
     def _confirm_change_view(self, request):
-        # ``admin_view`` only enforces is_staff; re-check per-app access so a
-        # staff member without this model's app cannot reach the change/delete
-        # confirmation (and its data diff). Execution is additionally gated by
-        # the underlying ``changeform_view``/``delete_view`` permission checks.
+        # ``admin_view`` only enforces is_staff; re-check the model admin's own
+        # view permission so an admin that narrows it (a read-only or
+        # overriding subclass) also keeps the change/delete confirmation (and
+        # its data diff) closed. Execution is additionally gated by the
+        # underlying ``changeform_view``/``delete_view`` permission checks.
         if not self.has_view_permission(request):
             raise PermissionDenied
         session_key = self._session_key()
@@ -53,6 +54,8 @@ class ChangeConfirmationPageMixin:
             **self.admin_site.each_context(request),
             "title": f"Confirm {action_label} {self.opts.verbose_name}",
             "action_label": action_label,
+            # "You are about to change ...": the verb, not the "Changing" of the title.
+            "action_verb": {"add": "add", "change": "change", "delete": "delete"}.get(pending["action"], "modify"),
             "action_type": pending["action"],
             "model_name": self.opts.verbose_name,
             "object_repr": pending["object_repr"],

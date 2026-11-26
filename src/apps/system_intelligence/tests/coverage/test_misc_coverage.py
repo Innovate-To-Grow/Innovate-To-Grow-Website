@@ -98,6 +98,20 @@ class StreamExceptionTests(SimpleTestCase):
         self.assertNotIn("secrets", payload)
         self.assertIn("Stream error for conversation conv-3", "\n".join(logs.output))
 
+    def test_provider_error_uses_its_fixed_template(self):
+        from litellm.exceptions import RateLimitError
+
+        from apps.system_intelligence.models import LLMProviderConfig
+
+        exc = RateLimitError("quota for sk-secret", llm_provider="openai", model="deepseek-chat")
+        with self.assertLogs("apps.system_intelligence.admin.stream.helpers", level="ERROR"):
+            payload = _stream_exception("conv-4", exc, _FakeAwsConfig(), LLMProviderConfig(name="DeepSeek"))
+            bedrock_payload = _stream_exception("conv-4", exc, _FakeAwsConfig())
+        self.assertIn('The AI provider \\"DeepSeek\\" reported a rate limit or exhausted quota.', payload)
+        self.assertNotIn("sk-secret", payload)
+        # Without a provider (Bedrock-only) the same LiteLLM error gets the generic text.
+        self.assertIn("could not complete this turn", bedrock_payload)
+
 
 # ---------------------------------------------------------------------------
 # admin/stream.py (chat_send_view guards + _event_stream branches)

@@ -2,12 +2,10 @@ import uuid
 
 from apps.authn.models import ContactEmail
 from apps.authn.services.members.import_.review.analysis import SKIP_EXISTING
-from apps.authn.services.members.import_.review.analysis.choices import PRIVILEGED
 from apps.authn.tests.services.members.import_.conflicts.test_conflicts import (
     NAME_DIFFERS,
     SKIP_MODE,
     UUID_HEADERS,
-    not_privileged,
     options,
     uuid_row,
 )
@@ -51,14 +49,6 @@ class UuidMismatchTests(ImportTestCase):
 
         self.assertEqual(analysis.conflict, "uuid_email_mismatch")
         self.assertIn("the secondary email of Grace Hopper", analysis.facts["why"])
-
-    def test_each_member_is_offered_only_with_permission(self):
-        sam = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
-
-        analysis = self.analyse_one(uuid_row("sam@example.com", self.ada.pk), UUID_HEADERS, can_manage=not_privileged)
-
-        self.assertEqual(options(analysis)[f"use_member:{sam.pk}"]["reason"], PRIVILEGED)
-        self.assertTrue(options(analysis)[f"use_member:{self.ada.pk}"]["enabled"])
 
     def test_using_the_uuid_member_never_gives_them_the_address(self):
         cells_row = uuid_row("grace@example.com", self.ada.pk, Organization="Engines", Primary_Verified="TRUE")

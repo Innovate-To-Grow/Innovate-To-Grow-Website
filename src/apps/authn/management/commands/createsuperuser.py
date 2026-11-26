@@ -1,8 +1,9 @@
 """
-Custom createsuperuser command that prompts for email and creates a ContactEmail record.
+Custom createsuperuser command: creates an Admin account and its ContactEmail record.
 
 Since Member has no username field (UUID is the primary key), this command
-prompts for email + password and creates the superuser with a ContactEmail.
+prompts for email + password and creates the Admin with a ContactEmail.
+The command keeps Django's ``createsuperuser`` name.
 """
 
 from django.contrib.auth import get_user_model
@@ -12,11 +13,11 @@ from apps.authn.models import ContactEmail
 
 
 class Command(BaseCommand):
-    help = "Create a superuser with an email address and ContactEmail record."
+    help = "Create an Admin account with an email address and ContactEmail record."
 
     def add_arguments(self, parser):
-        parser.add_argument("--email", type=str, help="Email address for the superuser.")
-        parser.add_argument("--password", type=str, help="Password for the superuser.")
+        parser.add_argument("--email", type=str, help="Email address for the Admin.")
+        parser.add_argument("--password", type=str, help="Password for the Admin.")
         parser.add_argument("--first-name", type=str, default="", help="First name.")
         parser.add_argument("--last-name", type=str, default="", help="Last name.")
         parser.add_argument(
@@ -62,7 +63,7 @@ class Command(BaseCommand):
             subscribe=True,
         )
 
-        self.stdout.write(self.style.SUCCESS(f"Superuser created with email '{email}' (UUID: {member.id})."))
+        self.stdout.write(self.style.SUCCESS(f"Admin account created with email '{email}' (UUID: {member.id})."))
 
     def _prompt_email(self) -> str:
         while True:

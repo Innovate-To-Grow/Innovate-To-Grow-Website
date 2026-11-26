@@ -1,5 +1,7 @@
 """Bounced-address actions on accounts (deactivate, delete) and Replace email."""
 
+from unittest.mock import patch
+
 from django.contrib.admin.models import DELETION, LogEntry
 from django.db.models.signals import post_save
 from django.test import override_settings
@@ -9,6 +11,8 @@ from apps.event.models import CheckIn, CheckInRecord, EventRegistration
 from apps.event.tests.helpers import make_event, make_registration, make_ticket
 from apps.mail.models import BouncedAddress, BouncedAddressAction, RecipientLog
 from apps.mail.services.email_monitoring.addresses.actions import deletion_summary
+from apps.mail.services.email_monitoring.addresses.actions.guards import DELETE_REFUSED
+from apps.mail.services.email_monitoring.addresses.actions.targets import member_admin
 
 from ..helpers import add_email, make_campaign, make_person, make_row, request_for
 from .test_actions import ActionTestCase, apply, history
@@ -24,20 +28,39 @@ class DeactivateTests(ActionTestCase):
         Member.objects.filter(pk=member.pk).update(registration_pending=True)
         row = make_row("leaver@example.org")
 
-        apply(self.mail_authn, row, Action.DEACTIVATE, note="Left the company")
+        apply(self.actor, row, Action.DEACTIVATE, note="Left the company")
 
         member.refresh_from_db()
         self.assertEqual((member.is_active, member.registration_pending), (False, False))
         self.assertIn("deactivated the account", history(member)[0])
         row.refresh_from_db()
         self.assertEqual((row.status, row.resolution), (Status.RESOLVED, Action.DEACTIVATE))
-        self.assert_refused(self.mail_authn, row, Action.DEACTIVATE, "already inactive")
+        self.assert_refused(self.actor, row, Action.DEACTIVATE, "already inactive")
 
-    def test_nobody_deactivates_their_own_account_and_staff_accounts_need_an_i2g_master(self):
-        self.assert_refused(self.mail_authn, make_row("memberstaff@example.org"), Action.DEACTIVATE, "your own")
-        make_person("colleague@example.org", is_staff=True)
-        self.assert_refused(self.mail_authn, make_row("colleague@example.org"), Action.DEACTIVATE, "I2G Master")
-        self.assert_refused(self.mail_only, make_row("plain@example.org"), Action.DEACTIVATE, "no contact email")
+    def test_nobody_deactivates_their_own_admin_account(self):
+        self.assert_refused(
+            self.actor, make_row("memberstaff@example.org"), Action.DEACTIVATE, "your own Admin account"
+        )
+        self.assert_refused(self.other_admin, make_row("plain@example.org"), Action.DEACTIVATE, "no contact email")
+
+    def test_an_admin_deactivates_another_admin(self):
+        colleague = make_person("colleague@example.org", is_staff=True)
+
+        apply(self.actor, make_row("colleague@example.org"), Action.DEACTIVATE)
+
+        colleague.refresh_from_db()
+        self.assertFalse(colleague.is_active)
+
+    def test_the_last_active_admin_is_never_deactivated(self):
+        # Reached only by an actor who is not an Admin (the pages refuse them first): the lockout rule still holds in
+        # the service.
+        Member.objects.filter(pk__in=[self.other_admin.pk, self.admin_user.pk]).update(is_staff=False)
+        stranger = make_person("stranger@example.org")
+        self.assert_refused(
+            stranger, make_row("memberstaff@example.org"), Action.DEACTIVATE, "at least one active Admin"
+        )
+        self.actor.refresh_from_db()
+        self.assertTrue(self.actor.is_active)
 
 
 class SignalTests(ActionTestCase):
@@ -58,7 +81,7 @@ class SignalTests(ActionTestCase):
 
     def saved(self, action, address, **values):
         self.received.clear()
-        apply(self.master, make_row(address), action, **values)
+        apply(self.admin_user, make_row(address), action, **values)
         return list(self.received)
 
     def test_deactivating_saves_the_member(self):
@@ -107,7 +130,7 @@ class DeleteAccountTests(ActionTestCase):
         self.row = make_row("doomed-alt@example.org")
 
     def test_the_summary_lists_what_the_cascade_deletes(self):
-        summary = deletion_summary(request_for(self.master), self.member)
+        summary = deletion_summary(request_for(self.admin_user), self.member)
 
         counts = {str(name).lower(): count for name, count in summary["model_count"]}
         self.assertEqual(counts.get("event registrations"), 1)
@@ -117,7 +140,11 @@ class DeleteAccountTests(ActionTestCase):
 
     def test_the_typed_primary_address_is_required(self):
         self.assert_refused(
-            self.master, self.row, Action.DELETE_ACCOUNT, "Type doomed@example.org", confirm="doomed-alt@example.org"
+            self.admin_user,
+            self.row,
+            Action.DELETE_ACCOUNT,
+            "Type doomed@example.org",
+            confirm="doomed-alt@example.org",
         )
 
         self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
@@ -125,7 +152,7 @@ class DeleteAccountTests(ActionTestCase):
     def test_the_account_and_its_registrations_go_while_campaign_records_and_the_audit_stay(self):
         member_pk = self.member.pk
 
-        apply(self.master, self.row, Action.DELETE_ACCOUNT, confirm="DOOMED@example.org", note="Duplicate account")
+        apply(self.admin_user, self.row, Action.DELETE_ACCOUNT, confirm="DOOMED@example.org", note="Duplicate account")
 
         self.assertFalse(Member.objects.filter(pk=member_pk).exists())
         self.assertFalse(EventRegistration.objects.filter(pk=self.registration.pk).exists())
@@ -141,21 +168,28 @@ class DeleteAccountTests(ActionTestCase):
         self.row.refresh_from_db()
         self.assertEqual((self.row.role, self.row.member_id, self.row.status), (Role.NONE, None, Status.RESOLVED))
 
-    def test_only_an_i2g_master_deletes_an_account(self):
-        # The hard delete also removes the member's records in apps the admin may not hold (registrations,
-        # check-ins, admin history), so holding Mail and Members is not enough.
-        for user in (self.mail_only, self.mail_authn):
-            with self.subTest(user=user.admin_apps):
-                self.assert_refused(
-                    user,
-                    self.row,
-                    Action.DELETE_ACCOUNT,
-                    "Only an I2G Master may delete an account",
-                    confirm="doomed@example.org",
-                )
-        self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())
-        self.assertEqual(EventRegistration.objects.filter(member=self.member).count(), 1)
+    def test_any_admin_deletes_an_account(self):
+        apply(self.actor, self.row, Action.DELETE_ACCOUNT, confirm="doomed@example.org")
 
-    def test_nobody_deletes_their_own_account(self):
-        self.assert_refused(self.mail_authn, make_row("memberstaff@example.org"), Action.DELETE_ACCOUNT, "your own")
-        self.assert_refused(self.master, make_row("admin@example.com"), Action.DELETE_ACCOUNT, "your own")
+        self.assertFalse(Member.objects.filter(pk=self.member.pk).exists())
+        self.assertEqual(EventRegistration.objects.filter(member=self.member).count(), 0)
+
+    def test_nobody_deletes_their_own_admin_account(self):
+        self.assert_refused(
+            self.actor, make_row("memberstaff@example.org"), Action.DELETE_ACCOUNT, "your own Admin account"
+        )
+        self.assert_refused(self.admin_user, make_row("admin@example.com"), Action.DELETE_ACCOUNT, "your own")
+
+    def test_the_last_active_admin_is_never_deleted(self):
+        Member.objects.filter(pk__in=[self.other_admin.pk, self.admin_user.pk]).update(is_staff=False)
+        stranger = make_person("stranger@example.org")
+
+        self.assert_refused(
+            stranger, make_row("memberstaff@example.org"), Action.DELETE_ACCOUNT, "at least one active Admin"
+        )
+        self.assertTrue(Member.objects.filter(pk=self.actor.pk).exists())
+
+    def test_a_delete_the_members_admin_refuses_is_refused_here(self):
+        with patch.object(type(member_admin()), "has_delete_permission", return_value=False):
+            self.assert_refused(self.actor, self.row, Action.DELETE_ACCOUNT, DELETE_REFUSED)
+        self.assertTrue(Member.objects.filter(pk=self.member.pk).exists())

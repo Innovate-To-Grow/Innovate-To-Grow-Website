@@ -14,15 +14,13 @@ from apps.core.admin import BaseModelAdmin
 from ....models import Member
 from ..inlines.contacts import ContactEmailInline, ContactPhoneInline
 from ..primary_switch.switch import PrimarySwitchAdminMixin
-from ..shared.filters import MEMBER_FILTERS
+from ..shared.filters import MEMBER_FILTERS, AccountTypeFilter
 from ..shared.search import RankedSearchMixin, member_search_rank
 from ..shared.sign_in_warning import lost_sign_in, member_page_row
 from .actions import MemberAdminActionsMixin
 from .forms import MemberChangeForm, MemberCreationForm
-from .helpers import (
-    normalize_inline_uuid_none_values,
-)
-from .protection import MemberAdminProtectionMixin
+from .helpers import normalize_inline_uuid_none_values
+from .lockout import OWN_ACCOUNT_NOTE, MemberAdminLockoutMixin
 from .views import MemberAdminViewsMixin
 
 
@@ -30,7 +28,7 @@ from .views import MemberAdminViewsMixin
 class MemberAdmin(
     MemberAdminActionsMixin,
     MemberAdminViewsMixin,
-    MemberAdminProtectionMixin,
+    MemberAdminLockoutMixin,
     PrimarySwitchAdminMixin,
     RankedSearchMixin,
     BaseModelAdmin,
@@ -67,10 +65,10 @@ class MemberAdmin(
         "get_primary_phone_display",
         "organization",
         "account_active",
-        "is_staff",
+        "is_admin",
         "date_joined",
     )
-    list_filter = (*MEMBER_FILTERS, "is_staff", "date_joined")
+    list_filter = (*MEMBER_FILTERS, AccountTypeFilter, "date_joined")
     search_fields = (
         "contact_emails__email_address",
         "first_name",
@@ -95,13 +93,7 @@ class MemberAdmin(
             _("Personal Info"),
             {"fields": ("first_name", "middle_name", "last_name", "organization", "title", "profile_image")},
         ),
-        (
-            _("Permissions"),
-            {
-                "fields": ("is_staff", "admin_apps"),
-                "classes": ("collapse",),
-            },
-        ),
+        (_("Admin access"), {"fields": ("is_staff",)}),
         (_("Important Dates"), {"fields": ("last_login", "date_joined"), "classes": ("collapse",)}),
     )
     add_fieldsets = (
@@ -121,8 +113,8 @@ class MemberAdmin(
     actions_no_confirmation = ["export_members_to_excel", "export_members_to_vcard", "sync_all_members_to_sheet"]
     # Explicit allowlist for the generic "Export selected data" action. Without it the default is
     # every concrete column, which for Member meant offering (and previewing on screen) the base64
-    # profile image, ``is_superuser``, the ``admin_apps`` grant list and the vestigial AbstractUser
-    # ``email``. Mirrors the curated columns in services/members/export_excel.py.
+    # profile image, the password hash, ``is_superuser`` (a mirror of ``is_staff``) and the vestigial AbstractUser
+    # ``email``. Mirrors the curated columns in services/members/export/excel.py.
     export_fields = (
         "id",
         "first_name",
@@ -136,15 +128,14 @@ class MemberAdmin(
 
     def change_view(self, request, object_id, form_url="", extra_context=None):
         extra_context = extra_context or {}
-        # Only surface the impersonate button when the request may actually use it
-        # (authn-app access) and the target is a non-privileged account — mirrors
-        # the authorization enforced in ``impersonate_view``.
+        # Only surface the impersonate button when the request may actually use it and the target is not an Admin
+        # account — mirrors the rule enforced in ``impersonate_view``.
         target = self.get_object(request, object_id)
         extra_context["show_impersonate"] = bool(
-            self.has_change_permission(request, target)
-            and target is not None
-            and not (target.is_staff or target.is_superuser)
+            self.has_change_permission(request, target) and target is not None and not target.is_staff
         )
+        if self.is_own_account(request, target):
+            extra_context["own_account_note"] = OWN_ACCOUNT_NOTE
         return super().change_view(request, object_id, form_url=form_url, extra_context=extra_context)
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):

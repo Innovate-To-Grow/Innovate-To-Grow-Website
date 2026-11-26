@@ -25,7 +25,7 @@ repository or a restricted UC Merced Drive/Box folder).
 
 Who holds each kind of access, and how to grant or remove it. **→ private ops doc** for the names.
 
-- Admin console: the I2G Master account(s) and staff section grants (see the
+- Admin console: the list of Admin accounts (**Members → Account type: Admin**; every Admin has full access, see the
   [staff handbook](../staff/README.md)). Review every term.
 - AWS console and CLI access (SSO roles).
 - GitHub organisation and repository admins, and the reviewers of the `Manual Deployment Approval` environment
@@ -111,8 +111,13 @@ Record each decision with its date and where it was approved; ticket numbers →
 
 - The Microsoft Graph permissions the site runs with, and the InfoSec approval behind them.
 - Bounce reports never change members or subscriptions automatically; every change is a staff action.
-- A section grant gives full control of that section of the admin.
-- The helpdesk starts in shadow mode (it records tickets and sends nothing).
+- Two kinds of account only: every Admin has full control of the admin, including other Admin accounts; nobody
+  removes their own Admin account and the last active Admin stays (the per-section grants and the I2G Master tier
+  were retired with the single Admin role release).
+- The helpdesk starts in shadow mode (it records tickets and sends nothing). Switching it off in Helpdesk → Settings
+  (any Admin) lets Admins reply from the ticket page and enables the acknowledgement / assignment notifications
+  switched on there; switching it back on stops every queued helpdesk email before it goes out. A reply that fails or
+  is not confirmed shows on its ticket's timeline and puts the ticket back In progress and unread.
 - Retention periods: email records 180 days, bounce reports 365 days.
 
 ## 9. Routine checks

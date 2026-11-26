@@ -49,26 +49,21 @@ class ImportMembersExcelTests(_ImportMembersExcelCase):
         self.assertTrue(ContactEmail.objects.filter(member=member, email_type="secondary").exists())
         self.assertTrue(ContactPhone.objects.filter(member=member, phone_number="2095559999").exists())
 
-    def test_update_existing_member_permission_callback_denies_update(self):
-        member = Member.objects.create_user(password="StrongPass123!", first_name="Old", last_name="Name")
+    def test_update_existing_updates_an_admin_like_any_member_and_never_its_admin_access(self):
+        member = Member.objects.create_user(
+            password="StrongPass123!", first_name="Old", last_name="Name", is_staff=True
+        )
         ContactEmail.objects.create(
-            member=member, email_address="denied@example.com", email_type="primary", verified=True
+            member=member, email_address="admin@example.com", email_type="primary", verified=True
         )
-        workbook = self._build_full_workbook(
-            [
-                ["denied@example.com", "New", "Name", "attacker@example.net", "+12095559999", "NewOrg"],
-            ]
-        )
+        workbook = self._build_full_workbook([["admin@example.com", "Old", "Name", None, None, "NewOrg"]])
 
-        result = import_members_from_excel(workbook, update_existing=True, update_member_allowed=lambda member: False)
+        result = import_members_from_excel(workbook, update_existing=True)
 
         member.refresh_from_db()
-        self.assertTrue(result.success)
-        self.assertEqual(result.updated_count, 0)
-        self.assertEqual(result.skipped_count, 1)
-        self.assertEqual(member.first_name, "Old")
-        self.assertFalse(ContactEmail.objects.filter(member=member, email_address="attacker@example.net").exists())
-        self.assertTrue(any("permission" in error for error in result.errors))
+        self.assertEqual((result.updated_count, result.skipped_count, result.errors), (1, 0, []))
+        self.assertEqual(member.organization, "NewOrg")
+        self.assertEqual((member.is_staff, member.is_superuser, member.is_active), (True, True, True))
 
     def test_update_existing_keeps_the_secondary_and_adds_the_new_phone(self):
         # A blank Secondary cell and a different phone used to delete the secondary and overwrite the phone.

@@ -12,6 +12,7 @@ from apps.system_intelligence.models import SystemIntelligenceConfig
 from apps.system_intelligence.services import actions as system_intelligence_actions
 
 from ..definition.constants import SENTINEL, TEMPERATURE_DEPRECATED_MODEL_IDS
+from ..providers.routing import ModelRoute
 from .errors import SystemIntelligenceAgentError, format_system_intelligence_error, is_temperature_deprecated_error
 from .history import split_history_and_current_message
 from .runner import run_agent_invocation
@@ -33,7 +34,9 @@ def invoke_system_intelligence_stream(
     chat_config = chat_config or SystemIntelligenceConfig.load()
     if not chat_config.is_configured:
         raise SystemIntelligenceAgentError("System Intelligence is not configured. Activate a configuration first.")
-    aws_config = get_aws_config(aws_config)
+    provider = getattr(chat_config, "default_provider", None)
+    if provider is None:
+        aws_config = get_aws_config(aws_config)
     model_id = model_id or chat_config.default_model_id
     event_queue: queue.Queue = queue.Queue()
 
@@ -54,8 +57,8 @@ def invoke_system_intelligence_stream(
         try:
             asyncio.run(produce())
         except Exception as exc:
-            formatted = format_system_intelligence_error(exc, aws_config=aws_config)
-            if formatted != str(exc):
+            formatted = format_system_intelligence_error(exc, aws_config=aws_config, provider=provider)
+            if provider is None and formatted != str(exc):
                 logger.warning("System Intelligence agent provider connectivity failed: %s", formatted)
             else:
                 logger.exception("System Intelligence agent stream failed")
@@ -90,18 +93,23 @@ async def invoke_system_intelligence_stream_async(
     conversation_id: str | None = None,
     mode: str = "normal",
 ):
-    """Run one agent invocation and yield normalized event dictionaries."""
+    """Run one agent invocation and yield normalized event dictionaries.
+
+    The admin agent always calls the config's default provider (``None`` = Amazon Bedrock)."""
     previous_messages, user_message = split_history_and_current_message(conversation_messages)
     chat_config = chat_config or SystemIntelligenceConfig.load()
     if not chat_config.is_configured:
         raise SystemIntelligenceAgentError("System Intelligence is not configured. Activate a configuration first.")
-    aws_config = get_aws_config(aws_config)
+    provider = getattr(chat_config, "default_provider", None)
+    if provider is None:
+        aws_config = get_aws_config(aws_config)
     model_id = model_id or chat_config.default_model_id
     if not model_id:
-        raise SystemIntelligenceAgentError("No Bedrock model is configured. Select a default model first.")
+        raise SystemIntelligenceAgentError("No AI model is configured. Select a default model first.")
 
     effective_user_id = user_id or "admin"
-    include_temperature = model_id not in TEMPERATURE_DEPRECATED_MODEL_IDS
+    temperature_key = ModelRoute(provider, model_id).cache_key
+    include_temperature = temperature_key not in TEMPERATURE_DEPRECATED_MODEL_IDS
     emitted_event = False
     context_tokens = system_intelligence_actions.set_action_context(conversation_id, effective_user_id)
     invoke = functools.partial(
@@ -113,6 +121,7 @@ async def invoke_system_intelligence_stream_async(
         model_id=model_id,
         user_id=effective_user_id,
         mode=mode,
+        provider=provider,
     )
     try:
         async for event in invoke(include_temperature=include_temperature):
@@ -121,7 +130,7 @@ async def invoke_system_intelligence_stream_async(
     except Exception as exc:
         if emitted_event or not include_temperature or not is_temperature_deprecated_error(exc):
             raise
-        TEMPERATURE_DEPRECATED_MODEL_IDS.add(model_id)
+        TEMPERATURE_DEPRECATED_MODEL_IDS.add(temperature_key)
         logger.info("Retrying System Intelligence agent call without temperature for model '%s'.", model_id)
         async for event in invoke(include_temperature=False):
             yield event

@@ -3,8 +3,8 @@
 How to find and edit members, what the email roles and flags mean, and how to export and import members with a
 spreadsheet. [Back to the handbook](README.md).
 
-**Needs:** the Members section (**Members & Authentication** in the sidebar; `authn` in the access list). Changes
-to a staff or superuser account need the I2G Master account.
+Every task in this chapter is open to every Admin, on every member, other Admins included. The only limits are the
+lockout rules in 2.3: nobody removes their own Admin account, and the last active Admin stays.
 
 All examples use made-up people and addresses.
 
@@ -16,8 +16,9 @@ Open **Members & Authentication → Members** and click a name. The page has:
 - **Personal Info:** first, middle and last name, organization, title, profile image.
 - **Account:** **Account active**, and **Unfinished sign-up** (read-only: someone started a self-service sign-up
   and never finished it).
-- **Permissions** (folded): the staff flag and the sections a staff account may use. Only the I2G Master can
-  change them.
+- **Admin access:** the **Admin** switch. An Admin can sign in to the admin and do everything in it; every Admin
+  has the same permissions. Any Admin can turn it on or off for another member. On your own page it is read-only
+  (with **Account active**), with a note: you cannot remove your own Admin access.
 - **Contact Emails:** every email address of the member, each with its **Email Type**, **Verified (sign-in)** and
   **Subscribed (newsletters)**, and a **Primary email** column: **Make primary…** on a verified address,
   **Verify first** on an unverified one. The **?** next to a column title explains it.
@@ -35,7 +36,7 @@ Open **Members & Authentication → Members** and click a name. The page has:
 | **Primary** | The member's main address. (A member who signed up with a phone number may have no email address at all.) | Campaigns with **Send to: Primary email only**; a new event registration copies the primary address at the time of registering. |
 | **Secondary** | A backup address, often added during event registration or on the account page. When another address becomes the primary, the old primary becomes the secondary. | Campaigns with **Send to: All emails**; sign-in if verified. |
 | **Other** | Any further address, for example a former secondary moved aside when a new primary was set. | As secondary, except that event registration forms offer only the primary and the secondary. |
-| **Verified** | The person entered a code sent to that address, or staff marked it verified. | Only a verified address can be used to sign in with an emailed code or a password, and only a verified address can become primary. A staff member's admin sign-in codes go to their verified primary only. **Unticking it stops sign-in with that address, not mail.** |
+| **Verified** | The person entered a code sent to that address, or staff marked it verified. | Only a verified address can be used to sign in with an emailed code or a password, and only a verified address can become primary. An Admin's admin sign-in codes go to their verified primary only. **Unticking it stops sign-in with that address, not mail.** |
 | **Subscribed** | This address receives newsletters (**All subscribers** campaigns). | Set per address. Turning off one address leaves the others as they are. The unsubscribe link in a newsletter turns off every address of that member. Only **All subscribers** reads it: **All active members**, **Staff Members**, **Selected Members** and the event audiences mail the address whatever it says. Sign-in codes and other account mail are never affected. |
 
 An address can belong to one member only. An address can also exist with no member at all (an **unlinked
@@ -74,12 +75,12 @@ can sign in, so add a phone number to a member only when you are sure it is thei
 >
 > - **The member** verifies it on their account page: **Account → Phone Numbers → Verify**. An unverified number
 >   there says "Verify this number to use it to sign in with a texted code".
-> - **Staff** use **Verify by SMS code**, the link next to an unverified number on the member page and on the
+> - **Admins** use **Verify by SMS code**, the link next to an unverified number on the member page and on the
 >   phone's own page, for a member who cannot sign in another way (for example a phone-only member whose only
 >   number is unverified). Talk to the member (in person, or on a call to them at a contact you already trust),
 >   click **Send code to …**, ask them to read the code to you, and enter it. The code works for 10 minutes and
->   allows 5 tries, and both steps are recorded in the admin history. A staff or superuser account's number needs
->   the I2G Master.
+>   allows 5 tries, and both steps are recorded in the admin history. It works on any member's number, another
+>   Admin's included.
 > - **Verified** can no longer be ticked by hand, and **Mark selected phones as verified** is gone. Unticking it
 >   (or **Mark selected phones as unverified (stops SMS sign-in)**) still works. A phone added in the admin starts
 >   unverified, and changing a number's digits, or moving it to another member (#735), makes it unverified again.
@@ -101,7 +102,8 @@ can sign in, so add a phone number to a member only when you are sure it is thei
      only by campaigns sent to all emails), or **Not subscribed at any address**. This reads the addresses only: the
      audience also leaves out inactive accounts, so add **Account active: Yes** to see who it reaches.
    - **Phone:** **Verified (SMS sign-in)**, **Unverified only**, or **No phone**.
-   - **Staff status** and **Date joined**.
+   - **Account type:** **Admin** or **Regular member** (the list's **Admin** column shows the same), and **Date
+     joined**.
 
    Filters combine: for example **Account active: Yes** and **Primary email: Unverified** lists active members who
    cannot sign in with their main address.
@@ -125,7 +127,7 @@ To find an address that may belong to nobody, use **Members & Authentication →
 for it. The exact address comes first there too, and an unlinked contact has an empty member column. The filters
 there are **Verified (sign-in)** (**Verified**, **Unverified emails**, **Unverified primary emails**),
 **Subscribed (newsletters)**, **Email Type** and **Member account** (**Account active**, **Account inactive**,
-**Staff or I2G Master**, **No member (unlinked)**). **Emails & Phones → Phones** finds a number in any of the formats
+**Admin**, **No member (unlinked)**). **Emails & Phones → Phones** finds a number in any of the formats
 above, and has the **Member account** filter too.
 
 ## 2.3 Change a member
@@ -146,19 +148,30 @@ ask for a confirmation word the same way.
 | Stop someone from signing in | **Members**, tick the member, action **Deactivate selected members** (or untick **Account active** on the member page). Undo with **Activate selected members**. |
 | Remove a member | Deactivate instead. Deleting a member is permanent and also deletes their event registrations and check-ins. |
 
-On a staff or superuser account other than your own, only the I2G Master can change **Account active**, the
-contact addresses and phone numbers, and the primary email: the member page shows them read-only (without **Switch
-primary email**), and list actions skip such accounts with "… only an I2G Master may change those".
+Any Admin can change everything on any member, another Admin's account included: **Admin**, **Account active**,
+the password, the contact addresses and phone numbers, and the primary email. An address that belongs to no member
+(an **unlinked contact**) can be linked to a member, changed or deleted by any Admin too.
 
-An address that belongs to no member (an **unlinked contact**) can be linked to a member, changed or deleted only by
-the I2G Master.
+**Lockout rules.** Two changes are always refused, whoever makes them:
+
+- **Your own Admin account.** You cannot delete it, deactivate it or remove its Admin access. On your own page
+  **Admin** and **Account active** are read-only. Ask another Admin.
+- **The last active Admin.** The site always keeps at least one active Admin, so the last one cannot be deleted,
+  deactivated or have Admin access removed.
+
+A refused save shows the reason on the field. **Delete** sends you back to the member page with the reason.
+**Deactivate selected members** and **Delete selected members** check the whole selection first: if it includes your
+own Admin account or every remaining active Admin, nobody is changed ("… No member was deactivated." / "… Nothing was
+deleted."). The same rules apply in Email Monitoring (chapter 3), in the member import and when you delete your own
+account from the website's account page.
+
+**Login as Member** (on a regular member's page) signs you in to the website as that member, to see what they see.
+It is never offered for an Admin account ("Admin accounts cannot be impersonated.").
 
 Changing a member's primary address does not change event registrations they made earlier: those keep the address
 they were made with.
 
 ### Switch the primary email
-
-**Needs:** the Members section; on a staff or superuser account, the I2G Master (or that account's own holder).
 
 1. Open the member and click **Switch primary email** at the top (next to **History**), or **Make primary…** on the
    row of the address you want. **Verify first** on a row means that address is not verified and cannot become the
@@ -175,7 +188,7 @@ What happens:
   **other**. Nothing is deleted, **no address is verified, unverified, subscribed or unsubscribed**, and nothing is
   sent to anyone.
 - **Signing in:** emailed codes and passwords work with every verified address of the member, whatever its type, so
-  both addresses keep working. A staff member's **admin sign-in codes** go to the verified primary only: after the
+  both addresses keep working. An Admin's **admin sign-in codes** go to the verified primary only: after the
   switch they go to the new primary, and the old one no longer receives them. Codes to change the password or to
   delete the account go to the new primary too. A forgotten-password code goes to whichever verified address or
   phone number the member types, the old primary included.
@@ -220,7 +233,7 @@ A bounce report never changes a member by itself (chapter 3). When an address bo
 - **Members → Export Excel** downloads **all** members: the search box and the filters do not apply to it.
 - To export some members only, tick them and choose **Export selected members to Excel** (or **… as vCard**).
 
-The file has these columns: Member UUID, First Name, Last Name, Middle Name, Title, Organization, Active, Staff, When
+The file has these columns: Member UUID, First Name, Last Name, Middle Name, Title, Organization, Active, Admin, When
 Started, Primary Email, Primary Verified, Primary Subscribed, Secondary Email, Secondary Verified, Secondary
 Subscribed, Phone Number, Phone Subscribed, Phone Verified.
 
@@ -294,12 +307,12 @@ Only **Primary Email** is required. A column that is missing, or a blank cell, n
 | Phone Subscribed | Used for the new number (default FALSE). | Not applied to a number the member already has (a note says so). |
 | Phone Verified | **Ignored**: the number is saved unverified, whatever the cell says. | **Ignored**: a number the member already has keeps its status (verified stays verified, unverified stays unverified). |
 | Active | Default TRUE. | Ignored. Use the **Activate** / **Deactivate** actions on the member list. |
-| Staff | Ignored: an import never creates a staff account. | Applied only when the I2G Master imports. |
+| Admin (**Staff** in older exports) | Ignored: an import never creates an Admin. | Ignored: an import never grants or removes Admin access. Change it on the member's page. |
 | Member UUID | Ignored by today's import. | Ignored (the coming review step uses it, see 2.6). |
 | Last Updated, Primary Expired, Secondary Expired, Secondary Bounced | Accepted, not stored. | Same. |
 
-**Phone Verified is ignored.** An import never verifies or un-verifies a phone number, and nobody can override that,
-not even the I2G Master: a verified number is a way to sign in, so it must be proved with the member's own code (2.1).
+**Phone Verified is ignored.** An import never verifies or un-verifies a phone number, and nobody can override that:
+a verified number is a way to sign in, so it must be proved with the member's own code (2.1).
 Every number an import adds is saved unverified, and a number already stored keeps its status. A sheet may still have
 the column (every **Export Excel** file does): the import accepts it, ignores it, and says so once, at the top of the
 notes.
@@ -322,7 +335,8 @@ ignored and reported, never read as FALSE.
 - Move an address or a phone number from one member to another.
 - Re-subscribe an address, or un-verify one.
 - Verify or un-verify a phone number (the **Phone Verified** column is ignored).
-- Activate or deactivate an existing member, or change staff status (unless the I2G Master imports).
+- Activate or deactivate an existing member.
+- Grant or remove Admin access (the **Admin** column, **Staff** in older exports, is ignored).
 - Send an email or a text message.
 
 ### Rows that were not imported
@@ -330,10 +344,9 @@ ignored and reported, never read as FALSE.
 | Message (start) | What it means | What to do |
 |---|---|---|
 | "no member has … as their primary email: it is the **secondary** (or **other**) email of …" (with **Update Existing Members** ticked), or "… already exists: it is the **secondary** (or **other**) email of …" (without it) | The address belongs to a member, but it is not their primary. This is the "Row 5" case below. | Use the member's primary address in the Primary Email cell, or make this address their primary first with **Switch primary email** on the member page (2.3; it must be verified). Then import that row again with **Update Existing Members** ticked. |
-| "… it is a contact email that is not linked to any member" | The address exists with no member. | Ask the I2G Master to link it to the right member or delete it (only the I2G Master can change an unlinked contact), then import again. |
+| "… it is a contact email that is not linked to any member" | The address exists with no member. | Link it to the right member or delete it (**Emails & Phones → Emails**), then import again. |
 | "… matches 2 contact emails that differ only in letter case" | Old duplicate records of the same address. | Ask the web team to merge them, then import again. |
 | "Member with email … already exists: … Skipped because "Update Existing Members" is off" | The person already has an account. | Import again with **Update Existing Members** ticked, if you meant to update them. |
-| "You do not have permission to update …" | A staff or superuser account. | Ask the I2G Master. |
 | "Missing primary email", "Primary Email '…' is not a valid email address" | The cell is empty or not an address. | Fix the cell. |
 | "Missing first name", "Missing last name" | A new member needs both names. | Fill them in. |
 | "Duplicate email in file (…): row N has it too, and only that row is imported" | The same person is in the sheet twice. | Keep one row. |
@@ -427,17 +440,18 @@ Decisions you may be asked for (each starts on **Skip**):
 | The same person is in several rows | Use one of the rows, skip the others |
 | The address exists twice in different letter case | Choose the member, or skip |
 | The Member UUID and the Primary Email point to different members, or the UUID matches nobody | Choose which one, match by email instead, or skip |
-| A staff or superuser account and you are not the I2G Master | Skip |
 | The row matches a member and you chose **Skip them** | Skip, or update the member |
 
 **Risky changes** happen only if you tick them: removing an address or phone number the sheet leaves blank or
 replaces, re-subscribing an address or number (only with the person's consent), marking an email address verified
-(it then becomes a way to sign in) or unverified, activating or deactivating a member, and staff status (I2G Master
-only). There is no tick to verify or un-verify a phone number: the review ignores **Phone Verified** as in 2.5, lists
-the column under "Not imported", and says so on the Review, Confirm and Result pages. Each row has its own ticks, and
+(it then becomes a way to sign in) or unverified, and activating or deactivating a member. An import never grants or
+removes Admin access: the **Admin** column (**Staff** in older exports) is listed under "Not imported". There is no
+tick to verify or un-verify a phone number: the review ignores **Phone Verified** as in 2.5, lists the column under
+"Not imported", and says so on the Review, Confirm and Result pages. Each row has its own ticks, and
 a **Tick all** button ticks every row of one kind at once: use it with care. A removal is unavailable for the address
-the row was matched on and for a member's only verified way to sign in. On a staff or superuser account only the I2G
-Master can tick them, and an unfinished sign-up can be neither activated nor verified by an import.
+the row was matched on and for a member's only verified way to sign in, and a deactivation is unavailable for your
+own Admin account and for the last active Admin. An unfinished sign-up can be neither activated nor verified by an
+import.
 
 Also new:
 
@@ -446,8 +460,8 @@ Also new:
   says so), and making another of their addresses the primary is a decision you confirm (it must be verified).
 - The apply is all or nothing. If a member changed after your review, nothing is written and those rows return to
   the review on **Skip**, marked "Changed since you reviewed it".
-- Only the person who uploaded an import, or the I2G Master, can change or apply it, and an import never does more
-  than its uploader's own access allows.
+- Any Admin can change, apply or discard an import, whoever uploaded it. The apply runs for the Admin who applies
+  it: a deactivation of their own Admin account goes back to the review.
 - **Members → Member Imports** keeps a read-only history. An import that is never applied is deleted after 24
   hours. An applied import keeps the sheet's values for 30 days and its record (who chose what) for a year.
 

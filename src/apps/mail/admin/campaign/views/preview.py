@@ -34,8 +34,7 @@ class CampaignPreviewMixin:
         return HttpResponseRedirect(reverse("admin:mail_emailcampaign_preview_recipients", args=[object_id]))
 
     def preview_recipients_view(self, request, object_id):
-        # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-        # per-app access itself.
+        # A plain Admin check, in case the URL is ever mounted without ``admin_view``.
         if not self.has_view_permission(request):
             raise PermissionDenied("You do not have permission to view this campaign's recipients.")
         obj = EmailCampaign.objects.get(pk=object_id)

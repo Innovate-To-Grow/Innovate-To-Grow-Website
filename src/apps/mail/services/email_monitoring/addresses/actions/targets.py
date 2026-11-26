@@ -9,7 +9,6 @@ from django.contrib.auth import get_user_model
 
 from apps.authn.models import ContactEmail
 from apps.authn.services.account.recovery import count_verified_recovery_contacts
-from apps.core.utils.access import user_can_access_app, user_can_manage_member
 from apps.mail.models import BouncedAddress, BouncedAddressAction
 
 from ..listing.matching import MEMBER_ROLES, AddressMatch, match_address
@@ -18,12 +17,6 @@ Action = BouncedAddressAction.Action
 Role = BouncedAddress.Role
 Status = BouncedAddress.Status
 
-NEEDS_AUTHN = "Needs the Members (authn) app as well as Mail."
-PRIVILEGED = "Only an I2G Master may change a staff or superuser account."
-MASTER_DELETES = (
-    "Only an I2G Master may delete an account (it also deletes the member's records in other apps, such as event "
-    "registrations and check-ins): deactivate it instead."
-)
 ROLE_REASONS = {
     Role.NONE: "The address belongs to no contact email.",
     Role.UNLINKED: "The contact email belongs to no member.",
@@ -103,20 +96,12 @@ def fingerprint(target: Target) -> str:
         row.legacy_graph_permanent_review,
         row.suppressed_at.isoformat() if row.suppressed_at else "",
         [(c.pk, c.email_address, c.email_type, c.verified, c.subscribe, c.member_id) for c in target.match.contacts],
-        [(m.pk, m.is_active, m.is_staff, m.is_superuser) for m in target.owners],
+        [(m.pk, m.is_active, m.is_staff) for m in target.owners],
         [(c.pk, c.email_address, c.email_type, c.verified, c.subscribe) for c in target.member_contacts],
         target.verified_phones,
         member.pk if member is not None else None,
     ]
     return hashlib.sha256(json.dumps(parts, default=str).encode("utf-8")).hexdigest()[:40]
-
-
-def _member_change(request, members) -> Availability:
-    if not user_can_access_app(request.user, "authn"):
-        return refused(NEEDS_AUTHN)
-    if any(not user_can_manage_member(request.user, member) for member in members):
-        return refused(PRIVILEGED)
-    return ALLOWED
 
 
 def _member_role(target: Target) -> Availability:
@@ -144,10 +129,6 @@ def delete_email_blocker(target: Target) -> str:
     if contact.verified and count_verified_recovery_contacts(target.member, exclude_email_pk=contact.pk) == 0:
         return "This is the member's last verified sign-in contact (email or phone)."
     return ""
-
-
-def _is_self(request, target) -> bool:
-    return target.member is not None and target.member.pk == request.user.pk
 
 
 def member_admin():

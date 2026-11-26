@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict
+from dataclasses import asdict, fields
 
 from django.db.models.functions import Upper
 
@@ -53,7 +53,6 @@ def _member_record(member: Member) -> MemberRecord:
         title=member.title or "",
         is_active=member.is_active,
         is_staff=member.is_staff,
-        is_superuser=member.is_superuser,
         registration_pending=member.registration_pending,
         emails=sorted((_email_record(c) for c in member.contact_emails.all()), key=lambda c: c.id),
         phones=sorted((_phone_record(p) for p in member.contact_phones.all()), key=lambda p: p.id),
@@ -107,17 +106,24 @@ def row_slice(snapshot: Snapshot, row: dict) -> dict:
     return {"emails": emails, "phones": phones, "uuids": uuids, "members": members}
 
 
+def _record(cls, values: dict):
+    """``cls(**values)``, without the keys ``cls`` no longer has: a slice stored by an older release (for example a
+    member's ``is_superuser``) still loads."""
+    known = {item.name for item in fields(cls)}
+    return cls(**{key: value for key, value in values.items() if key in known})
+
+
 def snapshot_from_slice(data: dict) -> Snapshot:
     """Rebuild the snapshot a row's analysis read from its stored slice."""
     members = {}
     for member_id, values in (data.get("members") or {}).items():
         record = dict(values)
-        record["emails"] = [EmailRecord(**email) for email in record.get("emails", [])]
-        record["phones"] = [PhoneRecord(**phone) for phone in record.get("phones", [])]
-        members[member_id] = MemberRecord(**record)
+        record["emails"] = [_record(EmailRecord, email) for email in record.get("emails", [])]
+        record["phones"] = [_record(PhoneRecord, phone) for phone in record.get("phones", [])]
+        members[member_id] = _record(MemberRecord, record)
     return Snapshot(
-        emails={key: [EmailRecord(**c) for c in records] for key, records in (data.get("emails") or {}).items()},
-        phones={key: PhoneRecord(**value) for key, value in (data.get("phones") or {}).items() if value},
+        emails={key: [_record(EmailRecord, c) for c in records] for key, records in (data.get("emails") or {}).items()},
+        phones={key: _record(PhoneRecord, value) for key, value in (data.get("phones") or {}).items() if value},
         members=members,
         uuids=dict(data.get("uuids") or {}),
     )

@@ -22,6 +22,12 @@ a:hover {
     color: var(--md-sys-color-primary);
 }
 
+/* Unfold's red Delete link keeps its white label (the link colour above would make it blue on red). */
+a.bg-red-600,
+a.bg-red-600:hover {
+    color: #fff;
+}
+
 button,
 input:not([type="checkbox"]):not([type="radio"]),
 select,

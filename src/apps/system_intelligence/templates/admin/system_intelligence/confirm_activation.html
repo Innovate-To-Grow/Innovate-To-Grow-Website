@@ -1,0 +1,10 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <p>Activate {{ configuration.name }} for System Intelligence?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit" class="button">Activate configuration</button>
+    <a href="{{ change_url }}">Cancel</a>
+  </form>
+{% endblock %}

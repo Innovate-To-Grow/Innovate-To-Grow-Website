@@ -131,3 +131,27 @@ class ImpersonateLoginTests(APITestCase):
 
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(response.data["detail"], "Token is required.")
+
+    def test_a_target_who_became_an_admin_after_the_link_was_issued_is_refused(self):
+        token = self._make_token()
+        Member.objects.filter(pk=self.target.pk).update(is_staff=True, is_superuser=True)
+
+        response = self.client.post(URL, {"token": token.token}, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "Invalid impersonation link.")
+        self.assertNotIn("access", response.data)
+        token.refresh_from_db()
+        self.assertTrue(token.is_used)
+
+    def test_a_link_whose_issuer_is_no_longer_an_admin_is_refused(self):
+        for label, change in {"demoted": {"is_staff": False}, "deactivated": {"is_active": False}}.items():
+            with self.subTest(issuer=label):
+                Member.objects.filter(pk=self.admin.pk).update(is_staff=True, is_active=True)
+                token = self._make_token()
+                Member.objects.filter(pk=self.admin.pk).update(**change)
+
+                response = self.client.post(URL, {"token": token.token}, format="json")
+
+                self.assertEqual(response.status_code, 400)
+                self.assertNotIn("access", response.data)

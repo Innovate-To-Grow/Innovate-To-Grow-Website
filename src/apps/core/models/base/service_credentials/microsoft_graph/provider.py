@@ -136,7 +136,7 @@ class MicrosoftGraphProviderConfig(GraphProviderValidationMixin, GraphProviderSt
         help_text=(
             "Only after Graph application permissions beyond the approved ones (what OIT granted: Mail.ReadWrite "
             "and Mail.Send) have been approved in writing: the reference of that review (for example its ticket "
-            "number). Set by an admin with the Core app; the site never fills it in."
+            "number). Set by an admin; the site never fills it in."
         ),
     )
     message_trace_enabled = models.BooleanField(

@@ -11,8 +11,8 @@ class EventRelatedInlineMixin:
     """Delegate inline permissions to the registered Event ModelAdmin.
 
     Default Django inlines require ``event.add_ticket`` / ``change_ticket`` / etc.
-    This project grants Event access via :class:`BaseModelAdmin` (typically ``is_staff``),
-    so staff without those Ticket codenames would otherwise miss Tickets/Questions blocks.
+    This project decides access in :class:`BaseModelAdmin` (every Admin), so the
+    Tickets/Questions blocks follow the Event admin instead of Django's codenames.
     """
 
     def _event_model_admin(self):

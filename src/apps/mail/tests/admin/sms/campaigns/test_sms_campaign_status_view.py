@@ -166,18 +166,14 @@ class SmsRecipientLogAdminTests(TestCase):
 
         self.assertEqual(self.admin.error_preview(log), "short")
 
-    def test_delete_permission_requires_mail_app_access(self):
-        mail_staff = make_admin(apps=["mail"], email="smslog-delete@example.com")
-        other_staff = make_admin(apps=["cms"], email="cmsstaff-smslog@example.com")
-        superuser = make_superuser(email="su-smslog-delete@example.com")
+    def test_delete_permission_requires_an_admin(self):
+        admin_user = make_admin(email="smslog-delete@example.com")
 
-        # Mail-granted staff and superuser may delete; other-app staff and
-        # bare staff (no admin_apps) may not.
-        self.assertTrue(self.admin.has_delete_permission(self._req(mail_staff)))
-        self.assertTrue(self.admin.has_delete_permission(self._req(superuser)))
-        self.assertFalse(self.admin.has_delete_permission(self._req(other_staff)))
-        self.assertFalse(self.admin.has_delete_permission(self._req(Member(is_staff=True))))
+        # Every active Admin may delete; a regular member or an inactive staff account may not.
+        self.assertTrue(self.admin.has_delete_permission(self._req(admin_user)))
+        self.assertTrue(self.admin.has_delete_permission(self._req(Member(is_staff=True))))
         self.assertFalse(self.admin.has_delete_permission(self._req(Member(is_staff=False))))
+        self.assertFalse(self.admin.has_delete_permission(self._req(Member(is_staff=True, is_active=False))))
 
     def _req(self, user):
         request = self.factory.get("/")

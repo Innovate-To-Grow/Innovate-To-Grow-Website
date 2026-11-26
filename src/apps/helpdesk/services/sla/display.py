@@ -1,0 +1,108 @@
+"""How an SLA clock reads on the ticket page and in the queue: none, on track, at risk, paused, breached or met."""
+
+from dataclasses import dataclass
+from datetime import datetime
+
+from django.utils import timezone
+
+from ...models import Ticket
+from .clock import Status
+
+
+@dataclass(frozen=True)
+class Clock:
+    state: str  # none, running, at_risk, paused, breached, met
+    due: datetime | None = None
+
+    @property
+    def label(self) -> str:
+        return {
+            "none": "No SLA",
+            "running": "On track",
+            "at_risk": "At risk",
+            "paused": "Paused",
+            "breached": "Breached",
+            "met": "Met",
+        }[self.state]
+
+
+def _running_state(start: datetime, due: datetime, paused_seconds: int, now: datetime, warning_percent: int) -> str:
+    if now > due:
+        return "breached"
+    total = (due - start).total_seconds() - paused_seconds
+    used = (now - start).total_seconds() - paused_seconds
+    return "at_risk" if total > 0 and used >= total * warning_percent / 100 else "running"
+
+
+def response_clock(ticket: Ticket, now: datetime, warning_percent: int) -> Clock:
+    due = ticket.response_due_at
+    if due is None or ticket.sla_started_at is None:
+        return Clock("none")
+    if ticket.first_responded_at is not None:
+        return Clock("breached" if ticket.response_breached else "met", due)
+    if not ticket.is_open:
+        return Clock("breached" if ticket.response_breached else "none", due)
+    return Clock(_running_state(ticket.sla_started_at, due, 0, now, warning_percent), due)
+
+
+def resolution_clock(ticket: Ticket, now: datetime, warning_percent: int) -> Clock:
+    due = ticket.resolution_due_at
+    if due is None or ticket.sla_started_at is None:
+        return Clock("none")
+    if ticket.status in (Status.RESOLVED, Status.CLOSED):
+        return Clock("breached" if ticket.resolution_breached else "met", due)
+    if not ticket.is_open:
+        return Clock("none", due)
+    if ticket.sla_paused_at is not None:
+        return Clock("breached" if ticket.resolution_breached else "paused", due)
+    if ticket.resolution_breached:
+        return Clock("breached", due)
+    state = _running_state(ticket.sla_started_at, due, ticket.sla_paused_seconds, now, warning_percent)
+    return Clock(state, due)
+
+
+def current_clock(ticket: Ticket, now: datetime, warning_percent: int) -> tuple[str, Clock]:
+    """The clock the queue shows: the response until it is met, then the resolution."""
+    response = response_clock(ticket, now, warning_percent)
+    if response.state in ("running", "at_risk", "breached") and ticket.first_responded_at is None and ticket.is_open:
+        return "Response", response
+    return "Resolution", resolution_clock(ticket, now, warning_percent)
+
+
+def span(seconds: float) -> str:
+    """A duration as staff read it: "2 d 4 h", "3 h 20 min", "45 min"."""
+    minutes = max(0, int(seconds // 60))
+    days, rest = divmod(minutes, 1440)
+    hours, minutes = divmod(rest, 60)
+    if days:
+        return f"{days} d {hours} h"
+    return f"{hours} h {minutes} min" if hours else f"{minutes} min"
+
+
+def paused_left(ticket: Ticket) -> str:
+    """What was left of the resolution target when its clock stopped (the due time moves on while it stands)."""
+    if ticket.sla_paused_at is None or ticket.resolution_due_at is None:
+        return ""
+    return span((ticket.resolution_due_at - ticket.sla_paused_at).total_seconds())
+
+
+def queue_label(ticket: Ticket, now: datetime, warning_percent: int) -> tuple[str, str]:
+    """The queue's SLA column as (state, text): a breach of either clock first (it stays visible after a late
+    response), then the clock that runs now, its state in words as well as in color."""
+    which, clock = current_clock(ticket, now, warning_percent)
+    # Both clocks are judged (flagged, or overdue and not flagged yet), not only the one the column shows.
+    judged = (
+        ("Response", response_clock(ticket, now, warning_percent)),
+        ("Resolution", resolution_clock(ticket, now, warning_percent)),
+    )
+    breached = [name for name, judged_clock in judged if judged_clock.state == "breached"]
+    if breached:
+        return "breached", f"{' & '.join(breached)} breached"
+    if clock.state == "none":
+        return "none", "—"
+    if clock.state == "paused":
+        return "paused", f"{which} paused · {paused_left(ticket)} left"
+    if clock.state in ("running", "at_risk") and clock.due is not None:
+        lead = "At risk · " if clock.state == "at_risk" else ""
+        return clock.state, f"{lead}{which} due {timezone.localtime(clock.due):%b %d %H:%M}"
+    return clock.state, f"{which}: {clock.label}"

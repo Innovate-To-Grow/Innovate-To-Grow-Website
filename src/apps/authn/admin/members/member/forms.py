@@ -2,9 +2,6 @@
 Admin forms for authn app.
 """
 
-from django import forms
-from django.apps import apps as django_apps
-from django.contrib import admin
 from django.contrib.auth.forms import SetPasswordMixin
 from django.core.exceptions import ValidationError
 from django.urls import NoReverseMatch, reverse
@@ -13,26 +10,9 @@ from unfold.forms import UserChangeForm, UserCreationForm
 
 from ....models import Member
 from ....services.members.accounts.profile_image import ALLOWED_CONTENT_TYPES
+from ....services.members.admins import DEACTIVATE, DEMOTE, admin_removal_refusal
 from ..shared.help_texts import MEMBER_HELP_TEXTS, MEMBER_LABELS
 from .profile_image import Base64ImageField, Base64ImageWidget
-
-
-def admin_app_choices():
-    """(app_label, verbose_name) choices for every Django app with registered admin models.
-
-    Computed lazily (call at form ``__init__`` time, not import time) so the admin
-    registry is fully populated. This is the menu of apps a member's ``admin_apps``
-    grant can draw from — see apps.core.utils.access.user_can_access_app.
-    """
-    labels = sorted({model._meta.app_label for model in admin.site._registry})
-    choices = []
-    for label in labels:
-        try:
-            verbose = django_apps.get_app_config(label).verbose_name
-        except LookupError:
-            verbose = label
-        choices.append((label, f"{verbose} ({label})"))
-    return choices
 
 
 class MemberCreationForm(UserCreationForm):
@@ -86,18 +66,15 @@ class MemberCreationForm(UserCreationForm):
 
 
 class MemberChangeForm(UserChangeForm):
-    """User change form for the Member model with Unfold-styled password widget."""
+    """User change form for the Member model with Unfold-styled password widget.
 
-    # Per-app admin grant. ``admin_apps`` is a JSONField (list of app labels), so it
-    # cannot use admin ``filter_horizontal``; render it as a checkbox multi-select whose
-    # choices are the project's registered admin apps. Replaces the old per-model
-    # ``user_permissions`` widget.
-    admin_apps = forms.MultipleChoiceField(
-        required=False,
-        widget=forms.CheckboxSelectMultiple,
-        label=_("Admin apps"),
-        help_text=_("Apps this member may manage. Superusers (I2G Master) ignore this list."),
-    )
+    Unticking **Admin** or **Account active** on an Admin account is refused (an error on that field) when it would
+    remove the submitter's own Admin account or the last active Admin (``admin_removal_refusal``).
+    """
+
+    # The member submitting the form; ``MemberAdmin.get_form`` sets it per request. ``None`` (a form built outside
+    # the admin) still keeps the last active Admin.
+    removal_actor = None
 
     # Declared explicitly (rather than via ``Meta.widgets``) so the field class — and therefore
     # ``has_changed`` and the upload validation — applies. See Base64ImageField.
@@ -118,11 +95,6 @@ class MemberChangeForm(UserChangeForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # ``admin_apps`` is absent for non-superusers (the admin marks it
-        # read-only so they can't self-grant app access), so only populate the
-        # choices when the field is actually editable on this form.
-        if "admin_apps" in self.fields:
-            self.fields["admin_apps"].choices = admin_app_choices()
         if "profile_image" in self.fields and self.instance.pk and self.instance.profile_image:
             # The widget renders an <img> pointing here instead of inlining the stored base64.
             try:
@@ -131,6 +103,19 @@ class MemberChangeForm(UserChangeForm):
                 )
             except NoReverseMatch:  # pragma: no cover - admin always mounted in this project
                 self.fields["profile_image"].widget.preview_url = ""
+
+    def clean(self):
+        cleaned_data = super().clean()
+        member = self.instance
+        if member._state.adding:  # nothing is stored yet, so nothing can be removed
+            return cleaned_data
+        # ``self.instance`` still holds the stored flags here: the form's values are copied onto it after clean().
+        for field, action in (("is_staff", DEMOTE), ("is_active", DEACTIVATE)):
+            if field in self.fields and field in cleaned_data and not cleaned_data[field] and getattr(member, field):
+                refusal = admin_removal_refusal(self.removal_actor, [member], action=action)
+                if refusal:
+                    self.add_error(field, refusal)
+        return cleaned_data
 
     def clean_profile_image(self):
         """Keep the stored image unless the admin uploaded a new one or ticked "remove"."""

@@ -40,15 +40,9 @@ def _active(member, data: dict) -> None:
     member.save(update_fields=["is_active", "updated_at"])
 
 
-def _staff(member, data: dict) -> None:
-    member.is_staff = data["value"]
-    member.save(update_fields=["is_staff", "updated_at"])
-
-
 _UPDATE_OPS = {
     "profile": lambda member, op: _profile(member, op.data),
     "active": lambda member, op: _active(member, op.data),
-    "staff": lambda member, op: _staff(member, op.data),
     "email_flags": lambda member, op: contacts.set_email_flags(member, op.ref, op.data),
     "phone_flags": lambda member, op: contacts.set_phone_flags(member, op.ref, op.data),
     "promote": lambda member, op: contacts.promote_email(member, op.ref),

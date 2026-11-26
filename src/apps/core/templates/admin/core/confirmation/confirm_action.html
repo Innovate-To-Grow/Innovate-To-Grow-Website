@@ -15,7 +15,7 @@
                     You are about to perform: <strong>{{ action_description }}</strong>
                 </p>
                 <p class="text-xs text-yellow-700 dark:text-yellow-400 mt-1">
-                    This will affect <strong>{{ item_count }}</strong> {{ model_name_plural }}.
+                    This will affect <strong>{{ item_count }}</strong> {% if item_count == 1 %}{{ model_name }}{% else %}{{ model_name_plural }}{% endif %}.
                     Please type the confirmation word to proceed.
                 </p>
             </div>
@@ -36,7 +36,7 @@
                 </tr>
                 <tr class="border-b border-base-100 dark:border-base-800">
                     <td class="px-4 py-2 font-medium text-base-700 dark:text-base-300">Items affected</td>
-                    <td class="px-4 py-2 text-base-600 dark:text-base-400">{{ item_count }} {{ model_name_plural }}</td>
+                    <td class="px-4 py-2 text-base-600 dark:text-base-400">{{ item_count }} {% if item_count == 1 %}{{ model_name }}{% else %}{{ model_name_plural }}{% endif %}</td>
                 </tr>
                 <tr>
                     <td class="px-4 py-2 font-medium text-base-700 dark:text-base-300">Model</td>

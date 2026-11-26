@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from apps.core.tests.graph_helpers import create_graph_config
 from apps.core.tests.project.models.graph.test_graph_go_live_gate import DENY, evidence
-from apps.event.tests.helpers import make_admin
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 from apps.mail.tests.admin.mail_settings.test_mail_settings_providers import (
     GRAPH_NOT_READY,
     SEND_TEST,
@@ -72,13 +72,13 @@ class UseProviderTests(EmailSendingMethodTestCase):
         self.config.refresh_from_db()
         self.assertEqual(self.config.provider, "ses")
 
-    def test_staff_without_the_mail_app_can_neither_switch_nor_test(self):
-        self.client.force_login(make_admin(apps=["cms"], email="cms-only@example.com"))
+    def test_members_who_are_not_admins_can_neither_switch_nor_test(self):
+        member = make_member()
 
         with patch(SEND_TEST) as send:
-            self.assertEqual(self.client.post(self.use_url("smtp")).status_code, 403)
-            self.assertEqual(self.client.get(self.page_url("smtp")).status_code, 403)
-            self.assertEqual(self.client.post(self.page_url("smtp"), {"recipient": "ops@example.com"}).status_code, 403)
+            assert_refused_to_member(self, self.use_url("smtp"), member, "post")
+            assert_refused_to_member(self, self.page_url("smtp"), member)
+            assert_refused_to_member(self, self.page_url("smtp"), member, "post", data={"recipient": "ops@example.com"})
 
         send.assert_not_called()
         self.config.refresh_from_db()

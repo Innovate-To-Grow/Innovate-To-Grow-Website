@@ -189,7 +189,7 @@ in the admin. `REQUEST_RATE_LIMITS_ENABLED` turns the whole limiter off. See
 
 ### Reading Site Settings → Request Limits
 
-Superusers and staff with access to the Core app (System) view and edit it; other staff get 403. The page refreshes
+Every Admin views and edits it; anyone else is sent to the admin sign-in. The page refreshes
 its status every 15 seconds.
 
 - **Now** (summary): one line per tier (*protected*, *full baseline*, *Smart is shedding it* with how many scopes are

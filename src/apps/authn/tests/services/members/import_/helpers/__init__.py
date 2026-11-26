@@ -98,7 +98,7 @@ class ImportTestCase(TestCase):
 
     @staticmethod
     def context(**overrides):
-        return Context(**{"mode": UPDATE_EXISTING, "is_master": False, **overrides})
+        return Context(**{"mode": UPDATE_EXISTING, **overrides})
 
     def analyse(self, rows, headers=HEADERS, **context):
         parsed = read(headers, rows).rows
@@ -110,7 +110,7 @@ class ImportTestCase(TestCase):
     def apply(self, rows, selections=None, headers=HEADERS, actor=None, **context):
         """Analyse and apply ``rows`` with ``selections`` (``{row number: (choice, ticks)}``), like a confirmed review."""
         parsed = read(headers, rows).rows
-        ctx = self.context(**context)
+        ctx = self.context(actor=actor, **context)
         first = analyse_rows(parsed, load_snapshot(parsed), ctx)
         members = lock_members(m for a in first for m in (a.slice.get("members") or {}))
         snapshot = load_snapshot(parsed)

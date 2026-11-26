@@ -53,10 +53,10 @@ class LoopTests(SiteMailMixin, TestCase):
         settings = HelpdeskSettings.objects.create(shadow_mode=False)
         crm_message, plain_message = crm.messages.get(), plain.messages.get()
 
-        self.assertFalse(shadow.automatic_reply_allowed(plain_message, settings))  # this release sends nothing
-        with patch.object(shadow, "SENDING_IMPLEMENTED", True):
-            self.assertTrue(shadow.automatic_reply_allowed(plain_message, settings))
-            self.assertFalse(shadow.automatic_reply_allowed(crm_message, settings))
+        self.assertTrue(shadow.automatic_reply_allowed(plain_message, settings))
+        self.assertFalse(shadow.automatic_reply_allowed(crm_message, settings))
+        with patch.object(shadow, "SENDING_IMPLEMENTED", False):  # the code-level kill switch
+            self.assertFalse(shadow.automatic_reply_allowed(plain_message, settings))
 
     def test_no_automatic_answer_when_a_message_looks_automated_or_sits_on_spam(self):
         # A responder that marks nothing (no Auto-Submitted, no prefix) is a "person" with a hint: never answered.

@@ -30,6 +30,10 @@ class MemberAdminActionsMixin:
     def account_active(self, obj):
         return obj.is_active
 
+    @admin.display(description="Admin", boolean=True, ordering="is_staff")
+    def is_admin(self, obj):
+        return obj.is_staff
+
     @admin.action(description="Activate selected members")
     def activate_members(self, request, queryset):
         activate_members(self, request, queryset)

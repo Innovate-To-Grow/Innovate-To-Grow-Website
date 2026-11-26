@@ -18,6 +18,7 @@
       mode: "normal",
       sidebarCollapsed: getStoredSidebarState(),
       streaming: false,
+      readOnly: false,
     },
     els: {
       shell: document.querySelector("[data-si-root]") || document.getElementById("si-root"),
@@ -93,12 +94,16 @@
 
   app.setStreaming = function (streaming) {
     app.state.streaming = streaming;
-    app.els.send.disabled = streaming;
-    app.els.input.disabled = streaming;
-    app.els.plan.disabled = streaming;
+    const cannotSend = streaming || app.state.readOnly;
+    app.els.send.disabled = cannotSend;
+    app.els.input.disabled = cannotSend;
+    app.els.plan.disabled = cannotSend;
+    document.querySelectorAll("[data-si-command]").forEach((node) => {
+      node.disabled = cannotSend;
+    });
     document
       .querySelectorAll(
-        "[data-si-command], [data-si-new-chat], [data-si-rename], [data-si-conversations] button",
+        "[data-si-new-chat], [data-si-rename], [data-si-conversations] button",
       )
       .forEach((node) => {
         node.disabled = streaming;

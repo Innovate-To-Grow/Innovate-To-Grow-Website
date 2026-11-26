@@ -2,11 +2,16 @@
 
 import os
 
+from django.core.exceptions import ImproperlyConfigured
+
 from ..base.framework.environment import BASE_DIR
 from .env import _get_required_env
 
 # AWS S3 storage (static files and media uploads)
 AWS_STORAGE_BUCKET_NAME = _get_required_env("AWS_STORAGE_BUCKET_NAME")
+AWS_PRIVATE_EXPORT_BUCKET_NAME = _get_required_env("AWS_PRIVATE_EXPORT_BUCKET_NAME")
+if AWS_PRIVATE_EXPORT_BUCKET_NAME == AWS_STORAGE_BUCKET_NAME:
+    raise ImproperlyConfigured("AWS_PRIVATE_EXPORT_BUCKET_NAME must differ from AWS_STORAGE_BUCKET_NAME.")
 AWS_S3_REGION_NAME = os.environ.get("AWS_S3_REGION_NAME", "us-west-2")
 AWS_S3_CUSTOM_DOMAIN = os.environ.get("AWS_S3_CUSTOM_DOMAIN", f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com")
 AWS_DEFAULT_ACL = None  # Inherit bucket policy
@@ -19,6 +24,18 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
 
 STORAGES = {
+    "system_intelligence_exports": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        "OPTIONS": {
+            "bucket_name": AWS_PRIVATE_EXPORT_BUCKET_NAME,
+            "region_name": AWS_S3_REGION_NAME,
+            "custom_domain": None,
+            "file_overwrite": False,
+            "max_memory_size": 8 * 1024 * 1024,
+            "querystring_auth": True,
+            "object_parameters": {"CacheControl": "private, no-store"},
+        },
+    },
     "default": {
         "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         "OPTIONS": {

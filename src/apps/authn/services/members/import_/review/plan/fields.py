@@ -14,7 +14,6 @@ FIELD_LABELS = {
 ACTIVE_NOT_TICKED = (
     "Active is {sheet}, but the member is {state}; left {state} (activating or deactivating a member needs its tick)"
 )
-STAFF_IGNORED = "Staff column ignored (only an I2G Master may change staff status, with its tick)"
 PENDING_NOTE = (
     "The member's self-service sign-up is unfinished; an import never activates it or verifies its contacts (only "
     "the person can, by confirming their email)"

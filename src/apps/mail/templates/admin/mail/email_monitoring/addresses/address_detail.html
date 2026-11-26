@@ -25,22 +25,19 @@
   {% if target.role == "none" %}
     <p class="i2g-monitor-card i2g-monitor-muted">No contact email holds this address (a manual list or an event registration's attendee email). Suppress it to keep it out of campaigns, or dismiss it.</p>
   {% elif target.role == "unlinked" %}
-    <p class="i2g-monitor-card i2g-monitor-muted">A contact email holds this address, but it belongs to no member.{% if contact_admin %} <a href="{% url 'admin:authn_contactemail_change' target.contact.pk %}">Open the contact email</a>.{% endif %}</p>
+    <p class="i2g-monitor-card i2g-monitor-muted">A contact email holds this address, but it belongs to no member. <a href="{% url 'admin:authn_contactemail_change' target.contact.pk %}">Open the contact email</a>.</p>
   {% elif target.role == "ambiguous" %}
     <div class="i2g-monitor-card">
       <p class="i2g-monitor-error" role="note"><span class="material-symbols-outlined" aria-hidden="true">warning</span>This address is saved {{ target.match.contacts|length }} times in different letter cases. No contact or account change applies until the duplicates are resolved in Contact Emails.</p>
-      <ul>{% for contact in target.match.contacts %}<li>{% if contact_admin %}<a href="{% url 'admin:authn_contactemail_change' contact.pk %}">{{ contact.email_address }}</a>{% else %}{{ contact.email_address }}{% endif %} · {{ contact.get_email_type_display }}{% if contact.member %} · {{ contact.member }}{% else %} · no member{% endif %}</li>{% endfor %}</ul>
+      <ul>{% for contact in target.match.contacts %}<li><a href="{% url 'admin:authn_contactemail_change' contact.pk %}">{{ contact.email_address }}</a> · {{ contact.get_email_type_display }}{% if contact.member %} · {{ contact.member }}{% else %} · no member{% endif %}</li>{% endfor %}</ul>
     </div>
   {% endif %}
   {% for card in cards %}
     <div class="i2g-monitor-card">
-      <h3>{% if card.link %}<a href="{{ card.link }}">{{ card.member.get_full_name|default:card.member.pk }}</a>{% else %}{{ card.member.get_full_name|default:card.member.pk }}{% endif %}
-        <span class="i2g-monitor-badges">{% if card.member.is_active %}<span class="i2g-monitor-badge i2g-monitor-badge--good">Active</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Inactive</span>{% endif %}{% if card.member.is_superuser %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">I2G Master</span>{% elif card.member.is_staff %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">Staff</span>{% endif %}</span>
+      <h3><a href="{{ card.link }}">{{ card.member.get_full_name|default:card.member.pk }}</a>
+        <span class="i2g-monitor-badges">{% if card.member.is_active %}<span class="i2g-monitor-badge i2g-monitor-badge--good">Active</span>{% else %}<span class="i2g-monitor-badge i2g-monitor-badge--muted">Inactive</span>{% endif %}{% if card.member.is_staff %}<span class="i2g-monitor-badge i2g-monitor-badge--warn">Admin</span>{% endif %}</span>
       </h3>
-      <p class="i2g-monitor-muted">{% if card.member.organization %}{{ card.member.organization }} · {% endif %}{{ card.registrations }} event registration{{ card.registrations|pluralize }}{% if card.contacts is not None %} · {{ card.verified_phones }} of {{ card.phones }} phone{{ card.phones|pluralize }} verified{% endif %}</p>
-      {% if card.contacts is None %}
-      <p class="i2g-monitor-muted">The member's other addresses and phones are shown to staff who also hold the Members app.</p>
-      {% else %}
+      <p class="i2g-monitor-muted">{% if card.member.organization %}{{ card.member.organization }} · {% endif %}{{ card.registrations }} event registration{{ card.registrations|pluralize }} · {{ card.verified_phones }} of {{ card.phones }} phone{{ card.phones|pluralize }} verified</p>
       <div class="i2g-monitor-table-wrap"><table class="i2g-monitor-table">
         <thead><tr><th scope="col">Email address</th><th scope="col">Role</th><th scope="col">Flags</th></tr></thead>
         <tbody>{% for item in card.contacts %}
@@ -51,7 +48,6 @@
           </tr>
         {% endfor %}</tbody>
       </table></div>
-      {% endif %}
     </div>
   {% endfor %}
 </section>

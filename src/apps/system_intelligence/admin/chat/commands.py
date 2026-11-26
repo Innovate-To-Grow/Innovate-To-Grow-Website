@@ -1,11 +1,9 @@
 import json
 
-from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
 from django.utils import timezone
 
 from apps.core.models import AWSCredentialConfig
-from apps.core.utils.access import user_can_access_app
 from apps.system_intelligence.models import (
     ChatConversation,
     SystemIntelligenceActionRequest,
@@ -15,8 +13,9 @@ from apps.system_intelligence.services.agents.context_manager import (
     RECENT_TARGET_TURNS,
     ensure_context_summary,
 )
+from apps.system_intelligence.services.agents.providers import resolve_route, route_problem
 
-from ..stream.send import build_stream_response, persist_user_message
+from ..stream.send import build_stream_response, conversation_turn_refusal, persist_user_message
 
 COMPACT_MIN_CANDIDATES = 2
 TITLE_MAX_LENGTH = 200
@@ -24,15 +23,15 @@ TITLE_MAX_LENGTH = 200
 
 def chat_command_view(request, conversation_id):
     """Dispatch a slash-command POSTed from the chat input."""
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
     if request.method != "POST":
         return JsonResponse({"error": "POST required"}, status=405)
     try:
         convo = ChatConversation.objects.get(id=conversation_id, created_by=request.user)
     except ChatConversation.DoesNotExist:
         return JsonResponse({"error": "Conversation not found"}, status=404)
+    refused = conversation_turn_refusal(request.user, convo)
+    if refused is not None:
+        return refused
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, AttributeError):
@@ -82,8 +81,9 @@ def _handle_compact(request, convo, _args):
 
     chat_config = SystemIntelligenceConfig.load()
     aws_config = AWSCredentialConfig.load()
-    if not aws_config.is_configured:
-        return JsonResponse({"error": "AWS credentials are not configured."}, status=400)
+    problem = route_problem(resolve_route(chat_config), aws_config=aws_config)
+    if problem:
+        return JsonResponse({"error": problem}, status=400)
     summary_text, meta = ensure_context_summary(
         convo,
         candidates,

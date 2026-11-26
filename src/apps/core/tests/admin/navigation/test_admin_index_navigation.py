@@ -143,29 +143,38 @@ class AdminIndexNavigationTest(_AdminIndexNavigationCase):
                 self.assertContains(response, 'href="/admin/projects/pastprojectsynclog/"')
                 self.assertContains(response, f'href="{active_href}" class="active"')
 
-    def test_system_intelligence_model_pages_render_as_admin_tabs(self):
+    def test_system_intelligence_log_pages_render_as_admin_tabs(self):
+        tab_links = (
+            "/admin/system-intelligence/usage/",
+            "/admin/system_intelligence/assistantconversationlog/",
+            "/admin/system_intelligence/assistantmessagelog/",
+            "/admin/system_intelligence/systemintelligenceactionrequest/",
+        )
         for url, active_href in (
-            (
-                reverse("admin:system_intelligence_systemintelligenceconfig_changelist"),
-                "/admin/system_intelligence/systemintelligenceconfig/",
-            ),
-            (
-                reverse("admin:system_intelligence_assistantconversationlog_changelist"),
-                "/admin/system_intelligence/assistantconversationlog/",
-            ),
+            (reverse("admin:system_intelligence_assistantconversationlog_changelist"), tab_links[1]),
+            (reverse("admin:system_intelligence_assistantmessagelog_changelist"), tab_links[2]),
+            (reverse("admin:system_intelligence_systemintelligenceactionrequest_changelist"), tab_links[3]),
         ):
             with self.subTest(url=url):
                 response = self.client.get(url)
 
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, 'id="tabs-items"')
-                self.assertContains(response, 'href="/admin/system_intelligence/systemintelligenceconfig/"')
-                self.assertContains(response, 'href="/admin/system-intelligence/usage/"')
-                self.assertContains(response, 'href="/admin/system_intelligence/assistantconversationlog/"')
+                for link in tab_links:
+                    self.assertContains(response, f'href="{link}"')
                 self.assertContains(response, f'href="{active_href}" class="active"')
 
         response = self.client.get(reverse("admin:system_intelligence_assistantconversationlog_changelist"))
-        html = response.content.decode()
-        sidebar_html = html.split('<div id="main"', maxsplit=1)[0]
-        self.assertNotIn("Usage Dashboard", sidebar_html)
+        sidebar_html = response.content.decode().split('<div id="main"', maxsplit=1)[0]
+        self.assertIn("<span>Usage & Logs</span>", sidebar_html)
+        self.assertIn("AI Providers", sidebar_html)
         self.assertNotIn("Conversation Logs", sidebar_html)
+        self.assertNotIn("Message Logs", sidebar_html)
+
+    def test_system_intelligence_configuration_pages_have_no_tab_bar(self):
+        for name in ("systemintelligenceconfig", "llmproviderconfig"):
+            with self.subTest(model=name):
+                response = self.client.get(reverse(f"admin:system_intelligence_{name}_changelist"))
+
+                self.assertEqual(response.status_code, 200)
+                self.assertNotContains(response, 'id="tabs-items"')

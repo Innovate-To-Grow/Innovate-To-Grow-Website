@@ -20,7 +20,6 @@ class EnsureDefaultAdminCommandTests(TestCase):
             last_name="Admin",
             is_active=True,
             is_staff=True,
-            is_superuser=True,
         )
         winner_contact = ContactEmail.objects.create(
             member=winner,
@@ -60,7 +59,6 @@ class EnsureDefaultAdminCommandTests(TestCase):
             last_name="Member",
             is_active=True,
             is_staff=False,
-            is_superuser=False,
         )
         winner_contact = ContactEmail.objects.create(
             member=winner,
@@ -73,7 +71,7 @@ class EnsureDefaultAdminCommandTests(TestCase):
         with (
             patch.object(Command, "_find_contact_for_update", side_effect=[None, winner_contact]),
             patch.dict("os.environ", {"DJANGO_SUPERUSER_PASSWORD": "loser-password"}),
-            self.assertRaisesMessage(CommandError, "not an active staff superuser"),
+            self.assertRaisesMessage(CommandError, "not an active Admin"),
         ):
             call_command(
                 Command(),
@@ -114,7 +112,6 @@ class EnsureDefaultAdminCommandTests(TestCase):
             last_name="Admin",
             is_active=True,
             is_staff=True,
-            is_superuser=True,
         )
         ContactEmail.objects.create(
             member=member,
@@ -143,7 +140,6 @@ class EnsureDefaultAdminCommandTests(TestCase):
             last_name="Admin",
             is_active=True,
             is_staff=True,
-            is_superuser=True,
         )
         contact = ContactEmail.objects.create(
             member=member,

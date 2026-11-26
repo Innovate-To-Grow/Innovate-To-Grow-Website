@@ -8,60 +8,19 @@ from django.utils import timezone
 
 from apps.core.models import EmailServiceConfig, MicrosoftGraphProviderConfig
 from apps.core.services.email.graph.mailbox import GraphMailboxReader
-from apps.core.tests.graph_helpers import create_graph_config
 from apps.mail.services.inbox.reading import graph_backend
 from apps.mail.services.inbox.reading.connection import InboxError
 from apps.mail.services.inbox.reading.formatting import format_date
 from apps.mail.services.inbox.reading.messages import message_summary
 from apps.mail.tests.services.delivery.graph_inbox.helpers import (
-    CLIENT_ID,
     GRAPH_MESSAGE,
     MAILBOX,
     MESSAGE_ID,
     SUMMARY_KEYS,
-    TENANT_ID,
     Permission,
     graph_config,
     imap_message,
 )
-
-
-class ActiveReaderTests(TestCase):
-    def setUp(self):
-        cache.clear()
-        EmailServiceConfig.objects.all().delete()
-        MicrosoftGraphProviderConfig.objects.all().delete()
-        EmailServiceConfig.objects.create(name="Prod", is_active=True, provider="graph", from_email=MAILBOX)
-
-    def test_returns_a_reader_for_the_sender_when_read_is_granted(self):
-        graph_config()
-
-        reader = graph_backend.active_reader()
-
-        self.assertIsInstance(reader, GraphMailboxReader)
-        self.assertEqual(reader.mailbox, MAILBOX)
-
-    def test_uses_the_configured_mailbox_over_the_from_address(self):
-        create_graph_config(
-            scope=("shared@contoso.com",),
-            name="Graph",
-            is_active=True,
-            tenant_id=TENANT_ID,
-            client_id=CLIENT_ID,
-            mailbox="Shared@Contoso.com",
-        )
-
-        self.assertEqual(graph_backend.active_reader().mailbox, "shared@contoso.com")
-
-    def test_none_without_read_permission(self):
-        graph_config(permission=Permission.SEND)
-
-        self.assertIsNone(graph_backend.active_reader())
-
-    def test_none_when_graph_is_not_configured(self):
-        self.assertIsNone(graph_backend.active_reader())
-        graph_config(is_active=False)
-        self.assertIsNone(graph_backend.active_reader())
 
 
 class ReaderForTests(TestCase):

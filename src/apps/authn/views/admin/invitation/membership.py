@@ -1,4 +1,4 @@
-"""Who an accepted invitation makes staff: a new member, or the verified member who already owns the address."""
+"""Who an accepted invitation makes an Admin: a new member, or the active verified member who owns the address."""
 
 from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
@@ -9,6 +9,10 @@ from apps.authn.models.members.admin_invitation import AdminInvitation
 
 class InvitationEmailConflict(Exception):
     """The invited address is already owned by a different member."""
+
+
+class InvitationInactiveMember(Exception):
+    """The invited address belongs to a deactivated member, which an invitation must not reactivate."""
 
 
 Member = None  # resolved lazily
@@ -59,6 +63,8 @@ class InvitationMembershipMixin:
         if not invitation.is_valid:
             if invitation.status == AdminInvitation.Status.PENDING and invitation.is_expired:
                 invitation.mark_expired()
+            elif invitation.status == AdminInvitation.Status.PENDING:
+                invitation.mark_cancelled()  # its sender is no longer an Admin
             return None
 
         return invitation
@@ -92,7 +98,7 @@ class InvitationMembershipMixin:
             # primitive (it moves a sign-in address between accounts) — the same thing the CLI
             # denylist exists to prevent. Refuse instead.
             raise InvitationEmailConflict(
-                "That email address already belongs to another member. Ask an I2G Master to resolve it."
+                "That email address already belongs to another member. Ask an Admin to resolve it."
             )
 
         contact.member = member
@@ -102,10 +108,14 @@ class InvitationMembershipMixin:
 
     def _upgrade_member(self, member, invitation):
         # Upgrade the member and mark the invitation accepted atomically so a
-        # failure between the two writes can't leave a staff-upgraded member with
-        # a still-PENDING invitation.
+        # failure between the two writes can't leave an upgraded member with
+        # a still-PENDING invitation. The token is a bearer secret and the request is
+        # unauthenticated, so it never reactivates a deactivated account: an Admin must
+        # reactivate it first (the invitation stays pending meanwhile).
         with transaction.atomic():
+            member = _get_member_model().objects.select_for_update().get(pk=member.pk)
+            if not member.is_active:
+                raise InvitationInactiveMember
             member.is_staff = True
-            member.is_active = True
-            member.save(update_fields=["is_staff", "is_active", "updated_at"])
+            member.save(update_fields=["is_staff", "updated_at"])  # Member.save() mirrors is_superuser
             invitation.mark_accepted(member)

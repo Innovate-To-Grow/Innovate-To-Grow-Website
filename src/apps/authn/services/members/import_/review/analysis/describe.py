@@ -5,9 +5,9 @@ from __future__ import annotations
 from ..lookup.records import EmailRecord, Snapshot
 from ..plan.actions import CREATE, CREATE_CLAIM, UPDATE, Action
 
-# Conflict slug → (code, title). The review lists the groups in this order of precedence.
+# Conflict slug → (code, title). The review lists the groups in this order of precedence. C2 (a conflict of the
+# former two-tier admin) is retired; the other codes keep their numbers.
 CONFLICTS = {
-    "privileged_target": ("C2", "A staff or superuser account"),
     "ambiguous_address": ("C3", "The address exists more than once, differing only in letter case"),
     "uuid_email_mismatch": ("C4", "The Member UUID and the Primary Email point to different members"),
     "uuid_not_found": ("C5", "The Member UUID matches nobody"),
@@ -18,6 +18,9 @@ CONFLICTS = {
     "exists_but_skip_mode": ("C9", "Matches an existing member, and the upload said to skip those"),
 }
 PRECEDENCE = list(CONFLICTS)
+# A row stored with a conflict that no longer exists (a batch staged before a rule changed): shown under this title
+# until the apply analyses it again and sends it back to the review.
+RETIRED_TITLE = "Analysed under a rule that no longer applies; it is checked again when you confirm"
 
 
 def conflict_code(conflict: str) -> str:
@@ -25,7 +28,9 @@ def conflict_code(conflict: str) -> str:
 
 
 def conflict_title(conflict: str) -> str:
-    return CONFLICTS[conflict][1] if conflict in CONFLICTS else ""
+    if not conflict:
+        return ""
+    return CONFLICTS[conflict][1] if conflict in CONFLICTS else RETIRED_TITLE
 
 
 def role_of(record: EmailRecord, snapshot: Snapshot) -> str:
@@ -64,13 +69,6 @@ def _duplicate(c: _Why) -> str:
     return f"Rows {rows} all resolve to {who}. Only one of them can be applied."
 
 
-def _privileged(c: _Why) -> str:
-    return (
-        f"You do not have permission to update {c.target.label} (only an I2G Master may change staff and superuser "
-        "accounts)."
-    )
-
-
 def _ambiguous(c: _Why) -> str:
     holders = "; ".join(f"{record.address} is {role_of(record, c.snapshot)}" for record in c.records)
     return (
@@ -107,7 +105,6 @@ def _skip_mode(c: _Why) -> str:
 
 _WHY = {
     "duplicate_in_sheet": _duplicate,
-    "privileged_target": _privileged,
     "ambiguous_address": _ambiguous,
     "uuid_email_mismatch": _mismatch,
     "uuid_not_found": lambda c: _uuid_not_found(c.values),

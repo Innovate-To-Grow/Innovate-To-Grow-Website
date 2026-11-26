@@ -16,7 +16,7 @@ from apps.projects.services.ai_search import (
 )
 from apps.projects.throttles import PastProjectAISearchRateThrottle
 from apps.system_intelligence.models import AssistantMessageLog, SystemIntelligenceConfig
-from apps.system_intelligence.services.bedrock import normalize_bedrock_model_id
+from apps.system_intelligence.services.agents.providers import PUBLIC_ROLE, resolve_route, route_problem
 from apps.system_intelligence.services.public_assistant import (
     FEATURE_AI_SEARCH,
     BudgetBackendUnavailable,
@@ -139,15 +139,16 @@ class PastProjectAISearchAPIView(APIView):
         # Token budgets are keyed on the MEMBER, never on the client IP (the
         # whole campus shares one). ip_hash is recorded in the audit log only.
         actor = member_actor(request.user.pk)
+        route = resolve_route(config, PUBLIC_ROLE)
         turn = _SearchTurn(
             request=request,
             config=config,
             query=query,
             ip_hash=hash_ip(client_ip(request) or ""),
-            model_id=normalize_bedrock_model_id(config.public_model_id) or "",
+            model_id=route.log_model_id,
             scope=scope,
         )
-        if not AWSCredentialConfig.load().is_configured or not turn.model_id:
+        if route_problem(route, aws_config=AWSCredentialConfig.load()):
             turn.log(AssistantMessageLog.STATUS_UNAVAILABLE)
             return _unavailable_response(config, query)
 

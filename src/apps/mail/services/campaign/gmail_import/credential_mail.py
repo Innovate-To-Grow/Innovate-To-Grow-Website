@@ -14,8 +14,6 @@ or not, so an outside sender cannot hide a message from staff by tagging it.
 
 from imap_tools import NOT, H
 
-from apps.core.models import EmailServiceConfig, GmailAccessAccount, GmailApiSubject
-from apps.core.models.base.service_credentials.gmail_api import normalize_subject
 from apps.core.services.email.sending.mime import CREDENTIAL_MAIL_CLASS, MAIL_CLASS_HEADER
 
 # IMAP SEARCH that leaves tagged messages out (RFC 3501 HEADER search).
@@ -33,13 +31,3 @@ def is_credential_mail(message) -> bool:
 
 def without_credential_mail(messages) -> list:
     return [message for message in messages if not is_credential_mail(message)]
-
-
-def sent_copies_kept(mailbox: str = "") -> bool:
-    """Whether Sent mail of the Gmail IMAP account may hold the site's credential mail: email is sent through the
-    Gmail API, or the account (*mailbox*, else the import account's) is on a Gmail API allow-list."""
-    email = EmailServiceConfig.load()
-    if email.is_active and email.provider == EmailServiceConfig.Provider.GMAIL:
-        return True
-    address = normalize_subject(mailbox or GmailAccessAccount.load().mailbox)
-    return bool(address) and GmailApiSubject.objects.filter(subject=address).exists()

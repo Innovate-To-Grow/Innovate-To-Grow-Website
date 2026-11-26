@@ -68,7 +68,6 @@ class EnsureDefaultAdminCommandTests(TestCase):
             last_name="User",
             is_active=False,
             is_staff=False,
-            is_superuser=False,
         )
         ContactEmail.objects.create(
             member=member,
@@ -79,7 +78,7 @@ class EnsureDefaultAdminCommandTests(TestCase):
         )
 
         with patch.dict("os.environ", {"DJANGO_SUPERUSER_PASSWORD": "new-password"}):
-            with self.assertRaisesMessage(CommandError, "not an active staff superuser"):
+            with self.assertRaisesMessage(CommandError, "not an active Admin"):
                 call_command(
                     Command(),
                     yes=True,
@@ -130,3 +129,28 @@ class EnsureDefaultAdminCommandTests(TestCase):
         self.assertEqual(contact.email_type, "primary")
         self.assertTrue(contact.verified)
         self.assertFalse(contact.subscribe)
+
+    def _existing(self, email, **flags):
+        member = get_user_model().objects.create_user(
+            password="existing-password", first_name="Existing", last_name="Admin", **flags
+        )
+        ContactEmail.objects.create(member=member, email_address=email, email_type="primary", verified=True)
+        return member
+
+    def test_an_active_admin_is_accepted_whatever_its_superuser_column(self):
+        """The command decides on ``is_staff``: a row whose ``is_superuser`` mirror is stale still boots."""
+        member = self._existing("stale-admin@example.com", is_active=True, is_staff=True)
+        get_user_model().objects.filter(pk=member.pk).update(is_superuser=False)
+        out = io.StringIO()
+
+        with patch.dict("os.environ", {}, clear=True):
+            call_command(Command(), yes=True, email="stale-admin@example.com", stdout=out)
+
+        self.assertIn("already exists; left unchanged", out.getvalue())
+
+    def test_an_inactive_admin_is_refused(self):
+        self._existing("inactive-admin@example.com", is_active=False, is_staff=True)
+
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaisesMessage(CommandError, "not an active Admin"):
+                call_command(Command(), yes=True, email="inactive-admin@example.com", stdout=io.StringIO())

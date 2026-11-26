@@ -21,10 +21,6 @@ def options(analysis) -> dict:
     return {item["value"]: item for item in analysis.options}
 
 
-def not_privileged(member) -> bool:
-    return not (member.is_staff or member.is_superuser)
-
-
 def roles(member) -> dict:
     return dict(member.contact_emails.values_list("email_address", "email_type"))
 

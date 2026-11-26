@@ -79,9 +79,9 @@ Per-command: `--json` is a back-compat alias for `--output json`; `--data` accep
 `records count <app> <model>` · `records wait <app> <model> --until field=value` ·
 `completion show <shell>` · `records create/update --generate-cli-skeleton` / `--cli-input-json`.
 
-Access requires the logged-in account be active **and** staff. The `apps`
-command filters its output through the account's `admin_apps` grants (superusers
-bypass that filter), and the backend enforces the same grants for model access.
+Access requires the logged-in account be an active **Admin** (active and staff).
+Every Admin reaches every app and model the admin API exposes; `apps` and
+`models` print what the server returns.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for release notes and [`docs/operations/cli-admin.md`](../docs/operations/cli-admin.md) for the authoritative reference.
 

@@ -8,7 +8,6 @@ from apps.cli_admin.services.crud import (
     cli_delete,
     cli_update,
 )
-from apps.cli_admin.services.resolve import CliAppAccessDenied
 from apps.core.services.db_tools.safe_orm import ActionRequestError, serialize_model_instance
 from apps.event.tests.helpers import make_admin
 from apps.projects.models import Project, Semester
@@ -16,7 +15,7 @@ from apps.projects.models import Project, Semester
 
 class CrudServiceTests(TestCase):
     def setUp(self):
-        self.actor = make_admin(apps=["projects"], email="crud@example.com")
+        self.actor = make_admin(email="crud@example.com")
 
     # ---- create ---------------------------------------------------------
     def test_create_success_writes_audit(self):
@@ -157,41 +156,4 @@ class CrudServiceTests(TestCase):
                 model_name="semester",
                 pk=str(sem.pk),
                 expected_snapshot={"year": 1900},
-            )
-
-    # ---- per-app access -------------------------------------------------
-    def test_create_without_app_access_denied(self):
-        other = make_admin(apps=["cms"], email="nocreate@example.com")
-        with self.assertRaises(CliAppAccessDenied):
-            cli_create(
-                actor=other,
-                request_ip=None,
-                app_label="projects",
-                model_name="semester",
-                fields={"year": 2099, "season": 1},
-            )
-
-    def test_update_without_app_access_denied(self):
-        sem = self._semester()
-        other = make_admin(apps=["cms"], email="noupdate@example.com")
-        with self.assertRaises(CliAppAccessDenied):
-            cli_update(
-                actor=other,
-                request_ip=None,
-                app_label="projects",
-                model_name="semester",
-                pk=str(sem.pk),
-                changes={"is_published": True},
-            )
-
-    def test_delete_without_app_access_denied(self):
-        sem = self._semester()
-        other = make_admin(apps=["cms"], email="nodelete@example.com")
-        with self.assertRaises(CliAppAccessDenied):
-            cli_delete(
-                actor=other,
-                request_ip=None,
-                app_label="projects",
-                model_name="semester",
-                pk=str(sem.pk),
             )

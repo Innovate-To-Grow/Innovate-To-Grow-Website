@@ -4,8 +4,8 @@
 A token is ``SMS_POLICY["link_token_bytes"]`` random bytes (128 bits by default, 22 URL-safe characters), so the URL
 holds no member, phone or event and cannot be guessed. Only its SHA-256 digest is stored, except for a shared link,
 which signs nobody in. Every link expires; a personal one signs its member in once (``first_used_at`` is claimed
-with one conditional UPDATE, so two clicks cannot both sign in) and is never issued to staff, a superuser or an
-inactive member.
+with one conditional UPDATE, so two clicks cannot both sign in) and is never issued to an Admin or an inactive
+member.
 
 A personal link reaches no further than signing in with a code texted to the same number would: it is issued only
 when the number it is texted to is the member's own verified account phone, and opening it checks that the member

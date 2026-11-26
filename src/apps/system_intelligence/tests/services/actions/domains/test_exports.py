@@ -27,7 +27,7 @@ class CreateExportTests(SystemIntelligenceActionBase):
         self.assertEqual(export.model_label, "authn.Member")
         self.assertTrue(export.filename.endswith(".xlsx"))
         # All admin users + the 3 we created should be in the workbook.
-        workbook = load_workbook(export.file.path, read_only=True)
+        workbook = load_workbook(export.private_file.path, read_only=True)
         sheet = workbook.active
         rows = list(sheet.iter_rows(values_only=True))
         self.assertEqual(len(rows), 5)  # header + 4 data rows
@@ -55,7 +55,7 @@ class CreateExportTests(SystemIntelligenceActionBase):
             fields=["first_name", "email"],
         )
         self.assertEqual(set(export.field_names), {"first_name", "email"})
-        workbook = load_workbook(export.file.path, read_only=True)
+        workbook = load_workbook(export.private_file.path, read_only=True)
         sheet = workbook.active
         headers = next(sheet.iter_rows(values_only=True))
         self.assertEqual(len(headers), 2)

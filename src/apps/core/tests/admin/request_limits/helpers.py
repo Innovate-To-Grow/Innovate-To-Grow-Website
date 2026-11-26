@@ -1,5 +1,5 @@
-"""Shared setup for the Site Settings → Request Limits admin tests: a Core-app staff member, a fake request-limit
-clock and a clean in-process limiter state."""
+"""Shared setup for the Site Settings → Request Limits admin tests: an Admin, a fake request-limit clock and a clean
+in-process limiter state."""
 
 from django.conf import settings
 from django.core.cache import cache
@@ -17,13 +17,13 @@ STATUS_URL = "/admin/core/request-limits/status/"
 
 
 class RequestLimitsAdminTestCase(TestCase):
-    """Signed in as a staff member who holds only the Core (System) app."""
+    """Signed in as an Admin."""
 
     def setUp(self):
         cache.clear()
         self.addCleanup(cache.clear)
         self.clock = isolate(self)
-        self.staff = make_admin(apps=["core"], email="corestaff@example.com")
+        self.staff = make_admin(email="admin@example.com")
         self.client.force_login(self.staff)
         self.url = reverse("admin:core_request_limits")
         self.status_url = reverse("admin:core_request_limits_status")

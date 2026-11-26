@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.utils.crypto import salted_hmac
 
 from apps.core.models import LegacyAccessGrant
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_is_admin
 
 from .contracts import (
     LEGACY_ACCESS_CODE_TTL_SECONDS,
@@ -33,8 +33,8 @@ def issue_legacy_access_grant(request) -> IssuedLegacyAccessGrant:
     """Create a one-minute, one-time code bound to the current admin session."""
 
     user = request.user
-    if not user_can_access_app(user, "core"):
-        raise LegacyViewerAccessDenied("Core admin access is required.")
+    if not user_is_admin(user):
+        raise LegacyViewerAccessDenied("Admin access is required.")
 
     source_session_key = request.session.session_key
     if not source_session_key:
@@ -82,7 +82,7 @@ def exchange_legacy_access_code(code: str) -> LegacyViewerSession:
         grant = LegacyAccessGrant.objects.select_related("user").get(code_digest=digest)
 
     user = grant.user
-    if not user_can_access_app(user, "core") or not source_session_is_valid(
+    if not user_is_admin(user) or not source_session_is_valid(
         user,
         grant.source_session_key,
         grant.source_session_expires_at,

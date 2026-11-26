@@ -13,11 +13,6 @@ from apps.event.tests.helpers import (  # noqa: F401 (re-exported for tests)
 
 VALID_REDIRECT_URI = "http://127.0.0.1:54321/callback"
 
-# Apps the generic CLI test staff member can reach. Covers every non-denied app the
-# record/CRUD suites exercise so per-app access enforcement does not break unrelated
-# coverage; per-app behavior is tested explicitly in test_app_access.py.
-DEFAULT_STAFF_APPS = ("projects", "cms", "event", "mail", "core", "system_intelligence")
-
 
 def challenge_for(verifier):
     """Compute the S256 code_challenge for a verifier (must match pkce.verify_pkce_s256)."""
@@ -25,11 +20,9 @@ def challenge_for(verifier):
     return base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
-def make_staff(email="staff@example.com", *, apps=DEFAULT_STAFF_APPS, **kwargs):
-    """An app-scoped staff member for CLI tests. Grants ``apps`` (default: the
-    non-denied apps the record suites use) so per-app access enforcement does not
-    interfere; pass ``apps=[]`` for a staff member with no app grants."""
-    return make_member(email=email, is_staff=True, admin_apps=list(apps), **kwargs)
+def make_staff(email="staff@example.com", **kwargs):
+    """An Admin for CLI tests (every Admin may use every app the CLI does not deny)."""
+    return make_member(email=email, is_staff=True, **kwargs)
 
 
 def issue_token(member, **kwargs):

@@ -6,6 +6,8 @@ from django.core.cache import cache
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
+from apps.event.tests.helpers import make_member
+
 from ...models import Ticket, TicketAttachment, TicketEvent, TicketMessage
 from .. import corpus
 from ..helpers import FakeReader, helpdesk_staff, make_admin, receive
@@ -71,7 +73,12 @@ class TimelineTests(TicketPageTestCase):
 
         self.assertContains(response, "<details>")
         self.assertContains(response, "Automatic reply")
-        self.assertContains(response, "automated, hidden from the default queue")
+        # The classification says how a person's message misread as automated mail gets back to the queue.
+        self.assertContains(
+            response,
+            "Automatic reply — hidden from the default queue. If a person wrote it, use "
+            "&quot;Not automated: move to the queue&quot; beside Save at the bottom of this page.",
+        )
 
     def test_events_and_notes_appear_in_order(self):
         self.client.post(reverse("admin:helpdesk_ticket_note", args=[self.ticket.pk]), {"body": "Called the sender."})
@@ -86,20 +93,35 @@ class TimelineTests(TicketPageTestCase):
 class SaveTests(TicketPageTestCase):
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
     def test_a_change_saves_without_typed_confirmation_and_is_audited(self):
-        data = {"status": Status.PENDING_CUSTOMER, "priority": "high", "category": "", "assignee": str(self.agent.pk)}
+        # Impact 1 × urgency 2 makes the priority High (the priority itself is read-only on the page).
+        data = {
+            "status": Status.PENDING_CUSTOMER,
+            "impact": "1",
+            "urgency": "2",
+            "priority": "low",
+            "category": "",
+            "assignee": str(self.agent.pk),
+        }
 
         response = self.client.post(self.url, data)
 
         self.assertEqual(response.status_code, 302)
         self.ticket.refresh_from_db()
         self.assertEqual(
-            (self.ticket.status, self.ticket.priority, self.ticket.assignee),
-            (Status.PENDING_CUSTOMER, "high", self.agent),
+            (self.ticket.status, self.ticket.impact, self.ticket.priority, self.ticket.assignee),
+            (Status.PENDING_CUSTOMER, 1, "high", self.agent),
         )
         kinds = set(self.ticket.events.values_list("kind", flat=True))
-        self.assertTrue({TicketEvent.Kind.STATUS, TicketEvent.Kind.PRIORITY, TicketEvent.Kind.ASSIGNED} <= kinds)
-        self.assertEqual(
-            LogEntry.objects.get(object_id=str(self.ticket.pk)).change_message, "Changed status, priority, assignee."
+        expected = {
+            TicketEvent.Kind.STATUS,
+            TicketEvent.Kind.IMPACT,
+            TicketEvent.Kind.PRIORITY,
+            TicketEvent.Kind.ASSIGNED,
+        }
+        self.assertTrue(expected <= kinds)
+        self.assertEqual(  # the fields as the page names them
+            LogEntry.objects.get(object_id=str(self.ticket.pk)).change_message,
+            "Changed status, impact, priority, assigned to.",
         )
 
     def test_saving_never_overwrites_what_the_ingest_wrote_meanwhile(self):
@@ -110,8 +132,8 @@ class SaveTests(TicketPageTestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.participants, ["pat@example.org", "new@example.org"])
 
-    def test_an_assignee_who_lost_the_grant_still_lets_the_page_save(self):
-        former = make_admin(apps=["mail"], email="former@example.com")
+    def test_an_assignee_who_is_no_longer_an_admin_still_lets_the_page_save(self):
+        former = make_member(email="former@example.com")
         Ticket.objects.filter(pk=self.ticket.pk).update(assignee=former, requester_name="")
 
         page = self.client.get(self.url)
@@ -124,8 +146,9 @@ class SaveTests(TicketPageTestCase):
         self.ticket.refresh_from_db()
         self.assertEqual((self.ticket.status, self.ticket.assignee), (Status.OPEN, former))
 
-    def test_only_helpdesk_staff_can_be_chosen_as_assignee(self):
-        outsider = make_admin(apps=["mail"], email="mailer@example.com")
+    def test_only_admins_can_be_chosen_as_assignee(self):
+        outsider = make_member(email="member@example.com")
+        colleague = make_admin(email="colleague@example.com")
 
         response = self.client.post(
             self.url, {"status": Status.OPEN, "priority": "normal", "category": "", "assignee": str(outsider.pk)}
@@ -133,6 +156,12 @@ class SaveTests(TicketPageTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("assignee", response.context["adminform"].form.errors)
+        response = self.client.post(
+            self.url, {"status": Status.OPEN, "priority": "normal", "category": "", "assignee": str(colleague.pk)}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.ticket.refresh_from_db()
+        self.assertEqual(self.ticket.assignee, colleague)
 
 
 class NoteTests(TicketPageTestCase):

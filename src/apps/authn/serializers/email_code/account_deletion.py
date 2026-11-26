@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from django.contrib.auth import get_user_model
+from django.db import transaction
 from rest_framework import serializers
 
 from apps.authn.constants import VERIFICATION_INVALID
@@ -13,13 +15,22 @@ from apps.authn.services import (
     normalize_email,
     verify_email_code_and_mint_token,
 )
+from apps.authn.services.members.admins import DELETE, admin_removal_refusal
 
 from .base import PURPOSE, BaseCodeVerifySerializer
+
+
+def _refuse_admin_self_deletion(member) -> None:
+    """An Admin cannot delete their own account here (another Admin must), and the last Admin is never deleted."""
+    refusal = admin_removal_refusal(member, [member], action=DELETE)
+    if refusal:
+        raise serializers.ValidationError({"detail": refusal})
 
 
 class DeleteAccountCodeRequestSerializer(serializers.Serializer):
     def validate(self, attrs):
         member = self.context["request"].user
+        _refuse_admin_self_deletion(member)
         email = member.get_primary_email()
         if not email:
             raise serializers.ValidationError(
@@ -46,6 +57,7 @@ class DeleteAccountCodeVerifySerializer(serializers.Serializer):
 
     def validate(self, attrs: dict) -> dict:
         member = self.context["request"].user
+        _refuse_admin_self_deletion(member)
         email = member.get_primary_email()
         if not email:
             raise serializers.ValidationError(
@@ -81,10 +93,14 @@ class DeleteAccountCodeConfirmSerializer(serializers.Serializer):
 
     def save(self):
         member = self.context["request"].user
-        consume_verification_token(
-            purpose=PURPOSE.ACCOUNT_DELETE,
-            verification_token=self.validated_data["verification_token"],
-            member=member,
-        )
-        delete_member_account(member=member)
+        with transaction.atomic():
+            # Re-read the account under a lock: it may have been made an Admin since the code was sent.
+            member = get_user_model().objects.select_for_update().get(pk=member.pk)
+            _refuse_admin_self_deletion(member)
+            consume_verification_token(
+                purpose=PURPOSE.ACCOUNT_DELETE,
+                verification_token=self.validated_data["verification_token"],
+                member=member,
+            )
+            delete_member_account(member=member)
         return {"message": "Account deleted successfully."}

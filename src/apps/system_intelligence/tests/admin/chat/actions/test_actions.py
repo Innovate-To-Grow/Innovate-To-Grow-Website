@@ -1,4 +1,3 @@
-from django.core.cache import cache
 from django.urls import reverse
 
 from apps.cms.models import CMSBlock, CMSPage, NewsFeedSource
@@ -51,8 +50,7 @@ class SystemIntelligenceAdminActionTests(SystemIntelligenceAdminBase):
         payload = self._propose_cms_update()
         action = SystemIntelligenceActionRequest.objects.get(id=payload["action_request"]["id"])
 
-        cached = cache.get(f"cms:preview:{action.preview_token}")
-        self.assertIsNotNone(cached)
+        self.assertFalse(action.preview_token)
         response = self.client.get(reverse("admin:system_intelligence_action_full_preview", args=[action.id]))
 
         self.assertEqual(response.status_code, 200)

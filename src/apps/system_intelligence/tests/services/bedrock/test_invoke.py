@@ -1,5 +1,6 @@
 """Tests for bedrock converse / streaming / stream_parser / prepare / clients."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
@@ -31,7 +32,8 @@ class BuildKwargsTest(SimpleTestCase):
             "apps.system_intelligence.services.bedrock.clients.prepare.get_tool_definitions",
             return_value=[{"toolSpec": {"name": "x"}}],
         ):
-            kwargs = build_kwargs(cfg, "model-1")
+            user = SimpleNamespace(is_authenticated=True, is_staff=True, is_active=True, is_superuser=True)
+            kwargs = build_kwargs(cfg, "model-1", user=user)
         self.assertEqual(kwargs["modelId"], "model-1")
         self.assertEqual(kwargs["inferenceConfig"], {"maxTokens": 1024, "temperature": 0.5})
         self.assertEqual(kwargs["system"], [{"text": "You are helpful."}])

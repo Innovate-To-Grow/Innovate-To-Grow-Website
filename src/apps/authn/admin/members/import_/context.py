@@ -6,7 +6,12 @@ review shows exactly what was analysed; the apply re-reads the records and refus
 
 from ....services.members.import_.review import stored_analysis
 from ....services.members.import_.review.analysis.choices import BULK_CHOICES, BULK_LABELS
-from ....services.members.import_.review.analysis.describe import PRECEDENCE, conflict_code, conflict_title
+from ....services.members.import_.review.analysis.describe import (
+    PRECEDENCE,
+    RETIRED_TITLE,
+    conflict_code,
+    conflict_title,
+)
 from ....services.members.import_.review.analysis.risky import RISKY_TYPES
 from ....services.members.import_.review.lookup import snapshot_from_slice
 from ....services.members.import_.review.staging.selection import plan_for, selection_problems, summarize, tick_items
@@ -30,7 +35,6 @@ CELL_ORDER = (
     "phone_number",
     "phone_subscribed",
     "is_active",
-    "is_staff",
 )
 _PROFILE = ("first_name", "middle_name", "last_name", "organization", "title")
 
@@ -120,6 +124,9 @@ def review_sections(batch) -> dict:
                     "bulk": [(value, BULK_LABELS[value]) for value in BULK_CHOICES[conflict]],
                 }
             )
+    retired = [v for v in by_status["needs_decision"] if v["row"].conflict not in PRECEDENCE]
+    if retired:
+        decisions.append({"conflict": "retired", "code": "", "title": RETIRED_TITLE, "views": retired, "bulk": []})
     risky = _risky_groups(views)
     selections = {row.row_number: (row.choice, row.ticks) for row in rows}
     return {

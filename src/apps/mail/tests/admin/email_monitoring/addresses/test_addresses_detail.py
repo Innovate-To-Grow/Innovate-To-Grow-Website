@@ -79,28 +79,27 @@ class DetailTests(TestCase):
         row.save(update_fields=["suppressed_at"])
         self.assertNotContains(self.client.get(reverse(DETAIL, args=[row.pk])), "Prepare one-address draft")
 
-    def test_a_members_other_addresses_are_shown_only_with_the_members_app(self):
-        member = make_person("card@example.org", first="Cara")
-        add_email(member, "hidden-alt@example.org", verified=True)
+    def test_every_admin_sees_a_members_other_addresses_and_an_admin_badge(self):
+        colleague = make_admin(email="card@example.org", first_name="Cara", last_name="Doe")
+        add_email(colleague, "other-alt@example.org", verified=True)
         row = make_row("card@example.org")
-        self.client.force_login(make_admin(apps=["mail"], email="mailstaff@example.org"))
+        self.client.force_login(make_admin(email="viewer@example.org"))
 
         response = self.client.get(reverse(DETAIL, args=[row.pk]))
 
         self.assertContains(response, "Cara Doe")
-        self.assertNotContains(response, "hidden-alt@example.org")
-        self.assertContains(response, "shown to staff who also hold the Members app")
-        self.client.force_login(make_admin(apps=["mail", "authn"], email="memberstaff@example.org"))
-        self.assertContains(self.client.get(reverse(DETAIL, args=[row.pk])), "hidden-alt@example.org")
+        self.assertContains(response, "other-alt@example.org")
+        self.assertContains(response, '<span class="i2g-monitor-badge i2g-monitor-badge--warn">Admin</span>', html=True)
+        self.assertContains(response, reverse("admin:authn_member_change", args=[colleague.pk]))
+        self.assertNotContains(response, "I2G Master")
 
     def test_disabled_actions_say_why(self):
         make_person("why@example.org")
         row = make_row("why@example.org")
-        self.client.force_login(make_admin(apps=["mail"], email="mailstaff@example.org"))
 
         response = self.client.get(reverse(DETAIL, args=[row.pk]))
 
-        self.assertContains(response, "Needs the Members (authn) app as well as Mail.")
+        self.assertContains(response, "The address is a member&#x27;s contact email: use Mark undeliverable.")
         self.assertContains(response, "disabled aria-disabled")
 
     def test_an_ambiguous_address_lists_every_contact_record(self):

@@ -12,7 +12,7 @@ from django.utils.html import escape
 from apps.core.models import AWSCredentialConfig, EmailServiceConfig
 from apps.core.models.base.service_credentials.email import GMAIL_ACTIVATION_REQUIRED
 from apps.core.tests.gmail_api_helpers import CLIENT_ID, SERVICE_ACCOUNT, SUBJECT, make_config
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
@@ -33,7 +33,7 @@ class GmailNotificationDeliveryTests(TestCase):
         patcher = patch("botocore.client.BaseClient._make_api_call", side_effect=AssertionError("no AWS calls"))
         patcher.start()
         self.addCleanup(patcher.stop)
-        self.mail_staff = make_admin(apps=["mail"], email="mail-only@example.com")
+        self.admin_user = make_admin(email="mail-admin@example.com")
         self.edit_url = reverse("admin:mail_settings_edit")
 
     def post(self, provider="gmail", **extra):
@@ -52,29 +52,26 @@ class GmailNotificationDeliveryTests(TestCase):
         }
         return self.client.post(self.edit_url, data | extra)
 
-    def test_the_panel_is_read_only_for_mail_staff(self):
-        make_config()
-        self.client.force_login(self.mail_staff)
+    def test_the_panel_is_read_only_and_links_to_the_config(self):
+        config = make_config()
+        self.client.force_login(self.admin_user)
         response = self.client.get(self.edit_url)
         self.assertContains(response, 'id="gmail-provider-settings"')
         self.assertContains(response, CLIENT_ID)
         self.assertContains(response, SERVICE_ACCOUNT)
         self.assertNotContains(response, "service_account_key")
-        self.assertNotContains(response, reverse("admin:core_gmailapiproviderconfig_changelist"))
-        self.assertContains(response, "Managing the Gmail API configuration needs the Core app.")
+        self.assertContains(response, reverse("admin:core_gmailapiproviderconfig_change", args=[config.pk]))
+        self.assertNotContains(response, "needs the Core app")
         self.assertContains(response, '<option value="gmail"')
 
-    def test_superusers_and_core_staff_get_the_link_to_the_config(self):
-        config = make_config()
-        for user in (make_superuser(), make_admin(apps=["mail", "core"], email="core-mail@example.com")):
-            with self.subTest(superuser=user.is_superuser):
-                self.client.force_login(user)
-                response = self.client.get(self.edit_url)
-                self.assertContains(response, reverse("admin:core_gmailapiproviderconfig_change", args=[config.pk]))
+    def test_without_a_saved_config_it_links_to_adding_one(self):
+        self.client.force_login(self.admin_user)
+        response = self.client.get(self.edit_url)
+        self.assertContains(response, reverse("admin:core_gmailapiproviderconfig_add"))
 
     def test_switching_needs_the_access_check_evidence(self):
         config = make_config(checked=False)
-        self.client.force_login(self.mail_staff)
+        self.client.force_login(self.admin_user)
         response = self.post()
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, escape(GMAIL_ACTIVATION_REQUIRED))
@@ -87,16 +84,16 @@ class GmailNotificationDeliveryTests(TestCase):
         self.email.refresh_from_db()
         self.assertEqual(self.email.provider, "gmail")
 
-    def test_mail_staff_cannot_send_as_an_address_off_the_list(self):
+    def test_an_admin_cannot_send_as_an_address_off_the_list(self):
         make_config()
-        self.client.force_login(self.mail_staff)
+        self.client.force_login(self.admin_user)
         response = self.post(**{"email-from_email": "dean@g.ucmerced.edu"})
         self.assertContains(response, escape(GMAIL_ACTIVATION_REQUIRED))
 
     def test_the_summary_names_the_gmail_api(self):
         make_config()
         EmailServiceConfig.objects.filter(pk=self.email.pk).update(provider="gmail")
-        self.client.force_login(self.mail_staff)
+        self.client.force_login(self.admin_user)
         response = self.client.get(reverse("admin:mail_settings"))
         self.assertContains(response, f"Gmail API ({SUBJECT})")
         self.assertContains(response, 'id="gmail-provider-summary"')

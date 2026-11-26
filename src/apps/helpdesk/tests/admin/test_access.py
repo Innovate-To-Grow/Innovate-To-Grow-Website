@@ -8,6 +8,7 @@ from apps.core.models import (
     BackgroundJob,
     MicrosoftGraphProviderConfig,
 )
+from apps.event.tests.helpers import make_member
 from apps.helpdesk.tests.admin.test_intake_admin import IntakeAdminTestCase, posted, to_minute
 
 from ...models import HelpdeskSettings
@@ -16,7 +17,7 @@ from ...services.intake import jobs as intake_jobs
 from ...services.intake import state as intake_state
 from .. import corpus
 from ..corpus import SITE
-from ..helpers import FakeReader, make_admin, make_superuser, queue
+from ..helpers import FakeReader, make_admin, queue
 
 
 class AccessTests(IntakeAdminTestCase):
@@ -28,12 +29,15 @@ class AccessTests(IntakeAdminTestCase):
             {"action": "lookback", "lookback_hours": "100"},
         )
 
-    def test_staff_without_the_helpdesk_grant_can_change_nothing(self):
-        self.client.force_login(make_admin(apps=["mail", "core"], email="mailer@example.com"))
+    def test_members_who_are_not_admins_can_change_nothing(self):
+        self.client.force_login(make_member(email="member@example.com"))
 
         for data in self.actions():
             with self.subTest(action=data["action"]):
-                self.assertEqual(self.client.post(self.url, data).status_code, 403)
+                response = self.client.post(self.url, data)
+
+                self.assertEqual(response.status_code, 302)
+                self.assertIn("/login/", response["Location"])
         self.assertUnchanged()
         self.assertFalse(BackgroundJob.objects.exists())
 
@@ -48,8 +52,8 @@ class AccessTests(IntakeAdminTestCase):
                 self.assertIn("/login/", response["Location"])
         self.assertUnchanged()
 
-    def test_superusers_may_use_the_controls(self):
-        self.client.force_login(make_superuser(email="master@example.com"))
+    def test_any_admin_may_use_the_controls(self):
+        self.client.force_login(make_admin(email="other-admin@example.com"))
 
         self.post(action="pause")
 

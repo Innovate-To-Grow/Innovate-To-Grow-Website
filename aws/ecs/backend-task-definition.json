@@ -108,6 +108,10 @@
           "value": "__AWS_STORAGE_BUCKET_NAME__"
         },
         {
+          "name": "AWS_PRIVATE_EXPORT_BUCKET_NAME",
+          "value": "__AWS_PRIVATE_EXPORT_BUCKET_NAME__"
+        },
+        {
           "name": "AWS_S3_REGION_NAME",
           "value": "__AWS_S3_REGION_NAME__"
         },

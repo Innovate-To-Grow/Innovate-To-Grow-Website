@@ -31,8 +31,12 @@ All content management happens through the Django admin interface, which uses th
 
 - **URL**: `/admin/` (custom login at `/admin/login/`)
 - **Login**: Uses the custom `AdminLoginView` from the `authn` app
-- **Superuser creation**: `python manage.py createsuperuser` — prompts for email, not username
-- **Admin invitations**: Staff can send invitations via `AdminInvitation` model
+- **Who can sign in**: Admins only (active members with `is_staff`). There are two kinds of account, Admin and
+  regular member, and every Admin has every permission; see
+  [account types](member-and-mail-tools.md#account-types-admin-and-regular-member)
+- **Admin creation**: `python manage.py createsuperuser` (Django's command name) creates an Admin — prompts for
+  email, not username
+- **Admin invitations**: any Admin can invite a new Admin through the `AdminInvitation` model
 
 ## Related sections
 

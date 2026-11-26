@@ -1,4 +1,3 @@
-from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, JsonResponse
 
 from apps.core.utils.access import user_can_access_app
@@ -14,19 +13,25 @@ def export_download_view(request, export_id):
     even if a download URL leaks (the URL space is unguessable but treat it as
     capability + auth, not capability alone).
     """
-    # admin_view only enforces is_staff; re-check the per-app model here.
-    if not user_can_access_app(request.user, "system_intelligence"):
-        raise PermissionDenied("You do not have permission to access System Intelligence.")
     try:
         export = SystemIntelligenceExport.objects.get(id=export_id, created_by=request.user)
     except SystemIntelligenceExport.DoesNotExist:
         return JsonResponse({"error": "Export not found"}, status=404)
-    if not export.file:
+    app_label, dot, _model = export.model_label.partition(".")
+    if not dot or not user_can_access_app(request.user, app_label):
+        return JsonResponse({"error": "Export not found"}, status=404)
+    file = export.private_file or export.file
+    if not file:
+        return JsonResponse({"error": "Export file is missing on storage"}, status=410)
+    try:
+        stream = file.open("rb")
+    except FileNotFoundError:
         return JsonResponse({"error": "Export file is missing on storage"}, status=410)
     response = FileResponse(
-        export.file.open("rb"),
+        stream,
         as_attachment=True,
         filename=export.filename,
         content_type=XLSX_CONTENT_TYPE,
     )
+    response["Cache-Control"] = "private, no-store"
     return response

@@ -27,8 +27,8 @@ def messages_of(response) -> list[str]:
 class ConfirmApplyTests(TestCase):
     def setUp(self):
         cache.clear()
-        self.master = make_superuser()
-        self.client.force_login(self.master)
+        self.admin_user = make_superuser()
+        self.client.force_login(self.admin_user)
 
     def seen(self, row) -> str:
         return fingerprint(load_target(BouncedAddress.objects.get(pk=row.pk)))
@@ -72,19 +72,30 @@ class ConfirmApplyTests(TestCase):
         self.assertIsNone(row.suppressed_at)
 
     def test_a_refused_guard_goes_back_to_the_address_with_the_reason(self):
-        make_person("member@example.org")
-        row = make_row("member@example.org")
-        self.client.force_login(make_admin(apps=["mail"], email="mailstaff@example.org"))
+        # The Admin lockout rules: nobody deactivates or deletes their own Admin account from this page either.
+        row = make_row("admin@example.com")
 
-        for step in ("confirm", "apply"):
-            with self.subTest(step=step):
-                response = self.client.post(
-                    reverse(ACTION, args=[row.pk, "mark_undeliverable"]), {"step": step, "fingerprint": self.seen(row)}
-                )
-                self.assertRedirects(response, reverse(DETAIL, args=[row.pk]), fetch_redirect_response=False)
-                self.assertIn("Needs the Members (authn) app", messages_of(response)[-1])
-        row.refresh_from_db()
-        self.assertIsNone(row.suppressed_at)
+        for action in ("deactivate", "delete_account"):
+            for step in ("confirm", "apply"):
+                with self.subTest(action=action, step=step):
+                    response = self.client.post(
+                        reverse(ACTION, args=[row.pk, action]), {"step": step, "fingerprint": self.seen(row)}
+                    )
+                    self.assertRedirects(response, reverse(DETAIL, args=[row.pk]), fetch_redirect_response=False)
+                    self.assertIn("your own Admin account", messages_of(response)[-1])
+        self.admin_user.refresh_from_db()
+        self.assertTrue(self.admin_user.is_active)
+
+    def test_an_admin_deactivates_another_admins_account(self):
+        colleague = make_admin(email="colleague@example.org")
+        row = make_row("colleague@example.org")
+        url = reverse(ACTION, args=[row.pk, "deactivate"])
+
+        response = self.client.post(url, {"step": "apply", "fingerprint": self.seen(row)})
+
+        self.assertRedirects(response, reverse(DETAIL, args=[row.pk]), fetch_redirect_response=False)
+        colleague.refresh_from_db()
+        self.assertFalse(colleague.is_active)
 
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
     def test_delete_email_asks_for_the_typed_address(self):

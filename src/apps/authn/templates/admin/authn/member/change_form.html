@@ -20,3 +20,10 @@
         </li>
     {% endif %}
 {% endblock %}
+
+{% block form_before %}
+    {{ block.super }}
+    {% if own_account_note %}
+        <div id="own-account-note">{% with message=own_account_note %}{% include "unfold/helpers/messages/info.html" %}{% endwith %}</div>
+    {% endif %}
+{% endblock %}

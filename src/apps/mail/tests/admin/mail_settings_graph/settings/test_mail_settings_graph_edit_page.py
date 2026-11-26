@@ -52,32 +52,18 @@ class EditPageRenderingTests(GraphSettingsTestCase):
         self.assertIn("hidden", self.panel_attrs(response, "graph-provider-settings"))
         self.assertNotContains(response, "existing-secret")
 
-    def test_superusers_and_core_staff_get_a_link_to_the_graph_config_but_no_certificate_actions(self):
-        graph = self.make_graph()
-        config_url = reverse(GRAPH_CONFIG_URL_NAME, args=[graph.pk])
-        for user in (self.admin_user, make_admin(apps=["mail", "core"], email="core-mail@example.com")):
-            with self.subTest(superuser=user.is_superuser):
-                self.client.force_login(user)
-
-                response = self.client.get(self.edit_url)
-
-                self.assertContains(response, config_url)
-                self.assertNotContains(response, f"{config_url.removesuffix('change/')}certificate/install/")
-
-    def test_mail_only_staff_see_the_graph_config_without_any_link_to_change_it(self):
+    def test_admins_get_a_link_to_the_graph_config_but_no_certificate_actions(self):
         graph = self.make_graph()
         self.use_provider("graph")
-        self.client.force_login(make_admin(apps=["mail"], email="mail-only@example.com"))
+        config_url = reverse(GRAPH_CONFIG_URL_NAME, args=[graph.pk])
+        self.client.force_login(make_admin(email="any-admin@example.com"))
 
         response = self.client.get(self.edit_url)
 
-        self.assertEqual(response.status_code, 200)
         self.assertContains(response, graph.current_certificate.sha1_thumbprint)
-        self.assertNotContains(response, "/admin/core/microsoftgraphproviderconfig/")
-        self.assertContains(
-            response,
-            "Changing the Microsoft Graph configuration, its certificate or running its access check needs the Core app",
-        )
+        self.assertContains(response, config_url)
+        self.assertNotContains(response, f"{config_url.removesuffix('change/')}certificate/install/")
+        self.assertNotContains(response, "needs the Core app")
 
     def test_without_a_graph_config_the_panel_says_so_and_links_to_the_add_page(self):
         self.use_provider("graph")

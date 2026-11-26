@@ -11,12 +11,12 @@ class MemberExportFieldsTest(TestCase):
     def test_export_fields_exclude_sensitive_columns(self):
         """Without the explicit ``export_fields`` allowlist, the generic export offered (and
         previewed on the column-picker page) the base64 profile image, the password hash,
-        ``is_superuser``, the ``admin_apps`` grant list and the vestigial AbstractUser ``email``."""
+        ``is_superuser`` (a mirror of ``is_staff``) and the vestigial AbstractUser ``email``."""
         member_admin = admin.site._registry[Member]
 
         exported = {name for name, _label in member_admin.get_export_fields()}
 
-        for column in ("profile_image", "password", "is_superuser", "admin_apps", "email"):
+        for column in ("profile_image", "password", "is_superuser", "email"):
             self.assertNotIn(column, exported)
         # Sanity check that the curated columns are the ones actually offered.
         self.assertIn("first_name", exported)

@@ -1,14 +1,11 @@
-"""Member writes through an approved action stay on the staff side of the staff/superuser line.
+"""The rules for Member writes through an approved assistant action.
 
-``check_model_permission`` checks only the section grant. Without this, a staffer holding the Members (``authn``) grant
-could use the assistant to change or delete another staff or superuser account, or to give themselves more admin
-sections. The rules are stricter than ``MemberAdmin``'s, which still lets a staffer edit the name, title or
-organization of another staff account (it locks only staff status, the admin sections and Active there):
+Every Admin may change any member through the assistant, another Admin included. Two things stay off this path:
 
-* only the I2G Master changes or deletes another staff or superuser account through the assistant
-  (``user_can_manage_member``; anyone may change their own);
-* only the I2G Master writes the superuser-only fields (``MemberAdmin.superuser_only_fields``: staff status and the
-  admin sections).
+* Admin status (``is_staff``, and its mirror ``is_superuser``) changes only on the member's page in the admin. safe_orm
+  already denies both field names; this refuses an action stored with them before it reaches the write;
+* the lockout rules (``admin_removal_refusal``): nobody deletes or deactivates (``is_active`` set false) their own Admin
+  account, and the last active Admin is never deleted or deactivated.
 
 Contact rows and verification challenges are not writable through the assistant at all (safe_orm's
 ``DENIED_WRITE_MODEL_LABELS``). A proposal is refused at once; approval checks again, on the locked target row, and a
@@ -17,49 +14,58 @@ refused approval fails the request with the rule (``ActionRefused``).
 
 from __future__ import annotations
 
-from apps.core.utils.access import user_can_manage_member
+from apps.authn.services.members.admins import DEACTIVATE, DELETE, admin_removal_refusal
 from apps.system_intelligence.models import SystemIntelligenceActionRequest
 
 from ..engine.exceptions import ActionRefused
 from ..orm import get_object
+from ..orm.safety import coerce_field_value
 
 MEMBER_LABEL = "authn.member"
-TARGET_REFUSED = "Only an I2G Master may change or delete another staff or superuser account."
+ADMIN_STATUS_FIELDS = frozenset({"is_staff", "is_superuser"})
+ADMIN_STATUS_REFUSED = "Admin status is changed only on the member's page in the admin, not through the assistant."
 
 
 def is_member_model(model) -> bool:
     return model._meta.label_lower == MEMBER_LABEL
 
 
-def check_member_write(user, model, *, fields=None, target=None) -> None:
-    """Raise ``ActionRefused`` unless ``user`` may write ``fields`` on ``target`` (None for a new member)."""
+def check_member_write(user, model, *, fields=None, target=None, delete=False) -> None:
+    """Raise ``ActionRefused`` unless ``user`` may write ``fields`` (name -> value) on ``target`` (None for a new
+    member), or delete ``target`` when ``delete`` is set."""
     if not is_member_model(model):
         return
-    if target is not None and not user_can_manage_member(user, target):
-        raise ActionRefused(TARGET_REFUSED)
-    if getattr(user, "is_superuser", False):
+    fields = fields or {}
+    if ADMIN_STATUS_FIELDS & set(fields):
+        raise ActionRefused(ADMIN_STATUS_REFUSED)
+    if target is None:
         return
-    from apps.authn.admin.members.member import MemberAdmin
-
-    refused = sorted(set(fields or ()) & set(MemberAdmin.superuser_only_fields))
-    if refused:
-        raise ActionRefused(f"Only an I2G Master may change {', '.join(refused)}.")
+    if delete:
+        refusal = admin_removal_refusal(user, [target], action=DELETE)
+    elif "is_active" in fields and coerce_field_value(model._meta.get_field("is_active"), fields["is_active"]) is False:
+        refusal = admin_removal_refusal(user, [target], action=DEACTIVATE)
+    else:
+        refusal = ""
+    if refusal:
+        raise ActionRefused(refusal)
 
 
 def check_member_action(user, model, action: SystemIntelligenceActionRequest) -> None:
     """``check_member_write`` for a pending action, at approval. The target row is locked first and the apply reads it
-    again in the same transaction, so its staff status can't change between this check and the write."""
+    again in the same transaction, so its Admin status can't change between this check and the write."""
     if not is_member_model(model):
         return
     payload = action.payload if isinstance(action.payload, dict) else {}
     if action.action_type == SystemIntelligenceActionRequest.ACTION_DB_CREATE:
-        check_member_write(user, model, fields=_names(payload.get("fields")))
+        check_member_write(user, model, fields=_values(payload.get("fields")))
         return
     target = get_object(model, action.target_pk, for_update=True)
-    is_update = action.action_type == SystemIntelligenceActionRequest.ACTION_DB_UPDATE
-    check_member_write(user, model, fields=_names(payload.get("changes")) if is_update else (), target=target)
+    if action.action_type == SystemIntelligenceActionRequest.ACTION_DB_UPDATE:
+        check_member_write(user, model, fields=_values(payload.get("changes")), target=target)
+    else:
+        check_member_write(user, model, target=target, delete=True)
 
 
-def _names(values) -> tuple[str, ...]:
+def _values(values) -> dict:
     # A malformed payload is refused by the apply itself; it names no field here.
-    return tuple(values) if isinstance(values, dict) else ()
+    return values if isinstance(values, dict) else {}

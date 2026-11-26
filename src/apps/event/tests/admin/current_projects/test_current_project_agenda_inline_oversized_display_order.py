@@ -7,7 +7,7 @@ from apps.event.models import CurrentProjectSchedule, EventAgendaItem
 from apps.event.tests.admin.current_projects.test_current_project_agenda_inline import (
     _CurrentProjectScheduleAgendaInlineCase,
 )
-from apps.event.tests.helpers import make_admin
+from apps.event.tests.helpers import make_admin, make_member
 
 
 @override_settings(ADMIN_REQUIRE_CONFIRMATION=False)
@@ -147,17 +147,17 @@ class CurrentProjectScheduleAgendaInlineTest(_CurrentProjectScheduleAgendaInline
 
         self.assertEqual(self._titles(), ["Registration and Coffee", "Added by another editor", "Mine"])
 
-    def test_inline_follows_the_event_app_access_rule(self):
+    def test_inline_follows_the_admin_rule(self):
         from apps.event.admin.schedule.agenda import EventAgendaItemInline
 
         inline = EventAgendaItemInline(CurrentProjectSchedule, admin.site)
         request = RequestFactory().get("/admin/")
         permissions = ("has_view_permission", "has_add_permission", "has_change_permission", "has_delete_permission")
 
-        request.user = make_admin(apps=["event"], email="event-staff@example.com")
+        request.user = make_admin(email="event-staff@example.com")
         for permission in permissions:
             self.assertTrue(getattr(inline, permission)(request), permission)
 
-        request.user = make_admin(apps=["cms"], email="cms-staff@example.com")
+        request.user = make_member(email="plain-agenda@example.com")
         for permission in permissions:
             self.assertFalse(getattr(inline, permission)(request), permission)

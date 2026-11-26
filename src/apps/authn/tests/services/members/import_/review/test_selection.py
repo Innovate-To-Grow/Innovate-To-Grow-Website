@@ -4,6 +4,7 @@ import uuid
 
 from apps.authn.models import ContactEmail
 from apps.authn.services.members.import_.review.analysis import conflict_code, conflict_title, describe_action, why
+from apps.authn.services.members.import_.review.analysis.describe import RETIRED_TITLE
 from apps.authn.services.members.import_.review.lookup import Snapshot
 from apps.authn.services.members.import_.review.plan.actions import Action, resolve_action
 from apps.authn.services.members.import_.review.staging.selection import (
@@ -186,12 +187,12 @@ class ActionTests(ImportTestCase):
 
     def test_conflicts_and_actions_in_words(self):
         snapshot = Snapshot()
-
         self.assertEqual(
             (conflict_code("address_not_primary"), conflict_title("address_not_primary")),
             ("C7", "The address is a member's secondary or other email"),
         )
-        self.assertEqual((conflict_code(""), conflict_title("unknown")), ("", ""))
+        retired = [(conflict_code(slug), conflict_title(slug)) for slug in ("", "privileged_target")]  # C2 is retired
+        self.assertEqual(retired, [("", ""), ("", RETIRED_TITLE)])
         self.assertEqual(why("", {}, snapshot), "")
         self.assertEqual(
             [describe_action(action, snapshot, {}) for action in (None, Action("skip"), Action("update", target="x"))],

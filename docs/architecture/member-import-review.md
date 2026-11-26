@@ -21,11 +21,15 @@ analyse     saved per    "import"      all or nothing
 | Discard | `…/<batch>/discard/` (POST) | `batches.discard_batch` |
 | History | `authn/memberimportbatch/` | `admin/members/import_/batch.py` (read-only, no export) |
 
-Every view re-checks authn-app access (`admin_view` only checks `is_staff`). Only the uploader or an I2G Master may
-save choices, apply or discard; other authn admins get the review read-only. Rights are always the **uploader's and
-the actor's together** (`import_/rights.analysis_context`): an I2G Master applying another admin's import never lends it
-master rights, so the uploader can't use the master's apply to reach staff accounts or master-only ticks. An import
-whose uploader was deleted is never applied.
+Every view is served through `admin_view`, so only an Admin reaches it. Any Admin may save choices, apply or discard
+any batch, whoever uploaded it (an import whose uploader was since deleted can be applied too: the applying Admin
+reviews it on Confirm and is recorded as `applied_by`). The analysis runs for the acting Admin
+(`import_/rights.analysis_context`: the uploader at staging, the applying Admin at apply): the Admin lockout rules
+(`services/members/admins`) disable an R7 deactivation of their own Admin account or of the last active Admin, and
+the apply checks every ticked deactivation of the batch together against the locked members, refusing the whole
+apply with the reason. A deactivation that was fine for the uploader but targets the applier's own account goes
+back to review as "changed since review". An import never changes Admin access: the Admin column (Staff in older
+exports) is recognised and ignored.
 
 ## Storage
 
@@ -52,9 +56,9 @@ and at `max_rows_read` rows read (blank ones included), so a compressed workbook
 |---|---|
 | `lookup.py` | One snapshot of every record the sheet names, in a fixed number of queries per 500 values. Addresses compare through `UPPER()` and `upper().lower()` keys, as `login_guard` does |
 | `grouping.py` | Cross-row checks: V2/V4/V7/V8 cells set aside (a new address or number, or a contact email with no member, can be added only by the first row that names it and can be imported; if that row is skipped, no row adds it); C1 groups (same member, or same new address) |
-| `analysis.py` | Per row: Member UUID → Primary Email in any role → unlinked contact → new member; conflicts C2–C9 in precedence order; status |
+| `analysis.py` | Per row: Member UUID → Primary Email in any role → unlinked contact → new member; conflicts C1 and C3–C9 in precedence order (C2, the former staff/superuser conflict, is retired; a stored row that still carries it is listed under a group with only Skip, "Analysed under a rule that no longer applies; it is checked again when you confirm"); status |
 | `choices.py`, `describe.py` | Options per conflict, bulk-safe choices, and the sentences shown |
-| `risky.py` | R1–R9 items per target member, with the disabled reasons (R9 "mark verified": a verified address is a sign-in factor). R6/R9 cover email addresses only |
+| `risky.py` | R1–R7 and R9 items per target member (R8, staff status, is retired and filtered out of stored analyses), with the disabled reasons (R9 "mark verified": a verified address is a sign-in factor). R6/R9 cover email addresses only |
 | `plan.py`, `plan_contacts.py` | What a choice writes, in order, with one line per change; `ContactState` follows the member's contacts through the plan |
 | `selection.py` | Posted choices checked against the row's options (a forged POST fails); cross-row problems that block the apply |
 | `apply.py`, `execute.py` | The transaction and the writes; `contacts.py` holds the guarded contact writes |
@@ -76,7 +80,7 @@ refuses any flag but `subscribe`.
 `apply_batch` locks the batch row (`select_for_update`), checks its status, expiry and `choices_version`, locks every
 member the review read in primary-key order, reloads the snapshot and re-runs the analysis. A row whose fingerprint,
 status, conflict or warnings differ (a warning changes when a cell is set aside differently, for example by a newer
-rule), or whose choice or ticks are no longer allowed (a privilege change), sends the batch back to review: those rows get the new analysis, their choice reset to Skip (not to their default) and `changed_since_review`.
+rule), or whose choice or ticks are no longer allowed (for example a deactivation that the lockout rules now refuse), sends the batch back to review: those rows get the new analysis, their choice reset to Skip (not to their default) and `changed_since_review`.
 The planner itself never activates or verifies an unfinished self-service sign-up, whatever the ticks say. Otherwise the
 plans are written: first the new members, bulk-created (one sheet sync is scheduled after commit), then the updates in
 row order, op by op so the save signals fire. `make_contact_email_primary`, `delete_contact_email` and `delete_contact_phone`
@@ -92,4 +96,4 @@ Recorded in the PR that introduced the review (stacked on the Phase 0 hotfix #72
 apply, make-primary for verified addresses only, new contacts on existing members start unverified, Skip preselected on
 every conflict, the plan's name rule, settings-only retention, the non-interactive API kept, contacts never moved
 between members, a 2,000-row cap, and ready updates applied without a per-row click. Decided on 2026-11-12 (#726):
-the Phone Verified column is ignored, with no tick and no I2G Master override.
+the Phone Verified column is ignored, with no tick and no override.

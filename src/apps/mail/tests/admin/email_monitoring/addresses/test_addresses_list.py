@@ -25,8 +25,8 @@ from apps.mail.tests.services.bounced_addresses.helpers import (
 class ListTests(TestCase):
     def setUp(self):
         cache.clear()
-        self.master = make_superuser()
-        self.client.force_login(self.master)
+        self.admin_user = make_superuser()
+        self.client.force_login(self.admin_user)
 
     def test_loading_the_list_counts_new_reports_and_shows_the_member(self):
         member = make_person("listed@example.org", first="Lee", last="Stone")
@@ -43,21 +43,21 @@ class ListTests(TestCase):
         self.assertContains(response, "Mark undeliverable…")
         self.assertEqual(response.context["page"].paginator.count, 1)
 
-    def test_mail_only_staff_see_names_without_links_and_only_the_actions_they_may_take(self):
-        member = make_person("member@example.org", first="Mo")
-        make_row("member@example.org")
+    def test_an_admin_member_gets_the_admin_badge_and_every_quick_action(self):
+        colleague = make_admin(email="colleague@example.org", first_name="Mo", last_name="Doe")
+        make_row("colleague@example.org")
         make_row("list-only@example.org")
-        self.client.force_login(make_admin(apps=["mail"], email="mailstaff@example.org"))
 
         response = self.client.get(reverse(LIST))
 
-        self.assertContains(response, "Mo Doe")
-        self.assertNotContains(response, reverse("admin:authn_member_change", args=[member.pk]))
+        self.assertContains(response, reverse("admin:authn_member_change", args=[colleague.pk]))
+        self.assertContains(response, '<span class="i2g-monitor-badge i2g-monitor-badge--warn">Admin</span>', html=True)
         menus = {
             entry["row"].address: [item["action"] for item in entry["quick"]] for entry in response.context["entries"]
         }
-        self.assertNotIn("mark_undeliverable", menus["member@example.org"])
+        self.assertIn("mark_undeliverable", menus["colleague@example.org"])
         self.assertIn("suppress", menus["list-only@example.org"])
+        self.assertContains(response, "Rebuild counts…")
 
     def test_reports_still_settling_are_shown_as_not_counted_yet(self):
         make_bounce(recipient="late@example.org")

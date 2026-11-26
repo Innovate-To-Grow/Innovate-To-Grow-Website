@@ -18,12 +18,12 @@ class SignInFactorTests(_FlowCase):
     def test_marking_an_address_verified_needs_its_tick_and_is_listed_on_confirm(self):
         work = self.email(self.ada, "ada.work@example.com", verified=False)
         cells = {"Secondary_Email": "ada.work@example.com", "Secondary_Verified": "TRUE"}
-        batch = self.upload_as(self.master, [row("ada@example.com", **cells)])
+        batch = self.upload_as(self.admin_user, [row("ada@example.com", **cells)])
         staged = batch.rows.get()
         r9 = next(item for item in staged.risky[str(self.ada.pk)] if item["code"] == "R9")
         self.assertTrue(r9["enabled"])
 
-        self.confirm_as(self.master, batch)
+        self.confirm_as(self.admin_user, batch)
         work.refresh_from_db()
         self.assertFalse(work.verified)
         self.assertIn(
@@ -31,7 +31,7 @@ class SignInFactorTests(_FlowCase):
             staged.__class__.objects.get(pk=staged.pk).outcome_detail,
         )
 
-        again = self.upload_as(self.master, [row("ada@example.com", **cells)])
+        again = self.upload_as(self.admin_user, [row("ada@example.com", **cells)])
         review = reverse("admin:authn_member_import_review", args=[again.pk])
         self.client.post(
             review, {"version": 0, "ready-2": "update", "ticks-2": "1", "tick-2": r9["id"], "action": "save"}
@@ -39,26 +39,26 @@ class SignInFactorTests(_FlowCase):
         page = self.client.get(reverse("admin:authn_member_import_confirm", args=[again.pk]))
         self.assertContains(page, "Email addresses marked verified (each becomes a sign-in factor) (1)")
 
-        self.confirm_as(self.master, again)
+        self.confirm_as(self.admin_user, again)
         work.refresh_from_db()
         self.assertTrue(work.verified)
 
-    def test_every_change_to_a_staff_account_is_listed_on_confirm(self):
-        staff = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
+    def test_every_change_to_an_admin_account_is_listed_on_confirm(self):
+        sam = self.member("Sam", "Admin", "sam@example.com", is_staff=True)
         batch = self.upload_as(
-            self.master, [row("sam@example.com", First_Name="Sam", Last_Name="Staff", Organization="New")]
+            self.admin_user, [row("sam@example.com", First_Name="Sam", Last_Name="Admin", Organization="New")]
         )
 
         page = self.client.get(reverse("admin:authn_member_import_confirm", args=[batch.pk]))
 
-        self.assertContains(page, "Changes to staff or superuser accounts (1)")
-        self.assertContains(page, f"Sam Staff (member {staff.pk}): Organization")
+        self.assertContains(page, "Changes to Admin accounts (1)")
+        self.assertContains(page, f"Sam Admin (member {sam.pk}): Organization")
 
     def test_an_unfinished_sign_up_cannot_be_activated_or_verified(self):
         squatter = self.member("Vic", "Tim", "vic@example.com", verified=False)
         Member.objects.filter(pk=squatter.pk).update(is_active=False, registration_pending=True)
         batch = self.upload_as(
-            self.master,
+            self.admin_user,
             [row("vic@example.com", First_Name="Vic", Last_Name="Tim", Active="TRUE", Primary_Verified="TRUE")],
         )
         staged = batch.rows.get()
@@ -73,7 +73,7 @@ class SignInFactorTests(_FlowCase):
         )
         staged.refresh_from_db()
         self.assertEqual(staged.ticks, [])
-        self.confirm_as(self.master, batch)
+        self.confirm_as(self.admin_user, batch)
 
         squatter.refresh_from_db()
         self.assertEqual((squatter.is_active, squatter.registration_pending), (False, True))
@@ -82,8 +82,8 @@ class SignInFactorTests(_FlowCase):
 
 class RetentionTests(_FlowCase):
     def test_the_purge_blanks_everything_that_names_a_person(self):
-        batch = self.upload_as(self.master, [row("ada@example.com", Organization="Acme")])
-        self.confirm_as(self.master, batch)
+        batch = self.upload_as(self.admin_user, [row("ada@example.com", Organization="Acme")])
+        self.confirm_as(self.admin_user, batch)
         batch.refresh_from_db()
         MemberImportBatch.objects.filter(pk=batch.pk).update(last_error="Row 2: ada@example.com")
         self.assertTrue(batch.rows.get().outcome_detail)
@@ -101,7 +101,7 @@ class RetentionTests(_FlowCase):
         self.assertContains(page, "were removed on")
 
     def test_an_unapplied_batch_is_gone_after_its_lifetime(self):
-        batch = self.upload_as(self.master, [row("ada@example.com", Organization="Acme")])
+        batch = self.upload_as(self.admin_user, [row("ada@example.com", Organization="Acme")])
 
         purge_member_imports(now=timezone.now() + timedelta(hours=settings.MEMBER_IMPORT["batch_lifetime_hours"]))
 
@@ -122,14 +122,13 @@ class UploadLimitTests(ImportTestCase):
         self.assertEqual(analysis.status, "invalid")
         self.assertEqual(analysis.facts["invalid"], "First Name is longer than 150 characters")
 
-    def test_the_import_without_a_review_skips_staff_accounts_unless_the_caller_is_a_master(self):
-        staff = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
-        sheet = workbook_bytes(HEADERS, [row("sam@example.com", First_Name="Sam", Last_Name="Staff", Organization="X")])
+    def test_the_import_without_a_review_updates_an_admin_but_never_their_admin_access(self):
+        sam = self.member("Sam", "Admin", "sam@example.com", is_staff=True)
+        cells = {"First_Name": "Sam", "Last_Name": "Admin", "Organization": "X", "Staff": "No", "Active": "No"}
+        sheet = workbook_bytes(HEADERS, [row("sam@example.com", **cells)])
 
-        refused = import_members_from_excel(BytesIO(sheet), update_existing=True)
-        staff.refresh_from_db()
-        self.assertEqual((refused.updated_count, refused.skipped_count, staff.organization), (0, 1, None))
+        result = import_members_from_excel(BytesIO(sheet), update_existing=True)
 
-        allowed = import_members_from_excel(BytesIO(sheet), update_existing=True, allow_privilege_fields=True)
-        staff.refresh_from_db()
-        self.assertEqual((allowed.updated_count, staff.organization), (1, "X"))
+        sam.refresh_from_db()
+        self.assertEqual((result.updated_count, sam.organization), (1, "X"))
+        self.assertEqual((sam.is_staff, sam.is_superuser, sam.is_active), (True, True, True))

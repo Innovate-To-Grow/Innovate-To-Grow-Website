@@ -14,7 +14,7 @@ class ScheduleSheetPullMixin:
     """The Google Sheet sync actions and views of ``CurrentProjectScheduleAdmin``."""
 
     # ``permissions=["change"]`` makes Unfold call ``has_change_permission``
-    # before the view runs, so per-app access is enforced like the custom views.
+    # before the view runs, so the admin check is enforced like the custom views.
     @action(
         description="Sync from Google Sheets",
         url_path="sync-from-google-sheets",
@@ -72,8 +72,7 @@ class ScheduleSheetPullMixin:
         return custom_urls + super().get_urls()
 
     def pull_view(self, request):
-        # ``admin_view`` only enforces is_staff; re-check per-app access so a
-        # staff member without the event app cannot trigger a schedule sync.
+        # Custom URL: re-check the ModelAdmin's permission hook before a schedule sync.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to sync the schedule.")
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")
@@ -85,8 +84,7 @@ class ScheduleSheetPullMixin:
         return redirect(changelist_url)
 
     def save_sync_settings_view(self, request):
-        # ``admin_view`` only enforces is_staff; re-check per-app access so a
-        # staff member without the event app cannot change auto-sync settings.
+        # Custom URL: re-check the ModelAdmin's permission hook before changing auto-sync.
         if not self.has_change_permission(request):
             raise PermissionDenied("You do not have permission to change sync settings.")
         changelist_url = reverse("admin:event_currentprojectschedule_changelist")

@@ -1,4 +1,4 @@
-"""Create a default Django admin account without silently promoting existing users."""
+"""Create a default Admin account without silently promoting existing users."""
 
 import os
 
@@ -17,7 +17,7 @@ class _ConcurrentAdminCreated(Exception):
 
 
 class Command(BaseCommand):
-    help = "Create a default superuser identified by email if it does not already exist."
+    help = "Create a default Admin account identified by email if it does not already exist."
 
     def add_arguments(self, parser):
         parser.add_argument("--yes", action="store_true", help="Confirm that this command may mutate admin users.")
@@ -89,14 +89,14 @@ class Command(BaseCommand):
     def _validate_existing_admin(self, *, email: str, contact) -> None:
         Member = get_user_model()
         member = Member.objects.select_for_update().get(pk=contact.member_id)
-        if not (member.is_active and member.is_staff and member.is_superuser):
+        if not (member.is_active and member.is_staff):
             raise CommandError(
-                f"Email {email} belongs to a member who is not an active staff superuser; "
+                f"Email {email} belongs to a member who is not an active Admin; "
                 "refusing to promote or replace that account."
             )
         if not contact.verified:
             raise CommandError(
-                f"Email {email} belongs to an active staff superuser, but the contact is not verified; "
+                f"Email {email} belongs to an active Admin, but the contact is not verified; "
                 "refusing to verify or otherwise modify that account."
             )
 
@@ -109,13 +109,11 @@ class Command(BaseCommand):
 
     def _create_member(self, *, email: str, password: str, first_name: str, last_name: str, contact=None):
         Member = get_user_model()
-        member = Member.objects.create_user(
+        member = Member.objects.create_superuser(
             password=password,
             first_name=first_name,
             last_name=last_name,
             is_active=True,
-            is_staff=True,
-            is_superuser=True,
         )
         if contact is None:
             _contact, created = ContactEmail.objects.get_or_create(
