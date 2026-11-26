@@ -1,0 +1,68 @@
+/* Registrations changelist (EventRegistrationAdmin only): search + semester + event toolbar and a list that fits
+   1024px without sideways scrolling. Unfold's stock toolbar shows filters inline only from 1536px (2xl). */
+
+.i2g-reg-toolbar {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.i2g-reg-toolbar__form {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+}
+
+.i2g-reg-toolbar__search {
+  flex: 1 1 17rem;
+  max-width: 26rem;
+  min-width: 15rem;
+}
+
+.i2g-reg-toolbar__field {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.i2g-reg-toolbar__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.i2g-reg-toolbar__select {
+  border-style: solid;
+  border-width: 1px;
+  font-size: 0.875rem;
+  height: 2.375rem;
+  min-width: 0;
+  overflow: hidden;
+  padding: 0 2rem 0 0.75rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.i2g-reg-toolbar__select--semester {
+  max-width: 11rem;
+  width: auto;
+}
+
+/* Sized to the longest event name; only a very long one is cut short (the full name is in the open list). */
+.i2g-reg-toolbar__select--event {
+  max-width: 15rem;
+  width: auto;
+}
+
+.i2g-reg-toolbar__clear {
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* The ticket code ("I2G-02A9E0524DB1") broke at its hyphen into two lines. */
+#result_list td.field-ticket_code,
+#result_list th.field-ticket_code {
+  white-space: nowrap;
+}

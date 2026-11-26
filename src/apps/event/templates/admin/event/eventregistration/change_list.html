@@ -1,5 +1,9 @@
 {% extends "admin/change_list.html" %}
 
+{% block search %}
+    {% include "admin/event/eventregistration/_changelist_toolbar.html" with toolbar=registration_toolbar %}
+{% endblock %}
+
 {% block object-tools-items %}
     <div class="i2g-admin-object-tools">
         <a href="{{ send_all_ticket_emails_url }}"

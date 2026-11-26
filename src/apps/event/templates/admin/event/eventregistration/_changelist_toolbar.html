@@ -1,0 +1,45 @@
+{% comment %}
+Search + semester + event, visible at every width. Unfold's stock toolbar shows list filters inline only at 1536px
+and up (2xl); below that they hide behind the "Filters" button, which still opens the full filter sheet.
+Keeps Unfold's ids (toolbar, changelist-search, searchbar) and its "/" shortcut.
+{% endcomment %}
+<div id="toolbar" class="i2g-reg-toolbar">
+    <form id="changelist-search" x-data="searchForm()" method="get" role="search" class="i2g-reg-toolbar__form">
+        <div class="i2g-reg-toolbar__search bg-white border border-base-200 flex flex-row items-center px-3 rounded-default relative shadow-xs focus-within:outline-2 focus-within:-outline-offset-2 focus-within:outline-primary-600 dark:bg-base-900 dark:border-base-700">
+            <button type="submit" class="flex items-center focus:outline-hidden" id="searchbar-submit" aria-label="Search">
+                <span class="material-symbols-outlined md-18 text-base-400 dark:text-base-500">search</span>
+            </button>
+            <input type="text"
+                   x-ref="searchInput"
+                   x-on:keydown.window="applyShortcut($event)"
+                   class="grow font-medium min-w-0 overflow-hidden p-2 placeholder-font-subtle-light truncate focus:outline-hidden dark:bg-base-900 dark:placeholder-font-subtle-dark dark:text-font-default-dark"
+                   name="{{ toolbar.search_var }}"
+                   value="{{ cl.query }}"
+                   id="searchbar"
+                   aria-label="Search registrations"
+                   title="{{ cl.search_help_text }}"
+                   placeholder="Name, email, ticket or event" />
+            {% include "unfold/helpers/shortcut.html" with shortcut="/" %}
+        </div>
+
+        <label class="i2g-reg-toolbar__field">
+            <span class="i2g-reg-toolbar__label">Semester</span>
+            <select name="{{ toolbar.semester_param }}" class="i2g-reg-toolbar__select i2g-reg-toolbar__select--semester" data-i2g-autosubmit>
+                <option value="">All semesters</option>
+                {% for value, label in toolbar.semester_choices %}<option value="{{ value }}"{% if value == toolbar.semester_selected %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </label>
+
+        <label class="i2g-reg-toolbar__field">
+            <span class="i2g-reg-toolbar__label">Event</span>
+            <select name="{{ toolbar.event_param }}" class="i2g-reg-toolbar__select i2g-reg-toolbar__select--event" data-i2g-autosubmit>
+                <option value="">All events</option>
+                {% for value, label in toolbar.event_choices %}<option value="{{ value }}"{% if value == toolbar.event_selected %} selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </label>
+
+        {% for name, value in toolbar.hidden %}<input type="hidden" name="{{ name }}" value="{{ value }}">{% endfor %}
+
+        {% if toolbar.is_filtered %}<a class="i2g-reg-toolbar__clear" href="?">Clear</a>{% endif %}
+    </form>
+</div>
