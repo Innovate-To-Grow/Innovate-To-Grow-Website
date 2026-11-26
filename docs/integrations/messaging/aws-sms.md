@@ -122,9 +122,9 @@ With **Allow links in SMS** on, a Broadcast SMS may use:
   text can carry it.
 - Every link expires: **Link validity (days)** per campaign (default 3), at most
   `SMS_POLICY["link_max_validity_days"]` (14).
-- **Personal sign-in links** are off by default (a recycled phone number could receive someone else's link), and
-  only the I2G Master (a superuser) can turn them on. On, a link signs its member in **once**, and only when:
-  - the member is active and is not staff or a superuser; and
+- **Personal sign-in links** are off by default (a recycled phone number could receive someone else's link); any
+  Admin can turn them on. On, a link signs its member in **once**, and only when:
+  - the member is active and is not an Admin (`is_staff`); and
   - the text goes to **that member's own verified account phone**: a personal link reaches no further than signing
     in with a code texted to the same number. A recipient log pointed at another member, a phone verified only for
     one event registration (it may be a family or lab phone), or any other number gets the shared link instead.

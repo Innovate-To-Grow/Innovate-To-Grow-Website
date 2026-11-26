@@ -28,6 +28,10 @@ EXPECTED_KINDS = {
     # (apps.helpdesk.services.intake.jobs); neither sends anything.
     "helpdesk.ingest_inbound",
     "helpdesk.intake_scan",
+    # The helpdesk's replies / acknowledgements and staff notifications (apps.helpdesk.services.outbound.jobs), sent
+    # only while its shadow mode is off.
+    "helpdesk.notify_staff",
+    "helpdesk.send_reply",
     "mail.email_recipient",
     # The universal inbox's new-mail poll (apps.mail.services.inbox.polling.poller); it sends nothing.
     "mail.inbox_poll",

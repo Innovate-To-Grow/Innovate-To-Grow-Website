@@ -2,8 +2,8 @@
 
 - The new address must be a valid address that no contact email holds, in any letter case.
 - It is added as secondary (while the member has no other secondary), other, or primary. A primary must be verified:
-  the admin attests that the member confirmed it, which is refused on a staff or superuser account unless the admin is
-  an I2G Master. The swap goes through ``make_contact_email_primary``: the old primary becomes the secondary.
+  the admin attests that the member confirmed it. The swap goes through ``make_contact_email_primary``: the old
+  primary becomes the secondary.
 - Deleting the old address asks for its typed address (with ``ADMIN_REQUIRE_CONFIRMATION``) and goes through
   ``delete_contact_email``, which never removes the last verified sign-in contact. The old primary can only be deleted
   when the new address becomes the primary.
@@ -27,11 +27,6 @@ from .specs import confirmation_required
 Role = BouncedAddress.Role
 NEW_ROLES = ("secondary", "other", "primary")
 OLD_DISPOSITIONS = ("undeliverable", "delete")
-
-
-def attest_allowed(request, member) -> bool:
-    """Whether the admin may mark a new address verified on ``member``'s account."""
-    return bool(request.user.is_superuser or not (member.is_staff or member.is_superuser))
 
 
 def secondary_taken(target, *, deleting_old: bool) -> bool:
@@ -66,8 +61,6 @@ def _plan(request, target, values) -> dict:
     if role not in NEW_ROLES:
         raise ActionRefused("Choose primary, secondary or other for the new address.")
     verified = bool(values.get("attest_verified"))
-    if verified and not attest_allowed(request, target.member):
-        raise ActionRefused("Only an I2G Master may mark an address verified on a staff or superuser account.")
     if role == "primary" and not verified:
         raise ActionRefused("A new primary address must be verified: tick “The member confirmed this address”.")
     delete_old = values.get("old_address") == "delete"

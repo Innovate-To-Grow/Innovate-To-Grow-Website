@@ -126,7 +126,13 @@ def _process(row: InboundMessage, reader, settings: HelpdeskSettings, own: froze
         return
     try:
         parsed = parse(raw, truncated=truncated)
-        classified = classify_message(parsed, mailbox=reader.mailbox, settings=settings, received_at=row.received_at)
+        classified = classify_message(
+            parsed,
+            mailbox=reader.mailbox,
+            settings=settings,
+            received_at=row.received_at,
+            conversation_id=row.conversation_id,
+        )
         stored = store(row, parsed, classified, settings, own=own)
     except Exception as exc:  # noqa: BLE001 - one bad message must not stop the queue: it is retried, then listed.
         # The type and where it was raised, never the exception's text or traceback: those can quote the message (a

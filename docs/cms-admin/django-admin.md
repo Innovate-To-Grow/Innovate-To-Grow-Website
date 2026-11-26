@@ -93,19 +93,24 @@ Also in `src/apps/authn/admin/members/` (details in
 [Member & Mail Tools](member-and-mail-tools.md#account-active-verified-and-subscribed)):
 
 - `shared/filters.py`: `SimpleListFilter`s built on `EXISTS` subqueries over the member's own rows, so a filter never
-  duplicates a member. Members: Account active, Primary email, Unverified emails, Newsletter, Phone. Contact Emails:
+  duplicates a member. Members: Account active, Primary email, Unverified emails, Newsletter, Phone, Account type
+  (Admin / Regular member). Contact Emails:
   Verified (sign-in), Subscribed (newsletters), Member account; Contact Phones: Member account.
-- `shared/help_texts.py`: the "Account active" label and the help text of every flag, applied through the admin forms'
+- `shared/help_texts.py`: the "Account active" and "Admin" labels and the help text of every flag, applied through the admin forms'
   `Meta.labels` / `Meta.help_texts` (Django uses them for read-only fields too), so no model field or migration
   changes.
 - `shared/sign_in_warning.py`: warns, never blocks, when a save, a bulk "mark unverified" or a delete leaves a member with no
   verified email or phone. `get_confirmation_diff` adds the warning as a row of the type-to-confirm page; `save_related`
   / `save_model` / the actions add a message after the write.
 - `primary_switch/switch.py` (+ `primary_switch/notes.py`, template `admin/authn/member/switch_primary.html`): the **Switch
-  primary email** detail action and its page. `get_actions_detail` hides the button unless
-  `user_can_manage_member` allows it, and the view re-checks, because Unfold wraps a detail-action URL only in
-  `admin_view`. The write goes through `apps.authn.services.contacts.primary_switch` (member lock, fingerprint,
+  primary email** detail action and its page, shown on every member's page to every Admin (Unfold wraps the
+  detail-action URL in `admin_view`, which admits active Admins only). The write goes through `apps.authn.services.contacts.primary_switch` (member lock, fingerprint,
   history).
+- `member/lockout.py`: the Admin lockout rules on the Member admin (`MemberAdminLockoutMixin`): your own page shows
+  Admin and Account active read-only, the change form refuses unticking either when it would remove your own Admin
+  account or the last active Admin, and the delete page, `delete_model`, `delete_queryset` and **Delete selected
+  members** refuse the same removals (the bulk **Deactivate selected members** checks the whole selection too). The
+  rules themselves are in `apps.authn.services.members.admins`.
 
 ### Email campaign admin
 

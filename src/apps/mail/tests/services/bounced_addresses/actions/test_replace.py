@@ -23,7 +23,7 @@ class ReplaceTests(ActionTestCase):
 
     def test_a_new_secondary_is_added_and_the_old_address_marked_undeliverable(self):
         apply(
-            self.mail_authn,
+            self.actor,
             self.row,
             Action.REPLACE,
             new_address="New@Example.org",
@@ -46,7 +46,7 @@ class ReplaceTests(ActionTestCase):
 
     def test_a_verified_new_primary_replaces_a_deleted_old_primary(self):
         apply(
-            self.mail_authn,
+            self.actor,
             self.row,
             Action.REPLACE,
             new_address="fresh@example.org",
@@ -66,7 +66,7 @@ class ReplaceTests(ActionTestCase):
         row = make_row("old-second@example.org")
 
         apply(
-            self.mail_authn,
+            self.actor,
             row,
             Action.REPLACE,
             new_address="next@example.org",
@@ -100,7 +100,7 @@ class ReplaceTests(ActionTestCase):
         ]
         for values, reason in cases:
             with self.subTest(values=values):
-                self.assert_refused(self.mail_authn, self.row, Action.REPLACE, reason, **values)
+                self.assert_refused(self.actor, self.row, Action.REPLACE, reason, **values)
 
     def test_an_address_with_a_pending_admin_invitation_is_refused(self):
         AdminInvitation.objects.create(
@@ -108,17 +108,20 @@ class ReplaceTests(ActionTestCase):
         )
         values = {"new_address": "invited@example.org", "new_role": "primary", "attest_verified": "1"}
 
-        self.assert_refused(self.master, self.row, Action.REPLACE, "pending admin invitation", **values)
+        self.assert_refused(self.admin_user, self.row, Action.REPLACE, "pending admin invitation", **values)
 
         AdminInvitation.objects.update(status=AdminInvitation.Status.ACCEPTED)
-        apply(self.master, self.row, Action.REPLACE, new_address="invited@example.org", new_role="other")
+        apply(self.admin_user, self.row, Action.REPLACE, new_address="invited@example.org", new_role="other")
         self.assertTrue(ContactEmail.objects.filter(email_address="invited@example.org", member=self.member).exists())
 
-    def test_only_an_i2g_master_attests_an_address_on_a_staff_account(self):
-        self_row = make_row("memberstaff@example.org")
-        values = {"new_address": "mine@example.org", "new_role": "primary", "attest_verified": "1"}
+    def test_an_admin_attests_a_new_primary_address_on_another_admins_account(self):
+        row = make_row("mailstaff@example.org")
+        values = {"new_address": "theirs@example.org", "new_role": "primary", "attest_verified": "1"}
 
-        self.assert_refused(self.mail_authn, self_row, Action.REPLACE, "Only an I2G Master may mark", **values)
+        apply(self.actor, row, Action.REPLACE, **values)
+
+        self.assertEqual(self.other_admin.get_primary_email(), "theirs@example.org")
+        self.assertTrue(ContactEmail.objects.get(email_address="theirs@example.org").verified)
 
     def test_the_last_verified_contact_is_not_deleted_for_an_unverified_replacement(self):
         add_email(self.member, "spare@example.org", email_type="secondary", verified=False)
@@ -132,6 +135,6 @@ class ReplaceTests(ActionTestCase):
             "confirm": "bounced@example.org",
         }
 
-        self.assert_refused(self.mail_authn, row, Action.REPLACE, "only verified recovery method", **values)
+        self.assert_refused(self.actor, row, Action.REPLACE, "only verified recovery method", **values)
 
         self.assertFalse(ContactEmail.objects.filter(email_address="n@example.org").exists())

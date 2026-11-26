@@ -1,6 +1,6 @@
 """Admin pages of one AI provider: install its API key, remove it, and test a call.
 
-Unfold detail actions (``permissions=["change"]``), so only staff granted the System Intelligence app reach them.
+Unfold detail actions (``permissions=["change"]``), so only Admins reach them.
 Successful POSTs redirect to the change page; ``sensitive_post_parameters`` / ``sensitive_variables`` keep the key out
 of error reports, and nothing submitted is stored in the session or cache.
 """

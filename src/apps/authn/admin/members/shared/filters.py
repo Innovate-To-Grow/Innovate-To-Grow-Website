@@ -101,6 +101,17 @@ class PhoneFilter(ChoiceFilter):
         )
 
 
+class AccountTypeFilter(ChoiceFilter):
+    title = "Account type"
+    parameter_name = "account_type"
+
+    def options(self):
+        return (
+            ("admin", "Admin", Q(is_staff=True)),
+            ("member", "Regular member", Q(is_staff=False)),
+        )
+
+
 MEMBER_FILTERS = (AccountActiveFilter, PrimaryEmailFilter, UnverifiedEmailFilter, NewsletterFilter, PhoneFilter)
 
 
@@ -145,6 +156,6 @@ class MemberAccountFilter(ChoiceFilter):
         return (
             ("active", "Account active", Q(member__is_active=True)),
             ("inactive", "Account inactive", Q(member__is_active=False)),
-            ("staff", "Staff or I2G Master", Q(member__is_staff=True) | Q(member__is_superuser=True)),
+            ("staff", "Admin", Q(member__is_staff=True)),
             ("unlinked", "No member (unlinked)", Q(member__isnull=True)),
         )

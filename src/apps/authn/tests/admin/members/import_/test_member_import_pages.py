@@ -13,8 +13,10 @@ UUID_HEADERS = ["Member UUID", *HEADERS]
 class EveryConflictPageTests(ImportTestCase):
     def setUp(self):
         super().setUp()
-        self.master = Member.objects.create_superuser(password="StrongPass123!", first_name="I2G", last_name="Master")
-        self.client.force_login(self.master)
+        self.admin_user = Member.objects.create_superuser(
+            password="StrongPass123!", first_name="I2G", last_name="Admin"
+        )
+        self.client.force_login(self.admin_user)
         self.neil = self.member("Neil", "Parkhi", "neil@home.example")
         self.email(self.neil, "neil@work.example", verified=True)
         self.grace = self.member("Grace", "Hopper", "grace@example.com")

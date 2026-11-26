@@ -1,7 +1,7 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models
 
-from apps.core.utils.access import user_can_access_app
+from apps.core.utils.access import user_is_admin
 
 from .exceptions import ActionRequestError
 from .json import json_safe
@@ -37,10 +37,9 @@ def clone_model_instance(obj: models.Model) -> models.Model:
 
 
 def check_model_permission(user, model: type[models.Model], action: str) -> None:
-    if not user or not user.is_authenticated or not user.is_staff:
+    """Refuse anyone but an Admin. Every Admin may ``action`` every model; the denylists in ``safety`` still apply."""
+    if not user_is_admin(user):
         raise PermissionDenied("Staff authentication is required.")
-    if not user_can_access_app(user, model._meta.app_label):
-        raise PermissionDenied(f"You do not have permission to {action} {model._meta.verbose_name}.")
 
 
 def assert_snapshot_unchanged(before: dict, current: dict, label: str) -> None:

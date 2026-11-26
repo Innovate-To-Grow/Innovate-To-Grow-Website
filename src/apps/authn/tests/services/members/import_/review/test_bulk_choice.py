@@ -57,7 +57,7 @@ class BulkChoiceTests(BatchTestCase):
             ("name_differs", "update_same_person"),
             ("ambiguous_address", "use_member"),
             ("uuid_email_mismatch", f"use_member:{self.ada.pk}"),
-            ("privileged_target", "skip"),
+            ("privileged_target", "skip"),  # a retired conflict (C2) that stored batches may still carry
             ("address_not_primary", "create"),
             ("address_not_primary", ""),
         ]

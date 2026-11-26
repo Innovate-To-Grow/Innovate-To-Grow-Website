@@ -1,4 +1,5 @@
-"""The System Intelligence configuration admin: model, budgets, and which row is active."""
+"""The System Intelligence configuration admin (Assistant Settings): models, prompts, budgets, and which row is
+active. The change form's tabs are in ``config_fieldsets``."""
 
 import logging
 
@@ -11,15 +12,14 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.html import format_html, format_html_join
-from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_protect
 from unfold.decorators import action, display
 
 from apps.core.admin.common.base import BaseModelAdmin
 from apps.system_intelligence.models import SystemIntelligenceConfig
-from apps.system_intelligence.models.config_agent import PROVIDER_FIELDS
 from apps.system_intelligence.services.public_assistant import global_budget_usage
 
+from .config_fieldsets import CONFIG_FIELDSETS
 from .forms import SystemIntelligenceConfigForm
 
 logger = logging.getLogger(__name__)
@@ -42,50 +42,12 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
     list_select_related = ("default_provider",)
     ordering = ("-is_active", "-updated_at")
     actions_detail = ["activate_this_config"]
-    fieldsets = (
-        (None, {"fields": ("name", "is_active")}),
-        (
-            _("Model Settings"),
-            {
-                "fields": ("default_provider", "default_model_id", "temperature", "max_tokens"),
-                "description": "Default provider (blank = Amazon Bedrock via the active AWS Credential Config; "
-                "other providers are managed under AI Providers), model and generation parameters.",
-            },
-        ),
-        (_("System Prompt"), {"fields": ("system_prompt",)}),
-        (
-            _("Public Assistant"),
-            {
-                "description": "Public, visitor-facing chatbot. It is tool-free and read-only -- it "
-                "never reaches the admin assistant, tools, or private data.",
-                "fields": (
-                    "public_assistant_enabled",
-                    "public_assistant_provider",
-                    "public_assistant_model_id",
-                    "public_assistant_system_prompt",
-                    "public_assistant_welcome_message",
-                    "public_assistant_starter_questions",
-                    "public_assistant_unavailable_message",
-                    "public_assistant_temperature",
-                    "public_assistant_max_response_tokens",
-                    "public_assistant_max_message_chars",
-                    "public_assistant_max_history_messages",
-                    "public_assistant_ip_token_limit",
-                    "public_assistant_ip_token_window_seconds",
-                    "public_assistant_global_token_limit",
-                    "public_assistant_global_usage",
-                    "public_assistant_log_enabled",
-                    "public_assistant_log_retention_days",
-                ),
-            },
-        ),
-        (_("Info"), {"fields": ("id", "created_at", "updated_at")}),
-    )
+    fieldsets = CONFIG_FIELDSETS
     readonly_fields = ("id", "created_at", "updated_at", "public_assistant_global_usage")
 
-    @display(description="Status", label=True)
+    @display(description="Status", label={"active": "success", "inactive": "danger"})
     def status_badge(self, obj):
-        return ("Active", "success") if obj.is_active else ("Inactive", "danger")
+        return ("active", "Active") if obj.is_active else ("inactive", "Inactive")
 
     @display(description="Global Tokens Used (current window)")
     def public_assistant_global_usage(self, obj):
@@ -179,11 +141,6 @@ class SystemIntelligenceConfigAdmin(BaseModelAdmin):
             return HttpResponseRedirect(change_url)
         messages.success(request, f'"{obj.name}" is now the active System Intelligence config.')
         return HttpResponseRedirect(change_url)
-
-    def get_readonly_fields(self, request, obj=None):
-        """Which provider a role calls decides where staff chats and inbox mail are sent: I2G Master only."""
-        fields = super().get_readonly_fields(request, obj)
-        return fields if request.user.is_superuser else (*fields, *PROVIDER_FIELDS)
 
     def has_delete_permission(self, request, obj=None):
         if obj is not None and obj.is_active:

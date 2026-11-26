@@ -1,0 +1,47 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% comment %}The queue's "Resolve…" action: one resolution code (and notes) for the selected tickets.{% endcomment %}
+
+{% block title %}{{ title }}{% endblock %}
+{% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'helpdesk/css/helpdesk.css' %}?v=20261120-resolve">
+{% endblock %}
+
+{% block content %}
+<form method="post" action="" class="i2g-helpdesk-resolve">
+  <h2 class="i2g-helpdesk-heading">{{ title }}</h2>
+  {% csrf_token %}
+  {% for ticket in tickets %}<input type="hidden" name="{{ action_checkbox_name }}" value="{{ ticket.pk }}">{% endfor %}
+  <input type="hidden" name="action" value="resolve_tickets">
+  <input type="hidden" name="index" value="0">
+  <input type="hidden" name="select_across" value="{{ select_across }}">
+  <input type="hidden" name="apply" value="1">
+
+  <p>Resolve these tickets with one resolution code. Only people's open tickets are resolved; the others stay as they are.</p>
+  <ul class="i2g-helpdesk-resolve-list">
+    {% for ticket in tickets %}
+      <li>{{ ticket.display_number }}: {{ ticket.subject|default:"(no subject)" }} — {{ ticket.get_status_display }}</li>
+    {% endfor %}
+  </ul>
+
+  {% if form.non_field_errors %}<div class="errornote">{{ form.non_field_errors }}</div>{% endif %}
+  <div class="i2g-helpdesk-resolve-field">
+    <label for="{{ form.code.id_for_label }}">{{ form.code.label }} <span aria-hidden="true">*</span></label>
+    {{ form.code }}
+    {% if form.code.errors %}<div class="errors">{{ form.code.errors }}</div>{% endif %}
+  </div>
+  <div class="i2g-helpdesk-resolve-field">
+    <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+    {{ form.notes }}
+    {% if form.notes.errors %}<div class="errors">{{ form.notes.errors }}</div>{% endif %}
+  </div>
+
+  <div class="i2g-helpdesk-resolve-buttons">
+    <button type="submit" class="i2g-helpdesk-button">Resolve {{ tickets|length }} ticket{{ tickets|length|pluralize }}</button>
+    <a href="{{ request.get_full_path }}" class="i2g-helpdesk-button is-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}

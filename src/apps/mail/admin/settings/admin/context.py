@@ -8,7 +8,6 @@ from apps.core.models import (
     GmailApiProviderConfig,
 )
 from apps.core.services.email.telemetry import text
-from apps.core.utils.access import user_can_access_app
 from apps.mail.services.campaign.delivery.pacing import email_send_rate_line, sms_send_rate_line
 from apps.mail.services.email_monitoring.dashboard.trace import latest_permission_check
 
@@ -16,22 +15,19 @@ from ..rates.cards import EMAIL_CHANNELS
 
 
 def _graph_context(request, graph_config, from_email: str) -> dict:
-    """The active Graph config, read-only: it is managed on its own admin page, which needs the Core app."""
+    """The active Graph config, read-only: it is managed on its own admin page."""
     saved = not graph_config._state.adding
-    context = {
+    return {
         "graph_saved": saved,
         "graph_delivery_status": _graph_delivery_status(graph_config, from_email) if saved else None,
         "graph_scopes": list(graph_config.mailbox_scopes.all()) if saved else [],
         "graph_certificate_panel": certificate_panel(request, graph_config, actions=False),
-        "graph_admin_url": "",
-    }
-    if user_can_access_app(request.user, "core"):
-        context["graph_admin_url"] = (
+        "graph_admin_url": (
             reverse("admin:core_microsoftgraphproviderconfig_change", args=[graph_config.pk])
             if saved
             else reverse("admin:core_microsoftgraphproviderconfig_add")
-        )
-    return context
+        ),
+    }
 
 
 def _graph_delivery_status(graph_config, from_email: str) -> dict:
@@ -48,16 +44,14 @@ def _graph_delivery_status(graph_config, from_email: str) -> dict:
 
 def _gmail_context(request) -> dict:
     """The active Gmail API config, read-only and without any credential field: it is managed on its own admin
-    page, which needs the Core app (like the other provider configs)."""
+    page (like the other provider configs)."""
     gmail_config = GmailApiProviderConfig.load()
     saved = not gmail_config._state.adding
-    admin_url = ""
-    if user_can_access_app(request.user, "core"):
-        admin_url = (
-            reverse("admin:core_gmailapiproviderconfig_change", args=[gmail_config.pk])
-            if saved
-            else reverse("admin:core_gmailapiproviderconfig_add")
-        )
+    admin_url = (
+        reverse("admin:core_gmailapiproviderconfig_change", args=[gmail_config.pk])
+        if saved
+        else reverse("admin:core_gmailapiproviderconfig_add")
+    )
     return {
         "gmail_config": gmail_config,
         "gmail_saved": saved,

@@ -12,11 +12,7 @@ class CMSPreviewAPITest(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = Member.objects.create_user(
-            password="testpass123",
-            is_staff=True,
-            admin_apps=["cms"],
-        )
+        self.staff = Member.objects.create_user(password="testpass123", is_staff=True)
 
     def test_preview_store_requires_staff(self):
         """Anonymous POST to preview store returns 403."""

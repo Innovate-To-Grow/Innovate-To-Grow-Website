@@ -6,6 +6,8 @@ not on the models, so changing them needs no migration. What each flag does:
 - **Account active** (``Member.is_active``) is the account: signing in at all, and the All subscribers, All active
   members and Staff audiences. It is independent of the contact flags: turning it off changes no address or phone,
   and no contact flag changes it.
+- **Admin** (``Member.is_staff``) is the account type: an Admin signs in to the admin site and may manage everything
+  there; every Admin has the same permissions.
 - **Verified** (per email address or phone) is a way to sign in. It does not decide who gets mail.
 - **Subscribed** (per email address) is read only by the All subscribers audience (newsletters).
 """
@@ -17,6 +19,8 @@ ACCOUNT_ACTIVE = (
     "mail to one address, use Email Monitoring → Bounced addresses → Mark undeliverable (or untick Subscribed on that "
     "address for newsletters only)."
 )
+ADMIN_LABEL = "Admin"
+ADMIN = "Can sign in to the admin site and manage everything in it. All Admins have the same permissions."
 UNFINISHED_SIGN_UP_LABEL = "Unfinished sign-up"
 UNFINISHED_SIGN_UP = (
     "The person started a self-service sign-up and never finished it, so the account is not active yet. It ends the "
@@ -25,14 +29,14 @@ UNFINISHED_SIGN_UP = (
 )
 
 EMAIL_TYPE = (
-    "Primary: the member's main address (campaigns sent to the primary email only; a staff member's admin sign-in "
-    "codes). Secondary: a backup address. Other: any further address. To make another verified address the primary, "
-    "use “Switch primary email” on the member page."
+    "Primary: the member's main address (campaigns sent to the primary email only; an Admin's admin sign-in codes). "
+    "Secondary: a backup address. Other: any further address. To make another verified address the primary, use "
+    "“Switch primary email” on the member page."
 )
 EMAIL_VERIFIED = (
     "The person proved they receive mail here (they entered a code sent to it), or staff confirmed it. A verified "
-    "address can be used to sign in and can become the primary; a staff member's admin sign-in codes go to their "
-    "verified primary only. Unticking it stops sign-in with this address. It does not stop any mail."
+    "address can be used to sign in and can become the primary; an Admin's admin sign-in codes go to their verified "
+    "primary only. Unticking it stops sign-in with this address. It does not stop any mail."
 )
 EMAIL_SUBSCRIBED = (
     "Receives newsletters: the All subscribers audience (campaigns sent to the primary email only use the primary's "
@@ -46,5 +50,9 @@ PHONE_SUBSCRIBED = (
 
 EMAIL_LABELS = {"verified": "Verified (sign-in)", "subscribe": "Subscribed (newsletters)"}
 EMAIL_HELP_TEXTS = {"email_type": EMAIL_TYPE, "verified": EMAIL_VERIFIED, "subscribe": EMAIL_SUBSCRIBED}
-MEMBER_LABELS = {"is_active": ACCOUNT_ACTIVE_LABEL, "registration_pending": UNFINISHED_SIGN_UP_LABEL}
-MEMBER_HELP_TEXTS = {"is_active": ACCOUNT_ACTIVE, "registration_pending": UNFINISHED_SIGN_UP}
+MEMBER_LABELS = {
+    "is_active": ACCOUNT_ACTIVE_LABEL,
+    "is_staff": ADMIN_LABEL,
+    "registration_pending": UNFINISHED_SIGN_UP_LABEL,
+}
+MEMBER_HELP_TEXTS = {"is_active": ACCOUNT_ACTIVE, "is_staff": ADMIN, "registration_pending": UNFINISHED_SIGN_UP}

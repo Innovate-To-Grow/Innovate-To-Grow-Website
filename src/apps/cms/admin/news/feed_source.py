@@ -10,12 +10,12 @@ from unfold.decorators import action, display
 from apps.cms.admin.news.feed_source_diagnostics import _bounded_diagnostic, _show_sync_result, _stored_diagnostics
 from apps.cms.models import NewsArticle, NewsFeedSource, NewsSyncLog
 from apps.cms.services.news import sync_feed_sources
-from apps.core.admin import BaseModelAdmin
+from apps.core.admin import AppAccessInlineMixin, BaseModelAdmin
 
 _DIAGNOSTIC_PREVIEW_MAX_LENGTH = 240
 
 
-class NewsSyncLogInline(TabularInline):
+class NewsSyncLogInline(AppAccessInlineMixin, TabularInline):
     model = NewsSyncLog
     fields = ("started_at", "duration_seconds", "articles_created", "articles_updated", "errors_text")
     readonly_fields = ("started_at", "duration_seconds", "articles_created", "articles_updated", "errors_text")

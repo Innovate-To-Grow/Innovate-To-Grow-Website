@@ -1,4 +1,5 @@
-"""Which member a row is about: the conflicts C1–C5, the precedence of all conflicts, and their default (Skip).
+"""Which member a row is about: the conflicts C1 and C3–C5 (C2 is retired), the precedence of all conflicts, and their
+default (Skip). An Admin account is matched like any other member.
 
 Every row that needs a decision starts on "skip"; the choice the import plan suggests is only marked. A choice that is
 not allowed stays listed, disabled, with the reason.
@@ -24,17 +25,12 @@ def options(analysis) -> dict:
     return {item["value"]: item for item in analysis.options}
 
 
-def not_privileged(member) -> bool:
-    """``can_manage`` of an actor who is not an I2G Master."""
-    return not (member.is_staff or member.is_superuser)
-
-
 class ConflictCatalogueTests(ImportTestCase):
     def setUp(self):
         super().setUp()
         self.grace = self.member("Grace", "Hopper", "grace@example.com")
         self.bob = self.member("Bob", "Babbage", "bob@example.com")
-        self.sam = self.member("Sam", "Staff", "sam@example.com", is_staff=True)
+        self.sam = self.member("Sam", "Admin", "sam@example.com", is_staff=True)
         self.email(self.bob, "bob.work@example.com", verified=True)
         self.email(self.grace, "shared@example.com", "other")
         ContactEmail.objects.create(member=None, email_address="SHARED@example.com")
@@ -44,7 +40,7 @@ class ConflictCatalogueTests(ImportTestCase):
         rows = [
             uuid_row("twin@example.com", None),
             uuid_row("twin@example.com", None, Organization="Twin Corp"),
-            uuid_row("sam@example.com", None, First_Name="Sam", Last_Name="Staff"),
+            uuid_row("sam@example.com", None, First_Name="Sam", Last_Name="Admin"),
             uuid_row("shared@example.com", None),
             uuid_row("bob@example.com", self.ada.pk, First_Name="Bob", Last_Name="Babbage"),
             uuid_row("ghost@example.com", uuid.uuid4()),
@@ -54,14 +50,14 @@ class ConflictCatalogueTests(ImportTestCase):
             uuid_row("ada@example.com", None),
         ]
 
-        analyses = self.analyse(rows, UUID_HEADERS, mode=SKIP_EXISTING, can_manage=not_privileged)
+        analyses = self.analyse(rows, UUID_HEADERS, mode=SKIP_EXISTING)
 
         self.assertEqual(
             {a.row_number: a.conflict for a in analyses},
             {
                 2: "duplicate_in_sheet",
                 3: "duplicate_in_sheet",
-                4: "privileged_target",
+                4: "exists_but_skip_mode",  # an Admin account, matched like any other member
                 5: "ambiguous_address",
                 6: "uuid_email_mismatch",
                 7: "uuid_not_found",

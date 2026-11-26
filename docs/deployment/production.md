@@ -130,8 +130,8 @@ test recipient has been explicitly requested.
 
 ### Microsoft Graph certificate key
 
-The Microsoft Graph email provider signs with a private key that an admin with the
-Core app installs in Django admin. The key is stored in one Secrets Manager secret,
+The Microsoft Graph email provider signs with a private key that an Admin installs
+in Django admin. The key is stored in one Secrets Manager secret,
 `itg/backend/microsoft-graph/certificate-key`, outside the
 `itg/backend/aws-credentials/` namespace. Each install adds a version; the
 database keeps only the certificate's public data, the secret ARN and the pinned
@@ -180,7 +180,7 @@ itself.
 ### Gmail API service-account key
 
 The Gmail API email provider signs with a Google service-account key that an
-admin with the Core app installs in Django admin. It is stored in its own Secrets Manager
+Admin installs in Django admin. It is stored in its own Secrets Manager
 secret, `itg/backend/gmail-api/service-account-key`, with exactly the same
 controls as the Graph key: `GmailApiKeySecret` (created empty, `Retain` on
 deletion and replacement), `ApplicationGmailApiKey` (the task role may read,
@@ -235,6 +235,49 @@ paces every email, SMS and inbox session. Before or with the release:
    before deploying it (it does not know that provider).
    `max_send_rate`, `messages_per_minute` and `DeliveryRateLimit` stay for one
    release so this works; a follow-up release drops them.
+
+### Single Admin role release
+
+This release retires the per-app admin grants (`Member.admin_apps`) and the "I2G Master" (superuser) tier: every
+active staff account becomes an **Admin** with every permission the I2G Master had (all of Site Settings and the
+credential pages, Login as Member, deleting members, admin invitations, the CLI and the AI assistant). The account
+model is described in [System overview](../architecture/system-overview.md#how-the-admin-works) and
+[Member & Mail Tools](../cms-admin/member-and-mail-tools.md#account-types-admin-and-regular-member).
+
+1. **Review the staff list before deploying.** On the running release, open **Members**, filter **Staff status:
+   Yes** and look at every account, including ones nobody thinks of as admins (an accepted invitation that was never
+   given an app, a helpdesk-only or check-in account). Each one that is active becomes a full Admin. Untick **Staff
+   status** on any that should not be, before the deploy.
+2. **Migrations.** `authn.0024_single_admin_role` (data only): an inactive account loses Admin (`is_staff`), so
+   reactivating it later never brings back a full Admin unasked; `is_superuser` is set to `is_staff` on every row
+   (`Member.save()` keeps it so from then on); every pending admin invitation is cancelled (each was approved as
+   "staff with no apps" and would now create a full Admin: send a new one where it is still wanted). The migration
+   prints the member ids it changed, with no names or addresses, to the migrate output in the task log: "Inactive
+   accounts that lost Admin", "Staff accounts that became full Admins", "Non-staff accounts whose superuser flag was
+   cleared", and the number of cancelled invitations. Keep that log line with the release notes. Its reverse is a
+   no-op: who was an I2G Master, and each account's app grants, cannot be told apart afterwards.
+   `authn.0025_retire_member_admin_apps` gives the physical `admin_apps` column a database default (`[]`) and removes
+   the field from Django's state only; the column stays (see the follow-up below). `core.0051` and `mail.0034` change
+   help texts only.
+3. **Rolling window and image rollback.** Old tasks still read and write `admin_apps` while new tasks insert members
+   without it (the database default fills it). An older image works after the migrations: every Admin has
+   `is_superuser`, so it treats them as I2G Masters. An old task does not mirror `is_superuser` when it makes a
+   member staff; for it that account has no apps, while new tasks decide on `is_staff` and treat it as a full Admin
+   (the next save by a new task sets the mirror).
+4. **Pages open across the deploy.** A primary-switch or bounced-address confirmation page opened before the deploy
+   answers "changed since" once. A member import in review whose rows name a member goes back to review once at
+   apply (its stored snapshot changed shape); review it again.
+5. **Default admin at boot.** With `ENSURE_DEFAULT_ADMIN` on, container start still requires the
+   `DJANGO_SUPERUSER_EMAIL` member to be an active Admin with a verified contact (it no longer checks
+   `is_superuser`). Any Admin can now change that account, so do not deactivate it, remove its Admin access or
+   un-verify its contact while the switch is on: the next deploy or scale-out would fail to start.
+
+**Follow-up (contract release), tracked:** once no task of a release before this one can run (the deploy above has
+finished and rollback to it is no longer planned), add an `authn` migration that drops the physical
+`Member.admin_apps` column. As with `event.0012`, it must first add the field back to the migration state and then
+remove it, so that the database operation really drops the column. Do not combine it with this release. Until it
+ships the column holds stale grants nobody reads. Also tracked in
+[Operations → Migrations](../cms-admin/operations.md#admin-role-rollout-cleanup).
 
 ### GitHub feature prerequisites
 

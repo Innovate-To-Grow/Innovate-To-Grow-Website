@@ -1,12 +1,10 @@
-"""Which action a staff member may take on a bounced address right now, and why not.
+"""Which action an Admin may take on a bounced address right now, and why not.
 
-Seeing the page needs the Mail app. Anything that changes a contact email or a member also needs the Members
-(``authn``) app and ``user_can_manage_member`` for every member involved: only an I2G Master may change a staff or
-superuser account. Deleting an account is for an I2G Master only: the hard delete also removes the member's records
-in apps the admin may not hold (event registrations, check-ins, assistant chats, admin history), which no other admin
-path deletes today. Each guard reads the address,
-its contact emails and the member live (``load_target``); ``fingerprint`` summarises what they read, so applying an
-action refuses when anything changed after the confirmation page was shown.
+Every Admin may take every action; what a guard refuses depends only on the address, its contact emails and the
+member. Deactivating or deleting an account also applies the Admin lockout rules (``admin_removal_refusal``): nobody
+removes their own Admin account, and the last active Admin is never removed. Each guard reads the address, its contact
+emails and the member live (``load_target``); ``fingerprint`` summarises what they read, so applying an action refuses
+when anything changed after the confirmation page was shown.
 
 When the address is a member's primary or only address (plan §3.4):
 
@@ -15,27 +13,24 @@ When the address is a member's primary or only address (plan §3.4):
 - an ambiguous address (one address under several letter cases) allows no contact or member change.
 """
 
-from apps.core.utils.access import user_can_access_app, user_can_manage_member
+from apps.authn.services.members.admins import DEACTIVATE, DELETE, admin_removal_refusal
 
 from ..policies.graph import row_has_graph_hold
 from .targets import (
     ALLOWED,
-    MASTER_DELETES,
-    NEEDS_AUTHN,
-    PRIVILEGED,
     Action,
     Availability,
     Role,
     Status,
     Target,
     _first_refusal,
-    _is_self,
-    _member_change,
     _member_role,
     delete_email_blocker,
     member_admin,
     refused,
 )
+
+DELETE_REFUSED = "The Members admin does not allow deleting this account."
 
 
 def _dismiss(request, target):
@@ -59,21 +54,20 @@ def _mark_undeliverable(request, target):
         return refused("The address is already marked undeliverable.")
     if target.role in (Role.NONE, Role.UNLINKED):
         return refused("The address is not a member's contact email: use Suppress address.")
-    return _member_change(request, target.owners)
+    return ALLOWED
 
 
 def _clear(request, target):
     row = target.row
     if not (row.is_suppressed or row_has_graph_hold(row) or row.legacy_graph_permanent_review):
         return refused("The address has no staff or reviewed Graph hold to clear.")
-    return _member_change(request, target.owners) if target.owners else ALLOWED
+    return ALLOWED
 
 
 def _unsubscribe(request, target):
     return _first_refusal(
         lambda: _member_role(target),
         lambda: ALLOWED if target.contact.subscribe else refused("The address is already unsubscribed."),
-        lambda: _member_change(request, [target.member]),
     )
 
 
@@ -81,24 +75,18 @@ def _make_primary(request, target):
     return _first_refusal(
         lambda: ALLOWED if target.role == Role.PRIMARY else refused("Only for the member's primary address."),
         lambda: ALLOWED if target.other_verified() else refused("The member has no other verified address."),
-        lambda: _member_change(request, [target.member]),
     )
 
 
 def _replace(request, target):
-    return _first_refusal(lambda: _member_role(target), lambda: _member_change(request, [target.member]))
+    return _member_role(target)
 
 
 def _delete_email(request, target):
     if target.role == Role.UNLINKED:
-        if not user_can_access_app(request.user, "authn"):
-            return refused(NEEDS_AUTHN)
-        if not user_can_manage_member(request.user, None):
-            return refused("Only an I2G Master may delete a contact email that belongs to no member.")
         return ALLOWED
     return _first_refusal(
         lambda: _member_role(target),
-        lambda: _member_change(request, [target.member]),
         lambda: refused(blocker) if (blocker := delete_email_blocker(target)) else ALLOWED,
     )
 
@@ -107,19 +95,22 @@ def _deactivate(request, target):
     return _first_refusal(
         lambda: _member_role(target),
         lambda: ALLOWED if target.member.is_active else refused("The account is already inactive."),
-        lambda: refused("You cannot deactivate your own account.") if _is_self(request, target) else ALLOWED,
-        lambda: _member_change(request, [target.member]),
+        lambda: _lockout(request, target, DEACTIVATE),
     )
 
 
 def _delete_account(request, target):
     return _first_refusal(
         lambda: _member_role(target),
-        lambda: refused("You cannot delete your own account.") if _is_self(request, target) else ALLOWED,
-        lambda: ALLOWED if request.user.is_superuser else refused(MASTER_DELETES),
-        lambda: _member_change(request, [target.member]),
-        lambda: ALLOWED if member_admin().has_delete_permission(request, target.member) else refused(PRIVILEGED),
+        lambda: _lockout(request, target, DELETE),
+        lambda: ALLOWED if member_admin().has_delete_permission(request, target.member) else refused(DELETE_REFUSED),
     )
+
+
+def _lockout(request, target, action: str) -> Availability:
+    """The Admin lockout rules: never the actor's own Admin account, never the last active Admin."""
+    reason = admin_removal_refusal(request.user, [target.member], action=action)
+    return refused(reason) if reason else ALLOWED
 
 
 GUARDS = {

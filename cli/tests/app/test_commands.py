@@ -76,50 +76,23 @@ def test_schema(use_client):
 
 
 def test_apps(use_client):
-    client = use_client(
-        get={
-            "/admin-api/whoami/": {"is_superuser": False, "admin_apps": ["projects"]},
-            "/admin-api/apps/": [{"app_label": "projects", "model_count": 3}],
-        }
-    )
+    client = use_client(get={"/admin-api/apps/": [{"app_label": "projects", "model_count": 3}]})
     result = runner.invoke(app, ["apps"])
     assert result.exit_code == 0
-    assert [call[1] for call in client.calls] == ["/admin-api/whoami/", "/admin-api/apps/"]
+    assert [call[1] for call in client.calls] == ["/admin-api/apps/"]
     assert "projects" in result.output
 
 
 def test_apps_json(use_client):
-    use_client(
-        get={
-            "/admin-api/whoami/": {"is_superuser": False, "admin_apps": ["projects"]},
-            "/admin-api/apps/": [{"app_label": "projects", "model_count": 3}],
-        }
-    )
+    use_client(get={"/admin-api/apps/": [{"app_label": "projects", "model_count": 3}]})
     result = runner.invoke(app, ["apps", "--json"])
     assert result.exit_code == 0
     assert '"app_label"' in result.output
 
 
-def test_apps_filters_rows_outside_admin_apps(use_client):
+def test_apps_prints_every_row_the_server_returns(use_client):
     use_client(
         get={
-            "/admin-api/whoami/": {"is_superuser": False, "admin_apps": ["projects"]},
-            "/admin-api/apps/": [
-                {"app_label": "projects", "model_count": 3},
-                {"app_label": "cms", "model_count": 4},
-            ],
-        }
-    )
-    result = runner.invoke(app, ["apps", "--json"])
-    assert result.exit_code == 0
-    assert '"projects"' in result.output
-    assert '"cms"' not in result.output
-
-
-def test_apps_superuser_sees_all_rows(use_client):
-    use_client(
-        get={
-            "/admin-api/whoami/": {"is_superuser": True, "admin_apps": []},
             "/admin-api/apps/": [
                 {"app_label": "projects", "model_count": 3},
                 {"app_label": "cms", "model_count": 4},

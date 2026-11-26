@@ -13,7 +13,7 @@ from apps.core.tests.admin.service_credentials.graph_config.test_graph_provider_
 )
 from apps.core.tests.graph_helpers import CLIENT_ID, TENANT_ID, create_graph_config, install_test_certificate
 from apps.core.tests.project.models.graph.test_graph_go_live_gate import DENY, evidence
-from apps.event.tests.helpers import make_admin, make_superuser
+from apps.event.tests.helpers import make_admin
 
 
 class SendingConfigGuardTests(GuardFixture):
@@ -113,17 +113,15 @@ class TakeoverGateTests(GuardFixture):
             name="Standby", mailbox=MAILBOX, scope=(MAILBOX,), client_id=OTHER_APP, access_check_deny_mailbox=DENY
         )
 
-    def test_core_staff_and_superusers_cannot_activate_a_standby_without_evidence(self):
+    def test_admins_cannot_activate_a_standby_without_evidence(self):
         evidence(self.config)  # the sending config's evidence says nothing about the standby's app
-        for user in (make_admin(apps=["core"], email="core@example.com"), make_superuser(email="root@example.com")):
-            with self.subTest(user=user.email):
-                self.client.force_login(user)
-                self.assert_takeover_refused(self.standby, "no access check is recorded for the current certificate")
+        self.client.force_login(make_admin(email="other-admin@example.com"))
+        self.assert_takeover_refused(self.standby, "no access check is recorded for the current certificate")
         self.assertTrue(EmailServiceConfig.load().delivery_configured)
 
     def test_a_standby_with_its_own_passing_check_may_take_over(self):
         evidence(self.standby)
-        self.client.force_login(make_admin(apps=["core"], email="core@example.com"))
+        self.client.force_login(make_admin(email="other-admin@example.com"))
 
         response = self.post(self.standby, change_data(self.standby, is_active="on"))
 

@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.authn.models import ImpersonationToken
+from apps.core.utils.access import user_is_admin
 
 from ...shared.responses import build_auth_success_payload, read_body_string
 
@@ -44,6 +45,12 @@ class ImpersonateLoginView(APIView):
                 else "This impersonation link has expired."
             )
             return Response({"detail": detail}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Checked again at redemption, not only when the link was issued: the link is spent either way, and it never
+        # signs in as an account that has since become an Admin, nor works once its issuer is no longer an Admin.
+        if impersonation.member.is_staff or not user_is_admin(impersonation.created_by):
+            logger.warning("Refused impersonation token %s: target is an Admin or issuer is not", impersonation.pk)
+            return Response({"detail": "Invalid impersonation link."}, status=status.HTTP_400_BAD_REQUEST)
 
         logger.info(
             "Admin %s (%s) impersonated member %s (%s)",

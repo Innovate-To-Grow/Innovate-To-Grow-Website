@@ -8,7 +8,6 @@ from django.template.response import TemplateResponse
 from django.urls import reverse
 
 from apps.core.models import EmailBounce
-from apps.core.utils.access import user_can_access_app
 from apps.event.models import EventRegistration
 from apps.mail.admin.email_monitoring.addresses import REPORTS_SHOWN, _member_link
 from apps.mail.models import BouncedAddress, EmailCampaign, RecipientLog
@@ -24,38 +23,31 @@ from apps.mail.services.email_monitoring.addresses.listing.matching import (
 from .views import TEMPLATES, _context, require_mail_access
 
 
-def _member_card(request, member) -> dict:
-    """The member's card. Their other addresses (and which are verified) and their phones are shown only to staff
-    with the Members (``authn``) app, as the Member admin would: they are sign-in factors."""
-    card = {
-        "member": member,
-        "link": _member_link(request, member),
-        "registrations": EventRegistration.objects.filter(member=member).count(),
-        "contacts": None,
-    }
-    if not user_can_access_app(request.user, "authn"):
-        return card
+def _member_card(member) -> dict:
+    """The member's card: their registrations, their other addresses (and which are verified) and their phones."""
     contacts = list(member.contact_emails.order_by("created_at", "pk"))
     suppressed = set(
         BouncedAddress.objects.filter(
             address__in=[normalize_address(contact.email_address) for contact in contacts], suppressed_at__isnull=False
         ).values_list("address", flat=True)
     )
-    card.update(
-        contacts=[
+    return {
+        "member": member,
+        "link": _member_link(member),
+        "registrations": EventRegistration.objects.filter(member=member).count(),
+        "contacts": [
             {"contact": contact, "suppressed": normalize_address(contact.email_address) in suppressed}
             for contact in contacts
         ],
-        verified_phones=member.contact_phones.filter(verified=True).count(),
-        phones=member.contact_phones.count(),
-    )
-    return card
+        "verified_phones": member.contact_phones.filter(verified=True).count(),
+        "phones": member.contact_phones.count(),
+    }
 
 
-def _notice_link(request, row) -> str:
-    """The helpdesk ticket holding the latest left-the-organisation notice, for staff with the Helpdesk app (the
-    queue hides automated mail by default, so the link shows every ticket)."""
-    if not row.left_org_hint_is_current or not row.left_org_ticket or not user_can_access_app(request.user, "helpdesk"):
+def _notice_link(row) -> str:
+    """The helpdesk ticket holding the latest left-the-organisation notice (the queue hides automated mail by default,
+    so the link shows every ticket)."""
+    if not row.left_org_hint_is_current or not row.left_org_ticket:
         return ""
     query = urlencode({"q": row.left_org_ticket, "mail": "all", "status": "any"})
     return f"{reverse('admin:helpdesk_ticket_changelist')}?{query}"
@@ -104,14 +96,13 @@ def address_detail_view(request, pk):
         campaign_held=is_suppressed(row.address),
         target=target,
         actions=actions,
-        cards=[_member_card(request, owner) for owner in target.owners],
+        cards=[_member_card(owner) for owner in target.owners],
         reports=list(reports[:REPORTS_SHOWN]),
         report_count=reports.count(),
         ses_events=list(ses_events[:REPORTS_SHOWN]),
         campaign_links=_detail_campaigns(row),
         history=list(row.actions.select_related("actor").order_by("-created_at")[:REPORTS_SHOWN]),
-        contact_admin=user_can_access_app(request.user, "authn"),
-        notice_link=_notice_link(request, row),
+        notice_link=_notice_link(row),
         shown=REPORTS_SHOWN,
         category_legend=EmailBounce.category_legend(),
     )

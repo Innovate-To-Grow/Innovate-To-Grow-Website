@@ -1,9 +1,10 @@
 """Shadow mode: the helpdesk reads the mailbox and writes tickets, and sends nothing.
 
-This release has no sending code: no reply composer, no acknowledgement, no notification, and no change to the
-mailbox (nothing is marked read, moved, flagged or forwarded; the Graph transport refuses such requests anyway).
-``sending_allowed`` is the one switch any later sending code must check first; it stays False while
-``HelpdeskSettings.shadow_mode`` is on (the default), and it is False in this release whatever the setting says.
+While ``HelpdeskSettings.shadow_mode`` is on (the default) there is no reply form, no acknowledgement and no
+notification. Staff switch it off in Helpdesk → Settings to reply from the ticket page and, when those switches are
+on, to send acknowledgements and assignment notifications (``services.outbound``). The mailbox never changes either
+way (nothing is marked read, moved, flagged or forwarded; the Graph transport refuses such requests anyway).
+``sending_allowed`` is the one switch all sending code checks first, when it queues and again when the job runs.
 ``automatic_reply_allowed`` is the one any automatic answer (an acknowledgement, a notification) must check: it is
 also False for automated mail, so an automatic reply is never answered with another (a mail loop), for a message on a
 ticket that is automated mail or spam, and for a person's message the classifier marked ``no_auto_response`` (RFC
@@ -15,8 +16,8 @@ from apps.core.services.email.inbound import NO_AUTO_RESPONSE
 
 from ...models import HelpdeskSettings, Ticket, TicketMessage
 
-# Flipped by the release that adds replies and notifications; until then nothing can send, whatever the settings say.
-SENDING_IMPLEMENTED = False
+# The release that added replies and notifications (``services.outbound``); a code-level kill switch beside the setting.
+SENDING_IMPLEMENTED = True
 
 
 def shadow_mode_on(settings: HelpdeskSettings | None = None) -> bool:

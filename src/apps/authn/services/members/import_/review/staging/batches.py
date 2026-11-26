@@ -18,6 +18,7 @@ from apps.authn.models import MemberImportBatch, MemberImportRow
 
 from ...workbook.parsing import values_from_json, values_to_json
 from ..analysis.resolution import Context
+from ..analysis.risky import RISKY_TYPES
 from ..analysis.rows import RowAnalysis, analyse_rows
 from ..lookup.load import load_snapshot
 from ..plan.actions import SKIP
@@ -57,6 +58,13 @@ def to_stored(analysis: RowAnalysis) -> dict:
     }
 
 
+def _current_items(risky: dict) -> dict:
+    """The stored risky items without retired ones (R8, the former staff-status tick): never shown or offered; a row
+    that ticked one goes back to the review at the apply."""
+    kept = {member: [item for item in items if item.get("code") in RISKY_TYPES] for member, items in risky.items()}
+    return {member: items for member, items in kept.items() if items}
+
+
 def stored_analysis(row: MemberImportRow) -> RowAnalysis:
     """The analysis a stored row was reviewed with."""
     data = row.analysis or {}
@@ -68,7 +76,7 @@ def stored_analysis(row: MemberImportRow) -> RowAnalysis:
         options=data.get("options", []),
         default=data.get("default", SKIP),
         warnings=row.warnings or [],
-        risky=row.risky or {},
+        risky=_current_items(row.risky or {}),
         slice=row.candidates or {},
         fingerprint=row.fingerprint,
     )

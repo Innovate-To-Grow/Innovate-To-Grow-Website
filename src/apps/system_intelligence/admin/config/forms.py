@@ -82,7 +82,7 @@ class SystemIntelligenceConfigForm(forms.ModelForm):
         for model_field, provider_field in MODEL_PAIRS:
             model_id = (cleaned.get(model_field) or "").strip()
             cleaned[model_field] = model_id
-            # A read-only provider field (non-superuser staff) is not on the form: keep the saved provider.
+            # A provider field left off the form (e.g. read-only) keeps the saved provider.
             provider = (
                 cleaned.get(provider_field) if provider_field in self.fields else getattr(self.instance, provider_field)
             )

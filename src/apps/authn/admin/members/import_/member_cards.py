@@ -15,8 +15,8 @@ def _url(name: str, *args) -> str:
 
 def member_card(member, *, matched: set[str], matched_by: str = "") -> dict:
     badges = ["Active" if member.is_active else "Inactive"]
-    badges += [label for flag, label in ((member.registration_pending, "Unfinished sign-up"),) if flag]
-    badges += [label for flag, label in ((member.is_staff, "Staff"), (member.is_superuser, "I2G Master")) if flag]
+    badges += ["Unfinished sign-up"] if member.registration_pending else []
+    badges += ["Admin"] if member.is_admin else []
     emails = sorted(member.emails, key=lambda e: (_ROLE_ORDER.get(e.type, 3), e.address.lower()))
     return {
         "id": member.id,

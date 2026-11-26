@@ -1,14 +1,13 @@
 """Site Settings → Request Limits: every request-limit scope's priority tier, Smart limit switch and manual limit,
 its limit now and why, its recent 429s, and which tiers Smart limiting is shedding.
 
-Superusers and staff with the Core (System) app may view and edit; everyone else gets 403 (``admin_view`` only
-checks ``is_staff``, so each view checks the app itself). All scopes are saved together with one "Save request
-limits"; each changed row leaves an admin history line such as "auth-code-send: priority P0→P1; manual 10→20".
+Every Admin may view and edit; ``admin_view`` sends everyone else to the admin sign-in. All scopes are saved
+together with one "Save request limits"; each changed row leaves an admin history line such as
+"auth-code-send: priority P0→P1; manual 10→20".
 """
 
 from django.contrib import admin, messages
 from django.contrib.admin.models import CHANGE, LogEntry
-from django.core.exceptions import PermissionDenied
 from django.db import transaction
 from django.http import HttpResponseRedirect, JsonResponse
 from django.template.response import TemplateResponse
@@ -16,13 +15,11 @@ from django.urls import path, reverse
 from django.views.decorators.http import require_GET, require_http_methods
 
 from apps.core.services.request_limits.reporting.overview import overview, policies
-from apps.core.utils.access import user_can_access_app
 
 from .cards import build_cards
 from .forms import MANUAL_LIMIT_NOTE, RequestLimitPolicyForm
 from .summary import TIER_COPY, status_payload, summary, tier_groups
 
-APP_LABEL = "core"
 # How often the open page re-reads the live status (as Mail → Delivery Rates does). A display refresh: it changes no
 # limit, so it is not one of the REQUEST_RATE_LIMITS tunables.
 STATUS_REFRESH_SECONDS = 15
@@ -38,11 +35,6 @@ def get_request_limit_admin_urls(admin_site=None):
             name="core_request_limits_status",
         ),
     ]
-
-
-def require_access(request) -> None:
-    if not user_can_access_app(request.user, APP_LABEL):
-        raise PermissionDenied("You do not have permission to manage request limits.")
 
 
 def _log(request, policy, message: str) -> None:
@@ -64,7 +56,6 @@ def _save(request, forms) -> int:
 
 @require_http_methods(["GET", "POST"])
 def request_limits_view(request):
-    require_access(request)
     rows = policies()
     data = request.POST if request.method == "POST" else None
     forms = {scope: RequestLimitPolicyForm(data, instance=policy, prefix=scope) for scope, policy in rows.items()}
@@ -98,7 +89,6 @@ def request_limits_view(request):
 
 @require_GET
 def request_limits_status_view(request):
-    require_access(request)
     rows = policies()
     # ``admin_view`` already marks the response never-cache.
     return JsonResponse(status_payload(overview(rows), {scope: row.label for scope, row in rows.items()}))

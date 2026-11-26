@@ -12,7 +12,6 @@ from apps.mail.services.email_monitoring.addresses.actions import (
 from apps.mail.services.email_monitoring.addresses.actions.guards import availability
 from apps.mail.services.email_monitoring.addresses.actions.replace import (
     NEW_ROLES,
-    attest_allowed,
     secondary_taken,
 )
 from apps.mail.services.email_monitoring.addresses.actions.specs import (
@@ -73,7 +72,6 @@ def _confirm_context(request, row, action: str, values: dict) -> dict:
     if action == Action.REPLACE and member is not None:
         context.update(
             new_roles=NEW_ROLES,
-            attest_allowed=attest_allowed(request, member),
             secondary_taken=secondary_taken(target, deleting_old=False),
             old_typed=target.contact.email_address if confirmation_required() else "",
             subscribe_default=target.contact.subscribe,

@@ -21,7 +21,7 @@ from apps.system_intelligence.services.actions.engine.exceptions import ActionRe
 # ---------------------------------------------------------------------------
 class RecordsReadToolTests(TestCase):
     def setUp(self):
-        user = make_admin(apps=["system_intelligence", "cms"])
+        user = make_admin()
         tokens = actions.set_action_context(None, str(user.pk))
         self.addCleanup(actions.reset_action_context, tokens)
 

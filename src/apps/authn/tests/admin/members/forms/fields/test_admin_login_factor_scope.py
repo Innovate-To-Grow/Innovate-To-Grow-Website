@@ -2,7 +2,7 @@ from django.core.cache import cache
 from django.test import TestCase
 
 from apps.authn.models import ContactEmail
-from apps.authn.tests.admin.members.security.privileged.test_member_admin_security import _staff
+from apps.authn.tests.admin.members.security.admins.fixtures import make_admin_member
 
 
 class AdminLoginFactorScopeTests(TestCase):
@@ -10,7 +10,7 @@ class AdminLoginFactorScopeTests(TestCase):
 
     def setUp(self):
         cache.clear()
-        self.staff = _staff(admin_apps=["authn"], first_name="Staff", last_name="Member")
+        self.staff = make_admin_member(first_name="Staff", last_name="Member")
         ContactEmail.objects.create(
             member=self.staff, email_address="primary@example.com", email_type="primary", verified=True
         )

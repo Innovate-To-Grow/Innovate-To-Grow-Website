@@ -12,12 +12,10 @@ from apps.event.tests.helpers import (
 
 
 class EventAdminTest(_EventAdminCase):
-    def test_change_page_shows_inlines_for_staff_with_event_app_access(self):
-        """Inlines match Event admin access (the ``event`` app grant), not per-model
-        Django permissions — see apps.core.utils.access.user_can_access_app."""
-        editor = Member.objects.create_user(
-            password="testpass123", is_staff=True, is_superuser=False, admin_apps=["event"]
-        )
+    def test_change_page_shows_inlines_for_an_admin(self):
+        """Inlines match Event admin access (every Admin), not per-model Django
+        permissions — see apps.core.utils.access.user_can_access_app."""
+        editor = Member.objects.create_user(password="testpass123", is_staff=True)
         ContactEmail.objects.create(
             member=editor,
             email_address="editor@example.com",
@@ -35,16 +33,11 @@ class EventAdminTest(_EventAdminCase):
         self.assertContains(response, 'id="questions-group"')
 
     @override_settings(ADMIN_REQUIRE_CONFIRMATION=True)
-    def test_event_only_staff_can_load_and_save_copied_children(self):
+    def test_an_admin_can_load_and_save_copied_children(self):
         source = make_event(name="Staff Copy Source")
         Ticket.objects.create(event=source, name="Staff Ticket", order=1)
         Question.objects.create(event=source, text="Staff question?", is_required=True, order=2)
-        editor = Member.objects.create_user(
-            password="testpass123",
-            is_staff=True,
-            is_superuser=False,
-            admin_apps=["event"],
-        )
+        editor = Member.objects.create_user(password="testpass123", is_staff=True)
         ContactEmail.objects.create(
             member=editor,
             email_address="copy-editor@example.com",

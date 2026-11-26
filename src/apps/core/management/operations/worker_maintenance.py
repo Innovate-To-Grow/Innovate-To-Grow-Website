@@ -13,6 +13,7 @@ from apps.helpdesk.services.ingest.pipeline.jobs import ensure_scheduled as ensu
 from apps.helpdesk.services.ingest.pipeline.jobs import purge_finished_jobs as purge_finished_helpdesk_ingests
 from apps.helpdesk.services.intake.jobs import ensure_scheduled as ensure_helpdesk_intake_scheduled
 from apps.helpdesk.services.intake.jobs import purge_finished_jobs as purge_finished_helpdesk_intake_scans
+from apps.helpdesk.services.sla.automation import run as run_helpdesk_automation
 from apps.helpdesk.services.tickets.retention import purge_expired as purge_expired_helpdesk
 from apps.mail.services.inbox.polling.poller import ensure_scheduled as ensure_inbox_poll_scheduled
 from apps.mail.services.inbox.polling.poller import purge_finished_jobs as purge_finished_inbox_polls
@@ -123,12 +124,23 @@ def _purge_helpdesk(should_stop=None) -> None:
         )
 
 
+def _helpdesk_automation(should_stop=None) -> None:
+    # Resolved tickets past Helpdesk → Settings' auto-close period close; SLA clocks past their due time are flagged.
+    result = run_helpdesk_automation(should_stop=should_stop)
+    if any(result.values()):
+        logger.info(
+            "Helpdesk automation: auto-closed %(auto_closed)d resolved tickets; flagged %(sla_breaches)d SLA breaches",
+            result,
+        )
+
+
 # Periodic maintenance, run in this order every ``--maintenance-seconds`` (hourly by default). Each entry is
 # ``(name, callable)``; ``run_maintenance`` isolates every call, so one failure never stops the worker or the rest.
 # Every callable takes the stop check: the batched tasks (the three cleanups, the member import purge, the
 # bounced-address counting, the email telemetry retention and the helpdesk retention) hand it to their batch loops, so
 # a stop request ends them after the batch in flight; the two single-statement purges, the delivery-rate upkeep, the
-# certificate expiry check, the scan, trace and ingest scheduling and the SMS opt-out sync ignore it.
+# certificate expiry check, the scan, trace and ingest scheduling and the SMS opt-out sync ignore it; the helpdesk automation checks it
+# between tickets.
 MAINTENANCE_TASKS = (
     ("Retired RSA key purge", _purge_retired_keys),
     ("Public assistant budget purge", _purge_public_assistant_budgets),
@@ -145,6 +157,7 @@ MAINTENANCE_TASKS = (
     ("Email telemetry retention", email_maintenance.purge_email_telemetry),
     ("Helpdesk intake scheduling", _schedule_helpdesk_intake),
     ("Helpdesk ingest scheduling", _schedule_helpdesk_ingest),
+    ("Helpdesk SLA and auto-close", _helpdesk_automation),
     ("Helpdesk retention", _purge_helpdesk),
     ("Inbox poll scheduling", _schedule_inbox_poll),
 )

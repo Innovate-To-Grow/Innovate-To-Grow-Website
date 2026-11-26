@@ -139,7 +139,7 @@ class ActivationGateTests(TestCase):
         message = error.exception.message_dict["provider"][0]
         self.assertTrue(message.startswith("Email cannot switch to Microsoft Graph yet: no access check is recorded"))
         self.assertIn(
-            "An admin with the Core app runs the access check with Run access check, in the Access check section",
+            "An admin runs the access check with Run access check, in the Access check section",
             message,
         )
 

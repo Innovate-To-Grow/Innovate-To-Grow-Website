@@ -97,7 +97,7 @@ class InstallKeyActionTests(ProviderAdminTestCase):
     def test_post_requires_a_csrf_token(self):
         provider = make_provider()
         client = Client(enforce_csrf_checks=True)
-        client.force_login(self.superuser)
+        client.force_login(self.admin_user)
         self.assertEqual(client.post(action_url("install_key_action", provider), {"api_key": NEW_KEY}).status_code, 403)
         provider.refresh_from_db()
         self.assertFalse(provider.key_configured)
@@ -105,7 +105,7 @@ class InstallKeyActionTests(ProviderAdminTestCase):
     def test_key_is_marked_as_a_sensitive_post_parameter(self):
         provider = make_provider()
         request = RequestFactory().post("/", {"api_key": NEW_KEY})
-        request.user = self.superuser
+        request.user = self.admin_user
         request.session = {}
         request._messages = FallbackStorage(request)
         request._dont_enforce_csrf_checks = True

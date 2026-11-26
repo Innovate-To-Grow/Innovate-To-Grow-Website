@@ -5,7 +5,7 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.cms.models import CMSBlock, CMSPage
-from apps.event.tests.helpers import make_admin, make_member, make_superuser
+from apps.event.tests.helpers import make_admin, make_member
 
 
 class _CMSLivePreviewSyncPostingCase(TestCase):
@@ -13,7 +13,7 @@ class _CMSLivePreviewSyncPostingCase(TestCase):
     def setUp(self):
         cache.clear()
         self.client = APIClient()
-        self.staff = make_admin(apps=["cms"], email="cms-posting@example.com")
+        self.staff = make_admin(email="cms-posting@example.com")
         self.page = CMSPage.objects.create(
             slug="live-preview-test",
             route="/live-preview-test",
@@ -139,8 +139,8 @@ class CMSLivePreviewSyncPostingTest(_CMSLivePreviewSyncPostingCase):
             content_type="application/json",
         )
         # DRF returns 401 for unauthenticated requests when DEFAULT_PERMISSION_CLASSES
-        # includes IsAuthenticated; the cms-app permission returns 403 for authenticated
-        # users without cms access.
+        # includes IsAuthenticated; the Admin permission returns 403 for authenticated
+        # members who are not Admins.
         self.assertIn(response.status_code, [401, 403])
 
     def test_post_non_staff_returns_403(self):
@@ -153,26 +153,3 @@ class CMSLivePreviewSyncPostingTest(_CMSLivePreviewSyncPostingCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 403)
-
-    def test_post_non_cms_staff_returns_403(self):
-        """Staff granted a different app (not cms) is denied the live-preview POST."""
-        other_app_staff = make_admin(apps=["event"], email="event-staff@example.com")
-        self.client.force_login(other_app_staff)
-        response = self.client.post(
-            self.live_preview_url,
-            data=json.dumps({"title": "Other App"}),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 403)
-
-    def test_post_superuser_allowed(self):
-        """Superuser (I2G Master) can POST live-preview data."""
-        superuser = make_superuser(email="master@example.com")
-        self.client.force_login(superuser)
-        response = self.client.post(
-            self.live_preview_url,
-            data=json.dumps({"title": "Master", "blocks": []}),
-            content_type="application/json",
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json()["ok"])

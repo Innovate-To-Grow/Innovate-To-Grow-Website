@@ -1,0 +1,26 @@
+{% extends 'unfold/layouts/unauthenticated.html' %}
+
+{% load i18n unfold %}
+
+{% block title %}Account Deactivated | Innovate to Grow{% endblock %}
+
+{% block content %}
+    {% include "unfold/helpers/unauthenticated_title.html" with title="Innovate to Grow" subtitle="Invitation" %}
+
+    <div class="text-center">
+        <span class="material-symbols-outlined text-5xl text-red-400 mb-4">block</span>
+        <h2 class="text-lg font-semibold text-font-default-light dark:text-font-default-dark mb-2">Account
+            Deactivated</h2>
+        <p class="text-sm text-base-500 mb-6 dark:text-base-400">
+            An account for <strong>{{ email }}</strong> already exists, but it is deactivated.
+            An invitation cannot reactivate it. Ask an Admin to reactivate the account,
+            then open this invitation link again before it expires.
+        </p>
+
+        <div class="flex flex-col gap-3 mt-6">
+            {% component "unfold/components/button.html" with href="/admin/login/" variant="secondary" class="w-full" %}
+                Go to admin login
+            {% endcomponent %}
+        </div>
+    </div>
+{% endblock %}

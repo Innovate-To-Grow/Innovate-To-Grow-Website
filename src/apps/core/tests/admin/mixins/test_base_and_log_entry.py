@@ -14,12 +14,11 @@ from apps.event.tests.helpers import make_superuser
 
 
 class BaseModelAdminPermissionTest(TestCase):
-    """Per-app access: BaseModelAdmin grants a model only when the member's admin_apps
-    includes that model's app label (superusers bypass). LogEntry's app label is "admin"."""
+    """BaseModelAdmin grants every model to every Admin (an active staff member) and nothing to anyone else, whatever
+    Django codename permissions the member holds. LogEntry's app label is "admin"."""
 
     def setUp(self):
         self.admin = BaseModelAdmin(LogEntry, AdminSite())
-        self.app_label = LogEntry._meta.app_label
         self.request = MagicMock()
 
     def _member(self, **kwargs):
@@ -34,24 +33,16 @@ class BaseModelAdminPermissionTest(TestCase):
             self.admin.has_delete_permission(self.request),
         ]
 
-    def test_staff_without_app_grant_is_denied(self):
-        self.request.user = self._member(is_staff=True, admin_apps=[])
-        self.assertEqual(self._all_checks(), [False] * 5)
-
-    def test_staff_with_other_app_grant_is_denied(self):
-        self.request.user = self._member(is_staff=True, admin_apps=["cms"])
-        self.assertEqual(self._all_checks(), [False] * 5)
-
-    def test_staff_with_app_grant_is_allowed(self):
-        self.request.user = self._member(is_staff=True, admin_apps=[self.app_label])
+    def test_an_admin_is_allowed(self):
+        self.request.user = self._member(is_staff=True)
         self.assertEqual(self._all_checks(), [True] * 5)
 
-    def test_superuser_bypasses_app_grant(self):
-        self.request.user = self._member(is_staff=True, is_superuser=True, admin_apps=[])
-        self.assertEqual(self._all_checks(), [True] * 5)
+    def test_a_member_who_is_not_staff_is_denied(self):
+        self.request.user = self._member(is_staff=False)
+        self.assertEqual(self._all_checks(), [False] * 5)
 
-    def test_non_staff_is_denied_even_with_app_grant(self):
-        self.request.user = self._member(is_staff=False, admin_apps=[self.app_label])
+    def test_an_inactive_admin_is_denied(self):
+        self.request.user = self._member(is_staff=True, is_active=False)
         self.assertEqual(self._all_checks(), [False] * 5)
 
 
@@ -102,7 +93,7 @@ class LogEntryAdminTest(TestCase):
 
 
 class AppAccessInlineMixinTest(TestCase):
-    """Inlines follow the same per-app rule as BaseModelAdmin: the member's admin_apps must list the model's app."""
+    """Inlines follow the same rule as BaseModelAdmin: every Admin may use them, nobody else may."""
 
     class _Inline(AppAccessInlineMixin):
         opts = LogEntry._meta
@@ -119,16 +110,10 @@ class AppAccessInlineMixinTest(TestCase):
             self.inline.has_delete_permission(self.request, None),
         ]
 
-    def test_staff_without_the_apps_grant_is_denied(self):
-        self.request.user = Member.objects.create_user(password="testpass123", is_staff=True, admin_apps=["cms"])
+    def test_an_admin_is_allowed(self):
+        self.request.user = Member.objects.create_user(password="testpass123", is_staff=True)
+        self.assertEqual(self._checks(), [True] * 4)
+
+    def test_a_member_who_is_not_staff_is_denied(self):
+        self.request.user = Member.objects.create_user(password="testpass123", is_staff=False)
         self.assertEqual(self._checks(), [False] * 4)
-
-    def test_staff_with_the_apps_grant_is_allowed(self):
-        self.request.user = Member.objects.create_user(
-            password="testpass123", is_staff=True, admin_apps=[LogEntry._meta.app_label]
-        )
-        self.assertEqual(self._checks(), [True] * 4)
-
-    def test_superuser_is_allowed(self):
-        self.request.user = make_superuser(email="inline-master@example.com")
-        self.assertEqual(self._checks(), [True] * 4)

@@ -1,4 +1,4 @@
-"""The ticket page's timeline: messages, internal notes and field changes in time order.
+"""The ticket page's timeline: messages, replies sent to the requester, internal notes and field changes in time order.
 
 Message HTML is shown only through ``frame_document`` inside an iframe whose sandbox omits ``allow-scripts`` and
 ``allow-same-origin`` (the template escapes the document into ``srcdoc``); text bodies are shown as text. Automated
@@ -19,12 +19,18 @@ from ...services.ingest.reading.sanitize import frame_document
 from ...services.tickets import events
 
 # Events that repeat what a message entry already shows.
-_IMPLIED_BY_MESSAGES = (TicketEvent.Kind.CUSTOMER_MESSAGE, TicketEvent.Kind.AUTOMATED_MESSAGE, TicketEvent.Kind.NOTE)
+_IMPLIED_BY_MESSAGES = (
+    TicketEvent.Kind.CUSTOMER_MESSAGE,
+    TicketEvent.Kind.AUTOMATED_MESSAGE,
+    TicketEvent.Kind.NOTE,
+    TicketEvent.Kind.REPLY,
+    TicketEvent.Kind.ACKNOWLEDGED,
+)
 
 
 @dataclass
 class Entry:
-    kind: str  # customer, automated, note or event
+    kind: str  # customer, automated, note, reply or event
     at: datetime
     message: TicketMessage | None = None
     text: str = ""

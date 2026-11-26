@@ -100,17 +100,17 @@ class CMSPageDuplicateActionTests(TestCase):
         self.assertTrue(any('Could not duplicate "Legacy"' in text for text in texts), texts)
         self.assertTrue(any("Created 1 draft copy:" in text for text in texts), texts)
 
-    def test_action_requires_cms_app_access(self):
+    def test_action_is_for_admins_only(self):
         outsider = Member.objects.create_user(
             password="testpass123",
-            first_name="No",
-            last_name="Access",
+            first_name="Regular",
+            last_name="Member",
             is_active=True,
-            is_staff=True,
         )
         self.client.force_login(outsider)
 
         response = self._run_action(self.page)
 
-        self.assertIn(response.status_code, (302, 403))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/login/", response["Location"])
         self.assertFalse(CMSPage.objects.filter(slug="fall-event-copy").exists())

@@ -1,0 +1,10 @@
+{
+  "name": "i2g-wiki-sync",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "micromark": "4.0.3",
+    "micromark-extension-gfm": "3.0.0",
+    "micromark-util-decode-string": "2.0.1"
+  }
+}

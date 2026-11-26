@@ -1,8 +1,8 @@
 """Members → Import: Upload → Review → Confirm → Result.
 
-``admin_site.admin_view`` only checks ``is_staff``, so every view here re-checks authn-app access, as every custom
-member tool does. Only the uploader or an I2G Master may change a batch's choices, apply it or discard it; other
-authn admins see it read-only. Nothing touches member data before the confirmed apply.
+``admin_site.admin_view`` only checks ``is_staff``, so every view here checks again that the user is an Admin, as every
+custom member tool does. Any Admin may change a batch's choices, apply it or discard it, whoever uploaded it. Nothing
+touches member data before the confirmed apply.
 """
 
 from django.contrib import messages
@@ -28,13 +28,7 @@ from ....services.members.import_.review.staging.selection import ForgedSelectio
 from ....services.members.import_.workbook.reader import read_upload
 from .context import review_sections
 from .forms import MemberImportForm, parse_review_post
-from .rights import (
-    Status,
-    _require_access,
-    _require_edit,
-    analysis_context,
-    can_edit,
-)
+from .rights import Status, _require_access, analysis_context
 
 
 def _page(admin_obj, request, template: str, title: str, **context):
@@ -63,8 +57,6 @@ def upload_view(admin_obj, request):
             if batch is not None:
                 return HttpResponseRedirect(_url("review", batch))
     in_review = MemberImportBatch.objects.filter(status=Status.REVIEW, expires_at__gt=timezone.now())
-    if not request.user.is_superuser:
-        in_review = in_review.filter(created_by=request.user)
     return _page(
         admin_obj,
         request,
@@ -109,9 +101,8 @@ def review_view(admin_obj, request, batch_id):
         mark_expired(batch)
     if batch.status != Status.REVIEW:
         return HttpResponseRedirect(_url("result", batch))
-    editable = can_edit(request, batch)
     if request.method == "POST":
-        return _save(admin_obj, request, batch)
+        return _save(request, batch)
     sections = review_sections(batch)
     return _page(
         admin_obj,
@@ -119,14 +110,12 @@ def review_view(admin_obj, request, batch_id):
         "import_review.html",
         f"Review import: {batch.file_name}",
         batch=batch,
-        editable=editable,
         repeats=repeat_uploads(batch.file_sha256, exclude=batch.pk),
         **sections,
     )
 
 
-def _save(admin_obj, request, batch):
-    _require_edit(admin_obj, request, batch)
+def _save(request, batch):
     row_numbers = list(batch.rows.values_list("row_number", flat=True))
     posted, command, bulk, version = parse_review_post(request.POST, row_numbers)
     try:

@@ -10,6 +10,7 @@ from apps.core.services.email.bounces import BOUNCE_SCAN_JOB_KIND
 from apps.core.services.request_limits.classification.scopes import classify_route
 from apps.event.tests.helpers import make_admin, make_superuser
 from apps.mail.models import BouncedAddress
+from apps.mail.tests.admin.admin_access.refusal import assert_refused_to_member, make_member
 
 from ..ses.ses_helpers import PATCH_DASHBOARD, ses_payload
 
@@ -45,7 +46,7 @@ class DeliveryDashboardRedirectTests(TestCase):
     @patch(PATCH_DASHBOARD)
     def test_following_the_redirect_opens_the_tab_with_the_same_window(self, dashboard):
         dashboard.side_effect = lambda *, days: ses_payload(window_days=days)
-        self.client.force_login(make_admin(apps=["mail"]))
+        self.client.force_login(make_admin())
 
         response = self.client.get(self.old, {"days": "365"}, follow=True)
 
@@ -68,13 +69,11 @@ class DeliveryDashboardRedirectTests(TestCase):
         self.assertIn("next=/admin/mail/delivery-dashboard/%3Fdays%3D90", response["Location"])
 
     @patch(PATCH_DASHBOARD, side_effect=AssertionError("AWS must not be read for a refused request"))
-    def test_staff_without_the_mail_app_are_refused_at_the_tab(self, _dashboard):
-        self.client.force_login(make_admin(apps=["cms"]))
+    def test_members_who_are_not_admins_are_refused_at_the_tab(self, _dashboard):
+        member = make_member()
 
-        response = self.client.get(self.old, follow=True)
-
-        self.assertEqual(response.redirect_chain, [(self.new, 302)])
-        self.assertEqual(response.status_code, 403)
+        assert_refused_to_member(self, self.old, member, view_check=False)
+        assert_refused_to_member(self, self.new, member)
 
     @patch(PATCH_DASHBOARD, return_value=ses_payload())
     def test_the_old_json_endpoint_answers_without_a_redirect(self, _dashboard):
@@ -87,7 +86,7 @@ class DeliveryDashboardRedirectTests(TestCase):
 
 
 class GuardTests(TestCase):
-    """The POST actions kept their addresses (nothing is redirected that could drop a body), the Mail app check and
+    """The POST actions kept their addresses (nothing is redirected that could drop a body), the Admin check and
     CSRF."""
 
     def setUp(self):
@@ -130,12 +129,12 @@ class GuardTests(TestCase):
 
         self.assertRedirects(response, reverse("admin:mail_email_monitoring"), fetch_redirect_response=False)
 
-    def test_staff_without_the_mail_app_are_refused_every_action(self):
-        self.client.force_login(make_admin(apps=["cms"]))
+    def test_members_who_are_not_admins_are_refused_every_action(self):
+        member = make_member()
 
         for url in self.posts:
             with self.subTest(url=url):
-                self.assertEqual(self.client.post(url, {"action": "scan", "step": "confirm"}).status_code, 403)
+                assert_refused_to_member(self, url, member, "post", data={"action": "scan", "step": "confirm"})
         self.assertTrue(BouncedAddress.objects.filter(pk=self.address.pk, status=BouncedAddress.Status.OPEN).exists())
 
     def test_the_data_endpoints_are_rate_limited_as_polling(self):

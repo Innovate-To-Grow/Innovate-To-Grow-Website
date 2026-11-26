@@ -2,9 +2,8 @@
 
 It shows public data only: thumbprints, subject, serial, validity and the key store version a certificate row pins,
 then the latest access check and whether it is go-live evidence. The private key is never read to build it.
-Admins granted the Core app (and superusers) install, roll back and remove certificates and run the access check;
-the views enforce this too. The access check card carries its own control: the "Run access check" button, a link to
-the config's page where the panel has no actions, and for anyone without the Core app a note that it is needed.
+Admins install, roll back and remove certificates and run the access check. The access check card carries its own
+control: the "Run access check" button, or a link to the config's page where the panel has no actions.
 Dates are in the site's time zone, with the zone named.
 """
 
@@ -18,7 +17,6 @@ from apps.core.services.credential_store.memory import MemoryStore
 from apps.core.services.email.graph.access_check import precondition_problem
 from apps.core.services.email.graph.credential import expiry
 from apps.core.services.email.graph.credential.expiry import local_time_text
-from apps.core.utils.access import user_can_access_app
 
 URL_NAME_PREFIX = "core_microsoftgraphproviderconfig"
 INSTALL_URL_NAME = f"{URL_NAME_PREFIX}_install_certificate"
@@ -29,12 +27,6 @@ ACCESS_CHECK_URL_NAME = f"{URL_NAME_PREFIX}_run_access_check"
 EVIDENCE_URL_NAME = "core_microsoftgraphaccesscheck_change"
 CHANGE_URL_NAME = f"{URL_NAME_PREFIX}_change"
 CARD_ANCHOR = "graph-access-check"
-# Shown in the access check card to anyone without the Core app (Mail-only staff on Notification Delivery), so the
-# go-live message never points at a button they cannot see.
-CORE_APP_NEEDED = (
-    "Running the access check (and setting the deny mailbox and InfoSec exception) needs the Core app, which this "
-    "account is not granted. Ask an admin with the Core app to run it."
-)
 
 STORE_NAMES = (
     ("arn:aws:secretsmanager:", "AWS Secrets Manager"),
@@ -98,7 +90,7 @@ def certificate_card(certificate) -> dict | None:
     }
 
 
-def access_check_card(config, current, *, linked: bool) -> dict:
+def access_check_card(config, current) -> dict:
     """The latest access check of *config* and whether email may switch to Graph on it (the go-live gate)."""
     check = config.access_checks.order_by("-created_at").first()
     card = {
@@ -117,16 +109,13 @@ def access_check_card(config, current, *, linked: bool) -> dict:
         badge_classes=BADGE_CLASSES[VERDICT_TONES[check.verdict]],
         roles="unreadable" if granted is None else (", ".join(granted) or "none in the token"),
     )
-    if linked:
-        card["url"] = reverse(f"admin:{EVIDENCE_URL_NAME}", args=[check.pk])
+    card["url"] = reverse(f"admin:{EVIDENCE_URL_NAME}", args=[check.pk])
     return card
 
 
-def add_run_control(card: dict, request, config, *, actions: bool) -> dict:
-    """Give the access check card the control its go-live message refers to, as far as the viewer may use it."""
-    if not user_can_access_app(request.user, "core"):
-        card["core_app_needed"] = CORE_APP_NEEDED
-    elif actions:
+def add_run_control(card: dict, config, *, actions: bool) -> dict:
+    """Give the access check card the control its go-live message refers to."""
+    if actions:
         card["run_url"] = reverse(f"admin:{ACCESS_CHECK_URL_NAME}", args=[config.pk])
         # What the run page would refuse with, such as no deny mailbox yet: said here, before the click.
         card["run_problem"] = precondition_problem(config, config.access_check_deny_mailbox)
@@ -137,18 +126,15 @@ def add_run_control(card: dict, request, config, *, actions: bool) -> dict:
 
 def certificate_panel(request, config, *, actions=True) -> dict:
     """Template context for ``certificate_panel.html``. ``actions=False`` leaves out the certificate actions, and the
-    access check card links to the config's page instead of showing the "Run access check" button."""
+    access check card links to the config's page instead of showing the "Run access check" button. ``request`` is
+    unused: every viewer is an Admin (``admin_view``), and callers keep passing it."""
     saved = config is not None and not config._state.adding
     current = config.current_certificate if saved else None
     previous = config.previous_certificate if saved else None
     panel = {"config": config, "current": certificate_card(current), "previous": certificate_card(previous)}
     if not saved:
         return panel
-    core_staff = user_can_access_app(request.user, "core")
-    card = access_check_card(config, current, linked=core_staff)
-    panel["access_check"] = add_run_control(card, request, config, actions=actions)
-    if not core_staff:
-        return panel
+    panel["access_check"] = add_run_control(access_check_card(config, current), config, actions=actions)
     args = [config.pk]
     if current is not None:
         panel["download_url"] = reverse(f"admin:{DOWNLOAD_URL_NAME}", args=args)

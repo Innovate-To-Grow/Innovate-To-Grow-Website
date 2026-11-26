@@ -8,7 +8,7 @@ from django.urls import reverse
 from apps.core.utils.access import user_can_access_app
 
 from . import services as inbox_api
-from .helpers import hide_own_mail, parse_account, parse_folder, parse_limit, sent_mail_restricted
+from .helpers import parse_account, parse_folder, parse_limit
 
 # While the inbox page is open and visible it reloads its list this often (from the poller's snapshot and the
 # container cache, so it seldom connects to a mailbox).
@@ -17,8 +17,7 @@ AUTO_REFRESH_SECONDS = 60
 
 def inbox_list_view(request):
     """Render the inbox shell instantly; JS fetches content asynchronously."""
-    # ``admin_view`` only enforces is_staff, so this custom URL must re-check
-    # per-app access itself.
+    # A plain Admin check, in case the URL is ever mounted without ``admin_view``.
     if not user_can_access_app(request.user, "mail"):
         raise PermissionDenied("You do not have permission to access the mail inbox.")
     context = {
@@ -43,10 +42,6 @@ def inbox_fragment_view(request):
     inbox_messages = []
     limit = parse_limit(request)
     folder = parse_folder(request)
-    sent_folder_allowed = not sent_mail_restricted(request.user)
-    if not sent_folder_allowed:
-        # The Sent tab is not offered, and a remembered or hand-written ?folder=SENT shows the Inbox instead.
-        folder = inbox_api.INBOX_FOLDER
     force_refresh = request.GET.get("refresh") == "1"
     shown, _hidden = _connectable(retry=force_refresh)
     account = parse_account(request, default=inbox_api.ALL_ACCOUNTS)
@@ -73,8 +68,6 @@ def inbox_fragment_view(request):
     except Exception:
         inbox_api.logger.exception("Unexpected error refreshing inbox fragment.")
         error_message = inbox_api.INBOX_UNEXPECTED_ERROR_MESSAGE
-    if not sent_folder_allowed:
-        inbox_messages = hide_own_mail(inbox_messages)
     # After the read, which recorded whether each account connected.
     accounts, hidden = _connectable()
     hidden_message = ""
@@ -102,7 +95,6 @@ def inbox_fragment_view(request):
             "limit": limit,
             "limit_choices": inbox_api.INBOX_LIMIT_CHOICES,
             "folder": folder,
-            "sent_folder_allowed": sent_folder_allowed,
         },
     )
 

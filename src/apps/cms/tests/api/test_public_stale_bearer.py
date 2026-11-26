@@ -81,26 +81,26 @@ class PublicCMSEndpointsStaleBearerTests(TestCase):
 
 
 class CMSDraftPreviewIdentityTests(TestCase):
-    """``?preview=true`` shows a draft to a member with cms access; a stale token is just anonymous."""
+    """``?preview=true`` shows a draft to an Admin; a stale token is just anonymous."""
 
     # noinspection PyPep8Naming,PyAttributeOutsideInit
     def setUp(self):
         cache.clear()
         self.client = APIClient()
         CMSPage.objects.create(slug="draft", route="/draft", title="Draft", status="draft")
-        self.editor = Member.objects.create_user(password="testpass123", is_staff=True, admin_apps=["cms"])
-        self.outsider = Member.objects.create_user(password="testpass123", is_staff=True, admin_apps=["event"])
+        self.editor = Member.objects.create_user(password="testpass123", is_staff=True)
+        self.outsider = Member.objects.create_user(password="testpass123")
 
     def get_draft(self, **extra):
         return self.client.get("/cms/pages/draft/", {"preview": "true"}, **extra)
 
-    def test_valid_bearer_with_cms_access_sees_the_draft(self):
+    def test_valid_bearer_of_an_admin_sees_the_draft(self):
         response = self.get_draft(HTTP_AUTHORIZATION=valid_bearer_header(self.editor))
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["title"], "Draft")
 
-    def test_valid_bearer_without_cms_access_does_not(self):
+    def test_valid_bearer_of_a_regular_member_does_not(self):
         response = self.get_draft(HTTP_AUTHORIZATION=valid_bearer_header(self.outsider))
 
         self.assertEqual(response.status_code, 404)

@@ -14,12 +14,110 @@ from apps.mail.services.inbox.sending.reply import (
     send_reply,
 )
 
+DOCS = "https://docs.google.com/document/d/1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789/edit?usp=sharing"
+
+
+def anchor(href: str) -> str:
+    return f'<a href="{href}" style="color:#0f2d52;">{href}</a>'
+
 
 class ReplyRenderTests(TestCase):
     def test_render_reply_html_linkifies_urls(self):
         html = render_reply_html("Visit https://example.com now", quoted_text="prior text")
         self.assertIn('<a href="https://example.com"', html)
         self.assertIn("prior text", html)
+
+    def test_a_link_is_found_in_the_text_as_written_and_ends_where_the_sentence_goes_on(self):
+        # Found in the escaped text, a link ended at its first "&" and took the punctuation and words after it.
+        cases = (
+            (
+                f"Edit {DOCS}&tab=t.0#heading=h.abc123 (edit it)",
+                f"Edit {anchor(f'{DOCS}&amp;tab=t.0#heading=h.abc123')} (edit it)",
+            ),
+            (f"Row: {DOCS},[sign-in link removed],team B", f"Row: {anchor(DOCS)},[sign-in link removed],team B"),
+            (f"Open {DOCS}. Then (see {DOCS}).", f"Open {anchor(DOCS)}. Then (see {anchor(DOCS)})."),
+            (f"请看{DOCS}谢谢", f"请看{anchor(DOCS)}谢谢"),  # glued to Chinese text
+            (
+                "Wiki https://en.wikipedia.org/wiki/Mesa_(computing)!",
+                f"Wiki {anchor('https://en.wikipedia.org/wiki/Mesa_(computing)')}!",
+            ),
+        )
+        for body, expected in cases:
+            with self.subTest(body):
+                self.assertIn(expected, render_reply_html(body))
+
+    def test_a_closing_quote_backtick_or_emphasis_mark_after_a_link_stays_text(self):
+        # The link took the mark closing the quote or emphasis around it, so its href named a page that is not there.
+        wiki, drive = "https://en.wikipedia.org/wiki/Merced_(river)", "https://drive.google.com/open?id=1AbC_"
+        cases = (
+            (f"He wrote '{DOCS}' in his note", f"He wrote &#x27;{anchor(DOCS)}&#x27; in his note"),
+            ("see 'https://x.example/s'.", f"see &#x27;{anchor('https://x.example/s')}&#x27;."),
+            (f"Bold *{DOCS}* here", f"Bold *{anchor(DOCS)}* here"),
+            (f"Code `{wiki}` here", f"Code `{anchor(wiki)}` here"),
+            (f"Run `curl {DOCS}` now", f"Run `curl {anchor(DOCS)}` now"),
+            (f"In _{DOCS}_ and ~~{DOCS}~~", f"In _{anchor(DOCS)}_ and ~~{anchor(DOCS)}~~"),
+            # An apostrophe inside a link, and an "_" ending one with no mark before it, are the address's own.
+            ("Ask https://example.org/o'brien now", f"Ask {anchor('https://example.org/o&#x27;brien')} now"),
+            (f"File {drive} and _{drive}_", f"File {anchor(drive)} and _{anchor(drive)}_"),
+        )
+        for body, expected in cases:
+            with self.subTest(body):
+                self.assertIn(expected, render_reply_html(body))
+
+    def test_a_link_keeps_letters_of_any_script_up_to_other_punctuation_a_space_or_glued_cjk_text(self):
+        # Read as printable ASCII only, a link ended at its first other letter ("…/wiki/Universit").
+        german = "https://de.wikipedia.org/wiki/Universität_von_Kalifornien,_Merced"
+        chinese = "https://zh.wikipedia.org/wiki/加利福尼亚大学默塞德分校"
+        japanese = "https://ja.wikipedia.org/wiki/マーセド_(カリフォルニア州)"
+        search = "https://www.baidu.com/s?wd=加州大学"
+        cases = (
+            (f"German: {german} and more", f"German: {anchor(german)} and more"),
+            (f"中文：{chinese} 好", f"中文：{anchor(chinese)} 好"),
+            (f"见{chinese}。下一句", f"见{anchor(chinese)}。下一句"),
+            (f"“{german}”, «{german}»", f"“{anchor(german)}”, «{anchor(german)}»"),
+            (f"{german}\u00a0next", f"{anchor(german)}\u00a0next"),  # a no-break space
+            (f"{japanese}と{search}，好", f"{anchor(japanese)}と{anchor(search)}，好"),
+            # Chinese, Japanese or Korean text glued to the link's last ASCII character goes on with the sentence.
+            (f"詳細は{DOCS}をご覧ください", f"詳細は{anchor(DOCS)}をご覧ください"),
+            (f"{DOCS}를 확인하세요", f"{anchor(DOCS)}를 확인하세요"),
+        )
+        for body, expected in cases:
+            with self.subTest(body):
+                self.assertIn(expected, render_reply_html(body))
+
+    def test_text_of_a_script_without_spaces_glued_after_a_link_of_another_script_stays_text(self):
+        # Only Chinese, Japanese and Korean were read so, and only after ASCII: Thai text went into the href, and so
+        # did Chinese after a link ending in "é" (dead links); within one script the address goes on.
+        cases = (
+            ("ดูที่https://www.ucmerced.edu/aboutขอบคุณ", f"ดูที่{anchor('https://www.ucmerced.edu/about')}ขอบคุณ"),
+            ("https://fr.wikipedia.org/wiki/Café谢谢", f"{anchor('https://fr.wikipedia.org/wiki/Café')}谢谢"),
+            ("ລາວhttps://lo.example/aboutຂອບໃຈ ok", f"ລາວ{anchor('https://lo.example/about')}ຂອບໃຈ ok"),
+            ("https://th.wikipedia.org/wiki/ประเทศไทย ok", f"{anchor('https://th.wikipedia.org/wiki/ประเทศไทย')} ok"),
+        )
+        for body, expected in cases:
+            with self.subTest(body):
+                self.assertIn(expected, render_reply_html(body))
+
+    def test_two_links_glued_by_punctuation_are_two_links(self):
+        # The second link was read as part of the first: one anchor whose href named both.
+        river = "https://en.wikipedia.org/wiki/Merced_(river)"
+        for mark in ",;":
+            with self.subTest(mark):
+                html = render_reply_html(f"Two: https://www.ucmerced.edu/news{mark}{river} done")
+                self.assertIn(f"Two: {anchor('https://www.ucmerced.edu/news')}{mark}{anchor(river)} done", html)
+
+    def test_each_line_of_the_quote_breaks_once(self):
+        # The quote is shown "white-space: pre-wrap": a <br> and a line break both would break the line twice.
+        html = render_reply_html("Thanks", quoted_text="Hello,\r\n\r\nour team\nThanks,\nQuinn")
+
+        self.assertIn("Hello,<br><br>our team<br>Thanks,<br>Quinn</div>", html)
+
+    def test_the_text_around_a_link_is_escaped(self):
+        html = render_reply_html('<b>Hi</b> & "you" https://example.org/a?b=1&c=<2>')
+
+        self.assertIn(
+            f"&lt;b&gt;Hi&lt;/b&gt; &amp; &quot;you&quot; {anchor('https://example.org/a?b=1&amp;c=')}&lt;2&gt;", html
+        )
 
     def test_build_reply_message_sets_threading_headers(self):
         config = SimpleNamespace(source_address="I2G <reply@example.com>")

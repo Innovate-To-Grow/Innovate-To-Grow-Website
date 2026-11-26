@@ -106,22 +106,6 @@ class UpdateModeSkipReasonTests(TestCase):
         grace.refresh_from_db()
         self.assertNotEqual(grace.organization, "Changed")
 
-    def test_permission_refusal_names_the_member(self):
-        result = import_members_from_excel(
-            build_sheet(HEADERS, [["neil@home.example", "Neil", "Parkhi", None, None, "Org"]]),
-            update_existing=True,
-            update_member_allowed=lambda member: False,
-        )
-
-        self.assertEqual(
-            result.errors,
-            [
-                "Row 2: needs a decision (C2: A staff or superuser account). You do not have permission to update "
-                f"Neil Parkhi (member {self.neil.pk}) (only an I2G Master may change staff and superuser accounts)."
-            ],
-        )
-        self.assertEqual(result.errors[0].member_id, str(self.neil.pk))
-
     def test_a_failing_row_rolls_back_the_whole_import(self):
         sheet = self._rows(["neil@home.example", "Neil", "Parkhi", None, "+12095550001", "Org"])
 
