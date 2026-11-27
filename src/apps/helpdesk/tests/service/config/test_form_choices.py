@@ -1,22 +1,20 @@
 """What the configuration forms offer.
 
-- A category's default group and a response template's category are chosen among active ones, plus the one the row
-  already has (so an unrelated save keeps a group or category switched off since); an inactive one is not chosen anew.
-- A group's members and manager are chosen among active Admins, plus whoever the group already has: someone who is
-  no longer one (their account was switched off) stays listed, marked "(not an active Admin)", so saving the group
-  keeps them. Anyone else who is not an Admin is refused.
-- None of these fields offers the related-object buttons (add, change, delete, view): groups, categories and members
-  are set up on their own pages. A form asked for other fields only is built without them."""
+- A response template's category is chosen among active ones, plus the one the row already has (so an unrelated save
+  keeps a category switched off since); an inactive one is not chosen anew.
+- A category no longer offers a default group (tickets have no owner, I2G-HELPDESK-01): saving it keeps the
+  deprecated value it has.
+- Assignment groups have no admin page any more.
+- The category field offers no related-object buttons (add, change, delete, view): categories are set up on their own
+  page. A form asked for other fields only is built without them."""
 
 from django.contrib import admin
 from django.core.cache import cache
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from apps.event.tests.helpers import make_member
-
 from ....models import AssignmentGroup, ResponseTemplate, TicketCategory
-from ...helpers import helpdesk_staff, make_admin
+from ...helpers import helpdesk_staff
 
 RELATED_FLAGS = ("can_add_related", "can_change_related", "can_delete_related", "can_view_related")
 
@@ -42,28 +40,21 @@ class ActiveChoiceTests(_ChoicesCase):
         self.registration = TicketCategory.objects.create(name="Registration")
         self.old = TicketCategory.objects.create(name="Old", is_active=False)
 
-    def test_a_category_offers_active_groups_plus_its_own(self):
+    def test_a_category_offers_no_group_and_keeps_its_deprecated_one(self):
         parking = TicketCategory.objects.create(name="Parking", default_group=self.retired)
+        data = {"name": "Parking", "default_group": str(self.events.pk), "is_active": "on", "order": "2"}
 
         _page, add = self.page("ticketcategory")
-        _page, change = self.page("ticketcategory", parking)
-
-        self.assertEqual(list(add.fields["default_group"].queryset), [self.events])
-        self.assertEqual(set(change.fields["default_group"].queryset), {self.events, self.retired})
-
-    def test_a_category_saves_with_its_inactive_group_but_cannot_take_one_anew(self):
-        parking = TicketCategory.objects.create(name="Parking", default_group=self.retired)
-        data = {"name": "Parking", "default_group": str(self.retired.pk), "is_active": "on", "order": "2"}
-
         kept = self.client.post(reverse("admin:helpdesk_ticketcategory_change", args=[parking.pk]), data)
-        taken = self.client.post(reverse("admin:helpdesk_ticketcategory_add"), {**data, "name": "Showcase"})
 
+        self.assertNotIn("default_group", add.fields)
         self.assertEqual(kept.status_code, 302)
         parking.refresh_from_db()
         self.assertEqual((parking.default_group, parking.order), (self.retired, 2))
-        self.assertEqual(taken.status_code, 200)
-        self.assertIn("default_group", taken.context["adminform"].form.errors)
-        self.assertFalse(TicketCategory.objects.filter(name="Showcase").exists())
+
+    def test_assignment_groups_have_no_page(self):
+        self.assertNotIn(AssignmentGroup, admin.site._registry)
+        self.assertEqual(self.client.get("/admin/helpdesk/assignmentgroup/").status_code, 404)
 
     def test_a_template_offers_active_categories_plus_its_own(self):
         template = ResponseTemplate.objects.create(name="Old answer", body="Hello", category=self.old)
@@ -88,13 +79,8 @@ class ActiveChoiceTests(_ChoicesCase):
         self.assertEqual((template.category, template.body), (self.old, "Hello again"))
 
     def test_no_related_object_buttons(self):
-        group = AssignmentGroup.objects.create(name="Technical", manager=self.agent)
-        pages = {
-            ("ticketcategory", None): ("default_group",),
-            ("responsetemplate", None): ("category",),
-            ("assignmentgroup", None): ("members", "manager"),
-            ("assignmentgroup", group): ("members", "manager"),
-        }
+        template = ResponseTemplate.objects.create(name="Answer", body="Hello")
+        pages = {("responsetemplate", None): ("category",), ("responsetemplate", template): ("category",)}
         for (name, obj), fields in pages.items():
             with self.subTest(name, change=obj is not None):
                 page, form = self.page(name, obj)
@@ -108,68 +94,8 @@ class ActiveChoiceTests(_ChoicesCase):
     def test_a_form_asked_for_other_fields_only_is_left_as_asked(self):
         request = RequestFactory().get("/admin/")
         request.user = self.agent
-        for model in (AssignmentGroup, TicketCategory, ResponseTemplate):
+        for model in (TicketCategory, ResponseTemplate):
             with self.subTest(model.__name__):
                 form = admin.site._registry[model].get_form(request, None, fields=["name"])
 
                 self.assertEqual(list(form.base_fields), ["name"])
-
-
-class GroupPeopleTests(_ChoicesCase):
-    def setUp(self):
-        super().setUp()
-        self.colleague = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
-        # Still in the group (and its manager), but no longer an active Admin: their account was switched off.
-        self.former = make_admin(email="fran@example.com", first_name="Fran", last_name="Former", is_active=False)
-        self.outsider = make_member(email="oli@example.com", first_name="Oli", last_name="Outsider")
-        self.group = AssignmentGroup.objects.create(name="Events", manager=self.former)
-        self.group.members.add(self.agent, self.former)
-        self.url = reverse("admin:helpdesk_assignmentgroup_change", args=[self.group.pk])
-
-    def data(self, *members, **values) -> dict:
-        people = members or (self.agent, self.former)
-        return {
-            "name": "Events",
-            "description": "Showcase questions",
-            "members": [str(member.pk) for member in people],
-            "manager": str(self.former.pk),
-            "is_active": "on",
-            "order": "0",
-            **values,
-        }
-
-    def test_admins_and_the_groups_own_people_are_offered_and_marked(self):
-        page, form = self.page("assignmentgroup", self.group)
-
-        for name in ("members", "manager"):
-            with self.subTest(name):
-                field = form.fields[name]
-                self.assertEqual(set(field.queryset), {self.agent, self.colleague, self.former})
-                self.assertEqual(field.label_from_instance(self.agent), "Avery Agent")
-                self.assertEqual(field.label_from_instance(self.former), "Fran Former (not an active Admin)")
-        self.assertContains(page, "Fran Former (not an active Admin)")
-        self.assertNotContains(page, "Oli Outsider")
-
-    def test_a_new_group_offers_active_admins_only(self):
-        _page, form = self.page("assignmentgroup")
-
-        self.assertEqual(set(form.fields["manager"].queryset), {self.agent, self.colleague})
-
-    def test_saving_the_group_keeps_them(self):
-        response = self.client.post(self.url, self.data())
-
-        self.assertEqual(response.status_code, 302)
-        self.group.refresh_from_db()
-        self.assertEqual(set(self.group.members.all()), {self.agent, self.former})
-        self.assertEqual((self.group.manager, self.group.description), (self.former, "Showcase questions"))
-
-    def test_someone_else_who_is_not_an_admin_is_refused(self):
-        as_member = self.client.post(self.url, self.data(self.agent, self.former, self.outsider))
-        as_manager = self.client.post(self.url, self.data(manager=str(self.outsider.pk)))
-
-        for response, field in ((as_member, "members"), (as_manager, "manager")):
-            with self.subTest(field):
-                self.assertEqual(response.status_code, 200)
-                self.assertIn(field, response.context["adminform"].form.errors)
-        self.group.refresh_from_db()
-        self.assertEqual((set(self.group.members.all()), self.group.manager), ({self.agent, self.former}, self.former))

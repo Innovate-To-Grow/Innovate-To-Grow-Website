@@ -1,22 +1,19 @@
-"""Helpdesk → Assignment Groups, Categories and Response Templates: how tickets are worked, ServiceNow style (SLA
-targets are in ``sla_targets``).
+"""Helpdesk → Categories and Response Templates: how tickets are worked, ServiceNow style (SLA targets are in
+``sla_targets``).
 
-Names are unique whatever their case. Group members and managers are chosen among active Admins;
-someone who is no longer one stays listed (marked) until removed by hand, so an unrelated save never drops them. A category's
-default group and a template's category are chosen among active ones. A group or category that tickets still use is
-switched off, not deleted (the delete page lists what uses it). Groups, categories and members are set up here, not
-from a ticket's page, so the related-object buttons are not offered.
+Names are unique whatever their case. A template's category is chosen among active ones. A category that tickets
+still use is switched off, not deleted (the delete page lists what uses it). Categories are set up here, not from a
+ticket's page, so the related-object buttons are not offered. Tickets have no owner (I2G-HELPDESK-01): Assignment
+Groups have no admin page any more, and a category's default group is neither shown nor applied (their rows stay).
 """
 
 from django import forms
 from django.contrib import admin, messages
-from django.db.models import Count, Q
-from unfold.decorators import display
+from django.db.models import Q
 
 from apps.core.admin import BaseModelAdmin
 
-from ...models import AssignmentGroup, ResponseTemplate, TicketCategory
-from ...services import tickets
+from ...models import ResponseTemplate, TicketCategory
 from ...services.outbound.compose import unknown_placeholders
 from .sending import LFTextField
 
@@ -58,7 +55,7 @@ class ResponseTemplateForm(UniqueNameForm):
 
 
 class InUseMixin:
-    """A group or category tickets still use is not deleted (``PROTECT``): its delete page lists what uses it and
+    """A category tickets still use is not deleted (``PROTECT``): its delete page lists what uses it and
     says to switch it off, rather than Django's note that the user may not delete tickets."""
 
     def get_deleted_objects(self, objs, request):
@@ -78,59 +75,14 @@ def _active_or(field, current_pk) -> None:
         field.queryset = field.queryset.filter(Q(is_active=True) | Q(pk=current_pk))
 
 
-@admin.register(AssignmentGroup)
-class AssignmentGroupAdmin(InUseMixin, BaseModelAdmin):
-    require_confirmation = False
-    form = UniqueNameForm
-    list_display = ("name", "description", "manager", "member_count", "is_active", "order")
-    list_editable = ("is_active", "order")
-    list_select_related = ("manager",)
-    search_fields = ("name", "description")
-    filter_horizontal = ("members",)
-    ordering = ("order", "name")
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).annotate(member_total=Count("members", distinct=True))
-
-    @display(description="Members", ordering="member_total")
-    def member_count(self, obj):
-        return getattr(obj, "member_total", 0)
-
-    def get_form(self, request, obj=None, change=False, **kwargs):
-        from apps.authn.models import Member
-
-        form = super().get_form(request, obj, change, **kwargs)
-        staff = {member.pk for member in tickets.helpdesk_staff()}
-        kept = set()
-        if obj is not None:
-            kept = set(obj.members.values_list("pk", flat=True)) | ({obj.manager_id} if obj.manager_id else set())
-        people = Member.objects.filter(pk__in=staff | kept).order_by("first_name", "last_name")
-        for name in ("members", "manager"):
-            field = form.base_fields.get(name)
-            if field is not None:
-                field.queryset = people
-                field.label_from_instance = lambda member: (
-                    str(member) if member.pk in staff else f"{member} (not an active Admin)"
-                )
-        no_related_buttons(form, "manager", "members")
-        return form
-
-
 @admin.register(TicketCategory)
 class TicketCategoryAdmin(InUseMixin, BaseModelAdmin):
     require_confirmation = False
     form = UniqueNameForm
-    list_display = ("name", "default_group", "is_active", "order")
+    list_display = ("name", "is_active", "order")
     list_editable = ("is_active", "order")
-    list_select_related = ("default_group",)
     search_fields = ("name",)
     ordering = ("order", "name")
-
-    def get_form(self, request, obj=None, change=False, **kwargs):
-        form = super().get_form(request, obj, change, **kwargs)
-        _active_or(form.base_fields.get("default_group"), obj.default_group_id if obj is not None else None)
-        no_related_buttons(form, "default_group")
-        return form
 
 
 @admin.register(ResponseTemplate)

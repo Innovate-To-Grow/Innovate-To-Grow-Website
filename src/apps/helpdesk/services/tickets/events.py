@@ -30,16 +30,15 @@ def _label(value) -> str:
     return str(value or "")
 
 
-def record_changes(current: Ticket, values: dict, *, actor, name, reopened: bool = False) -> None:
+def record_changes(current: Ticket, values: dict, *, actor, reopened: bool = False) -> None:
     """One entry per field ``update_ticket`` changes (``values``, against the row ``current``), in a fixed order;
-    ``name`` labels a member (the assignee); ``reopened``: the change reopens the ticket (its resolution goes)."""
+    ``reopened``: the change reopens the ticket (its resolution goes). The assignee and assignment-group entries of
+    earlier releases (``Kind.ASSIGNED``, ``Kind.GROUP``) are no longer written, but ``describe`` still reads them."""
     fields = (
         ("impact", Kind.IMPACT, lambda value: _IMPACT.get(value, value)),
         ("urgency", Kind.URGENCY, lambda value: _URGENCY.get(value, value)),
         ("priority", Kind.PRIORITY, None),
         ("category", Kind.CATEGORY, _label),
-        ("assignment_group", Kind.GROUP, _label),
-        ("assignee", Kind.ASSIGNED, name),
     )
     for field, kind, labels in fields:
         if field in values:
@@ -95,6 +94,7 @@ def _resolution(event, data) -> str:
 
 
 def _notified(event, data) -> str:
+    # Written by earlier releases only: staff are no longer emailed (I2G-HELPDESK-01).
     if data.get("reason") == "group":
         count = int(data.get("count") or 0)
         return f"Assignment notice emailed to the group's {count} member{'s' if count != 1 else ''}"

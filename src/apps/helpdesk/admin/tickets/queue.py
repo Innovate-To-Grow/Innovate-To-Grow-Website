@@ -4,6 +4,9 @@ Priority and status sort in their order of severity and of the ticket's life, no
 SLA column sorts as it reads: breaches first, then running clocks by their due time, then paused clocks, then
 tickets that are done or have no clock. A ticket number typed in the search ("1234", "#1234" or "I2G-#1234")
 finds that ticket whatever the filters, listed first unless a column sort is chosen.
+
+Tickets have no owner (I2G-HELPDESK-01): instead of an assignee, the "Last reply" column says who replied to the
+requester last and when (``outbound.activity``), so two people do not answer the same ticket unknowingly.
 """
 
 from datetime import UTC, datetime
@@ -15,7 +18,8 @@ from django.utils.html import format_html
 from unfold.decorators import display
 
 from ...models import HelpdeskSettings, Ticket, TicketMessage
-from ...services import sla, tickets
+from ...services import sla
+from ...services.outbound import activity
 from ...services.sla.priority import PRIORITY_RANK
 from ...services.tickets import numbering
 from .form import TicketForm
@@ -63,7 +67,7 @@ SLA_DUE = Case(
     output_field=DateTimeField(),
 )
 REQUESTER = Coalesce(NullIf("requester_name", Value("")), "requester_email")
-RELATED = ("category", "assignment_group", "assignee")
+RELATED = ("category",)
 
 
 class TicketQueueMixin:
@@ -75,11 +79,9 @@ class TicketQueueMixin:
         inbound = Q(messages__kind__in=TicketMessage.INBOUND_KINDS)
         # The SLA column's "at risk" share, read once per list (the admin instance is shared between requests).
         warning = Value(int(HelpdeskSettings.load().sla_warning_percent), output_field=IntegerField())
-        return (
-            super()
-            .get_queryset(request)
-            .annotate(inbound_count=Count("messages", filter=inbound), sla_warning_percent=warning)
-        )
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(inbound_count=Count("messages", filter=inbound), sla_warning_percent=warning)
+        return activity.with_last_reply(queryset)
 
     def get_list_display(self, request):
         # Last activity says more than the creation time the shared timestamp mixin adds.
@@ -100,24 +102,14 @@ class TicketQueueMixin:
 
     def get_form(self, request, obj=None, change=False, **kwargs):
         form = super().get_form(request, obj, change, **kwargs)
-        assignee = form.base_fields.get("assignee")
-        if assignee is not None:
-            # Admins, and whoever holds this ticket now (so the page still saves after they stop being one).
-            allowed = {member.pk for member in tickets.helpdesk_staff()}
-            if obj is not None and obj.assignee_id:
-                allowed.add(obj.assignee_id)
-            assignee.queryset = assignee.queryset.filter(pk__in=allowed).order_by("first_name", "last_name")
-        for name, current in (
-            ("assignment_group", obj.assignment_group_id if obj is not None else None),
-            ("category", obj.category_id if obj is not None else None),
-        ):
-            field = form.base_fields.get(name)
-            if field is not None:
-                field.queryset = field.queryset.filter(Q(is_active=True) | Q(pk=current))
-                field.label_from_instance = lambda item: str(item) if item.is_active else f"{item} (inactive)"
+        field = form.base_fields.get("category")
+        if field is not None:
+            current = obj.category_id if obj is not None else None
+            field.queryset = field.queryset.filter(Q(is_active=True) | Q(pk=current))
+            field.label_from_instance = lambda item: str(item) if item.is_active else f"{item} (inactive)"
         for name in RELATED:
-            # Groups, categories and members are set up on their own pages, not from a ticket (whose trash icon would
-            # delete the group or category for every ticket).
+            # Categories are set up on their own page, not from a ticket (whose trash icon would delete the category
+            # for every ticket).
             widget = getattr(form.base_fields.get(name), "widget", None)
             for flag in ("can_add_related", "can_change_related", "can_delete_related", "can_view_related"):
                 if hasattr(widget, flag):
@@ -159,15 +151,21 @@ class TicketQueueMixin:
         warning = getattr(obj, "sla_warning_percent", None) or int(HelpdeskSettings.load().sla_warning_percent)
         return sla.queue_label(obj, timezone.now(), warning)
 
-    @display(description="Group", ordering="assignment_group__name")
-    def group_column(self, obj):
-        return obj.assignment_group.name if obj.assignment_group_id else "—"
-
-    @display(description="Assigned to", ordering="assignee__first_name")
-    def assignee_column(self, obj):
-        if obj.assignee_id is None:
+    @display(description="Last reply", ordering="last_reply_at")
+    def last_reply_column(self, obj):
+        """Who replied to the requester last and when ("—": nobody yet)."""
+        at = getattr(obj, "last_reply_at", None)
+        if at is None:
             return "—"
-        return obj.assignee.get_full_name() or str(obj.assignee)
+        by = getattr(obj, "last_reply_by", "") or "a former staff member"
+        return format_html(
+            '{}<br><span class="i2g-helpdesk-muted">{}</span>', by, timezone.localtime(at).strftime("%b %d, %H:%M")
+        )
+
+    @display(description="Last reply")
+    def last_reply_display(self, obj):
+        """The ticket page's line: who replied to the requester last and when (every Admin works every ticket)."""
+        return activity.last_reply_text(obj)
 
     @display(description="Messages", ordering="inbound_count")
     def message_count(self, obj):

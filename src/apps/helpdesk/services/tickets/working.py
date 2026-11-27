@@ -1,5 +1,5 @@
 """What staff do to tickets in bulk or beside the ticket form: notes, the read mark, resolving and closing, reopening,
-assigning, marking spam, and moving misclassified mail back to the queue. Each step goes through ``update_ticket``
+marking spam, and moving misclassified mail back to the queue. Each step goes through ``update_ticket``
 (or a targeted update of its own columns), so the audit trail and the SLA clock follow every path alike."""
 
 from django.db import transaction
@@ -14,7 +14,7 @@ from .. import sla
 from ..ingest.routing.people import same_person
 from ..sla.priority import AUTOMATED_DEFAULT, PERSON_DEFAULT, priority_for
 from . import events
-from .changes import DONE, AssignmentRefused, Kind, Status, _name, update_ticket
+from .changes import DONE, Kind, Status, _name, update_ticket
 from .scrub import scrub_sign_in_links
 
 NOTE_MAX_CHARS = 20000
@@ -75,18 +75,6 @@ def reopen(tickets, *, actor) -> int:
     go back with "Not automated: move to the queue", a merged ticket never."""
     chosen = [ticket for ticket in tickets if _person_ticket(ticket) and ticket.status in DONE]
     return set_status(chosen, Status.OPEN, actor=actor)
-
-
-def assign(tickets, assignee, *, actor) -> tuple[int, int]:
-    """Assign (or with None unassign) each ticket; (how many changed, how many were refused because ``assignee`` is
-    not a member of the ticket's assignment group)."""
-    changed = refused = 0
-    for ticket in tickets:
-        try:
-            changed += bool(update_ticket(ticket, actor=actor, assignee=assignee))
-        except AssignmentRefused:
-            refused += 1
-    return changed, refused
 
 
 def mark_spam(tickets, *, actor) -> int:
@@ -172,7 +160,7 @@ def move_to_queue(tickets, *, actor) -> int:
                 reset = {"impact": impact, "urgency": urgency}
                 if priority_for(impact, urgency) != current.priority:
                     reset["priority"] = priority_for(impact, urgency)
-                events.record_changes(current, reset, actor=actor, name=_name)
+                events.record_changes(current, reset, actor=actor)
                 values.update(reset)
             if current.sla_started_at is None:
                 # Automated mail never had a clock: it starts now, the moment it became a person's request.

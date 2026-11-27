@@ -2,13 +2,12 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
-from apps.event.tests.helpers import make_member
 from apps.helpdesk.tests.tickets.test_tickets import Kind, Status, new_ticket
 
-from ...models import AssignmentGroup, TicketCategory, TicketMessage
+from ...models import TicketCategory, TicketMessage
 from ...services import tickets
 from .. import corpus
-from ..helpers import FakeReader, helpdesk_staff, make_admin, receive
+from ..helpers import FakeReader, helpdesk_staff, receive
 
 
 class StaffActionTests(TestCase):
@@ -29,23 +28,23 @@ class StaffActionTests(TestCase):
             status=Status.RESOLVED,
             priority="high",
             category=category,
-            assignee=self.agent,
+            assignee=self.agent,  # deprecated (tickets have no owner): ignored
         )
         unchanged = tickets.update_ticket(self.ticket, actor=self.agent, status=Status.RESOLVED, priority="high")
 
         self.ticket.refresh_from_db()
-        self.assertEqual(changed, ["status", "priority", "category", "assignee"])
+        self.assertEqual(changed, ["status", "priority", "category"])
         self.assertEqual(unchanged, [])
         self.assertEqual(
             (self.ticket.status, self.ticket.priority, self.ticket.category, self.ticket.assignee),
-            (Status.RESOLVED, "high", category, self.agent),
+            (Status.RESOLVED, "high", category, None),
         )
         self.assertIsNotNone(self.ticket.closed_at)
         self.assertIsNotNone(self.ticket.resolved_at)
         # Leaving New is the first response (SLA), recorded after the changes that made it.
-        self.assertEqual(self.kinds(), [Kind.STATUS, Kind.PRIORITY, Kind.CATEGORY, Kind.ASSIGNED, Kind.RESPONDED])
-        assigned = self.ticket.events.get(kind=Kind.ASSIGNED)
-        self.assertEqual((assigned.actor, assigned.data), (self.agent, {"from": "", "to": "Avery Agent"}))
+        self.assertEqual(self.kinds(), [Kind.STATUS, Kind.PRIORITY, Kind.CATEGORY, Kind.RESPONDED])
+        # Every change is on record with who made it.
+        self.assertEqual(set(self.ticket.events.values_list("actor", flat=True)), {self.agent.pk})
 
     def test_reopening_clears_the_close_times(self):
         tickets.update_ticket(self.ticket, actor=self.agent, status=Status.CLOSED)
@@ -69,25 +68,14 @@ class StaffActionTests(TestCase):
         note.refresh_from_db()
         self.assertEqual(note.body_text, "Called them.")
 
-    def test_bulk_status_assignment_and_read(self):
+    def test_bulk_status_and_read(self):
         other = new_ticket(unread=True)
 
         self.assertEqual(tickets.set_status([self.ticket, other], Status.CLOSED, actor=self.agent), 2)
-        self.assertEqual(tickets.assign([self.ticket], self.agent, actor=self.agent), (1, 0))  # (changed, refused)
         self.assertEqual(tickets.mark_read([self.ticket, other]), 1)
         other.refresh_from_db()
         self.assertFalse(other.unread)
         self.assertEqual(tickets.mark_unread([self.ticket, other]), 2)
-
-    def test_assigning_outside_a_group_with_members_is_refused_and_counted(self):
-        group = AssignmentGroup.objects.create(name="Events")
-        group.members.add(make_admin(email="member@example.com"))
-        grouped = new_ticket(assignment_group=group)
-
-        self.assertEqual(tickets.assign([self.ticket, grouped], self.agent, actor=self.agent), (1, 1))
-        grouped.refresh_from_db()
-        self.assertIsNone(grouped.assignee)
-        self.assertFalse(grouped.events.exists())
 
     def test_spam_and_moving_automated_mail_to_the_queue(self):
         automated = new_ticket(
@@ -130,10 +118,3 @@ class StaffActionTests(TestCase):
         self.assertEqual(second.events.get(kind=Kind.MERGED).data, {"into": first.number})
         self.assertIsNone(tickets.merge([first], actor=self.agent))
         self.assertIsNone(tickets.merge([first, second], actor=self.agent))
-
-    def test_every_active_admin_and_nobody_else_can_be_assigned(self):
-        colleague = make_admin(email="colleague@example.com")
-        make_admin(email="inactive@example.com", is_active=False)
-        make_member(email="member@example.com")
-
-        self.assertEqual({member.pk for member in tickets.helpdesk_staff()}, {self.agent.pk, colleague.pk})

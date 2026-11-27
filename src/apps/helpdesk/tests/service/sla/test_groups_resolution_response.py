@@ -1,6 +1,7 @@
 """Impact × urgency → priority (the full matrix), and what ``update_ticket`` does with the ServiceNow-style fields:
-the priority it derives (and the SLA due times it re-judges), the category's default group, the resolution code and
-notes, and the first response when a ticket leaves New."""
+the priority it derives (and the SLA due times it re-judges), the category (its deprecated default group is never
+given: tickets have no owner, I2G-HELPDESK-01), the resolution code and notes, and the first response when a ticket
+leaves New."""
 
 from datetime import timedelta
 
@@ -18,47 +19,31 @@ Kind = TicketEvent.Kind
 Priority = Ticket.Priority
 
 
-class CategoryDefaultGroupTests(TestCase):
+class CategoryTests(TestCase):
     def setUp(self):
         cache.clear()
         self.agent = helpdesk_staff()
         self.events = AssignmentGroup.objects.create(name="Events")
         self.category = TicketCategory.objects.create(name="Registration", default_group=self.events)
 
-    def test_the_category_assigns_its_group_to_a_ticket_without_one(self):
+    def test_the_category_is_set_and_its_default_group_is_not_given(self):
         ticket = new_ticket()
 
         changed = tickets.update_ticket(ticket, actor=self.agent, category=self.category)
 
         ticket.refresh_from_db()
-        self.assertEqual(changed, ["category", "assignment_group"])
-        self.assertEqual(ticket.assignment_group, self.events)
-        self.assertEqual(ticket.events.get(kind=Kind.GROUP).data, {"from": "", "to": "Events"})
+        self.assertEqual(changed, ["category"])
+        self.assertEqual((ticket.category, ticket.assignment_group), (self.category, None))
+        self.assertEqual(ticket.events.get(kind=Kind.CATEGORY).data, {"from": "", "to": "Registration"})
+        self.assertFalse(ticket.events.filter(kind=Kind.GROUP).exists())
 
-    def test_a_ticket_with_a_group_keeps_it(self):
+    def test_a_ticket_with_a_deprecated_group_keeps_it(self):
         technical = AssignmentGroup.objects.create(name="Technical")
         ticket = new_ticket(assignment_group=technical)
 
         self.assertEqual(tickets.update_ticket(ticket, actor=self.agent, category=self.category), ["category"])
         ticket.refresh_from_db()
         self.assertEqual(ticket.assignment_group, technical)
-
-    def test_a_group_chosen_with_the_category_wins(self):
-        technical = AssignmentGroup.objects.create(name="Technical")
-        ticket = new_ticket()
-
-        tickets.update_ticket(ticket, actor=self.agent, category=self.category, assignment_group=technical)
-
-        ticket.refresh_from_db()
-        self.assertEqual(ticket.assignment_group, technical)
-
-    def test_a_category_without_a_default_group_assigns_none(self):
-        ticket = new_ticket()
-
-        tickets.update_ticket(ticket, actor=self.agent, category=TicketCategory.objects.create(name="Other"))
-
-        ticket.refresh_from_db()
-        self.assertIsNone(ticket.assignment_group)
 
 
 class ResolutionTests(TestCase):

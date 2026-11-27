@@ -95,6 +95,8 @@ allow-scripts or allow-same-origin here. The admin CSP (inherited by srcdoc docu
       {% endif %}
       <form method="post" action="{{ helpdesk_reply_url }}">
         {% csrf_token %}
+        <input type="hidden" name="seen" value="{{ helpdesk_reply_seen }}">
+        {% if helpdesk_reply_collision %}<p class="i2g-helpdesk-warning" role="alert"><span class="material-symbols-outlined" aria-hidden="true">group</span>Not sent yet: {{ helpdesk_reply_collision }} Your draft is below; "Send anyway" sends it.</p>{% endif %}
         {% if helpdesk_reply_error %}<p class="i2g-helpdesk-warning" role="alert"><span class="material-symbols-outlined" aria-hidden="true">error</span>Not sent: {{ helpdesk_reply_error }}</p>{% endif %}
         <dl class="i2g-helpdesk-meta">
           <dt>To</dt><dd>{{ helpdesk_reply_to }}</dd>
@@ -117,7 +119,7 @@ allow-scripts or allow-same-origin here. The admin CSP (inherited by srcdoc docu
           returns to this ticket. The requester's own latest message is quoted below it.
         </p>
         <button type="submit" class="i2g-helpdesk-button">
-          <span class="material-symbols-outlined" aria-hidden="true">send</span>Send reply
+          <span class="material-symbols-outlined" aria-hidden="true">send</span>{% if helpdesk_reply_collision %}Send anyway{% else %}Send reply{% endif %}
         </button>
       </form>
     </section>

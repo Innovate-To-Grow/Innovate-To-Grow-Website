@@ -1,15 +1,15 @@
-"""What the helpdesk sends, and only while shadow mode is off (``tickets.shadow``): replies to the requester, the
-acknowledgement of a new ticket, and assignment notifications to staff. ``compose`` writes the emails; ``replies``,
-``acknowledgement`` and ``notifications`` decide and store them; ``jobs`` (and the notice job in ``notifications``)
-send them from the background worker."""
+"""What the helpdesk sends, and only while shadow mode is off (``tickets.shadow``): replies to the requester and the
+acknowledgement of a new ticket. Staff are never emailed (I2G-HELPDESK-01): they work tickets in the admin.
+``compose`` writes the emails; ``replies`` and ``acknowledgement`` decide and store them; ``jobs`` sends them from the
+background worker."""
 
 from .acknowledgement import queue_acknowledgement
 from .compose import fill, reply_subject
 from .jobs import register_outbound
-from .notifications import assignment_changed
 from .recipients import cc_suggestions
 from .replies import (
     REPLY_MAX_CHARS,
+    ReplyCollision,
     ReplyRefused,
     can_reply,
     last_inbound,
@@ -19,8 +19,8 @@ from .replies import (
 
 __all__ = [
     "REPLY_MAX_CHARS",
+    "ReplyCollision",
     "ReplyRefused",
-    "assignment_changed",
     "can_reply",
     "cc_suggestions",
     "fill",

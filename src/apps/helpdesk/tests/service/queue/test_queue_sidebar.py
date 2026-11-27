@@ -1,6 +1,7 @@
 """Helpdesk → the sidebar entry lit for a ticket page: the view of the list it was opened from, which Django carries
 in the page's ``_changelist_filters`` (the list's query, URL-encoded). "Everything" (mail=all) is the Queue, not
-"Automated & Spam"."""
+"Automated & Spam". Tickets have no owner (I2G-HELPDESK-01): a page still carrying an old assignee or group view
+lights the Queue."""
 
 import uuid
 from urllib.parse import urlencode
@@ -19,10 +20,9 @@ VIEWS = {
     "mail=all": ["Queue"],
     "mail=all&status=any": ["Queue"],
     "status=done": ["Queue"],
-    "assignee=me": ["My Tickets"],
-    "group=mine": ["My Groups"],
-    "group=mine&assignee=none": ["Unassigned"],
-    "assignee=none": ["Unassigned"],
+    "assignee=me": ["Queue"],
+    "group=mine": ["Queue"],
+    "reply=awaiting": ["Awaiting Reply"],
     "sla=breached": ["SLA Breached"],
     "mail=automated&status=any": ["Automated & Spam"],
 }
@@ -53,9 +53,9 @@ class TicketPageSidebarTests(TestCase):
         self.client.force_login(helpdesk_staff())
         ticket = new_ticket()
 
-        response = self.client.get(f"{reverse('admin:helpdesk_ticket_changelist')}?assignee=none")
+        response = self.client.get(f"{reverse('admin:helpdesk_ticket_changelist')}?sla=none")
 
-        carried = urlencode({"_changelist_filters": "assignee=none"})
+        carried = urlencode({"_changelist_filters": "sla=none"})
         link = f"{reverse('admin:helpdesk_ticket_change', args=[ticket.pk])}?{carried}"
         self.assertContains(response, f'href="{link}"')
-        self.assertEqual(self.active(link), ["Unassigned"])
+        self.assertEqual(self.active(link), ["Queue"])

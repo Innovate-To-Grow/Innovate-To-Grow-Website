@@ -1,8 +1,8 @@
 """Helpdesk → Queue sort orders and the ticket-number search.
 
 - Priority sorts by severity and Status by the ticket's life, not alphabetically by their stored values; SLA by the
-  due time of the clock the column shows (tickets without a clock last); Requester by name, else address; Assigned to
-  by first name; Subject sorts too.
+  due time of the clock the column shows (tickets without a clock last); Requester by name, else address; Last reply
+  by when it was sent; Subject sorts too.
 - A ticket number typed in the search ("1234", "#1234", "I2G-#1234") finds that ticket whatever the view's filters
   (closed, automated mail) and lists it first.
 """
@@ -12,8 +12,7 @@ from urllib.parse import urlencode
 
 from django.utils import timezone
 
-from ....models import Ticket
-from ...helpers import make_admin
+from ....models import Ticket, TicketMessage
 from ...helpers.service import Status, clocked_ticket, new_ticket
 from .support import QueueCase
 
@@ -55,17 +54,22 @@ class SortTests(QueueCase):
             self.by("sla_column"), ["response in 4 h", "resolution in 10 h", "response in 22 h", "no clock"]
         )
 
-    def test_subject_requester_and_assignee_sort(self):
-        kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
-        bo = make_admin(email="bo@example.com", first_name="Bo", last_name="Zane")
-        new_ticket(subject="b", requester_name="adam", requester_email="zz@example.org", assignee=kim)
-        new_ticket(subject="c", requester_name="", requester_email="bob@example.org", assignee=self.agent)  # Avery
-        new_ticket(subject="a", requester_name="carl", requester_email="aa@example.org", assignee=bo)
+    def test_subject_requester_and_last_reply_sort(self):
+        now = timezone.now()
+        for subject, name, email, replied in (
+            ("b", "adam", "zz@example.org", now - 3 * HOUR),
+            ("c", "", "bob@example.org", now - 1 * HOUR),
+            ("a", "carl", "aa@example.org", now - 2 * HOUR),
+        ):
+            ticket = new_ticket(subject=subject, requester_name=name, requester_email=email)
+            TicketMessage.objects.create(
+                ticket=ticket, kind="reply", author=self.agent, from_name="Avery Agent", occurred_at=replied
+            )
 
         self.assertEqual(self.by("subject_column"), ["a", "b", "c"])
         self.assertEqual(self.by("subject_column", descending=True), ["c", "b", "a"])
         self.assertEqual(self.by("requester_column"), ["b", "c", "a"])  # adam, bob@example.org, carl
-        self.assertEqual(self.by("assignee_column"), ["c", "a", "b"])  # Avery, Bo, Kim
+        self.assertEqual(self.by("last_reply_column"), ["b", "a", "c"])  # the oldest last reply first
 
 
 class NumberSearchTests(QueueCase):

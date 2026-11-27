@@ -1,14 +1,12 @@
 """The queue after the second live check: the SLA column sorts as it reads, a number search keeps the list's counts,
-Spam is offered only where it can match, priorities list by severity, My Groups says why it is empty, and the bulk
-actions say why they left tickets as they were (or are refused, or not offered, where they could never act)."""
+Spam is offered only where it can match, priorities list by severity, and the bulk actions say why they left tickets as they were (or are refused, or not offered, where they could never act)."""
 
 from datetime import timedelta
 
 from django.test import override_settings
 from django.utils import timezone
 
-from ....models import AssignmentGroup, Ticket, TicketMessage
-from ...helpers import helpdesk_staff
+from ....models import Ticket, TicketMessage
 from ...helpers.service import Status, clocked_ticket, new_ticket
 from .support import ACTION_SESSION_KEY, QueueCase
 
@@ -32,10 +30,8 @@ class SortAndSearchTests(QueueCase):
         self.assertEqual(listed[4], "no clock")
         self.assertEqual(self.listed(f"o=-{index}")[0], "no clock")
 
-    def test_a_number_search_from_my_groups_keeps_the_message_count(self):
-        group = AssignmentGroup.objects.create(name="Events")
-        group.members.set([self.agent, helpdesk_staff(email="b@example.com"), helpdesk_staff(email="c@example.com")])
-        ticket = new_ticket(subject="Counted", assignment_group=group, status=Status.OPEN)
+    def test_a_number_search_from_a_filtered_view_keeps_the_message_count(self):
+        ticket = new_ticket(subject="Counted", status=Status.OPEN)
         for _ in range(2):
             TicketMessage.objects.create(
                 ticket=ticket,
@@ -44,7 +40,7 @@ class SortAndSearchTests(QueueCase):
                 occurred_at=timezone.now(),
             )
 
-        rows = self.get(f"group=mine&q={ticket.number}").context["cl"].result_list
+        rows = self.get(f"reply=awaiting&q={ticket.number}").context["cl"].result_list
 
         self.assertEqual([(row.subject, row.inbound_count) for row in rows], [("Counted", 2)])
 
@@ -61,15 +57,6 @@ class FilterTests(QueueCase):
 
         self.assertEqual(list(self.choices("priority"))[1:], ["1 – Critical", "2 – High", "3 – Moderate", "4 – Low"])
         self.assertEqual(self.listed("priority=urgent"), ["critical"])
-
-    def test_my_groups_says_why_it_is_empty_for_a_member_of_no_group(self):
-        lonely = self.messages(self.get("group=mine"))
-        AssignmentGroup.objects.create(name="Events").members.set([self.agent])
-
-        self.assertEqual(
-            lonely, ["You are in no assignment group, so My Groups is empty: Helpdesk → Assignment Groups."]
-        )
-        self.assertEqual(self.messages(self.get("group=mine")), [])
 
 
 class ActionTests(QueueCase):
@@ -113,5 +100,6 @@ class ActionTests(QueueCase):
             for name, _label in self.get("mail=automated&status=any").context["action_form"].fields["action"].choices
         }
 
-        self.assertTrue({"move_to_queue", "mark_spam", "assign_to_me"} <= offered)
+        self.assertTrue({"move_to_queue", "mark_spam", "mark_read"} <= offered)
         self.assertFalse({"merge_tickets", "resolve_tickets", "close_tickets", "reopen_tickets"} & offered)
+        self.assertFalse({"assign_to_me", "unassign"} & offered)  # tickets have no owner

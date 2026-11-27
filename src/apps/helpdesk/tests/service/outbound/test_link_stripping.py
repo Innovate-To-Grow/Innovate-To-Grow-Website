@@ -1,6 +1,6 @@
 """What an outsider chose (a display name, a subject) loses anything a mail client turns into a link before the site
 sends it from its own address: URLs, www. hosts and host names with a path always; in automatic mail nobody reads
-first (the acknowledgement, the notices), bare host names on common top-level domains and IPv4 addresses too. Words,
+first (the acknowledgement), bare host names on common top-level domains and IPv4 addresses too. Words,
 version numbers, file names and ticket numbers stay, and a staff reply's subject keeps what staff can read on the form."""
 
 from django.test import SimpleTestCase, TestCase
@@ -49,10 +49,7 @@ class FilledEmailTests(TestCase):
     def test_automatic_mail_loses_bare_host_names_and_a_staff_reply_keeps_them(self):
         ticket = new_ticket(subject="Urgent: payroll-update.example.com", requester_name="Pat (pat-help.example.net)")
 
-        self.assertEqual(
-            compose.notice_subject(ticket, "Assigned to you"),
-            f"[{ticket.display_number}] Assigned to you: Urgent: {LINK}",
-        )
+        self.assertEqual(compose.clean_subject(ticket, strict=True), f"Urgent: {LINK}")
         self.assertEqual(compose.reply_subject(ticket, strict=True), f"Re: Urgent: {LINK} [{ticket.display_number}]")
         self.assertEqual(compose.fill("Hello {requester_name}", ticket, strict=True), f"Hello Pat ({LINK})")
         # What staff read on the reply form and in an inserted template is sent as they read it.

@@ -109,14 +109,11 @@ class NoSendingCodeTests(TestCase):
         senders = {
             (path.name, name) for path in sorted(outbound.glob("*.py")) for name in _calling(path, "deliver_email")
         }
-        # The two sending handlers are the only code that hands mail to the email facade.
-        self.assertEqual(senders, {("jobs.py", "send_reply_job"), ("notifications.py", "notify_staff_job")})
+        # The reply handler is the only code that hands mail to the email facade (staff get no helpdesk email).
+        self.assertEqual(senders, {("jobs.py", "send_reply_job")})
         reply = _function(outbound / "jobs.py", "send_reply_job")
         self.assertLess(reply.index("shadow.sending_allowed("), reply.index("deliver_email("))
-        notice = _function(outbound / "notifications.py", "notify_staff_job")
-        self.assertLess(notice.index("_due("), notice.index("deliver_email("))
-        # ``_due`` is where the notice job checks shadow mode (with the notify switch and the ticket's state).
-        self.assertIn("shadow.sending_allowed(settings)", _function(outbound / "notifications.py", "_due"))
+        self.assertNotIn("deliver_email(", _function(outbound / "jobs.py", "notify_staff_job"))
 
 
 class NothingIsSentTests(TestCase):

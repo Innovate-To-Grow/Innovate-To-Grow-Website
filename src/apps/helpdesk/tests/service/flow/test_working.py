@@ -1,12 +1,10 @@
-"""Steps beside the ticket form (``services.tickets.working``): moving misclassified mail to the queue, assigning in
-bulk, and internal notes.
+"""Steps beside the ticket form (``services.tickets.working``): moving misclassified mail to the queue and internal
+notes. Tickets have no owner (I2G-HELPDESK-01): there is no bulk assigning.
 
 - "Not automated: move to the queue" makes a ticket nobody answered yet New (moving it on is still its first
   response) and an answered one In progress. Automated mail's low impact and urgency (3 / 3) become a person's
   (2 / 2), with the priority they give; any other pair is kept. A ticket that never had an SLA clock gets one from
   now; a clock that stood still (spam) runs again, the time it stood still added to its resolution due time.
-- ``assign`` returns how many tickets changed and how many it left as they were because the assignee is not a member
-  of their group; unassigning is never refused.
 - A note keeps every ordinary link whole, long ones too, and loses only a personal sign-in link."""
 
 from datetime import timedelta
@@ -15,10 +13,10 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
-from ....models import AssignmentGroup, Ticket, TicketEvent
+from ....models import Ticket, TicketEvent
 from ....services import tickets
 from ... import corpus
-from ...helpers import helpdesk_staff, make_admin
+from ...helpers import helpdesk_staff
 from ...helpers.service import Status, clocked_ticket, new_ticket
 
 Kind = TicketEvent.Kind
@@ -87,30 +85,6 @@ class MoveToQueueTests(TestCase):
         self.assertLess(ticket.sla_paused_seconds, 2 * 3600 + 60)
         self.assertEqual(ticket.resolution_due_at, due + timedelta(seconds=ticket.sla_paused_seconds))
         self.assertFalse(ticket.response_breached or ticket.resolution_breached)
-
-
-class AssignTests(TestCase):
-    def setUp(self):
-        cache.clear()
-        self.agent = helpdesk_staff()
-
-    def test_how_many_changed_and_how_many_were_left_as_they_were(self):
-        kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
-        theirs = AssignmentGroup.objects.create(name="Technical")
-        theirs.members.add(kim)
-        mine = AssignmentGroup.objects.create(name="Events")
-        mine.members.add(self.agent)
-        selected = [
-            new_ticket(assignee=self.agent),  # already theirs: no change
-            new_ticket(assignment_group=mine),
-            new_ticket(assignment_group=AssignmentGroup.objects.create(name="Nobody yet")),
-            new_ticket(assignment_group=theirs),  # refused: not a member
-        ]
-
-        self.assertEqual(tickets.assign(selected, self.agent, actor=self.agent), (2, 1))
-        self.assertEqual(Ticket.objects.filter(assignee=self.agent).count(), 3)
-        self.assertEqual(tickets.assign(selected, None, actor=self.agent), (3, 0))  # unassigning is never refused
-        self.assertFalse(Ticket.objects.filter(assignee__isnull=False).exists())
 
 
 class NoteTests(TestCase):

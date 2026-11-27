@@ -3,15 +3,15 @@
 - Status: the two groups have keys of their own ("active", the default, and "done"), so ?status=open is In progress
   only and ?status=closed is Closed only.
 - SLA: "at risk" is a clock still running past the settings' warning share of its target and not overdue yet.
-- Assignment group: an inactive group is listed (and marked) while tickets still have it.
-- Columns: who the ticket is assigned to, and not the creation time the shared timestamp mixin adds.
+- Columns: who replied to the requester last and when (tickets have no owner, I2G-HELPDESK-01: no group or assignee
+  filter or column), and not the creation time the shared timestamp mixin adds.
 """
 
 from datetime import timedelta
 
 from django.utils import timezone
 
-from ....models import AssignmentGroup, HelpdeskSettings
+from ....models import HelpdeskSettings, TicketMessage
 from ...helpers import make_admin
 from ...helpers.service import Status, clocked_ticket, new_ticket
 from .support import QueueCase
@@ -85,36 +85,32 @@ class AtRiskFilterTests(QueueCase):
         self.assertEqual(list(self.choices("SLA")), ["All", "Breached", "At risk (past 75% of the target)", "No SLA"])
 
 
-class GroupFilterTests(QueueCase):
-    def test_an_inactive_group_is_listed_while_tickets_still_have_it(self):
-        AssignmentGroup.objects.create(name="Events")
-        retired = AssignmentGroup.objects.create(name="Retired", is_active=False)
-        AssignmentGroup.objects.create(name="Unused", is_active=False)
-        new_ticket(subject="kept", assignment_group=retired)
-        new_ticket(subject="other")
-
-        self.assertEqual(
-            list(self.choices("assignment group")), ["All", "My groups", "No group", "Events", "Retired (inactive)"]
-        )
-        self.assertEqual(self.listed(f"group={retired.pk}"), ["kept"])
-
-
 class ColumnTests(QueueCase):
-    def test_the_list_shows_who_has_the_ticket_and_not_when_it_was_created(self):
+    def test_the_list_shows_who_replied_last_and_not_when_it_was_created(self):
         kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
-        nameless = make_admin(email="nameless@example.com", first_name="", last_name="")
-        assigned = new_ticket(subject="assigned", assignee=kim)
-        unnamed = new_ticket(subject="unnamed", assignee=nameless)
-        unassigned = new_ticket(subject="unassigned")
+        replied, failed, nobody = (
+            new_ticket(subject="replied"),
+            new_ticket(subject="failed"),
+            new_ticket(subject="none"),
+        )
+        at = timezone.now() - HOUR
+        for ticket, name, delivery in ((replied, "Kim Lee", "sent"), (failed, "Avery Agent", "failed")):
+            TicketMessage.objects.create(
+                ticket=ticket, kind="reply", author=kim, from_name=name, occurred_at=at, delivery_status=delivery
+            )
 
         response = self.get()
         changelist = response.context["cl"]
         model_admin = changelist.model_admin
+        rows = {row.subject: row for row in changelist.result_list}
 
-        self.assertIn("assignee_column", changelist.list_display)
-        self.assertNotIn("created_at", changelist.list_display)
-        self.assertEqual(model_admin.assignee_column.short_description, "Assigned to")
+        self.assertIn("last_reply_column", changelist.list_display)
+        self.assertFalse({"group_column", "assignee_column", "created_at"} & set(changelist.list_display))
+        self.assertEqual(model_admin.last_reply_column.short_description, "Last reply")
         self.assertContains(response, "Kim Lee")
-        self.assertEqual(model_admin.assignee_column(assigned), "Kim Lee")
-        self.assertEqual(model_admin.assignee_column(unnamed), str(nameless))  # no name: as the member reads
-        self.assertEqual(model_admin.assignee_column(unassigned), "—")
+        when = timezone.localtime(at).strftime("%b %d, %H:%M")
+        self.assertIn(
+            f'Kim Lee<br><span class="i2g-helpdesk-muted">{when}</span>', model_admin.last_reply_column(rows["replied"])
+        )
+        self.assertEqual(model_admin.last_reply_column(rows["failed"]), "—")  # it never reached the requester
+        self.assertEqual(model_admin.last_reply_column(rows["none"]), "—")

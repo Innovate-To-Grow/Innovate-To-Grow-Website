@@ -10,7 +10,7 @@ from apps.event.tests.helpers import make_member
 
 from ...models import Ticket, TicketAttachment, TicketEvent, TicketMessage
 from .. import corpus
-from ..helpers import FakeReader, helpdesk_staff, make_admin, receive
+from ..helpers import FakeReader, helpdesk_staff, receive
 
 Status = Ticket.Status
 
@@ -100,7 +100,7 @@ class SaveTests(TicketPageTestCase):
             "urgency": "2",
             "priority": "low",
             "category": "",
-            "assignee": str(self.agent.pk),
+            "assignee": str(self.agent.pk),  # posted by a page an earlier release rendered: ignored
         }
 
         response = self.client.post(self.url, data)
@@ -109,19 +109,15 @@ class SaveTests(TicketPageTestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(
             (self.ticket.status, self.ticket.impact, self.ticket.priority, self.ticket.assignee),
-            (Status.PENDING_CUSTOMER, 1, "high", self.agent),
+            (Status.PENDING_CUSTOMER, 1, "high", None),
         )
         kinds = set(self.ticket.events.values_list("kind", flat=True))
-        expected = {
-            TicketEvent.Kind.STATUS,
-            TicketEvent.Kind.IMPACT,
-            TicketEvent.Kind.PRIORITY,
-            TicketEvent.Kind.ASSIGNED,
-        }
-        self.assertTrue(expected <= kinds)
+        self.assertTrue({TicketEvent.Kind.STATUS, TicketEvent.Kind.IMPACT, TicketEvent.Kind.PRIORITY} <= kinds)
+        self.assertNotIn(TicketEvent.Kind.ASSIGNED, kinds)
+        changes = self.ticket.events.filter(kind__in=(TicketEvent.Kind.STATUS, TicketEvent.Kind.IMPACT))
+        self.assertEqual(set(changes.values_list("actor", flat=True)), {self.agent.pk})  # who made each change
         self.assertEqual(  # the fields as the page names them
-            LogEntry.objects.get(object_id=str(self.ticket.pk)).change_message,
-            "Changed status, impact, priority, assigned to.",
+            LogEntry.objects.get(object_id=str(self.ticket.pk)).change_message, "Changed status, impact, priority."
         )
 
     def test_saving_never_overwrites_what_the_ingest_wrote_meanwhile(self):
@@ -132,7 +128,7 @@ class SaveTests(TicketPageTestCase):
         self.ticket.refresh_from_db()
         self.assertEqual(self.ticket.participants, ["pat@example.org", "new@example.org"])
 
-    def test_an_assignee_who_is_no_longer_an_admin_still_lets_the_page_save(self):
+    def test_a_deprecated_assignee_who_is_no_longer_an_admin_still_lets_the_page_save(self):
         former = make_member(email="former@example.com")
         Ticket.objects.filter(pk=self.ticket.pk).update(assignee=former, requester_name="")
 
@@ -145,23 +141,6 @@ class SaveTests(TicketPageTestCase):
         self.assertEqual(response.status_code, 302)
         self.ticket.refresh_from_db()
         self.assertEqual((self.ticket.status, self.ticket.assignee), (Status.OPEN, former))
-
-    def test_only_admins_can_be_chosen_as_assignee(self):
-        outsider = make_member(email="member@example.com")
-        colleague = make_admin(email="colleague@example.com")
-
-        response = self.client.post(
-            self.url, {"status": Status.OPEN, "priority": "normal", "category": "", "assignee": str(outsider.pk)}
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("assignee", response.context["adminform"].form.errors)
-        response = self.client.post(
-            self.url, {"status": Status.OPEN, "priority": "normal", "category": "", "assignee": str(colleague.pk)}
-        )
-        self.assertEqual(response.status_code, 302)
-        self.ticket.refresh_from_db()
-        self.assertEqual(self.ticket.assignee, colleague)
 
 
 class NoteTests(TicketPageTestCase):

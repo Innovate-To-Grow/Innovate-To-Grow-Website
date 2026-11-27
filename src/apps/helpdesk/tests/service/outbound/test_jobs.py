@@ -1,6 +1,6 @@
 """The sending jobs: ``helpdesk.send_reply`` (sends a stored reply once, with the subject token and ticket header;
 re-checks shadow mode, the ticket and the acknowledgement switch; maps provider errors to job errors), its state
-handler (a failed or uncertain job marks the message failed), and ``helpdesk.notify_staff``. No provider is reached:
+handler (a failed or uncertain job marks the message failed). No provider is reached:
 the email facade's ``deliver_email`` is patched."""
 
 import uuid

@@ -5,6 +5,10 @@ Each is served through ``admin_view`` (Admins only), and an attachment must belo
 ``X-Content-Type-Options: nosniff``, served as ``application/octet-stream`` unless it is a raster image, and never
 cached; an archive is offered only after a warning page, and a file whose content is not stored is a 404 that says
 why. A refused reply comes back with what was typed (kept in the session for the next view of the page).
+
+Every Admin works every ticket (I2G-HELPDESK-01). The reply form carries the moment it was shown (``seen``); a reply
+someone else queued since holds this one back (``outbound.ReplyCollision``): the page comes back with the draft, the
+other reply on the timeline, a warning, and "Send anyway", which sends it from the fresh page.
 """
 
 from django.contrib import admin, messages
@@ -13,10 +17,12 @@ from django.http import Http404, HttpResponse, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_GET, require_POST
 
-from ...models import AssignmentGroup, HelpdeskSettings, ResponseTemplate, Ticket, TicketAttachment
+from ...models import HelpdeskSettings, ResponseTemplate, Ticket, TicketAttachment
 from ...services import outbound, tickets
 from ...services.ingest.reading import attachments as files
 from ...services.sla.priority import priority_for
@@ -36,6 +42,18 @@ def _ticket_url(ticket: Ticket) -> str:
 
 def _draft_key(ticket: Ticket) -> str:
     return f"helpdesk_reply_draft:{ticket.pk}"
+
+
+def _seen_at(request):
+    """When the reply form was shown (its hidden ``seen``), or None: a page an earlier release rendered has none, and
+    a value that is not a time is not one either (the reply is then sent without the check)."""
+    try:
+        seen = parse_datetime(str(request.POST.get("seen") or ""))
+    except ValueError:
+        return None
+    if seen is not None and timezone.is_naive(seen):
+        return None
+    return seen
 
 
 @require_POST
@@ -67,7 +85,11 @@ def reply_view(request, pk):
         status = ""
     body, cc = str(request.POST.get("body") or ""), str(request.POST.get("cc") or "")
     try:
-        outbound.queue_reply(ticket, actor=request.user, body=body, cc=cc, status=status)
+        outbound.queue_reply(ticket, actor=request.user, body=body, cc=cc, status=status, seen_at=_seen_at(request))
+    except outbound.ReplyCollision as collision:
+        messages.warning(request, f"Your reply was not sent yet: {collision}")
+        request.session[_draft_key(ticket)] = {"body": body, "cc": cc, "status": status, "collision": str(collision)}
+        return HttpResponseRedirect(f"{_ticket_url(ticket)}#helpdesk-reply")
     except outbound.ReplyRefused as refused:
         messages.error(request, f"The reply was not sent: {refused}")
         request.session[_draft_key(ticket)] = {"body": body, "cc": cc, "status": status, "error": str(refused)}
@@ -121,6 +143,9 @@ def reply_context(request, ticket: Ticket, settings: HelpdeskSettings) -> dict:
         "helpdesk_reply_body": (draft or {}).get("body") or (chosen["body"] if chosen else ""),
         "helpdesk_reply_cc": (draft or {}).get("cc", ""),
         "helpdesk_reply_error": (draft or {}).get("error", ""),
+        "helpdesk_reply_collision": (draft or {}).get("collision", ""),
+        # The moment this form was shown: a reply someone else sends after it holds this one back.
+        "helpdesk_reply_seen": timezone.now().isoformat(),
         "helpdesk_reply_statuses": REPLY_STATUS_CHOICES,
         "helpdesk_reply_status": (draft or {}).get("status", default_status),
         "helpdesk_reply_max": outbound.REPLY_MAX_CHARS,
@@ -128,17 +153,11 @@ def reply_context(request, ticket: Ticket, settings: HelpdeskSettings) -> dict:
 
 
 def form_helpers(request, ticket: Ticket) -> dict:
-    """What the ticket form's script needs: each group's members who may hold its tickets (the Assigned to list
-    follows the group), the priority each impact and urgency give, who "Assign to me" means, and whether the page
-    shows the saved values (a GET) rather than a refused save's input."""
-    groups = {
-        str(group.pk): [str(member.pk) for member in tickets.eligible_members(group)]
-        for group in AssignmentGroup.objects.prefetch_related("members")
-    }
+    """What the ticket form's script needs: the priority each impact and urgency give, and whether the page shows the
+    saved values (a GET) rather than a refused save's input."""
     labels = dict(Ticket.Priority.choices)
     priorities = {f"{i}-{u}": str(labels[priority_for(i, u)]) for i in (1, 2, 3) for u in (1, 2, 3)}
-    data = {"groups": groups, "priorities": priorities, "me": str(request.user.pk), "fresh": request.method == "GET"}
-    return {"helpdesk_form_data": data}
+    return {"helpdesk_form_data": {"priorities": priorities, "fresh": request.method == "GET"}}
 
 
 @require_GET

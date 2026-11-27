@@ -1,10 +1,8 @@
-"""What staff change on a ticket's fields (``update_ticket``), and the rules every change path shares: the assignee is
-a member of the assignment group (``membership_problem``), and reopening clears the resolution."""
+"""What staff change on a ticket's fields (``update_ticket``), and the rule every change path shares: reopening clears
+the resolution. Tickets have no owner (I2G-HELPDESK-01): every Admin works every ticket, so no change checks who may."""
 
 from django.db import transaction
 from django.utils import timezone
-
-from apps.core.utils.access import user_is_admin
 
 from ...models import Ticket, TicketEvent
 from .. import sla
@@ -21,45 +19,16 @@ FIELDS = (
     "urgency",
     "priority",
     "category",
-    "assignment_group",
-    "assignee",
     "resolution_code",
     "resolution_notes",
 )
 RESOLUTION_NOTES_MAX_CHARS = 20000
 
 
-class AssignmentRefused(ValueError):
-    """The assignee is not a member of the ticket's assignment group (the message says so)."""
-
-
 def _name(member) -> str:
     if member is None:
         return ""
     return member.get_full_name() or str(member)
-
-
-def helpdesk_staff():
-    """Active Admins (every Admin may work tickets), for the assignee choices."""
-    from apps.authn.models import Member
-
-    return list(Member.objects.filter(is_active=True, is_staff=True).order_by("first_name", "last_name"))
-
-
-def eligible_members(group) -> list:
-    """The group's members who may hold its tickets: those who are still active Admins."""
-    return [member for member in group.members.all() if user_is_admin(member)]
-
-
-def membership_problem(group, assignee) -> str:
-    """Why ``assignee`` cannot hold a ticket of ``group`` ("" when they can): a group with members who may work
-    tickets has its tickets assigned within them (one with no active Admin left among its members is open to every Admin)."""
-    if group is None or assignee is None:
-        return ""
-    eligible = {member.pk for member in eligible_members(group)}
-    if eligible and assignee.pk not in eligible:
-        return f"{assignee} is not a member of {group}."
-    return ""
 
 
 def _status_values(ticket: Ticket, status: str, now) -> dict:
@@ -82,7 +51,7 @@ def reopen_values(ticket: Ticket, status: str) -> dict:
 
 def _field_values(current: Ticket, changes: dict) -> dict:
     values = {}
-    for field in ("impact", "urgency", "category", "assignment_group", "assignee", "resolution_code"):
+    for field in ("impact", "urgency", "category", "resolution_code"):
         if field in changes and changes[field] != getattr(current, field):
             values[field] = changes[field]
     if "resolution_notes" in changes:
@@ -95,14 +64,6 @@ def _field_values(current: Ticket, changes: dict) -> dict:
             values["priority"] = computed
     elif "priority" in changes and changes["priority"] != current.priority:
         values["priority"] = changes["priority"]
-    category = values.get("category")
-    if category is not None and not current.assignment_group_id and "assignment_group" not in values:
-        # The category's assignment rule routes a ticket that has no group yet, to an active group its assignee
-        # (if any) belongs to.
-        default = category.default_group
-        if default is not None and default.is_active:
-            if not membership_problem(default, values.get("assignee", current.assignee)):
-                values["assignment_group"] = default
     return values
 
 
@@ -110,12 +71,11 @@ def update_ticket(ticket: Ticket, *, actor, first_response: bool = True, reason:
     """Apply staff's changes (``FIELDS``); the names of the fields that changed, in ``FIELDS`` order.
 
     Impact and urgency set the priority (``sla.priority``); a priority given directly (the services' own callers) is
-    kept as given. A category with a default group assigns that group to a ticket without one. An assignee outside
-    the ticket's group raises ``AssignmentRefused`` before anything changes. The SLA clock follows: a new priority sets
-    new due times, leaving New is the first response (unless ``first_response`` is False: a reply's own status change
-    waits for the reply to be sent), and a move into or out of a waiting status stops or starts the resolution clock
-    (``sla``); a breach a change brings to light is recorded. Reopening clears the resolution. Assigning someone else
-    (or a group with nobody in it) notifies them when sending is on (``outbound.notifications``).
+    kept as given. Any other keyword (such as the deprecated ``assignee`` or ``assignment_group``) is ignored. The SLA
+    clock follows: a new priority sets new due times, leaving New is the first response (unless ``first_response`` is
+    False: a reply's own status change waits for the reply to be sent), and a move into or out of a waiting status
+    stops or starts the resolution clock (``sla``); a breach a change brings to light is recorded. Reopening clears
+    the resolution. Nobody is emailed.
 
     A merge is final, and only ``merge`` makes one: a merged ticket keeps its status, and no ticket is set to merged
     here. Either change would leave ``merged_into`` out of step with the status. It is ignored.
@@ -124,11 +84,6 @@ def update_ticket(ticket: Ticket, *, actor, first_response: bool = True, reason:
     with transaction.atomic():
         current = Ticket.objects.select_for_update().get(pk=ticket.pk)
         values = _field_values(current, changes)
-        if {"assignment_group", "assignee"} & set(values):
-            group = values.get("assignment_group", current.assignment_group)
-            problem = membership_problem(group, values.get("assignee", current.assignee))
-            if problem:
-                raise AssignmentRefused(problem)
         status = changes.get("status", current.status)
         status_changed = status != current.status and Status.MERGED not in (status, current.status)
         if status_changed:
@@ -136,7 +91,7 @@ def update_ticket(ticket: Ticket, *, actor, first_response: bool = True, reason:
             events.record(current, Kind.STATUS, actor=actor, **data)
             reopened = reopen_values(current, status)
             values.update(reopened)
-        events.record_changes(current, values, actor=actor, name=_name, reopened=bool(status_changed and reopened))
+        events.record_changes(current, values, actor=actor, reopened=bool(status_changed and reopened))
         if status_changed:
             values.update(_status_values(current, status, now))
         clock_status = status if status_changed else None
@@ -153,13 +108,4 @@ def update_ticket(ticket: Ticket, *, actor, first_response: bool = True, reason:
         changed = [field for field in FIELDS if field in values]
         if values or sla_values:
             Ticket.objects.filter(pk=current.pk).update(**values, **sla_values, updated_at=now)
-        if "assignee" in values or "assignment_group" in values:
-            from ..outbound import notifications
-
-            notifications.assignment_changed(
-                current,
-                actor=actor,
-                assignee_changed="assignee" in values,
-                group_changed="assignment_group" in values,
-            )
     return changed

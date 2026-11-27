@@ -1,24 +1,20 @@
 """The rules ``update_ticket`` applies on every path that changes a ticket (its page, the bulk actions, replies).
 
-- A group or assignee change that would leave the assignee outside a group with members raises ``AssignmentRefused``
-  before anything changes: no field, no timeline entry, no assignment notice.
-- A category's default group is given to a ticket without a group only when that group is active and the assignee
-  (if any) belongs to it, or it has nobody in it; otherwise only the category is set, and nothing is refused.
+- Tickets have no owner (I2G-HELPDESK-01): the deprecated assignee and assignment group are ignored when passed, and
+  a category's (deprecated) default group is never given; nothing is refused.
 - Reopening a resolved or closed ticket clears its resolution code and notes ("Resolution cleared on reopening (was:
   …)" on the timeline); closing a resolved ticket keeps them.
 - A breach a staff change brings to light (a priority raised past its due times, a late move out of New, a pause
   after the resolution fell due) is on the timeline once, and not again while its flag stays set."""
 
 from datetime import timedelta
-from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase
 from django.utils import timezone
 
-from ....models import AssignmentGroup, Ticket, TicketCategory, TicketEvent
+from ....models import AssignmentGroup, TicketCategory, TicketEvent
 from ....services import sla, tickets
-from ....services.outbound import notifications
 from ....services.tickets import events
 from ...helpers import helpdesk_staff, make_admin
 from ...helpers.service import Status, clocked_ticket, new_ticket
@@ -26,11 +22,6 @@ from ...helpers.service import Status, clocked_ticket, new_ticket
 Kind = TicketEvent.Kind
 HOUR = timedelta(hours=1)
 DAY = timedelta(days=1)
-COLUMNS = ("status", "impact", "priority", "category", "assignment_group", "assignee", "resolution_notes")
-
-
-def row(ticket) -> tuple:
-    return Ticket.objects.filter(pk=ticket.pk).values_list(*COLUMNS, "first_responded_at", "updated_at").get()
 
 
 class _RuleCase(TestCase):
@@ -42,74 +33,28 @@ class _RuleCase(TestCase):
         self.events.members.add(self.kim)
 
 
-class AssignmentRefusedTests(_RuleCase):
-    def test_nothing_changes_when_the_new_group_and_assignee_do_not_fit(self):
-        ticket = clocked_ticket()
-        before = row(ticket)
-        changes = {"status": Status.OPEN, "impact": 1, "urgency": 1, "resolution_notes": "Called back."}
-        changes.update(category=TicketCategory.objects.create(name="Registration"), assignment_group=self.events)
+class NoOwnerTests(_RuleCase):
+    def test_the_deprecated_assignee_and_group_are_ignored_and_nothing_is_refused(self):
+        ticket = new_ticket(assignment_group=self.events, assignee=self.kim)
 
-        with (
-            patch.object(notifications, "assignment_changed") as notice,
-            self.assertRaisesMessage(tickets.AssignmentRefused, "Avery Agent is not a member of Events."),
-        ):
-            tickets.update_ticket(ticket, actor=self.agent, assignee=self.agent, **changes)
+        changed = tickets.update_ticket(
+            ticket, actor=self.agent, assignee=self.agent, assignment_group=None, status=Status.OPEN
+        )
 
-        self.assertEqual(row(ticket), before)
-        self.assertFalse(TicketEvent.objects.exists())
-        notice.assert_not_called()
-
-    def test_a_new_group_or_a_new_assignee_alone_is_refused_too(self):
-        assigned = new_ticket(assignee=self.agent)
-        grouped = new_ticket(assignment_group=self.events, assignee=self.kim)
-        before = [row(assigned), row(grouped)]
-
-        with self.assertRaises(tickets.AssignmentRefused):
-            tickets.update_ticket(assigned, actor=self.agent, assignment_group=self.events, priority="high")
-        with self.assertRaises(tickets.AssignmentRefused):
-            tickets.update_ticket(grouped, actor=self.agent, assignee=self.agent, status=Status.OPEN)
-
-        self.assertEqual([row(assigned), row(grouped)], before)
-        self.assertFalse(TicketEvent.objects.exists())
-        # Unassigning in the same change lets the group in.
-        changed = tickets.update_ticket(assigned, actor=self.agent, assignment_group=self.events, assignee=None)
-        self.assertEqual(changed, ["assignment_group", "assignee"])
-
-
-class CategoryDefaultGroupRuleTests(_RuleCase):
-    def setUp(self):
-        super().setUp()
-        self.registration = TicketCategory.objects.create(name="Registration", default_group=self.events)
-
-    def categorised(self, ticket, **changes):
-        """What changed when ``ticket`` got the category (read afresh, as a form gives it), and its group then."""
-        category = TicketCategory.objects.get(pk=self.registration.pk)
-        changed = tickets.update_ticket(ticket, actor=self.agent, category=category, **changes)
         ticket.refresh_from_db()
-        return changed, ticket.assignment_group
+        self.assertEqual(changed, ["status"])
+        # The old values stay as they were (kept, never written).
+        self.assertEqual((ticket.assignment_group, ticket.assignee), (self.events, self.kim))
+        self.assertFalse(TicketEvent.objects.filter(kind__in=(Kind.ASSIGNED, Kind.GROUP)).exists())
 
-    def test_an_inactive_default_group_is_not_given(self):
-        AssignmentGroup.objects.filter(pk=self.events.pk).update(is_active=False)
+    def test_a_categorys_default_group_is_not_given(self):
+        registration = TicketCategory.objects.create(name="Registration", default_group=self.events)
+        ticket = new_ticket()
 
-        self.assertEqual(self.categorised(new_ticket()), (["category"], None))
+        changed = tickets.update_ticket(ticket, actor=self.agent, category=registration)
 
-    def test_not_given_when_the_assignee_is_not_a_member(self):
-        assigned = new_ticket(assignee=self.agent)
-        assigning = new_ticket()
-
-        self.assertEqual(self.categorised(assigned), (["category"], None))
-        # Nor for an assignee chosen in the same change: the assignee is set, the group is not.
-        self.assertEqual(self.categorised(assigning, assignee=self.agent), (["category", "assignee"], None))
-        self.assertEqual(assigning.assignee, self.agent)
-        self.assertFalse(TicketEvent.objects.filter(kind=Kind.GROUP).exists())
-
-    def test_given_when_the_assignee_is_a_member_or_there_is_none(self):
-        both = ["category", "assignment_group"]
-        self.assertEqual(self.categorised(new_ticket(assignee=self.kim)), (both, self.events))
-        self.assertEqual(self.categorised(new_ticket()), (both, self.events))
-        self.assertEqual(self.categorised(new_ticket(), assignee=self.kim), ([*both, "assignee"], self.events))
-        self.events.members.clear()  # a group with nobody in it takes any assignee
-        self.assertEqual(self.categorised(new_ticket(assignee=self.agent)), (both, self.events))
+        ticket.refresh_from_db()
+        self.assertEqual((changed, ticket.category, ticket.assignment_group), (["category"], registration, None))
 
 
 class ReopeningClearsTheResolutionTests(_RuleCase):

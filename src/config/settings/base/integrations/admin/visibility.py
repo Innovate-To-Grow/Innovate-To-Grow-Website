@@ -41,8 +41,9 @@ def _is_email_sending_method(request):
 
 
 def _helpdesk_queue_view(name):
-    """Sidebar "active" callback for one view of the ticket list (the six views share one path). A ticket page lights
-    the view it was opened from (the list's filters it carries in ``_changelist_filters``)."""
+    """Sidebar "active" callback for one view of the ticket list (the four views share one path). A ticket page lights
+    the view it was opened from (the list's filters it carries in ``_changelist_filters``). Tickets have no owner
+    (I2G-HELPDESK-01), so there are no "My Tickets", "My Groups" or "Unassigned" views."""
 
     def active(request):
         if not request.path.startswith(_HELPDESK_TICKETS_PATH):
@@ -50,14 +51,13 @@ def _helpdesk_queue_view(name):
         params = request.GET
         if "_changelist_filters" in params:
             params = {key: values[-1] for key, values in parse_qs(params["_changelist_filters"]).items()}
-        mail, assignee = params.get("mail", ""), params.get("assignee", "")
-        if mail == "automated":
+        if params.get("mail", "") == "automated":
             return name == "automated"
         if params.get("sla", "") == "breached":
             return name == "breached"
-        if params.get("group", "") == "mine" and not assignee:
-            return name == "groups"
-        return {"me": "mine", "none": "unassigned"}.get(assignee, "queue") == name
+        if params.get("reply", "") == "awaiting":
+            return name == "awaiting"
+        return name == "queue"
 
     return active
 
