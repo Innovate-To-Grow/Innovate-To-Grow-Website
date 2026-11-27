@@ -8,7 +8,7 @@ that cannot connect, and the sidebar shows the unread count.
 
 Gmail IMAP is read incrementally so a poll every few minutes stays far below Gmail's daily IMAP download limit:
 two UID searches (numbers only) find the newest messages and the unread ones, and only messages the snapshot does
-not hold yet are downloaded. Microsoft Graph lists return previews only, so they are read whole. Every read goes
+not hold yet are fetched, as their header and the start of their text (``imap_list``). Microsoft Graph lists return previews only, so they are read whole. Every read goes
 through the delivery-rate limiter like the inbox's own reads.
 
 ``ensure_scheduled`` (the worker's maintenance, at start-up and on its interval) restarts the chain if it broke. A
@@ -23,7 +23,7 @@ from imap_tools import AND
 
 from apps.core.models import BackgroundJob
 
-from ..reading import graph_backend
+from ..reading import graph_backend, imap_list
 from ..reading.accounts import readable_accounts
 from ..reading.connection import INBOX_FOLDER, InboxError
 from . import health
@@ -128,7 +128,8 @@ def _poll_imap(account, previous: list[dict]) -> list[dict]:
             missing = [uid for uid in newest if uid not in known]
             fetched = {}
             if missing:
-                for message in client.fetch(AND(uid=missing), mark_seen=False, bulk=True):
+                # Headers and the start of the text only, with BODY.PEEK (``imap_list``), as the live list reads.
+                for message in imap_list.fetch_partial(client, missing):
                     summary = message_summary(message)
                     fetched[summary["uid"]] = summary
     except InboxError:

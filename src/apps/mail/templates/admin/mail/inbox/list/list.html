@@ -6,11 +6,25 @@
 
 {% block extrahead %}
     {{ block.super }}
-    <style nonce="{{ request.csp_nonce }}">
-{% include "admin/mail/inbox/list/_styles_shell.html" %}
-{% include "admin/mail/inbox/list/_styles_folders.html" %}
-{% include "admin/mail/inbox/list/_styles_list.html" %}
-    </style>
+    {% comment %}The inbox's styles and scripts are static files (mail/inbox/), tested in pages/ with vitest. The scripts share
+    window.I2GInbox and run in this order (defer); inbox-boot.js wires the page up.{% endcomment %}
+    {% with v="20261127-inbox-p1" %}
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/inbox-shell.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/inbox-toolbar.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/inbox-list.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/inbox-controls.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/inbox-preview.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/scam-chip.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/scam-risk.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/scam-sections.css' %}?v={{ v }}">
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'mail/inbox/js/inbox-state.js' %}?v={{ v }}" defer></script>
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'mail/inbox/js/inbox-list.js' %}?v={{ v }}" defer></script>
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'mail/inbox/js/inbox-filter.js' %}?v={{ v }}" defer></script>
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'mail/inbox/js/inbox-preview.js' %}?v={{ v }}" defer></script>
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'mail/inbox/js/inbox-reply.js' %}?v={{ v }}" defer></script>
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'mail/inbox/js/inbox-keys.js' %}?v={{ v }}" defer></script>
+    <script nonce="{{ request.csp_nonce }}" src="{% static 'mail/inbox/js/inbox-boot.js' %}?v={{ v }}" defer></script>
+    {% endwith %}
 {% endblock %}
 
 {% block content %}
@@ -30,11 +44,6 @@
                     <div class="i2g-skel" style="width:104px;height:32px;border-radius:999px;"></div>
                     <div class="i2g-skel" style="width:122px;height:32px;border-radius:999px;"></div>
                 </div>
-            </div>
-            <div class="i2g-mail-account-panel">
-                <div class="i2g-skel" style="width:80%;height:28px;"></div>
-                <div class="i2g-skel" style="width:70%;height:28px;"></div>
-                <div class="i2g-skel" style="width:50%;height:28px;"></div>
             </div>
             <!-- Split pane skeleton -->
             <div class="i2g-inbox-split">
@@ -69,11 +78,4 @@
         </div>
     </div>
 </div>
-
-<script nonce="{{ request.csp_nonce }}">
-{% include "admin/mail/inbox/list/_script_state.html" %}
-{% include "admin/mail/inbox/list/_script_fetch.html" %}
-{% include "admin/mail/inbox/list/_script_preview.html" %}
-{% include "admin/mail/inbox/list/_script_events.html" %}
-</script>
 {% endblock %}

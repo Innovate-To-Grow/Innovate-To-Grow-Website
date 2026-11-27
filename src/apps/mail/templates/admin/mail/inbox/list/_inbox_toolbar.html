@@ -1,0 +1,74 @@
+<div class="i2g-mail-toolbar">
+    <div class="i2g-mail-toolbar__identity">
+        <span class="material-symbols-outlined i2g-mail-toolbar__icon">{% if folder == 'SENT' %}send{% else %}inbox{% endif %}</span>
+        <div class="i2g-mail-toolbar__copy">
+            <div class="i2g-mail-toolbar__title">{% if folder == 'SENT' %}Sent{% else %}Inbox{% endif %}</div>
+            <div class="i2g-mail-toolbar__meta" title="{{ inbox_account.account }}">
+                {{ inbox_account.account }} &middot; {{ folder|default:"INBOX" }}
+            </div>
+        </div>
+    </div>
+
+    <div class="i2g-mail-folder-tabs" data-inbox-folder-tabs role="tablist" aria-label="Mail folders">
+        <button type="button" data-inbox-folder="INBOX" role="tab"
+                aria-selected="{% if folder == 'SENT' %}false{% else %}true{% endif %}"
+                class="i2g-mail-folder-tab{% if folder != 'SENT' %} i2g-mail-folder-tab--active{% endif %} cursor-pointer font-sans">
+            <span class="material-symbols-outlined !text-[16px]">inbox</span>
+            Inbox
+        </button>
+        <button type="button" data-inbox-folder="SENT" role="tab"
+                aria-selected="{% if folder == 'SENT' %}true{% else %}false{% endif %}"
+                class="i2g-mail-folder-tab{% if folder == 'SENT' %} i2g-mail-folder-tab--active{% endif %} cursor-pointer font-sans">
+            <span class="material-symbols-outlined !text-[16px]">send</span>
+            Sent
+        </button>
+    </div>
+
+    <div class="i2g-mail-toolbar__actions">
+        {% comment %}Universal inbox: every configured mailbox merged, or one of them (services.inbox.accounts).{% endcomment %}
+        {% if inbox_accounts|length > 1 %}
+        <label class="i2g-inbox-limit-control">
+            <span>Account</span>
+            <select data-inbox-account
+                    aria-label="Inbox account"
+                    class="i2g-inbox-account-select rounded border border-base-200 dark:border-base-600 bg-white dark:bg-base-800 text-xs px-1.5 py-0.5 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-1 focus:ring-primary-500">
+                <option value="{{ all_accounts }}" {% if selected_account == all_accounts %}selected{% endif %}>All accounts</option>
+                {% for item in inbox_accounts %}
+                <option value="{{ item.key }}" {% if item.key == selected_account %}selected{% endif %}>{{ item.label }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        {% endif %}
+
+        <button type="button"
+                data-inbox-refresh
+                title="Read every mailbox again"
+                class="i2g-inbox-refresh-btn cursor-pointer font-sans">
+            <span class="material-symbols-outlined !text-[16px] i2g-inbox-refresh-icon">refresh</span>
+            Refresh
+        </button>
+
+        <label class="i2g-inbox-limit-control">
+            <span>Show</span>
+            <select data-inbox-limit
+                    aria-label="Messages per page"
+                    class="rounded border border-base-200 dark:border-base-600 bg-white dark:bg-base-800 text-xs px-1.5 py-0.5 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-1 focus:ring-primary-500">
+                {% for c in limit_choices %}
+                <option value="{{ c }}" {% if c == limit %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <span class="i2g-mail-toolbar__divider" aria-hidden="true"></span>
+
+        {% comment %}Collapsed by default (the list and the message get the height); the browser remembers an opened panel.{% endcomment %}
+        <button type="button"
+                data-inbox-account-toggle
+                aria-expanded="false"
+                aria-controls="inbox-account-panel"
+                class="i2g-inbox-account-toggle cursor-pointer font-sans">
+            <span class="material-symbols-outlined i2g-inbox-account-toggle__icon">expand_more</span>
+            <span data-inbox-account-toggle-label>Show details</span>
+        </button>
+    </div>
+</div>

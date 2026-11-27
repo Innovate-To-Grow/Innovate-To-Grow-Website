@@ -1,0 +1,16 @@
+{% comment %}Below the rows: "Load older" with the cursor of the next page (services.inbox.paging), or Retry after a failed page.{% endcomment %}
+<div class="i2g-inbox-list-footer" data-inbox-list-footer>
+    {% if error_message %}
+    <p class="i2g-inbox-list-footer__error" role="alert">{{ error_message }}</p>
+    {% elif busy_message and older_page %}
+    <p class="i2g-inbox-list-footer__note">{{ busy_message }}</p>
+    {% endif %}
+    {% if error_message or has_older %}
+    <button type="button" data-inbox-older="{{ older_cursor }}" class="i2g-inbox-older-btn cursor-pointer font-sans">
+        <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">{% if error_message %}refresh{% else %}expand_more{% endif %}</span>
+        <span data-inbox-older-label>{% if error_message %}Retry{% else %}Load older{% endif %}</span>
+    </button>
+    {% else %}
+    <p class="i2g-inbox-list-footer__end">No older messages.</p>
+    {% endif %}
+</div>

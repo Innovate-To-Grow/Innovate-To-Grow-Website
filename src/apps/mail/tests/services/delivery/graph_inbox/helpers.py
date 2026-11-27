@@ -14,7 +14,8 @@ CLIENT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 MAILBOX = "i2g@contoso.com"
 MESSAGE_ID = "AAMkAGI2THVSAAA="
 SUMMARY_KEYS = {
-    "uid", "subject", "from_name", "from_email", "to", "date", "timestamp", "snippet", "is_seen", "from_own_mailbox",
+    "uid", "subject", "from_name", "from_email", "to", "date", "timestamp", "snippet", "is_seen", "has_attachments",
+    "from_own_mailbox",
 }  # fmt: skip
 DETAIL_KEYS = {
     "uid", "subject", "from_name", "from_email", "to", "date", "timestamp", "html", "text",

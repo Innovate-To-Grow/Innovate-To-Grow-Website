@@ -35,14 +35,14 @@ class ListAllInboxMessagesTests(UniversalInboxMixin, TestCase):
         graph_config()
         self.gmail = gmail_account()
         self.imap_key = f"imap:{self.gmail.pk}"
-        self.imap.answer(self.imap_key, [imap_message("i-21", 21), imap_message("i-19", 19)])
+        self.imap.answer(self.imap_key, [imap_message("21", 21), imap_message("19", 19)])
 
     def test_merges_every_account_newest_first_up_to_the_limit(self):
         with patch(LIST_TARGET, autospec=True, return_value=GRAPH_MESSAGES):
             listing = list_all_inbox_messages(limit=3)
 
         self.assertIsInstance(listing, InboxListing)
-        self.assertEqual([message["uid"] for message in listing.messages], ["i-21", "g-20", "i-19"])
+        self.assertEqual([message["uid"] for message in listing.messages], ["21", "g-20", "19"])
         self.assertEqual(
             [(message["account"], message["account_address"]) for message in listing.messages],
             [(self.imap_key, "i2g@gmail.com"), (GRAPH_KEY, MAILBOX), (self.imap_key, "i2g@gmail.com")],
@@ -89,7 +89,7 @@ class ListAllInboxMessagesTests(UniversalInboxMixin, TestCase):
         self.assertEqual(len(listing.busy), 1)
         self.assertTrue(listing.busy[0].startswith(f"{MAILBOX}: "))
         self.assertFalse(listing.showing_stale)
-        self.assertEqual([message["uid"] for message in listing.messages], ["i-21", "i-19"])
+        self.assertEqual([message["uid"] for message in listing.messages], ["21", "19"])
 
     def test_a_failing_account_is_named_and_the_others_are_still_listed(self):
         with (
@@ -99,7 +99,7 @@ class ListAllInboxMessagesTests(UniversalInboxMixin, TestCase):
             listing = list_all_inbox_messages(limit=30)
 
         self.assertEqual(listing.unavailable, [MAILBOX])
-        self.assertEqual([message["uid"] for message in listing.messages], ["i-21", "i-19"])
+        self.assertEqual([message["uid"] for message in listing.messages], ["21", "19"])
         self.assertIsNone(cache.get(f"{INBOX_LIST_CACHE_KEY}:{GRAPH_KEY}:INBOX:30"))
 
     def test_an_unexpected_failure_is_logged_and_named(self):

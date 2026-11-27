@@ -61,7 +61,7 @@ class InboxAdminFragmentTest(_InboxAdminFragmentCase):
         response = self.client.get(reverse("admin:mail_inbox_fragment") + "?refresh=1")
 
         self.assertEqual(response.status_code, 200)
-        mock_list.assert_called_once_with(limit=30, force_refresh=True, folder="INBOX")
+        mock_list.assert_called_once_with(limit=30, force_refresh=True, folder="INBOX", cursor={})
         self.assertIn(b"i2g-mail-shell", response.content)
         self.assertIn(b"data-inbox-account-toggle", response.content)
         self.assertIn(b"data-inbox-account-panel", response.content)
@@ -76,7 +76,7 @@ class InboxAdminFragmentTest(_InboxAdminFragmentCase):
         response = self.client.get(reverse("admin:mail_inbox_fragment"))
 
         self.assertEqual(response.status_code, 200)
-        mock_list.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX")
+        mock_list.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX", cursor={})
 
     @patch("apps.mail.admin.inbox.services.list_all_inbox_messages")
     def test_inbox_fragment_sent_folder_lists_recipients(self, mock_list):
@@ -98,7 +98,7 @@ class InboxAdminFragmentTest(_InboxAdminFragmentCase):
         response = self.client.get(reverse("admin:mail_inbox_fragment") + "?folder=SENT&refresh=1")
 
         self.assertEqual(response.status_code, 200)
-        mock_list.assert_called_once_with(limit=30, force_refresh=True, folder="SENT")
+        mock_list.assert_called_once_with(limit=30, force_refresh=True, folder="SENT", cursor={})
         self.assertIn(b'data-inbox-folder="SENT"', response.content)
         # Sent rows show the recipient rather than the sender.
         self.assertIn(b"Bob Recipient", response.content)
@@ -159,7 +159,9 @@ class InboxAdminFragmentTest(_InboxAdminFragmentCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "data-scam-analysis-panel")
         self.assertContains(response, "data-inbox-body-frame")
-        self.assertContains(response, 'scrolling="no"')
+        # Wide mail is no longer cut off: the frame may scroll sideways inside its wrapper.
+        self.assertNotContains(response, 'scrolling="no"')
+        self.assertContains(response, "data-inbox-body-scroll")
         self.assertContains(response, "i2g-scam-panel")
         self.assertContains(response, 'data-risk-level="medium"')
         self.assertContains(response, "Security analysis")

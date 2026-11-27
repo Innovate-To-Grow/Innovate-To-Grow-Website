@@ -73,6 +73,7 @@ class SummaryTests(TestCase):
                 "timestamp": received.timestamp(),
                 "snippet": "Hello there friend",
                 "is_seen": True,
+                "has_attachments": False,
                 "from_own_mailbox": False,
             },
         )

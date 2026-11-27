@@ -12,6 +12,8 @@ in Sent, which holds nothing but the account's own outgoing mail. Received mail 
 or not, so an outside sender cannot hide a message from staff by tagging it.
 """
 
+from collections.abc import Mapping
+
 from imap_tools import NOT, H
 
 from apps.core.services.email.sending.mime import CREDENTIAL_MAIL_CLASS, MAIL_CLASS_HEADER
@@ -21,9 +23,10 @@ WITHOUT_CREDENTIAL_MAIL = NOT(header=H(MAIL_CLASS_HEADER, CREDENTIAL_MAIL_CLASS)
 
 
 def is_credential_mail(message) -> bool:
-    """Whether a fetched message is tagged as credential mail (``imap_tools`` headers: lower-case names)."""
+    """Whether a fetched message is tagged as credential mail (``imap_tools`` headers: lower-case names, a
+    ``LazyHeaders`` mapping on a real message)."""
     headers = getattr(message, "headers", None)
-    if not isinstance(headers, dict):
+    if not isinstance(headers, Mapping):
         return False
     values = headers.get(MAIL_CLASS_HEADER.lower()) or ()
     return any(str(value).strip().lower() == CREDENTIAL_MAIL_CLASS for value in values)

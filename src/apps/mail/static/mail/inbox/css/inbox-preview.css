@@ -1,0 +1,133 @@
+/* Mail -> Inbox: the preview pane, status banners, empty states and fragment errors. */
+
+.i2g-inbox-preview {
+    background: var(--md-sys-color-surface-container-lowest, #fff);
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow-y: auto;
+}
+
+.i2g-inbox-empty-preview {
+    min-height: 100%;
+}
+
+.i2g-inbox-status {
+    align-items: center;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant, #e5e7eb);
+    display: flex;
+    font-size: 0.8125rem;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+}
+
+.i2g-inbox-status--error {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+
+.i2g-inbox-status--warning {
+    background: #fffbeb;
+    color: #92400e;
+}
+
+.i2g-inbox-empty-state {
+    align-items: center;
+    color: var(--md-sys-color-on-surface-variant, #64748b);
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 320px;
+    text-align: center;
+}
+
+.dark .i2g-mail-shell,
+.dark .i2g-mail-toolbar,
+.dark .i2g-mail-account-panel,
+.dark .i2g-inbox-list-panel,
+.dark .i2g-inbox-preview {
+    background: var(--md-sys-color-surface-container-lowest, #111827);
+}
+
+.dark .i2g-mail-toolbar {
+    background: var(--md-sys-color-surface-container-low, #1f2937);
+}
+
+.dark .i2g-inbox-status--error {
+    background: color-mix(in srgb, #dc2626 16%, transparent);
+    color: #fca5a5;
+}
+
+.dark .i2g-inbox-status--warning {
+    background: color-mix(in srgb, #d97706 16%, transparent);
+    color: #fcd34d;
+}
+
+#inbox-preview-pane.is-loading {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* The preview's action bar: Reply, and "Open full page" (a new tab). */
+.i2g-inbox-full-page-link {
+    border: 1px solid var(--md-sys-color-outline-variant, #d9dee3);
+    border-radius: 0.375rem;
+    color: var(--md-sys-color-on-surface, #111827);
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.625rem;
+}
+
+.i2g-inbox-full-page-link:hover {
+    background: var(--md-sys-color-surface-container, #eef2f7);
+}
+
+/* Mail wider than the pane (600-700px newsletters at 1024px) widens its frame, and this wrapper scrolls sideways
+   instead of cutting the mail off (inbox-preview.js). */
+.i2g-inbox-body-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+/* A fragment that could not load (shared/_fragment_error.html, or built by the script): what failed, and Retry. */
+.i2g-inbox-fragment-error {
+    align-items: center;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    color: #b91c1c;
+    display: flex;
+    flex-wrap: wrap;
+    font-size: 0.8125rem;
+    gap: 0.5rem;
+    margin: 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.i2g-inbox-fragment-error__text {
+    flex: 1 1 12rem;
+}
+
+.i2g-inbox-retry-btn {
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    color: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: auto;
+    padding: 0.125rem 0.75rem;
+}
+
+.dark .i2g-inbox-fragment-error {
+    background: color-mix(in srgb, #dc2626 16%, transparent);
+    border-color: color-mix(in srgb, #dc2626 40%, transparent);
+    color: #fca5a5;
+}
+
+.i2g-inbox-keys-hint {
+    font-size: 0.6875rem;
+    margin-top: 0.75rem;
+    opacity: 0.8;
+}

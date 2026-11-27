@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase
@@ -25,6 +25,7 @@ from apps.mail.tests.services.inbox.mailbox.helpers import (
     _inbox_context,
     create_gmail_account,
 )
+from apps.mail.tests.services.inbox.mailbox.imap_wire import WireClient
 
 
 class InboxFormattingTests(TestCase):
@@ -156,8 +157,7 @@ class ListInboxMessagesTests(TestCase):
         self.assertEqual(list_inbox_messages(limit=30, folder="SENT")[0]["subject"], "sent")
 
     def test_list_fetches_and_caches_messages(self):
-        client = Mock()
-        client.fetch.return_value = [_fake_message()]
+        client = WireClient([_fake_message()])
 
         with patch("apps.mail.services.inbox._open_inbox", return_value=_inbox_context(client)):
             result = list_inbox_messages(limit=30, force_refresh=True)

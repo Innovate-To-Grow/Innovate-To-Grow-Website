@@ -48,7 +48,7 @@ class SnapshotServedTests(SnapshotCase):
         results = list_inbox_messages(limit=30, account=self.imap_key, force_refresh=True)
 
         self.assertEqual(self.imap.opened, [self.imap_key])
-        self.assertEqual([message["uid"] for message in results], ["i-21", "i-19"])
+        self.assertEqual([message["uid"] for message in results], ["21", "19"])
         # A list smaller than the snapshot records the connection, not a new snapshot.
         row = self.row(self.imap_key)
         self.assertEqual(row.status, Status.OK)
@@ -61,7 +61,7 @@ class SnapshotServedTests(SnapshotCase):
         results = list_inbox_messages(limit=30, account=self.imap_key)
 
         self.assertEqual(self.imap.opened, [self.imap_key])
-        self.assertEqual(results[0]["uid"], "i-21")
+        self.assertEqual(results[0]["uid"], "21")
 
     def test_the_largest_list_is_never_served_from_the_snapshot(self):
         self.fresh(self.imap_key, "i2g@gmail.com", ["s-1"])
@@ -102,7 +102,7 @@ class HiddenAccountListingTests(SnapshotCase):
 
         self.assertEqual(self.imap.opened, [self.imap_key])
         self.assertEqual(listing.hidden, [])
-        self.assertEqual([message["uid"] for message in listing.messages], ["i-21", "g-20", "i-19"])
+        self.assertEqual([message["uid"] for message in listing.messages], ["21", "g-20", "19"])
         # It connected: shown again from now on.
         self.assertEqual(self.row(self.imap_key).status, Status.OK)
         self.assertEqual(health.hidden_keys(readable_accounts()), set())

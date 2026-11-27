@@ -11,6 +11,7 @@ from apps.core.utils.json_helpers import safe_json
 
 from . import services as inbox_api
 from .helpers import (
+    cached_assessment,
     message_body_html,
     message_load_error,
     parse_account,
@@ -40,7 +41,7 @@ def inbox_detail_view(request, uid):
         return HttpResponseRedirect(list_url)
 
     body_html = message_body_html(msg)
-    scam_analysis = inbox_api.assess_email(msg, folder=folder)
+    scam_analysis = cached_assessment(msg, folder=folder)
 
     context = {
         **admin.site.each_context(request),
@@ -79,7 +80,7 @@ def inbox_detail_fragment_view(request, uid):
         )
 
     body_html = message_body_html(msg)
-    scam_analysis = inbox_api.assess_email(msg, folder=folder)
+    scam_analysis = cached_assessment(msg, folder=folder)
     return TemplateResponse(
         request,
         "admin/mail/inbox/detail/_inbox_preview.html",
@@ -88,6 +89,8 @@ def inbox_detail_fragment_view(request, uid):
             "body_html_json": safe_json(body_html),
             "reply_url": with_query(reverse("admin:mail_inbox_reply", args=[uid]), account=account),
             "reply_fragment_url": with_query(reverse("admin:mail_inbox_reply_fragment", args=[uid]), account=account),
+            # "Open full page": the same message in the full-page view (it opens in a new tab).
+            "detail_url": with_query(reverse("admin:mail_inbox_detail", args=[uid]), folder=folder, account=account),
             "scam_analysis": scam_analysis,
             "folder": folder,
         },

@@ -45,9 +45,10 @@ def reader_for(mailbox: str) -> GraphMailboxReader:
     return GraphMailboxReader(graph, mailbox)
 
 
-def list_messages(reader: GraphMailboxReader, *, folder: str, limit: int) -> list[dict[str, Any]]:
+def list_messages(reader: GraphMailboxReader, *, folder: str, limit: int, skip: int = 0) -> list[dict[str, Any]]:
+    """The newest ``limit`` messages of ``folder`` after the newest ``skip`` (the inbox's "Load older")."""
     try:
-        messages = reader.list_messages(folder, limit)
+        messages = reader.list_messages(folder, limit, skip=skip)
     except GraphReadBusy as exc:
         raise _busy(exc) from exc
     except GraphReadError as exc:
@@ -96,6 +97,8 @@ def _summary(message: dict, own_addresses: frozenset[str] = frozenset()) -> dict
         "timestamp": timestamp_of(parse_datetime(str(message.get("receivedDateTime") or ""))),
         "snippet": snippet[:197].rstrip() + "..." if len(snippet) > 200 else snippet,
         "is_seen": bool(message.get("isRead")),
+        # LIST_FIELDS (the shared Graph reader's) does not ask for hasAttachments, so Graph rows show no paperclip.
+        "has_attachments": False,
         "from_own_mailbox": from_email.strip().lower() in own_addresses,
     }
 

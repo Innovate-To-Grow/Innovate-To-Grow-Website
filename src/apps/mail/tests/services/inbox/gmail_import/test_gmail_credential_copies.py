@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from django.core.cache import cache
 from django.test import TestCase
+from imap_tools import MailMessage
 
 from apps.core.models import GmailAccessAccount
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
@@ -59,7 +60,7 @@ class InboxFilterTests(CredentialCopyTestCase):
         with patch(INBOX_MAILBOX, factory):
             rows = list_inbox_messages(limit=15, folder="SENT", force_refresh=True)
         self.assertEqual([row["uid"] for row in rows], ["7"])
-        self.assertEqual(self.client_of(factory).fetch.call_args.args[0], WITHOUT_CREDENTIAL_MAIL)
+        self.assertEqual(self.client_of(factory).uids.call_args.args[0], WITHOUT_CREDENTIAL_MAIL)
         self.assertNotIn(CODE, repr(cache.get("inbox:list:SENT:15")))
 
     def test_a_tagged_message_is_never_opened_or_cached(self):
@@ -76,8 +77,8 @@ class InboxFilterTests(CredentialCopyTestCase):
         factory = mailbox_factory(messages=[message(uid="7"), spoofed])
         with patch(INBOX_MAILBOX, factory):
             rows = list_inbox_messages(limit=15, folder="INBOX", force_refresh=True)
-        self.assertEqual([row["uid"] for row in rows], ["7", "8"])
-        self.assertEqual(self.client_of(factory).fetch.call_args.args[0], "ALL")
+        self.assertEqual([row["uid"] for row in rows], ["8", "7"])  # newest UID first
+        self.assertEqual(self.client_of(factory).uids.call_args.args[0], "ALL")
 
         with patch(INBOX_MAILBOX, mailbox_factory(messages=[spoofed])) as factory:
             detail = fetch_inbox_message("8", folder="INBOX")
@@ -105,3 +106,10 @@ class ImportFilterTests(CredentialCopyTestCase):
         self.assertFalse(is_credential_mail(other))
         self.assertFalse(is_credential_mail(object()))
         self.assertTrue(is_credential_mail(tagged()))
+
+    def test_a_real_imap_tools_message_is_recognised(self):
+        # imap_tools gives headers as a LazyHeaders mapping, not a dict: the filter must still see the tag.
+        raw = b"X-I2G-Mail-Class: credential\r\nSubject: Your code\r\n\r\nCode " + CODE.encode()
+
+        self.assertTrue(is_credential_mail(MailMessage.from_bytes(raw)))
+        self.assertFalse(is_credential_mail(MailMessage.from_bytes(b"Subject: Hello\r\n\r\nHi")))

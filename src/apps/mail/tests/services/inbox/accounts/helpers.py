@@ -7,13 +7,14 @@ sessions are a fake ``_open_inbox`` that answers per account.
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.core.cache import cache
 
 from apps.core.models import EmailServiceConfig, GmailAccessAccount, MicrosoftGraphProviderConfig
 from apps.mail.services.inbox.reading.connection import InboxError
 from apps.mail.tests.services.delivery.graph_inbox.helpers import MAILBOX
+from apps.mail.tests.services.inbox.mailbox.imap_wire import WireClient
 
 LIST_TARGET = "apps.core.services.email.graph.mailbox.GraphMailboxReader.list_messages"
 FETCH_TARGET = "apps.core.services.email.graph.mailbox.GraphMailboxReader.fetch_mime"
@@ -72,6 +73,7 @@ class FakeImap:
     def __init__(self):
         self.answers = {}
         self.opened = []
+        self.clients = []
 
     def answer(self, key, messages=None, *, error=None):
         self.answers[key] = error if error is not None else list(messages or [])
@@ -82,8 +84,8 @@ class FakeImap:
         answer = self.answers.get(account.key if account else None, InboxError("no fake answer"))
         if isinstance(answer, BaseException):
             raise answer
-        client = MagicMock()
-        client.fetch.side_effect = lambda *args, **kwargs: iter(answer)
+        client = WireClient(answer)
+        self.clients.append(client)
         yield client
 
 
