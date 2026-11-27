@@ -1,8 +1,9 @@
 """The helpdesk's admin-editable settings (one row; ``load()`` returns the defaults while none is saved).
 
 Every limit and retention period is a field with a documented default (docs/integrations/messaging/helpdesk.md), so any
-Admin can tune them without a deploy. ``shadow_mode`` is on by default: nothing is sent (no replies, acknowledgements
-or notifications) until an Admin switches it off here; the mailbox is only ever read.
+Admin can tune them without a deploy. ``shadow_mode`` is on by default: nothing is sent (no replies or
+acknowledgements) until an Admin switches it off here; the mailbox is only ever read. Staff get no email from the
+helpdesk: they work tickets in the admin (``notify_assignment`` is deprecated and unused, I2G-HELPDESK-01).
 """
 
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -41,9 +42,9 @@ class HelpdeskSettings(ProjectControlModel):
     )
     shadow_mode = models.BooleanField(
         default=True,
-        help_text="On: nothing is ever sent (no replies, acknowledgements or notifications); staff answer from Outlook. "
-        "Off: staff can reply to the requester from the ticket page, and the acknowledgement and notifications "
-        "below are sent when they are switched on. The mailbox is only ever read either way.",
+        help_text="On: nothing is ever sent (no replies or acknowledgements); staff answer from Outlook. Off: staff can "
+        "reply to the requester from the ticket page, and the acknowledgement below is sent when it is switched on. "
+        "The mailbox is only ever read either way.",
     )
     send_acknowledgement = models.BooleanField(
         default=False,
@@ -58,11 +59,10 @@ class HelpdeskSettings(ProjectControlModel):
         help_text="The acknowledgement's text. {ticket} is replaced ({requester_name} and {subject} too, with any link "
         "removed).",
     )
+    # Deprecated (I2G-HELPDESK-01): no staff email is sent. Kept (with its database default, so a release that no
+    # longer knows it still inserts the row) until a later clean-up removes it.
     notify_assignment = models.BooleanField(
-        default=True,
-        db_default=True,
-        help_text="Email staff when a ticket is assigned to them (or to their group, with nobody in it) by someone "
-        "else. Needs shadow mode off.",
+        default=True, db_default=True, editable=False, help_text="Deprecated: staff get no helpdesk email."
     )
     auto_close_resolved_days = models.PositiveSmallIntegerField(
         default=7,

@@ -1,4 +1,4 @@
-"""Names of assignment groups, categories and response templates are unique whatever their case ("front DESK" beside
+"""Names of categories and response templates are unique whatever their case ("front DESK" beside
 "Front desk" is refused) and saved with their spaces tidied; a row may keep, or recase, its own name. A response
 template uses only the four placeholders ({ticket}, {requester_name}, {subject}, {agent_name}): any other {word} would
 be sent as typed, so it is refused; braces around words with spaces are plain text. Its body is stored with LF line
@@ -8,14 +8,10 @@ from django.core.cache import cache
 from django.test import TestCase
 from django.urls import reverse
 
-from ....models import AssignmentGroup, ResponseTemplate, TicketCategory
+from ....models import ResponseTemplate, TicketCategory
 from ...helpers import helpdesk_staff
 
-MODELS = {
-    "assignmentgroup": AssignmentGroup,
-    "ticketcategory": TicketCategory,
-    "responsetemplate": ResponseTemplate,
-}
+MODELS = {"ticketcategory": TicketCategory, "responsetemplate": ResponseTemplate}
 USE = "Use {ticket}, {requester_name}, {subject} or {agent_name}."
 
 
@@ -67,9 +63,9 @@ class UniqueNameTests(_ConfigFormCase):
                 self.assertEqual(obj.name, "FRONT DESK")
 
     def test_another_rows_name_is_refused_on_a_change_too(self):
-        other = AssignmentGroup.objects.create(name="Events")
+        other = TicketCategory.objects.create(name="Events")
 
-        response = self.save("assignmentgroup", other, name="FRONT desk")
+        response = self.save("ticketcategory", other, name="FRONT desk")
 
         self.assertEqual(len(self.errors(response, "name")), 1)
         other.refresh_from_db()

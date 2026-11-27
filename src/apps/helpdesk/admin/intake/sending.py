@@ -1,7 +1,7 @@
 """The part of Helpdesk → Settings that decides what the helpdesk sends: the labels of its fields, and the form that
-keeps the acknowledgement text clean. Every Admin changes shadow mode, the acknowledgement switch and text, and the
-notification switch like any other setting. The acknowledgement text is stored with LF line ends (the browser posts
-CRLF, so an untouched text is no change) and may use only the known placeholders.
+keeps the acknowledgement text clean. Every Admin changes shadow mode and the acknowledgement switch and text like
+any other setting (staff get no helpdesk email: there is no notification switch). The acknowledgement text is stored
+with LF line ends (the browser posts CRLF, so an untouched text is no change) and may use only the known placeholders.
 """
 
 from django import forms
@@ -12,7 +12,6 @@ LABELS = {
     "shadow_mode": "Shadow mode (nothing is sent)",
     "send_acknowledgement": "Send an acknowledgement",
     "acknowledgement_text": "Acknowledgement text",
-    "notify_assignment": "Notify staff of assignments",
     "auto_close_resolved_days": "Auto-close resolved tickets after (days)",
     "sla_warning_percent": "SLA at risk after (% of its time)",
     "spam_scl_threshold": "Spam SCL threshold",

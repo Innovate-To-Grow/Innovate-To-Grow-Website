@@ -9,10 +9,13 @@ campaign is ``SET_NULL``, so a ticket outlives a deleted account and keeps the r
 Nothing is ever merged into automated mail or spam (``is_automated_or_spam``): ``services.tickets.merge`` refuses
 it, and ``clean`` refuses such a ``merged_into`` for any form or ``full_clean()`` path.
 
-Tickets are worked ServiceNow style: the priority follows from impact and urgency (``services.tickets.priority``), a
-ticket has an assignment group and an assignee within it, its SLA clock gives a response and a resolution due time
-(``services.sla``), and resolving it records a resolution code and notes. New columns carry database
-defaults, so the previous release keeps inserting tickets while a deploy rolls out.
+Tickets are worked ServiceNow style: the priority follows from impact and urgency (``services.tickets.priority``), its
+SLA clock gives a response and a resolution due time (``services.sla``), and resolving it records a resolution code
+and notes. New columns carry database defaults, so the previous release keeps inserting tickets while a deploy rolls
+out.
+
+Tickets have no owner (I2G-HELPDESK-01): ``assignment_group`` and ``assignee`` are ``DEPRECATED``, kept with their data
+so a release still running during a deploy keeps working and deleting a member still clears them.
 """
 
 from django.conf import settings
@@ -25,6 +28,8 @@ from apps.core.models import ProjectControlModel
 from .service import Level, ResolutionCode, TicketCategory
 
 TICKET_PREFIX = "I2G-#"
+# The options of a deprecated field (I2G-HELPDESK-01): kept with its data, never read, written or offered.
+DEPRECATED = {"null": True, "blank": True, "editable": False, "help_text": "Deprecated: tickets have no owner."}
 
 
 class Ticket(ProjectControlModel):
@@ -81,19 +86,14 @@ class Ticket(ProjectControlModel):
         TicketCategory, null=True, blank=True, on_delete=models.PROTECT, related_name="tickets"
     )
     assignment_group = models.ForeignKey(
-        "helpdesk.AssignmentGroup",
-        null=True,
-        blank=True,
-        on_delete=models.PROTECT,  # a group or category tickets use is switched off, not deleted
-        related_name="tickets",
+        "helpdesk.AssignmentGroup", on_delete=models.PROTECT, related_name="tickets", **DEPRECATED
     )
     assignee = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
         on_delete=models.SET_NULL,
         related_name="helpdesk_assigned_tickets",
         verbose_name="assigned to",
+        **DEPRECATED,
     )
     requester_email = models.CharField(max_length=254, blank=True, default="", db_index=True)
     requester_name = models.CharField(max_length=255, blank=True, default="")

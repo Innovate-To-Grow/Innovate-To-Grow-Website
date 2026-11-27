@@ -1,10 +1,10 @@
-"""How tickets are worked, ServiceNow style: categories, assignment groups, SLA targets per priority, response
-templates, and the impact / urgency scale and resolution codes a ticket uses.
+"""How tickets are worked, ServiceNow style: categories, SLA targets per priority, response templates, and the
+impact / urgency scale and resolution codes a ticket uses.
 
-- An **assignment group** is a team of staff (Events, Projects, Technical, …). A ticket has a group and, within it,
-  an assignee; "My groups" lists the tickets of every group the signed-in member belongs to. A category may name a
-  default group: setting that category on a ticket without a group assigns the group too (an assignment rule).
-  A group or category that tickets (or a category default) still use cannot be deleted: it is switched off instead.
+- Tickets have no owner (I2G-HELPDESK-01): every Admin works every ticket. **Assignment groups** and a category's
+  default group are deprecated: nothing reads, writes or offers them, but their rows stay (the tables, the members
+  of each group, the groups tickets had) so no data is lost and a release still running during a deploy keeps
+  working. A category that tickets still use cannot be deleted: it is switched off instead.
 - An **SLA target** says, for one priority, how long the first response and the resolution may take. A ticket's
   clock starts when its first message arrived; the resolution clock pauses while the ticket waits for the requester
   and while it is resolved or closed (``services.sla``). Calendar time, not business hours.
@@ -47,13 +47,14 @@ class TicketCategory(ProjectControlModel):
     name = models.CharField(max_length=100, unique=True)
     is_active = models.BooleanField(default=True)
     order = models.PositiveIntegerField(default=0)
-    default_group = models.ForeignKey(
+    default_group = models.ForeignKey(  # deprecated (I2G-HELPDESK-01): kept with its data, never read or offered
         "helpdesk.AssignmentGroup",
         null=True,
         blank=True,
+        editable=False,
         on_delete=models.PROTECT,
         related_name="default_for_categories",
-        help_text="Assignment rule: a ticket given this category while it has no group is assigned to this group.",
+        help_text="Deprecated: tickets have no owner.",
     )
 
     class Meta:
@@ -66,14 +67,15 @@ class TicketCategory(ProjectControlModel):
 
 
 class AssignmentGroup(ProjectControlModel):
+    """Deprecated (I2G-HELPDESK-01): kept with its rows, with no admin page; nothing reads or writes it."""
+
     name = models.CharField(max_length=100, unique=True)
     description = models.CharField(max_length=255, blank=True, default="")
     members = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         blank=True,
         related_name="helpdesk_groups",
-        help_text="Staff who work this group's tickets (they must be active Admins). They are notified when a ticket "
-        "is assigned to the group with nobody in it, while sending is on.",
+        help_text="Deprecated: tickets have no owner.",
     )
     manager = models.ForeignKey(
         settings.AUTH_USER_MODEL,

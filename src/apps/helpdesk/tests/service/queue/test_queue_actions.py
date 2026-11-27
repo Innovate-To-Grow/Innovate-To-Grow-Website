@@ -2,14 +2,15 @@
 
 - Resolve… asks for one resolution code (and notes) on a page of its own, then resolves people's open tickets only.
 - Close takes resolved tickets only; Reopen resolved or closed people's tickets only, clearing their resolution.
-- Assign to me stays within assignment groups that have members; Mark as unread.
+- Mark as unread. Tickets have no owner (I2G-HELPDESK-01): "Assign to me" and "Unassign" are gone, and a list page
+  an earlier release rendered that posts them changes nothing.
 - Each ticket an action changed, and only those, gets an admin-history entry.
 """
 
 from django.contrib import messages
 from django.contrib.messages import get_messages
 
-from ....models import AssignmentGroup, Ticket
+from ....models import Ticket
 from ....services.tickets import MOVE_TO_QUEUE
 from ...helpers import make_admin
 from ...helpers.service import Status, new_ticket
@@ -144,31 +145,22 @@ class CloseAndReopenTests(QueueCase):
         self.assertEqual(self.open.events.count(), 0)  # it was open already: untouched
 
 
-class AssignAndReadTests(QueueCase):
+class ReadAndRetiredActionTests(QueueCase):
     def levels(self, response) -> list[str]:
         return [message.level for message in get_messages(response.wsgi_request)]
 
-    def test_assign_to_me_leaves_the_tickets_of_a_group_without_me(self):
-        events = AssignmentGroup.objects.create(name="Events")
-        events.members.add(make_admin(email="kim@example.com"))
-        technical = AssignmentGroup.objects.create(name="Technical")
-        technical.members.add(self.agent)
-        theirs = new_ticket(subject="theirs", assignment_group=events)
-        ours = new_ticket(subject="ours", assignment_group=technical)
-        loose = new_ticket(subject="no group")
+    def test_the_retired_assignment_actions_change_nothing(self):
+        kim = make_admin(email="kim@example.com")
+        held = new_ticket(subject="held", assignee=kim)
 
-        response = self.act("assign_to_me", theirs, ours, loose)
-        refused = self.act("assign_to_me", theirs)
+        for action in ("assign_to_me", "unassign"):
+            with self.subTest(action):
+                response = self.act(action, held)
 
-        why = "you are not a member of their assignment group."
-        self.assertEqual(self.messages(response), [f"2 tickets assigned to you. 1 left as it was: {why}"])
-        self.assertEqual(self.levels(response), [messages.SUCCESS])
-        self.assertEqual(self.messages(refused), [f"0 tickets assigned to you. 1 left as it was: {why}"])
-        self.assertEqual(self.levels(refused), [messages.WARNING])
-        assignees = [Ticket.objects.get(pk=ticket.pk).assignee for ticket in (theirs, ours, loose)]
-        self.assertEqual(assignees, [None, self.agent, self.agent])
-        self.assertEqual(history(theirs), [])
-        self.assertEqual(history(ours), ["Assigned to me (bulk action)."])
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(self.levels(response), [messages.WARNING])  # Django: no such action
+                self.assertEqual(Ticket.objects.get(pk=held.pk).assignee, kim)
+        self.assertEqual(history(held), [])
 
     def test_mark_as_unread(self):
         read, unread = new_ticket(subject="read"), new_ticket(subject="unread", unread=True)
@@ -180,13 +172,13 @@ class AssignAndReadTests(QueueCase):
         self.assertEqual(history(read), [])  # a read mark is no field change
 
     def test_history_only_on_the_tickets_an_action_changed(self):
-        assigned = new_ticket(subject="assigned", assignee=self.agent)
+        unread = new_ticket(subject="unread", unread=True)
         nobodys = new_ticket(subject="nobody's")
         automated = new_ticket(subject="automated", automated=True, status=Status.CLOSED, classification="bounce")
 
-        self.act("unassign", assigned, nobodys)
+        self.act("mark_read", unread, nobodys)
         self.act("move_to_queue", automated, nobodys)
 
-        self.assertEqual(history(assigned), ["Unassigned (bulk action)."])
+        self.assertEqual(history(unread), [])  # a read mark is no field change
         self.assertEqual(history(automated), ["Moved to the queue: not automated (bulk action)."])
         self.assertEqual(history(nobodys), [])

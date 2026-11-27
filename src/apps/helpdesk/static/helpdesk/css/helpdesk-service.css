@@ -79,9 +79,7 @@
   margin-top: 0.25rem;
 }
 
-.i2g-helpdesk-assign-me {
-  margin-left: 0.5rem;
-  font-size: 0.75rem;
+#result_list td.field-last_reply_column {
   white-space: nowrap;
 }
 

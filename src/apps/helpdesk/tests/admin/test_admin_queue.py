@@ -116,11 +116,8 @@ class ListTests(QueueTestCase):
         self.assertEqual(self.listed(status="new"), {"New question"})
         self.assertEqual(self.listed(status="any"), {"Open question", "New question", "Closed question"})
 
-    def test_assignee_and_unread_filters(self):
-        Ticket.objects.filter(pk=self.open.pk).update(assignee=self.agent)
-
-        self.assertEqual(self.listed(assignee="me"), {"Open question"})
-        self.assertEqual(self.listed(assignee="none"), {"New question"})
+    def test_awaiting_reply_and_unread_filters(self):
+        self.assertEqual(self.listed(reply="awaiting"), {"Open question", "New question"})  # nobody replied yet
         self.assertEqual(self.listed(unread="yes"), {"Open question"})
 
     def test_a_number_also_searches_subjects(self):
@@ -157,19 +154,19 @@ class _ActionCase(QueueTestCase):
 
 class ActionTests(_ActionCase):
     def test_everyday_actions_run_at_once(self):
-        self.act("assign_to_me", self.open, self.new)
         self.act("mark_read", self.open)
         self.act("close_tickets", self.new)  # only resolved tickets are closed: a new one needs a resolution code
         self.act("reopen_tickets", self.closed, self.automated)
-        self.act("unassign", self.open)
 
         for item in (self.open, self.new, self.closed, self.automated):
             item.refresh_from_db()
-        self.assertEqual((self.open.assignee, self.open.unread), (None, False))
-        self.assertEqual((self.new.status, self.new.assignee), (Status.NEW, self.agent))
+        self.assertFalse(self.open.unread)
+        self.assertEqual(self.new.status, Status.NEW)
         self.assertEqual(self.closed.status, Status.OPEN)
         self.assertEqual(self.automated.status, Status.CLOSED)  # automated mail is moved, never reopened
-        self.assertEqual(list(self.new.events.values_list("kind", flat=True)), [TicketEvent.Kind.ASSIGNED])
+        self.assertFalse(self.new.events.exists())
+        reopened = self.closed.events.get(kind=TicketEvent.Kind.STATUS)
+        self.assertEqual(reopened.actor, self.agent)  # every change is on record with who made it
 
 
 class SidebarTests(TestCase):
@@ -180,9 +177,7 @@ class SidebarTests(TestCase):
 
     def test_each_view_of_the_ticket_list_lights_its_own_entry(self):
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/"), ["Queue"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?assignee=me"), ["My Tickets"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?assignee=none"), ["Unassigned"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?group=mine"), ["My Groups"])
+        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?reply=awaiting"), ["Awaiting Reply"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?sla=breached"), ["SLA Breached"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?mail=automated&status=any"), ["Automated & Spam"])
         self.assertEqual(self.active_items("/admin/helpdesk/ticket/?mail=all&status=any"), ["Queue"])

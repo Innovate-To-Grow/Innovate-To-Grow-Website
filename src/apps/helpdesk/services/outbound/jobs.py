@@ -4,16 +4,17 @@
   still queued, and marks it sent; a staff reply then is the ticket's first response. A reply is never sent twice:
   a failure that leaves it uncertain whether the provider took the message is not retried (the reply is marked not
   confirmed), a refusal the provider reports as temporary is retried later, and only queued replies are sent.
-- ``helpdesk.notify_staff`` (``notifications``) emails staff that a ticket was assigned to them or their group.
+- ``helpdesk.notify_staff`` sends nothing any more (``notify_staff_job``). It emailed staff about assignments, which
+  are gone (I2G-HELPDESK-01: tickets have no owner, and staff get no helpdesk email). The kind stays registered so a
+  notice an earlier release queued finishes quietly instead of failing as an unknown kind.
 
-Both check shadow mode again when they run: a job queued before staff switched it back on sends nothing. A staff
+The reply job checks shadow mode again when it runs: a job queued before staff switched it back on sends nothing. A staff
 reply that does not go out (failed, not confirmed, or stopped by a re-check) puts its ticket back in front of staff:
 unread, and no longer waiting for the requester (who got nothing): New again when nobody answered it yet, else In
 progress; the reason is on the timeline.
 """
 
 import logging
-from hashlib import sha256
 
 from django.db import transaction
 from django.utils import timezone
@@ -53,12 +54,8 @@ def register_outbound() -> None:
         family=Family.EMAIL,
         lane=Lane.TRANSACTIONAL,
     )
-    register_job_kind(
-        NOTIFY_JOB_KIND,
-        handler="apps.helpdesk.services.outbound.notifications.notify_staff_job",
-        family=Family.EMAIL,
-        lane=Lane.TRANSACTIONAL,
-    )
+    # Sends nothing, so it is on no delivery lane: a queued notice is claimed and finished at once.
+    register_job_kind(NOTIFY_JOB_KIND, handler="apps.helpdesk.services.outbound.jobs.notify_staff_job")
 
 
 def enqueue_reply(message: TicketMessage, quoted: TicketMessage | None = None):
@@ -68,22 +65,6 @@ def enqueue_reply(message: TicketMessage, quoted: TicketMessage | None = None):
         kind=REPLY_JOB_KIND,
         dedupe_key=f"reply:{message.pk}",
         payload={"message_id": str(message.pk), **({"quoted_id": str(quoted.pk)} if quoted else {})},
-        can_retry_after_claim=False,
-    )
-    return job
-
-
-def enqueue_notice(ticket: Ticket, *, recipients: list[str], reason: str, actor_name: str = ""):
-    """Queue a notification to ``recipients`` (staff addresses) about ``ticket``; ``reason`` is assigned or group."""
-    from apps.core.services.background_jobs import enqueue_job
-
-    if not recipients:
-        return None
-    key = f"notify:{ticket.pk}:{reason}:{','.join(sorted(recipients))}:{timezone.now().isoformat()}"
-    job, _created = enqueue_job(
-        kind=NOTIFY_JOB_KIND,
-        dedupe_key=f"notify:{sha256(key.encode()).hexdigest()}",
-        payload={"ticket_id": str(ticket.pk), "recipients": recipients, "reason": reason, "actor": actor_name},
         can_retry_after_claim=False,
     )
     return job
@@ -196,3 +177,8 @@ def reply_job_state(job) -> None:
         _failed(message, UNCERTAIN_ERROR, Delivery.UNCERTAIN)
     else:
         _failed(message, FAILED_ERROR)
+
+
+def notify_staff_job(job) -> None:
+    """A staff notice an earlier release queued (an assignment email): nothing is sent any more (I2G-HELPDESK-01)."""
+    logger.info("Helpdesk staff notice %s dropped: staff are no longer emailed.", job.pk)

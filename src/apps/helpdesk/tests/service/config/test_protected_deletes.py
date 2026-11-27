@@ -1,9 +1,10 @@
-"""Helpdesk → Assignment Groups and Categories: what tickets still use is switched off, not deleted.
+"""Helpdesk → Categories: what tickets still use is switched off, not deleted.
 
-A ticket's category and assignment group, and a category's default group, are protected (``on_delete=PROTECT``): the
-admin's delete page, and the list's "Delete selected" action, show Django's "Cannot delete" page naming what uses
-it (with the advice to switch it off, never a note that the user may not delete tickets), and nothing is deleted. A group or category nothing uses deletes as before (members and a manager do not keep a
-group; a response template's category is only cleared)."""
+A ticket's category is protected (``on_delete=PROTECT``): the admin's delete page, and the list's "Delete selected"
+action, show Django's "Cannot delete" page naming what uses it (with the advice to switch it off, never a note that
+the user may not delete tickets), and nothing is deleted. A category nothing uses deletes as before (a response
+template's category is only cleared). The deprecated assignment groups (I2G-HELPDESK-01) have no admin page, and
+the database still refuses to delete one a ticket or a category still names: their data is kept."""
 
 from django.contrib.admin import helpers
 from django.contrib.messages import get_messages
@@ -44,19 +45,15 @@ class ProtectedDeleteTests(TestCase):
             self.assertEqual([str(m) for m in get_messages(response.wsgi_request)], [IN_USE])
         self.assertTrue(type(obj).objects.filter(pk=obj.pk).exists())
 
-    def test_a_group_a_ticket_uses_is_not_deleted(self):
+    def test_a_deprecated_group_tickets_or_categories_still_name_is_kept(self):
         group = AssignmentGroup.objects.create(name="Events")
-        ticket = new_ticket(assignment_group=group)
+        new_ticket(status=Status.CLOSED, assignment_group=group)
+        default = AssignmentGroup.objects.create(name="Registration desk")
+        TicketCategory.objects.create(name="Registration", default_group=default)
 
-        self.assertProtected(group, ticket.display_number)
-        with self.assertRaises(ProtectedError):
-            group.delete()
-
-    def test_a_group_that_is_a_categorys_default_is_not_deleted(self):
-        group = AssignmentGroup.objects.create(name="Events")
-        TicketCategory.objects.create(name="Registration", default_group=group)
-
-        self.assertProtected(group, "Registration")
+        for kept in (group, default):
+            with self.subTest(kept.name), self.assertRaises(ProtectedError):
+                kept.delete()
 
     def test_a_category_a_ticket_uses_is_not_deleted(self):
         category = TicketCategory.objects.create(name="Registration")
@@ -66,33 +63,28 @@ class ProtectedDeleteTests(TestCase):
         with self.assertRaises(ProtectedError):
             category.delete()
 
-    def test_a_ticket_that_is_closed_still_keeps_them(self):
-        group = AssignmentGroup.objects.create(name="Events")
+    def test_a_ticket_that_is_closed_still_keeps_it(self):
         category = TicketCategory.objects.create(name="Registration")
-        ticket = new_ticket(status=Status.CLOSED, assignment_group=group, category=category)
+        ticket = new_ticket(status=Status.CLOSED, category=category)
 
-        self.assertProtected(group, ticket.display_number)
         self.assertProtected(category, ticket.display_number)
 
     def test_what_nothing_uses_deletes(self):
-        group = AssignmentGroup.objects.create(name="Spare", manager=self.agent)
-        group.members.add(self.agent)
         category = TicketCategory.objects.create(name="Old")
         template = ResponseTemplate.objects.create(name="Old answer", body="Hello", category=category)
 
-        for obj in (group, category):
-            with self.subTest(obj._meta.model_name):
-                page, posted = self.delete(obj)
-                self.assertEqual(page.context["protected"], [])
-                self.assertEqual(posted.status_code, 302)
-                self.assertFalse(type(obj).objects.filter(pk=obj.pk).exists())
+        page, posted = self.delete(category)
+
+        self.assertEqual(page.context["protected"], [])
+        self.assertEqual(posted.status_code, 302)
+        self.assertFalse(TicketCategory.objects.filter(pk=category.pk).exists())
         template.refresh_from_db()
         self.assertIsNone(template.category)
 
     def test_delete_selected_refuses_the_whole_selection_when_one_is_used(self):
-        used = AssignmentGroup.objects.create(name="Events")
-        spare = AssignmentGroup.objects.create(name="Spare")
-        new_ticket(assignment_group=used)
+        used = TicketCategory.objects.create(name="Events")
+        spare = TicketCategory.objects.create(name="Spare")
+        new_ticket(category=used)
         data = {
             "action": "delete_selected",
             "index": "0",
@@ -101,8 +93,8 @@ class ProtectedDeleteTests(TestCase):
             "post": "yes",
         }
 
-        response = self.client.post(reverse("admin:helpdesk_assignmentgroup_changelist"), data)
+        response = self.client.post(reverse("admin:helpdesk_ticketcategory_changelist"), data)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["title"], "Cannot delete Assignment Groups")
-        self.assertEqual(set(AssignmentGroup.objects.values_list("name", flat=True)), {"Events", "Spare"})
+        self.assertEqual(response.context["title"], "Cannot delete Ticket Categories")
+        self.assertEqual(set(TicketCategory.objects.values_list("name", flat=True)), {"Events", "Spare"})

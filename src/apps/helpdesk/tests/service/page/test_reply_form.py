@@ -3,16 +3,16 @@
 - A refused reply comes back once with what was typed (body, Cc, the status chosen) and why, inline and as a message;
   when the form is no longer offered (shadow mode switched on, say), the text stays on the page, read-only, to copy.
 - After a reply the status is "On hold – awaiting requester" by default, and kept for a resolved or closed ticket.
-- The response templates (each filled in for the ticket) and the form helpers (each group's members, the priority of
-  each impact × urgency, who "me" is) are also handed to the script as JSON.
+- The response templates (each filled in for the ticket) and the form helpers (the priority of each impact × urgency,
+  and whether the page shows the saved values) are also handed to the script as JSON. Tickets have no owner
+  (I2G-HELPDESK-01): no group members or "me" are handed over.
 """
 
 from django.test import override_settings
 from django.urls import reverse
 from django.utils.html import escape
 
-from ....models import AssignmentGroup, ResponseTemplate, TicketCategory
-from ...helpers import make_admin
+from ....models import ResponseTemplate, TicketCategory
 from ...helpers.service import Status, new_ticket, sending_settings
 from .support import PageCase, change_url
 
@@ -114,17 +114,11 @@ class ReplyFormTests(PageCase):
         self.assertEqual(self.json_script(page, "helpdesk-reply-templates"), offered)
 
     def test_the_form_helpers_handed_to_the_script(self):
-        kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
-        events = AssignmentGroup.objects.create(name="Events")
-        events.members.add(kim, self.agent)
-        nobody = AssignmentGroup.objects.create(name="Nobody yet", is_active=False)
-
         page = self.page(new_ticket(status=Status.OPEN))
 
         data = page.context["helpdesk_form_data"]
-        self.assertEqual(data["me"], str(self.agent.pk))
-        groups = {group: set(members) for group, members in data["groups"].items()}
-        self.assertEqual(groups, {str(events.pk): {str(kim.pk), str(self.agent.pk)}, str(nobody.pk): set()})
+        self.assertEqual(set(data), {"priorities", "fresh"})
+        self.assertIs(data["fresh"], True)
         self.assertEqual(
             data["priorities"],
             {

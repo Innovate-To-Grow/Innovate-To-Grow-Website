@@ -12,26 +12,18 @@ merged into a person's ticket changes nothing on it but its timeline, like autom
 itself (``ingest.pipeline.store``), and stays hidden: still automated, now merged. A merge is final: no status change, spam
 mark or move to the queue un-merges a ticket, and only ``merge`` makes one merged.
 
-The field changes and the rules every path shares (group membership, reopening) live in ``changes``; notes, the read
-mark, resolving, closing, reopening, assigning, spam and the move to the queue in ``working``; merges in
+Tickets have no owner (I2G-HELPDESK-01): every Admin works every ticket. The field changes and the rule every path
+shares (reopening) live in ``changes``; notes, the read mark, resolving, closing, reopening, spam and the move to the
+queue in ``working``; merges in
 ``merging``. They are re-exported here. Beside them: ``events`` (the audit trail), ``numbering`` (ticket numbers and
 the subject token), ``shadow`` (shadow mode) and ``retention`` (the hourly clean-up).
 """
 
-from .changes import (
-    AssignmentRefused,
-    Kind,
-    Status,
-    eligible_members,
-    helpdesk_staff,
-    membership_problem,
-    update_ticket,
-)
+from .changes import Kind, Status, update_ticket
 from .merging import MOVE_TO_QUEUE, MergeRefused, merge, merge_refusal
 from .working import (
     NOTE_MAX_CHARS,
     add_note,
-    assign,
     close,
     mark_read,
     mark_spam,
@@ -46,19 +38,14 @@ from .working import (
 __all__ = [
     "NOTE_MAX_CHARS",
     "MOVE_TO_QUEUE",
-    "AssignmentRefused",
     "Kind",
     "Status",
     "MergeRefused",
     "add_note",
-    "assign",
     "close",
-    "eligible_members",
-    "helpdesk_staff",
     "mark_read",
     "mark_spam",
     "mark_unread",
-    "membership_problem",
     "merge",
     "merge_refusal",
     "move_to_queue",

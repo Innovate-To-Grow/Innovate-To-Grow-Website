@@ -1,9 +1,9 @@
-"""Helpdesk → Settings: one row of admin-editable limits, retention periods and switches (Categories, Assignment
-groups and Response templates are in ``service_desk``, SLA targets in ``sla_targets``).
+"""Helpdesk → Settings: one row of admin-editable limits, retention periods and switches (Categories and Response
+templates are in ``service_desk``, SLA targets in ``sla_targets``).
 
 Shadow mode is a switch here: on (the default), nothing is sent; off, staff reply from the ticket page and the
-acknowledgement and assignment notifications are sent when switched on (their labels and the acknowledgement text's
-checks are in ``sending``). Every Admin changes them. Every change is in the admin history and the log. Above the form sits the intake card (its controls are in ``intake``).
+acknowledgement is sent when switched on (their labels and the acknowledgement text's checks are in ``sending``).
+Staff get no helpdesk email (I2G-HELPDESK-01): they work tickets in the admin. Every Admin changes them. Every change is in the admin history and the log. Above the form sits the intake card (its controls are in ``intake``).
 Saving the settings switched on restarts the intake and wakes the ingest, so mail that arrived while the helpdesk was
 off is read and imported.
 """
@@ -34,10 +34,10 @@ class HelpdeskSettingsAdmin(SendingFieldsMixin, BaseModelAdmin):
     fieldsets = (
         ("Switches", {"fields": ("enabled", "shadow_mode", "pause_while_campaign_sending")}),
         (
-            "Sending and notifications",
+            "Sending",
             {
                 "description": "Used only while shadow mode is off.",
-                "fields": ("send_acknowledgement", "acknowledgement_text", "notify_assignment"),
+                "fields": ("send_acknowledgement", "acknowledgement_text"),
             },
         ),
         ("SLA and automation", {"fields": ("sla_warning_percent", "auto_close_resolved_days")}),

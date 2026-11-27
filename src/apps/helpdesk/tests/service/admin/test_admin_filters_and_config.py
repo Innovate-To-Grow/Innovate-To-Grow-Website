@@ -1,5 +1,5 @@
-"""The ticket form's ServiceNow rules (a resolution code to resolve or close; the assignee within the group), the
-queue's Group and SLA filters and columns, and the configuration admins (groups, SLA targets, response templates)."""
+"""The queue's SLA filter and column, and the configuration admins (SLA targets, response templates). Tickets have no
+owner (I2G-HELPDESK-01): there is no group filter or column, and assignment groups have no admin page."""
 
 from datetime import timedelta
 
@@ -9,11 +9,9 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
-from apps.event.tests.helpers import make_member
-
 from ....admin.intake.sla_targets import _duration
 from ....admin.tickets.filters import _DefaultChoiceFilter
-from ....models import AssignmentGroup, ResponseTemplate, SLATarget, Ticket
+from ....models import ResponseTemplate, SLATarget, Ticket
 from ...helpers import helpdesk_staff
 from ...helpers.service import Status, clocked_ticket, new_ticket
 
@@ -25,13 +23,10 @@ class QueueFilterTests(TestCase):
         cache.clear()
         self.agent = helpdesk_staff()
         self.client.force_login(self.agent)
-        self.mine = AssignmentGroup.objects.create(name="Events")
-        self.mine.members.add(self.agent)
-        self.theirs = AssignmentGroup.objects.create(name="Technical")
         now = timezone.now()
-        new_ticket(subject="mine", assignment_group=self.mine)
-        new_ticket(subject="theirs", assignment_group=self.theirs)
-        new_ticket(subject="no group")
+        new_ticket(subject="one")
+        new_ticket(subject="two")
+        new_ticket(subject="three")
         new_ticket(subject="breached", sla_started_at=now - 3 * HOUR, response_due_at=now - HOUR)
         clocked_ticket(subject="at risk", started=now - 20 * HOUR)  # 20 h of a 24 h first-response target
         clocked_ticket(subject="on track", priority=Ticket.Priority.LOW)
@@ -41,26 +36,19 @@ class QueueFilterTests(TestCase):
         self.assertEqual(response.status_code, 200)
         return {ticket.subject for ticket in response.context["cl"].result_list}
 
-    def test_group_filter(self):
-        self.assertEqual(self.listed("group=mine"), {"mine"})
-        self.assertEqual(self.listed(f"group={self.theirs.pk}"), {"theirs"})
-        self.assertEqual(self.listed("group=none"), {"no group", "breached", "at risk", "on track"})
-        self.assertEqual(self.listed("group=not-a-uuid"), set())
-
     def test_sla_filter(self):
         self.assertEqual(self.listed("sla=breached"), {"breached"})
         self.assertEqual(self.listed("sla=at_risk"), {"at risk"})
-        self.assertEqual(self.listed("sla=none"), {"mine", "theirs", "no group"})
+        self.assertEqual(self.listed("sla=none"), {"one", "two", "three"})
         self.assertEqual(len(self.listed("")), 6)  # no SLA choice: every open ticket
 
     def test_a_default_choice_filter_must_name_its_default(self):
         with self.assertRaises(NotImplementedError):
             _DefaultChoiceFilter.default_value(None)
 
-    def test_the_group_and_sla_columns(self):
+    def test_the_sla_column(self):
         response = self.client.get(reverse("admin:helpdesk_ticket_changelist"))
 
-        self.assertContains(response, "Technical")
         self.assertContains(response, "Response breached")
         self.assertContains(response, "At risk · Response due ")
         self.assertContains(response, "Response due ", count=2)  # at risk, and on track
@@ -80,7 +68,7 @@ class SLAColumnTests(TestCase):
         self.assertTrue(text.startswith("At risk · Response due "))
         resolved = clocked_ticket(status=Status.RESOLVED, first_responded_at=now)
         self.assertEqual(self.admin.sla_column(resolved), ("met", "Resolution: Met"))
-        self.assertEqual(self.admin.group_column(new_ticket()), "—")
+        self.assertEqual(self.admin.last_reply_column(new_ticket()), "—")  # nobody replied yet
 
 
 class ConfigAdminTests(TestCase):
@@ -88,20 +76,6 @@ class ConfigAdminTests(TestCase):
         cache.clear()
         self.agent = helpdesk_staff()
         self.client.force_login(self.agent)
-
-    def test_assignment_groups_list_and_add(self):
-        group = AssignmentGroup.objects.create(name="Events", description="Showcase questions")
-        group.members.add(self.agent)
-        make_member(email="member@example.com")
-
-        listing = self.client.get(reverse("admin:helpdesk_assignmentgroup_changelist"))
-        add = self.client.get(reverse("admin:helpdesk_assignmentgroup_add"))
-
-        self.assertContains(listing, "Showcase questions")
-        self.assertEqual(listing.context["cl"].result_list[0].member_total, 1)
-        self.assertEqual(add.status_code, 200)
-        members = add.context["adminform"].form.fields["members"].queryset
-        self.assertEqual(list(members), [self.agent])  # only active Admins
 
     def test_sla_targets_list_change_and_cannot_be_deleted(self):
         target = SLATarget.objects.get(priority="urgent")

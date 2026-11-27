@@ -1,7 +1,8 @@
 """The ticket page's form, ServiceNow style.
 
 - Impact and urgency set the priority (read-only); a form posted without them keeps the ticket's own values.
-- The assignee is a member of the assignment group when the group has members (``tickets.membership_problem``).
+- Tickets have no owner (I2G-HELPDESK-01): there is no assignee or assignment group to choose. A page an earlier
+  release rendered may still post them; they are ignored (the deprecated fields are not editable).
 - Resolving or closing needs a resolution code, and a resolved or closed ticket keeps one.
 - The Status list offers neither Merged (only a merge makes one), Spam (the queue's "Mark as spam", behind its typed
   confirmation) nor New once the ticket has left it.
@@ -16,7 +17,6 @@ from django.db import models
 from unfold.widgets import UnfoldAdminTextareaWidget
 
 from ...models import Ticket
-from ...services import tickets
 from ...services.tickets.changes import RESOLUTION_NOTES_MAX_CHARS
 
 Status = Ticket.Status
@@ -26,8 +26,6 @@ EDITABLE = (
     "impact",
     "urgency",
     "category",
-    "assignment_group",
-    "assignee",
     "resolution_code",
     "resolution_notes",
 )
@@ -99,11 +97,6 @@ class TicketForm(forms.ModelForm):
             if "status" not in self.edited:
                 message = "A resolved or closed ticket keeps its resolution code."
             self.add_error("resolution_code" if "resolution_code" in self.fields else None, message)
-        if {"assignment_group", "assignee"} & self.edited:
-            group = cleaned.get("assignment_group", self.instance.assignment_group)
-            problem = tickets.membership_problem(group, cleaned.get("assignee", self.instance.assignee))
-            if problem:
-                self.add_error("assignee" if "assignee" in self.fields else None, problem)
         return cleaned
 
     def _keep_what_others_changed(self, cleaned: dict) -> None:

@@ -8,6 +8,10 @@ the status chosen with it is set at once. A reply quotes only the requester's ow
 own (a merged ticket or a Cc'd participant never has someone else's words sent to them, nor staff's own reply quoted
 back), and never goes to one of the site's own addresses or to a mailing list (it would reach all its members).
 Staff's text is sent as written; only a personal sign-in link pasted into it is removed.
+
+Every Admin works every ticket (I2G-HELPDESK-01), so two people may answer the same one: given the moment the reply
+form was shown (``seen_at``), ``queue_reply`` raises ``ReplyCollision`` instead of queuing when someone else replied
+since. It is judged on the locked ticket row, so of two replies sent at once the second is held back too.
 """
 
 from datetime import timedelta
@@ -26,7 +30,8 @@ from ..ingest.routing.participants import requesters_of
 from ..ingest.routing.scam import own_words
 from ..tickets import events, shadow
 from ..tickets.scrub import scrub_sign_in_links
-from . import compose, jobs
+from . import activity, compose, jobs
+from .activity import ReplyCollision
 from .recipients import aliases, theirs, ticket_lists
 
 Kind = TicketMessage.Kind
@@ -134,8 +139,9 @@ def _text(body: str) -> str:
     return text
 
 
-def queue_reply(ticket: Ticket, *, actor, body: str, cc: str = "", status: str = "") -> TicketMessage:
-    """Store a reply to the requester and queue its sending; ``status`` (optional) is set on the ticket with it."""
+def queue_reply(ticket: Ticket, *, actor, body: str, cc: str = "", status: str = "", seen_at=None) -> TicketMessage:
+    """Store a reply to the requester and queue its sending; ``status`` (optional) is set on the ticket with it.
+    ``seen_at``: when the reply form was shown; a reply someone else queued since raises ``ReplyCollision``."""
     from ..tickets import changes
 
     text = _text(body)
@@ -145,6 +151,10 @@ def queue_reply(ticket: Ticket, *, actor, body: str, cc: str = "", status: str =
         refusal = can_reply(current, HelpdeskSettings.load())
         if refusal:
             raise ReplyRefused(refusal)
+        if seen_at is not None:
+            other = activity.replied_since(current, seen_at, actor=actor)
+            if other is not None:
+                raise ReplyCollision(other)
         cc_list = [address for address in parse_cc(cc, current) if address != current.requester_email.lower()]
         repeated = TicketMessage.objects.filter(
             ticket=current, kind=Kind.REPLY, automatic=False, author=actor, body_text=text

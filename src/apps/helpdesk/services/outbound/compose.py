@@ -10,8 +10,6 @@ anything link-like before they are filled in, and the subject its ticket numbers
 
 import re
 
-from django.conf import settings
-from django.urls import reverse
 from django.utils import timezone
 
 from apps.mail.services.inbox.sending.reply import render_reply_html
@@ -45,15 +43,13 @@ _TLDS = (
 _LINK = r"(?:[a-z][a-z0-9+.-]*://|www\.)\S+|\b[\w-]+(?:\.[\w-]+)+/\S*"
 _LINK_RE = re.compile(_LINK, re.IGNORECASE)
 # Also bare host names on those top-level domains and IPv4 addresses, which some clients link too: for automatic mail
-# an outsider triggers (the acknowledgement, the notices), where no staff member reads the text before it goes out.
+# an outsider triggers (the acknowledgement), where no staff member reads the text before it goes out.
 _STRICT_LINK_RE = re.compile(
     rf"{_LINK}|\b(?:[a-z0-9-]+\.)+(?:{_TLDS})\b(?::\d+)?|\b\d{{1,3}}(?:\.\d{{1,3}}){{3}}\b(?::\d+)?",
     re.IGNORECASE,
 )
 # Marks an automatic message (RFC 3834) and asks Exchange not to answer it, so responders never answer each other.
 AUTOMATIC_HEADERS = {"Auto-Submitted": "auto-replied", "X-Auto-Response-Suppress": "All"}
-# The same for the site's own notices to staff (generated, not a reply to anything).
-NOTICE_HEADERS = {"Auto-Submitted": "auto-generated", "X-Auto-Response-Suppress": "All"}
 
 
 def person(member) -> str:
@@ -95,7 +91,7 @@ def unknown_placeholders(text: str, allowed=PLACEHOLDERS) -> list[str]:
 
 
 def clean_subject(ticket: Ticket, *, strict: bool = False) -> str:
-    """The ticket's subject as every email about it names it (the reply's and the notice's subject, ``{subject}``):
+    """The ticket's subject as every email about it names it (the reply's subject, ``{subject}``):
     without links (``without_links``), ticket numbers (another ticket's "[I2G-#1006]" its sender named is not this
     ticket's) and reply prefixes ("Re:", "Fwd:"); "" when nothing else is left."""
     subject = _BRACKETED_TOKENS_RE.sub("", without_links(ticket.subject, strict=strict))
@@ -122,11 +118,6 @@ def reply_subject(ticket: Ticket, *, strict: bool = False) -> str:
     subject = clean_subject(ticket, strict=strict) or "Your message"
     token = f" [{ticket.display_number}]"
     return f"Re: {subject[: 255 - len(token) - 4]}{token}"
-
-
-def notice_subject(ticket: Ticket, what: str) -> str:
-    subject = clean_subject(ticket, strict=True) or "(no subject)"
-    return f"[{ticket.display_number}] {what}: {subject}"[:255]
 
 
 def footer(ticket: Ticket) -> str:
@@ -156,9 +147,3 @@ def reply_html(body: str, ticket: Ticket, quoted=None) -> str:
     """The branded HTML of a reply (the Mail app's reply wrapper), quoting the message it answers when given."""
     quoted_text, original_from, original_date = _quote(quoted)
     return render_reply_html(reply_text(body, ticket), original_from, original_date, quoted_text)
-
-
-def ticket_admin_url(ticket: Ticket) -> str:
-    path = reverse("admin:helpdesk_ticket_change", args=[ticket.pk])
-    base = str(getattr(settings, "BACKEND_URL", "") or "").rstrip("/")
-    return f"{base}{path}"

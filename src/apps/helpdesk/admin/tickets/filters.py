@@ -3,22 +3,29 @@
 - Mail: people (default), automated & spam, or everything. Automated mail is hidden unless asked for.
 - Status: open statuses (default; "any status" once automated mail is shown), resolved & closed, one status, or any.
   The two groups have keys of their own ("active", "done"), so "open" and "closed" mean the single statuses.
-- Assignee: me, unassigned, or anyone (default).
-- Assignment group: my groups, no group, or one group (an inactive group is listed while tickets still have it).
+- Reply: awaiting a staff reply (``outbound.activity.awaiting_reply``), or any (default). The sidebar's Helpdesk badge
+  counts the same tickets (``awaiting_reply_badge``).
 - SLA: breached, at risk (a running clock past the settings' warning share of its target), or no SLA.
+
+Tickets have no owner (I2G-HELPDESK-01), so there is no assignee or group filter; an old bookmark that still names
+one is redirected without it (``TicketAdmin.changelist_view``).
 """
 
-import uuid
+import logging
 
 from django.contrib import admin
 from django.db.models import Q
 from django.utils import timezone
 
-from ...models import AssignmentGroup, HelpdeskSettings, Ticket
+from apps.core.utils.access import user_is_admin
+
+from ...models import HelpdeskSettings, Ticket
 from ...services import sla
+from ...services.outbound import activity
 from ...services.sla.priority import SEVERITY
 
 Status = Ticket.Status
+logger = logging.getLogger(__name__)
 ACTIVE, DONE = "active", "done"
 
 
@@ -91,47 +98,32 @@ class StatusViewFilter(_DefaultChoiceFilter):
         return queryset
 
 
-class AssigneeFilter(admin.SimpleListFilter):
-    title = "assignee"
-    parameter_name = "assignee"
+class ReplyFilter(admin.SimpleListFilter):
+    """The tickets whose next move is a staff reply: the sidebar's "Awaiting Reply" and its badge."""
+
+    title = "reply"
+    parameter_name = "reply"
 
     def lookups(self, request, model_admin):
-        return (("me", "Assigned to me"), ("none", "Unassigned"))
+        return (("awaiting", "Awaiting a staff reply"),)
 
     def queryset(self, request, queryset):
-        if self.value() == "me":
-            return queryset.filter(assignee=request.user)
-        if self.value() == "none":
-            return queryset.filter(assignee__isnull=True)
-        return queryset
+        return activity.awaiting_reply(queryset) if self.value() == "awaiting" else queryset
 
 
-class GroupFilter(admin.SimpleListFilter):
-    """ServiceNow's "My groups' work": the tickets of every group the signed-in member belongs to, one group, or
-    tickets without a group."""
-
-    title = "assignment group"
-    parameter_name = "group"
-
-    def lookups(self, request, model_admin):
-        used = Ticket.objects.filter(assignment_group__isnull=False).values("assignment_group")
-        listed = AssignmentGroup.objects.filter(Q(is_active=True) | Q(pk__in=used))
-        groups = [(str(group.pk), group.name if group.is_active else f"{group.name} (inactive)") for group in listed]
-        return (("mine", "My groups"), ("none", "No group"), *groups)
-
-    def queryset(self, request, queryset):
-        value = self.value()
-        if value == "mine":
-            # A ticket has one group and a member is in it once, so the join adds no duplicate rows.
-            return queryset.filter(assignment_group__members=request.user)
-        if value == "none":
-            return queryset.filter(assignment_group__isnull=True)
-        if value:
-            try:
-                return queryset.filter(assignment_group_id=uuid.UUID(value))
-            except ValueError:
-                return queryset.none()
-        return queryset
+def awaiting_reply_badge(request) -> str:
+    """The sidebar badge of Helpdesk: the tickets ``ReplyFilter`` lists, the same count for every Admin ("" when there
+    is none, or for anyone else; "99+" above 99). One query, shared for ``activity.AWAITING_CACHE_SECONDS``."""
+    if not user_is_admin(getattr(request, "user", None)):
+        return ""
+    try:
+        total = activity.awaiting_reply_count()
+    except Exception:
+        logger.exception("Could not count the helpdesk tickets awaiting a reply.")
+        return ""
+    if total <= 0:
+        return ""
+    return "99+" if total > 99 else str(total)
 
 
 class SLAFilter(admin.SimpleListFilter):

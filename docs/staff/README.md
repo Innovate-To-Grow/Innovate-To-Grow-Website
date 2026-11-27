@@ -54,9 +54,14 @@ To be written for the helpdesk's "shadow" mode, in which it records tickets and 
   receipts, newsletters, spam) becomes a ticket that is closed at once and hidden by default; a message from a person
   (including an answer to our email, or a follow-up in their conversation, sent from a sales or marketing tool), or
   one the system is unsure about, becomes a normal ticket. Mail that never reaches the Inbox (Junk, or moved or deleted in Outlook first) is not seen.
-- Working a ticket: status, impact and urgency (the priority follows), category, assignment group and assignee,
-  the SLA clocks, the resolution code and notes, internal notes; the member is linked from the sender's address;
-  replying from the ticket page and response templates once shadow mode is switched off (Helpdesk → Settings).
+- Working a ticket: tickets have no owner, so every Admin works every ticket (no assignee or assignment group, and
+  staff get no helpdesk email). Status, impact and urgency (the priority follows), category, the SLA clocks, the
+  resolution code and notes, internal notes; the member is linked from the sender's address; replying from the
+  ticket page and response templates once shadow mode is switched off (Helpdesk → Settings).
+- Not answering a ticket twice: the queue's Last reply column and the ticket page's Last reply line show who last
+  replied to the requester and when; if someone else replied after you opened the ticket, your reply is held back
+  with a warning and your draft kept, and **Send anyway** sends it. The sidebar's Helpdesk badge counts the tickets
+  awaiting a staff reply, which **Awaiting Reply** lists.
 - The scam warning shown on suspicious messages, and why a message can be marked as spam.
 - The helpdesk's own **Intake: reading the Inbox** card (**Helpdesk → Settings**): its status, **Scan now**,
   **Pause intake** / **Resume intake**, **Rescan since** and the first-scan lookback. The intake reads the Inbox

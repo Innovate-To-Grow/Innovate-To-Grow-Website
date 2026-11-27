@@ -95,16 +95,15 @@ SIDEBAR = {
         {
             "title": "Helpdesk",
             "permission": _is_admin,
+            # Tickets awaiting a staff reply (every Admin works every ticket): the "Awaiting Reply" view lists them.
+            "badge": "apps.helpdesk.admin.tickets.filters.awaiting_reply_badge",
             "items": [
                 _helpdesk_view_item("Queue", "", "queue"),
-                _helpdesk_view_item("My Tickets", "?assignee=me", "mine"),
-                _helpdesk_view_item("My Groups", "?group=mine", "groups"),
-                _helpdesk_view_item("Unassigned", "?assignee=none", "unassigned"),
+                _helpdesk_view_item("Awaiting Reply", "?reply=awaiting", "awaiting"),
                 _helpdesk_view_item("SLA Breached", "?sla=breached", "breached"),
                 _helpdesk_view_item("Automated & Spam", "?mail=automated&status=any", "automated"),
                 _helpdesk_link("Ingest Problems", "ingestrecord"),
                 _helpdesk_link("Categories", "ticketcategory"),
-                _helpdesk_link("Assignment Groups", "assignmentgroup"),
                 _helpdesk_link("SLA Targets", "slatarget"),
                 _helpdesk_link("Response Templates", "responsetemplate"),
                 _helpdesk_link("Settings", "helpdesksettings"),

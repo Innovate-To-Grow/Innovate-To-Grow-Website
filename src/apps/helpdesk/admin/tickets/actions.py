@@ -1,7 +1,7 @@
-"""The queue's bulk actions: assign, resolve (with a resolution code), close, reopen, read marks, move, merge, spam.
+"""The queue's bulk actions: resolve (with a resolution code), close, reopen, read marks, move, merge, spam.
 
-They go through the ticket services, so they follow the ticket page's rules: an assignee within the ticket's group,
-a resolution code to resolve (asked on a page of its own), closing only what is resolved, reopening only what is
+Tickets have no owner (I2G-HELPDESK-01), so there is nothing to assign. The actions go through the ticket services,
+so they follow the ticket page's rules: a resolution code to resolve (asked on a page of its own), closing only what is resolved, reopening only what is
 resolved or closed, and never Close or Reopen on automated mail or spam (that is "Not automated: move to the queue").
 Each changed ticket gets an admin-history entry besides its timeline.
 """
@@ -50,20 +50,6 @@ class TicketActionsMixin:
         """An admin-history entry on each ticket the action changed (its row was updated since ``started``)."""
         for ticket in Ticket.objects.filter(pk__in=[item.pk for item in chosen], updated_at__gte=started):
             self.log_change(request, ticket, message)
-
-    @action(description="Assign to me")
-    def assign_to_me(self, request, queryset):
-        chosen, started = list(queryset), timezone.now()
-        changed, refused = tickets.assign(chosen, request.user, actor=request.user)
-        self._done(request, changed, "assigned to you", refused, "you are not a member of their assignment group.")
-        self._log(request, chosen, started, "Assigned to me (bulk action).")
-
-    @action(description="Unassign")
-    def unassign(self, request, queryset):
-        chosen, started = list(queryset), timezone.now()
-        changed, _refused = tickets.assign(chosen, None, actor=request.user)
-        self._done(request, changed, "unassigned")
-        self._log(request, chosen, started, "Unassigned (bulk action).")
 
     @action(description="Resolve… (with a resolution code)")
     def resolve_tickets(self, request, queryset):

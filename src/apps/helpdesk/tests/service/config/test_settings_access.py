@@ -1,7 +1,8 @@
 """Helpdesk → Settings: who may change it (``admin.intake.settings`` with ``admin.intake.sending.SendingFieldsMixin``).
 
-Every Admin gets every field, the four that decide what the helpdesk sends (shadow mode, the acknowledgement switch
-and its text, the assignment notices) included, and saves them like the rest. A member who is not an Admin, or an
+Every Admin gets every field, the three that decide what the helpdesk sends (shadow mode, the acknowledgement switch
+and its text) included, and saves them like the rest. The deprecated assignment-notice switch is not on the form
+(staff get no helpdesk email, I2G-HELPDESK-01) and a save leaves its stored value alone. A member who is not an Admin, or an
 Admin whose account is switched off, is sent to the admin sign-in and changes nothing. The list goes straight to the
 one row (it is listed empty while there is no row and the Admin may not add it)."""
 
@@ -18,7 +19,7 @@ from apps.event.tests.helpers import make_member
 from ....models import HelpdeskSettings
 from ...helpers import helpdesk_staff, make_admin
 
-SENDING = ("shadow_mode", "send_acknowledgement", "acknowledgement_text", "notify_assignment")
+SENDING = ("shadow_mode", "send_acknowledgement", "acknowledgement_text")
 TEXT = "Hello <b>Pat</b>,\nwe opened {ticket}."
 
 
@@ -52,16 +53,19 @@ class SendingFieldsTests(TestCase):
 
         self.assertEqual(readonly(page), {})
         self.assertTrue(set(SENDING) <= set(page.context["adminform"].form.fields))
+        self.assertNotIn("notify_assignment", page.context["adminform"].form.fields)
         descriptions = {fieldset.name: fieldset.description for fieldset in page.context["adminform"]}
-        self.assertEqual(descriptions["Sending and notifications"], "Used only while shadow mode is off.")
+        self.assertEqual(descriptions["Sending"], "Used only while shadow mode is off.")
         self.assertNotContains(page, "I2G Master")
 
     def test_an_admin_changes_the_sending_fields_like_the_rest(self):
         data = self.form_data()
         data.pop("shadow_mode", None)
-        data.pop("notify_assignment", None)
         data.update(
-            send_acknowledgement="on", acknowledgement_text="Thanks, {ticket} is open.", sla_warning_percent="60"
+            send_acknowledgement="on",
+            acknowledgement_text="Thanks, {ticket} is open.",
+            sla_warning_percent="60",
+            notify_assignment="",  # posted by a page an earlier release rendered: ignored
         )
 
         response = self.client.post(self.url, data)
@@ -69,7 +73,7 @@ class SendingFieldsTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.row.refresh_from_db()
         self.assertEqual(
-            (self.row.shadow_mode, self.row.send_acknowledgement, self.row.notify_assignment), (False, True, False)
+            (self.row.shadow_mode, self.row.send_acknowledgement, self.row.notify_assignment), (False, True, True)
         )
         self.assertEqual(
             (self.row.acknowledgement_text, self.row.sla_warning_percent), ("Thanks, {ticket} is open.", 60)

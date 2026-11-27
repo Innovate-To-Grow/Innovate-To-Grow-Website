@@ -4,8 +4,8 @@
  *   (it differs from the page's hidden initial value) is reset, so it can never be saved as this person's edit. Not
  *   after a refused save, where the controls rightly hold what this person typed.
  * - The priority follows impact and urgency at once (saved on Save).
- * - Assigned to offers the assignment group's members (all helpdesk staff for a group without members); an assignee
- *   who is no member is kept, marked, until the group is changed. "Assign to me" picks the signed-in member.
+ *
+ * Tickets have no owner (I2G-HELPDESK-01): there is no assignee or assignment group on the form.
  */
 (function () {
   "use strict";
@@ -53,56 +53,6 @@
     urgency.addEventListener("change", preview);
   }
 
-  function assignedTo(helpers) {
-    var group = document.getElementById("id_assignment_group");
-    var assignee = document.getElementById("id_assignee");
-    if (!assignee) {
-      return;
-    }
-    var narrow = function (keepCurrent) {
-      var members = (group && helpers.groups[group.value]) || [];
-      Array.prototype.forEach.call(assignee.options, function (option) {
-        var outside = option.value !== "" && members.length > 0 && members.indexOf(option.value) === -1;
-        var kept = keepCurrent && outside && option.selected;
-        option.hidden = outside && !kept;
-        option.disabled = outside && !kept;
-        if (kept && option.textContent.indexOf("(not a member") === -1) {
-          option.textContent += " (not a member of the group)";
-        }
-      });
-      var selected = assignee.options[assignee.selectedIndex];
-      if (selected && selected.disabled) {
-        assignee.value = "";
-      }
-    };
-    if (group) {
-      group.addEventListener("change", function () {
-        narrow(false);
-      });
-      narrow(true);
-    }
-    var mine = Array.prototype.find.call(assignee.options, function (option) {
-      return option.value === helpers.me;
-    });
-    if (!mine) {
-      return;
-    }
-    var button = document.createElement("button");
-    button.type = "button";
-    button.className = "i2g-helpdesk-button is-secondary i2g-helpdesk-assign-me";
-    button.textContent = "Assign to me";
-    button.addEventListener("click", function () {
-      if (mine.disabled) {
-        window.alert("You are not a member of the chosen assignment group.");
-        return;
-      }
-      assignee.value = helpers.me;
-      assignee.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-    // After Unfold's wrapper (it holds the select's chevron), not inside it.
-    (assignee.closest(".relative") || assignee).insertAdjacentElement("afterend", button);
-  }
-
   function start() {
     var form = document.getElementById("ticket_form");
     var helpers = data("helpdesk-form-data");
@@ -113,7 +63,6 @@
       showSaved(form);
     }
     priorityPreview(helpers);
-    assignedTo(helpers);
   }
 
   if (document.readyState === "loading") {

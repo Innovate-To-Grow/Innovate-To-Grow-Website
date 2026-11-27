@@ -1,7 +1,7 @@
 """What a helpdesk email says: placeholders (with an outsider's links removed), the subject with the ticket token,
-the footer, the quoted HTML and the admin link."""
+the footer and the quoted HTML."""
 
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils import timezone
 
 from ....models import TicketMessage
@@ -63,15 +63,7 @@ class SubjectTests(TestCase):
 
         self.assertEqual(compose.reply_subject(ticket), f"Re: Claim at [link removed] [{ticket.display_number}]")
 
-    def test_notice_subject(self):
-        ticket = new_ticket(subject="")
-
-        self.assertEqual(
-            compose.notice_subject(ticket, "Assigned to you"),
-            f"[{ticket.display_number}] Assigned to you: (no subject)",
-        )
-
-    def test_the_filled_in_subject_and_the_notice_subject_name_only_the_tickets_own_number(self):
+    def test_the_filled_in_subject_and_the_reply_subject_name_only_the_tickets_own_number(self):
         # Both kept "Re:" and the number of the ticket the sender named: "about Re: … [I2G-#1006] … ticket I2G-#1019".
         ticket = new_ticket(subject="Re: Judges briefing time for the showcase [I2G-#1006]")
         number, subject = ticket.display_number, "Judges briefing time for the showcase"
@@ -81,7 +73,7 @@ class SubjectTests(TestCase):
                 self.assertEqual(
                     compose.fill("About {subject} ({ticket})", ticket, strict=strict), f"About {subject} ({number})"
                 )
-        self.assertEqual(compose.notice_subject(ticket, "Assigned to you"), f"[{number}] Assigned to you: {subject}")
+        self.assertEqual(compose.clean_subject(ticket, strict=True), subject)
         self.assertEqual(compose.reply_subject(ticket), f"Re: {subject} [{number}]")
 
     def test_what_is_left_of_the_subject_without_its_numbers_and_prefixes(self):
@@ -105,10 +97,7 @@ class SubjectTests(TestCase):
         for subject in ("Is <> allowed?", "Fill the [ ] box", "R: help with ggplot"):  # the sender's own words
             with self.subTest(subject):
                 self.assertEqual(compose.fill("{subject}", new_ticket(subject=subject)), subject)
-        self.assertEqual(
-            compose.notice_subject(nothing, "Assigned to you"),
-            f"[{nothing.display_number}] Assigned to you: (no subject)",
-        )
+        self.assertEqual(compose.clean_subject(nothing, strict=True), "")
 
 
 class BodyTests(TestCase):
@@ -152,14 +141,6 @@ class BodyTests(TestCase):
 
         self.assertNotIn("secret words", compose.reply_html("Hi", ticket, quoted))
         self.assertIn("Hi", compose.reply_html("Hi", ticket))
-
-    @override_settings(BACKEND_URL="https://api.example.org/")
-    def test_the_admin_link_uses_the_backend_url(self):
-        ticket = new_ticket()
-
-        self.assertEqual(
-            compose.ticket_admin_url(ticket), f"https://api.example.org/admin/helpdesk/ticket/{ticket.pk}/change/"
-        )
 
     def test_person(self):
         self.assertEqual(compose.person(None), "")

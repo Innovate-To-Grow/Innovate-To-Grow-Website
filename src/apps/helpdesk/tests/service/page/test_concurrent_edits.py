@@ -10,9 +10,8 @@ from unittest.mock import patch
 
 from django.contrib.admin.models import LogEntry
 
-from ....models import Ticket, TicketEvent
+from ....models import Ticket, TicketCategory, TicketEvent
 from ....services import tickets
-from ...helpers import make_admin
 from ...helpers.service import Status, new_ticket
 from .support import PageCase, change_url
 
@@ -27,7 +26,8 @@ class TwoTabsTestCase(PageCase):
 
     def setUp(self):
         super().setUp()
-        self.kim = make_admin(email="kim@example.com", first_name="Kim", last_name="Lee")
+        self.registration = TicketCategory.objects.create(name="Registration")
+        self.parking = TicketCategory.objects.create(name="Parking")
         self.ticket = new_ticket(status=Status.OPEN)
         self.mine, self.theirs = self.shown(self.ticket), self.shown(self.ticket)
 
@@ -38,7 +38,8 @@ class TwoTabsTestCase(PageCase):
 class OtherPeoplesChangesTests(TwoTabsTestCase):
     def test_a_field_someone_else_changed_meanwhile_keeps_its_new_value(self):
         self.assertEqual(
-            self.save(self.ticket, self.theirs, status=Status.PENDING_INTERNAL, assignee=self.kim).status_code, 302
+            self.save(self.ticket, self.theirs, status=Status.PENDING_INTERNAL, category=self.registration).status_code,
+            302,
         )
 
         response = self.save(self.ticket, self.mine, impact="1")
@@ -46,8 +47,8 @@ class OtherPeoplesChangesTests(TwoTabsTestCase):
         self.assertEqual(response.status_code, 302)
         ticket = self.current()
         self.assertEqual(
-            (ticket.status, ticket.assignee, ticket.impact, ticket.priority),
-            (Status.PENDING_INTERNAL, self.kim, 1, "high"),  # theirs, and mine (impact 1 × urgency 2 is High)
+            (ticket.status, ticket.category, ticket.impact, ticket.priority),
+            (Status.PENDING_INTERNAL, self.registration, 1, "high"),  # theirs, and mine (impact 1 × urgency 2 is High)
         )
 
     def test_the_same_field_changed_by_both_is_refused_and_nothing_changes(self):
@@ -64,12 +65,12 @@ class OtherPeoplesChangesTests(TwoTabsTestCase):
         self.assertEqual(TicketEvent.objects.count(), events)
 
     def test_every_field_both_changed_is_named(self):
-        self.save(self.ticket, self.theirs, status=Status.PENDING_INTERNAL, assignee=self.kim)
+        self.save(self.ticket, self.theirs, status=Status.PENDING_INTERNAL, category=self.registration)
 
-        response = self.save(self.ticket, self.mine, status=Status.PENDING_CUSTOMER, assignee=self.agent)
+        response = self.save(self.ticket, self.mine, status=Status.PENDING_CUSTOMER, category=self.parking)
 
-        self.assertEqual(self.form(response).non_field_errors(), [f"Status, Assigned to {RELOAD}"])
-        self.assertEqual((self.current().status, self.current().assignee), (Status.PENDING_INTERNAL, self.kim))
+        self.assertEqual(self.form(response).non_field_errors(), [f"Status, Category {RELOAD}"])
+        self.assertEqual((self.current().status, self.current().category), (Status.PENDING_INTERNAL, self.registration))
 
     def test_both_making_the_same_change_is_no_conflict(self):
         self.save(self.ticket, self.theirs, status=Status.PENDING_INTERNAL)

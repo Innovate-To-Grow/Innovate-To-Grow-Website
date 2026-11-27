@@ -11,8 +11,7 @@ from datetime import UTC, datetime, timedelta
 
 from django.utils import timezone
 
-from ....models import AssignmentGroup, Ticket
-from ...helpers import make_admin
+from ....models import Ticket
 from ...helpers.service import Status, clocked_ticket, new_ticket
 from .support import PageCase, change_url, ticket_admin
 
@@ -25,15 +24,11 @@ MOVE = (
 
 class SLAPanelTests(PageCase):
     def test_a_refused_save_shows_the_clocks_of_the_saved_ticket(self):
-        group = AssignmentGroup.objects.create(name="Events")
-        group.members.add(make_admin(email="kim@example.com"))
         ticket = clocked_ticket()  # New: both clocks run
 
-        response = self.save(
-            ticket, status=Status.RESOLVED, resolution_code="solved", assignment_group=group, assignee=self.agent
-        )
+        response = self.save(ticket, status=Status.RESOLVED, resolution_code="")
 
-        self.assertIn("assignee", self.form(response).errors)  # refused: the agent is not in Events
+        self.assertIn("resolution_code", self.form(response).errors)  # refused: resolving needs a code
         # Still New: the response and the resolution are on track (not "No SLA" and "Met" for a resolved ticket).
         self.assertContains(response, 'class="i2g-helpdesk-sla is-running">On track</span>', count=2)
         self.assertNotContains(response, "is-met")
