@@ -12,7 +12,7 @@ Technical architecture of the Innovate To Grow platform — a Django REST Framew
 - [Request limits](../integrations/limits/request-limits.md) — Inbound limits by scope and priority tier, Smart limit, counters and the operator runbook
 - [Email monitoring](../integrations/messaging/email-monitoring.md) — Telemetry of every outgoing email and attempt, Microsoft Graph bounce processing, and the dashboard
 - [Member import review](member-import-review.md) — Members → Import: staged batches, the analysis (conflicts C1–C9, risky ticks R1–R9), fingerprints and the all-or-nothing apply
-- [Helpdesk](../integrations/messaging/helpdesk.md) — Every message to the i2g@ mailbox becomes a ticket, worked ServiceNow style (impact × urgency priority, assignment groups, SLA, resolution codes); replies, acknowledgements and notifications only once shadow mode is switched off
+- [Helpdesk](../integrations/messaging/helpdesk.md) — Every message to the i2g@ mailbox becomes a ticket, worked ServiceNow style (impact × urgency priority, SLA, resolution codes) as shared tickets with no owner; replies and acknowledgements only once shadow mode is switched off
 
 ## Standards ([`docs/standards/`](../standards/))
 
