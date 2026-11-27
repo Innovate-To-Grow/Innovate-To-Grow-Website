@@ -37,14 +37,14 @@ class OneAccountRoutingTests(UniversalInboxMixin, TestCase):
         self.imap_key = f"imap:{self.gmail.pk}"
 
     def test_list_with_an_imap_key_reads_that_account_only(self):
-        self.imap.answer(self.imap_key, [imap_message("i-21", 21)])
+        self.imap.answer(self.imap_key, [imap_message("21", 21)])
 
         with patch(LIST_TARGET) as graph_list:
             results = list_inbox_messages(limit=30, account=self.imap_key)
 
         graph_list.assert_not_called()
         self.assertEqual(self.open_inbox.call_args.kwargs["account"].key, self.imap_key)
-        self.assertEqual([(item["uid"], item["account"]) for item in results], [("i-21", self.imap_key)])
+        self.assertEqual([(item["uid"], item["account"]) for item in results], [("21", self.imap_key)])
 
     def test_list_without_a_key_reads_the_default_account(self):
         with patch(LIST_TARGET, autospec=True, return_value=GRAPH_MESSAGES):

@@ -1,0 +1,42 @@
+{% comment %}The message rows of one page (the first page in _inbox_full_body.html, a "Load older" page in _inbox_older.html).
+Unread styling hangs off .is-unread (inbox-list.css), so the browser can show a row it opened as read.{% endcomment %}
+{% for msg in inbox_messages %}
+<a href="{% url 'admin:mail_inbox_detail' msg.uid %}?folder={{ folder|default:'INBOX' }}&amp;account={{ msg.account|urlencode:'' }}"
+   data-inbox-row
+   data-uid="{{ msg.account }}|{{ msg.uid }}"
+   data-preview-url="{% url 'admin:mail_inbox_detail_fragment' msg.uid %}?folder={{ folder|default:'INBOX' }}&amp;account={{ msg.account|urlencode:'' }}"
+   class="inbox-list-row group flex gap-3 px-4 py-3 text-left no-underline transition-colors cursor-pointer
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500
+          {% if not msg.is_seen %}is-unread{% endif %}">
+    <div class="shrink-0 flex justify-center pt-0.5 w-5" aria-hidden="true">
+        <span data-inbox-row-icon class="material-symbols-outlined !text-[18px] i2g-inbox-row__icon" title="{% if msg.is_seen %}Read{% else %}Unread{% endif %}">{% if msg.is_seen %}mail{% else %}mark_email_unread{% endif %}</span>
+    </div>
+    <div class="min-w-0 flex-1 flex flex-col gap-0.5">
+        <div class="flex items-baseline gap-1.5 min-w-0">
+            <span data-inbox-row-sender class="i2g-inbox-row__sender min-w-0 truncate text-[13px] max-w-[58%]">
+                {% if folder == 'SENT' %}{% with recipient=msg.to.0 %}{% if recipient.name %}{{ recipient.name }}{% elif recipient.email %}{{ recipient.email }}{% else %}(No recipient){% endif %}{% if msg.to|length > 1 %} +{{ msg.to|length|add:"-1" }}{% endif %}{% endwith %}{% else %}{% if msg.from_name %}{{ msg.from_name }}{% else %}{{ msg.from_email }}{% endif %}{% endif %}
+            </span>
+            {% if msg.has_attachments %}
+            <span data-inbox-row-attachment class="material-symbols-outlined i2g-inbox-row__attachment" role="img" aria-label="Has attachments" title="Has attachments">attach_file</span>
+            {% endif %}
+            <span class="shrink-0 text-[11px] text-base-400 dark:text-base-500 tabular-nums leading-none whitespace-nowrap ml-auto">
+                {{ msg.date }}
+            </span>
+        </div>
+        <div data-inbox-row-subject class="i2g-inbox-row__subject text-[13px] leading-snug truncate group-hover:text-primary-700 dark:group-hover:text-primary-300">
+            {% if msg.subject %}{{ msg.subject }}{% else %}<span class="text-base-400 font-normal italic">(No subject)</span>{% endif %}
+        </div>
+        {% if msg.snippet %}
+        <div data-inbox-row-snippet class="text-[11px] text-base-500 dark:text-base-400 truncate leading-snug">
+            {{ msg.snippet }}
+        </div>
+        {% endif %}
+        {% if show_account_column and msg.account_address %}
+        <div data-inbox-row-account class="i2g-inbox-row-account" title="Received at {{ msg.account_address }}">
+            <span class="material-symbols-outlined !text-[12px]" aria-hidden="true">alternate_email</span>
+            <span class="truncate">{{ msg.account_address }}</span>
+        </div>
+        {% endif %}
+    </div>
+</a>
+{% endfor %}

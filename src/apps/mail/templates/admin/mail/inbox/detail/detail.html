@@ -1,8 +1,17 @@
 {% extends "admin/base_site.html" %}
-{% load i18n %}
+{% load i18n static %}
 
 {% block title %}{{ title }}{% endblock %}
 {% block content_title %}<h1>{{ title }}</h1>{% endblock %}
+
+{% block extrahead %}
+    {{ block.super }}
+    {% with v="20261127-inbox-p1" %}
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/scam-chip.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/scam-risk.css' %}?v={{ v }}">
+    <link rel="stylesheet" href="{% static 'mail/inbox/css/scam-sections.css' %}?v={{ v }}">
+    {% endwith %}
+{% endblock %}
 
 {% block content %}
 <div style="max-width:800px;">

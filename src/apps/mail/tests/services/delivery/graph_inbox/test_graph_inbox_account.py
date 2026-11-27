@@ -3,7 +3,8 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from apps.core.models import GmailAccessAccount
-from apps.mail.admin.inbox.list_views import _connectable, _inbox_account
+from apps.mail.admin.inbox.helpers import inbox_account_summary as _inbox_account
+from apps.mail.admin.inbox.list_views import _connectable
 from apps.mail.services.inbox import ALL_ACCOUNTS, readable_accounts
 from apps.mail.tests.services.delivery.graph_inbox.helpers import (
     MAILBOX,

@@ -26,7 +26,7 @@ class LiveReadHealthTests(SnapshotCase):
 
         row = self.row(self.imap_key)
         self.assertEqual((row.status, row.address, row.consecutive_failures), (Status.OK, "i2g@gmail.com", 0))
-        self.assertEqual([message["uid"] for message in row.messages], ["i-21", "i-19"])
+        self.assertEqual([message["uid"] for message in row.messages], ["21", "19"])
         self.assertEqual(row.messages[0]["account"], self.imap_key)
         self.assertEqual(row.unread_count, 2)
         self.assertIsNotNone(row.snapshot_at)
@@ -99,15 +99,20 @@ class LiveReadHealthTests(SnapshotCase):
 
         self.assertIsNone(raised.exception.stale)
 
-    def test_opening_an_inbox_message_marks_it_read_in_the_snapshot(self):
+    def test_opening_an_inbox_message_leaves_it_unread_everywhere(self):
+        # The preview reads with BODY.PEEK: Gmail keeps the message unread, and so do the snapshot and the badge.
         self.fresh(self.imap_key, "i2g@gmail.com", ["42", "43"], unread_count=2)
         self.imap.answer(self.imap_key, [imap_message("42", 21)])
+        before = self.row(self.imap_key).updated_at
 
         fetch_inbox_message("42", account=self.imap_key)
 
         row = self.row(self.imap_key)
-        self.assertEqual([message["is_seen"] for message in row.messages], [True, False])
-        self.assertEqual(row.unread_count, 1)
+        self.assertEqual([message["is_seen"] for message in row.messages], [False, False])
+        self.assertEqual((row.unread_count, row.updated_at), (2, before))
+        ((criteria, kwargs),) = self.imap.clients[-1].opened
+        self.assertIn("UID 42", criteria)
+        self.assertIs(kwargs["mark_seen"], False)
 
     def test_opening_a_sent_message_leaves_the_snapshot_alone(self):
         self.fresh(self.imap_key, "i2g@gmail.com", ["42"], unread_count=1)

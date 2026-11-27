@@ -106,7 +106,9 @@ class DetailTests(TestCase):
 
 class ErrorMappingTests(TestCase):
     def test_list_errors_become_inbox_errors(self):
-        reader = SimpleNamespace(list_messages=lambda folder, limit: (_ for _ in ()).throw(GraphReadError("busy")))
+        reader = SimpleNamespace(
+            list_messages=lambda folder, limit, skip=0: (_ for _ in ()).throw(GraphReadError("busy"))
+        )
 
         with self.assertRaisesMessage(InboxError, "busy"):
             graph_backend.list_messages(reader, folder="INBOX", limit=5)
@@ -119,7 +121,9 @@ class ErrorMappingTests(TestCase):
                     graph_backend.fetch_message(reader, MESSAGE_ID)
 
     def test_list_maps_each_message(self):
-        reader = SimpleNamespace(mailbox=MAILBOX, list_messages=lambda folder, limit: [GRAPH_MESSAGE, {"id": "B"}])
+        reader = SimpleNamespace(
+            mailbox=MAILBOX, list_messages=lambda folder, limit, skip=0: [GRAPH_MESSAGE, {"id": "B"}]
+        )
 
         results = graph_backend.list_messages(reader, folder="SENT", limit=2)
 
@@ -129,7 +133,7 @@ class ErrorMappingTests(TestCase):
         EmailServiceConfig.objects.create(name="Mail", is_active=True, from_email="Noreply@Contoso.com")
         senders = [MAILBOX.upper(), "noreply@contoso.com", "ada@example.com", ""]
         messages = [{"id": str(index), "from": {"emailAddress": {"address": a}}} for index, a in enumerate(senders)]
-        reader = SimpleNamespace(mailbox=MAILBOX, list_messages=lambda folder, limit: messages)
+        reader = SimpleNamespace(mailbox=MAILBOX, list_messages=lambda folder, limit, skip=0: messages)
 
         results = graph_backend.list_messages(reader, folder="INBOX", limit=4)
 

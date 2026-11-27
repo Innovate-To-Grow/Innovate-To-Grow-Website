@@ -15,6 +15,7 @@ from apps.core.services.delivery_rates.runtime import feedback
 from apps.core.tests.services.delivery_rates.helpers import FakeClock
 from apps.mail.services.campaign.gmail_import import GmailImportBusy, GmailImportError, list_recent_sent_messages
 from apps.mail.services.inbox import InboxBusy, InboxError, list_inbox_messages
+from apps.mail.tests.services.inbox.mailbox.imap_wire import wire
 
 INBOX_MAILBOX = "apps.mail.services.inbox.reading.connection.MailBox"
 IMPORT_MAILBOX = "apps.mail.services.campaign.gmail_import.MailBox"
@@ -34,6 +35,7 @@ def mailbox_factory(*, messages=(), login_result=("OK", [b"authenticated (Succes
     client = factory.return_value.login.return_value.__enter__.return_value
     client.login_result = login_result
     client.fetch.return_value = list(messages)
+    wire(client, messages)  # the inbox list's UID SEARCH + FETCH (``reading.imap_list``)
     if login_error is not None:
         factory.return_value.login.side_effect = login_error
     return factory

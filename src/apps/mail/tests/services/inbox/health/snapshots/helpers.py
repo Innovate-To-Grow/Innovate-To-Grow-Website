@@ -34,7 +34,7 @@ class SnapshotCase(UniversalInboxMixin, TestCase):
         graph_config()
         self.gmail = gmail_account()
         self.imap_key = f"imap:{self.gmail.pk}"
-        self.imap.answer(self.imap_key, [imap_message("i-21", 21), imap_message("i-19", 19)])
+        self.imap.answer(self.imap_key, [imap_message("21", 21), imap_message("19", 19)])
         self.now = timezone.now()
 
     def state(self, key, **fields):

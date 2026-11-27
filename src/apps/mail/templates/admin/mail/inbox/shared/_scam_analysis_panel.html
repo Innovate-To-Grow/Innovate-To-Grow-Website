@@ -1,11 +1,20 @@
-<style nonce="{{ request.csp_nonce }}">
-{% include "admin/mail/inbox/shared/_scam_panel_styles_risk.html" %}
-{% include "admin/mail/inbox/shared/_scam_panel_styles_sections.html" %}
-</style>
-
-<div data-scam-analysis-panel
-     data-risk-level="{{ scam_analysis.risk_level }}"
-     class="{{ panel_margin|default:'mb-3' }} i2g-scam-panel">
+{% comment %}Styles: mail/inbox/css/scam-*.css (linked by the inbox and message pages). A one-line risk chip that opens
+into the full analysis: low and medium risk start closed (medium with a warning), high risk starts open.{% endcomment %}
+<details data-scam-analysis-panel
+         data-risk-level="{{ scam_analysis.risk_level }}"
+         class="{{ panel_margin|default:'mb-3' }} i2g-scam-panel"{% if scam_analysis.risk_level == 'high' %} open{% endif %}>
+    <summary class="i2g-scam-chip" data-scam-chip>
+        <span class="material-symbols-outlined i2g-scam-chip__icon" aria-hidden="true">{% if scam_analysis.risk_level == 'low' %}gpp_good{% elif scam_analysis.risk_level == 'high' %}gpp_bad{% else %}gpp_maybe{% endif %}</span>
+        <span class="i2g-scam-chip__risk">{{ scam_analysis.risk_level|capfirst }} risk</span>
+        {% if scam_analysis.risk_level == 'medium' %}
+        <span class="i2g-scam-chip__warning" data-scam-chip-warning>Check the sender and links before you act on it.</span>
+        {% elif scam_analysis.risk_level == 'high' %}
+        <span class="i2g-scam-chip__warning" data-scam-chip-warning>Likely a scam: do not click its links or reply.</span>
+        {% endif %}
+        <span class="i2g-scam-chip__score">Score {{ scam_analysis.score }}</span>
+        <span class="i2g-scam-chip__more">Security analysis</span>
+        <span class="material-symbols-outlined i2g-scam-chip__toggle" aria-hidden="true">expand_more</span>
+    </summary>
     <div class="i2g-scam-panel__body">
         <div class="i2g-scam-panel__header">
             <div class="i2g-scam-panel__identity">
@@ -122,4 +131,4 @@
             </ul>
         </div>
     </div>
-</div>
+</details>

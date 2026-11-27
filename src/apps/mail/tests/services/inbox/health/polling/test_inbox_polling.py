@@ -9,6 +9,7 @@ from apps.mail.models import InboxAccountState
 from apps.mail.services.inbox.polling import health
 from apps.mail.services.inbox.reading.accounts import ACCOUNTS_CACHE_KEY
 from apps.mail.services.inbox.reading.connection import InboxError
+from apps.mail.services.inbox.reading.imap_list import LIST_PARTS
 from apps.mail.tests.services.delivery.graph_inbox.helpers import MAILBOX
 from apps.mail.tests.services.inbox.accounts.helpers import (
     GRAPH_KEY,
@@ -58,7 +59,9 @@ class PollAccountsTests(PollCase):
 
         self.assertEqual(mailbox.searches, ["ALL", "(UNSEEN)"])
         self.assertEqual(mailbox.fetched, [["5", "4", "1"]])
-        self.assertEqual(mailbox.fetch_kwargs, [{"mark_seen": False, "bulk": True}])
+        # Headers and the start of the text only, never marking anything read (BODY.PEEK).
+        self.assertEqual(mailbox.fetch_parts, [LIST_PARTS])
+        self.assertIn("BODY.PEEK[HEADER]", LIST_PARTS)
         row = self.row(self.imap_key)
         self.assertEqual(
             [(m["uid"], m["subject"], m["is_seen"]) for m in row.messages],

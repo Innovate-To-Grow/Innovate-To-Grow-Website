@@ -20,8 +20,7 @@ from apps.event.tests.helpers import make_superuser
 from apps.mail.services.inbox.reading import graph_backend
 from apps.mail.services.inbox.sending.reply import REPLY_INVALID_ADDRESS_MESSAGE, send_reply
 
-LIST_DIR = Path(__file__).resolve().parents[4] / "templates" / "admin" / "mail" / "inbox" / "list"
-_INCLUDE_RE = re.compile(r'^\{% include "admin/mail/inbox/list/(?P<name>_\w+\.html)" %\}$', re.MULTILINE)
+SCRIPT_DIR = Path(__file__).resolve().parents[4] / "static" / "mail" / "inbox" / "js"
 DELIVER = "apps.mail.services.inbox.sending.reply.deliver_email"
 PAYLOAD = "<img src=x onerror=alert(document.domain)>"
 CRAFTED_MIME = (
@@ -32,20 +31,22 @@ CRAFTED_MIME = (
     "Content-Type: text/plain; charset=utf-8\r\n\r\n"
     "Hello"
 ).encode()
-# What the page may assign to ``innerHTML``: fixed markup, or a fragment the server rendered with autoescaping.
+# What the page may assign to ``innerHTML``: fixed markup (a literal, or a ``*_HTML`` constant made of literals only),
+# or a fragment the server rendered with autoescaping.
 _INNER_HTML_RE = re.compile(r"\.innerHTML\s*=\s*(?P<value>.+?);\s*$")
-_SAFE_INNER_HTML = re.compile(r"'[^'+]*'|html|newList\.innerHTML|newSplit\.outerHTML")
+_SAFE_INNER_HTML = re.compile(r"'[^'+]*'|html|newList\.innerHTML|[A-Z_]+_HTML")
+_HTML_CONSTANT_RE = re.compile(r"var (?P<name>[A-Z_]+_HTML) = ")
+_LITERAL_CONSTANT_RE = re.compile(r"var (?P<name>[A-Z_]+_HTML) = (?:'[^']*'\s*\+\s*)*'[^']*';")
 
 
-def _list_template_source():
-    """list.html with each of its {% include %} partials inlined, as the page renders it."""
-    source = (LIST_DIR / "list.html").read_text(encoding="utf-8")
-    return _INCLUDE_RE.sub(lambda m: (LIST_DIR / m["name"]).read_text(encoding="utf-8"), source)
+def _inbox_script_source():
+    """Every inbox script (mail/inbox/js/*.js), as the list page loads them."""
+    return "\n".join(path.read_text(encoding="utf-8") for path in sorted(SCRIPT_DIR.glob("*.js")))
 
 
 class ReplyBannerTemplateTests(SimpleTestCase):
     def setUp(self):
-        self.source = _list_template_source()
+        self.source = _inbox_script_source()
 
     def test_no_server_value_is_assigned_to_inner_html(self):
         assignments = [match["value"] for line in self.source.splitlines() if (match := _INNER_HTML_RE.search(line))]
@@ -55,10 +56,14 @@ class ReplyBannerTemplateTests(SimpleTestCase):
             with self.subTest(value=value):
                 self.assertTrue(_SAFE_INNER_HTML.fullmatch(value.strip()), value)
         self.assertNotRegex(self.source, r"innerHTML[^;]*data\.")
+        # Each markup constant is string literals joined by +: nothing the server or a message sent.
+        constants = [match["name"] for match in _HTML_CONSTANT_RE.finditer(self.source)]
+        self.assertTrue(constants)
+        self.assertEqual([match["name"] for match in _LITERAL_CONSTANT_RE.finditer(self.source)], constants)
 
     def test_the_success_message_is_inserted_as_text(self):
-        self.assertIn("showReplySent(replyArea, data.message);", self.source)
-        body = self.source.split("function showReplySent", 1)[1].split("\n  }\n", 1)[0]
+        self.assertIn("ns.showReplySent(replyArea, data.message);", self.source)
+        body = self.source.split("ns.showReplySent = function", 1)[1].split("\n  };\n", 1)[0]
         self.assertIn("label.textContent =", body)
         self.assertNotIn("innerHTML", body)
 

@@ -1,0 +1,166 @@
+/* Mail -> Inbox: the split pane's message list: head, quick filter, rows and the "Load older" footer. */
+
+.i2g-inbox-split {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.i2g-inbox-list-panel {
+    background: var(--md-sys-color-surface-container-lowest, #fff);
+    border-right: 1px solid var(--md-sys-color-outline-variant, #e5e7eb);
+    display: flex;
+    /* Scales with the window: 320px at 1024px, 440px from about 1470px. */
+    flex: 0 0 clamp(320px, 30vw, 440px);
+    flex-direction: column;
+    min-width: 0;
+    max-width: 440px;
+    transition: flex-basis 0.18s ease, max-width 0.18s ease, min-width 0.18s ease;
+}
+
+.i2g-inbox-list-head {
+    align-items: center;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant, #e5e7eb);
+    display: flex;
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 0 1rem;
+}
+
+.i2g-inbox-list-head__actions {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.5rem;
+    min-width: 0;
+}
+
+.i2g-inbox-list-head__title {
+    color: var(--md-sys-color-on-surface, #111827);
+    font-size: 0.8125rem;
+    font-weight: 700;
+}
+
+.i2g-inbox-list-head__count {
+    color: var(--md-sys-color-on-surface-variant, #64748b);
+    font-size: 0.75rem;
+}
+
+.i2g-inbox-list-toggle {
+    align-items: center;
+    background: var(--md-sys-color-surface-container-lowest, #fff);
+    border: 1px solid var(--md-sys-color-outline-variant, #d9dee3);
+    border-radius: 999px;
+    color: var(--md-sys-color-on-surface, #111827);
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 1.75rem;
+    justify-content: center;
+    padding: 0;
+    transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    width: 1.75rem;
+}
+
+.i2g-inbox-list-toggle:hover {
+    background: var(--md-sys-color-surface-container, #eef2f7);
+}
+
+.i2g-inbox-list-toggle__icon {
+    font-size: 18px !important;
+}
+
+.i2g-inbox-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.i2g-mail-shell.is-list-collapsed .i2g-inbox-list-panel {
+    flex-basis: 52px;
+    max-width: 52px;
+    min-width: 52px;
+}
+
+.i2g-mail-shell.is-list-collapsed .i2g-inbox-list-head {
+    align-items: flex-start;
+    border-bottom: 0;
+    justify-content: center;
+    min-height: 100%;
+    padding: 0.75rem 0;
+}
+
+.i2g-mail-shell.is-list-collapsed .i2g-inbox-list-head__title,
+.i2g-mail-shell.is-list-collapsed .i2g-inbox-list-head__count,
+.i2g-mail-shell.is-list-collapsed .i2g-inbox-list {
+    display: none;
+}
+
+.inbox-list-row {
+    border-bottom: 1px solid var(--md-sys-color-outline-variant, #eef2f7);
+    color: inherit;
+}
+
+.i2g-inbox-row-account {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    max-width: 100%;
+    margin-top: 2px;
+    font-size: 10px;
+    line-height: 1.3;
+    color: var(--md-sys-color-on-surface-variant, #64748b);
+}
+
+.inbox-list-row:hover {
+    background: var(--md-sys-color-surface-container-low, #f8fafc) !important;
+}
+
+.inbox-list-row.is-unread {
+    background: color-mix(in srgb, var(--md-sys-color-primary-container, #dbeafe) 28%, transparent);
+}
+
+.inbox-list-row.is-active {
+    background: color-mix(in srgb, var(--md-sys-color-primary-container, #dbeafe) 72%, transparent) !important;
+    box-shadow: inset 3px 0 0 var(--md-sys-color-primary, #1d4ed8);
+}
+
+/* Unread rows (``.is-unread``): bold sender and subject, a tinted background and an accent icon. A row opened in
+   this browser loses it (inbox-list.js); the mailbox itself is never marked read. */
+.i2g-inbox-row__sender {
+    color: var(--md-sys-color-on-surface-variant, #334155);
+    font-weight: 500;
+}
+
+.i2g-inbox-row__subject {
+    color: var(--md-sys-color-on-surface-variant, #475569);
+    font-weight: 500;
+}
+
+.i2g-inbox-row__icon {
+    color: var(--md-sys-color-outline, #94a3b8);
+}
+
+.inbox-list-row.is-unread .i2g-inbox-row__sender {
+    color: var(--md-sys-color-on-surface, #0f172a);
+    font-weight: 650;
+}
+
+.inbox-list-row.is-unread .i2g-inbox-row__subject {
+    color: var(--md-sys-color-on-surface, #111827);
+    font-weight: 600;
+}
+
+.inbox-list-row.is-unread .i2g-inbox-row__icon {
+    color: var(--md-sys-color-primary, #1d4ed8);
+}
+
+.i2g-inbox-row__attachment {
+    color: var(--md-sys-color-on-surface-variant, #64748b);
+    flex: 0 0 auto;
+    font-size: 14px !important;
+    line-height: 1;
+    transform: rotate(45deg);
+}
+
+.inbox-list-row[hidden] {
+    display: none;
+}

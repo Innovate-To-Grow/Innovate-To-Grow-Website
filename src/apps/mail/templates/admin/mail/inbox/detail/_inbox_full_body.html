@@ -1,75 +1,5 @@
-<div class="i2g-mail-shell" data-inbox-auto-refresh="{{ auto_refresh_seconds|default:0 }}">
-    <div class="i2g-mail-toolbar">
-        <div class="i2g-mail-toolbar__identity">
-            <span class="material-symbols-outlined i2g-mail-toolbar__icon">{% if folder == 'SENT' %}send{% else %}inbox{% endif %}</span>
-            <div class="i2g-mail-toolbar__copy">
-                <div class="i2g-mail-toolbar__title">{% if folder == 'SENT' %}Sent{% else %}Inbox{% endif %}</div>
-                <div class="i2g-mail-toolbar__meta">
-                    {{ inbox_account.account }} &middot; {{ folder|default:"INBOX" }}
-                </div>
-            </div>
-        </div>
-
-        <div class="i2g-mail-folder-tabs" data-inbox-folder-tabs role="tablist" aria-label="Mail folders">
-            <button type="button" data-inbox-folder="INBOX" role="tab"
-                    aria-selected="{% if folder == 'SENT' %}false{% else %}true{% endif %}"
-                    class="i2g-mail-folder-tab{% if folder != 'SENT' %} i2g-mail-folder-tab--active{% endif %} cursor-pointer font-sans">
-                <span class="material-symbols-outlined !text-[16px]">inbox</span>
-                Inbox
-            </button>
-            <button type="button" data-inbox-folder="SENT" role="tab"
-                    aria-selected="{% if folder == 'SENT' %}true{% else %}false{% endif %}"
-                    class="i2g-mail-folder-tab{% if folder == 'SENT' %} i2g-mail-folder-tab--active{% endif %} cursor-pointer font-sans">
-                <span class="material-symbols-outlined !text-[16px]">send</span>
-                Sent
-            </button>
-        </div>
-
-        <div class="i2g-mail-toolbar__actions">
-            {% comment %}Universal inbox: every configured mailbox merged, or one of them (services.inbox.accounts).{% endcomment %}
-            {% if inbox_accounts|length > 1 %}
-            <label class="i2g-inbox-limit-control">
-                <span>Account</span>
-                <select data-inbox-account
-                        aria-label="Inbox account"
-                        class="rounded border border-base-200 dark:border-base-600 bg-white dark:bg-base-800 text-xs px-1.5 py-0.5 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-1 focus:ring-primary-500">
-                    <option value="{{ all_accounts }}" {% if selected_account == all_accounts %}selected{% endif %}>All accounts</option>
-                    {% for item in inbox_accounts %}
-                    <option value="{{ item.key }}" {% if item.key == selected_account %}selected{% endif %}>{{ item.label }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            {% endif %}
-
-            <button type="button"
-                    data-inbox-refresh
-                    class="i2g-inbox-refresh-btn cursor-pointer font-sans">
-                <span class="material-symbols-outlined !text-[16px] i2g-inbox-refresh-icon">refresh</span>
-                Refresh
-            </button>
-
-            <label class="i2g-inbox-limit-control">
-                <span>Show</span>
-                <select data-inbox-limit
-                        class="rounded border border-base-200 dark:border-base-600 bg-white dark:bg-base-800 text-xs px-1.5 py-0.5 text-font-default-light dark:text-font-default-dark focus:outline-none focus:ring-1 focus:ring-primary-500">
-                    {% for c in limit_choices %}
-                    <option value="{{ c }}" {% if c == limit %}selected{% endif %}>{{ c }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-
-            <span class="i2g-mail-toolbar__divider" aria-hidden="true"></span>
-
-            <button type="button"
-                    data-inbox-account-toggle
-                    aria-expanded="true"
-                    aria-controls="inbox-account-panel"
-                    class="i2g-inbox-account-toggle cursor-pointer font-sans">
-                <span class="material-symbols-outlined i2g-inbox-account-toggle__icon">expand_more</span>
-                <span data-inbox-account-toggle-label>Hide details</span>
-            </button>
-        </div>
-    </div>
+<div class="i2g-mail-shell is-account-collapsed" data-inbox-auto-refresh="{{ auto_refresh_seconds|default:0 }}">
+{% include "admin/mail/inbox/list/_inbox_toolbar.html" %}
 
     <div id="inbox-account-panel"
          data-inbox-account-panel
@@ -105,6 +35,7 @@
     <div data-inbox-status class="i2g-inbox-status i2g-inbox-status--error">
         <span class="material-symbols-outlined !text-[18px]">error</span>
         <span>{{ error_message }}</span>
+        <button type="button" data-inbox-refresh class="i2g-inbox-retry-btn cursor-pointer font-sans">Retry</button>
     </div>
     {% elif busy_message %}
     {% comment %}Reads are held back by the delivery rate: the list below is the last one read, if any.{% endcomment %}
@@ -120,7 +51,7 @@
             <div class="i2g-inbox-list-head">
                 <span class="i2g-inbox-list-head__title">Messages</span>
                 <span class="i2g-inbox-list-head__actions">
-                    <span class="i2g-inbox-list-head__count">{{ inbox_messages|length }} loaded</span>
+                    <span class="i2g-inbox-list-head__count" data-inbox-count>{{ inbox_messages|length }} loaded</span>
                     <button type="button"
                             data-inbox-list-toggle
                             aria-expanded="true"
@@ -133,48 +64,21 @@
                 </span>
             </div>
 
-            <div id="inbox-message-list" class="i2g-inbox-list" data-inbox-list>
-                {% for msg in inbox_messages %}
-                <a href="{% url 'admin:mail_inbox_detail' msg.uid %}?folder={{ folder|default:'INBOX' }}&amp;account={{ msg.account|urlencode:'' }}"
-                   data-inbox-row
-                   data-uid="{{ msg.account }}|{{ msg.uid }}"
-                   data-preview-url="{% url 'admin:mail_inbox_detail_fragment' msg.uid %}?folder={{ folder|default:'INBOX' }}&amp;account={{ msg.account|urlencode:'' }}"
-                   class="inbox-list-row group flex gap-3 px-4 py-3 text-left no-underline transition-colors cursor-pointer
-                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500
-                          {% if not msg.is_seen %}is-unread{% endif %}">
-                    <div class="shrink-0 flex justify-center pt-0.5 w-5" aria-hidden="true">
-                        {% if not msg.is_seen %}
-                        <span class="material-symbols-outlined !text-[18px] text-primary-600 dark:text-primary-400" title="Unread">mark_email_unread</span>
-                        {% else %}
-                        <span class="material-symbols-outlined !text-[18px] text-base-400 dark:text-base-500" title="Read">mail</span>
-                        {% endif %}
-                    </div>
-                    <div class="min-w-0 flex-1 flex flex-col gap-0.5">
-                        <div class="flex items-baseline gap-1.5 min-w-0">
-                            <span class="min-w-0 truncate text-[13px] max-w-[58%] {% if not msg.is_seen %}font-semibold text-font-important-light dark:text-font-important-dark{% else %}font-medium text-base-700 dark:text-base-200{% endif %}">
-                                {% if folder == 'SENT' %}{% with recipient=msg.to.0 %}{% if recipient.name %}{{ recipient.name }}{% elif recipient.email %}{{ recipient.email }}{% else %}(No recipient){% endif %}{% if msg.to|length > 1 %} +{{ msg.to|length|add:"-1" }}{% endif %}{% endwith %}{% else %}{% if msg.from_name %}{{ msg.from_name }}{% else %}{{ msg.from_email }}{% endif %}{% endif %}
-                            </span>
-                            <span class="shrink-0 text-[11px] text-base-400 dark:text-base-500 tabular-nums leading-none whitespace-nowrap ml-auto">
-                                {{ msg.date }}
-                            </span>
-                        </div>
-                        <div class="text-[13px] leading-snug truncate {% if not msg.is_seen %}font-semibold text-font-default-light dark:text-font-default-dark{% else %}font-medium text-base-600 dark:text-base-300{% endif %} group-hover:text-primary-700 dark:group-hover:text-primary-300">
-                            {% if msg.subject %}{{ msg.subject }}{% else %}<span class="text-base-400 font-normal italic">(No subject)</span>{% endif %}
-                        </div>
-                        {% if msg.snippet %}
-                        <div class="text-[11px] text-base-500 dark:text-base-400 truncate leading-snug">
-                            {{ msg.snippet }}
-                        </div>
-                        {% endif %}
-                        {% if show_account_column and msg.account_address %}
-                        <div data-inbox-row-account class="i2g-inbox-row-account" title="Received at {{ msg.account_address }}">
-                            <span class="material-symbols-outlined !text-[12px]" aria-hidden="true">alternate_email</span>
-                            <span class="truncate">{{ msg.account_address }}</span>
-                        </div>
-                        {% endif %}
-                    </div>
-                </a>
-                {% endfor %}
+            {% comment %}A quick filter of the rows already loaded (inbox-filter.js); the server is not searched.{% endcomment %}
+            <div class="i2g-inbox-filter" data-inbox-filter-bar>
+                <label class="i2g-inbox-filter__search">
+                    <span class="material-symbols-outlined !text-[16px]" aria-hidden="true">search</span>
+                    <input type="search" data-inbox-filter autocomplete="off" spellcheck="false"
+                           placeholder="Filter messages"
+                           aria-label="Filter the loaded messages by sender, subject or text">
+                </label>
+                <button type="button" data-inbox-unread-only aria-pressed="false" class="i2g-inbox-chip cursor-pointer font-sans">Unread only</button>
+            </div>
+            <p class="i2g-inbox-filter__empty" data-inbox-filter-empty hidden>No loaded message matches the filter.</p>
+
+            <div id="inbox-message-list" class="i2g-inbox-list" data-inbox-list data-inbox-pages="1">
+{% include "admin/mail/inbox/list/_inbox_rows.html" %}
+{% include "admin/mail/inbox/list/_inbox_list_footer.html" %}
             </div>
         </div>
 
@@ -184,6 +88,7 @@
                 <div id="inbox-preview-empty" class="i2g-inbox-empty-preview flex flex-col items-center justify-center text-base-400">
                     <span class="material-symbols-outlined !text-[48px] mb-2">mail</span>
                     <p class="text-sm">Select a message to preview</p>
+                    <p class="i2g-inbox-keys-hint">Keys: j / k next and previous, Enter open, r reply, Esc close, / filter</p>
                 </div>
             </div>
         </div>

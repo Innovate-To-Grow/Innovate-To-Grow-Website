@@ -11,6 +11,7 @@ from django.conf import settings
 from django.test import TestCase
 
 from apps.core.models import MicrosoftGraphMailboxScope
+from apps.core.services.email.graph import transport
 from apps.core.services.email.graph.identity.access import GraphScopeError
 from apps.core.services.email.graph.mailbox import (
     LIST_FIELDS,
@@ -119,6 +120,17 @@ class GraphReaderListTests(GraphReaderFixtureMixin, TestCase):
             (call["max_bytes"], call["timeout"]),
             (settings.GRAPH_INBOX_LIST_MAX_BYTES, settings.GRAPH_REQUEST_TIMEOUT_SECONDS),
         )
+
+    def test_skip_pages_past_the_newest_messages(self):
+        reader = self.reader()
+        for skip, suffix in ((30, "&$skip=30"), ("60", "&$skip=60"), (0, ""), (-3, "")):
+            with self.subTest(skip):
+                self.get.calls.clear()
+                reader.list_messages("INBOX", 30, skip=skip)
+                path = self.get.calls[0]["path"]
+                self.assertTrue(path.endswith(f"$orderby=receivedDateTime%20desc{suffix}"), path)
+                # The site's transport allow-list admits the paged listing as it is.
+                self.assertTrue(transport.is_allowed("GET", GRAPH_HOST, path))
 
     def test_folder_names_map_to_well_known_folders(self):
         reader = self.reader()

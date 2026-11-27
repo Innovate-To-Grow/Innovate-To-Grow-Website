@@ -1,4 +1,4 @@
-"""``inbox.health``: recording the outcome of every read, and marking opened messages read in the snapshot."""
+"""``inbox.health``: recording the outcome of every read, and loading the states once per inbox request."""
 
 from datetime import timedelta
 from unittest.mock import patch
@@ -114,7 +114,6 @@ class RecordTests(HealthCase):
         for record in (
             lambda: health.record_ok(ACCOUNT),
             lambda: health.record_failure(ACCOUNT, RuntimeError("boom")),
-            lambda: health.mark_seen(ACCOUNT, "1"),
             lambda: health.reset(),
         ):
             cache.set(health.UNREAD_CACHE_KEY, 9)
@@ -124,43 +123,63 @@ class RecordTests(HealthCase):
             self.assertIsNone(cache.get(health.UNREAD_CACHE_KEY))
 
 
-class MarkSeenTests(HealthCase):
+# One load of the states: its SELECT inside a savepoint (``states_for`` runs in ``transaction.atomic``).
+LOAD = 3
+
+
+class RequestScopeTests(HealthCase):
+    """``request_scope``: one inbox request loads each account's state once, and sees what it records itself."""
+
     def setUp(self):
         super().setUp()
-        self.row = state(
-            ACCOUNT,
-            status=Status.OK,
-            snapshot_at=self.now,
-            messages=[{"uid": "1", "is_seen": False}, {"uid": "2", "is_seen": False}, {"uid": "3", "is_seen": True}],
-            unread_count=2,
-        )
+        state(ACCOUNT, status=Status.OK, snapshot_at=self.now, messages=[{"uid": "1"}])
 
-    def test_an_opened_message_is_read_in_the_snapshot(self):
-        health.mark_seen(ACCOUNT, "1")
+    def test_states_are_loaded_once_per_scope(self):
+        with health.request_scope():
+            with self.assertNumQueries(LOAD):
+                first = health.states_for([ACCOUNT, GRAPH])
+            with self.assertNumQueries(0):
+                again = health.states_for([ACCOUNT])
+                health.fresh_snapshot(ACCOUNT, 30)
+                health.hidden_keys([ACCOUNT, GRAPH])
 
-        self.row.refresh_from_db()
-        self.assertEqual([m["is_seen"] for m in self.row.messages], [True, False, True])
-        self.assertEqual(self.row.unread_count, 1)
+        self.assertEqual(list(first), [ACCOUNT.key])
+        self.assertIs(again[ACCOUNT.key], first[ACCOUNT.key])
 
-    def test_an_unknown_or_already_read_message_changes_nothing(self):
-        before = self.row.updated_at
-        for uid in ("3", "99"):
-            health.mark_seen(ACCOUNT, uid)
+    def test_without_a_scope_every_call_reads_the_database(self):
+        with self.assertNumQueries(2 * LOAD):
+            health.states_for([ACCOUNT])
+            health.states_for([ACCOUNT])
 
-        self.row.refresh_from_db()
-        self.assertEqual((self.row.unread_count, self.row.updated_at), (2, before))
+    def test_a_record_in_the_scope_replaces_the_loaded_state(self):
+        with health.request_scope():
+            health.states_for([ACCOUNT, GRAPH])
+            health.record_failure(ACCOUNT, RuntimeError("boom"))
+            health.record_ok(GRAPH)
+            with self.assertNumQueries(0):
+                states = health.states_for([ACCOUNT, GRAPH])
 
-    def test_an_account_without_a_state_is_ignored(self):
-        health.mark_seen(GRAPH, "1")
+        self.assertEqual(states[ACCOUNT.key].status, Status.UNREACHABLE)
+        self.assertEqual(states[GRAPH.key].status, Status.OK)
 
-        self.assertFalse(InboxAccountState.objects.filter(account_key=GRAPH.key).exists())
+    def test_a_reset_or_a_failed_write_forgets_what_the_scope_loaded(self):
+        with health.request_scope():
+            health.states_for([ACCOUNT])
+            health.reset()
+            with self.assertNumQueries(LOAD):
+                self.assertEqual(health.states_for([ACCOUNT])[ACCOUNT.key].status, Status.UNKNOWN)
+            with (
+                patch.object(InboxAccountState.objects, "select_for_update", side_effect=DatabaseError("locked")),
+                self.assertLogs(LOGGER, "ERROR"),
+            ):
+                health.record_ok(ACCOUNT)
+            with self.assertNumQueries(LOAD):
+                health.states_for([ACCOUNT])
 
-    def test_a_database_error_is_logged(self):
+    def test_a_database_error_while_loading_is_logged_and_lists_nothing(self):
         with (
-            patch.object(InboxAccountState.objects, "select_for_update", side_effect=DatabaseError("locked")),
+            health.request_scope(),
+            patch.object(InboxAccountState.objects, "filter", side_effect=DatabaseError("down")),
             self.assertLogs(LOGGER, "ERROR"),
         ):
-            health.mark_seen(ACCOUNT, "1")
-
-        self.row.refresh_from_db()
-        self.assertEqual(self.row.unread_count, 2)
+            self.assertEqual(health.states_for([ACCOUNT]), {})

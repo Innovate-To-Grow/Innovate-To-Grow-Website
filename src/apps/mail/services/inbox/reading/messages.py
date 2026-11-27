@@ -10,19 +10,9 @@ from imap_tools import AND
 
 from apps.mail.services.campaign.gmail_import.credential_mail import WITHOUT_CREDENTIAL_MAIL, without_credential_mail
 
-from ..polling import health
 from . import graph_backend
 from .accounts import resolve_account
-from .connection import (
-    INBOX_FOLDER,
-    INBOX_LIMIT_CHOICES,
-    INBOX_LIST_CACHE_KEY,
-    INBOX_LIST_CACHE_TTL,
-    INBOX_MSG_CACHE_PREFIX,
-    INBOX_MSG_CACHE_TTL,
-    SENT_FOLDER,
-    InboxError,
-)
+from .connection import INBOX_FOLDER, INBOX_MSG_CACHE_PREFIX, INBOX_MSG_CACHE_TTL, SENT_FOLDER, InboxError
 from .formatting import build_snippet, extract_from, extract_to, format_date, timestamp_of
 
 logger = logging.getLogger(__name__)
@@ -39,7 +29,7 @@ def fetch_inbox_message(
         return cached
 
     if inbox_account.is_graph:
-        # Mail.Read cannot mark a message read, so the cached list keeps Outlook's read state.
+        # The Graph reader only GETs, so opening never marks a message read in Outlook.
         reader = graph_backend.reader_for(inbox_account.address)
         result = tagged([graph_backend.fetch_message(reader, uid)], inbox_account)[0]
         cache.set(cache_key, result, INBOX_MSG_CACHE_TTL)
@@ -49,17 +39,15 @@ def fetch_inbox_message(
         import apps.mail.services.inbox as inbox_api
 
         with inbox_api._open_inbox(mailbox=mailbox, folder=folder, account=inbox_account) as client:
-            # The site's own credential mail is never opened or cached from Sent (``credential_mail``), as if it
-            # were not there.
-            fetched = client.fetch(_uid_search(folder, uid), limit=1, mark_seen=True, bulk=False)
+            # BODY.PEEK (mark_seen=False): previewing a message never marks it read in Gmail, as with Graph, so the
+            # lists, the snapshot and the unread count keep the mailbox's own read state. The site's own credential
+            # mail is never opened or cached from Sent (``credential_mail``), as if it were not there.
+            fetched = client.fetch(_uid_search(folder, uid), limit=1, mark_seen=False, bulk=False)
             message = next(iter(shown(fetched, folder)), None)
             if message is None:
                 raise InboxError("Message not found.")
             result = tagged([detailed_message(message)], inbox_account)[0]
         cache.set(cache_key, result, INBOX_MSG_CACHE_TTL)
-        update_list_cache_seen(uid, folder=folder, account=inbox_account.key)
-        if folder == INBOX_FOLDER:
-            health.mark_seen(inbox_account, uid)
         return result
     except InboxError:
         raise
@@ -107,9 +95,19 @@ def message_summary(message: Any) -> dict[str, Any]:
         "timestamp": timestamp_of(getattr(message, "date", None)),
         "snippet": build_snippet(message),
         "is_seen": "\\Seen" in flags,
+        "has_attachments": has_attachments(message),
         # IMAP UIDs are per folder, so the requested folder already says whether this is Sent mail.
         "from_own_mailbox": False,
     }
+
+
+def has_attachments(message: Any) -> bool:
+    """Whether a message has attachments: a listed one says so (``imap_list``), a whole one lists them."""
+    flag = getattr(message, "has_attachments", None)
+    if isinstance(flag, bool):
+        return flag
+    attachments = getattr(message, "attachments", None)
+    return isinstance(attachments, list) and bool(attachments)
 
 
 def detailed_message(message: Any) -> dict[str, Any]:
@@ -142,17 +140,3 @@ def detailed_message(message: Any) -> dict[str, Any]:
 def _header_address(headers: dict[str, Any], key: str) -> str:
     values = headers.get(key, []) or []
     return parseaddr(values[0])[1].strip().lower() if values else ""
-
-
-def update_list_cache_seen(uid: str, folder: str = INBOX_FOLDER, account: str = "") -> None:
-    """Mark an opened IMAP message read in the account's cached lists (opening it set ``\\Seen``)."""
-    for limit in INBOX_LIMIT_CHOICES:
-        cache_key = f"{INBOX_LIST_CACHE_KEY}:{account}:{folder}:{limit}"
-        cached_list = cache.get(cache_key)
-        if cached_list is None:
-            continue
-        for message in cached_list:
-            if message["uid"] == uid:
-                message["is_seen"] = True
-                break
-        cache.set(cache_key, cached_list, INBOX_LIST_CACHE_TTL)

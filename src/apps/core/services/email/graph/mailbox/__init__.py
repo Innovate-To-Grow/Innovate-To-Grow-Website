@@ -71,11 +71,14 @@ class GraphMailboxReader:
         self.credential = credential_for(config)
         self.timeout = auth.request_timeout(timeout)
 
-    def list_messages(self, folder: str, limit: int) -> list[dict]:
-        """The newest *limit* messages of a well-known folder, as Graph ``message`` objects (``LIST_FIELDS`` only)."""
+    def list_messages(self, folder: str, limit: int, skip: int = 0) -> list[dict]:
+        """The newest *limit* messages of a well-known folder, as Graph ``message`` objects (``LIST_FIELDS`` only),
+        after the newest *skip* (``$skip``: the admin inbox's "Load older"; 0 asks for none)."""
         folder_name = FOLDERS.get(str(folder).upper(), FOLDERS["INBOX"])
         top = max(1, min(int(limit), settings.GRAPH_INBOX_MAX_LIST_LIMIT))
         query = f"$top={top}&$select={LIST_FIELDS}&$orderby=receivedDateTime%20desc"
+        if int(skip) > 0:
+            query += f"&$skip={int(skip)}"
         return self._message_list(f"{self._user_path()}/mailFolders/{folder_name}/messages?{query}")
 
     def list_received_since(self, folder: str, since: datetime, limit: int) -> list[dict]:

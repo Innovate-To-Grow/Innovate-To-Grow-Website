@@ -6,6 +6,8 @@ never changes what the inbox shows.
 """
 
 import logging
+from contextlib import contextmanager
+from contextvars import ContextVar
 
 from django.core.cache import cache
 from django.db import DatabaseError, transaction
@@ -20,6 +22,32 @@ logger = logging.getLogger("apps.mail.services.inbox.polling.health")
 SNAPSHOT_LIMIT = 50
 UNREACHABLE_DETAIL = "Could not connect to this mailbox. Check its settings and the server logs."
 UNREAD_CACHE_KEY = "inbox:unread-total"
+
+
+# ``{account key: InboxAccountState or None}`` loaded during one inbox request (``request_scope``), else None.
+_SCOPE: ContextVar[dict | None] = ContextVar("inbox_account_states", default=None)
+
+
+@contextmanager
+def request_scope():
+    """While the block runs (one inbox fragment request), each account's state is loaded from the database at most
+    once (``health.states_for``), and what this request records replaces it (``_save``), so the request still sees
+    whether each account connected just now."""
+    token = _SCOPE.set({})
+    try:
+        yield
+    finally:
+        _SCOPE.reset(token)
+
+
+def scoped_states() -> dict | None:
+    return _SCOPE.get()
+
+
+def forget_scope() -> None:
+    memo = _SCOPE.get()
+    if memo is not None:
+        memo.clear()
 
 
 def state_model():
@@ -70,26 +98,6 @@ def record_failure(account, exc: BaseException, *, now=None) -> None:
     _save(account, fields, failed=True)
 
 
-def mark_seen(account, uid: str) -> None:
-    """An opened IMAP message is now read (opening it set ``\\Seen``): update the snapshot until the next poll."""
-    try:
-        with transaction.atomic():
-            state = state_model().objects.select_for_update().filter(account_key=account.key).first()
-            if state is None or not same_mailbox(state, account):
-                return
-            changed = False
-            for message in state.messages or []:
-                if message.get("uid") == uid and not message.get("is_seen"):
-                    message["is_seen"] = True
-                    changed = True
-            if changed:
-                state.unread_count = sum(1 for message in state.messages if not message.get("is_seen"))
-                state.save(update_fields=["messages", "unread_count", "updated_at"])
-    except DatabaseError:
-        logger.exception("Could not update the inbox snapshot of %s.", account.key)
-    forget_unread()
-
-
 def reset(keys=None, *, prefix: str = "") -> None:
     """Forget whether accounts could connect (their configuration changed): they are shown and tried again."""
     model = state_model()
@@ -103,6 +111,7 @@ def reset(keys=None, *, prefix: str = "") -> None:
             queryset.update(status=model.Status.UNKNOWN, detail="")
     except DatabaseError:
         logger.exception("Could not reset the inbox account states.")
+    forget_scope()
     forget_unread()
 
 
@@ -142,4 +151,9 @@ def _save(account, fields: dict, *, failed: bool = False) -> None:
             state.save()
     except DatabaseError:
         logger.exception("Could not record the inbox state of %s.", account.key)
+        forget_scope()
+    else:
+        memo = _SCOPE.get()
+        if memo is not None:
+            memo[account.key] = state
     forget_unread()

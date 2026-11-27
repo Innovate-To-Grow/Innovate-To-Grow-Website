@@ -23,12 +23,13 @@ from .records import (  # noqa: F401 - re-exported: callers record through this 
     UNREACHABLE_DETAIL,
     UNREAD_CACHE_KEY,
     logger,
-    mark_seen,
     prune,
     record_failure,
     record_ok,
+    request_scope,
     reset,
     same_mailbox,
+    scoped_states,
     state_model,
 )
 
@@ -49,17 +50,23 @@ def snapshot_max_age() -> timedelta:
 
 
 def states_for(accounts) -> dict:
-    """``{account key: InboxAccountState}`` for the accounts that have one, recorded for the mailbox each reads now."""
+    """``{account key: InboxAccountState}`` for the accounts that have one, recorded for the mailbox each reads now
+    (inside ``request_scope``, each is loaded from the database once per request)."""
     by_key = {account.key: account for account in accounts}
-    if not by_key:
-        return {}
-    try:
-        with transaction.atomic():
-            states = list(state_model().objects.filter(account_key__in=list(by_key)))
-        return {state.account_key: state for state in states if same_mailbox(state, by_key[state.account_key])}
-    except DatabaseError:
-        logger.exception("Could not load the inbox account states.")
-        return {}
+    memo = scoped_states()
+    missing = [key for key in by_key if memo is None or key not in memo]
+    loaded = {}
+    if missing:
+        try:
+            with transaction.atomic():
+                loaded = {state.account_key: state for state in state_model().objects.filter(account_key__in=missing)}
+        except DatabaseError:
+            logger.exception("Could not load the inbox account states.")
+            return {}
+        if memo is not None:
+            memo.update({key: loaded.get(key) for key in missing})
+    found = {key: memo.get(key) if memo is not None else loaded.get(key) for key in by_key}
+    return {key: state for key, state in found.items() if state is not None and same_mailbox(state, by_key[key])}
 
 
 def hidden_keys(accounts, *, now=None) -> set[str]:

@@ -2,6 +2,8 @@
 accounts) is read (``accounts``), and a reply may be sent From any configured sending address (``senders``) through
 the email facade."""
 
+from .polling.health import request_scope as inbox_state_scope
+from .reading import paging
 from .reading.accounts import ALL_ACCOUNTS, InboxAccount, connectable_accounts, readable_accounts, resolve_account
 from .reading.connection import (
     INBOX_FOLDER,
@@ -33,8 +35,10 @@ __all__ = [
     "connectable_accounts",
     "default_identity_for",
     "fetch_inbox_message",
+    "inbox_state_scope",
     "list_all_inbox_messages",
     "list_inbox_messages",
+    "paging",
     "readable_accounts",
     "render_reply_html",
     "resolve_account",

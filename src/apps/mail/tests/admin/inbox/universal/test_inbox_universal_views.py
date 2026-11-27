@@ -13,7 +13,7 @@ class InboxListAccountTests(UniversalInboxViewCase):
     def test_all_accounts_by_default(self):
         response = self.fragment()
 
-        self.list_all.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX")
+        self.list_all.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX", cursor={})
         self.list_one.assert_not_called()
         self.assertContains(response, "data-inbox-account")
         self.assertContains(response, f'<option value="{ALL_ACCOUNTS}" selected>All accounts</option>', html=False)
@@ -28,7 +28,7 @@ class InboxListAccountTests(UniversalInboxViewCase):
     def test_an_account_key_lists_that_account_only(self):
         response = self.fragment("?account=imap:7&refresh=1")
 
-        self.list_one.assert_called_once_with(limit=30, force_refresh=True, folder="INBOX", account="imap:7")
+        self.list_one.assert_called_once_with(limit=30, force_refresh=True, folder="INBOX", account="imap:7", cursor={})
         self.list_all.assert_not_called()
         self.assertContains(response, '<option value="imap:7" selected>', html=False)
         self.assertNotContains(response, f'<option value="{ALL_ACCOUNTS}" selected>', html=False)
@@ -64,7 +64,7 @@ class InboxListAccountTests(UniversalInboxViewCase):
 
         response = self.fragment()
 
-        self.list_all.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX")
+        self.list_all.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX", cursor={})
         self.assertEqual(self.connectable.call_args_list[0].kwargs, {"retry": False})
         self.assertContains(response, "data-inbox-hidden")
         self.assertContains(
@@ -83,7 +83,7 @@ class InboxListAccountTests(UniversalInboxViewCase):
         response = self.fragment("?account=imap:7")
 
         self.list_one.assert_not_called()
-        self.list_all.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX")
+        self.list_all.assert_called_once_with(limit=30, force_refresh=False, folder="INBOX", cursor={})
         self.assertContains(response, "data-inbox-hidden")
 
     def test_refresh_retries_every_account(self):
@@ -92,7 +92,7 @@ class InboxListAccountTests(UniversalInboxViewCase):
         response = self.fragment("?account=imap:7&refresh=1")
 
         self.assertEqual(self.connectable.call_args_list[0].kwargs, {"retry": True})
-        self.list_one.assert_called_once_with(limit=30, force_refresh=True, folder="INBOX", account="imap:7")
+        self.list_one.assert_called_once_with(limit=30, force_refresh=True, folder="INBOX", account="imap:7", cursor={})
         # After the read the account is named again if it still could not connect.
         self.assertEqual(self.connectable.call_args_list[-1].kwargs, {"retry": False})
         self.assertContains(response, "data-inbox-hidden")

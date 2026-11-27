@@ -1,0 +1,124 @@
+/* Mail -> Inbox: the list's quick filter and "Unread only" toggle (inbox-filter.js) and its "Load older" footer. */
+
+.i2g-inbox-filter {
+    align-items: center;
+    border-bottom: 1px solid var(--md-sys-color-outline-variant, #e5e7eb);
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.i2g-inbox-filter__search {
+    align-items: center;
+    background: var(--md-sys-color-surface-container-low, #f8fafc);
+    border: 1px solid var(--md-sys-color-outline-variant, #d9dee3);
+    border-radius: 999px;
+    color: var(--md-sys-color-on-surface-variant, #64748b);
+    display: flex;
+    flex: 1 1 auto;
+    gap: 0.375rem;
+    min-width: 0;
+    padding: 0 0.625rem;
+}
+
+/* The pill is the field: the admin theme's own input background, border and focus ring are left off (its rules are
+   !important, so this selector must be more specific than input:not([type]):not([type]):focus). */
+.i2g-inbox-filter .i2g-inbox-filter__search input[data-inbox-filter][type="search"] {
+    appearance: none;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    color: var(--md-sys-color-on-surface, #111827);
+    flex: 1 1 auto;
+    font-size: 0.8125rem;
+    min-height: 1.875rem;
+    min-width: 0;
+    outline: none !important;
+    padding: 0;
+}
+
+.i2g-inbox-filter__search:focus-within {
+    border-color: var(--md-sys-color-primary, #1d4ed8);
+}
+
+.i2g-inbox-chip {
+    background: var(--md-sys-color-surface-container-lowest, #fff);
+    border: 1px solid var(--md-sys-color-outline-variant, #d9dee3);
+    border-radius: 999px;
+    color: var(--md-sys-color-on-surface, #111827);
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-height: 1.875rem;
+    padding: 0 0.75rem;
+    white-space: nowrap;
+}
+
+.i2g-inbox-chip[aria-pressed="true"] {
+    background: var(--md-sys-color-primary-container, #dbeafe);
+    border-color: var(--md-sys-color-primary, #1d4ed8);
+    color: var(--md-sys-color-primary, #1d4ed8);
+}
+
+.i2g-inbox-filter__empty {
+    color: var(--md-sys-color-on-surface-variant, #64748b);
+    font-size: 0.8125rem;
+    margin: 0;
+    padding: 1rem;
+    text-align: center;
+}
+
+.i2g-mail-shell.is-list-collapsed .i2g-inbox-filter,
+.i2g-mail-shell.is-list-collapsed .i2g-inbox-filter__empty {
+    display: none;
+}
+
+.i2g-inbox-list-footer {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.875rem 1rem 1.25rem;
+}
+
+.i2g-inbox-list-footer__end,
+.i2g-inbox-list-footer__note {
+    color: var(--md-sys-color-on-surface-variant, #64748b);
+    font-size: 0.75rem;
+    margin: 0;
+    text-align: center;
+}
+
+.i2g-inbox-list-footer__error {
+    color: #b91c1c;
+    font-size: 0.75rem;
+    margin: 0;
+    text-align: center;
+}
+
+.i2g-inbox-older-btn {
+    align-items: center;
+    background: var(--md-sys-color-surface-container-lowest, #fff);
+    border: 1px solid var(--md-sys-color-outline-variant, #d9dee3);
+    border-radius: 999px;
+    color: var(--md-sys-color-primary, #1d4ed8);
+    display: inline-flex;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    gap: 0.25rem;
+    min-height: 2rem;
+    padding: 0 0.875rem;
+}
+
+.i2g-inbox-older-btn:hover {
+    background: var(--md-sys-color-surface-container, #eef2f7);
+}
+
+.i2g-inbox-older-btn[disabled] {
+    cursor: progress;
+    opacity: 0.6;
+}
+
+.dark .i2g-inbox-list-footer__error {
+    color: #fca5a5;
+}

@@ -92,7 +92,7 @@ class SentFolderListTests(SentAccessTestCase):
 
         response = self.client.get(self.fragment_url())
 
-        self.list_messages.assert_called_once_with(limit=30, force_refresh=True, folder="SENT")
+        self.list_messages.assert_called_once_with(limit=30, force_refresh=True, folder="SENT", cursor={})
         self.assertContains(response, 'data-inbox-folder="SENT"')
 
     def test_an_admin_sees_own_mail_in_full(self):

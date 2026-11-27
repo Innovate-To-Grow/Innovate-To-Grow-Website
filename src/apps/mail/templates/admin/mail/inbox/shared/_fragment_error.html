@@ -1,1 +1,5 @@
-<div class="p-4 text-sm text-red-600">{{ error_message }}</div>
+<div class="i2g-inbox-fragment-error" data-inbox-fragment-error role="alert">
+    <span class="material-symbols-outlined !text-[18px]" aria-hidden="true">error</span>
+    <span class="i2g-inbox-fragment-error__text">{{ error_message }}</span>
+    <button type="button" data-inbox-retry class="i2g-inbox-retry-btn cursor-pointer font-sans">Retry</button>
+</div>
