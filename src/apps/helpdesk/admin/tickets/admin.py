@@ -1,7 +1,7 @@
 """Helpdesk → Queue: the ticket list and the ticket page.
 
 The list opens on people's open tickets: automated mail and spam are hidden unless the Mail filter asks for them
-(the sidebar's "Automated & spam"); "Not automated: move to the queue" brings one back, from the list or beside Save
+(the "Automated & spam" tab); "Not automated: move to the queue" brings one back, from the list or beside Save
 on its page. The ticket page works a ticket ServiceNow style: status, impact and urgency (the
 priority follows), category, assignment group and assignee, and the resolution code and notes (each change goes to
 the ticket's audit trail; no typed confirmation, which would be noise on every status change). It shows the SLA

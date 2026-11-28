@@ -23,7 +23,74 @@ def _is_notification_delivery(request):
     return request.path.startswith("/admin/mail/settings/") and not request.path.startswith(_DELIVERY_RATES_PATH)
 
 
+def _helpdesk_queue_view(name):
+    """Mark one ticket-list tab active; all six views share the same path."""
+
+    def active(request):
+        if not request.path.startswith("/admin/helpdesk/ticket/"):
+            return False
+        params = request.GET
+        mail, assignee = params.get("mail", ""), params.get("assignee", "")
+        if mail == "automated":
+            return name == "automated"
+        if params.get("sla", "") == "breached":
+            return name == "breached"
+        if params.get("group", "") == "mine" and not assignee:
+            return name == "groups"
+        return {"me": "mine", "none": "unassigned"}.get(assignee, "queue") == name
+
+    return active
+
+
 TABS = [
+    {
+        "models": ["helpdesk.ticket", "helpdesk.ingestrecord"],
+        "items": [
+            {"title": "Queue", "link": "/admin/helpdesk/ticket/", "active": _helpdesk_queue_view("queue")},
+            {
+                "title": "My Tickets",
+                "link": "/admin/helpdesk/ticket/?assignee=me",
+                "active": _helpdesk_queue_view("mine"),
+            },
+            {
+                "title": "My Groups",
+                "link": "/admin/helpdesk/ticket/?group=mine",
+                "active": _helpdesk_queue_view("groups"),
+            },
+            {
+                "title": "Unassigned",
+                "link": "/admin/helpdesk/ticket/?assignee=none",
+                "active": _helpdesk_queue_view("unassigned"),
+            },
+            {
+                "title": "SLA Breached",
+                "link": "/admin/helpdesk/ticket/?sla=breached",
+                "active": _helpdesk_queue_view("breached"),
+            },
+            {
+                "title": "Automated & Spam",
+                "link": "/admin/helpdesk/ticket/?mail=automated&status=any",
+                "active": _helpdesk_queue_view("automated"),
+            },
+            {"title": "Ingest Problems", "link": "/admin/helpdesk/ingestrecord/"},
+        ],
+    },
+    {
+        "models": [
+            "helpdesk.ticketcategory",
+            "helpdesk.assignmentgroup",
+            "helpdesk.slatarget",
+            "helpdesk.responsetemplate",
+            {"name": "helpdesk.helpdesksettings", "detail": True},
+        ],
+        "items": [
+            {"title": "Categories", "link": "/admin/helpdesk/ticketcategory/"},
+            {"title": "Assignment Groups", "link": "/admin/helpdesk/assignmentgroup/"},
+            {"title": "SLA Targets", "link": "/admin/helpdesk/slatarget/"},
+            {"title": "Response Templates", "link": "/admin/helpdesk/responsetemplate/"},
+            {"title": "Settings", "link": "/admin/helpdesk/helpdesksettings/"},
+        ],
+    },
     {
         "models": list(SERVICE_CREDENTIAL_MODELS),
         "items": [

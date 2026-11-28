@@ -32,7 +32,11 @@ class AdminSidebarNavigationTest(SimpleTestCase):
         self.assertEqual(page_tab["items"], expected_items)
 
     def test_system_intelligence_configuration_pages_are_not_tabbed(self):
-        tabbed_models = {model for tab in settings.UNFOLD["TABS"] for model in tab.get("models", [])}
+        tabbed_models = {
+            model if isinstance(model, str) else model["name"]
+            for tab in settings.UNFOLD["TABS"]
+            for model in tab.get("models", [])
+        }
 
         self.assertNotIn("system_intelligence.systemintelligenceconfig", tabbed_models)
         self.assertNotIn("system_intelligence.llmproviderconfig", tabbed_models)

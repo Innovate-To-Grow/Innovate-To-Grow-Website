@@ -1,7 +1,5 @@
 """Who sees each sidebar entry and when it is marked active: the request-dependent callbacks ``navigation`` uses."""
 
-from urllib.parse import parse_qs
-
 from apps.core.utils.access import user_is_admin
 
 from .tabs import SERVICE_CREDENTIAL_MODELS
@@ -9,7 +7,6 @@ from .tabs import SERVICE_CREDENTIAL_MODELS
 # Broadcast Delivery → Email Sending Method: its page, each method's test page and the switch. Not under
 # /admin/mail/settings/, so no Delivery Operations tab (and with it that sidebar entry) claims them too.
 _SENDING_METHOD_PATH = "/admin/mail/sending-method/"
-_HELPDESK_TICKETS_PATH = "/admin/helpdesk/ticket/"
 
 
 def _is_admin(request):
@@ -38,38 +35,6 @@ def _is_mail_delivery_operations(request):
 
 def _is_email_sending_method(request):
     return request.path.startswith(_SENDING_METHOD_PATH)
-
-
-def _helpdesk_queue_view(name):
-    """Sidebar "active" callback for one view of the ticket list (the six views share one path). A ticket page lights
-    the view it was opened from (the list's filters it carries in ``_changelist_filters``)."""
-
-    def active(request):
-        if not request.path.startswith(_HELPDESK_TICKETS_PATH):
-            return False
-        params = request.GET
-        if "_changelist_filters" in params:
-            params = {key: values[-1] for key, values in parse_qs(params["_changelist_filters"]).items()}
-        mail, assignee = params.get("mail", ""), params.get("assignee", "")
-        if mail == "automated":
-            return name == "automated"
-        if params.get("sla", "") == "breached":
-            return name == "breached"
-        if params.get("group", "") == "mine" and not assignee:
-            return name == "groups"
-        return {"me": "mine", "none": "unassigned"}.get(assignee, "queue") == name
-
-    return active
-
-
-def _helpdesk_view_item(title, query, name):
-    """The sidebar entry of one view of the ticket list (``query`` on the list's path), lit by ``name``."""
-    return {
-        "title": title,
-        "link": f"{_HELPDESK_TICKETS_PATH}{query}",
-        "permission": _is_admin,
-        "active": _helpdesk_queue_view(name),
-    }
 
 
 def _helpdesk_link(title, model):
