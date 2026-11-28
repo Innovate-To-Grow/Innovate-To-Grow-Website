@@ -49,7 +49,9 @@ class AdminSidebarNavigationTest(SimpleTestCase):
                 sidebar_links.append((section["title"], item["title"], item["link"]))
 
         for tab in settings.UNFOLD["TABS"]:
-            tab_key = tab.get("page") or ", ".join(tab.get("models", []))
+            tab_key = tab.get("page") or ", ".join(
+                model if isinstance(model, str) else model["name"] for model in tab.get("models", [])
+            )
             tab_links = {item["link"] for item in tab["items"]}
             exposed_items = [
                 (section_title, item_title, link)
@@ -63,6 +65,45 @@ class AdminSidebarNavigationTest(SimpleTestCase):
                     1,
                     f"Tab group exposes multiple sidebar entries: {exposed_items}",
                 )
+
+    def test_helpdesk_pages_are_grouped_under_helpdesk_tabs(self):
+        tabs = settings.UNFOLD["TABS"]
+        queue_tab = next(tab for tab in tabs if "helpdesk.ticket" in tab.get("models", []))
+        settings_tab = next(tab for tab in tabs if "helpdesk.ticketcategory" in tab.get("models", []))
+
+        self.assertEqual(queue_tab["models"], ["helpdesk.ticket", "helpdesk.ingestrecord"])
+        self.assertEqual(
+            [(item["title"], item["link"]) for item in queue_tab["items"]],
+            [
+                ("Queue", "/admin/helpdesk/ticket/"),
+                ("My Tickets", "/admin/helpdesk/ticket/?assignee=me"),
+                ("My Groups", "/admin/helpdesk/ticket/?group=mine"),
+                ("Unassigned", "/admin/helpdesk/ticket/?assignee=none"),
+                ("SLA Breached", "/admin/helpdesk/ticket/?sla=breached"),
+                ("Automated & Spam", "/admin/helpdesk/ticket/?mail=automated&status=any"),
+                ("Ingest Problems", "/admin/helpdesk/ingestrecord/"),
+            ],
+        )
+        self.assertEqual(
+            settings_tab["models"],
+            [
+                "helpdesk.ticketcategory",
+                "helpdesk.assignmentgroup",
+                "helpdesk.slatarget",
+                "helpdesk.responsetemplate",
+                {"name": "helpdesk.helpdesksettings", "detail": True},
+            ],
+        )
+        self.assertEqual(
+            [(item["title"], item["link"]) for item in settings_tab["items"]],
+            [
+                ("Categories", "/admin/helpdesk/ticketcategory/"),
+                ("Assignment Groups", "/admin/helpdesk/assignmentgroup/"),
+                ("SLA Targets", "/admin/helpdesk/slatarget/"),
+                ("Response Templates", "/admin/helpdesk/responsetemplate/"),
+                ("Settings", "/admin/helpdesk/helpdesksettings/"),
+            ],
+        )
 
     def test_site_settings_navigation_includes_core_entries(self):
         navigation = settings.UNFOLD["SIDEBAR"]["navigation"]

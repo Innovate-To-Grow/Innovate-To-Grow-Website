@@ -172,22 +172,63 @@ class ActionTests(_ActionCase):
         self.assertEqual(list(self.new.events.values_list("kind", flat=True)), [TicketEvent.Kind.ASSIGNED])
 
 
+class TabTests(QueueTestCase):
+    def test_ticket_and_ingest_pages_render_the_queue_tabs(self):
+        for url in (reverse(CHANGELIST), reverse("admin:helpdesk_ingestrecord_changelist")):
+            with self.subTest(url=url):
+                response = self.client.get(url)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'id="tabs-items"')
+                for title in (
+                    "Queue",
+                    "My Tickets",
+                    "My Groups",
+                    "Unassigned",
+                    "SLA Breached",
+                    "Automated &amp; Spam",
+                    "Ingest Problems",
+                ):
+                    self.assertContains(response, title)
+
+    def test_configuration_pages_render_the_configuration_tabs(self):
+        for url in (
+            reverse("admin:helpdesk_ticketcategory_changelist"),
+            reverse("admin:helpdesk_assignmentgroup_changelist"),
+            reverse("admin:helpdesk_slatarget_changelist"),
+            reverse("admin:helpdesk_responsetemplate_changelist"),
+            reverse("admin:helpdesk_helpdesksettings_changelist"),
+        ):
+            with self.subTest(url=url):
+                response = self.client.get(url, follow=True)
+
+                self.assertEqual(response.status_code, 200)
+                self.assertContains(response, 'id="tabs-items"')
+                for title in ("Categories", "Assignment Groups", "SLA Targets", "Response Templates", "Settings"):
+                    self.assertContains(response, title)
+
+    def test_each_view_of_the_ticket_list_lights_its_own_tab(self):
+        queue_link = 'href="/admin/helpdesk/ticket/" class="active"'
+        for query, active_link in (
+            ("", queue_link),
+            ("?mail=all&status=any", queue_link),
+            ("?assignee=me", 'href="/admin/helpdesk/ticket/?assignee=me" class="active"'),
+            ("?group=mine", 'href="/admin/helpdesk/ticket/?group=mine" class="active"'),
+            ("?assignee=none", 'href="/admin/helpdesk/ticket/?assignee=none" class="active"'),
+            ("?sla=breached", 'href="/admin/helpdesk/ticket/?sla=breached" class="active"'),
+            (
+                "?mail=automated&status=any",
+                'href="/admin/helpdesk/ticket/?mail=automated&amp;status=any" class="active"',
+            ),
+        ):
+            with self.subTest(query=query):
+                response = self.client.get(f"{reverse(CHANGELIST)}{query}")
+
+                self.assertContains(response, active_link)
+                self.assertContains(response, 'class="active"', count=1)
+
+
 class SidebarTests(TestCase):
-    def active_items(self, path):
-        request = RequestFactory().get(path)
-        section = next(item for item in navigation.SIDEBAR["navigation"] if item["title"] == "Helpdesk")
-        return [item["title"] for item in section["items"] if callable(item.get("active")) and item["active"](request)]
-
-    def test_each_view_of_the_ticket_list_lights_its_own_entry(self):
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/"), ["Queue"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?assignee=me"), ["My Tickets"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?assignee=none"), ["Unassigned"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?group=mine"), ["My Groups"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?sla=breached"), ["SLA Breached"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?mail=automated&status=any"), ["Automated & Spam"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ticket/?mail=all&status=any"), ["Queue"])
-        self.assertEqual(self.active_items("/admin/helpdesk/ingestrecord/"), [])
-
     def test_the_section_is_shown_to_admins_only(self):
         section = next(item for item in navigation.SIDEBAR["navigation"] if item["title"] == "Helpdesk")
         request = RequestFactory().get("/admin/")
